@@ -80,3 +80,36 @@ function walkJSON(item, func) {
   }
 }
 
+function keys(x) {
+  var ret = [];
+  for (a in x) ret.push(a);
+  return ret;
+}
+
+function values(x) {
+  var ret = [];
+  for (a in x) ret.push(x[a]);
+  return ret;
+}
+
+function sum(x) {
+  return x.reduce(function(a,b) { return a+b }, 0);
+}
+
+function sumTruthy(x) {
+  return x.reduce(function(a,b) { return (!!a)+(!!b) }, 0);
+}
+
+function loopOn(array, func) {
+  for (var i = 0; i < array.length; i++) {
+    func(i, array[i]);
+  }
+}
+
+// Splits out items that pass filter. Returns also the original sans the filtered
+function splitter(array, filter) {
+  var splitOut = array.filter(filter);
+  var leftIn = array.filter(function(x) { return !filter(x) });
+  return { leftIn: leftIn, splitOut: splitOut };
+}
+

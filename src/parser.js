@@ -24,6 +24,7 @@ if (!this['read']) {
 
 load('utility.js');
 load('enzymatic.js');
+load('enzymatic2.js');
 
 // Tools
 
@@ -87,13 +88,6 @@ function isFunctionDef(token) {
 function addIdent(token) {
   token.ident = token.text;
   return token;
-}
-
-// Splits out items that pass filter. Returns also the original sans the filtered
-function splitter(array, filter) {
-  var splitOut = array.filter(filter);
-  var original = array.filter(function(x) { return !filter(x) });
-  return { original: original, splitOut: splitOut };
 }
 
 function combineTokens(tokens) {
@@ -822,7 +816,7 @@ function analyzer(data) {
       ['globalConstant', 'globalVariable', 'functionStub', 'type'].forEach(function(intertype) {
         var temp = splitter(item.items, function(item) { return item.intertype == intertype });
         item[intertype + 's'] = temp.splitOut;
-        item.items = temp.original;
+        item.items = temp.leftIn;
       });
       // Functions & labels
       item.functions = []
@@ -1307,7 +1301,7 @@ print("\n\n// XXX MAKEBLOCK " + entry + ' : ' + labels.length + ' : ' + getLabel
           print("//no first line");
           return;
         }
-        var others = split.original;
+        var others = split.leftIn;
         var lastLine = first.lines.slice(-1)[0];
 print("//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
         // If we have one outgoing, and none incoming - make this a block of 1,
@@ -1332,7 +1326,7 @@ print('// loop ? b');
           // outside the loop. Insiders are those that can get back to the entry
           var split2 = splitter(others, function(label) { return label.allOutLabels.indexOf(entry) == -1 });
           var outsiders = split2.splitOut;
-          var insiders = split2.original;
+          var insiders = split2.leftIn;
 print('//    potential loop : in/out : ' + getLabelIds(insiders) + ' to ' + getLabelIds(outsiders));
           // Hopefully exactly one of the outsiders is a 'pivot' - a label to which all those leaving
           // the loop must go. Then even some |if (falala) { ... break; }| will get ...
