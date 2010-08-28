@@ -13,6 +13,8 @@ RELOOP = 1;
 
 LINEDEBUG = 0;
 
+PARSER_DEBUG = 1;
+
 // Prep - allow this to run in both SpiderMonkey and V8
 
 if (!this['load']) {
@@ -1248,6 +1250,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         if (!RELOOP) return def;
 
         function getLastLine(block) {
+          //if (PARSER_DEBUG) print('// get last line at: ' + block.labels[0].ident);
           if (block.next) return getLastLine(block.next);
           switch(block.type) {
             case 'loop':
@@ -1260,13 +1263,15 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
               if (block.labels.length == 1) {
                 return block.labels[0].lines.slice(-1)[0];
               } else {
-                throw "Not clear what the last line is."
+                //for (var i = 0; i < block.labels.length; i++)
+                  //print('Remaining label is at line: ' + block.labels[i].lines[0].lineNum);
+                return null; // throw "Not clear what the last line is."
               }
           }
         }
         function getAll(fromId, beforeIds) {
           beforeIds = beforeIds ? beforeIds : [];
-print("//getAll : " + fromId + ' : ' + beforeIds);
+//print("//getAll : " + fromId + ' : ' + beforeIds);
           if (beforeIds && beforeIds.indexOf(fromId) != -1) return [];
 //print("getAll proceeding");
           var from = labelsDict[fromId];
@@ -1280,7 +1285,7 @@ print("//getAll : " + fromId + ' : ' + beforeIds);
           label.outLabels = [];
           return label;
         }
-print("\n\n// XXX MAKEBLOCK " + entry + ' : ' + labels.length + ' : ' + getLabelIds(labels));
+print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
         if (labels.length == 0 || !entry) {
           print('//empty labels or entry');
           return;
@@ -1303,12 +1308,12 @@ print("\n\n// XXX MAKEBLOCK " + entry + ' : ' + labels.length + ' : ' + getLabel
         }
         var others = split.leftIn;
         var lastLine = first.lines.slice(-1)[0];
-print("//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
+        if (PARSER_DEBUG) print("//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
         // If we have one outgoing, and none incoming - make this a block of 1,
         // and move on the others (forgetting ourself, so they are now also
         // totally self-enclosed, once we start them)
         if (first.inLabels.length == 0 && first.outLabels.length == 1) {
-print('//    XXX simple emulated ' + dump(first));
+          if (PARSER_DEBUG) print('//    Creating simple emulated');
           assertEq(lastLine.intertype, 'branch');
 //          assertEq(!!lastLine.label, true);
           return {
@@ -1318,16 +1323,16 @@ print('//    XXX simple emulated ' + dump(first));
             next: makeBlock(replaceInLabels(others, entry), first.outLabels[0], labelsDict),
           };
         }
-print('// loop ? a');
+//print('// loop ? a');
         // Looping structures - in some way, we can get back to here
         if (first.outLabels.length > 0 && first.allInLabels.indexOf(entry) != -1) {
-print('// loop ? b');
+//print('// loop ? b');
           // Look for outsiders - labels no longer capable of getting here. Those must be
           // outside the loop. Insiders are those that can get back to the entry
           var split2 = splitter(others, function(label) { return label.allOutLabels.indexOf(entry) == -1 });
           var outsiders = split2.splitOut;
           var insiders = split2.leftIn;
-print('//    potential loop : in/out : ' + getLabelIds(insiders) + ' to ' + getLabelIds(outsiders));
+//print('//    potential loop : in/out : ' + getLabelIds(insiders) + ' to ' + getLabelIds(outsiders));
           // Hopefully exactly one of the outsiders is a 'pivot' - a label to which all those leaving
           // the loop must go. Then even some |if (falala) { ... break; }| will get ...
           // as an outsider, but it will actually still be in the loop
@@ -1341,11 +1346,11 @@ print('//    potential loop : in/out : ' + getLabelIds(insiders) + ' to ' + getL
           // as all insiders must go through *all* of these. So we seek a pivot that
           // is never reached by another pivot. That must be the one with fewest
           // mustGetTo
-print("//pivots: " + pivots.length + ',' + JSON.stringify(getLabelIds(pivots)));
+//print("//pivots: " + pivots.length + ',' + JSON.stringify(getLabelIds(pivots)));
           if (pivots.length >= 1) { // We have ourselves a loop
             pivots.sort(function(a, b) { return b.mustGetTo.length - a.mustGetTo.length });
             var pivot = pivots[0];
-print('//    XXX LOOP : ' + getLabelIds(insiders) + ' to ' + pivot.ident);
+            if (PARSER_DEBUG) print('//    Creating LOOP : ' + entry + ' insiders: ' + getLabelIds(insiders) + ' to pivot: ' + pivot.ident);
             var otherLoopLabels = insiders;
             var loopLabels = insiders.concat([first]);
             var nextLabels = outsiders;
@@ -1378,9 +1383,11 @@ print('//    XXX LOOP : ' + getLabelIds(insiders) + ' to ' + pivot.ident);
               inc: makeBlock([isolate(first)], entry, labelsDict),
               rest: makeBlock(replaceInLabels(otherLoopLabels, entry), nextEntry, labelsDict),
             };
+            if (PARSER_DEBUG) print('//   getting last line for block starting with ' + entry);
             var lastLoopLine = getLastLine(ret.rest);
-            lastLoopLine.comment = 'Trying to remove continue ' + entry + ' here';
-            replaceLabels(lastLoopLine, 'BCONT' + entry, 'BNOPP'); // Last line will feed back into the loop anyhow
+            if (lastLoopLine) {
+              replaceLabels(lastLoopLine, 'BCONT' + entry, 'BNOPP'); // Last line will feed back into the loop anyhow
+            }
             ret.next = makeBlock(replaceInLabels(nextLabels, getLabelIds(loopLabels)), pivot.ident, labelsDict);
             return ret;
           }
@@ -1391,7 +1398,7 @@ print('//    XXX LOOP : ' + getLabelIds(insiders) + ' to ' + pivot.ident);
           if (labelsDict[first.outLabels[1]].mustGetTo.indexOf(first.outLabels[0]) != -1) {
             first.outLabels.push(first.outLabels.shift()); // Reverse order - normalize. Very fast check anyhow
           }
-print('// if? labels are ' + JSON.stringify(first.outLabels));
+          //print('// if? labels are ' + JSON.stringify(first.outLabels));
           if (labelsDict[first.outLabels[0]].mustGetTo.indexOf(first.outLabels[1]) != -1) {
             var ifLabelId = first.outLabels[0];
             var outLabelId = first.outLabels[1];
@@ -1401,8 +1408,8 @@ print('// if? labels are ' + JSON.stringify(first.outLabels));
             var nextLabels = getAll(outLabelId);
             // If we can get to the outside in more than 2 ways (one from if, one from True clause) - have breaks
             var breaking = labelsDict[outLabelId].allInLabels.length > 2;
-print('//    XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
-print('//   if separation: ' + labels.length + ' = ' + ifLabels.length + ' + ' + nextLabels.length + '   (' + ifTrueLabels.length + ')');
+            if (PARSER_DEBUG) print('//    Creating XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
+//print('//   if separation: ' + labels.length + ' = ' + ifLabels.length + ' + ' + nextLabels.length + '   (' + ifTrueLabels.length + ')');
             if (breaking) {
               // Rework branches out of the if into new 'break' labels
               forLabelLines(ifTrueLabels, function(line) {
@@ -1426,7 +1433,7 @@ print('//   if separation: ' + labels.length + ' = ' + ifLabels.length + ' + ' +
         }
 
         // Give up on this structure - emulate it
-print('//    XXX complex emulated');
+        if (PARSER_DEBUG) print('//    Creating complex emulated');
         return def;
       }
 
