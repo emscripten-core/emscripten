@@ -627,8 +627,8 @@ function intertyper(data) {
       }
       item.ident = item.tokens[2].text;
       item.params = parseParamTokens(item.tokens[3].item[0].tokens);
-      item.toLabel = item.tokens[6].text;
-      item.unwindLabel = item.tokens[9].text;
+      item.toLabel = toNiceIdent(item.tokens[6].text);
+      item.unwindLabel = toNiceIdent(item.tokens[9].text);
       item.__result__ = true;
       return [item];
     },
@@ -1113,7 +1113,7 @@ function analyzer(data) {
         });
         // Find direct branchings
         labels.forEach(function(label) {
-//print('zz at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
+          if (PARSER_DEBUG) print('// find direct branchings at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
           label.lines.forEach(function(line) {
             if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
               ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel'].forEach(function(id) {
