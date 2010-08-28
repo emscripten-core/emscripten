@@ -13,7 +13,21 @@ RELOOP = 1;
 
 LINEDEBUG = 0;
 
-PARSER_DEBUG = 1;
+DEBUG_TAGS_SHOWING = ['labelbranching'];
+function dcheck(tag) {
+  return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
+}
+function dprint() {
+  var text;
+  if (arguments[1]) {
+    if (!dcheck(arguments[0])) return;
+    text = arguments[1];
+  } else {
+    text = arguments[0];
+  }
+  text = '// ' + text;
+  print(text);
+}
 
 // Prep - allow this to run in both SpiderMonkey and V8
 
@@ -1113,7 +1127,7 @@ function analyzer(data) {
         });
         // Find direct branchings
         labels.forEach(function(label) {
-          if (PARSER_DEBUG) print('// find direct branchings at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
+          dprint('find direct branchings at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
           label.lines.forEach(function(line) {
             if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
               ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel'].forEach(function(id) {
@@ -1196,7 +1210,7 @@ function analyzer(data) {
           });
         });
 
-        if (PARSER_DEBUG) {
+        if (dcheck('labelbranching')) {
           labels.forEach(function(label) {
             print('// label: ' + label.ident + ' :out      : ' + JSON.stringify(label.outLabels));
             print('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
@@ -1252,7 +1266,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         if (!RELOOP) return def;
 
         function getLastLine(block) {
-          //if (PARSER_DEBUG) print('// get last line at: ' + block.labels[0].ident);
+          //dprint('get last line at: ' + block.labels[0].ident);
           if (block.next) return getLastLine(block.next);
           switch(block.type) {
             case 'loop':
@@ -1287,7 +1301,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           label.outLabels = [];
           return label;
         }
-        if (PARSER_DEBUG) print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
+        dprint("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
         if (labels.length == 0 || !entry) {
           print('//empty labels or entry');
           return;
@@ -1310,12 +1324,12 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         }
         var others = split.leftIn;
         var lastLine = first.lines.slice(-1)[0];
-        if (PARSER_DEBUG) print("//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
+        dprint("//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
         // If we have one outgoing, and none incoming - make this a block of 1,
         // and move on the others (forgetting ourself, so they are now also
         // totally self-enclosed, once we start them)
         if (first.inLabels.length == 0 && first.outLabels.length == 1) {
-          if (PARSER_DEBUG) print('//    Creating simple emulated');
+          dprint('   Creating simple emulated');
           assertEq(lastLine.intertype, 'branch');
 //          assertEq(!!lastLine.label, true);
           return {
@@ -1352,7 +1366,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           if (pivots.length >= 1) { // We have ourselves a loop
             pivots.sort(function(a, b) { return b.mustGetTo.length - a.mustGetTo.length });
             var pivot = pivots[0];
-            if (PARSER_DEBUG) print('//    Creating LOOP : ' + entry + ' insiders: ' + getLabelIds(insiders) + ' to pivot: ' + pivot.ident);
+            dprint('   Creating LOOP : ' + entry + ' insiders: ' + getLabelIds(insiders) + ' to pivot: ' + pivot.ident);
             var otherLoopLabels = insiders;
             var loopLabels = insiders.concat([first]);
             var nextLabels = outsiders;
@@ -1385,7 +1399,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
               inc: makeBlock([isolate(first)], entry, labelsDict),
               rest: makeBlock(replaceInLabels(otherLoopLabels, entry), nextEntry, labelsDict),
             };
-            if (PARSER_DEBUG) print('//   getting last line for block starting with ' + entry);
+            dprint('  getting last line for block starting with ' + entry);
             var lastLoopLine = getLastLine(ret.rest);
             if (lastLoopLine) {
               replaceLabels(lastLoopLine, 'BCONT' + entry, 'BNOPP'); // Last line will feed back into the loop anyhow
@@ -1410,7 +1424,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
             var nextLabels = getAll(outLabelId);
             // If we can get to the outside in more than 2 ways (one from if, one from True clause) - have breaks
             var breaking = labelsDict[outLabelId].allInLabels.length > 2;
-            if (PARSER_DEBUG) print('//    Creating XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
+            dprint('   Creating XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
             //print('//   if separation: ' + labels.length + ' = ' + ifLabels.length + ' + ' + nextLabels.length + '   (' + ifTrueLabels.length + ')');
             if (breaking) {
               // Rework branches out of the if into new 'break' labels
@@ -1434,13 +1448,13 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         }
 
         // Give up on this structure - emulate it
-        if (PARSER_DEBUG) print('//    Creating complex emulated');
+        dprint('   Creating complex emulated');
         return def;
       }
 
       // TODO: each of these can be run in parallel
       item.functions.forEach(function(func) {
-        if (PARSER_DEBUG) print("// relooping function: " + func.ident);
+        dprint("// relooping function: " + func.ident);
         func.labelsDict = {};
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
@@ -1714,7 +1728,7 @@ function JSify(data) {
   }
 
   function makeEmptyStruct(type) {
-    if (PARSER_DEBUG) print('// ??makeemptystruct?? ' + dump(type) + ' : ' + dump(TYPES));
+    dprint('makeemptystruct', '??makeemptystruct?? ' + dump(type) + ' : ' + dump(TYPES));
     // XXX hardcoded ptr impl
     var ret = [];
     var typeData = TYPES[type];
