@@ -172,14 +172,14 @@ function makeCombiner(parentSlot, parentSlotValue, parentUnrequiredSlot, childRe
 }
 
 function parseParamTokens(params) {
-//print('NEW params ' + JSON.stringify(params));
+  //print('NEW params ' + JSON.stringify(params));
   if (params.length === 0) return [];
   var ret = [];
   if (params[params.length-1].text != ',') {
     params.push({ text: ',' });
   }
   while (params.length > 0) {
-//print('params ' + JSON.stringify(params));
+    //print('params ' + JSON.stringify(params));
     var i = 0;
     while (params[i].text != ',') i++;
     var segment = params.slice(0, i);
@@ -203,8 +203,8 @@ function parseParamTokens(params) {
         value: segment[1],
         ident: segment[1].text,
       });
-//          } else {
-//            throw "what is this params token? " + JSON.stringify(segment);
+      //          } else {
+      //            throw "what is this params token? " + JSON.stringify(segment);
     }
   }
   return ret;
@@ -226,7 +226,7 @@ function parseGetElementPtr(segment) {
 
 // TODO: use this
 function parseBitcast(segment) {
-//print('zz parseBC pre: ' + dump(segment));
+  //print('zz parseBC pre: ' + dump(segment));
   var ret = {
     intertype: 'bitcast',
     type: segment[0],
@@ -289,7 +289,7 @@ function intertyper(data) {
   substrate.addZyme({
     selectItem: function(item) { return item.lineText; },
     processItem: function(item) {
-//print("line: " + item.lineText);
+      //print("line: " + item.lineText);
       var lineText = item.lineText + " ";
       var tokens = [];
       var tokenStart = -1;
@@ -318,13 +318,13 @@ function intertyper(data) {
       var that = this;
       function tryStartToken() {
         if (tokenStart == -1 && notEnclosed() && notQuoted()) {
-//print("try START " + tokenStart + ',' + JSON.stringify(enclosers));
+          //print("try START " + tokenStart + ',' + JSON.stringify(enclosers));
           tokenStart = i;
         }
       }
       function tryFinishToken(includeThis) {
         if (tokenStart >= 0 && notEnclosed() && notQuoted()) {
-//print("try finish " + tokenStart + ',' + JSON.stringify(enclosers));
+          //print("try finish " + tokenStart + ',' + JSON.stringify(enclosers));
           var token = {
             text: lineText.substr(tokenStart, i-tokenStart + (includeThis ? 1 : 0)),
           };
@@ -353,13 +353,13 @@ function intertyper(data) {
           } else {
             tokens.push(token);
           }
-// print("new token: " + dump(tokens.slice(-1)[0]));
+          // print("new token: " + dump(tokens.slice(-1)[0]));
           tokenStart = -1;
         }
       }
       for (; i < lineText.length; i++) {
         var letter = lineText[i];
-//print("letter: " + letter);
+        //print("letter: " + letter);
         switch (letter) {
           case ' ':
             tryFinishToken();
@@ -385,7 +385,7 @@ function intertyper(data) {
                 enclosers[enclosers[letter]]--;
                 tryFinishToken(true);
               }
-//print('     post-enclosers: ' + JSON.stringify(enclosers));
+              //print('     post-enclosers: ' + JSON.stringify(enclosers));
             } else {
               tryStartToken();
             }
@@ -417,7 +417,7 @@ function intertyper(data) {
     processItem: function(item) {
       if (item.tokens[2].text == 'type') {
         // type
-//print('// zz ' + dump(item));
+        //print('// zz ' + dump(item));
         var fields = [];
         if (item.tokens[3].text != 'opaque') {
           var subTokens = item.tokens[3].tokens;
@@ -557,7 +557,7 @@ function intertyper(data) {
       item.pointerType = item.tokens[1];
       item.pointer = item.tokens[2];
       item.ident = item.pointer.text;
-//print("// zz zz pointer: " + JSON.stringify(item));
+      //print("// zz zz pointer: " + JSON.stringify(item));
       item.type = { text: removePointing(item.pointerType.text) };
       return [item];
     },
@@ -662,7 +662,7 @@ function intertyper(data) {
       item.ident2 = item.tokens[4].text;
       item.ident3 = item.tokens[5] ? item.tokens[5].text : null;
       item.ident4 = item.tokens[8] ? item.tokens[8].text : null;
-//print('// zz got maptop ' + item.op + ',' + item.variant + ',' + item.ident + ',' + item.value);
+      //print('// zz got maptop ' + item.op + ',' + item.variant + ',' + item.ident + ',' + item.value);
       return [item];
     },
   });
@@ -880,7 +880,7 @@ function analyzer(data) {
     if (['['].indexOf(type) != -1) return;
     if (isNumberType(type) || isPointerType(type)) return;
     if (!data.types[type]) {
-//          print("// New type: " + type);
+      //          print("// New type: " + type);
       data.types.push({
         name_: type,
         fields: [ 'int32' ], // XXX
@@ -912,7 +912,7 @@ function analyzer(data) {
   substrate.addZyme({
     selectItem: function(item) { return item.typevestigated && !item.typed; },
     processItem: function(item) {
-//print('zz analaz types')
+      //print('zz analaz types')
       // 'fields' is the raw list of LLVM fields. However, we embed
       // child structures into parent structures, basically like C.
       // So { int, { int, int }, int } would be represented as
@@ -938,7 +938,7 @@ function analyzer(data) {
         item.types.forEach(function(type) {
           var ready = true;
           type.fields.forEach(function(field) {
-//print('// zz getT: ' + type.name_ + ' : ' + field);
+            //print('// zz getT: ' + type.name_ + ' : ' + field);
             if (isStructType(field)) {
               if (!getType(field)) {
                 addType(field, item);
@@ -1026,7 +1026,7 @@ function analyzer(data) {
             variable.stores = 0;
 
             func.lines.forEach(function(line) {
-//print(dump(line))
+              //print(dump(line))
               if (line.intertype == 'store' && line.ident == vname) {
                 variable.stores ++;
               } else if (line.intertype == 'assign' && line.value.intertype == 'load' && line.value.ident == vname) {
@@ -1055,7 +1055,7 @@ function analyzer(data) {
           } else {
             variable.impl = VAR_EMULATED;
           }
-//print('// var ' + vname + ': ' + JSON.stringify(variable));
+          //print('// var ' + vname + ': ' + JSON.stringify(variable));
         }
       });
       item.variablized = true;
@@ -1075,12 +1075,12 @@ function analyzer(data) {
       // Tools
 
       function replaceLabels(line, labelId, toLabelId) {
-//print('// XXX replace ' + labelId + ' with ' + toLabelId);
+        //print('// XXX replace ' + labelId + ' with ' + toLabelId);
         if (line.intertype != 'branch') return;
         ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel'].forEach(function(id) {
           if (line[id] && line[id] == labelId) {
             line[id] = toLabelId;
-//print('    replaced!');
+            //print('    replaced!');
           }
         });
       }
@@ -1091,7 +1091,7 @@ function analyzer(data) {
       }
 
       function replaceInLabels(labels, toReplace, replaceWith) {
-//print('// XXX replaceIn ' + toReplace + ' with ' + replaceWith);
+        //print('// XXX replaceIn ' + toReplace + ' with ' + replaceWith);
         assertEq(!replaceWith || toReplace.length == 1, true); // TODO: implement other case
         labels.forEach(function(label) {
           ['inLabels'].forEach(function(l) {
@@ -1142,7 +1142,7 @@ function analyzer(data) {
         while (worked) {
           worked = false;
           labels.forEach(function(label) {
-//print('zz at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
+            //print('zz at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
             function inout(s, l) {
               var temp = label[s].slice(0);
               label[s].forEach(function(label2Id) {
@@ -1151,7 +1151,7 @@ function analyzer(data) {
               temp = dedup(temp);
               temp.sort();
               if (JSON.stringify(label[l]) != JSON.stringify(temp)) {
-//print('zz noticed ' + label.ident + ' ? ' + s + ',' + l + ' : ' + label[s] + ' | ' + label[l]);
+                //print('zz noticed ' + label.ident + ' ? ' + s + ',' + l + ' : ' + label[s] + ' | ' + label[l]);
                 label[l] = temp;
                 worked = true;
               }
@@ -1163,17 +1163,17 @@ function analyzer(data) {
 
         // Find all mustGetTos
         labels.forEach(function(label) {
-//print('path for: ' + label.ident + ',' + dump(label));
+          //print('path for: ' + label.ident + ',' + dump(label));
           function walk(path, label) {
-//print('path is: ' + getLabelIds(path.concat([label])));
+            //print('path is: ' + getLabelIds(path.concat([label])));
             // If all we are is a break/return - then stop here. Otherwise, continue to other path
-//p//rint('??? ' + label.hasReturn + ' : ' + label.hasBreak + ' : ' + label.outLabels.length);
+            //print('??? ' + label.hasReturn + ' : ' + label.hasBreak + ' : ' + label.outLabels.length);
             if (label.hasReturn || (label.hasBreak && label.outLabels.length == 0)) {
- //print('path done.');
+              //print('path done.');
               return [path.concat([label])]
             };
             if (path.indexOf(label) != -1) {
- //print('looping path - abort it.');
+              //print('looping path - abort it.');
               return []; // loop - drop this path
             }
             path = path.concat([label]);
@@ -1182,12 +1182,12 @@ function analyzer(data) {
                         .filter(function(path) { return path.length > 0 });
           }
           var paths = walk([], label).map(function(path) { return getLabelIds(path) });
-//print('XXX paths: ' + JSON.stringify(paths));
+          //print('XXX paths: ' + JSON.stringify(paths));
           var possibles = dedup(paths.reduce(function(a,b) { return a.concat(b) }, []));
           label.mustGetTo = possibles.filter(function(possible) {
             return paths.filter(function(path) { return path.indexOf(possible) == -1 }) == 0;
           }).filter(function(possible) { return possible != label.ident });
-//print('XXX must get to: ' + JSON.stringify(label.mustGetTo));
+          //print('XXX must get to: ' + JSON.stringify(label.mustGetTo));
         });
 
         labels.forEach(function(label) {
@@ -1196,13 +1196,15 @@ function analyzer(data) {
           });
         });
 
-        labels.forEach(function(label) {
-//print('// label: ' + label.ident + ' :out      : ' + JSON.stringify(label.outLabels));
-//print('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
-//print('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
-//print('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
-//print('// ZZZZZZ ' + label.ident + ' must get to all of ' + JSON.stringify(label.mustGetTo));
-        });
+        if (PARSER_DEBUG) {
+          labels.forEach(function(label) {
+            print('// label: ' + label.ident + ' :out      : ' + JSON.stringify(label.outLabels));
+            print('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
+            print('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
+            print('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
+            print('// ZZZZZZ ' + label.ident + ' must get to all of ' + JSON.stringify(label.mustGetTo));
+          });
+        }
       }
 
 /* // Disabled merging as it seems it just removes a return now and then.
@@ -1271,9 +1273,9 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         }
         function getAll(fromId, beforeIds) {
           beforeIds = beforeIds ? beforeIds : [];
-//print("//getAll : " + fromId + ' : ' + beforeIds);
+          //print("//getAll : " + fromId + ' : ' + beforeIds);
           if (beforeIds && beforeIds.indexOf(fromId) != -1) return [];
-//print("getAll proceeding");
+          //print("getAll proceeding");
           var from = labelsDict[fromId];
           return dedup([from].concat(
             from.outLabels.map(function(outLabel) { return getAll(outLabel, beforeIds.concat(fromId)) })
@@ -1285,7 +1287,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           label.outLabels = [];
           return label;
         }
-print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
+        if (PARSER_DEBUG) print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
         if (labels.length == 0 || !entry) {
           print('//empty labels or entry');
           return;
@@ -1323,16 +1325,16 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
             next: makeBlock(replaceInLabels(others, entry), first.outLabels[0], labelsDict),
           };
         }
-//print('// loop ? a');
+        //print('// loop ? a');
         // Looping structures - in some way, we can get back to here
         if (first.outLabels.length > 0 && first.allInLabels.indexOf(entry) != -1) {
-//print('// loop ? b');
+          //print('// loop ? b');
           // Look for outsiders - labels no longer capable of getting here. Those must be
           // outside the loop. Insiders are those that can get back to the entry
           var split2 = splitter(others, function(label) { return label.allOutLabels.indexOf(entry) == -1 });
           var outsiders = split2.splitOut;
           var insiders = split2.leftIn;
-//print('//    potential loop : in/out : ' + getLabelIds(insiders) + ' to ' + getLabelIds(outsiders));
+          //print('//    potential loop : in/out : ' + getLabelIds(insiders) + ' to ' + getLabelIds(outsiders));
           // Hopefully exactly one of the outsiders is a 'pivot' - a label to which all those leaving
           // the loop must go. Then even some |if (falala) { ... break; }| will get ...
           // as an outsider, but it will actually still be in the loop
@@ -1346,7 +1348,7 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
           // as all insiders must go through *all* of these. So we seek a pivot that
           // is never reached by another pivot. That must be the one with fewest
           // mustGetTo
-//print("//pivots: " + pivots.length + ',' + JSON.stringify(getLabelIds(pivots)));
+          //print("//pivots: " + pivots.length + ',' + JSON.stringify(getLabelIds(pivots)));
           if (pivots.length >= 1) { // We have ourselves a loop
             pivots.sort(function(a, b) { return b.mustGetTo.length - a.mustGetTo.length });
             var pivot = pivots[0];
@@ -1409,7 +1411,7 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
             // If we can get to the outside in more than 2 ways (one from if, one from True clause) - have breaks
             var breaking = labelsDict[outLabelId].allInLabels.length > 2;
             if (PARSER_DEBUG) print('//    Creating XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
-//print('//   if separation: ' + labels.length + ' = ' + ifLabels.length + ' + ' + nextLabels.length + '   (' + ifTrueLabels.length + ')');
+            //print('//   if separation: ' + labels.length + ' = ' + ifLabels.length + ' + ' + nextLabels.length + '   (' + ifTrueLabels.length + ')');
             if (breaking) {
               // Rework branches out of the if into new 'break' labels
               forLabelLines(ifTrueLabels, function(line) {
@@ -1419,7 +1421,6 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
             // Remove branching op - we will do it manually
             replaceLabels(lastLine, ifLabelId, 'BNOPP');
             replaceLabels(lastLine, outLabelId, 'BNOPP');
-// TODO: Look if there are actual branchings out of the if in the middle. If not, cn use a real if instead of one-time do { } while (false)
             return {
               type: (breaking ? 'breaking' : '') + 'if',
               labels: ifLabels,
@@ -1439,7 +1440,7 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
 
       // TODO: each of these can be run in parallel
       item.functions.forEach(function(func) {
-  print("// relooping function: " + func.ident);
+        if (PARSER_DEBUG) print("// relooping function: " + func.ident);
         func.labelsDict = {};
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
@@ -1529,7 +1530,7 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
           if (a.intertype == 'assign' && a.value.intertype == 'getelementptr' &&
               b.intertype == 'store' && b.value.text &&
               a.ident == b.ident) {
-//print("// STORESUSPECT: " + a.lineNum + ',' + b.lineNum);
+            //print("// STORESUSPECT: " + a.lineNum + ',' + b.lineNum);
             a.intertype = 'fastgetelementptrstore';
             a.ident = toNiceIdent(b.value.text);
             b.intertype = null;
@@ -1593,7 +1594,7 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
             if (a.intertype == 'assign' && a.value.intertype == 'load' &&
                 func.variables[a.value.ident] && // Not global
                 func.variables[a.value.ident].impl === VAR_NATIVIZED) {
-//print('// ??zzzz ' + dump(a) + ',\n // ??zzbb' + dump(b));
+              //print('// ??zzzz ' + dump(a) + ',\n // ??zzbb' + dump(b));
               // If target is only used on next line - do not need it.
               if (func.variables[a.ident].uses == 1 &&
                   replaceVars(b, a.ident, a.value.ident)) {
@@ -1610,7 +1611,7 @@ print("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and
         for (var i = 0; i < func.lines.length-1; i++) {
           var a = func.lines[i];
           var b = func.lines[i+1];
-//print('// ??zzaa ' + dump(a) + ',\n // ??zzbb' + dump(b));
+          //print('// ??zzaa ' + dump(a) + ',\n // ??zzbb' + dump(b));
           if (b.intertype == 'store' &&
               func.variables[b.ident] && // Not global
               func.variables[b.ident].impl === VAR_NATIVIZED) {
@@ -1685,22 +1686,22 @@ function JSify(data) {
   });
 
   function makePointer(slab, pos) {
-// XXX hardcoded ptr impl
+    // XXX hardcoded ptr impl
     if (slab == 'HEAP') return pos;
     return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + ')';
-//    return '{ slab: ' + slab + ', pos: ' + (pos ? pos : 0) + ' }';
-//    return '[' + slab + ', ' + (pos ? pos : 0) + ']';
+    //    return '{ slab: ' + slab + ', pos: ' + (pos ? pos : 0) + ' }';
+    //    return '[' + slab + ', ' + (pos ? pos : 0) + ']';
   }
 
   function makeGetSlab(ptr) {
-// XXX hardcoded ptr impl
-//    return ptr + '.slab';
+    // XXX hardcoded ptr impl
+    //    return ptr + '.slab';
     return 'HEAP';
   }
 
   function makeGetPos(ptr) {
-// XXX hardcoded ptr impl
-//    return ptr + '.pos';
+    // XXX hardcoded ptr impl
+    //    return ptr + '.pos';
     return ptr;
   }
 
@@ -1713,8 +1714,8 @@ function JSify(data) {
   }
 
   function makeEmptyStruct(type) {
-    print('// ??makeemptystruct?? ' + dump(type) + ' : ' + dump(TYPES));
-// XXX hardcoded ptr impl
+    if (PARSER_DEBUG) print('// ??makeemptystruct?? ' + dump(type) + ' : ' + dump(TYPES));
+    // XXX hardcoded ptr impl
     var ret = [];
     var typeData = TYPES[type];
     assertTrue(typeData);
@@ -1728,7 +1729,7 @@ function JSify(data) {
   substrate.addZyme({
     selectItem: function(item) { return item.intertype == 'globalVariable' && !item.JS },
     processItem: function(item) {
-//print('// zz global Var: ' + dump(item) + ' :: ' + dump(item.value));
+      //print('// zz global Var: ' + dump(item) + ' :: ' + dump(item.value));
       var value = item.value;
       item.JS = 'var ' + item.ident + ' = ';
       if (value.text == 'zeroinitializer') {
@@ -1745,7 +1746,7 @@ function JSify(data) {
 
   // Gets an entire constant expression
   function parseConst(value) {
-//print('//yyyyy ' + JSON.stringify(value));
+    //print('//yyyyy ' + JSON.stringify(value));
     if (value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
       return makePointer('intArrayFromString("' + value.text + '")');
@@ -1754,7 +1755,7 @@ function JSify(data) {
       function handleSegments(tokens) {
         // Handle a single segment (after comma separation)
         function handleSegment(segment) {
-//print('// seggg: ' + JSON.stringify(segment) + '\n')
+          //print('// seggg: ' + JSON.stringify(segment) + '\n')
           if (segment[1].text == 'null') {
             return 'null';
           } else if (segment[1].text == 'zeroinitializer') {
@@ -1774,7 +1775,7 @@ function JSify(data) {
           } else if (segment.length == 2) {
             return toNiceIdent(segment[1].text);
           } else {
-//print('// seggg: ' + JSON.stringify(segment) + '???!???\n')
+            //print('// seggg: ' + JSON.stringify(segment) + '???!???\n')
             return '???!???';
           }
         };
@@ -1784,12 +1785,10 @@ function JSify(data) {
         // list of items
         return makePointer('[ ' + handleSegments(value.item[0].tokens) + ' ]');
       } else if (value.type == '{') {
-//print('// qqq!\n')
         // struct
         return makePointer('[ ' + handleSegments(value.tokens) + ' ]');
       } else {
-print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
-        return 'X?X?X?X?X?X';
+        throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
       }
     }
   }
@@ -1873,8 +1872,8 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
         postJSOptimize(func);
 
         // Final recombination
-//print('zz params::::: ' + JSON.stringify(func.params));
-//print('zz params::::: ' + JSON.stringify(parseParamTokens(func.params.item[0].tokens)));
+        //print('zz params::::: ' + JSON.stringify(func.params));
+        //print('zz params::::: ' + JSON.stringify(parseParamTokens(func.params.item[0].tokens)));
 
         var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
           return toNiceIdent(param.ident);
@@ -1886,15 +1885,15 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
         // Walk function blocks and generate JS
         function walkBlock(block, indent) {
           if (!block) return '';
-//print('block: ' + dump(block) + ' ::: ' + dump(getLabelIds(block.labels)));
+          //print('block: ' + dump(block) + ' ::: ' + dump(getLabelIds(block.labels)));
           function getLabelLines(label, indent) {
-//print('LABELLINES HAS INDENT ' + indent.length + ' ::' + label.lines[0].JS);
+            //print('LABELLINES HAS INDENT ' + indent.length + ' ::' + label.lines[0].JS);
             return label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
           }
           var ret = '';
           if (block.type == 'emulated' || block.type == 'simple') {
-//print('BLOCK HAS INDENT ' + indent.length);
-//print('block has: ' + block.entry + ' :: ' + getLabelIds(block.labels));
+          //print('BLOCK HAS INDENT ' + indent.length);
+          //print('block has: ' + block.entry + ' :: ' + getLabelIds(block.labels));
             if (block.labels.length > 1) {
               ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
               ret += indent + 'while(1) switch(__label__) {\n';
@@ -1959,7 +1958,7 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
 
     var type = item.value.type.text;
     var value = item.value.JS;
-//print("zz var: " + item.JS);
+    //print("zz var: " + item.JS);
     var impl = getVarData(item.funcData, item.ident);
     switch (impl) {
       case VAR_NATIVE: break;
@@ -1969,7 +1968,6 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
         break;
       }
       case VAR_EMULATED: {
-//        value = '(((((' + value + ')))))';
         break;
       }
       default: print('zz unknown impl: ' + impl);
@@ -1995,7 +1993,7 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
     });
   }
   makeFuncLineZyme('store', function(item) {
-//print('// zzqqzz ' + dump(item.value) + ' :::: ' + dump(item.pointer) + ' :::: ');
+    //print('// zzqqzz ' + dump(item.value) + ' :::: ' + dump(item.pointer) + ' :::: ');
     var ident = toNiceIdent(item.ident);
     var value;
     if (item.value.intertype == 'getelementptr') {
@@ -2003,7 +2001,7 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
     } else {
       value = toNiceIdent(item.value.ident);
     }
-//print("// zz seek " + ident + ',' + dump(item));
+    //print("// zz seek " + ident + ',' + dump(item));
     var impl = getVarData(item.funcData, item.ident);
     var ret;
     switch (impl) {
@@ -2021,14 +2019,14 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
   var LABEL_IDs = {};
   var LABEL_ID_COUNTER = 0;
   function getLabelId(label) {
-//print('needs id: ' + label + ' : ' + JSON.stringify(LABEL_IDs));
+    //print('needs id: ' + label + ' : ' + JSON.stringify(LABEL_IDs));
     label = toNiceIdent(label);
     if (label in LABEL_IDs) return LABEL_IDs[label];
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
   }
 
   makeFuncLineZyme('branch', function(item) {
-//print('branch: ' + dump(item));
+    //print('branch: ' + dump(item));
     function getIt(tf) {
       if (tf[0] == 'B') {
         if (tf[1] == 'R') {
@@ -2077,7 +2075,7 @@ print('// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value));
     return ret;
   });
   makeFuncLineZyme('load', function(item) {
-print('// zz LOAD ' + dump(item) + ' :: ' + dump(item.tokens));
+    //print('// zz LOAD ' + dump(item) + ' :: ' + dump(item.tokens));
     var ident = toNiceIdent(item.ident);
     var impl = getVarData(item.funcData, item.ident);
     switch (impl) {
@@ -2179,50 +2177,24 @@ print('// zz LOAD ' + dump(item) + ' :: ' + dump(item.tokens));
   }
 
   function finalizeGetElementPtr(item) {
-//print('//zz finalize: ' + dump(item.params));
+    //print('//zz finalize: ' + dump(item.params));
     // TODO: statically combine indexes here if consts
     return makePointer(makeGetSlab(item.ident), getGetElementPtrIndexes(item));
   }
 
   function finalizeBitcast(item) {
-//print('//zz finalizeBC: ' + dump(item));
+    //print('//zz finalizeBC: ' + dump(item));
     return item.ident;
-  }
-
-  // aka makeStruct
-  function pourShape(shape, typeName) {
-    var type = TYPES[typeName];
-//print('// zz pour: ' + typeName);
-    type.fields.forEach(function(field) {
-//print('// zz pour field: ' + field);
-      if (isNumberType(field)) {
-        shape.push(0);
-      } else if (isPointerType(field)) {
-        shape.push({slab:[], pos: 0});
-      } else if (isStructType(field)) {
-        var subShape = [];
-        pourShape(subShape, field);
-        shape = shape.concat(subShape);
-      }
-//print('// zz poured so far: ' + dump(shape));
-    });
   }
 
   makeFuncLineZyme('bitcast', function(item) {
     // XXX Don't we need to copy ptr - i.e. create new ones (at least if uses > just the next line)?
+    // XXX hardcoded ptr impl - as ptrs are ints, we don't need to copy
     var ident = toNiceIdent(item.ident);
-//    if (pointingLevels(item.type.text) > 0 && !isStructPointerType(item.type.text) && isStructPointerType(item.type2.text)) {
-//      // Converting to a struct pointer - need to add struct shapes
-//      var shape = [];
-//      pourShape(shape, removePointing(item.type2.text));
-//
-//      return '_ensureStructures(' + ident + ', 1 /* XXX */, ' + JSON.stringify(shape) + ')';
-//    } else {
-      return ident;
-//    }
+    return ident;
   });
   function makeFunctionCall(ident, params) {
-//print('// zz makeFC: ' + ident + ' : ' + dump(params));
+    //print('// zz makeFC: ' + ident + ' : ' + dump(params));
     var params = params.map(function(param) {
       if (param.intertype === 'getelementptr') {
         return finalizeGetElementPtr(param);
