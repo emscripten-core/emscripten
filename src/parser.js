@@ -251,6 +251,38 @@ function parseBitcast(segment) {
   return ret;
 }
 
+function _HexToInt(stringy) {
+  var ret = 0;
+  var mul = 1;
+  var base;
+  for (var i = (stringy.length - 1); i >= 0; i = i - 1) {
+    if (stringy.charCodeAt(i) >= "A".charCodeAt(0)) {
+      base = "A".charCodeAt(0) - 10;
+    } else {
+      base = "0".charCodeAt(0);
+    }
+    ret = ret + (mul*(stringy.charCodeAt(i) - base));
+    mul = mul * 16;
+  }
+  return ret;
+}
+
+function IEEEUnHex(stringy) {
+  var a = _HexToInt(stringy.substr(2, 8));
+  var b = _HexToInt(stringy.substr(10));
+  var e = (a >> ((52 - 32) & 0x7ff)) - 1023;
+  return ((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
+}
+
+function parseNumerical(value, type) {
+  if ((type == 'double' || type == 'float') && value.substr(0,2) == '0x') {
+    // Hexadecimal double value, as the llvm docs say,
+    // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
+    return IEEEUnHex(value);
+  }
+  return value;
+}
+
 function getLabelIds(labels) {
   return labels.map(function(label) { return label.ident });
 }
@@ -430,10 +462,11 @@ function intertyper(data) {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=' },
     processItem: function(item) {
       if (item.tokens[2].text == 'type') {
-        // type
-        //print('// zz ' + dump(item));
+        dprint('linenum: ' + item.lineNum + ':' + dump(item));
         var fields = [];
         if (item.tokens[3].text != 'opaque') {
+          if (item.tokens[3].type == '<') // type <{ i8 }> XXX - check spec
+            item.tokens[3] = item.tokens[3].item[0];
           var subTokens = item.tokens[3].tokens;
           subTokens.push({text:','});
           while (subTokens[0]) {
@@ -1975,7 +2008,10 @@ function JSify(data) {
     //print("zz var: " + item.JS);
     var impl = getVarData(item.funcData, item.ident);
     switch (impl) {
-      case VAR_NATIVE: break;
+      case VAR_NATIVE: {
+        value = parseNumerical(value, type);
+        break;
+      }
       case VAR_NATIVIZED: {
         // SSA, so this must be the alloca. No need for a value
         if (!item.overrideSSA) value = '';
@@ -2014,6 +2050,9 @@ function JSify(data) {
       value = finalizeGetElementPtr(item.value);
     } else {
       value = toNiceIdent(item.value.ident);
+    }
+    if (pointingLevels(item.pointerType.text) == 1) {
+      value = parseNumerical(value, removePointing(item.pointerType.text));
     }
     //print("// zz seek " + ident + ',' + dump(item));
     var impl = getVarData(item.funcData, item.ident);

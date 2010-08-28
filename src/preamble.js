@@ -96,9 +96,12 @@ function _printf() {
   var text = Pointer_stringify(arguments[0]);
   var textIndex;
   for (var argIndex = 1; argIndex < arguments.length; argIndex = argIndex + 1) {
-    textIndex = text.indexOf("%d"); // We only support numbers - use puts for strings!
-    if (textIndex < 0) textIndex = text.indexOf("%f");
-    if (textIndex < 0) break;
+    // We only support numbers - use puts for strings!
+    textIndex = Math.min(text.indexOf("%d"), text.indexOf("%f"));
+    if (textIndex < 0) {
+      textIndex = Math.max(text.indexOf("%d"), text.indexOf("%f"));
+      if (textIndex < 0) break;
+    }
     text = text.substr(0, textIndex) + String(arguments[argIndex]) + text.substr(textIndex + 2);
   }
   print(text);
@@ -166,33 +169,6 @@ function intArrayFromString(stringy) {
   ret.push(0);
   return ret;
 }
-
-// Utilities
-
-function _HexToInt(stringy) {
-  var ret = 0;
-  var mul = 1;
-  var base;
-  for (var i = (stringy.length - 1); i >= 0; i = i - 1) {
-    if (stringy.charCodeAt(i) >= "A".charCodeAt(0)) {
-      base = "A".charCodeAt(0) - 10;
-    } else {
-      base = "0".charCodeAt(0);
-    }
-    ret = ret + (mul*(stringy.charCodeAt(i) - base));
-    mul = mul * 16;
-  }
-  return ret;
-}
-
-function _IEEEUnHex(stringy) {
-  var a = _HexToInt(stringy.substr(2, 8));
-  var b = _HexToInt(stringy.substr(10));
-  var e = (a >> ((52 - 32) & 0x7ff)) - 1023;
-  return ((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
-}
-
-var INDENT = ''; // Debugging
 
 // === Body ===
 

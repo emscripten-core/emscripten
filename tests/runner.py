@@ -152,6 +152,19 @@ class T(unittest.TestCase):
         '''
         self.do_test(src, '*5,23,10,19,101,1*')
 
+    def test_floatvars(self):
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
+            float x = 1.234, y = 3.5;
+            y *= 3;
+            printf("*%d,%f,%d,%f\\n", int(y), y, (int)x, x);
+            return 0;
+          }
+        '''
+        self.do_test(src, '*10,10.5,1,1.2339')
+
     def test_if(self):
         src = '''
           #include <stdio.h>
@@ -377,6 +390,24 @@ class T(unittest.TestCase):
           }
         '''
         self.do_test(src, '*11,74*')
+
+    def test_emptyclass(self):
+        src = '''
+        #include <stdio.h>
+
+        struct Randomized {
+          Randomized(int x) {
+            printf("*zzcheezzz*\\n");
+          }
+        };
+
+        int main( int argc, const char *argv[] ) {
+          new Randomized(55);
+
+          return 0;
+        }
+        '''
+        self.do_test(src, '*zzcheezzz*')
 
     def zzzzzzzzzzzzzzztest_constglobalstructs(self): # TODO: make this work
         src = '''
