@@ -1,0 +1,8 @@
+2010-08-28: Version 0.1
+
+  Initial export.
+
+    * All tests pass, including Fannkuch&Fasta, but constglobalstructs
+    * Relooping of Fannkuch is complete, fasta has one left
+    * Emscriptened Fannkuch is 37X slower than gcc -O2 on C++ source
+

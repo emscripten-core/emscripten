@@ -2,5 +2,5 @@ Emscripten is an LLVM-to-JavaScript compiler. It takes LLVM bitcode - which can 
 
 See LICENSE.txt for copyright and redistribution.
 
-See http://code.google.com/p/emscripten/ for project info.
+See http://code.google.com/p/emscripten/ for project info, getting started, FAQ, etc.
 
