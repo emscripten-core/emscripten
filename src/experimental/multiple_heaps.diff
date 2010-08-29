@@ -1,0 +1,175 @@
+diff -r e90280547f0d enzymatic/parser.js
+--- a/enzymatic/parser.js	Mon Aug 16 20:31:28 2010 -0700
++++ b/enzymatic/parser.js	Tue Aug 17 21:00:45 2010 -0700
+@@ -1250,20 +1250,22 @@
+ 
+   function makePointer(slab, pos) {
+ // XXX hardcoded ptr impl
++    if (slab == 'HEAP') return pos;
++    return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + ')';
+ //    return '{ slab: ' + slab + ', pos: ' + (pos ? pos : 0) + ' }';
+-    return '[' + slab + ', ' + (pos ? pos : 0) + ']';
++//    return '[' + slab + ', ' + (pos ? pos : 0) + ']';
+   }
+ 
+   function makeGetSlab(ptr) {
+ // XXX hardcoded ptr impl
+ //    return ptr + '.slab';
+-    return ptr + '[0]';
++    return 'HEAP';
+   }
+ 
+   function makeGetPos(ptr) {
+ // XXX hardcoded ptr impl
+ //    return ptr + '.pos';
+-    return ptr + '[1]';
++    return ptr;
+   }
+ 
+   function makeGetValue(ptr, pos, noNeedFirst) {
+@@ -1275,14 +1277,13 @@
+   }
+ 
+   function makeEmptyStruct(type) {
+-//    print('// ???? ' + type + ' : ' + (new Error().stack) + dump(TYPES));
+-    return TYPES[type].fields.map(function(field) {
+-      if (isPointerType(field)) {
+-        return makePointer('null');
+-      } else {
+-        return 0;
+-      }
+-    });
++//    print('// ???? ' + type + ' : ' + dump(TYPES));
++// XXX hardcoded ptr impl
++    var ret = [];
++    for (var i = 0; i < TYPES[type].flatSize; i++) {
++      ret.push(0);
++    }
++    return ret;
+   }
+ 
+   // globalVariable
+diff -r e90280547f0d enzymatic/postamble.js
+--- a/enzymatic/postamble.js	Mon Aug 16 20:31:28 2010 -0700
++++ b/enzymatic/postamble.js	Tue Aug 17 21:00:45 2010 -0700
+@@ -3,7 +3,7 @@
+ 
+ function run(args) {
+   var argc = args.length+1;
+-  var argv = [intArrayFromString("/bin/this.program") ];
++  var argv = [Pointer_make(intArrayFromString("/bin/this.program")) ];
+   for (var i = 0; i < argc-1; i = i + 1) {
+     argv.push(Pointer_make(intArrayFromString(args[i])));
+   }
+diff -r e90280547f0d enzymatic/preamble.js
+--- a/enzymatic/preamble.js	Mon Aug 16 20:31:28 2010 -0700
++++ b/enzymatic/preamble.js	Tue Aug 17 21:00:45 2010 -0700
+@@ -6,6 +6,9 @@
+ 
+ UNDEFINED = null; // None in python; good for pypy
+ 
++HEAP = [];
++HEAPTOP = 0;
++
+ function abort(text) {
+   text = "ABORT: " + text;
+   print(text + "\n");
+@@ -15,16 +18,24 @@
+ }
+ 
+ function Pointer_niceify(ptr) {
+-  if (!ptr.slab)
+-    return { slab: ptr[0], pos: ptr[1] };
+-  else
+-    return ptr;
++// XXX hardcoded ptr impl
++  return { slab: HEAP, pos: ptr };
++//  if (!ptr.slab)
++//    return { slab: ptr[0], pos: ptr[1] };
++//  else
++//    return ptr;
+ }
+ 
+ function Pointer_make(slab, pos) {
++  pos = pos ? pos : 0;
+ // XXX hardcoded ptr impl
++  if (slab === HEAP) return pos;
++  var ret = _malloc(Math.max(slab.length - pos, 1));
++  for (var i = 0; i < slab.length - pos; i++) {
++    HEAP[ret + i] = slab[pos + i];
++  }
++  return ret;
+ //  return { slab: slab, pos: pos ? pos : 0 };
+-  return [slab, pos ? pos : 0];
+ }
+ 
+ function Pointer_stringify(ptr) {
+@@ -47,20 +58,24 @@
+ NULL = Pointer_make([]);
+ 
+ function _malloc(size) {
++// XXX hardcoded ptr impl
++  var ret = HEAPTOP;
++  HEAPTOP += size;
++  return ret;
+   // We don't actually do new Array(size) - memory is uninitialized anyhow
+-  return Pointer_make([]);
++//  return Pointer_make([]);
+ }
+ 
+ __Znwj = _malloc; // Mangled "new"
+ __Znaj = _malloc; // Mangled "new"
+ 
+ function _free(ptr) {
++// XXX hardcoded ptr impl
+   // Nothing needs to be done! But we mark the pointer
+   // as invalid. Note that we should do it for all other
+   // pointers of this slab too.
+-// XXX hardcoded ptr impl
+ //  ptr.slab = null;
+-  ptr[0] = null;
++//  ptr[0] = null;
+ }
+ 
+ __ZdlPv = _free; // Mangled "delete"
+@@ -90,8 +105,12 @@
+ }
+ 
+ function _strlen(p) {
+-  p = Pointer_niceify(p);
+-  return p.slab.length; // XXX might want to find the null terminator...
++// XXX hardcoded ptr impl
++  var q = p;
++  while (HEAP[q] != 0) q++;
++  return q - p;
++//  p = Pointer_niceify(p);
++//  return p.slab.length; // XXX might want to find the null terminator...
+ }
+ 
+ // stdlib.h
+@@ -102,9 +121,13 @@
+ }
+ 
+ function _llvm_memcpy_i32(dest, src, num, idunno) {
+-  dest = Pointer_niceify(dest);
+-  src = Pointer_niceify(src);
+-  dest.slab = src.slab.slice(src.pos);
++// XXX hardcoded ptr impl
++  for (var i = 0; i < num; i++) {
++    HEAP[dest + i] = HEAP[src + i];
++  }
++//  dest = Pointer_niceify(dest);
++//  src = Pointer_niceify(src);
++//  dest.slab = src.slab.slice(src.pos);
+ }
+ 
+ // Tools
+@@ -131,6 +154,7 @@
+     ret.push(stringy.charCodeAt(i));
+     i = i + 1;
+   }
++  ret.push(0);
+   return ret;
+ }
+ 
+
