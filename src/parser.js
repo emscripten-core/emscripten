@@ -316,15 +316,24 @@ function intertyper(data) {
     processItem: function(item) {
       var lines = item.llvmText.split('\n');
       var ret = [];
+      var inContinual = false;
       for (var i = 0; i < lines.length; i++) {
-        if (/^\ +to.*/g.test(lines[i])) {
+        var line = lines[i];
+        if (inContinual || /^\ +to.*/g.test(line)) {
           // to after invoke
-          ret.slice(-1)[0].lineText += lines[i];
+          ret.slice(-1)[0].lineText += line;
+          if (/^\ +\]/g.test(line)) { // end of llvm switch
+            inContinual = false;
+          }
         } else {
           ret.push({
-            lineText: lines[i],
+            lineText: line,
             lineNum: i + 1,
           });
+          if (/^\ +switch\ .*/g.test(line)) {
+            // beginning of llvm switch
+            inContinual = true;
+          }
         }
       }
       return ret.filter(function(item) { return item.lineText; });
@@ -784,6 +793,34 @@ function intertyper(data) {
       }];
     },
   });
+  // 'switch'
+  substrate.addZyme({
+    selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'switch' &&
+                                 !item.intertype },
+    processItem: function(item) {
+      function parseSwitchLabels(item) {
+        var ret = [];
+        var tokens = item.item[0].tokens;
+        while (tokens.length > 0) {
+          ret.push({
+            value: tokens[1].text,
+            label: toNiceIdent(tokens[4].text),
+          });
+          tokens = tokens.slice(5);
+        }
+        return ret;
+      }
+      return [{
+        __result__: true,
+        intertype: 'switch',
+        type: item.tokens[1].text,
+        ident: item.tokens[2].text,
+        defaultLabel: item.tokens[5].text,
+        switchLabels: parseSwitchLabels(item.tokens[6]),
+        lineNum: item.lineNum,
+      }];
+    },
+  });
   // function end
   substrate.addZyme({
     selectItem: function(item) { return item.indent === 0 && item.tokens && item.tokens.length >= 1 && item.tokens[0].text == '}' && !item.intertype },
@@ -1123,13 +1160,20 @@ function analyzer(data) {
 
       function replaceLabels(line, labelId, toLabelId) {
         //print('// XXX replace ' + labelId + ' with ' + toLabelId);
-        if (line.intertype != 'branch') return;
-        ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel'].forEach(function(id) {
-          if (line[id] && line[id] == labelId) {
-            line[id] = toLabelId;
-            //print('    replaced!');
-          }
-        });
+        function process(item) {
+          ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
+            if (item[id] && item[id] == labelId) {
+              item[id] = toLabelId;
+              //print('    replaced!');
+            }
+          });
+        }
+        if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
+          process(line);
+        } else if (line.intertype == 'switch') {
+          process(line);
+          line.switchLabels.forEach(process);
+        }
       }
 
       function replaceLabelLabels(label, labelId, toLabelId) {
@@ -1162,18 +1206,25 @@ function analyzer(data) {
         labels.forEach(function(label) {
           dprint('find direct branchings at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
           label.lines.forEach(function(line) {
-            if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
+            function process(item) {
               ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel'].forEach(function(id) {
-                if (line[id]) {
-                  if (line[id][0] == 'B') { // BREAK, BCONT, BNOPP
+                if (item[id]) {
+                  if (item[id][0] == 'B') { // BREAK, BCONT, BNOPP
                     label.hasBreak = true;
                   } else {
-                    label.outLabels.push(line[id]);
-                    labelsDict[line[id]].inLabels.push(label.ident);
+                    label.outLabels.push(item[id]);
+                    labelsDict[item[id]].inLabels.push(label.ident);
                   }
                 }
               });
             }
+            if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
+              process(line);
+            } else if (line.intertype == 'switch') {
+              process(line);
+              line.switchLabels.forEach(process);
+            }
+
             label.hasReturn |= line.intertype == 'return';
           });
         });
@@ -2078,26 +2129,27 @@ function JSify(data) {
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
   }
 
+  function makeBranch(label) {
+    if (label[0] == 'B') {
+      if (label[1] == 'R') {
+        return 'break ' + label.substr(5) + ';';
+      } else if (label[1] == 'C') {
+        return 'continue ' + label.substr(5) + ';';
+      } else { // NOPP
+        return ';'; // Returning no text might confuse this parser
+      }
+    } else {
+      return '__label__ = ' + getLabelId(label) + '; break;';
+    }
+  }
+
   makeFuncLineZyme('branch', function(item) {
     //print('branch: ' + dump(item));
-    function getIt(tf) {
-      if (tf[0] == 'B') {
-        if (tf[1] == 'R') {
-          return 'break ' + tf.substr(5) + ';';
-        } else if (tf[1] == 'C') {
-          return 'continue ' + tf.substr(5) + ';';
-        } else { // NOPP
-          return ';'; // Returning no text might confuse this parser
-        }
-      } else {
-        return '__label__ = ' + getLabelId(tf) + '; break;';
-      }
-    }
     if (!item.ident) {
-      return getIt(item.label);
+      return makeBranch(item.label);
     } else {
-      var labelTrue = getIt(item.labelTrue);
-      var labelFalse = getIt(item.labelFalse);
+      var labelTrue = makeBranch(item.labelTrue);
+      var labelFalse = makeBranch(item.labelFalse);
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + item.ident + ') { ';
       var head2 = 'if (!(' + item.ident + ')) { ';
@@ -2111,6 +2163,27 @@ function JSify(data) {
         return head + labelTrue + else_ + labelFalse + tail;
       }
     }
+  });
+  makeFuncLineZyme('switch', function(item) {
+    var ret = '';
+    var first = true;
+    item.switchLabels.forEach(function(switchLabel) {
+      if (!first) {
+        ret += 'else ';
+      } else {
+        first = false;
+      }
+      ret += 'if (' + item.ident + ' == ' + switchLabel.value + ') {\n';
+      ret += '  ' + makeBranch(switchLabel.label) + '\n';
+      ret += '}\n';
+    });
+    ret += 'else {\n';
+    ret += makeBranch(item.defaultLabel) + '\n';
+    ret += '}\n';
+    if (item.value) {
+      ret += ' ' + toNiceIdent(item.value);
+    }
+    return ret;
   });
   makeFuncLineZyme('return', function(item) {
     var ret = '';

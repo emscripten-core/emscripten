@@ -498,6 +498,31 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*2,2,5,8,8*\n*8,8,5,8,8*')
 
+    def test_llvmswitch(self):
+        src = '''
+          #include <stdio.h>
+          #include <string.h>
+
+          int switcher(int p)
+          {
+            switch(p) {
+              case 'a':
+              case 'b':
+              case 'c':
+                  return p-1;
+              case 'd':
+                  return p+1;
+            }
+            return p;
+          }
+
+          int main( int argc, const char *argv[] ) {
+            printf("*%d,%d,%d,%d,%d*\\n", switcher('a'), switcher('b'), switcher('c'), switcher('d'), switcher('e'));
+            return 0;
+          }
+          '''
+        self.do_test(src, '*96,97,98,101,101*')
+
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:
