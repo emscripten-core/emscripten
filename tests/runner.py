@@ -9,8 +9,9 @@ import os, unittest, tempfile, shutil, time
 
 # Params
 
+abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(pathelems):
-    return os.path.join(os.path.sep, *(((os.path.abspath(os.path.dirname(__file__)).split(os.sep)))[:-1] + pathelems))
+    return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + pathelems))
 
 exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'settings.cfg'), 'r').read())
 
@@ -24,18 +25,35 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, no_python=False, no_build=False):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, no_python=False, no_build=False, main_file=None):
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
           os.makedirs(dirname)
         filename = os.path.join(dirname, 'src.cpp')
         if not no_build:
-          f = open(filename, 'w')
-          f.write(src)
-          f.close()
+          if main_file is None:
+            f = open(filename, 'w')
+            f.write(src)
+            f.close()
+          else:
+            # copy whole directory, and use a specific main .cpp file
+            for f in os.listdir(src):
+              shutil.copy(os.path.join(src, f), dirname)
+            shutil.move(os.path.join(dirname, main_file), filename)
+
           if DEBUG: print "[[C++ => LLVM]]"
+          try:
+            os.remove(filename + '.o')
+          except:
+            pass
+          os.chdir(dirname)
+          cwd = os.getcwd()
           output = Popen([LLVM_GCC, '-emit-llvm', '-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+          os.chdir(cwd)
+          if not os.path.exists(filename + '.o'):
+            print "Failed to compile C/C++ source:\n\n", output
+            raise Exception("Compilation error");
           if DEBUG: print output
           if DEBUG: print "[[LLVM => JS]]"
           if False:
@@ -492,6 +510,9 @@ class T(unittest.TestCase):
         for i, j in results:
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)
+
+    def zzztest_sauer(self):
+      self.do_test(path_from_root(['tests', 'sauer']), 'wakawaka', main_file='command.cpp')
 
 if __name__ == '__main__':
     if DEBUG: print "LLVM_GCC:", LLVM_GCC
