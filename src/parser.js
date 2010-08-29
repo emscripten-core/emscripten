@@ -2167,22 +2167,24 @@ function JSify(data) {
           case 'ult': case 'slt': return '0+(' + ident + ' < ' + ident2 + ')';
           case 'ne': case 'une': return '0+(' + ident + ' != ' + ident2 + ')';
           case 'eq': return '0+(' + ident + ' == ' + ident2 + ')';
+          default: throw 'Unknown icmp variant: ' + variant
         }
       }
       case 'fcmp': {
         switch (variant) {
           case 'uge': case 'sge': return '0+(' + ident + ' >= ' + ident2 + ')';
           case 'ule': case 'sle': return '0+(' + ident + ' <= ' + ident2 + ')';
-          case 'ugt': case 'sgt': return '0+(' + ident + ' > ' + ident2 + ')';
-          case 'ult': case 'slt': return '0+(' + ident + ' < ' + ident2 + ')';
+          case 'ugt': case 'sgt': case 'ogt': return '0+(' + ident + ' > ' + ident2 + ')';
+          case 'ult': case 'slt': case 'olt': return '0+(' + ident + ' < ' + ident2 + ')';
           case 'ne': case 'une': return '0+(' + ident + ' != ' + ident2 + ')';
           case 'eq': return '0+(' + ident + ' == ' + ident2 + ')';
+          default: throw 'Unknown fcmp variant: ' + variant
         }
       }
       case 'zext': case 'fpext': case 'trunc': case 'sext': return ident;
       case 'select': return '(' + ident + ' ? ' + ident3 + ' : ' + ident4 + ')';
+      default: throw 'Unknown mathcmp op: ' + item.op
     }
-    return '&*&*&*&*&*&' + item.op;
   } });
 /*
       return [{

@@ -159,11 +159,12 @@ class T(unittest.TestCase):
           {
             float x = 1.234, y = 3.5;
             y *= 3;
-            printf("*%d,%f,%d,%f\\n", int(y), y, (int)x, x);
+            int z = x < y;
+            printf("*%d,%d,%f,%d,%f\\n", z, int(y), y, (int)x, x);
             return 0;
           }
         '''
-        self.do_test(src, '*10,10.5,1,1.2339')
+        self.do_test(src, '*1,10,10.5,1,1.2339')
 
     def test_if(self):
         src = '''
