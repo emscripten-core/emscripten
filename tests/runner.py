@@ -444,17 +444,17 @@ class T(unittest.TestCase):
 
           int main( int argc, const char *argv[] ) {
              IUB iub[] = {
-                { 'a', 0.27, 5 },
+                { 'a', 0.3029549426680, 5 },
                 { 'c', 0.15, 4 },
                 { 'g', 0.12, 3 },
                 { 't', 0.27, 2 },
              };
-             printf("*%d,%d,%d*\\n", iub[0].c, int(iub[1].p*100), iub[2].pi);
+             printf("*%d,%d,%d,%d*\\n", iub[0].c, int(iub[1].p*100), iub[2].pi, int(iub[0].p*10000));
 //             printf("*%d*\\n", int(iub[1].p*100));
              return 0;
           }
           '''
-        self.do_test(src, '*97,15,3*')
+        self.do_test(src, '*97,15,3,3029*')
 
 
     def test_memcpy(self):

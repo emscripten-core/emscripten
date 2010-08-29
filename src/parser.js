@@ -275,7 +275,7 @@ function IEEEUnHex(stringy) {
 }
 
 function parseNumerical(value, type) {
-  if ((type == 'double' || type == 'float') && value.substr(0,2) == '0x') {
+  if ((!type || type == 'double' || type == 'float') && value.substr(0,2) == '0x') {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     return IEEEUnHex(value);
@@ -1820,7 +1820,7 @@ function JSify(data) {
           } else if (segment[1].type == '{') {
             return '[' + handleSegments(segment[1].tokens) + ']';
           } else if (segment.length == 2) {
-            return toNiceIdent(segment[1].text);
+            return parseNumerical(toNiceIdent(segment[1].text));
           } else {
             //print('// seggg: ' + JSON.stringify(segment) + '???!???\n')
             return '???!???';
