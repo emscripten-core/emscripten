@@ -4,5 +4,5 @@
 
     * All tests pass, including Fannkuch&Fasta, but constglobalstructs
     * Relooping of Fannkuch is complete, fasta has one left
-    * Emscriptened Fannkuch is 37X slower than gcc -O2 on C++ source
+    * Emscriptened Fannkuch is 19X slower than gcc -O0, 37X than gcc -O2
 
