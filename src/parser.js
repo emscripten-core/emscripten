@@ -226,9 +226,10 @@ function parseParamTokens(params) {
 
 function parseGetElementPtr(segment) {
   segment = segment.slice(0);
-  if (segment[1].text === 'noalias') {
+  while (['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext'].indexOf(segment[1].text) != -1) {
     segment.splice(1, 1);
   }
+  assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
   var ret = {
     intertype: 'getelementptr',
     type: segment[0],
@@ -471,7 +472,7 @@ function intertyper(data) {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=' },
     processItem: function(item) {
       if (item.tokens[2].text == 'type') {
-        dprint('linenum: ' + item.lineNum + ':' + dump(item));
+        //dprint('type/const linenum: ' + item.lineNum + ':' + dump(item));
         var fields = [];
         if (item.tokens[3].text != 'opaque') {
           if (item.tokens[3].type == '<') // type <{ i8 }> XXX - check spec

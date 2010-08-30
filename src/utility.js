@@ -1,7 +1,7 @@
 
 function dump(item) {
   try {
-    return JSON.stringify(item);
+    return JSON.stringify(item).substr(0,200);
   } catch(e) {
     var ret = [];
     for (var i in item) {
@@ -12,7 +12,7 @@ function dump(item) {
         ret.push(i + ': [?]');
       }
     }
-    return ret.join(', ');
+    return ret.join(', ').substr(0,200);
   }
 }
 
