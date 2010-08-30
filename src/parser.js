@@ -80,10 +80,15 @@ function isPointerType(type) { // TODO!
   return pointingLevels(type) > 0;
 }
 
-function isType(type) { // TODO!
-  return isNumberType(type) || isStructType(type) || isPointerType(type);
+function isVoidType(type) {
+  return type == 'void';
 }
 
+function isType(type) { // TODO!
+  return isVoidType(type) || isNumberType(type) || isStructType(type) || isPointerType(type);
+}
+
+// Detects a function definition, ([...|type,[type,...]])
 function isFunctionDef(token) {
   var text = token.text;
   var pointing = pointingLevels(text);
