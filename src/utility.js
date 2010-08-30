@@ -1,7 +1,21 @@
 
 function dump(item) {
+  function lineify(text) {
+    var ret = '';
+    while (text.length > 0) {
+      if (text.length < 80) {
+        ret += text;
+        return ret;
+      }
+      var subText = text.substring(60, 80);
+      var index = 61+Math.max(subText.indexOf(','), subText.indexOf(']'), subText.indexOf('}'), 21);
+      ret += text.substr(0,index) + '\n';
+      text = '// ' + text.substr(index);
+    }
+  }
+
   try {
-    return JSON.stringify(item).substr(0,200);
+    return lineify(JSON.stringify(item));
   } catch(e) {
     var ret = [];
     for (var i in item) {
@@ -12,7 +26,7 @@ function dump(item) {
         ret.push(i + ': [?]');
       }
     }
-    return ret.join(', ').substr(0,200);
+    return lineify(ret.join(', '));
   }
 }
 

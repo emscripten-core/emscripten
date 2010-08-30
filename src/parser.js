@@ -199,7 +199,8 @@ function parseParamTokens(params) {
     var segment = params.slice(0, i);
 //print(' seg ' + JSON.stringify(segment));
     params = params.slice(i+1);
-    if (segment[1].text === 'getelementptr' || segment[1].text === 'noalias') {
+    segment = cleanSegment(segment);
+    if (segment[1].text === 'getelementptr') {
       ret.push(parseGetElementPtr(segment));
     } else if (segment[1].text === 'bitcast') {
       ret.push(parseBitcast(segment));
@@ -224,12 +225,18 @@ function parseParamTokens(params) {
   return ret;
 }
 
-function parseGetElementPtr(segment) {
-  segment = segment.slice(0);
+function cleanSegment(segment) {
   while (['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext'].indexOf(segment[1].text) != -1) {
     segment.splice(1, 1);
   }
+  return segment;
+}
+
+function parseGetElementPtr(segment) {
+  segment = segment.slice(0);
+  segment = cleanSegment(segment);
   assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
+  //dprint('// zz: ' + dump(segment) + '\n\n\n');
   var ret = {
     intertype: 'getelementptr',
     type: segment[0],

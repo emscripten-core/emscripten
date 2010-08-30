@@ -28,7 +28,7 @@ Substrate.prototype = {
   },
 
   solve: function() {
-    if (DEBUG) print("Solving...");
+    print("// Solving " + this._name + "...");
 
     var startTime = Date.now();
     var midTime = startTime;
