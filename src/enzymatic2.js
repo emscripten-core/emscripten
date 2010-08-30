@@ -5,7 +5,7 @@
 Zyme2 = function(reqs) {
   //! List of items that we want. Each element in this list is
   //! a list of features, we want elements that have them all.
-  //! We will only call this Zyme if we find *all* of the elements
+  //! We will only call this Zyme if we find *all* of the items
   //! it wants.
   this.reqs = reqs;
 };
@@ -18,16 +18,13 @@ Substrate2 = function(name_) {
 
 Substrate2.prototype = {
   _addElement: function(elem) {
-    if (!elem.__uid__) {
-      elem.__uid__ = this.currUid;
-      this.currUid ++;
-    } else {
-      assertTrue(!this.elems[elem.__uid__]);
-    }
+    elem.__uid__ = this.currUid;
     this.elems[elem.__uid__] = elem;
+    this.currUid ++;
   },
 
   _removeElement: function(elem) {
+    assertTrue(!!this.elems[elem.__uid__]);
     this.elems[elem.__uid__] = null;
     delete elem.__uid__;
   },
@@ -52,17 +49,17 @@ Substrate2.prototype = {
   addZyme: function(zyme) {
     this._addElement(zyme);
     zyme.isZyme = true;
-    zyme.potentials = zyme.reqs.map(function() { return [] });
+    zyme.potentials = zyme.reqs.map(function() { return [] }); // for each required item, a list of matching items
 
     this.getItems().forEach(function(item) { this.noticeItem(zyme, item); });
   },
 
   removeItem: function(item) {
+    this.getZymes().forEach(function(zyme) { this.forgetItem(zyme, item) });
+
     this._removeElement(item);
     delete item.__result__;
     delete item.__finalResult__;
-
-    this.getZymes().forEach(function(zyme) { this.forgetItem(zyme, item) });
   },
 
   removeZyme: function(zyme) {
@@ -91,7 +88,7 @@ Substrate2.prototype = {
     });
   },
 
-  processItem: function(zyme, items) {
+  processAction: function(zyme, items) {
     items.forEach(this.removeItem, this);
     var splat = splitter(zyme.process(items), function(item) {
       return item.__result__ || item.__finalResult__;
@@ -100,11 +97,9 @@ Substrate2.prototype = {
     return splat.splitOut;
   },
 
-//          if (sumTruthy(combo) == zyme.reqs.length) { // good to go
-
-// XXX
-
   solve: function() {
+    print("// Solving " + this.name_ + "...");
+
     var startTime = Date.now();
     var midTime = startTime;
     var that = this;
@@ -125,9 +120,10 @@ Substrate2.prototype = {
       var hadProcessing = false;
       this.getZymes().forEach(function(zyme) {
         while (!done) {
+          midComment();
           var selected = zyme.potentials.map(function(potential) { return potential[0] });
           if (sumTruthy(selected) == zyme.reqs.length) {
-            var outputs = this.processItem(zyme, selected);
+            var outputs = this.processAction(zyme, selected);
             hadProcessing = true;
             if (outputs.length === 1 && outputs[0].__finalResult__) {
               results = outputs;
