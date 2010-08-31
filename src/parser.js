@@ -13,22 +13,6 @@ RELOOP = 1;
 
 LINEDEBUG = 0;
 
-DEBUG_TAGS_SHOWING = ['labelbranching'];
-function dcheck(tag) {
-  return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
-}
-function dprint() {
-  var text;
-  if (arguments[1]) {
-    if (!dcheck(arguments[0])) return;
-    text = arguments[1];
-  } else {
-    text = arguments[0];
-  }
-  text = '// ' + text;
-  print(text);
-}
-
 // Prep - allow this to run in both SpiderMonkey and V8
 
 if (!this['load']) {
@@ -324,7 +308,7 @@ function intertyper(data) {
   }
 
   // Line splitter.
-  substrate.addZyme({
+  substrate.addZyme('LineSplitter', {
     selectItem: function(item) { return !!item.llvmText; },
     processItem: function(item) {
       var lines = item.llvmText.split('\n');
@@ -354,7 +338,7 @@ function intertyper(data) {
   });
 
   // Line tokenizer
-  substrate.addZyme({
+  substrate.addZyme('Tokenizer', {
     selectItem: function(item) { return item.lineText; },
     processItem: function(item) {
       //print("line: " + item.lineText);
@@ -470,17 +454,17 @@ function intertyper(data) {
   // Line parsers to intermediate form
 
   // Comment
-  substrate.addZyme({
+  substrate.addZyme('Comment', {
     selectItem: function(item) { return item.tokens && item.tokens[0].text == ';' },
     processItem: function(item) { return [] },
   });
   // target
-  substrate.addZyme({
+  substrate.addZyme('Target', {
     selectItem: function(item) { return item.tokens && item.tokens[0].text == 'target' },
     processItem: function(item) { return [] },
   });
   // globals: type or constant
-  substrate.addZyme({
+  substrate.addZyme('Global', {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=' },
     processItem: function(item) {
       if (item.tokens[2].text == 'type') {
@@ -543,7 +527,7 @@ function intertyper(data) {
     },
   });
   // function header
-  substrate.addZyme({
+  substrate.addZyme('FuncHeader', {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 4 && item.indent === 0 && item.tokens[0].text == 'define' &&
                                         item.tokens.slice(-1)[0].text == '{' },
     processItem: function(item) {
@@ -564,7 +548,7 @@ function intertyper(data) {
     },
   });
   // label
-  substrate.addZyme({
+  substrate.addZyme('Label', {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 1 && item.indent === 0 && item.tokens[0].text.substr(-1) == ':' },
     processItem: function(item) {
       return [{
@@ -576,7 +560,7 @@ function intertyper(data) {
     },
   });
   // assignment
-  substrate.addZyme({
+  substrate.addZyme('Assign', {
     selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 3 && findTokenText(item, '=') >= 0 &&
                                  !item.intertype },
     processItem: function(item) {
@@ -596,7 +580,7 @@ function intertyper(data) {
   });
   // reintegration - find intermediate representation-parsed items and
   // place back in parents
-  substrate.addZyme({
+  substrate.addZyme('Reintegrator', {
     select: function(items) {
       for (var i = 0; i < items.length; i++) {
         if (items[i].parentSlot && items[i].intertype) {
@@ -619,7 +603,7 @@ function intertyper(data) {
     }
   });
   // 'load'
-  substrate.addZyme({
+  substrate.addZyme('Load', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'load' },
     processItem: function(item) {
       item.intertype = 'load';
@@ -632,7 +616,7 @@ function intertyper(data) {
     },
   });
   // 'bitcast'
-  substrate.addZyme({
+  substrate.addZyme('Bitcast', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast' },
     processItem: function(item) {
       item.intertype = 'bitcast';
@@ -643,7 +627,7 @@ function intertyper(data) {
     },
   });
   // 'getelementptr'
-  substrate.addZyme({
+  substrate.addZyme('GEP', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr' },
     processItem: function(item) {
       var last = 0;
@@ -660,7 +644,7 @@ function intertyper(data) {
     },
   });
   // 'call'
-  substrate.addZyme({
+  substrate.addZyme('Call', {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'call' && !item.intertype },
     processItem: function(item) {
       item.intertype = 'call';
@@ -684,7 +668,7 @@ function intertyper(data) {
     },
   });
   // 'invoke'
-  substrate.addZyme({
+  substrate.addZyme('Invoke', {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'invoke' && !item.intertype },
     processItem: function(item) {
       item.intertype = 'invoke';
@@ -703,7 +687,7 @@ function intertyper(data) {
     },
   });
   // 'alloca'
-  substrate.addZyme({
+  substrate.addZyme('Alloca', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'alloca' },
     processItem: function(item) {
       item.intertype = 'alloca';
@@ -713,7 +697,7 @@ function intertyper(data) {
     },
   });
   // mathops
-  substrate.addZyme({
+  substrate.addZyme('Mathops', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
                                  ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptoui', 'fptosi', 'trunc', 'sext', 'select']
                                   .indexOf(item.tokens[0].text) != -1 && !item.intertype },
@@ -736,7 +720,7 @@ function intertyper(data) {
     },
   });
   // 'store'
-  substrate.addZyme({
+  substrate.addZyme('Store', {
     selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 5 && item.tokens[0].text == 'store' &&
                                  !item.intertype },
     processItem: function(item) {
@@ -769,7 +753,7 @@ function intertyper(data) {
     },
   });
   // 'br'
-  substrate.addZyme({
+  substrate.addZyme('Branch', {
     selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'br' &&
                                  !item.intertype },
     processItem: function(item) {
@@ -793,7 +777,7 @@ function intertyper(data) {
     },
   });
   // 'ret'
-  substrate.addZyme({
+  substrate.addZyme('Return', {
     selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'ret' &&
                                  !item.intertype },
     processItem: function(item) {
@@ -807,7 +791,7 @@ function intertyper(data) {
     },
   });
   // 'switch'
-  substrate.addZyme({
+  substrate.addZyme('Switch', {
     selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'switch' &&
                                  !item.intertype },
     processItem: function(item) {
@@ -835,7 +819,7 @@ function intertyper(data) {
     },
   });
   // function end
-  substrate.addZyme({
+  substrate.addZyme('FuncEnd', {
     selectItem: function(item) { return item.indent === 0 && item.tokens && item.tokens.length >= 1 && item.tokens[0].text == '}' && !item.intertype },
     processItem: function(item) {
       return [{
@@ -846,7 +830,7 @@ function intertyper(data) {
     },
   });
   // external function stub
-  substrate.addZyme({
+  substrate.addZyme('External', {
     selectItem: function(item) { return item.indent === 0 && item.tokens && item.tokens.length >= 4 && item.tokens[0].text == 'declare' &&
                                  !item.intertype },
     processItem: function(item) {
@@ -861,7 +845,7 @@ function intertyper(data) {
     },
   });
   // 'unreachable'
-  substrate.addZyme({
+  substrate.addZyme('Unreachable', {
     selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens[0].text == 'unreachable' &&
                                  !item.intertype },
     processItem: function(item) {

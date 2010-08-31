@@ -22,6 +22,12 @@ Substrate.prototype = {
   },
 
   addZyme: function(zyme) {
+    var name_ = '?';
+    if (typeof zyme == 'string') {
+      name_ = zyme;
+      zyme = arguments[1];
+    }
+    zyme.name_ = name_;
     this.zymes.push(zyme);
     if (!zyme.select) zyme.select = Zyme.prototype.select;
     if (!zyme.process) zyme.process = Zyme.prototype.process;
@@ -48,9 +54,10 @@ Substrate.prototype = {
     // Assumes list of Zymes is non-changing.
     var results = [];
     while (true) {
-      if (DEBUG) print("Cycle start, " + this.items.length + " items.");
+      dprint('enzymatic', "Cycle start, " + this.items.length + " items.");
       var hadProcessing = false;
       for (var z = 0; z < this.zymes.length; z++) {
+        midComment();
         var zyme = this.zymes[z];
         var selected = zyme.select(this.items);
         if (selected.length > 0) {
@@ -63,10 +70,13 @@ Substrate.prototype = {
             }
           }
           hadProcessing = true;
-          this.items = this.items.filter(function(item) { return selected.indexOf(item) == -1 });
           var outputs;
           try {
+            dprint('Processing using ' + zyme.name_);
+            PROF(true);
             outputs = zyme.process(selected);
+            PROF();
+            dprint('...complete');
           } catch (e) {
             print("Exception, current selected are: " + selected.map(dump).join('\n\n').substr(0,100));
             print("Stack: " + new Error().stack);
@@ -87,16 +97,38 @@ Substrate.prototype = {
             return outputs[0];
           }
           results = results.concat(outputs.filter(function(output) { return !!output.__result__; }))
+/*
+          this.items = this.items.filter(function(item) { PROF(); return selected.indexOf(item) == -1 });
           outputs.filter(function(output) { return !output.__result__; }).forEach(this.addItem, this);
-          results.forEach(function(output) {
-            delete output.__result__; // Might recycle these
-            delete output.__uid__;
-          });
+*/
+          var nonResults = outputs.filter(function(output) { return !output.__result__; });
+
+          var keptUids = {};
+          nonResults.forEach(function(s) {
+            if (s.__uid__) {
+              keptUids[s.__uid__] = true;
+            } else {
+              this.addItem(s);
+            }
+          }, this);
+          var droppedUids = {};
+          selected.forEach(function(s) { if (!keptUids[s.__uid__]) droppedUids[s.__uid__] = true });
+          this.items = this.items.filter(function(item) {
+            if (!droppedUids[item.__uid__]) {
+              return true;
+            } else {
+              delete item.__uid__;
+            }
+           });
         }
       }
       if (this.items.length === 0) {
         if (DEBUG) print("Solving complete: no remaining items");
         finalComment();
+        results.forEach(function(output) {
+          delete output.__result__; // Might recycle these
+          delete output.__uid__;
+        });
         return results;
       }
       if (!hadProcessing) {

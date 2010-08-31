@@ -70,7 +70,7 @@ class T(unittest.TestCase):
               if DEBUG: print output
               cwd = os.getcwd()
               os.chdir(path_from_root(['src']))
-              output = timeout_run(Popen([PARSER_ENGINE] + PARSER_OPTS + [JS_COMPILER], stdin=open(filename + '.o.llvm', 'r'), stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 200, 'Parser')
+              output = timeout_run(Popen([PARSER_ENGINE] + PARSER_OPTS + [JS_COMPILER], stdin=open(filename + '.o.llvm', 'r'), stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 20, 'Parser')
               os.chdir(cwd)
   #            return
           if DEBUG: print output

@@ -127,3 +127,28 @@ function splitter(array, filter) {
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
+DEBUG_TAGS_SHOWING = ['labelbranching', 'enzymatic'];
+function dcheck(tag) {
+  return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
+}
+function dprint() {
+  var text;
+  if (arguments[1]) {
+    if (!dcheck(arguments[0])) return;
+    text = arguments[1];
+  } else {
+    text = arguments[0];
+  }
+  text = '// ' + text;
+  print(text);
+}
+
+PROF_ORIGIN = Date.now();
+PROF_TIME = PROF_ORIGIN;
+function PROF(pass) {
+  if (!pass) {
+    dprint("Profiling: " + ((Date.now() - PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - PROF_ORIGIN)/1000));
+  }
+  PROF_TIME = Date.now();
+}
+
