@@ -2,12 +2,13 @@
  * A 2nd implementation of an 'enzymatic programming' paradigm.
  */
 
-Zyme2 = function(reqs) {
+Zyme2 = function(reqs, func) {
   //! List of items that we want. Each element in this list is
   //! a list of features, we want elements that have them all.
   //! We will only call this Zyme if we find *all* of the items
   //! it wants.
   this.reqs = reqs;
+  this.process = func;
 };
 
 Substrate2 = function(name_) {
@@ -90,7 +91,7 @@ Substrate2.prototype = {
 
   processAction: function(zyme, items) {
     items.forEach(this.removeItem, this);
-    var splat = splitter(zyme.process(items), function(item) {
+    var splat = splitter(items.length > 1 ? zyme.process(items) : zyme.process(items[0]), function(item) {
       return item.__result__ || item.__finalResult__;
     });
     splat.leftIn.forEach(this.addItem, this);
