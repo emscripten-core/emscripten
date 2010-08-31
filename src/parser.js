@@ -24,7 +24,6 @@ if (!this['read']) {
 
 load('utility.js');
 load('enzymatic.js');
-load('enzymatic2.js');
 
 // Tools
 

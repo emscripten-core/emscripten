@@ -73,9 +73,9 @@ Substrate.prototype = {
           var outputs;
           try {
             dprint('Processing using ' + zyme.name_);
-            PROF(true);
+            //PROF(true);
             outputs = zyme.process(selected);
-            PROF();
+            //PROF();
             dprint('...complete');
           } catch (e) {
             print("Exception, current selected are: " + selected.map(dump).join('\n\n').substr(0,100));
