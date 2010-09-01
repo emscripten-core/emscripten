@@ -153,22 +153,25 @@ function makeSplitter(parentSlot, parentSlotValue, parentUnrequiredSlot, childSl
 function makeCombiner(parentSlot, parentSlotValue, parentUnrequiredSlot, childRequiredSlot, finalizeFunc) {
   return {
     select: function(items) {
+      var ret = [];
       var parents = items.filter(function(item) { return item[parentSlot] == parentSlotValue && !item[parentUnrequiredSlot] });
       for (var i = 0; i < parents.length; i++) {
         var parent = parents[i];
         var child = items.filter(function(item) { return item[childRequiredSlot] && item.parentUid === parent.__uid__ })[0];
-        if (child) return [parent, child];
+        if (child) {
+          ret = ret.concat([parent, child]);
+        }
       }
-      return [];
+      return ret;
     },
     process: function(items) {
-      var parent = items[0];
-      var child = items[1];
-      parent[child.parentSlot] = child;
-      delete child.parentUid;
-      delete child.parentSlot;
-      finalizeFunc(parent);
-      return [parent];
+      return Zyme.prototype.processPairs(items, function(parent, child) {
+        parent[child.parentSlot] = child;
+        delete child.parentUid;
+        delete child.parentSlot;
+        finalizeFunc(parent);
+        return [parent];
+      });
     },
   };
 }
