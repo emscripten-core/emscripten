@@ -72,11 +72,10 @@ Substrate.prototype = {
           hadProcessing = true;
           var outputs;
           try {
-            dprint('Processing using ' + zyme.name_);
+            dprint('Processing using ' + zyme.name_ + ': ' + selected.length + ' items out of ' + this.items.length);
             //PROF(true);
             outputs = zyme.process(selected);
             //PROF();
-            dprint('...complete');
           } catch (e) {
             print("Exception, current selected are: " + selected.map(dump).join('\n\n').substr(0,100));
             print("Stack: " + new Error().stack);
@@ -119,7 +118,7 @@ Substrate.prototype = {
             } else {
               delete item.__uid__;
             }
-           });
+          });
         }
       }
       if (this.items.length === 0) {
