@@ -603,7 +603,7 @@ function intertyper(data) {
   });
   // 'load'
   substrate.addZyme('Load', {
-    selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'load' },
+    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'load' },
     processItem: function(item) {
       item.intertype = 'load';
       item.pointerType = item.tokens[1];
@@ -616,7 +616,7 @@ function intertyper(data) {
   });
   // 'bitcast'
   substrate.addZyme('Bitcast', {
-    selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast' },
+    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast' },
     processItem: function(item) {
       item.intertype = 'bitcast';
       item.type = item.tokens[1];
@@ -627,7 +627,7 @@ function intertyper(data) {
   });
   // 'getelementptr'
   substrate.addZyme('GEP', {
-    selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr' },
+    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr' },
     processItem: function(item) {
       var last = 0;
       while (item.tokens[last].text != ';') last++;
@@ -687,7 +687,7 @@ function intertyper(data) {
   });
   // 'alloca'
   substrate.addZyme('Alloca', {
-    selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'alloca' },
+    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'alloca' },
     processItem: function(item) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1];
