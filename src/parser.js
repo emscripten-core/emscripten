@@ -28,11 +28,15 @@ load('enzymatic.js');
 // Tools
 
 function addPointing(type) { return type + '*' }
-function removePointing(type) { return type.substr(0, type.length-1) }
+function removePointing(type, num) {
+  if (num === 0) return type;
+  return type.substr(0, type.length-(num ? num : 1))
+}
 
 function pointingLevels(type) {
   var ret = 0;
-  while (type.substr(-ret-1, 1) === '*') {
+  var len1 = type.length - 1;
+  while (type[len1-ret] === '*') {
     ret ++;
   }
   return ret;
@@ -75,9 +79,7 @@ function isType(type) { // TODO!
 function isFunctionDef(token) {
   var text = token.text;
   var pointing = pointingLevels(text);
-  var nonPointing = text;
-  for (var i = 0; i < pointing; i++)
-    nonPointing = removePointing(nonPointing);
+  var nonPointing = removePointing(text, pointing);
   if (nonPointing[0] != '(' || nonPointing.substr(-1) != ')')
     return false;
   if (nonPointing == '(...)') return true;
@@ -349,6 +351,7 @@ function intertyper(data) {
       var tokenStart = -1;
       var indent = -1;
       var quotes = 0;
+      var lastToken = null;
       var i = 0;
       // Note: '{' is not an encloser, as its use in functions is split over many lines
       var enclosers = {
@@ -359,25 +362,20 @@ function intertyper(data) {
         '<': 0,
         '>': '<',
       };
-      function notQuoted() {
-        return quotes == 0;
-      }
       function notEnclosed() {
-        for (var i in enclosers) {
-          if (typeof enclosers[i] === 'number' && enclosers[i] > 0)
-            return false;
-        }
+        if (enclosers['['] > 0 || enclosers['('] > 0 || enclosers['<'] > 0)
+          return false;
         return true;
       }
       var that = this;
       function tryStartToken() {
-        if (tokenStart == -1 && notEnclosed() && notQuoted()) {
+        if (tokenStart == -1 && notEnclosed() && quotes == 0) {
           //print("try START " + tokenStart + ',' + JSON.stringify(enclosers));
           tokenStart = i;
         }
       }
       function tryFinishToken(includeThis) {
-        if (tokenStart >= 0 && notEnclosed() && notQuoted()) {
+        if (tokenStart >= 0 && notEnclosed() && quotes == 0) {
           //print("try finish " + tokenStart + ',' + JSON.stringify(enclosers));
           var token = {
             text: lineText.substr(tokenStart, i-tokenStart + (includeThis ? 1 : 0)),
@@ -392,22 +390,24 @@ function intertyper(data) {
             indent = tokenStart;
           }
           // merge certain tokens
-          if ( (tokens.length > 0 && tokens.slice(-1)[0].text == '%' && token.text[0] == '"' ) ||
-               (tokens.length > 0 && token.text.replace(/\*/g, '') == '') ) {
-            tokens.slice(-1)[0].text += token.text;
-          } else if (tokens.length > 0 && isType(tokens.slice(-1)[0].text) && isFunctionDef(token)) {
-            tokens.slice(-1)[0].text += ' ' + token.text;
-          } else if (tokens.length > 0 && token.text[token.text.length-1] == '}') {
+          if ( (lastToken && lastToken.text == '%' && token.text[0] == '"' ) ||
+               (lastToken && token.text.replace(/\*/g, '') == '') ) {
+            lastToken.text += token.text;
+          } else if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
+            lastToken.text += ' ' + token.text;
+          } else if (lastToken && token.text[token.text.length-1] == '}') {
             var openBrace = tokens.length-1;
             while (tokens[openBrace].text != '{') openBrace --;
             token = combineTokens(tokens.slice(openBrace+1));
             tokens.splice(openBrace, tokens.length-openBrace+1);
             tokens.push(token);
-            tokens.slice(-1)[0].type = '{';
+            token.type = '{';
+            lastToken = token;
           } else {
             tokens.push(token);
+            lastToken = token;
           }
-          // print("new token: " + dump(tokens.slice(-1)[0]));
+          // print("new token: " + dump(lastToken));
           tokenStart = -1;
         }
       }
@@ -425,12 +425,12 @@ function intertyper(data) {
             break;
           case ',':
             tryFinishToken();
-            if (notEnclosed() && notQuoted()) {
+            if (notEnclosed() && quotes == 0) {
               tokens.push({ text: ',' });
             }
             break;
           default:
-            if (letter in enclosers && notQuoted()) {
+            if (letter in enclosers && quotes == 0) {
               if (typeof enclosers[letter] === 'number') {
                 tryFinishToken();
                 tryStartToken();
