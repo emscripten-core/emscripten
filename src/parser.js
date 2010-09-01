@@ -581,24 +581,25 @@ function intertyper(data) {
   // place back in parents
   substrate.addZyme('Reintegrator', {
     select: function(items) {
+      var ret = [];
       for (var i = 0; i < items.length; i++) {
         if (items[i].parentSlot && items[i].intertype) {
           for (var j = 0; j < items.length; j++) {
             if (items[j].lineNum == items[i].parentLineNum) {
-              return [items[j], items[i]];
+              ret = ret.concat([items[j], items[i]]);
             }
           }
         }
       }
-      return [];
+      return ret;
     },
     process: function(items) {
-      var parent = items[0];
-      var child = items[1];
-      parent[child.parentSlot] = child;
-      parent.__result__ = true;
-      delete child.parentLineNum;
-      return [parent];
+      return Zyme.prototype.processPairs(items, function(parent, child) {
+        parent[child.parentSlot] = child;
+        parent.__result__ = true;
+        delete child.parentLineNum;
+        return [parent];
+      });
     }
   });
   // 'load'

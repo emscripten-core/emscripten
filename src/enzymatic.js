@@ -154,5 +154,12 @@ Zyme.prototype = {
     items.forEach(function(item) { ret = ret.concat(this.processItem(item)) }, this);
     return ret;
   },
+  processPairs: function(items, func) {
+    var ret = [];
+    for (var i = 0; i < items.length; i += 2) {
+      ret = ret.concat(func(items[i], items[i+1]));
+    }
+    return ret;
+  },
 };
 
