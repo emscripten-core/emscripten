@@ -164,11 +164,13 @@ class T(unittest.TestCase):
             int w = x*3+4;
             int k = w < 15 ? 99 : 101;
             int i = k > 100; // Should be an int, not a bool!
-            printf("*%d,%d,%d,%d,%d,%d*\\n", x, y, z, w, k,i);
+            int j = i << 6;
+            j >>= 1;
+            printf("*%d,%d,%d,%d,%d,%d,%d*\\n", x, y, z, w, k, i, j);
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,101,1*')
+        self.do_test(src, '*5,23,10,19,101,1,32*')
 
     def test_floatvars(self):
         src = '''
