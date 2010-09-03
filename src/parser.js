@@ -702,7 +702,7 @@ function intertyper(data) {
   // mathops
   substrate.addZyme('Mathops', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
-                                 ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'xor', 'or', 'and']
+                                 ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'xor', 'or', 'and', 'ptrtoint']
                                   .indexOf(item.tokens[0].text) != -1 && !item.intertype },
     processItem: function(item) {
       item.intertype = 'mathop';
@@ -2261,6 +2261,10 @@ function JSify(data) {
       }
       case 'zext': case 'fpext': case 'trunc': case 'sext': return ident;
       case 'select': return '(' + ident + ' ? ' + ident3 + ' : ' + ident4 + ')';
+      case 'ptrtoint': {
+        if (type.text != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
+        return ident;
+      }
       default: throw 'Unknown mathcmp op: ' + item.op
     }
   } });

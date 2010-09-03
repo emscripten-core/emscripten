@@ -25,7 +25,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, no_python=False, no_build=False, main_file=None):
+    def do_test(self, src, expected_output, args=[], output_processor=None, output_nicerizer=None, no_python=False, no_build=False, main_file=None):
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
@@ -70,11 +70,13 @@ class T(unittest.TestCase):
               if DEBUG: print output
               cwd = os.getcwd()
               os.chdir(path_from_root(['src']))
-              output = timeout_run(Popen([PARSER_ENGINE] + PARSER_OPTS + [JS_COMPILER], stdin=open(filename + '.o.llvm', 'r'), stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 20, 'Parser')
+              output = timeout_run(Popen([PARSER_ENGINE] + PARSER_OPTS + [JS_COMPILER], stdin=open(filename + '.o.llvm', 'r'), stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 200, 'Parser')
               os.chdir(cwd)
   #            return
           if DEBUG: print output
           output = open(filename + '.o.js').read()
+          if output_processor is not None:
+              output_processor(output)
           if output is not None and 'Traceback' in output: print output; assert (0) # 'generating JavaScript failed'
           if DEBUG: print "\nGenerated JavaScript:\n\n===\n\n%s\n\n===\n\n" % output
   #        if not DEBUG:
@@ -481,6 +483,27 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*97,15,3,3029*')
 
+    def test_ptrtoint(self):
+        src = '''
+          #include <stdio.h>
+
+          int main( int argc, const char *argv[] ) {
+            char *a = new char[10];
+            char *a0 = a+0;
+            char *a5 = a+5;
+            int *b = new int[10];
+            int *b0 = b+0;
+            int *b5 = b+5;
+            int c = (int)b5-(int)b0; // Emscripten should warn!
+            int d = (int)b5-(int)b0; // Emscripten should warn!
+            printf("*%d*\\n", (int)a5-(int)a0);
+            return 0;
+          }
+          '''
+        runner = self
+        def check_warnings(output):
+            runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
+        self.do_test(src, '*5*', output_processor=check_warnings)
 
     def test_memcpy(self):
         src = '''
