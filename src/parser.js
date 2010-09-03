@@ -702,7 +702,7 @@ function intertyper(data) {
   // mathops
   substrate.addZyme('Mathops', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
-                                 ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'xor', 'or', 'and', 'ptrtoint']
+                                 ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint']
                                   .indexOf(item.tokens[0].text) != -1 && !item.intertype },
     processItem: function(item) {
       item.intertype = 'mathop';
@@ -2229,8 +2229,8 @@ function JSify(data) {
       case 'or': return ident + ' | ' + ident2;
       case 'and': return ident + ' & ' + ident2;
       case 'xor': return ident + ' ^ ' + ident2;
-      case 'shl': case 'ashl': return ident + ' << ' + ident2;
-      case 'shr': case 'ashr': return ident + ' >> ' + ident2;
+      case 'shl': case 'ashl': case 'lshl': return ident + ' << ' + ident2;
+      case 'shr': case 'ashr': case 'lshr': return ident + ' >> ' + ident2;
       case 'fadd': return ident + ' + ' + ident2;
       case 'fsub': return ident + ' - ' + ident2;
       case 'fdiv': return ident + ' / ' + ident2;
