@@ -167,11 +167,15 @@ class T(unittest.TestCase):
             int j = i << 6;
             j >>= 1;
             j = j ^ 5;
-            printf("*%d,%d,%d,%d,%d,%d,%d*\\n", x, y, z, w, k, i, j);
+            int h = 1;
+            h |= 0;
+            int p = h;
+            p &= 0;
+            printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", x, y, z, w, k, i, j, h, p);
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,101,1,37*')
+        self.do_test(src, '*5,23,10,19,101,1,37,1,0*')
 
     def test_floatvars(self):
         src = '''
