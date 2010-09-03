@@ -166,11 +166,12 @@ class T(unittest.TestCase):
             int i = k > 100; // Should be an int, not a bool!
             int j = i << 6;
             j >>= 1;
+            j = j ^ 5;
             printf("*%d,%d,%d,%d,%d,%d,%d*\\n", x, y, z, w, k, i, j);
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,101,1,32*')
+        self.do_test(src, '*5,23,10,19,101,1,37*')
 
     def test_floatvars(self):
         src = '''
