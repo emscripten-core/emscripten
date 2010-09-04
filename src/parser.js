@@ -540,18 +540,15 @@ function intertyper(data) {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 4 && item.indent === 0 && item.tokens[0].text == 'define' &&
                                         item.tokens.slice(-1)[0].text == '{' },
     processItem: function(item) {
-      if (item.tokens.slice(-3,-2)[0].text == 'align')
-        item.tokens.splice(-3,2);
-      if (item.tokens.slice(-2,-1)[0].text == 'nounwind')
-        item.tokens.splice(-2,1);
-      while (item.tokens.length > 5)
-        item.tokens.splice(1, 1);
+      item.tokens = item.tokens.filter(function(token) {
+        return ['internal', 'signext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{'].indexOf(token.text) == -1;
+      });
       return [{
         __result__: true,
         intertype: 'function',
-        ident: item.tokens[2].text,
-        returnType: item.tokens[1],
-        params: item.tokens[3],
+        ident: item.tokens[1].text,
+        returnType: item.tokens[0],
+        params: item.tokens[2],
         lineNum: item.lineNum,
       }];
     },
@@ -2238,6 +2235,7 @@ function JSify(data) {
     }
   });
   makeFuncLineZyme('mathop', function(item) { with(item) {
+    dprint('mathop', 'mathop: ' + dump(item));
     switch (item.op) {
       case 'add': return ident + ' + ' + ident2;
       case 'sub': return ident + ' - ' + ident2;
@@ -2268,12 +2266,12 @@ function JSify(data) {
       }
       case 'fcmp': {
         switch (variant) {
-          case 'uge': case 'sge': return '0+(' + ident + ' >= ' + ident2 + ')';
-          case 'ule': case 'sle': return '0+(' + ident + ' <= ' + ident2 + ')';
-          case 'ugt': case 'sgt': case 'ogt': return '0+(' + ident + ' > ' + ident2 + ')';
-          case 'ult': case 'slt': case 'olt': return '0+(' + ident + ' < ' + ident2 + ')';
-          case 'ne': case 'une': return '0+(' + ident + ' != ' + ident2 + ')';
-          case 'eq': return '0+(' + ident + ' == ' + ident2 + ')';
+          case 'uge': case 'oge': return '0+(' + ident + ' >= ' + ident2 + ')';
+          case 'ule': case 'ole': return '0+(' + ident + ' <= ' + ident2 + ')';
+          case 'ugt': case 'ogt': return '0+(' + ident + ' > ' + ident2 + ')';
+          case 'ult': case 'olt': return '0+(' + ident + ' < ' + ident2 + ')';
+          case 'une': case 'one': return '0+(' + ident + ' != ' + ident2 + ')';
+          case 'ueq': case 'oeq': return '0+(' + ident + ' == ' + ident2 + ')';
           default: throw 'Unknown fcmp variant: ' + variant
         }
       }

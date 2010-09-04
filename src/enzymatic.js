@@ -150,13 +150,25 @@ Zyme.prototype = {
   },
   process: function(items) {
     var ret = [];
-    items.forEach(function(item) { ret = ret.concat(this.processItem(item)) }, this);
+    items.forEach(function(item) {
+      try {
+        ret = ret.concat(this.processItem(item));
+      } catch (e) {
+        print("Exception in process(), current item is: " + dump(item));
+        throw e;
+      }
+    }, this);
     return ret;
   },
   processPairs: function(items, func) {
     var ret = [];
     for (var i = 0; i < items.length; i += 2) {
-      ret = ret.concat(func(items[i], items[i+1]));
+      try {
+        ret = ret.concat(func(items[i], items[i+1]));
+      } catch (e) {
+        print("Exception in processPairs(), current items are: " + dump(items[i]) + ' :::: ' + dump(items[i+1]));
+        throw e;
+      }
     }
     return ret;
   },
