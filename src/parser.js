@@ -896,7 +896,7 @@ function analyzer(data) {
   });
 
   // Sorter
-  substrate.addZyme({
+  substrate.addZyme('Sorter', {
     selectItem: function(item) { return !item.sorted; },
     processItem: function(item) {
       item.items.sort(function (a, b) { return a.lineNum - b.lineNum });
@@ -906,7 +906,7 @@ function analyzer(data) {
   });
 
   // Gatherer
-  substrate.addZyme({
+  substrate.addZyme('Gatherer', {
     selectItem: function(item) { return item.sorted && !item.gathered; },
     processItem: function(item) {
       // Single-liners
@@ -944,7 +944,7 @@ function analyzer(data) {
   });
 
   // IdentiNicer
-  substrate.addZyme({
+  substrate.addZyme('Identinicer', {
     selectItem: function(item) { return item.gathered && !item.identiniced; },
     processItem: function(output) {
       walkJSON(output, function(item) {
@@ -985,8 +985,8 @@ function analyzer(data) {
     }
   }
 
-  // TypeVestigator
-  substrate.addZyme({
+  // Typevestigator
+  substrate.addZyme('Typevestigator', {
     selectItem: function(item) { return item.gathered && !item.typevestigated; },
     processItem: function(data) {
       walkJSON(data, function(item) {
@@ -1004,7 +1004,7 @@ function analyzer(data) {
   });
 
   // Type analyzer
-  substrate.addZyme({
+  substrate.addZyme('Type Analyzer', {
     selectItem: function(item) { return item.typevestigated && !item.typed; },
     processItem: function(item) {
       //print('zz analaz types')
@@ -1079,7 +1079,7 @@ function analyzer(data) {
   });
   
   // Variable analyzer
-  substrate.addZyme({
+  substrate.addZyme('Variable Analyzer', {
     selectItem: function(item) { return item.typevestigated && !item.variablized; },
     processItem: function(item) {
       item.functions.forEach(function(func) {
@@ -1159,7 +1159,7 @@ function analyzer(data) {
   });
 
   // ReLooper - reconstruct nice loops, as much as possible
-  substrate.addZyme({
+  substrate.addZyme('Relooper', {
     selectItem: function(item) { return item.variablized && !item.relooped },
     processItem: function(item) {
       function finish() {
@@ -1549,7 +1549,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
 
       // TODO: each of these can be run in parallel
       item.functions.forEach(function(func) {
-        dprint("// relooping function: " + func.ident);
+        dprint('relooping', "// relooping function: " + func.ident);
         func.labelsDict = {};
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
@@ -1562,7 +1562,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
   });
 
   // Optimizer
-  substrate.addZyme({
+  substrate.addZyme('Optimizer', {
     selectItem: function(item) { return item.relooped && !item.optimized; },
     processItem: function(item) {
       function finish() {
@@ -1780,7 +1780,7 @@ function JSify(data) {
   });
 
   // type
-  substrate.addZyme({
+  substrate.addZyme('Type', {
     selectItem: function(item) { return item.intertype == 'type' && !item.JS },
     processItem: function(item) {
       var type = TYPES[item.name_];
@@ -1835,7 +1835,7 @@ function JSify(data) {
   }
 
   // globalVariable
-  substrate.addZyme({
+  substrate.addZyme('GlobalVariable', {
     selectItem: function(item) { return item.intertype == 'globalVariable' && !item.JS },
     processItem: function(item) {
       //print('// zz global Var: ' + dump(item) + ' :: ' + dump(item.value));
@@ -1903,7 +1903,7 @@ function JSify(data) {
   }
 
   // globalConstant
-  substrate.addZyme({
+  substrate.addZyme('GlobalConstant', {
     selectItem: function(item) { return item.intertype == 'globalConstant' && !item.JS },
     processItem: function(item) {
       if (item.ident == '_llvm_global_ctors') {
@@ -1925,7 +1925,7 @@ function JSify(data) {
   });
 
   // functionStub
-  substrate.addZyme({
+  substrate.addZyme('FunctionStub', {
     selectItem: function(item) { return item.intertype == 'functionStub' && !item.JS },
     processItem: function(item) {
       item.JS = '// stub for ' + item.ident;
@@ -1935,7 +1935,7 @@ function JSify(data) {
   });
 
   // function splitter
-  substrate.addZyme({
+  substrate.addZyme('FunctionSplitter', {
     selectItem: function(item) { return item.intertype == 'function' && !item.passes.splitted },
     processItem: function(item) {
       var ret = [item];
@@ -1955,7 +1955,7 @@ function JSify(data) {
     },
   });
   // function reconstructor & post-JS optimizer
-  substrate.addZyme({
+  substrate.addZyme('FunctionReconstructor', {
     select: function(items) {
       var func = items.filter(function(item) { return item.intertype == 'function' && item.passes.splitted })[0];
       if (!func) return [];
@@ -2060,8 +2060,8 @@ function JSify(data) {
   }
 
   // 'assign'
-  substrate.addZyme(makeSplitter('intertype', 'assign', 'JS', 'value', ['funcData']));
-  substrate.addZyme(makeCombiner('intertype', 'assign', 'JS', 'JS', function (item) {
+  substrate.addZyme('AssignSplitter', makeSplitter('intertype', 'assign', 'JS', 'value', ['funcData']));
+  substrate.addZyme('AssignCombiner', makeCombiner('intertype', 'assign', 'JS', 'JS', function (item) {
     // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
     item.JS = (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
 
@@ -2095,7 +2095,7 @@ function JSify(data) {
 
   // Function lines
   function makeFuncLineZyme(intertype, func) {
-    substrate.addZyme({
+    substrate.addZyme('Intertype:' + intertype, {
       selectItem: function(item) { return item.intertype == intertype && !item.JS },
       processItem: function(item) {
         item.JS = func(item);
