@@ -707,7 +707,8 @@ function intertyper(data) {
     processItem: function(item) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1];
-      item.type = { text: addPointing(item.tokens[1].text) };
+      item.type = { text: addPointing(item.tokens[1].text) }; // type of pointer we will get
+//      item.type2 = { text: item.tokens[1].text }; // value we will create, and get a pointer to
       return [item];
     },
   });
@@ -960,36 +961,42 @@ function analyzer(data) {
   });
 
   function addType(type, data) {
-    if (['<', '(', 'internal', 'inbounds', 'void'].indexOf(type) != -1) return;
+    if (type.length == 1) return;
+    if (data.types[type]) return;
+    if (['internal', 'inbounds', 'void'].indexOf(type) != -1) return;
+    dprint('types', '// addType: ' + type);
     var check = /^\[(\d+)\ x\ (.*)\]$/g.exec(type);
     // 'blocks': [14 x %struct.X] etc.
     if (check) {
       var num = parseInt(check[1]);
       var subType = check[2];
-      data.types.push({
+      data.types[type] = {
         name_: type,
         fields: range(num).map(function() { return subType }),
         lineNum: '?',
-      });
+      };
       return;
     }
     if (['['].indexOf(type) != -1) return;
     if (isNumberType(type) || isPointerType(type)) return;
-    if (!data.types[type]) {
-      //          print("// New type: " + type);
-      data.types.push({
-        name_: type,
-        fields: [ 'int32' ], // XXX
-        flatSize: 1,
-        lineNum: '?',
-      });
-    }
+    data.types[type] = {
+      name_: type,
+      fields: [ 'int32' ], // XXX
+      flatSize: 1,
+      lineNum: '?',
+    };
   }
 
   // Typevestigator
   substrate.addZyme('Typevestigator', {
     selectItem: function(item) { return item.gathered && !item.typevestigated; },
     processItem: function(data) {
+      // Convert types list to dict
+      var old = data.types;
+      data.types = {};
+      old.forEach(function(type) { data.types[type.name_] = type });
+
+      // Find additional types
       walkJSON(data, function(item) {
         if (!item) return;
         if (item.type) {
@@ -1028,19 +1035,16 @@ function analyzer(data) {
       var more = true;
       while (more) {
         more = false;
-        function getType(t) {
-          return item.types.filter(function(type) { return type.name_ == t })[0];
-        }
-        item.types.forEach(function(type) {
+        values(item.types).forEach(function(type) {
           var ready = true;
           type.fields.forEach(function(field) {
             //print('// zz getT: ' + type.name_ + ' : ' + field);
             if (isStructType(field)) {
-              if (!getType(field)) {
+              if (!item.types[field]) {
                 addType(field, item);
                 ready = false;
               } else {
-                if (!getType(field).flatIndexes) {
+                if (!item.types[field].flatIndexes) {
                   ready = false;
                 }
               }
@@ -1056,7 +1060,7 @@ function analyzer(data) {
           type.flatIndexes = type.fields.map(function(field) {
             var curr = type.flatSize;
             if (isStructType(field)) {
-              var size = getType(field).flatSize;
+              var size = item.types[field].flatSize;
               type.flatSize += size;
               sizes.push(size);
               type.needsFlattening = true;
@@ -1071,8 +1075,8 @@ function analyzer(data) {
         });
       }
 
-      item.types.forEach(function(type) {
-        print('// type: ' + type.name_);// + ' : ' + JSON.stringify(type.fields));
+      values(item.types).forEach(function(type) {
+        dprint('types', 'type: ' + type.name_);// + ' : ' + JSON.stringify(type.fields));
       });
       item.typed = true;
       return [item];
@@ -1765,7 +1769,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
 function JSify(data) {
   substrate = new Substrate('JSifyer');
 
-  [].concat(data.types.filter(function(type) { return type.lineNum != '?' }))
+  [].concat(values(data.types).filter(function(type) { return type.lineNum != '?' }))
     .concat(data.globalConstants)
     .concat(data.globalVariables)
     .concat(data.functions)
@@ -1775,10 +1779,7 @@ function JSify(data) {
       substrate.addItem(item);
     });
 
-  var TYPES = {};
-  data.types.forEach(function(type) {
-    TYPES[type.name_] = type;
-  });
+  var TYPES = data.types;
 
   // type
   substrate.addZyme('Type', {
@@ -1824,7 +1825,7 @@ function JSify(data) {
   }
 
   function makeEmptyStruct(type) {
-    dprint('makeemptystruct', '??makeemptystruct?? ' + dump(type) + ' : ' + dump(TYPES));
+    dprint('types', '??makeemptystruct?? ' + dump(type));
     // XXX hardcoded ptr impl
     var ret = [];
     var typeData = TYPES[type];
@@ -1839,7 +1840,7 @@ function JSify(data) {
   substrate.addZyme('GlobalVariable', {
     selectItem: function(item) { return item.intertype == 'globalVariable' && !item.JS },
     processItem: function(item) {
-      //print('// zz global Var: ' + dump(item) + ' :: ' + dump(item.value));
+      dprint('gvar', '// zz global Var: ' + dump(item) + ' :: ' + dump(item.value));
       var value = item.value;
       item.JS = 'var ' + item.ident + ' = ';
       if (value.text == 'zeroinitializer') {
@@ -1856,7 +1857,7 @@ function JSify(data) {
 
   // Gets an entire constant expression
   function parseConst(value, type) {
-    print('//yyyyy ' + JSON.stringify(value) + ',' + type);
+    dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type);
     if (isNumberType(type)) {
       return makePointer(value.text);
     } else if (pointingLevels(type) == 1) {
@@ -1913,7 +1914,7 @@ function JSify(data) {
   substrate.addZyme('GlobalConstant', {
     selectItem: function(item) { return item.intertype == 'globalConstant' && !item.JS },
     processItem: function(item) {
-      print('// zz global Cons: ' + dump(item) + ' :: ' + dump(item.value));
+      dprint('gconst', '// zz global Cons: ' + dump(item) + ' :: ' + dump(item.value));
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
                     item.ctors.map(function(ctor) { return '  ' + toNiceIdent(ctor) + '();' }).join('\n') +
@@ -2229,6 +2230,7 @@ function JSify(data) {
     }
   });
   makeFuncLineZyme('alloca', function(item) {
+    dprint('alloca', '// zz alloca: ' + dump(item));
     if (pointingLevels(item.allocatedType.text) == 0 && isStructType(item.allocatedType.text)) {
       return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)));
     } else {
