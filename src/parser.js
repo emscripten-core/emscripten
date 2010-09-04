@@ -1856,11 +1856,13 @@ function JSify(data) {
 
   // Gets an entire constant expression
   function parseConst(value, type) {
-    //print('//yyyyy ' + JSON.stringify(value) + ',' + type);
+    print('//yyyyy ' + JSON.stringify(value) + ',' + type);
     if (isNumberType(type)) {
       return makePointer(value.text);
     } else if (pointingLevels(type) == 1) {
       return makePointer(value.text);
+    } else if (value.text == 'zeroinitializer') {
+      return JSON.stringify(makeEmptyStruct(type));
     } else if (value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
       return makePointer('intArrayFromString("' + value.text + '")');
@@ -1911,6 +1913,7 @@ function JSify(data) {
   substrate.addZyme('GlobalConstant', {
     selectItem: function(item) { return item.intertype == 'globalConstant' && !item.JS },
     processItem: function(item) {
+      print('// zz global Cons: ' + dump(item) + ' :: ' + dump(item.value));
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
                     item.ctors.map(function(ctor) { return '  ' + toNiceIdent(ctor) + '();' }).join('\n') +
@@ -1918,11 +1921,8 @@ function JSify(data) {
       } else if (item.type.text == 'external') {
         item.JS = 'var ' + item.ident + ' = ' + '0; /* external value? */';
       } else {
-//print('// cheeckit ' + dump(item));
-        // VAR
-        //item.JS = 'var ' + item.ident + ' = ' + parseConst(item.value) + ';';
         // GETTER - lazy loading, fixes issues with ordering
-        item.JS = 'this.__defineGetter__("' + item.ident + '", function() { return ' + parseConst(item.value) + ' });';
+        item.JS = 'this.__defineGetter__("' + item.ident + '", function() { return ' + parseConst(item.value, item.type.text) + ' });';
       }
       item.__result__ = true;
       return [item];
