@@ -713,7 +713,7 @@ function intertyper(data) {
   // mathops
   substrate.addZyme('Mathops', {
     selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
-                                 ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint']
+                                 ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']
                                   .indexOf(item.tokens[0].text) != -1 && !item.intertype },
     processItem: function(item) {
       item.intertype = 'mathop';
@@ -2270,10 +2270,14 @@ function JSify(data) {
           default: throw 'Unknown fcmp variant: ' + variant
         }
       }
-      case 'zext': case 'fpext': case 'trunc': case 'sext': return ident;
+      case 'zext': case 'fpext': case 'trunc': case 'sext': case 'fptrunc': return ident;
       case 'select': return '(' + ident + ' ? ' + ident3 + ' : ' + ident4 + ')';
       case 'ptrtoint': {
         if (type.text != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
+        return ident;
+      }
+      case 'inttoptr': {
+        print('// XXX Warning: inttoptr operation on line ' + lineNum);
         return ident;
       }
       default: throw 'Unknown mathcmp op: ' + item.op
