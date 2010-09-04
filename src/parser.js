@@ -252,6 +252,12 @@ function parseBitcast(segment) {
   return ret;
 }
 
+function cleanOutTokens(filterOut, tokens, index) {
+  while (filterOut.indexOf(tokens[index].text) != -1) {
+    tokens.splice(index, 1);
+  }
+}
+
 function _HexToInt(stringy) {
   var ret = 0;
   var mul = 1;
@@ -681,11 +687,16 @@ function intertyper(data) {
         item.functionType += item.tokens[2].text;
         item.tokens.splice(2, 1);
       }
+      cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
       item.ident = item.tokens[2].text;
       item.params = parseParamTokens(item.tokens[3].item[0].tokens);
       item.toLabel = toNiceIdent(item.tokens[6].text);
       item.unwindLabel = toNiceIdent(item.tokens[9].text);
-      item.__result__ = true;
+      if (item.indent == 2) {
+        // standalone call - not in assign
+        item.standalone = true;
+        item.__result__ = true;
+      }
       return [item];
     },
   });

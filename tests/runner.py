@@ -25,7 +25,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
-    def do_test(self, src, expected_output, args=[], output_processor=None, output_nicerizer=None, no_python=False, no_build=False, main_file=None):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_python=False, no_build=False, main_file=None):
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):

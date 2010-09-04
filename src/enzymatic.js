@@ -77,7 +77,7 @@ Substrate.prototype = {
             outputs = zyme.process(selected);
             //PROF();
           } catch (e) {
-            print("Exception, current selected are: " + selected.map(dump).join('\n\n').substr(0,100));
+            print("Exception, current selected are: " + selected.map(dump).join('\n\n'));
             print("Stack: " + dump(new Error().stack));
             throw e;
           }
