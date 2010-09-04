@@ -158,6 +158,7 @@ class T(unittest.TestCase):
         src = '''
           #include <stdio.h>
           int global = 20;
+          int *far;
           int main()
           {
             int x = 5;
@@ -166,7 +167,8 @@ class T(unittest.TestCase):
             y += 1;
             int w = x*3+4;
             int k = w < 15 ? 99 : 101;
-            k += global;
+            far = &k;
+            *far += global;
             int i = k > 100; // Should be an int, not a bool!
             int j = i << 6;
             j >>= 1;

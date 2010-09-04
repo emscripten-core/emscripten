@@ -34,6 +34,7 @@ function removePointing(type, num) {
 }
 
 function pointingLevels(type) {
+  if (!type) return 0;
   var ret = 0;
   var len1 = type.length - 1;
   while (type[len1-ret] === '*') {
@@ -1857,6 +1858,8 @@ function JSify(data) {
   function parseConst(value, type) {
     //print('//yyyyy ' + JSON.stringify(value) + ',' + type);
     if (isNumberType(type)) {
+      return makePointer(value.text);
+    } else if (pointingLevels(type) == 1) {
       return makePointer(value.text);
     } else if (value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
