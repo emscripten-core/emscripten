@@ -1845,7 +1845,7 @@ function JSify(data) {
         item.JS += makePointer(JSON.stringify(makeEmptyStruct(item.type)));
       } else {
         // Generate a constant
-        item.JS += parseConst(value);
+        item.JS += parseConst(value, item.type);
       }
       item.JS += ';';
       item.__result__ = true;
@@ -1854,9 +1854,11 @@ function JSify(data) {
   });
 
   // Gets an entire constant expression
-  function parseConst(value) {
-    //print('//yyyyy ' + JSON.stringify(value));
-    if (value.text[0] == '"') {
+  function parseConst(value, type) {
+    //print('//yyyyy ' + JSON.stringify(value) + ',' + type);
+    if (isNumberType(type)) {
+      return makePointer(value.text);
+    } else if (value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
       return makePointer('intArrayFromString("' + value.text + '")');
     } else {

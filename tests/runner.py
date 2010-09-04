@@ -157,6 +157,7 @@ class T(unittest.TestCase):
     def test_intvars(self):
         src = '''
           #include <stdio.h>
+          int global = 20;
           int main()
           {
             int x = 5;
@@ -165,6 +166,7 @@ class T(unittest.TestCase):
             y += 1;
             int w = x*3+4;
             int k = w < 15 ? 99 : 101;
+            k += global;
             int i = k > 100; // Should be an int, not a bool!
             int j = i << 6;
             j >>= 1;
@@ -177,7 +179,7 @@ class T(unittest.TestCase):
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,101,1,37,1,0*')
+        self.do_test(src, '*5,23,10,19,121,1,37,1,0*')
 
     def test_floatvars(self):
         src = '''
