@@ -708,7 +708,7 @@ function intertyper(data) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1];
       item.type = { text: addPointing(item.tokens[1].text) }; // type of pointer we will get
-//      item.type2 = { text: item.tokens[1].text }; // value we will create, and get a pointer to
+      item.type2 = { text: item.tokens[1].text }; // value we will create, and get a pointer to
       return [item];
     },
   });
