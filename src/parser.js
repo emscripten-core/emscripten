@@ -541,7 +541,7 @@ function intertyper(data) {
                                         item.tokens.slice(-1)[0].text == '{' },
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
-        return ['internal', 'signext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{'].indexOf(token.text) == -1;
+        return ['internal', 'signext', 'zeroext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{'].indexOf(token.text) == -1;
       });
       return [{
         __result__: true,
@@ -1958,6 +1958,7 @@ function JSify(data) {
     },
   });
   // function reconstructor & post-JS optimizer
+  // TODO: optimize to prevent multiple loops, one per function. See processPairs
   substrate.addZyme('FunctionReconstructor', {
     select: function(items) {
       var func = items.filter(function(item) { return item.intertype == 'function' && item.passes.splitted })[0];
