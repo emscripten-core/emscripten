@@ -194,7 +194,11 @@ function parseParamTokens(params) {
 //print(' seg ' + JSON.stringify(segment));
     params = params.slice(i+1);
     segment = cleanSegment(segment);
-    if (segment[1].text === 'getelementptr') {
+    if (segment.length == 1 && segment[0].text == '...') {
+      ret.push({
+        intertype: 'varargs',
+      });
+    } else if (segment[1].text === 'getelementptr') {
       ret.push(parseGetElementPtr(segment));
     } else if (segment[1].text === 'bitcast') {
       ret.push(parseBitcast(segment));
@@ -220,6 +224,7 @@ function parseParamTokens(params) {
 }
 
 function cleanSegment(segment) {
+  if (segment.length == 1) return segment;
   while (['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext'].indexOf(segment[1].text) != -1) {
     segment.splice(1, 1);
   }
@@ -1931,7 +1936,16 @@ function JSify(data) {
   substrate.addZyme('FunctionStub', {
     selectItem: function(item) { return item.intertype == 'functionStub' && !item.JS },
     processItem: function(item) {
-      item.JS = '// stub for ' + item.ident;
+      switch(item.ident) {
+        case '_vsnprintf': {
+          item.JS = 'function ' + item.ident + '(dst, num, src, args) {\n' +
+                    '   _printf;\n';
+          break;
+        }
+        default: {
+          item.JS = '// stub for ' + item.ident;
+        }
+      }
       item.__result__ = true;
       return [item];
     },
@@ -1988,9 +2002,14 @@ function JSify(data) {
         //print('zz params::::: ' + JSON.stringify(func.params));
         //print('zz params::::: ' + JSON.stringify(parseParamTokens(func.params.item[0].tokens)));
 
+        var hasVarArgs = false;
         var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
+          if (param.intertype == 'varargs') {
+            hasVarArgs = true;
+            return null;
+          }
           return toNiceIdent(param.ident);
-        }).join(', ');
+        }).filter(function(param) { return param != null }).join(', ');
 
         func.JS = '\nfunction ' + func.ident + '(' + params + ') {\n';
         if (LINEDEBUG) func.JS += "  print(INDENT + 'Entering: " + func.ident + "'); INDENT += '  ';\n";
@@ -2230,6 +2249,7 @@ function JSify(data) {
   makeFuncLineZyme('alloca', function(item) {
     dprint('alloca', '// zz alloca: ' + dump(item));
     if (pointingLevels(item.allocatedType.text) == 0 && isStructType(item.allocatedType.text)) {
+      // TODO: allocate on a stack, not on the heap (we currently leak all this)
       return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)));
     } else {
       return makePointer('[0]');
@@ -2353,6 +2373,14 @@ function JSify(data) {
   });
   function makeFunctionCall(ident, params) {
     //print('// zz makeFC: ' + ident + ' : ' + dump(params));
+
+    // Special cases
+    if (ident == '_llvm_va_start') {
+      return params[0].ident + ' = Pointer_make(Array.prototype.slice.call(arguments, 1), 0)'; // XXX 1
+    } else if (ident == '_llvm_va_end') {
+      return ';'
+    }
+
     var params = params.map(function(param) {
       if (param.intertype === 'getelementptr') {
         return finalizeGetElementPtr(param);
@@ -2387,7 +2415,11 @@ function JSify(data) {
   function finalCombiner(items) {
     var ret = items.filter(function(item) { return item.intertype == 'type' });
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'globalConstant' }));
+    ret.push('\n');
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'globalVariable' }));
+    ret.push('\n');
+    ret = ret.concat(items.filter(function(item) { return item.intertype == 'functionStub' }));
+    ret.push('\n');
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'function' }));
     return ret.map(function(item) { return item.JS }).join('\n');
   }

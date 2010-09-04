@@ -92,19 +92,34 @@ __ZdaPv = _free; // Mangled "delete"
 
 // stdio.h
 
-function _printf() {
-  var text = Pointer_stringify(arguments[0]);
-  var textIndex;
-  for (var argIndex = 1; argIndex < arguments.length; argIndex = argIndex + 1) {
+// C-style: we work on ints on the HEAP.
+function __formatString() {
+  var textIndex = arguments[0];
+  var argIndex = 1;
+  var ret = [];
+  var curr = -1;
+  while (curr != 0) {
+    curr = HEAP[textIndex];
+    next = HEAP[textIndex+1];
     // We only support numbers - use puts for strings!
-    textIndex = Math.min(text.indexOf("%d"), text.indexOf("%f"));
-    if (textIndex < 0) {
-      textIndex = Math.max(text.indexOf("%d"), text.indexOf("%f"));
-      if (textIndex < 0) break;
+    if (curr == '%'.charCodeAt(0) && ['d', 'f'].indexOf(String.fromCharCode(next)) != -1) {
+      String(arguments[argIndex]).split('').forEach(function(chr) {
+        ret.push(chr.charCodeAt(0));
+      });
+      argIndex += 1;
+      textIndex += 2;
+      continue;
+    } else {
+      ret.push(curr);
+      textIndex ++;
     }
-    text = text.substr(0, textIndex) + String(arguments[argIndex]) + text.substr(textIndex + 2);
   }
-  print(text);
+  return Pointer_make(ret);
+}
+
+function _printf() {
+  var text = __formatString.apply(null, arguments);
+  print(Pointer_stringify(text));
 }
 
 function _puts(p) {

@@ -557,6 +557,28 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*96,97,98,101,101*')
 
+    def zzztest_varargs(self):
+        src = '''
+          #include <stdio.h>
+          #include "stdarg.h"
+
+          void vary(const char *s, ...)
+          {
+            va_list v;
+            va_start(v, s);
+            char d[20];
+            vsnprintf(d, 20, s, v);
+            puts(d);
+            va_end(v);
+          }
+
+          int main() {
+            vary("*cheez: %d+%d*", 10, 23);
+            return 0;
+          }
+          '''
+        self.do_test(src, '*cheez: 10+24*')
+
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:
