@@ -141,15 +141,20 @@ function splitTokenList(tokens) {
 function makeSplitter(parentSlot, parentSlotValue, parentUnrequiredSlot, childSlot, copySlots) {
   return {
     selectItem: function(item) { return item[parentSlot] == parentSlotValue && !item[parentUnrequiredSlot] && item[childSlot] !== null },
-    processItem: function(parent) {
-      var child = parent[childSlot];
-      parent[childSlot] = null;
-      child.parentUid = parent.__uid__;
-      child.parentSlot = childSlot;
-      child.lineNum = parent.lineNum; // Debugging
+    process: function(parents) {
       if (!copySlots) copySlots = [];
-      copySlots.forEach(function(slot) { child[slot] = parent[slot] });
-      return [parent, child];
+      var ret = parents.slice(0);
+      for (var i = 0; i < parents.length; i++) {
+        var parent = parents[i];
+        var child = parent[childSlot];
+        parent[childSlot] = null;
+        child.parentUid = parent.__uid__;
+        child.parentSlot = childSlot;
+        child.lineNum = parent.lineNum; // Debugging
+        copySlots.forEach(function(slot) { child[slot] = parent[slot] });
+        ret.push(child);
+      }
+      return ret;
     },
   };
 }

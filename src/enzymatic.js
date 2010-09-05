@@ -39,9 +39,9 @@ Substrate.prototype = {
     var startTime = Date.now();
     var midTime = startTime;
     var that = this;
-    function midComment() {
+    function midComment(force) {
       var curr = Date.now();
-      if (curr - midTime > 1000) {
+      if (curr - midTime > 1000 || force) {
         print('// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds. Have ' + that.items.length + ' items.');
         midTime = curr;
       }
@@ -119,6 +119,7 @@ Substrate.prototype = {
               delete item.__uid__;
             }
           });
+          //midComment(true);
         }
       }
       if (this.items.length === 0) {
