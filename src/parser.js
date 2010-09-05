@@ -45,7 +45,7 @@ function pointingLevels(type) {
 
 function toNiceIdent(ident) {
   if (parseFloat(ident) == ident) return ident;
-  return ident.replace(/[" \.@%]/g, '_');
+  return ident.replace(/[" \.@%:<>,\*]/g, '_');
 }
 
 function isNumberType(type) {
@@ -86,7 +86,8 @@ function isFunctionDef(token) {
   if (nonPointing == '(...)') return true;
   if (!token.item) return false;
   var fail = false;
-  token.item[0].tokens.forEach(function(subtoken) {
+  splitTokenList(token.item[0].tokens).forEach(function(segment) {
+    var subtoken = segment[0];
     fail = fail || !isType(subtoken.text);
   });
   return !fail;
@@ -121,6 +122,7 @@ function compareTokens(a, b) {
   return ret;
 }
 
+// Splits a list of tokens separated by commas. For example, a list of arguments in a function call
 function splitTokenList(tokens) {
   if (tokens.length == 0) return [];
   if (tokens.slice(-1)[0].text != ',') tokens.push({text:','});
@@ -2240,9 +2242,13 @@ function JSify(data) {
     return ret + ';';
   });
   makeFuncLineZyme('invoke', function(item) {
-    var ret = 'try { ';
-    ret += makeFunctionCall(item.ident, item.params);
-    ret += '; __label__ = ' + getLabelId(item.toLabel) + '; } catch(e) { __label__ = ' + getLabelId(item.unwindLabel) + '; }; break;';
+    // Wrapping in a function lets us easily return values if we are
+    // in an assignment
+    var ret = '(function() { try { return '
+            + makeFunctionCall(item.ident, item.params) + '; '
+            + '__THREW__ = false } catch(e) { '
+            + '__THREW__ = true; '
+            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel) + ' } else { ' + makeBranch(item.unwindLabel) + ' }';
     return ret;
   });
   makeFuncLineZyme('load', function(item) {

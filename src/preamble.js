@@ -4,7 +4,7 @@
 function __globalConstructor__() {
 }
 
-UNDEFINED = null; // None in python; good for pypy
+var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var HEAP = [];
 var HEAPTOP = 0;
