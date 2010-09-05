@@ -1,7 +1,7 @@
 '''
 Simple test runner
 
-See settings.cfg file for options&params. Edit as needed.
+See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
@@ -13,7 +13,7 @@ abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(pathelems):
     return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + pathelems))
 
-exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'settings.cfg'), 'r').read())
+exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'settings.py'), 'r').read())
 
 def timeout_run(proc, timeout, note):
   start = time.time()

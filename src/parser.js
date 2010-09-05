@@ -8,9 +8,6 @@
 
 // Options
 
-OPTIMIZE = 1;
-RELOOP = 1;
-
 LINEDEBUG = 0;
 
 // Prep - allow this to run in both SpiderMonkey and V8
@@ -22,8 +19,10 @@ if (!this['read']) {
   read = function(f) { snarf(f) }
 }
 
+load('settings.js');
 load('utility.js');
 load('enzymatic.js');
+load('snippets.js');
 
 // Tools
 
@@ -1938,26 +1937,10 @@ function JSify(data) {
   substrate.addZyme('FunctionStub', {
     selectItem: function(item) { return item.intertype == 'functionStub' && !item.JS },
     processItem: function(item) {
-      switch(item.ident) {
-        case '_vsnprintf': {
-          item.JS = 
-            'function _vsnprintf(dst, num, src, ptr) {\n' +
-            '  var args = [];\n' +
-            '  while (HEAP[ptr] != 0) {\n' +
-            '    args.push(HEAP[ptr]);\n' +
-            '    ptr ++;\n' +
-            '  }\n' +
-            '  var text = __formatString.apply(null, [src].concat(args));\n' +
-            '  for (var i = 0; i < num; i++) {\n' +
-            '    HEAP[dst+i] = HEAP[text+i];\n' +
-            '    if (HEAP[dst+i] == 0) break;\n' +
-            '  }\n' +
-            '}\n';
-          break;
-        }
-        default: {
-          item.JS = '// stub for ' + item.ident;
-        }
+      if (['_vsnprintf'].indexOf(item.ident) != -1) {
+        item.JS = item.ident + ' = ' + Snippets[item.ident].toString();
+      } else {
+        item.JS = '// stub for ' + item.ident;
       }
       item.__result__ = true;
       return [item];
