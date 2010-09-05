@@ -579,6 +579,23 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*cheez: 10+24*')
 
+    def test_atexit(self):
+        src = '''
+          #include <stdio.h>
+          #include <stdlib.h>
+
+          void clean()
+          {
+            printf("*cleaned*\\n");
+          }
+
+          int main() {
+            atexit(clean);
+            return 0;
+          }
+          '''
+        self.do_test(src, '*cleaned*')
+
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:

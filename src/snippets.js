@@ -11,5 +11,9 @@ var Snippets = {
       if (HEAP[dst+i] == 0) break;
     }
   },
+
+  _atexit: function(func) {
+    __ATEXIT__.push(func);
+  },
 };
 

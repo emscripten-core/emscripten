@@ -1937,7 +1937,7 @@ function JSify(data) {
   substrate.addZyme('FunctionStub', {
     selectItem: function(item) { return item.intertype == 'functionStub' && !item.JS },
     processItem: function(item) {
-      if (['_vsnprintf'].indexOf(item.ident) != -1) {
+      if (item.ident in Snippets) {
         item.JS = item.ident + ' = ' + Snippets[item.ident].toString();
       } else {
         item.JS = '// stub for ' + item.ident;

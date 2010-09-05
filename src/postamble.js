@@ -12,6 +12,10 @@ function run(args) {
   __globalConstructor__();
 
   _main(argc, argv);
+
+  while( __ATEXIT__.length > 0) {
+    __ATEXIT__.pop()();
+  }
 }
 
 try {

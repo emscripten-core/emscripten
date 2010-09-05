@@ -6,6 +6,8 @@ function __globalConstructor__() {
 
 var __THREW__ = false; // Used in checking for thrown exceptions.
 
+var __ATEXIT__ = [];
+
 var HEAP = [];
 var HEAPTOP = 0;
 
@@ -61,8 +63,6 @@ function Pointer_stringify(ptr) {
   }
   return ret;
 }
-
-NULL = Pointer_make([]);
 
 function _malloc(size) {
 // XXX hardcoded ptr impl
