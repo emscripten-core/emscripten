@@ -1968,100 +1968,107 @@ function JSify(data) {
     },
   });
   // function reconstructor & post-JS optimizer
-  // TODO: optimize to prevent multiple loops, one per function. See processPairs
   substrate.addZyme('FunctionReconstructor', {
     select: function(items) {
-      var func = items.filter(function(item) { return item.intertype == 'function' && item.passes.splitted })[0];
-      if (!func) return [];
-      var lines = items.filter(function(item) { return item.JS && item.func === func.ident });
-      if (lines.length === 0) return [];
-      return [func].concat(lines);
+      var funcs = items.filter(function(item) { return item.intertype == 'function' && item.passes.splitted });
+      return funcs.map(function(func) {
+        var lines = items.filter(function(item) { return item.JS && item.func === func.ident });
+        if (lines.length === 0) return [];
+        return [func].concat(lines);
+      }).reduce(concatenator, []);
     },
-    process: function(items) {
-      var func = items[0];
-      var lines = items.slice(1);
+    process: function(allItems) {
+      var ret = [];
+      for (var i = 0; i < allItems.length;) {
+        var func = allItems[i];
+        var j = i+1;
+        while (j < allItems.length && allItems[j].intertype != 'function') j++;
+        var lines = allItems.slice(i+1, j);
+        i = j;
 
-      lines.forEach(function(line) {
-        delete line.funcData; // clean up
+        lines.forEach(function(line) {
+          delete line.funcData; // clean up
 
-        var label = func.labels.filter(function(label) { return label.ident == line.parentLabel })[0];
-        label.lines = label.lines.map(function(line2) {
-          return (line2.lineNum !== line.lineNum) ? line2 : line;
+          var label = func.labels.filter(function(label) { return label.ident == line.parentLabel })[0];
+          label.lines = label.lines.map(function(line2) {
+            return (line2.lineNum !== line.lineNum) ? line2 : line;
+          });
         });
-      });
 
-      func.splitItems -= lines.length;
-      if (func.splitItems === 0) {
-        postJSOptimize(func);
+        func.splitItems -= lines.length;
+        if (func.splitItems === 0) {
+          postJSOptimize(func);
 
-        // Final recombination
-        //print('zz params::::: ' + JSON.stringify(func.params));
-        //print('zz params::::: ' + JSON.stringify(parseParamTokens(func.params.item[0].tokens)));
+          // Final recombination
+          //print('zz params::::: ' + JSON.stringify(func.params));
+          //print('zz params::::: ' + JSON.stringify(parseParamTokens(func.params.item[0].tokens)));
 
-        var hasVarArgs = false;
-        var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
-          if (param.intertype == 'varargs') {
-            hasVarArgs = true;
-            return null;
-          }
-          return toNiceIdent(param.ident);
-        }).filter(function(param) { return param != null }).join(', ');
-
-        func.JS = '\nfunction ' + func.ident + '(' + params + ') {\n';
-        if (LINEDEBUG) func.JS += "  print(INDENT + 'Entering: " + func.ident + "'); INDENT += '  ';\n";
-
-        // Walk function blocks and generate JS
-        function walkBlock(block, indent) {
-          if (!block) return '';
-          //print('block: ' + dump(block) + ' ::: ' + dump(getLabelIds(block.labels)));
-          function getLabelLines(label, indent) {
-            //print('LABELLINES HAS INDENT ' + indent.length + ' ::' + label.lines[0].JS);
-            return label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
-          }
-          var ret = '';
-          if (block.type == 'emulated' || block.type == 'simple') {
-          //print('BLOCK HAS INDENT ' + indent.length);
-          //print('block has: ' + block.entry + ' :: ' + getLabelIds(block.labels));
-            if (block.labels.length > 1) {
-              ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
-              ret += indent + 'while(1) switch(__label__) {\n';
-              ret += block.labels.map(function(label) {
-                return indent + '  case ' + getLabelId(label.ident) + ':\n' + getLabelLines(label, indent + '    ');
-              }).join('\n');
-              ret += '\n' + indent + '}';
-            } else {
-              ret += getLabelLines(block.labels[0], indent);
+          var hasVarArgs = false;
+          var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
+            if (param.intertype == 'varargs') {
+              hasVarArgs = true;
+              return null;
             }
-            ret += '\n';
-          } else if (block.type == 'loop') {
-//            if (mustGetTo(first.outLabels[0], [first.ident, first.outLabels[1]])) { /* left branch must return here, or go to right branch */ 
-            ret += indent + block.entry + ': while(1) {\n';
-            ret += walkBlock(block.inc, indent + '  ');
-            ret += walkBlock(block.rest, indent + '  ');
-            ret += indent + '}\n';
-          } else if (block.type == 'breakingif') {
-            ret += walkBlock(block.check, indent);
-            ret += indent + block.entry + ': do { if (' + block.ifVar + ') {\n';
-            ret += walkBlock(block.ifTrue, indent + '  ');
-            ret += indent + '} } while(0);\n';
-          } else if (block.type == 'if') {
-            ret += walkBlock(block.check, indent);
-            ret += indent + 'if (' + block.ifVar + ') {\n';
-            ret += walkBlock(block.ifTrue, indent + '  ');
-            ret += indent + '}\n';
-          } else {
-            ret = 'XXXXXXXXX!';
-          }
-          return ret + walkBlock(block.next, indent);
-        }
-        func.JS += walkBlock(func.block, '  ');
-        // Finalize function
-        if (LINEDEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
-        func.JS += '}\n';
-        func.__result__ = true;
-      }
+            return toNiceIdent(param.ident);
+          }).filter(function(param) { return param != null }).join(', ');
 
-      return [func];
+          func.JS = '\nfunction ' + func.ident + '(' + params + ') {\n';
+          if (LINEDEBUG) func.JS += "  print(INDENT + 'Entering: " + func.ident + "'); INDENT += '  ';\n";
+
+          // Walk function blocks and generate JS
+          function walkBlock(block, indent) {
+            if (!block) return '';
+            //print('block: ' + dump(block) + ' ::: ' + dump(getLabelIds(block.labels)));
+            function getLabelLines(label, indent) {
+              //print('LABELLINES HAS INDENT ' + indent.length + ' ::' + label.lines[0].JS);
+              return label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
+            }
+            var ret = '';
+            if (block.type == 'emulated' || block.type == 'simple') {
+            //print('BLOCK HAS INDENT ' + indent.length);
+            //print('block has: ' + block.entry + ' :: ' + getLabelIds(block.labels));
+              if (block.labels.length > 1) {
+                ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
+                ret += indent + 'while(1) switch(__label__) {\n';
+                ret += block.labels.map(function(label) {
+                  return indent + '  case ' + getLabelId(label.ident) + ':\n' + getLabelLines(label, indent + '    ');
+                }).join('\n');
+                ret += '\n' + indent + '}';
+              } else {
+                ret += getLabelLines(block.labels[0], indent);
+              }
+              ret += '\n';
+            } else if (block.type == 'loop') {
+  //            if (mustGetTo(first.outLabels[0], [first.ident, first.outLabels[1]])) { /* left branch must return here, or go to right branch */ 
+              ret += indent + block.entry + ': while(1) {\n';
+              ret += walkBlock(block.inc, indent + '  ');
+              ret += walkBlock(block.rest, indent + '  ');
+              ret += indent + '}\n';
+            } else if (block.type == 'breakingif') {
+              ret += walkBlock(block.check, indent);
+              ret += indent + block.entry + ': do { if (' + block.ifVar + ') {\n';
+              ret += walkBlock(block.ifTrue, indent + '  ');
+              ret += indent + '} } while(0);\n';
+            } else if (block.type == 'if') {
+              ret += walkBlock(block.check, indent);
+              ret += indent + 'if (' + block.ifVar + ') {\n';
+              ret += walkBlock(block.ifTrue, indent + '  ');
+              ret += indent + '}\n';
+            } else {
+              ret = 'XXXXXXXXX!';
+            }
+            return ret + walkBlock(block.next, indent);
+          }
+          func.JS += walkBlock(func.block, '  ');
+          // Finalize function
+          if (LINEDEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
+          func.JS += '}\n';
+          func.__result__ = true;
+        }
+
+        ret.push(func);
+      }
+      return ret;
     },
   });
   function postJSOptimize(func) {

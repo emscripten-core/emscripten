@@ -152,3 +152,8 @@ function PROF(pass) {
   PROF_TIME = Date.now();
 }
 
+// Usage: arrayOfArrays.reduce(concatenator, []);
+function concatenator(x, y) {
+  return x.concat(y);
+}
+
