@@ -557,7 +557,7 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*96,97,98,101,101*')
 
-    def zzztest_varargs(self):
+    def test_varargs(self):
         src = '''
           #include <stdio.h>
           #include "stdarg.h"
@@ -573,7 +573,7 @@ class T(unittest.TestCase):
           }
 
           int main() {
-            vary("*cheez: %d+%d*", 10, 23);
+            vary("*cheez: %d+%d*", 10, 24);
             return 0;
           }
           '''

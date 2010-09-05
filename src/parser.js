@@ -1938,8 +1938,19 @@ function JSify(data) {
     processItem: function(item) {
       switch(item.ident) {
         case '_vsnprintf': {
-          item.JS = 'function ' + item.ident + '(dst, num, src, args) {\n' +
-                    '   _printf;\n';
+          item.JS = 
+            'function _vsnprintf(dst, num, src, ptr) {\n' +
+            '  var args = [];\n' +
+            '  while (HEAP[ptr] != 0) {\n' +
+            '    args.push(HEAP[ptr]);\n' +
+            '    ptr ++;\n' +
+            '  }\n' +
+            '  var text = __formatString.apply(null, [src].concat(args));\n' +
+            '  for (var i = 0; i < num; i++) {\n' +
+            '    HEAP[dst+i] = HEAP[text+i];\n' +
+            '    if (HEAP[dst+i] == 0) break;\n' +
+            '  }\n' +
+            '}\n';
           break;
         }
         default: {
@@ -2376,7 +2387,7 @@ function JSify(data) {
 
     // Special cases
     if (ident == '_llvm_va_start') {
-      return params[0].ident + ' = Pointer_make(Array.prototype.slice.call(arguments, 1), 0)'; // XXX 1
+      return 'HEAP[' + params[0].ident + '] = Pointer_make(Array.prototype.slice.call(arguments, 1).concat([0]), 0)'; // XXX 1
     } else if (ident == '_llvm_va_end') {
       return ';'
     }
