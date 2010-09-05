@@ -17,3 +17,6 @@ var Snippets = {
   },
 };
 
+// Synonyms
+Snippets.___cxa_atexit = Snippets._atexit;
+
