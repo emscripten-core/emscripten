@@ -1,12 +1,23 @@
+diff --git a/patches/README b/patches/README
+--- a/patches/README
++++ b/patches/README
+@@ -4,5 +4,5 @@
+ 
+   ln -s patches .hg/patches
+ 
+-After doing so, |hg qpush| sauer, and then running |python tests/runner.py| will run only sauer, using v8, and without optimizations or relooping.
++After doing so, |hg qpush| sauer, and then running |python tests/runner.py| will run only sauer, using v8, and without relooping.
+ 
 diff --git a/src/settings.js b/src/settings.js
 --- a/src/settings.js
 +++ b/src/settings.js
-@@ -1,3 +1,3 @@
+@@ -1,3 +1,4 @@
 -OPTIMIZE = 1;
 -RELOOP = 1;
-+OPTIMIZE = 0;
-+RELOOP = 0;
++OPTIMIZE = 1; // Safe
++RELOOP = 0; // Very slow, perhaps neverending?
  
++
 diff --git a/tests/runner.py b/tests/runner.py
 --- a/tests/runner.py
 +++ b/tests/runner.py
