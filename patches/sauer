@@ -1,0 +1,237 @@
+diff --git a/src/settings.js b/src/settings.js
+--- a/src/settings.js
++++ b/src/settings.js
+@@ -1,3 +1,3 @@
+-OPTIMIZE = 1;
+-RELOOP = 1;
++OPTIMIZE = 0;
++RELOOP = 0;
+ 
+diff --git a/tests/runner.py b/tests/runner.py
+--- a/tests/runner.py
++++ b/tests/runner.py
+@@ -143,7 +143,7 @@
+              print "Expected to NOT find '%s' in '%s'" % (value, string)
+              self.assertTrue(value not in string)
+ 
+-    def test_hello_world(self):
++    def zzztest_hello_world(self):
+         src = '''
+           #include <stdio.h>
+           int main()
+@@ -154,7 +154,7 @@
+         '''
+         self.do_test(src, 'hello, world!')
+ 
+-    def test_intvars(self):
++    def zzztest_intvars(self):
+         src = '''
+           #include <stdio.h>
+           int global = 20;
+@@ -183,7 +183,7 @@
+         '''
+         self.do_test(src, '*5,23,10,19,121,1,37,1,0*')
+ 
+-    def test_floatvars(self):
++    def zzztest_floatvars(self):
+         src = '''
+           #include <stdio.h>
+           int main()
+@@ -197,7 +197,7 @@
+         '''
+         self.do_test(src, '*1,10,10.5,1,1.2339')
+ 
+-    def test_if(self):
++    def zzztest_if(self):
+         src = '''
+           #include <stdio.h>
+           int main()
+@@ -211,7 +211,7 @@
+         '''
+         self.do_test(src, '*yes*')
+ 
+-    def test_loop(self):
++    def zzztest_loop(self):
+         src = '''
+           #include <stdio.h>
+           int main()
+@@ -225,7 +225,7 @@
+         '''
+         self.do_test(src, '*3600*')
+ 
+-    def test_strings(self):
++    def zzztest_strings(self):
+         src = '''
+           #include <stdio.h>
+           #include <stdlib.h>
+@@ -240,7 +240,7 @@
+         '''
+         self.do_test(src, '*4*wowie*too*76*', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
+ 
+-    def test_funcs(self):
++    def zzztest_funcs(self):
+         src = '''
+           #include <stdio.h>
+           int funcy(int x)
+@@ -255,7 +255,7 @@
+         '''
+         self.do_test(src, '*72,90*')
+ 
+-    def test_structs(self):
++    def zzztest_structs(self):
+         src = '''
+           #include <stdio.h>
+           struct S
+@@ -297,13 +297,13 @@
+           }
+     '''
+ 
+-    def test_mallocstruct(self):
++    def zzztest_mallocstruct(self):
+         self.do_test(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+ 
+-    def test_newstruct(self):
++    def zzztest_newstruct(self):
+         self.do_test(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
+ 
+-    def test_addr_of_stacked(self):
++    def zzztest_addr_of_stacked(self):
+         src = '''
+           #include <stdio.h>
+           void alter(int *y)
+@@ -320,7 +320,7 @@
+         '''
+         self.do_test(src, '*7*')
+ 
+-    def test_linked_list(self):
++    def zzztest_linked_list(self):
+         src = '''
+           #include <stdio.h>
+           struct worker_args {
+@@ -347,7 +347,7 @@
+         '''
+         self.do_test(src, '*960*')
+ 
+-    def test_class(self):
++    def zzztest_class(self):
+         src = '''
+           #include <stdio.h>
+           struct Random {
+@@ -376,7 +376,7 @@
+         '''
+         self.do_test(src, '*0*')
+ 
+-    def test_inherit(self):
++    def zzztest_inherit(self):
+         src = '''
+           #include <stdio.h>
+           struct Parent {
+@@ -404,7 +404,7 @@
+         '''
+         self.do_test(src, '*51,87,78,550,100,78,550*')
+ 
+-    def test_polymorph(self):
++    def zzztest_polymorph(self):
+         src = '''
+           #include <stdio.h>
+           struct Parent {
+@@ -423,7 +423,7 @@
+         '''
+         self.do_test(src, '*11,74*')
+ 
+-    def test_emptyclass(self):
++    def zzztest_emptyclass(self):
+         src = '''
+         #include <stdio.h>
+ 
+@@ -464,7 +464,7 @@
+           '''
+         self.do_test(src, '*97,15,3*')
+ 
+-    def test_conststructs(self):
++    def zzztest_conststructs(self):
+         src = '''
+           #include <stdio.h>
+           struct IUB {
+@@ -487,7 +487,7 @@
+           '''
+         self.do_test(src, '*97,15,3,3029*')
+ 
+-    def test_ptrtoint(self):
++    def zzztest_ptrtoint(self):
+         src = '''
+           #include <stdio.h>
+ 
+@@ -509,7 +509,7 @@
+             runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
+         self.do_test(src, '*5*', output_processor=check_warnings)
+ 
+-    def test_memcpy(self):
++    def zzztest_memcpy(self):
+         src = '''
+           #include <stdio.h>
+           #include <string.h>
+@@ -532,7 +532,7 @@
+           '''
+         self.do_test(src, '*2,2,5,8,8*\n*8,8,5,8,8*')
+ 
+-    def test_llvmswitch(self):
++    def zzztest_llvmswitch(self):
+         src = '''
+           #include <stdio.h>
+           #include <string.h>
+@@ -557,7 +557,7 @@
+           '''
+         self.do_test(src, '*96,97,98,101,101*')
+ 
+-    def test_varargs(self):
++    def zzztest_varargs(self):
+         src = '''
+           #include <stdio.h>
+           #include "stdarg.h"
+@@ -579,7 +579,7 @@
+           '''
+         self.do_test(src, '*cheez: 10+24*')
+ 
+-    def test_atexit(self):
++    def zzztest_atexit(self):
+         src = '''
+           #include <stdio.h>
+           #include <stdlib.h>
+@@ -596,13 +596,13 @@
+           '''
+         self.do_test(src, '*cleaned*')
+ 
+-    def test_fannkuch(self):
++    def zzztest_fannkuch(self):
+         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
+         for i, j in results:
+           src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
+           self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
+ 
+-    def test_fasta(self):
++    def zzztest_fasta(self):
+         results = [ (1,'''GG*ctt**tgagc**'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg**'''),
+ (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg**''') ]
+         for i, j in results:
+@@ -611,7 +611,7 @@
+ 
+     # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
+     #              used, see Mozilla bug 593659.
+-    def zzztest_sauer(self):
++    def test_sauer(self):
+       self.do_test(path_from_root(['tests', 'sauer']), 'Hello sauer world!', main_file='command.cpp')
+ 
+ if __name__ == '__main__':
+diff --git a/tests/settings.py b/tests/settings.py
+--- a/tests/settings.py
++++ b/tests/settings.py
+@@ -9,7 +9,7 @@
+ JS_ENGINE_OPTS=[]#['-j']
+ PARSER_ENGINE=SPIDERMONKEY_SHELL
+ PARSER_OPTS=[]#['-j']
+-#PARSER_ENGINE=V8_ENGINE
++PARSER_ENGINE=V8_ENGINE
+ #PARSER_OPTS = []
+ #JS_ENGINE=V8_ENGINE
+ JS_COMPILER=path_from_root(['src', 'parser.js'])

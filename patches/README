@@ -1,0 +1,8 @@
+This directory contains a useful mercurial patch queue.
+
+To use it, link .hg/patches to it (it isn't possible to add .hg/patches itself directly, hence the need for this), using something like
+
+  ln -s patches .hg/patches
+
+After doing so, |hg qpush| sauer, and then running |python tests/runner.py| will run only sauer, using v8, and without optimizations or relooping.
+
