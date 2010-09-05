@@ -2086,6 +2086,7 @@ function JSify(data) {
   }
 
   // 'assign'
+  // SLOW?! XXX FIXME These two account for most of the runtime in sauer!? 34&25 seconds respectively
   substrate.addZyme('AssignSplitter', makeSplitter('intertype', 'assign', 'JS', 'value', ['funcData']));
   substrate.addZyme('AssignCombiner', makeCombiner('intertype', 'assign', 'JS', 'JS', function (item) {
     // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
