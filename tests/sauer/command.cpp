@@ -1402,7 +1402,7 @@ void fatal(const char *s, ...)    // failure exit
 
 int main()
 {
-  printf("Hello sauer world\n");
+  printf("Hello sauer world!\n");
 
   return 0;
 }

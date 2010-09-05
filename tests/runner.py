@@ -609,8 +609,10 @@ class T(unittest.TestCase):
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)
 
+    # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
+    #              used, see Mozilla bug 593659.
     def zzztest_sauer(self):
-      self.do_test(path_from_root(['tests', 'sauer']), 'wakawaka', main_file='command.cpp')
+      self.do_test(path_from_root(['tests', 'sauer']), 'Hello sauer world!', main_file='command.cpp')
 
 if __name__ == '__main__':
     if DEBUG: print "LLVM_GCC:", LLVM_GCC
