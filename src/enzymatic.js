@@ -96,22 +96,22 @@ Substrate.prototype = {
             return outputs[0];
           }
           results = results.concat(outputs.filter(function(output) { return !!output.__result__; }))
-/*
-          this.items = this.items.filter(function(item) { PROF(); return selected.indexOf(item) == -1 });
-          outputs.filter(function(output) { return !output.__result__; }).forEach(this.addItem, this);
-*/
           var nonResults = outputs.filter(function(output) { return !output.__result__; });
 
           var keptUids = {};
-          nonResults.forEach(function(s) {
+          for (var i = 0; i < nonResults.length; i++) {
+            var s = nonResults[i];
             if (s.__uid__) {
               keptUids[s.__uid__] = true;
             } else {
               this.addItem(s);
             }
-          }, this);
+          }
           var droppedUids = {};
-          selected.forEach(function(s) { if (!keptUids[s.__uid__]) droppedUids[s.__uid__] = true });
+          for (var i = 0; i < selected.length; i++) {
+            var s = selected[i];
+            if (!keptUids[s.__uid__]) droppedUids[s.__uid__] = true;
+          }
           this.items = this.items.filter(function(item) {
             if (!droppedUids[item.__uid__]) {
               return true;
@@ -150,14 +150,15 @@ Zyme.prototype = {
   },
   process: function(items) {
     var ret = [];
-    items.forEach(function(item) {
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
       try {
         ret = ret.concat(this.processItem(item));
       } catch (e) {
         print("Exception in process(), current item is: " + dump(item));
         throw e;
       }
-    }, this);
+    }
     return ret;
   },
   processPairs: function(items, func) {
