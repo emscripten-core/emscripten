@@ -140,9 +140,9 @@ function _strlen(p) {
 //  return p.slab.length; // XXX might want to find the null terminator...
 }
 
-function String_copy(p) {
+function String_copy(p, addZero) {
   // XXX hardcoded ptr impl
-  return HEAP.slice(p, p+_strlen(p)).concat([0]);
+  return HEAP.slice(p, p+_strlen(p)).concat(addZero ? [0] : []);
 }
 
 // stdlib.h
