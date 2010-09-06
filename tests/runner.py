@@ -341,11 +341,27 @@ class T(unittest.TestCase):
               total += c->value;
               c = c->next;
             }
+
+            // Chunk of em
+            worker_args chunk[10];
+            for (int i = 0; i < 9; i++) {
+              chunk[i].value = i*10;
+              chunk[i].next = &chunk[i+1];
+            }
+            chunk[9].value = 90;
+            chunk[9].next = &chunk[0];
+
+            c = chunk;
+            do {
+              total += c->value;
+              c = c->next;
+            } while (c != chunk);
+ 
             printf("*%d*\\n", total);
             return 0;
           }
         '''
-        self.do_test(src, '*960*')
+        self.do_test(src, '*1410*')
 
     def test_class(self):
         src = '''

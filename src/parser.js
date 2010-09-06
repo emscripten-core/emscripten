@@ -1397,6 +1397,11 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         };
         if (!RELOOP) return def;
 
+        if (!entry) {
+          assertTrue(labels.length == 0);
+          return null; // Empty block - not even an entry
+        }
+
         function getLastLine(block) {
           //dprint('get last line at: ' + block.labels[0].ident);
           if (block.next) return getLastLine(block.next);
@@ -1517,13 +1522,16 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
               }
             });
             // Fix inc branch into rest
-            var nextEntry;
+            var nextEntry = null;
             first.outLabels.forEach(function(outLabel) {
               if (outLabel != pivot.ident) {
                 replaceLabels(lastLine, outLabel, 'BNOPP');
                 nextEntry = outLabel;
               }
             });
+            if (nextEntry == entry) { // We loop back to ourselves, the entire loop is just us
+              nextEntry = null;
+            }
             var ret = {
               type: 'loop',
               labels: loopLabels,
@@ -1531,8 +1539,8 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
               inc: makeBlock([isolate(first)], entry, labelsDict),
               rest: makeBlock(replaceInLabels(otherLoopLabels, entry), nextEntry, labelsDict),
             };
-            dprint('  getting last line for block starting with ' + entry);
-            var lastLoopLine = getLastLine(ret.rest);
+            dprint('  getting last line for block starting with ' + entry + ' and nextEntry: ' + nextEntry);
+            var lastLoopLine = getLastLine(nextEntry ? ret.rest : ret.inc);
             if (lastLoopLine) {
               replaceLabels(lastLoopLine, 'BCONT' + entry, 'BNOPP'); // Last line will feed back into the loop anyhow
             }
