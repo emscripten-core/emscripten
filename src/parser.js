@@ -16,6 +16,8 @@ if (!this['read']) {
 }
 
 load('settings.js');
+if (LABEL_DEBUG && RELOOP) throw "Cannot debug labels if they have been relooped!";
+
 load('utility.js');
 load('enzymatic.js');
 load('snippets.js');
@@ -2064,20 +2066,20 @@ function JSify(data) {
           }).filter(function(param) { return param != null }).join(', ');
 
           func.JS = '\nfunction ' + func.ident + '(' + params + ') {\n';
-          if (LINEDEBUG) func.JS += "  print(INDENT + 'Entering: " + func.ident + "'); INDENT += '  ';\n";
+          if (LABEL_DEBUG) func.JS += "  print(INDENT + 'Entering: " + func.ident + "'); INDENT += '  ';\n";
 
           // Walk function blocks and generate JS
           function walkBlock(block, indent) {
             if (!block) return '';
-            //print('block: ' + dump(block) + ' ::: ' + dump(getLabelIds(block.labels)));
             function getLabelLines(label, indent) {
-              //print('LABELLINES HAS INDENT ' + indent.length + ' ::' + label.lines[0].JS);
-              return label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
+              var ret = '';
+              if (LABEL_DEBUG) {
+                ret += indent + "  print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+              }
+              return ret + label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
             }
             var ret = '';
             if (block.type == 'emulated' || block.type == 'simple') {
-            //print('BLOCK HAS INDENT ' + indent.length);
-            //print('block has: ' + block.entry + ' :: ' + getLabelIds(block.labels));
               if (block.labels.length > 1) {
                 ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
                 ret += indent + 'while(1) switch(__label__) {\n';
@@ -2112,7 +2114,7 @@ function JSify(data) {
           }
           func.JS += walkBlock(func.block, '  ');
           // Finalize function
-          if (LINEDEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
+          if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
           func.JS += '}\n';
           func.__result__ = true;
         }
@@ -2164,10 +2166,12 @@ function JSify(data) {
     if (value)
       item.JS += ' = ' + value;
     item.JS += ';';
+/*
     if (LINEDEBUG && value) {
       item.JS += '\nprint(INDENT + "' + item.ident + ' == " + JSON.stringify(' + item.ident + '));';
       item.JS += '\nprint(INDENT + "' + item.ident + ' == " + (' + item.ident + ' && ' + item.ident + '.toString ? ' + item.ident + '.toString() : ' + item.ident + '));';
     }
+*/
   }));
 
   // Function lines
@@ -2201,10 +2205,12 @@ function JSify(data) {
       case VAR_EMULATED: ret = makeSetValue(ident, 0, value) + ';'; break;
       default: print('zz unknown [store] impl: ' + impl);
     }
+/*
     if (LINEDEBUG && value) {
       ret += '\nprint(INDENT + "' + ident + ' == " + JSON.stringify(' + ident + '));';
       ret += '\nprint(INDENT + "' + ident + ' == " + (' + ident + ' && ' + ident + '.toString ? ' + ident + '.toString() : ' + ident + '));';
     }
+*/
     return ret;
   });
 
@@ -2275,7 +2281,7 @@ function JSify(data) {
   });
   makeFuncLineZyme('return', function(item) {
     var ret = '';
-    if (LINEDEBUG) ret += "INDENT = INDENT.substr(0, INDENT.length-2);\n";
+    if (LABEL_DEBUG) ret += "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     ret += 'return';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);

@@ -30,6 +30,10 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 //==========================================
 #endif
 
+#if LABEL_DEBUG
+INDENT = '';
+#endif
+
 function abort(text) {
   text = "ABORT: " + text;
   print(text + "\n");
