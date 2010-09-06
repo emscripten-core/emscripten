@@ -68,6 +68,7 @@ function pointingLevels(type) {
 
 function toNiceIdent(ident) {
   if (parseFloat(ident) == ident) return ident;
+  if (ident == 'null') return '0'; // see parseNumerical
   return ident.replace(/[" \.@%:<>,\*]/g, '_');
 }
 
@@ -324,6 +325,10 @@ function parseNumerical(value, type) {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     return IEEEUnHex(value);
+  }
+  if (value == 'null') {
+    // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
+    return '0';
   }
   return value;
 }
@@ -2139,12 +2144,11 @@ function JSify(data) {
     item.JS = (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
 
     var type = item.value.type.text;
-    var value = item.value.JS;
+    var value = parseNumerical(item.value.JS);
     //print("zz var: " + item.JS);
     var impl = getVarData(item.funcData, item.ident);
     switch (impl) {
       case VAR_NATIVE: {
-        value = parseNumerical(value, type);
         break;
       }
       case VAR_NATIVIZED: {

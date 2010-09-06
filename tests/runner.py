@@ -357,11 +357,25 @@ class T(unittest.TestCase):
               c = c->next;
             } while (c != chunk);
  
-            printf("*%d*\\n", total);
+            printf("*%d,%d*\\n", total, b.next);
+            // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
+
             return 0;
           }
         '''
-        self.do_test(src, '*1410*')
+        self.do_test(src, '*1410,0*')
+
+    def test_assert(self):
+        src = '''
+          #include <stdio.h>
+          #include <assert.h>
+          int main() {
+            assert(1 == true); // pass
+            assert(1 == false); // fail
+            return 1;
+          }
+        '''
+        self.do_test(src, 'Assertion failed: 1 == false')
 
     def test_class(self):
         src = '''
