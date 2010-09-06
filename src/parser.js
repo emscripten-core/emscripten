@@ -1942,8 +1942,9 @@ function JSify(data) {
   substrate.addZyme('FunctionStub', {
     selectItem: function(item) { return item.intertype == 'functionStub' && !item.JS },
     processItem: function(item) {
-      if (item.ident in Snippets) {
-        item.JS = item.ident + ' = ' + Snippets[item.ident].toString();
+      var shortident = item.ident.substr(1);
+      if (shortident in Snippets) {
+        item.JS = item.ident + ' = ' + Snippets[shortident].toString();
       } else {
         item.JS = '// stub for ' + item.ident;
       }

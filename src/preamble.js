@@ -132,12 +132,17 @@ function _putchar(p) {
 }
 
 function _strlen(p) {
-// XXX hardcoded ptr impl
+  // XXX hardcoded ptr impl
   var q = p;
   while (HEAP[q] != 0) q++;
   return q - p;
 //  p = Pointer_niceify(p);
 //  return p.slab.length; // XXX might want to find the null terminator...
+}
+
+function String_copy(p) {
+  // XXX hardcoded ptr impl
+  return HEAP.slice(p, p+_strlen(p)).concat([0]);
 }
 
 // stdlib.h

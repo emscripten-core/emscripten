@@ -1,5 +1,5 @@
 var Snippets = {
-  _vsnprintf: function(dst, num, src, ptr) {
+  vsnprintf: function(dst, num, src, ptr) {
     var args = [];
     while (HEAP[ptr] != 0) {
       args.push(HEAP[ptr]);
@@ -12,11 +12,19 @@ var Snippets = {
     }
   },
 
-  _atexit: function(func) {
+  atexit: function(func) {
     __ATEXIT__.push(func);
+  },
+
+  strspn: function(pstr, pset) {
+    var str = String_copy(pstr);
+    var set = String_copy(pset);
+    var i = 0;
+    while (set.indexOf(str[i]) != -1) i++; // Must halt, as 0 is in both
+    return i;
   },
 };
 
-// Synonyms
-Snippets.___cxa_atexit = Snippets._atexit;
+// Aliases
+Snippets.__cxa_atexit = Snippets.atexit;
 
