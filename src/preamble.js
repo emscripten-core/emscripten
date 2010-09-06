@@ -11,6 +11,25 @@ var __ATEXIT__ = [];
 var HEAP = [];
 var HEAPTOP = 0;
 
+#if SAFE_HEAP
+// Semi-manual memory corruption debugging
+HEAP_WATCHED = {};
+function SAFE_HEAP_STORE(dest, value) {
+  if (dest in HEAP_WATCHED) {
+    print((new Error()).stack);
+    throw "Bad store!" + dest;
+  }
+  HEAP[dest] = value;
+}
+function __Z16PROTECT_HEAPADDRPv(dest) {
+  HEAP_WATCHED[dest] = true;
+}
+function __Z18UNPROTECT_HEAPADDRPv(dest) {
+  delete HEAP_WATCHED[dest];
+}
+//==========================================
+#endif
+
 function abort(text) {
   text = "ABORT: " + text;
   print(text + "\n");
@@ -41,7 +60,11 @@ function Pointer_make(slab, pos) {
   // Finalize
   var ret = _malloc(Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
+#if SAFE_HEAP
+    SAFE_HEAP_STORE(ret + i, slab[pos + i]);
+#else
     HEAP[ret + i] = slab[pos + i];
+#endif
   }
   return ret;
 //  return { slab: slab, pos: pos ? pos : 0 };
@@ -157,7 +180,11 @@ function _atoi(s) {
 function _llvm_memcpy_i32(dest, src, num, idunno) {
 // XXX hardcoded ptr impl
   for (var i = 0; i < num; i++) {
+#if SAFE_HEAP
+    SAFE_HEAP_STORE(dest + i, HEAP[src + i]);
+#else
     HEAP[dest + i] = HEAP[src + i];
+#endif
   }
 //  dest = Pointer_niceify(dest);
 //  src = Pointer_niceify(src);

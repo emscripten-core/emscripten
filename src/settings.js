@@ -1,3 +1,5 @@
 OPTIMIZE = 1;
 RELOOP = 1;
+LINEDEBUG = 0;
+SAFE_HEAP = 0;
 

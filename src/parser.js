@@ -6,10 +6,6 @@
  *    * Re-use variables (of the same kind, native/nativized vs. emulated).
  */
 
-// Options
-
-LINEDEBUG = 0;
-
 // Prep - allow this to run in both SpiderMonkey and V8
 
 if (!this['load']) {
@@ -25,6 +21,34 @@ load('enzymatic.js');
 load('snippets.js');
 
 // Tools
+
+// Simple #if/else/endif preprocessing for a file. Checks if the
+// ident checked is true in our global.
+function preprocess(text) {
+  var lines = text.split('\n');
+  var ret = '';
+  var show = true;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (line[0] != '#') {
+      if (show) {
+        ret += line + '\n';
+      }
+    } else {
+      if (line[1] == 'i') { // if
+        var ident = line.substr(4);
+        show = !!this[ident];
+      } else if (line[2] == 'l') { // else
+        show = !show;
+      } else if (line[2] == 'n') { // endif
+        show = true;
+      } else {
+        throw "Unclear preprocessor command: " + line;
+      }
+    }
+  }
+  return ret;
+}
 
 function addPointing(type) { return type + '*' }
 function removePointing(type, num) {
@@ -1829,7 +1853,11 @@ function JSify(data) {
   }
 
   function makeSetValue(ptr, pos, value, noNeedFirst) {
-    return makeGetSlab(ptr) + '[' + (noNeedFirst ? '0' : makeGetPos(ptr)) + (pos ? ' + ' + pos : '') + '] = ' + value;
+    if (SAFE_HEAP) {
+      return 'SAFE_HEAP_STORE(' + (noNeedFirst ? '0' : makeGetPos(ptr)) + (pos ? ' + ' + pos : '') + ', ' + value + ')';
+    } else {
+      return makeGetSlab(ptr) + '[' + (noNeedFirst ? '0' : makeGetPos(ptr)) + (pos ? ' + ' + pos : '') + '] = ' + value;
+    }
   }
 
   function makeEmptyStruct(type) {
@@ -2390,7 +2418,11 @@ function JSify(data) {
 
     // Special cases
     if (ident == '_llvm_va_start') {
-      return 'HEAP[' + params[0].ident + '] = Pointer_make(Array.prototype.slice.call(arguments, 1).concat([0]), 0)'; // XXX 1
+      if (SAFE_HEAP) {
+        return 'SAFE_HEAP_STORE(' + params[0].ident + ', Pointer_make(Array.prototype.slice.call(arguments, 1).concat([0]), 0))';
+      } else {
+        return 'HEAP[' + params[0].ident + '] = Pointer_make(Array.prototype.slice.call(arguments, 1).concat([0]), 0)'; // XXX 1
+      }
     } else if (ident == '_llvm_va_end') {
       return ';'
     }
@@ -2438,7 +2470,7 @@ function JSify(data) {
     return ret.map(function(item) { return item.JS }).join('\n');
   }
 
-  return read('preamble.js') + finalCombiner(substrate.solve()) + read('postamble.js');
+  return preprocess(read('preamble.js')) + finalCombiner(substrate.solve()) + read('postamble.js');
 //  return finalCombiner(substrate.solve());
 }
 
