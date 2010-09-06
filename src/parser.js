@@ -83,8 +83,10 @@ function isStructPointerType(type) {
 
 function isStructType(type) {
   if (/^\[\d+\ x\ (.*)\]/g.test(type)) return true; // [15 x ?] blocks. Like structs
-  var proof = '%struct';
-  return type.substr(0, proof.length) == proof && !isPointerType(type);
+  if (isPointerType(type)) return false;
+  var proofs = ['%struct', '%"struct'];
+  return type.substr(0, proofs[0].length) == proofs[0] ||
+         type.substr(0, proofs[1].length) == proofs[1];
 }
 
 function isPointerType(type) { // TODO!
@@ -1092,6 +1094,7 @@ function analyzer(data) {
           type.flatIndexes = type.fields.map(function(field) {
             var curr = type.flatSize;
             if (isStructType(field)) {
+              dprint('types', 'type: ' + type.name_ + ' is so far of size ' + curr + ' and has ' + field + ' which is sized ' + item.types[field].flatSize);
               var size = item.types[field].flatSize;
               type.flatSize += size;
               sizes.push(size);
@@ -1101,6 +1104,7 @@ function analyzer(data) {
             }
             return curr;
           });
+          dprint('types', 'type: ' + type.name_ + ' has FINAL size of ' + type.flatSize);
           if (type.needsFlattening && dedup(sizes).length == 1) {
             type.flatFactor = sizes[0];
           }
