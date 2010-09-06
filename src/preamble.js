@@ -101,14 +101,16 @@ function __formatString() {
   while (curr != 0) {
     curr = HEAP[textIndex];
     next = HEAP[textIndex+1];
-    // We only support numbers - use puts for strings!
     if (curr == '%'.charCodeAt(0) && ['d', 'f'].indexOf(String.fromCharCode(next)) != -1) {
       String(arguments[argIndex]).split('').forEach(function(chr) {
         ret.push(chr.charCodeAt(0));
       });
       argIndex += 1;
       textIndex += 2;
-      continue;
+    } else if (curr == '%'.charCodeAt(0) && next == 's'.charCodeAt(0)) {
+      ret = ret.concat(String_copy(arguments[argIndex]));
+      argIndex += 1;
+      textIndex += 2;
     } else {
       ret.push(curr);
       textIndex ++;
