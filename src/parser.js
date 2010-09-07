@@ -1850,6 +1850,9 @@ function JSify(data) {
   function makePointer(slab, pos) {
     // XXX hardcoded ptr impl
     if (slab == 'HEAP') return pos;
+    if (slab[0] != '[') {
+      slab = '[' + slab + ']';
+    }
     return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + ')';
     //    return '{ slab: ' + slab + ', pos: ' + (pos ? pos : 0) + ' }';
     //    return '[' + slab + ', ' + (pos ? pos : 0) + ']';
@@ -1913,10 +1916,8 @@ function JSify(data) {
   // Gets an entire constant expression
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type);
-    if (isNumberType(type)) {
-      return makePointer(value.text);
-    } else if (pointingLevels(type) == 1) {
-      return makePointer(value.text);
+    if (isNumberType(type) || pointingLevels(type) == 1) {
+      return makePointer(parseNumerical(value.text));
     } else if (value.text == 'zeroinitializer') {
       return JSON.stringify(makeEmptyStruct(type));
     } else if (value.text[0] == '"') {
@@ -1929,7 +1930,7 @@ function JSify(data) {
         function handleSegment(segment) {
           //print('// seggg: ' + JSON.stringify(segment) + '\n')
           if (segment[1].text == 'null') {
-            return 'null';
+            return '0';
           } else if (segment[1].text == 'zeroinitializer') {
             return JSON.stringify(makeEmptyStruct(segment[0].text));
           } else if (segment[1].text == 'getelementptr') {
@@ -1951,7 +1952,7 @@ function JSify(data) {
             return '???!???';
           }
         };
-        return splitTokenList(tokens).map(handleSegment).join(', ');
+        return splitTokenList(tokens).map(handleSegment).map(parseNumerical).join(', ');
       }
       if (value.item) {
         // list of items
@@ -2066,7 +2067,7 @@ function JSify(data) {
           }).filter(function(param) { return param != null }).join(', ');
 
           func.JS = '\nfunction ' + func.ident + '(' + params + ') {\n';
-          if (LABEL_DEBUG) func.JS += "  print(INDENT + 'Entering: " + func.ident + "'); INDENT += '  ';\n";
+          if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
           // Walk function blocks and generate JS
           function walkBlock(block, indent) {
@@ -2084,7 +2085,7 @@ function JSify(data) {
                 ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
                 ret += indent + 'while(1) switch(__label__) {\n';
                 ret += block.labels.map(function(label) {
-                  return indent + '  case ' + getLabelId(label.ident) + ':\n' + getLabelLines(label, indent + '    ');
+                  return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n' + getLabelLines(label, indent + '    ');
                 }).join('\n');
                 ret += '\n' + indent + '}';
               } else {
