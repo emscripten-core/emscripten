@@ -42,6 +42,11 @@ class T(unittest.TestCase):
               shutil.copy(os.path.join(src, f), dirname)
             shutil.move(os.path.join(dirname, main_file), filename)
 
+          # Copy Emscripten C++ API
+          shutil.copy(path_from_root(['src', 'include', 'emscripten.h']), dirname)
+
+          # Begin
+
           if DEBUG: print "[[C++ => LLVM]]"
           try:
             os.remove(filename + '.o')
@@ -49,7 +54,7 @@ class T(unittest.TestCase):
             pass
           os.chdir(dirname)
           cwd = os.getcwd()
-          output = Popen([LLVM_GCC, '-emit-llvm', '-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+          output = Popen([LLVM_GCC, '-DEMSCRIPTEN', '-emit-llvm', '-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           os.chdir(cwd)
           if not os.path.exists(filename + '.o'):
             print "Failed to compile C/C++ source:\n\n", output
@@ -283,6 +288,8 @@ class T(unittest.TestCase):
     gen_struct_src = '''
           #include <stdio.h>
           #include <stdlib.h>
+          #include "emscripten.h"
+
           struct S
           {
             int x, y;
@@ -298,7 +305,7 @@ class T(unittest.TestCase):
     '''
 
     def test_mallocstruct(self):
-        self.do_test(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+        self.do_test(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(ES_SIZEOF(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
     def test_newstruct(self):
         self.do_test(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
@@ -539,10 +546,13 @@ class T(unittest.TestCase):
             runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
         self.do_test(src, '*5*', output_processor=check_warnings)
 
-    def test_memcpy(self):
+    def test_sizeof(self):
         src = '''
           #include <stdio.h>
           #include <string.h>
+          #include "emscripten.h"
+
+          struct A { int x, y; };
 
           int main( int argc, const char *argv[] ) {
             int *a = new int[10];
@@ -555,12 +565,22 @@ class T(unittest.TestCase):
               c[i] = 8;
             printf("*%d,%d,%d,%d,%d*\\n", a[0], a[9], *b, c[0], c[9]);
             // Should overwrite a, but not touch b!
-            memcpy(a, c, 10*sizeof(int));
+            memcpy(a, c, 10*ES_SIZEOF(int));
             printf("*%d,%d,%d,%d,%d*\\n", a[0], a[9], *b, c[0], c[9]);
+
+            // Part 2
+//            A as[3] = { { 5, 12 }, { 6, 990 }, { 7, 2 } }; // XXX TODO!
+            A as[3];
+            as[0].x = 5; as[0].y = 12;
+            as[1].x = 6; as[1].y = 990;
+            as[2].x = 7; as[2].y = 2;
+            memcpy(&as[0], &as[2], ES_SIZEOF(A));
+
+            printf("*%d,%d,%d,%d,%d,%d*\\n", as[0].x, as[0].y, as[1].x, as[1].y, as[2].x, as[2].y);
             return 0;
           }
           '''
-        self.do_test(src, '*2,2,5,8,8*\n*8,8,5,8,8*')
+        self.do_test(src, '*2,2,5,8,8*\n*8,8,5,8,8*\n*7,2,6,990,7,2*')
 
     def test_llvmswitch(self):
         src = '''
