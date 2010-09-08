@@ -13,10 +13,12 @@
 // and stores them hardcoded as raw values, unlike say offsets
 // within a structure which it nicely details using getelementptr.
 //
-// You should always use ES_SIZEOF instead of sizeof when using
-// Emscripten.
+// You should always use ES_SIZEOF|V instead of sizeof when using
+// Emscripten. Use ES_SIZEOF for types, ES_SIZEOV for values.
 //
-// Note that this only works with types, not values.
+// Note that there is no way for Emscripten to know if you used
+// ES_SIZEOF properly, or if you did and and you used sizeof.
+// No warning will be shown if you do not use it.
 //
 // Sadly
 //        #define ES_SIZEOF(x) int(&((x*)(NULL))[1])
@@ -26,6 +28,9 @@
   template<class T>
   int es_sizeof(T* x) { return int(&x[1]); }
   #define ES_SIZEOF(T) es_sizeof((T*)NULL)
+  template<class T>
+  int es_sizeov(T* x) { return es_sizeof((T*)NULL); }
+  #define ES_SIZEOV(V) es_sizeof(V)
 #else
   #define ES_SIZEOF(T) sizeof(T)
 #endif
