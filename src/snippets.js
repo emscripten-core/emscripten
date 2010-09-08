@@ -40,6 +40,14 @@ var Snippets = {
     }
   },
 
+  strcat: function(pdest, psrc) {
+    var i = 0;
+    do {
+      HEAP[pdest+i] = HEAP[psrc+i];
+      i ++;
+    } while (HEAP[psrc+i-1] != 0);
+  },
+
   strcmp: function(px, py) {
     var i = 0;
     while (true) {
