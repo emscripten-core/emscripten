@@ -569,11 +569,7 @@ class T(unittest.TestCase):
             printf("*%d,%d,%d,%d,%d*\\n", a[0], a[9], *b, c[0], c[9]);
 
             // Part 2
-//            A as[3] = { { 5, 12 }, { 6, 990 }, { 7, 2 } }; // XXX TODO!
-            A as[3];
-            as[0].x = 5; as[0].y = 12;
-            as[1].x = 6; as[1].y = 990;
-            as[2].x = 7; as[2].y = 2;
+            A as[3] = { { 5, 12 }, { 6, 990 }, { 7, 2 } };
             memcpy(&as[0], &as[2], ES_SIZEOF(A));
 
             printf("*%d,%d,%d,%d,%d,%d*\\n", as[0].x, as[0].y, as[1].x, as[1].y, as[2].x, as[2].y);
