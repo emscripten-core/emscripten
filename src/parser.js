@@ -1912,7 +1912,7 @@ function JSify(data) {
     if (isNumberType(type) || pointingLevels(type) == 1) {
       return makePointer(parseNumerical(value.text));
     } else if (value.text == 'zeroinitializer') {
-      return JSON.stringify(makeEmptyStruct(type));
+      return makePointer(JSON.stringify(makeEmptyStruct(type)));
     } else if (value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
       return makePointer('intArrayFromString("' + value.text + '")');
