@@ -48,10 +48,17 @@ var Snippets = {
     }
   },
 
+  strlen: function(ptr) {
+    var i = 0;
+    while (HEAP[ptr+i] != 0) i++;
+    return i;
+  },
+
   strcat: function(pdest, psrc) {
+    var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     do {
-      HEAP[pdest+i] = HEAP[psrc+i];
+      HEAP[pdest+len+i] = HEAP[psrc+i];
       i ++;
     } while (HEAP[psrc+i-1] != 0);
   },
