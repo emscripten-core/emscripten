@@ -3,6 +3,8 @@
 #ifndef _TOOLS_H
 #define _TOOLS_H
 
+#include "emscripten.h" // XXX Emscripten
+
 #ifdef NULL
 #undef NULL
 #endif
@@ -173,7 +175,7 @@ struct databuf
     void put(const T *vals, int numvals)
     {
         if(maxlen-len<numvals) flags |= OVERWROTE;
-        memcpy(&buf[len], vals, min(maxlen-len, numvals)*sizeof(T));
+        memcpy(&buf[len], vals, min(maxlen-len, numvals)*ES_SIZEOF(T));
         len += min(maxlen-len, numvals);
     }
 
@@ -181,7 +183,7 @@ struct databuf
     {
         int read = min(maxlen-len, numvals);
         if(read<numvals) flags |= OVERREAD;
-        memcpy(vals, &buf[len], read*sizeof(T));
+        memcpy(vals, &buf[len], read*ES_SIZEOF(T));
         len += read;
         return read;
     }
@@ -207,7 +209,7 @@ static inline float heapscore(const T &n) { return n; }
 template<class T, class U>
 static inline void quicksort(T *buf, int n, int (__cdecl *func)(U *, U *))
 {
-    qsort(buf, n, sizeof(T), (int (__cdecl *)(const void *,const void *))func);
+    qsort(buf, n, ES_SIZEOF(T), (int (__cdecl *)(const void *,const void *))func);
 }
 
 template <class T> struct vector
@@ -268,7 +270,7 @@ template <class T> struct vector
         else
         {
             growbuf(ulen+v.ulen);
-            if(v.ulen) memcpy(&buf[ulen], v.buf, v.ulen*sizeof(T));
+            if(v.ulen) memcpy(&buf[ulen], v.buf, v.ulen*ES_SIZEOF(T));
             ulen += v.ulen;
             v.ulen = 0;
         }
@@ -309,10 +311,10 @@ template <class T> struct vector
         if(!alen) alen = max(MINSIZE, sz);
         else while(alen < sz) alen *= 2;
         if(alen <= olen) return;
-        uchar *newbuf = new uchar[alen*sizeof(T)];
+        uchar *newbuf = new uchar[alen*ES_SIZEOF(T)];
         if(olen > 0)
         {
-            memcpy(newbuf, buf, olen*sizeof(T));
+            memcpy(newbuf, buf, olen*ES_SIZEOF(T));
             delete[] (uchar *)buf;
         }
         buf = (T *)newbuf;
@@ -863,11 +865,11 @@ struct stream
     virtual int printf(const char *fmt, ...) { return -1; }
     virtual uint getcrc() { return 0; }
 
-    template<class T> bool put(T n) { return write(&n, sizeof(n)) == sizeof(n); }
+    template<class T> bool put(T n) { return write(&n, ES_SIZEOV(n)) == ES_SIZEOV(n); }
     template<class T> bool putlil(T n) { return put<T>(lilswap(n)); }
     template<class T> bool putbig(T n) { return put<T>(bigswap(n)); }
 
-    template<class T> T get() { T n; return read(&n, sizeof(n)) == sizeof(n) ? n : 0; }
+    template<class T> T get() { T n; return read(&n, ES_SIZEOV(n)) == ES_SIZEOV(n) ? n : 0; }
     template<class T> T getlil() { return lilswap(get<T>()); }
     template<class T> T getbig() { return bigswap(get<T>()); }
 };
