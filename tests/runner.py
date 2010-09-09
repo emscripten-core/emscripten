@@ -678,8 +678,16 @@ class T(unittest.TestCase):
 
     # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
     #              used, see Mozilla bug 593659.
+    # XXX Need to run without RELOOPING.
+    # With those caveats, will pass successfully
     def zzztest_sauer(self):
-      self.do_test(path_from_root(['tests', 'sauer']), 'Hello sauer world!', main_file='command.cpp')
+      global PARSER_ENGINE
+      try:
+        old = PARSER_ENGINE
+        PARSER_ENGINE = V8_ENGINE
+        self.do_test(path_from_root(['tests', 'sauer']), 'Hello from sauer', main_file='command.cpp')
+      finally:
+        PARSER_ENGINE = old
 
 if __name__ == '__main__':
     if DEBUG: print "LLVM_GCC:", LLVM_GCC
