@@ -522,7 +522,7 @@ function intertyper(data) {
     selectItem: function(item) { return item.tokens && item.tokens[0].text == 'target' },
     processItem: function(item) { return [] },
   });
-  // globals: type or constant
+  // globals: type or variable
   substrate.addZyme('Global', {
     selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=' },
     processItem: function(item) {
@@ -548,24 +548,14 @@ function intertyper(data) {
           fields: fields,
           lineNum: item.lineNum,
         }]
-      } else if (item.tokens[2].text == 'global') {
-        // variable
-        return [{
-        __result__: true,
-          intertype: 'globalVariable',
-          ident: item.tokens[0].text,
-          type: item.tokens[3].text,
-          value: item.tokens[4],
-          lineNum: item.lineNum,
-        }]
       } else {
-        // constant
+        // variable
         var ident = item.tokens[0].text;
         while (item.tokens[2].text in { 'private': 0, 'constant': 0, 'appending': 0, 'global': 0, 'weak_odr': 0, 'internal': 0 })
           item.tokens.splice(2, 1);
         var ret = {
           __result__: true,
-          intertype: 'globalConstant',
+          intertype: 'globalVariable',
           ident: ident,
           type: item.tokens[2],
           lineNum: item.lineNum,
@@ -975,7 +965,7 @@ function analyzer(data) {
     selectItem: function(item) { return item.sorted && !item.gathered; },
     processItem: function(item) {
       // Single-liners
-      ['globalConstant', 'globalVariable', 'functionStub', 'type'].forEach(function(intertype) {
+      ['globalVariable', 'functionStub', 'type'].forEach(function(intertype) {
         var temp = splitter(item.items, function(item) { return item.intertype == intertype });
         item[intertype + 's'] = temp.splitOut;
         item.items = temp.leftIn;
@@ -1844,7 +1834,6 @@ function JSify(data) {
   substrate = new Substrate('JSifyer');
 
   [].concat(values(data.types).filter(function(type) { return type.lineNum != '?' }))
-    .concat(data.globalConstants)
     .concat(data.globalVariables)
     .concat(data.functions)
     .concat(data.functionStubs)
@@ -1917,25 +1906,6 @@ function JSify(data) {
     return ret;
   }
 
-  // globalVariable
-  substrate.addZyme('GlobalVariable', {
-    selectItem: function(item) { return item.intertype == 'globalVariable' && !item.JS },
-    processItem: function(item) {
-      dprint('gvar', '// zz global Var: ' + dump(item) + ' :: ' + dump(item.value));
-      var value = item.value;
-      item.JS = 'var ' + item.ident + ' = ';
-      if (value.text == 'zeroinitializer') {
-        item.JS += makePointer(JSON.stringify(makeEmptyStruct(item.type)));
-      } else {
-        // Generate a constant
-        item.JS += parseConst(value, item.type);
-      }
-      item.JS += ';';
-      item.__result__ = true;
-      return [item];
-    },
-  });
-
   // Gets an entire constant expression
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type);
@@ -1989,9 +1959,9 @@ function JSify(data) {
     }
   }
 
-  // globalConstant
-  substrate.addZyme('GlobalConstant', {
-    selectItem: function(item) { return item.intertype == 'globalConstant' && !item.JS },
+  // globalVariablw
+  substrate.addZyme('GlobalVariable', {
+    selectItem: function(item) { return item.intertype == 'globalVariable' && !item.JS },
     processItem: function(item) {
       dprint('gconst', '// zz global Cons: ' + dump(item) + ' :: ' + dump(item.value));
       if (item.ident == '_llvm_global_ctors') {
@@ -2001,8 +1971,8 @@ function JSify(data) {
       } else if (item.type.text == 'external') {
         item.JS = 'var ' + item.ident + ' = ' + '0; /* external value? */';
       } else {
-        // GETTER - lazy loading, fixes issues with ordering
-        item.JS = 'this.__defineGetter__("' + item.ident + '", function() { return ' + parseConst(item.value, item.type.text) + ' });';
+        // GETTER - lazy loading, fixes issues with ordering.
+        item.JS = 'this.__defineGetter__("' + item.ident + '", function() { delete ' + item.ident + '; ' + item.ident + ' = ' + parseConst(item.value, item.type.text) + '; return ' + item.ident + ' });';
       }
       item.__result__ = true;
       return [item];
@@ -2506,8 +2476,6 @@ function JSify(data) {
 
   function finalCombiner(items) {
     var ret = items.filter(function(item) { return item.intertype == 'type' });
-    ret = ret.concat(items.filter(function(item) { return item.intertype == 'globalConstant' }));
-    ret.push('\n');
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'globalVariable' }));
     ret.push('\n');
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'functionStub' }));

@@ -32,6 +32,14 @@ var Snippets = {
     return i;
   },
 
+  strcpy: function(pdest, psrc) {
+    var i = 0;
+    do {
+      HEAP[pdest+i] = HEAP[psrc+i];
+      i ++;
+    } while (HEAP[psrc+i-1] != 0);
+  },
+
   strncpy: function(pdest, psrc, num) {
     var padding = false;
     for (var i = 0; i < num; i++) {
