@@ -478,7 +478,7 @@ class T(unittest.TestCase):
         '''
         self.do_test(src, '*zzcheezzz*')
 
-    def zzzzzzzzzzzzzzztest_constglobalstructs(self): # TODO: make this work
+    def test_constglobalstructs(self):
         src = '''
           #include <stdio.h>
           struct IUB {

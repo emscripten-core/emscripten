@@ -150,6 +150,12 @@ function compareTokens(a, b) {
   return ret;
 }
 
+function getTokenIndexByText(tokens, text) {
+  var i = 0;
+  while (tokens[i].text != ';') i++;
+  return i;
+}
+
 // Splits a list of tokens separated by commas. For example, a list of arguments in a function call
 function splitTokenList(tokens) {
   if (tokens.length == 0) return [];
@@ -215,7 +221,6 @@ function makeCombiner(parentSlot, parentSlotValue, parentUnrequiredSlot, childRe
 }
 
 function parseParamTokens(params) {
-  //print('NEW params ' + JSON.stringify(params));
   if (params.length === 0) return [];
   var ret = [];
   if (params[params.length-1].text != ',') {
@@ -226,7 +231,6 @@ function parseParamTokens(params) {
     var i = 0;
     while (params[i].text != ',') i++;
     var segment = params.slice(0, i);
-//print(' seg ' + JSON.stringify(segment));
     params = params.slice(i+1);
     segment = cleanSegment(segment);
     if (segment.length == 1 && segment[0].text == '...') {
@@ -266,6 +270,8 @@ function cleanSegment(segment) {
   return segment;
 }
 
+// Expects one of the several LVM getelementptr formats:
+// a qualifier, a type, a null, then an () item with tokens
 function parseGetElementPtr(segment) {
   segment = segment.slice(0);
   segment = cleanSegment(segment);
@@ -649,6 +655,12 @@ function intertyper(data) {
         parent[child.parentSlot] = child;
         parent.__result__ = true;
         delete child.parentLineNum;
+
+        // Special re-integration behaviors
+        if (child.intertype == 'fastgetelementptrload') {
+          parent.intertype = 'fastgetelementptrload';
+        }
+
         return [parent];
       });
     }
@@ -657,12 +669,23 @@ function intertyper(data) {
   substrate.addZyme('Load', {
     selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'load' },
     processItem: function(item) {
-      item.intertype = 'load';
       item.pointerType = item.tokens[1];
-      item.pointer = item.tokens[2];
-      item.ident = item.pointer.text;
-      //print("// zz zz pointer: " + JSON.stringify(item));
       item.type = { text: removePointing(item.pointerType.text) };
+      if (item.tokens[2].text != 'getelementptr') {
+        item.intertype = 'load';
+        item.pointer = item.tokens[2];
+      } else {
+        var last = getTokenIndexByText(item.tokens, ';');
+        var gepTokens = item.tokens.slice(1, last); // without 'load'
+        var segment = [ gepTokens[2], gepTokens[0], null ].concat(gepTokens.slice(3));
+        var data = parseGetElementPtr(segment);
+        item.intertype = 'fastgetelementptrload';
+        item.type = data.type;
+        item.params = data.params;
+        item.pointer = { text: data.ident };
+        item.value = data.value;
+      }
+      item.ident = item.pointer.text;
       return [item];
     },
   });
@@ -681,8 +704,7 @@ function intertyper(data) {
   substrate.addZyme('GEP', {
     selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr' },
     processItem: function(item) {
-      var last = 0;
-      while (item.tokens[last].text != ';') last++;
+      var last = getTokenIndexByText(item.tokens, ';');
       var segment = [ item.tokens[1], { text: null }, null, { item: [ {
         tokens: item.tokens.slice(2, last)
       } ] } ];
@@ -1137,7 +1159,7 @@ function analyzer(data) {
         // the reads/other uses.
         walkJSON(func.lines, function(item) {
 //if (item && item.intertype == 'assign') print('zz assign: ' + JSON.stringify(item));
-          if (item && item.intertype == 'assign' && ['alloca', 'load', 'call', 'bitcast', 'mathop', 'getelementptr'].indexOf(item.value.intertype) != -1) {
+          if (item && item.intertype == 'assign' && ['alloca', 'load', 'call', 'bitcast', 'mathop', 'getelementptr', 'fastgetelementptrload'].indexOf(item.value.intertype) != -1) {
 //print("zz add var " + item.ident + ',' + item.intertype);
             func.variables[item.ident] = {
               ident: item.ident,
@@ -1172,7 +1194,8 @@ function analyzer(data) {
               //print(dump(line))
               if (line.intertype == 'store' && line.ident == vname) {
                 variable.stores ++;
-              } else if (line.intertype == 'assign' && line.value.intertype == 'load' && line.value.ident == vname) {
+              } else if ((line.intertype == 'assign' && line.value.intertype == 'load' && line.value.ident == vname) ||
+                         (line.intertype == 'fastgetelementptrload' && line.ident == vname)) {
                 variable.loads ++;
               }
             });
