@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, sys
+import os, unittest, tempfile, shutil, time
 
 # Params
 
@@ -13,9 +13,7 @@ abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(pathelems):
     return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + pathelems))
 
-sys.path += [path_from_root([])]
-
-from emscripten import emscripten
+EMSCRIPTEN = path_from_root(['emscripten.py'])
 
 exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'settings.py'), 'r').read())
 
@@ -68,7 +66,7 @@ class T(unittest.TestCase):
           output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           if DEBUG: print output
           # Run Emscripten
-          emscripten(filename + '.o.llvm', filename + '.o.js', PARSER_ENGINE)
+          Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE], stdout=open(filename + '.o.js', 'w'), stderr=STDOUT).communicate()
           output = open(filename + '.o.js').read()
           if output_processor is not None:
               output_processor(output)
@@ -672,6 +670,7 @@ class T(unittest.TestCase):
     # With those caveats, will pass successfully
     def zzztest_sauer(self):
       global PARSER_ENGINE
+      assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
       try:
         old = PARSER_ENGINE
         PARSER_ENGINE = V8_ENGINE
