@@ -12,5 +12,4 @@ PARSER_OPTS=[]#['-j']
 #PARSER_ENGINE=V8_ENGINE
 #PARSER_OPTS = []
 #JS_ENGINE=V8_ENGINE
-JS_COMPILER=path_from_root(['src', 'parser.js'])
 

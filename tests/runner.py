@@ -5,13 +5,17 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time
+import os, unittest, tempfile, shutil, time, sys
 
 # Params
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(pathelems):
     return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + pathelems))
+
+sys.path += [path_from_root([])]
+
+from emscripten import emscripten
 
 exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'settings.py'), 'r').read())
 
@@ -60,25 +64,11 @@ class T(unittest.TestCase):
             print "Failed to compile C/C++ source:\n\n", output
             raise Exception("Compilation error");
           if DEBUG: print output
-          if DEBUG: print "[[LLVM => JS]]"
-          if False:
-              # Use an llc backend, written in C++, to generate JS
-              output = Popen([LLC, '-march='+LLVM_BACKEND, filename + '.o', '-o=' + filename + '.o.cpp'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-          elif False:
-              # Use python parser to generate JS from disassembled llvm
-              output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-              if DEBUG: print output
-              output = Popen(['python', PY_PARSER, filename + '.o.llvm'], stdout=open(filename + '.o.js', 'w'), stderr=STDOUT).communicate()[0]
-          else:
-              # JS parser/compiler
-              output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-              if DEBUG: print output
-              cwd = os.getcwd()
-              os.chdir(path_from_root(['src']))
-              output = timeout_run(Popen([PARSER_ENGINE] + PARSER_OPTS + [JS_COMPILER], stdin=open(filename + '.o.llvm', 'r'), stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 200, 'Parser')
-              os.chdir(cwd)
-  #            return
+          if DEBUG: print "[[C++ ==> LLVM]]"
+          output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           if DEBUG: print output
+          # Run Emscripten
+          emscripten(filename + '.o.llvm', filename + '.o.js', JS_ENGINE)
           output = open(filename + '.o.js').read()
           if output_processor is not None:
               output_processor(output)
