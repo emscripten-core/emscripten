@@ -12,7 +12,7 @@ def emscripten(filename, js_engine, settings):
   os.chdir(cwd)
 
 if __name__ == '__main__':
-  if sys.argv.__len__() != 3:
+  if sys.argv.__len__() not in [3,4]:
     print '''\nEmscripten usage:          emscripten.py INFILE PATH-TO-JS-ENGINE [SETTINGS]\n'''
   else:
     emscripten(sys.argv[1], sys.argv[2],  sys.argv[3] if len(sys.argv) == 4 else "{}")

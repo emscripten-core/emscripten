@@ -27,7 +27,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_python=False, no_build=False, main_file=None):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_python=False, no_build=False, main_file=None, emscripten_settings=[]):
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
@@ -66,7 +66,9 @@ class T(unittest.TestCase):
           output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           if DEBUG: print output
           # Run Emscripten
-          Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE], stdout=open(filename + '.o.js', 'w'), stderr=STDOUT).communicate()
+          if type(emscripten_settings) not in [list, tuple]:
+            emscripten_settings = [emscripten_settings]
+          Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=open(filename + '.o.js', 'w'), stderr=STDOUT).communicate()
           output = open(filename + '.o.js').read()
           if output_processor is not None:
               output_processor(output)
@@ -664,19 +666,12 @@ class T(unittest.TestCase):
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)
 
-    # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
-    #              used, see Mozilla bug 593659.
-    # XXX Need to run without RELOOPING.
-    # With those caveats, will pass successfully
-    def zzztest_sauer(self):
-      global PARSER_ENGINE
+    def test_sauer(self):
+      # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
+      #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
-      try:
-        old = PARSER_ENGINE
-        PARSER_ENGINE = V8_ENGINE
-        self.do_test(path_from_root(['tests', 'sauer']), 'Hello from sauer', main_file='command.cpp')
-      finally:
-        PARSER_ENGINE = old
+      # XXX RELOOP = 1 either is very very slow, or nonfinishing
+      self.do_test(path_from_root(['tests', 'sauer']), 'Hello from sauer', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
 
 if __name__ == '__main__':
     if DEBUG: print "LLVM_GCC:", LLVM_GCC
