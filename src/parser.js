@@ -2488,8 +2488,17 @@ function JSify(data) {
 //  return finalCombiner(substrate.solve());
 }
 
+//===============================
 // Main
+//===============================
 
+// Override settings
+var settings = JSON.parse(readline());
+for (setting in settings) {
+  this[setting] = settings[setting];
+}
+
+// Read llvm
 var lines = [];
 var line;
 do {
@@ -2499,11 +2508,6 @@ do {
 } while(true);
 var data = lines.join("\n");
 
-//print('zz prepared')
-data = intertyper(data);
-//print('zz intertyped')
-data = analyzer(data);
-//print('zz analyzed')
-data = JSify(data);
-print(data);
+// Do it
+print(JSify(analyzer(intertyper(data))));
 
