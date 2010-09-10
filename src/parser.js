@@ -85,7 +85,7 @@ function isStructPointerType(type) {
 }
 
 function isStructType(type) {
-  if (/^\[\d+\ x\ (.*)\]/g.test(type)) return true; // [15 x ?] blocks. Like structs
+  if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
   if (isPointerType(type)) return false;
   var proofs = ['%struct', '%"struct'];
   return type.substr(0, proofs[0].length) == proofs[0] ||
@@ -377,10 +377,10 @@ function intertyper(data) {
       var inContinual = false;
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-        if (inContinual || /^\ +to.*/g.test(line)) {
+        if (inContinual || new RegExp(/^\ +to.*/g).test(line)) {
           // to after invoke
           ret.slice(-1)[0].lineText += line;
-          if (/^\ +\]/g.test(line)) { // end of llvm switch
+          if (new RegExp(/^\ +\]/g).test(line)) { // end of llvm switch
             inContinual = false;
           }
         } else {
@@ -388,7 +388,7 @@ function intertyper(data) {
             lineText: line,
             lineNum: i + 1,
           });
-          if (/^\ +switch\ .*/g.test(line)) {
+          if (new RegExp(/^\ +switch\ .*/g).test(line)) {
             // beginning of llvm switch
             inContinual = true;
           }
@@ -1018,7 +1018,7 @@ function analyzer(data) {
     if (data.types[type]) return;
     if (['internal', 'inbounds', 'void'].indexOf(type) != -1) return;
     dprint('types', '// addType: ' + type);
-    var check = /^\[(\d+)\ x\ (.*)\]$/g.exec(type);
+    var check = new RegExp(/^\[(\d+)\ x\ (.*)\]$/g).exec(type);
     // 'blocks': [14 x %struct.X] etc.
     if (check) {
       var num = parseInt(check[1]);

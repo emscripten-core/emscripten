@@ -68,7 +68,7 @@ class T(unittest.TestCase):
           output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           if DEBUG: print output
           # Run Emscripten
-          emscripten(filename + '.o.llvm', filename + '.o.js', JS_ENGINE)
+          emscripten(filename + '.o.llvm', filename + '.o.js', PARSER_ENGINE)
           output = open(filename + '.o.js').read()
           if output_processor is not None:
               output_processor(output)
