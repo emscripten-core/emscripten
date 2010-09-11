@@ -19,7 +19,7 @@ function run(args) {
 }
 
 try {
-  run(arguments);
+  run(this.arguments ? arguments : []);
 } catch (e) {
   print("Fatal exception: " + e.stack);
   throw e;
