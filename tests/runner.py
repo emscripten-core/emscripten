@@ -683,7 +683,7 @@ class T(unittest.TestCase):
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)
 
-    def zzztest_sauer(self):
+    def test_sauer(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
