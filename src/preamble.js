@@ -8,8 +8,8 @@ var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var __ATEXIT__ = [];
 
-var HEAP = [];
-var HEAPTOP = 0;
+var HEAP = [0];
+var HEAPTOP = 1; // Leave 0 as an invalid address, 'NULL'
 
 #if SAFE_HEAP
 // Semi-manual memory corruption debugging
@@ -147,8 +147,12 @@ function __formatString() {
 }
 
 function _printf() {
-  var text = __formatString.apply(null, arguments);
-  print(Pointer_stringify(text));
+  var text = Pointer_stringify(__formatString.apply(null, arguments));
+  // Our print() will print a \n anyhow... remove dupes
+  if (text[text.length-1] == '\n') {
+    text = text.substr(0, text.length-1);
+  }
+  print(text);
 }
 
 function _puts(p) {

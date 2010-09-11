@@ -234,10 +234,11 @@ class T(unittest.TestCase):
             printf("%d", atoi(argv[3])+2);
             const char *foolingthecompiler = "\\rabcd";
             printf("%d", strlen(foolingthecompiler)); // Tests parsing /0D in llvm - should not be a 0 (end string) then a D!
+            printf("%s*", NULL); // Should print nothing, not the string at address 0, which is a real address for us!
             return 0;
           }
         '''
-        self.do_test(src, '*4*wowie*too*76*5*', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
+        self.do_test(src, '*4*wowie*too*76*5**', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
 
     def test_funcs(self):
         src = '''
@@ -570,7 +571,7 @@ class T(unittest.TestCase):
             return 0;
           }
           '''
-        self.do_test(src, '*2,2,5,8,8****8,8,5,8,8****7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
+        self.do_test(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_llvmswitch(self):
         src = '''
@@ -664,8 +665,8 @@ class T(unittest.TestCase):
           self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_fasta(self):
-        results = [ (1,'''GG*ctt**tgagc**'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg**'''),
-(50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg**''') ]
+        results = [ (1,'''GG*ctt*tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg*tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa*tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
+(50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg*tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa*NtactMcSMtYtcMgRtacttctWBacgaa*agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct*ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc*ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa*gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa*ggcatgtatg*''') ]
         for i, j in results:
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)
