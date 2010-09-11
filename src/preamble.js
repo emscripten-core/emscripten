@@ -8,8 +8,8 @@ var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var __ATEXIT__ = [];
 
-var HEAP = [0];
-var HEAPTOP = 1; // Leave 0 as an invalid address, 'NULL'
+var HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
+var HEAPTOP = HEAP.length+1; // Leave 0 as an invalid address, 'NULL'
 
 #if SAFE_HEAP
 // Semi-manual memory corruption debugging

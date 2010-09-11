@@ -1933,7 +1933,7 @@ function JSify(data) {
       return makePointer(JSON.stringify(makeEmptyStruct(type)));
     } else if (value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
-      return makePointer(JSON.stringify(parseLLVMString(value.text)));
+      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/');
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
@@ -2062,8 +2062,6 @@ function JSify(data) {
 
         func.splitItems -= lines.length;
         if (func.splitItems === 0) {
-          postJSOptimize(func);
-
           // Final recombination
           //print('zz params::::: ' + JSON.stringify(func.params));
           //print('zz params::::: ' + JSON.stringify(parseParamTokens(func.params.item[0].tokens)));
@@ -2075,10 +2073,14 @@ function JSify(data) {
               return null;
             }
             return toNiceIdent(param.ident);
-          }).filter(function(param) { return param != null }).join(', ');
+          }).filter(function(param) { return param != null });;
 
-          func.JS = '\nfunction ' + func.ident + '(' + params + ') {\n';
+          func.JS = '\nfunction ' + func.ident + '(' + params.join(', ') + ') {\n';
           if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
+
+          if (hasVarArgs) {
+            func.JS += '  __numArgs__ = ' + params.length + ';\n';
+          }
 
           // Walk function blocks and generate JS
           function walkBlock(block, indent) {
@@ -2136,11 +2138,6 @@ function JSify(data) {
       return ret;
     },
   });
-  function postJSOptimize(func) {
-    // Some optimizations are easier to apply after JS-ing the code - for example, a lot
-    // of stuff can end up as   x = y;  for example, bitcasts, or nativized, etc. If we
-    // we to optimize pre-JS, we would need to be aware of all of that.
-  }
 
   function getVarData(funcData, ident) {
     if (funcData.variables[ident]) {
@@ -2448,14 +2445,12 @@ function JSify(data) {
     return ident;
   });
   function makeFunctionCall(ident, params) {
-    //print('// zz makeFC: ' + ident + ' : ' + dump(params));
-
     // Special cases
     if (ident == '_llvm_va_start') {
       if (SAFE_HEAP) {
-        return 'SAFE_HEAP_STORE(' + params[0].ident + ', Pointer_make(Array.prototype.slice.call(arguments, 1).concat([0]), 0))';
+        return 'SAFE_HEAP_STORE(' + params[0].ident + ', Pointer_make(Array.prototype.slice.call(arguments, __numArgs__).concat([0]), 0))';
       } else {
-        return 'HEAP[' + params[0].ident + '] = Pointer_make(Array.prototype.slice.call(arguments, 1).concat([0]), 0)'; // XXX 1
+        return 'HEAP[' + params[0].ident + '] = Pointer_make(Array.prototype.slice.call(arguments, __numArgs__).concat([0]), 0)';
       }
     } else if (ident == '_llvm_va_end') {
       return ';'

@@ -234,11 +234,11 @@ class T(unittest.TestCase):
             printf("%d", atoi(argv[3])+2);
             const char *foolingthecompiler = "\\rabcd";
             printf("%d", strlen(foolingthecompiler)); // Tests parsing /0D in llvm - should not be a 0 (end string) then a D!
-            printf("%s*", NULL); // Should print nothing, not the string at address 0, which is a real address for us!
+            printf("%s*", NULL); // Should print '(null)', not the string at address 0, which is a real address for us!
             return 0;
           }
         '''
-        self.do_test(src, '*4*wowie*too*76*5**', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
+        self.do_test(src, '*4*wowie*too*76*5*(null)*', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
 
     def test_funcs(self):
         src = '''
@@ -613,12 +613,24 @@ class T(unittest.TestCase):
             va_end(v);
           }
 
+          void vary2(char color, const char *s, ...)
+          {
+            va_list v;
+            va_start(v, s);
+            char d[21];
+            d[0] = color;
+            vsnprintf(d+1, 20, s, v);
+            puts(d);
+            va_end(v);
+          }
+
           int main() {
             vary("*cheez: %d+%d*", 10, 24);
+            vary2('Q', "%d*", 85);
             return 0;
           }
           '''
-        self.do_test(src, '*cheez: 10+24*')
+        self.do_test(src, '*cheez: 10+24*\nQ85*')
 
     def test_atexit(self):
         src = '''
