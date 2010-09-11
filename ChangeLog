@@ -1,8 +1,20 @@
+2010-09-11: Version 0.2
+
+  * sauer (cubescript) test passes (without RELOOPing), + web demo
+  * ES_SIZEOF - safe&portable sizeof replacement
+  * emscripten.py tool for easy compiling
+  * Support for various additional llvm ops (switch, float ops, ptrtoint, etc.)
+  * Support for functions with variable numbers of arguments (varargs)
+  * Better debugging support, using SAFE_HEAP and LABEL_DEBUG, using internal preprocessor
+  * Compiler can now run all tests in both SpiderMonkey and V8
+  * Various stdlib functions (strcpy/strcat/etc., atexit, etc.)
+  * Various code cleanups and simplifications
+  * Various compiler optimizations (still barely scratched the surface though)
+  * Many bug fixes and additional tests
+
 2010-08-28: Version 0.1
 
-  Initial export.
-
-    * All tests pass, including Fannkuch&Fasta, but constglobalstructs
-    * Relooping of Fannkuch is complete, fasta has one left
-    * Emscriptened Fannkuch is 19X slower than gcc -O0, 37X than gcc -O2
+  * All tests pass, including fannkuch and fasta, but constglobalstructs
+  * Relooping of Fannkuch is complete, fasta has one left
+  * Emscriptened Fannkuch is 19X slower than gcc -O0, 37X than gcc -O2
 
