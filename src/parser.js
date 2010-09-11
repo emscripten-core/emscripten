@@ -341,6 +341,24 @@ function parseNumerical(value, type) {
   return value;
 }
 
+// \0Dsometext is really '\r', then sometext
+// This function returns an array of int values
+function parseLLVMString(str) {
+  var ret = [];
+  var i = 0;
+  while (i < str.length) {
+    var chr = str[i];
+    if (chr != '\\') {
+      ret.push(chr.charCodeAt(0));
+      i++;
+    } else {
+      ret.push(_HexToInt(str[i+1]+str[i+2]));
+      i += 3;
+    }
+  }
+  return ret;
+}
+
 function getLabelIds(labels) {
   return labels.map(function(label) { return label.ident });
 }
@@ -1915,7 +1933,7 @@ function JSify(data) {
       return makePointer(JSON.stringify(makeEmptyStruct(type)));
     } else if (value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
-      return makePointer('intArrayFromString("' + value.text + '")');
+      return makePointer(JSON.stringify(parseLLVMString(value.text)));
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {

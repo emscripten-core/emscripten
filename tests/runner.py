@@ -224,16 +224,20 @@ class T(unittest.TestCase):
         src = '''
           #include <stdio.h>
           #include <stdlib.h>
+          #include <string.h>
+
           int main(int argc, char **argv)
           {
             printf("*%d", argc);
             puts(argv[1]);
             puts(argv[2]);
-            printf("%d*", atoi(argv[3])+2);
+            printf("%d", atoi(argv[3])+2);
+            const char *foolingthecompiler = "\\rabcd";
+            printf("%d", strlen(foolingthecompiler)); // Tests parsing /0D in llvm - should not be a 0 (end string) then a D!
             return 0;
           }
         '''
-        self.do_test(src, '*4*wowie*too*76*', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
+        self.do_test(src, '*4*wowie*too*76*5*', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
 
     def test_funcs(self):
         src = '''
@@ -566,7 +570,7 @@ class T(unittest.TestCase):
             return 0;
           }
           '''
-        self.do_test(src, '*2,2,5,8,8*\n*8,8,5,8,8*\n*7,2,6,990,7,2*')
+        self.do_test(src, '*2,2,5,8,8****8,8,5,8,8****7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_llvmswitch(self):
         src = '''
@@ -666,7 +670,7 @@ class T(unittest.TestCase):
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)
 
-    def test_sauer(self):
+    def zzztest_sauer(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
