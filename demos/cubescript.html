@@ -1,0 +1,65 @@
+<html>
+<head>
+  <title>
+    Emscripten: CubeScript
+  </title>
+  <script src="cubescript.js"></script>
+  <script>
+    // print function which the cubescript engine will call
+    function print(text) {
+      document.getElementById('output').innerHTML += text + '<br>';
+      printed = true;
+    }
+
+    function execute(text) {
+      printed = false;
+      executeCS(text);
+      if (!printed) {
+        print('<small><i>(no output)</i></small>');
+      }
+    }
+  </script>
+</head>
+<body onload="document.getElementById('the_input').focus()">
+  <p>
+    This is an <a href="http://emscripten.org">Emscriptened</a> <a href="http://sauerbraten.org/docs/config.html#cubescript">CubeScript</a> engine.
+    The CubeScript engine from <a href="http://sauerbraten.org">Sauerbraten</a>, which is about 2,500 lines of C++, was compiled by
+    <a href="http://llvm.org/cmds/llvmgcc.html">llvm-gcc</a> into <a href="http://llvm.org/">LLVM</a> bitcode,
+    which was translated by Emscripten into JavaScript, which
+    you can run in your browser here. In other words, it's a script engine (for one language, and written in C++) running in another script engine
+    (the JavaScript engine in your browser, which is incidentally also written in C++, most likely).
+  </p>
+  </p>
+    Why? <i>[insert Internet meme joke here]</i> Seriously, though, this is a test of the capabilities of
+    <a href="http://emscripten.org">Emscripten</a>, since the CubeScript engine uses fairly complicated C++ (even stuff like
+    manually copying vtable pointers), and since compiling an actual, complete script engine seems like a useful milestone.
+    Also, it's a potential first step
+    towards bringing <a href="http://www.syntensity.com">Syntensity</a> (which is based on Sauerbraten) to the web.
+  </p>
+  <hr>
+  <p>
+    <b>Instructions</b>: For example, try entering the following commands in the input field below:
+    <ul>
+      <li><div style="font-family: Courier New,Courier,monospace;">echo Hello world</div></li>
+      <li><div style="font-family: Courier New,Courier,monospace;">x = 3 </div> <small><i>(note the spaces around the '=')</i></small></li>
+      <li><div style="font-family: Courier New,Courier,monospace;">echo $x</div></li>
+      <li><div style="font-family: Courier New,Courier,monospace;">echo Another number: (+ $x (* 5 10)) </div><small><i>(note the prefix notation, that is the same as <b>$x + (5*10)</b>)</i></small></li>
+      <li><div style="font-family: Courier New,Courier,monospace;">if (> $x 2) [ echo "x is bigger than 2" ] [ echo "x is not bigger than 2" ]</div></li>
+    </ul>
+    Check out the CubeScript <a href="http://sauerbraten.org/docs/config.html#cubescript">docs</a> or
+    <a href="http://cube.wikispaces.com/Cubescript+Tutorial">tutorial</a>
+    for more (but, they mainly talk about using CubeScript in Sauerbraten itself - much like most
+    JavaScript tutorials talk about using JavaScript in a web browser).
+  </p>
+  <hr>
+  <!-- Call the cubescript engine's execute() function -->
+  <form onsubmit="execute(the_input.value); the_input.value = ''; return false">
+    <b>Enter some CubeScript</b>:
+    <input type="text" id="the_input">
+    <input type="submit" value="execute">
+  </form>
+  <hr>
+  <div id="output" style="font-family: Courier New,Courier,monospace;"></div>
+</body>
+</html>
+
