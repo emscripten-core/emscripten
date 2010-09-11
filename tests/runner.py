@@ -625,12 +625,12 @@ class T(unittest.TestCase):
           }
 
           int main() {
-            vary("*cheez: %d+%d*", 10, 24);
+            vary("*cheez: %d+%d*", 0, 24); // Also tests that '0' is not special as an array ender
             vary2('Q', "%d*", 85);
             return 0;
           }
           '''
-        self.do_test(src, '*cheez: 10+24*\nQ85*')
+        self.do_test(src, '*cheez: 0+24*\nQ85*')
 
     def test_atexit(self):
         src = '''
@@ -688,7 +688,7 @@ class T(unittest.TestCase):
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
       # XXX RELOOP = 1 either is very very slow, or nonfinishing
-      self.do_test(path_from_root(['tests', 'sauer']), '*Temp is 32\n9*', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
+      self.do_test(path_from_root(['tests', 'sauer']), '*Temp is 33\n9*', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
 
 if __name__ == '__main__':
     if DEBUG: print "LLVM_GCC:", LLVM_GCC

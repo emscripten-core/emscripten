@@ -2447,10 +2447,12 @@ function JSify(data) {
   function makeFunctionCall(ident, params) {
     // Special cases
     if (ident == '_llvm_va_start') {
+      var args = 'Array.prototype.slice.call(arguments, __numArgs__)';
+      var data = 'Pointer_make([' + args + '.length].concat(' + args + '), 0)';
       if (SAFE_HEAP) {
-        return 'SAFE_HEAP_STORE(' + params[0].ident + ', Pointer_make(Array.prototype.slice.call(arguments, __numArgs__).concat([0]), 0))';
+        return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', 0)';
       } else {
-        return 'HEAP[' + params[0].ident + '] = Pointer_make(Array.prototype.slice.call(arguments, __numArgs__).concat([0]), 0)';
+        return 'HEAP[' + params[0].ident + '] = ' + data;
       }
     } else if (ident == '_llvm_va_end') {
       return ';'

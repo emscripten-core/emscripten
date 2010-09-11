@@ -173,9 +173,18 @@ function _strlen(p) {
 //  return p.slab.length; // XXX might want to find the null terminator...
 }
 
-function String_copy(p, addZero) {
+// Copies a list of num items on the HEAP into a
+// a normal JavaScript array of numbers
+function Array_copy(ptr, num) {
   // XXX hardcoded ptr impl
-  return HEAP.slice(p, p+_strlen(p)).concat(addZero ? [0] : []);
+  return HEAP.slice(ptr, ptr+num);
+}
+
+// Copies a C-style string, terminated by a zero, from the HEAP into
+// a normal JavaScript array of numbers
+function String_copy(ptr, addZero) {
+  // XXX hardcoded ptr impl
+  return Array_copy(ptr, _strlen(ptr)).concat(addZero ? [0] : []);
 }
 
 // stdlib.h
@@ -215,6 +224,8 @@ function jrint(label, obj) {
   print(label + JSON.stringify(obj));
 }
 
+// This processes a 'normal' string into a C-line array of numbers.
+// For LLVM-originating strings, see parser.js:parseLLVMString function
 function intArrayFromString(stringy) {
   var ret = [];
   var t;

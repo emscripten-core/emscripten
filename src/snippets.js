@@ -1,10 +1,6 @@
 var Snippets = {
   vsnprintf: function(dst, num, src, ptr) {
-    var args = [];
-    while (HEAP[ptr] != 0) {
-      args.push(HEAP[ptr]);
-      ptr ++;
-    }
+    var args = Array_copy(ptr+1, HEAP[ptr]); // # of args in in first place
     var text = __formatString.apply(null, [src].concat(args));
     for (var i = 0; i < num; i++) {
       HEAP[dst+i] = HEAP[text+i];

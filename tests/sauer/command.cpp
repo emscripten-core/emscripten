@@ -1409,6 +1409,7 @@ int main()
   execute("somevar 9");
   execute("temp = (+ 22 $somevar)");
   execute("if (> $temp 30) [ temp = (+ $temp 1) ] [ temp = (* $temp 2) ]");
+  execute("if (< $temp 30) [ temp = 0 ] [ temp = (+ $temp 1) ]");
   execute("echo [*Temp is] $temp");
   printf("%d*\n", getvar("somevar"));
   return 0;
