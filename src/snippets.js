@@ -63,6 +63,11 @@ var Snippets = {
     } while (HEAP[psrc+i-1] != 0);
   },
 
+  strtol: function(ptr) {
+    // XXX: We ignore the other two params!
+    return parseInt(Pointer_stringify(ptr));
+  },
+
   strcmp: function(px, py) {
     var i = 0;
     while (true) {

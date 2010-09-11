@@ -671,7 +671,7 @@ class T(unittest.TestCase):
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
       # XXX RELOOP = 1 either is very very slow, or nonfinishing
-      self.do_test(path_from_root(['tests', 'sauer']), 'Hello from sauer', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
+      self.do_test(path_from_root(['tests', 'sauer']), '*Temp is 32\n9*', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
 
 if __name__ == '__main__':
     if DEBUG: print "LLVM_GCC:", LLVM_GCC
