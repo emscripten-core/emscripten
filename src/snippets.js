@@ -84,6 +84,14 @@ var Snippets = {
   __assert_fail: function(condition, file, line) {
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
   },
+
+  // Threading stuff LLVM adds sometimes
+  __cxa_guard_acquire: function() {
+    return 0;
+  },
+  __cxa_guard_release: function() {
+    return 0;
+  },
 };
 
 // Aliases

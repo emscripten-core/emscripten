@@ -1418,6 +1418,8 @@ int main()
   execute("push x 11");
   execute("pop x");
   execute("echo $x");
+  execute("greet = [ echo hello, $arg1 ]");
+  execute("greet everyone");
   printf("*\n");
   return 0;
 }
