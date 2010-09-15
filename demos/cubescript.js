@@ -229,34 +229,34 @@ function intArrayFromString(stringy) {
 // === Body ===
 
 
-// type: %0
+var _0___FLATTENER = [0,1];
 var _struct___class_type_info_pseudo___FLATTENER = [0];
-// type: %struct.__type_info_pseudo
-// type: %struct.cline
-// type: %"struct.databuf<char>"
-// type: %"struct.hashset<hashtableentry<const char*, ident> >"
+var _struct___type_info_pseudo___FLATTENER = [0,1];
+var _struct_cline___FLATTENER = [0,1,2];
+var __struct_databuf_char_____FLATTENER = [0,1,2,3];
+var __struct_hashset_hashtableentry_const_char___ident_______FLATTENER = [0,1,2,3,4];
 var __struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER = [0,12];
 var __struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER = [0,832];
 var __struct_hashtable_const_char__ident_____FLATTENER = [0];
 var __struct_hashtableentry_const_char__ident_____FLATTENER = [0,1];
 var _struct_ident___FLATTENER = [0,1,2,3,4,5,6,7,8,9,10];
-// type: %struct.identstack
-// type: %struct.stringformatter
-// type: %"struct.vector<char*>"
-// type: %"struct.vector<char>"
-// type: %"struct.vector<cline>"
-// type: %"struct.vector<ident*>"
-// type: %"struct.vector<vector<char>*>"
-// type: %union..0._40
-// type: %"union.ident::._34"
-// type: %"union.ident::._35"
-// type: %"union.ident::._36"
-// type: %"union.ident::._37"
-// type: %"union.ident::._38"
-// type: %union.identval
-// type: %union.identvalptr
+var _struct_identstack___FLATTENER = [0,1];
+var _struct_stringformatter___FLATTENER = [0];
+var __struct_vector_char______FLATTENER = [0,1,2];
+var __struct_vector_char_____FLATTENER = [0,1,2];
+var __struct_vector_cline_____FLATTENER = [0,1,2];
+var __struct_vector_ident______FLATTENER = [0,1,2];
+var __struct_vector_vector_char_______FLATTENER = [0,1,2];
+var _union__0__40___FLATTENER = [0];
+var __union_ident____34____FLATTENER = [0];
+var __union_ident____35____FLATTENER = [0];
+var __union_ident____36____FLATTENER = [0];
+var __union_ident____37____FLATTENER = [0];
+var __union_ident____38____FLATTENER = [0];
+var _union_identval___FLATTENER = [0];
+var _union_identvalptr___FLATTENER = [0];
 this.__defineGetter__("__ZTV5ident", function() { delete __ZTV5ident; __ZTV5ident = Pointer_make([ 0, __ZTI5ident, __ZN5identD1Ev, __ZN5identD0Ev, __ZN5ident7changedEv ], 0); return __ZTV5ident });
-this.__defineGetter__("__ZTI5ident", function() { delete __ZTI5ident; __ZTI5ident = Pointer_make([ [(__ZTVN10__cxxabiv117__class_type_infoE + 8), __ZTS5ident] ], 0); return __ZTI5ident });
+this.__defineGetter__("__ZTI5ident", function() { delete __ZTI5ident; __ZTI5ident = Pointer_make([ [(__ZTVN10__cxxabiv117__class_type_infoE + 8), __ZTS5ident+0*1] ], 0); return __ZTI5ident });
 var __ZTVN10__cxxabiv117__class_type_infoE = 0; /* external value? */
 this.__defineGetter__("__ZTS5ident", function() { delete __ZTS5ident; __ZTS5ident = Pointer_make([53,105,100,101,110,116,0] /* 5ident\00*/, 0); return __ZTS5ident });
 this.__defineGetter__("__ZL5state", function() { delete __ZL5state; __ZL5state = Pointer_make([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 0); return __ZL5state });
@@ -509,15 +509,20 @@ this.__defineGetter__("__str135", function() { delete __str135; __str135 = Point
 this.__defineGetter__("__str136", function() { delete __str136; __str136 = Pointer_make([116,101,109,112,32,61,32,40,43,32,50,50,32,36,115,111,109,101,118,97,114,41,0] /* temp = (+ 22 $somevar)\00*/, 0); return __str136 });
 this.__defineGetter__("__str137", function() { delete __str137; __str137 = Pointer_make([105,102,32,40,62,32,36,116,101,109,112,32,51,48,41,32,91,32,116,101,109,112,32,61,32,40,43,32,36,116,101,109,112,32,49,41,32,93,32,91,32,116,101,109,112,32,61,32,40,42,32,36,116,101,109,112,32,50,41,32,93,0] /* if (> $temp 30) [ temp = (+ $temp 1) ] [ temp = (* $temp 2) ]\00*/, 0); return __str137 });
 this.__defineGetter__("__str138", function() { delete __str138; __str138 = Pointer_make([105,102,32,40,60,32,36,116,101,109,112,32,51,48,41,32,91,32,116,101,109,112,32,61,32,48,32,93,32,91,32,116,101,109,112,32,61,32,40,43,32,36,116,101,109,112,32,49,41,32,93,0] /* if (< $temp 30) [ temp = 0 ] [ temp = (+ $temp 1) ]\00*/, 0); return __str138 });
-this.__defineGetter__("__str139", function() { delete __str139; __str139 = Pointer_make([101,99,104,111,32,91,42,84,101,109,112,32,105,115,93,32,36,116,101,109,112,0] /* echo [*Temp is] $temp\00*/, 0); return __str139 });
-this.__defineGetter__("__str140", function() { delete __str140; __str140 = Pointer_make([37,100,42,10,0] /* %d*\0A\00*/, 0); return __str140 });
-this.__defineGetter__("__str141", function() { delete __str141; __str141 = Pointer_make([48,0] /* 0\00*/, 0); return __str141 });
+this.__defineGetter__("__str139", function() { delete __str139; __str139 = Pointer_make([101,99,104,111,32,91,84,101,109,112,32,105,115,93,32,36,116,101,109,112,0] /* echo [Temp is] $temp\00*/, 0); return __str139 });
+this.__defineGetter__("__str140", function() { delete __str140; __str140 = Pointer_make([37,100,10,0] /* %d\0A\00*/, 0); return __str140 });
+this.__defineGetter__("__str141", function() { delete __str141; __str141 = Pointer_make([120,32,61,32,50,0] /* x = 2\00*/, 0); return __str141 });
+this.__defineGetter__("__str142", function() { delete __str142; __str142 = Pointer_make([112,117,115,104,32,120,32,53,0] /* push x 5\00*/, 0); return __str142 });
+this.__defineGetter__("__str143", function() { delete __str143; __str143 = Pointer_make([112,117,115,104,32,120,32,49,49,0] /* push x 11\00*/, 0); return __str143 });
+this.__defineGetter__("__str144", function() { delete __str144; __str144 = Pointer_make([112,111,112,32,120,0] /* pop x\00*/, 0); return __str144 });
+this.__defineGetter__("__str145", function() { delete __str145; __str145 = Pointer_make([101,99,104,111,32,36,120,0] /* echo $x\00*/, 0); return __str145 });
+this.__defineGetter__("__str146", function() { delete __str146; __str146 = Pointer_make([48,0] /* 0\00*/, 0); return __str146 });
 this.__defineGetter__("__ZL7bufnest", function() { delete __ZL7bufnest; __ZL7bufnest = Pointer_make([0], 0); return __ZL7bufnest });
-this.__defineGetter__("__str142", function() { delete __str142; __str142 = Pointer_make([13,64,34,47,40,41,91,93,0] /* \0D@\22/()[]\00*/, 0); return __str142 });
-this.__defineGetter__("__str143", function() { delete __str143; __str143 = Pointer_make([10,0,0] /* \0A\00\00*/, 0); return __str143 });
-this.__defineGetter__("__str144", function() { delete __str144; __str144 = Pointer_make([109,105,115,115,105,110,103,32,34,37,99,34,0] /* missing \22%c\22\00*/, 0); return __str144 });
-this.__defineGetter__("__str145", function() { delete __str145; __str145 = Pointer_make([32,9,13,0] /*  \09\0D\00*/, 0); return __str145 });
-this.__defineGetter__("__str146", function() { delete __str146; __str146 = Pointer_make([47,59,32,9,13,10,0,0] /* /; \09\0D\0A\00\00*/, 0); return __str146 });
+this.__defineGetter__("__str147", function() { delete __str147; __str147 = Pointer_make([13,64,34,47,40,41,91,93,0] /* \0D@\22/()[]\00*/, 0); return __str147 });
+this.__defineGetter__("__str148", function() { delete __str148; __str148 = Pointer_make([10,0,0] /* \0A\00\00*/, 0); return __str148 });
+this.__defineGetter__("__str149", function() { delete __str149; __str149 = Pointer_make([109,105,115,115,105,110,103,32,34,37,99,34,0] /* missing \22%c\22\00*/, 0); return __str149 });
+this.__defineGetter__("__str150", function() { delete __str150; __str150 = Pointer_make([32,9,13,0] /*  \09\0D\00*/, 0); return __str150 });
+this.__defineGetter__("__str151", function() { delete __str151; __str151 = Pointer_make([47,59,32,9,13,10,0,0] /* /; \09\0D\0A\00\00*/, 0); return __str151 });
 this.__defineGetter__("__ZGVZ10parsemacroRPKciR6vectorIcEE5ident", function() { delete __ZGVZ10parsemacroRPKciR6vectorIcEE5ident; __ZGVZ10parsemacroRPKciR6vectorIcEE5ident = Pointer_make([0], 0); return __ZGVZ10parsemacroRPKciR6vectorIcEE5ident });
 this.__defineGetter__("_commandmillis", function() { delete _commandmillis; _commandmillis = Pointer_make([-1], 0); return _commandmillis });
 this.__defineGetter__("_commandbuf", function() { delete _commandbuf; _commandbuf = Pointer_make([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 0); return _commandbuf });
@@ -713,7 +718,7 @@ function __ZN15stringformatterC1EPc(_this, _buf) {
       HEAP[_this_addr] = _this;
       HEAP[_buf_addr] = _buf;
       var _0 = HEAP[_this_addr];
-      var _1 = _0;
+      var _1 = _0+0*1;
       var _2 = HEAP[_buf_addr];
       HEAP[_1] = _2;
       __label__ = 2; break;
@@ -773,7 +778,7 @@ function __ZN5identC1Ev(_this) {
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -790,7 +795,7 @@ function __ZN5identD1Ev(_this) {
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       __label__ = 0; break;
     case 0: // _bb
       var _2 = 0;
@@ -817,7 +822,7 @@ function __ZN5identD0Ev(_this) {
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       __label__ = 0; break;
     case 0: // _bb
       var _2 = 1;
@@ -887,7 +892,7 @@ function __ZN5identC1EiPKciiiPiPvi(_this, _t, _n, _m, _c, _x, _s, _f, _flags) {
       _flags_addr = _flags;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       var _2 = HEAP[_this_addr];
       var _3 = _2+1*1;
       HEAP[_3] = _t_addr;
@@ -924,7 +929,7 @@ function __ZN5identC1EiPKciiiPiPvi(_this, _t, _n, _m, _c, _x, _s, _f, _flags) {
       HEAP[0 + _29+10*1] = _28;
       var _31 = HEAP[_this_addr];
       var _32 = _31+7*1;
-      var _33 = _32;
+      var _33 = _32+0*1;
       var _35 = _33;
       HEAP[_35] = _c_addr;
       var _37 = HEAP[_this_addr];
@@ -965,7 +970,7 @@ function __ZN5identC1EiPKcfffPfPvi(_this, _t, _n, _m, _c, _x, _s, _f, _flags) {
       _flags_addr = _flags;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       var _2 = HEAP[_this_addr];
       var _3 = _2+1*1;
       HEAP[_3] = _t_addr;
@@ -1004,7 +1009,7 @@ function __ZN5identC1EiPKcfffPfPvi(_this, _t, _n, _m, _c, _x, _s, _f, _flags) {
       HEAP[0 + _31+10*1] = _30;
       var _33 = HEAP[_this_addr];
       var _34 = _33+7*1;
-      var _35 = _34;
+      var _35 = _34+0*1;
       var _37 = _35;
       var _38 = _37;
       HEAP[_38] = _c_addr;
@@ -1042,7 +1047,7 @@ function __ZN5identC1EiPKcPcPS2_Pvi(_this, _t, _n, _c, _s, _f, _flags) {
       _flags_addr = _flags;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       var _2 = HEAP[_this_addr];
       var _3 = _2+1*1;
       HEAP[_3] = _t_addr;
@@ -1062,7 +1067,7 @@ function __ZN5identC1EiPKcPcPS2_Pvi(_this, _t, _n, _c, _s, _f, _flags) {
       HEAP[_16] = _flags_addr;
       var _18 = HEAP[_this_addr];
       var _19 = _18+7*1;
-      var _20 = _19;
+      var _20 = _19+0*1;
       var _22 = _20;
       var _23 = _22;
       var _24 = HEAP[_c_addr];
@@ -1097,7 +1102,7 @@ function __ZN5identC1EiPKcPci(_this, _t, _n, _a, _flags) {
       _flags_addr = _flags;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       var _2 = HEAP[_this_addr];
       var _3 = _2+1*1;
       HEAP[_3] = _t_addr;
@@ -1113,12 +1118,12 @@ function __ZN5identC1EiPKcPci(_this, _t, _n, _a, _flags) {
       HEAP[_12] = 0;
       var _14 = HEAP[_this_addr];
       var _15 = _14+7*1;
-      var _16 = _15;
+      var _16 = _15+0*1;
       var _17 = HEAP[_a_addr];
       HEAP[_16] = _17;
       var _18 = HEAP[_this_addr];
       var _19 = _18+8*1;
-      HEAP[0 + _19] = 0;
+      HEAP[0 + _19+0*1] = 0;
       var _21 = HEAP[_this_addr];
       var _22 = _21+10*1;
       HEAP[_22] = _flags_addr;
@@ -1150,7 +1155,7 @@ function __ZN5identC1EiPKcS1_PvS2_i(_this, _t, _n, _narg, _f, _s, _flags) {
       _flags_addr = _flags;
       var _0 = HEAP[_this_addr];
       var _1 = _0+0*1;
-      HEAP[_1] = __ZTV5ident+2;
+      HEAP[_1] = __ZTV5ident+2*1;
       var _2 = HEAP[_this_addr];
       var _3 = _2+1*1;
       HEAP[_3] = _t_addr;
@@ -1167,12 +1172,12 @@ function __ZN5identC1EiPKcS1_PvS2_i(_this, _t, _n, _narg, _f, _s, _flags) {
       HEAP[0 + _13] = _11;
       var _15 = HEAP[_this_addr];
       var _16 = _15+7*1;
-      var _17 = _16;
+      var _17 = _16+0*1;
       var _18 = HEAP[_narg_addr];
       HEAP[_17] = _18;
       var _19 = HEAP[_this_addr];
       var _20 = _19+8*1;
-      var _21 = _20;
+      var _21 = _20+0*1;
       var _22 = HEAP[_s_addr];
       HEAP[_21] = _22;
       var _23 = HEAP[_this_addr];
@@ -1435,7 +1440,7 @@ function __Z6seedMTj(_seed) {
       var __alloca_point_ = 0;
       _seed_addr = _seed;
       _x = _seed_addr | 1;
-      HEAP[_s] = __ZL5state;
+      HEAP[_s] = __ZL5state+0*1;
       HEAP[__ZL4left] = 0;
       var _2 = HEAP[_s];
       HEAP[_2] = _x;
@@ -1528,8 +1533,8 @@ function __ZN9hashtableIPKc5identE7getdataEPv(_i) {
       var __alloca_point_ = 0;
       HEAP[_i_addr] = _i;
       var _1 = HEAP[_i_addr];
-      var _3 = _1+0*12;
-      var _4 = _3+1*11;
+      var _3 = _1+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
+      var _4 = _3+__struct_hashtableentry_const_char__ident_____FLATTENER[1];
       HEAP[_0] = _4;
       var _5 = HEAP[_0];
       HEAP[_retval] = _5;
@@ -1551,7 +1556,7 @@ function __ZN9hashtableIPKc5identE7getnextEPv(_i) {
       var __alloca_point_ = 0;
       HEAP[_i_addr] = _i;
       var _1 = HEAP[_i_addr];
-      var _4 = HEAP[0 + _1+1*12];
+      var _4 = HEAP[0 + _1+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[1]];
       HEAP[_0] = _4;
       var _5 = HEAP[_0];
       HEAP[_retval] = _5;
@@ -1664,11 +1669,11 @@ function __ZN6vectorIPS_IcEEC1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      HEAP[0 + _0] = 0;
+      HEAP[0 + _0+0*1] = 0;
       var _2 = HEAP[_this_addr];
-      HEAP[0 + _2+1] = 0;
+      HEAP[0 + _2+1*1] = 0;
       var _4 = HEAP[_this_addr];
-      HEAP[0 + _4+2] = 0;
+      HEAP[0 + _4+2*1] = 0;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -1684,11 +1689,11 @@ function __ZN6vectorIcEC1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      HEAP[0 + _0] = 0;
+      HEAP[0 + _0+0*1] = 0;
       var _2 = HEAP[_this_addr];
-      HEAP[0 + _2+1] = 0;
+      HEAP[0 + _2+1*1] = 0;
       var _4 = HEAP[_this_addr];
-      HEAP[0 + _4+2] = 0;
+      HEAP[0 + _4+2*1] = 0;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -1706,8 +1711,8 @@ function __ZN6vectorIcE7setsizeEi(_this, _i) {
       HEAP[_this_addr] = _this;
       _i_addr = _i;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
-      var _4 = _0+2;
+      var _2 = HEAP[0 + _0+2*1];
+      var _4 = _0+2*1;
       HEAP[_4] = _i_addr;
       __label__ = 2; break;
     case 2: // _return
@@ -1726,7 +1731,7 @@ function __ZN6vectorIcE6getbufEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
+      var _3 = HEAP[0 + _1+0*1];
       HEAP[_0] = _3;
       var _4 = HEAP[_0];
       HEAP[_retval] = _4;
@@ -1748,7 +1753,7 @@ function __ZNK6vectorIPS_IcEE6lengthEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _0 = HEAP[0 + _1+2];
+      var _0 = HEAP[0 + _1+2*1];
       _retval = _0;
       __label__ = 2; break;
     case 2: // _return
@@ -1773,11 +1778,11 @@ function __ZN6vectorIPS_IcEEixEi(_this, _i) {
       if (_2) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _3 = HEAP[_this_addr];
-      var _5 = HEAP[0 + _3+2];
+      var _5 = HEAP[0 + _3+2*1];
       __label__ = 1; break;
     case 1: // _bb1
       var _6 = HEAP[_this_addr];
-      var _8 = HEAP[0 + _6];
+      var _8 = HEAP[0 + _6+0*1];
       var _10 = _8+_i_addr;
       HEAP[_0] = _10;
       var _11 = HEAP[_0];
@@ -1800,13 +1805,13 @@ function __ZN6vectorIcE3popEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
-      var _6 = HEAP[0 + _1+2];
+      var _3 = HEAP[0 + _1+0*1];
+      var _6 = HEAP[0 + _1+2*1];
       var _7 = _6 - 1;
       var _8 = HEAP[_this_addr];
-      HEAP[0 + _8+2] = _7;
+      HEAP[0 + _8+2*1] = _7;
       var _10 = HEAP[_this_addr];
-      var _12 = HEAP[0 + _10+2];
+      var _12 = HEAP[0 + _10+2*1];
       var _13 = _3+_12;
       HEAP[_0] = _13;
       var _14 = HEAP[_0];
@@ -1829,7 +1834,7 @@ function __ZNK6vectorIcE6lengthEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _0 = HEAP[0 + _1+2];
+      var _0 = HEAP[0 + _1+2*1];
       _retval = _0;
       __label__ = 2; break;
     case 2: // _return
@@ -1847,11 +1852,11 @@ function __ZN6vectorIP5identEC1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      HEAP[0 + _0] = 0;
+      HEAP[0 + _0+0*1] = 0;
       var _2 = HEAP[_this_addr];
-      HEAP[0 + _2+1] = 0;
+      HEAP[0 + _2+1*1] = 0;
       var _4 = HEAP[_this_addr];
-      HEAP[0 + _4+2] = 0;
+      HEAP[0 + _4+2*1] = 0;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -1869,7 +1874,7 @@ function __ZNK6vectorIP5identE6lengthEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _0 = HEAP[0 + _1+2];
+      var _0 = HEAP[0 + _1+2*1];
       _retval = _0;
       __label__ = 2; break;
     case 2: // _return
@@ -1894,11 +1899,11 @@ function __ZN6vectorIP5identEixEi(_this, _i) {
       if (_2) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _3 = HEAP[_this_addr];
-      var _5 = HEAP[0 + _3+2];
+      var _5 = HEAP[0 + _3+2*1];
       __label__ = 1; break;
     case 1: // _bb1
       var _6 = HEAP[_this_addr];
-      var _8 = HEAP[0 + _6];
+      var _8 = HEAP[0 + _6+0*1];
       var _10 = _8+_i_addr;
       HEAP[_0] = _10;
       var _11 = HEAP[_0];
@@ -1921,7 +1926,7 @@ function __ZNK6vectorIcE5emptyEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1+2];
+      var _3 = HEAP[0 + _1+2*1];
       var _4 = 0+(_3 == 0);
       _0 = _4;
       _retval = _0;
@@ -1941,11 +1946,11 @@ function __ZN6vectorI5clineEC1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      HEAP[0 + _0] = 0;
+      HEAP[0 + _0+0*1] = 0;
       var _2 = HEAP[_this_addr];
-      HEAP[0 + _2+1] = 0;
+      HEAP[0 + _2+1*1] = 0;
       var _4 = HEAP[_this_addr];
-      HEAP[0 + _4+2] = 0;
+      HEAP[0 + _4+2*1] = 0;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -1963,7 +1968,7 @@ function __ZNK6vectorI5clineE6lengthEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _0 = HEAP[0 + _1+2];
+      var _0 = HEAP[0 + _1+2*1];
       _retval = _0;
       __label__ = 2; break;
     case 2: // _return
@@ -1983,13 +1988,13 @@ function __ZN6vectorI5clineE3popEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
-      var _6 = HEAP[0 + _1+2];
+      var _3 = HEAP[0 + _1+0*1];
+      var _6 = HEAP[0 + _1+2*1];
       var _7 = _6 - 1;
       var _8 = HEAP[_this_addr];
-      HEAP[0 + _8+2] = _7;
+      HEAP[0 + _8+2*1] = _7;
       var _10 = HEAP[_this_addr];
-      var _12 = HEAP[0 + _10+2];
+      var _12 = HEAP[0 + _10+2*1];
       var _13 = _3+3*_12;
       HEAP[_0] = _13;
       var _14 = HEAP[_0];
@@ -2031,12 +2036,12 @@ function __ZN6vectorIcE4dropEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       var _3 = _2 - 1;
-      HEAP[0 + _0+2] = _3;
+      HEAP[0 + _0+2*1] = _3;
       var _6 = HEAP[_this_addr];
-      var _8 = HEAP[0 + _6];
-      var _11 = HEAP[0 + _6+2];
+      var _8 = HEAP[0 + _6+0*1];
+      var _11 = HEAP[0 + _6+2*1];
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -2054,7 +2059,7 @@ function __ZN6vectorIcE6shrinkEi(_this, _i) {
       HEAP[_this_addr] = _this;
       _i_addr = _i;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       __label__ = 1; break;
     case 0: // _bb
       var _3 = HEAP[_this_addr];
@@ -2062,7 +2067,7 @@ function __ZN6vectorIcE6shrinkEi(_this, _i) {
       __label__ = 1; break;
     case 1: // _bb1
       var _4 = HEAP[_this_addr];
-      var _6 = HEAP[0 + _4+2];
+      var _6 = HEAP[0 + _4+2*1];
       var _8 = 0+(_6 > _i_addr);
       if (_8) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 3: // _bb2
@@ -2106,16 +2111,16 @@ function __ZN7databufIcEC1IiEEPcT_(_this, _buf, _maxlen) {
       HEAP[_buf_addr] = _buf;
       _maxlen_addr = _maxlen;
       var _0 = HEAP[_this_addr];
-      var _1 = _0;
+      var _1 = _0+0*1;
       var _2 = HEAP[_buf_addr];
       HEAP[_1] = _2;
       var _3 = HEAP[_this_addr];
-      HEAP[0 + _3+1] = 0;
+      HEAP[0 + _3+1*1] = 0;
       var _5 = HEAP[_this_addr];
-      var _6 = _5+2;
+      var _6 = _5+2*1;
       HEAP[_6] = _maxlen_addr;
       var _8 = HEAP[_this_addr];
-      HEAP[0 + _8+3] = 0;
+      HEAP[0 + _8+3*1] = 0;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -2133,9 +2138,9 @@ function __ZN6vectorIcE7advanceEi(_this, _sz) {
       HEAP[_this_addr] = _this;
       _sz_addr = _sz;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       var _4 = _2 + _sz_addr;
-      HEAP[0 + _0+2] = _4;
+      HEAP[0 + _0+2*1] = _4;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -2153,7 +2158,7 @@ function __ZNK7databufIcE6lengthEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _0 = HEAP[0 + _1+1];
+      var _0 = HEAP[0 + _1+1*1];
       _retval = _0;
       __label__ = 2; break;
     case 2: // _return
@@ -2191,12 +2196,12 @@ function __ZN6vectorIP5identE4dropEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       var _3 = _2 - 1;
-      HEAP[0 + _0+2] = _3;
+      HEAP[0 + _0+2*1] = _3;
       var _6 = HEAP[_this_addr];
-      var _8 = HEAP[0 + _6];
-      var _11 = HEAP[0 + _6+2];
+      var _8 = HEAP[0 + _6+0*1];
+      var _11 = HEAP[0 + _6+2*1];
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -2214,7 +2219,7 @@ function __ZN6vectorIP5identE6shrinkEi(_this, _i) {
       HEAP[_this_addr] = _this;
       _i_addr = _i;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       __label__ = 1; break;
     case 0: // _bb
       var _3 = HEAP[_this_addr];
@@ -2222,7 +2227,7 @@ function __ZN6vectorIP5identE6shrinkEi(_this, _i) {
       __label__ = 1; break;
     case 1: // _bb1
       var _4 = HEAP[_this_addr];
-      var _6 = HEAP[0 + _4+2];
+      var _6 = HEAP[0 + _4+2*1];
       var _8 = 0+(_6 > _i_addr);
       if (_8) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 3: // _bb2
@@ -2283,7 +2288,7 @@ function __ZN14hashtableentryIPKc5identEC1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _1 = _0+1*11;
+      var _1 = _0+__struct_hashtableentry_const_char__ident_____FLATTENER[1];
       __ZN5identC1Ev(_1);
       __label__ = 2; break;
     case 2: // _return
@@ -2300,7 +2305,7 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE5chainC1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _1 = _0+0*12;
+      var _1 = _0+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
       __ZN14hashtableentryIPKc5identEC1Ev(_1);
       __label__ = 2; break;
     case 2: // _return
@@ -2338,12 +2343,12 @@ function __ZN6vectorIPS_IcEE4dropEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       var _3 = _2 - 1;
-      HEAP[0 + _0+2] = _3;
+      HEAP[0 + _0+2*1] = _3;
       var _6 = HEAP[_this_addr];
-      var _8 = HEAP[0 + _6];
-      var _11 = HEAP[0 + _6+2];
+      var _8 = HEAP[0 + _6+0*1];
+      var _11 = HEAP[0 + _6+2*1];
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -2361,7 +2366,7 @@ function __ZN6vectorIPS_IcEE6shrinkEi(_this, _i) {
       HEAP[_this_addr] = _this;
       _i_addr = _i;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       __label__ = 1; break;
     case 0: // _bb
       var _3 = HEAP[_this_addr];
@@ -2369,7 +2374,7 @@ function __ZN6vectorIPS_IcEE6shrinkEi(_this, _i) {
       __label__ = 1; break;
     case 1: // _bb1
       var _4 = HEAP[_this_addr];
-      var _6 = HEAP[0 + _4+2];
+      var _6 = HEAP[0 + _4+2*1];
       var _8 = 0+(_6 > _i_addr);
       if (_8) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 3: // _bb2
@@ -2404,12 +2409,12 @@ function __ZN6vectorI5clineE4dropEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       var _3 = _2 - 1;
-      HEAP[0 + _0+2] = _3;
+      HEAP[0 + _0+2*1] = _3;
       var _6 = HEAP[_this_addr];
-      var _8 = HEAP[0 + _6];
-      var _11 = HEAP[0 + _6+2];
+      var _8 = HEAP[0 + _6+0*1];
+      var _11 = HEAP[0 + _6+2*1];
       var _12 = _8+3*_11;
       __ZN5clineD1Ev(_12);
       __label__ = 2; break;
@@ -2429,7 +2434,7 @@ function __ZN6vectorI5clineE6shrinkEi(_this, _i) {
       HEAP[_this_addr] = _this;
       _i_addr = _i;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       __label__ = 1; break;
     case 0: // _bb
       var _3 = HEAP[_this_addr];
@@ -2437,7 +2442,7 @@ function __ZN6vectorI5clineE6shrinkEi(_this, _i) {
       __label__ = 1; break;
     case 1: // _bb1
       var _4 = HEAP[_this_addr];
-      var _6 = HEAP[0 + _4+2];
+      var _6 = HEAP[0 + _4+2*1];
       var _8 = 0+(_6 > _i_addr);
       if (_8) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 3: // _bb2
@@ -2458,17 +2463,17 @@ function __ZN6vectorI5clineED1Ev(_this) {
       var _0 = HEAP[_this_addr];
       __ZN6vectorI5clineE6shrinkEi(_0, 0);
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
+      var _3 = HEAP[0 + _1+0*1];
       var _4 = 0+(_3 != 0);
       if (_4) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 0: // _bb
       var _5 = HEAP[_this_addr];
-      var _7 = HEAP[0 + _5];
+      var _7 = HEAP[0 + _5+0*1];
       var _9 = 0+(_7 != 0);
       if (_9) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _10 = HEAP[_this_addr];
-      var _12 = HEAP[0 + _10];
+      var _12 = HEAP[0 + _10+0*1];
       __ZdaPv(_12);
       __label__ = 3; break;
     case 3: // _bb2
@@ -2504,17 +2509,17 @@ function __ZN6vectorIPS_IcEED1Ev(_this) {
       var _0 = HEAP[_this_addr];
       __ZN6vectorIPS_IcEE6shrinkEi(_0, 0);
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
+      var _3 = HEAP[0 + _1+0*1];
       var _4 = 0+(_3 != 0);
       if (_4) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 0: // _bb
       var _5 = HEAP[_this_addr];
-      var _7 = HEAP[0 + _5];
+      var _7 = HEAP[0 + _5+0*1];
       var _9 = 0+(_7 != 0);
       if (_9) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _10 = HEAP[_this_addr];
-      var _12 = HEAP[0 + _10];
+      var _12 = HEAP[0 + _10+0*1];
       __ZdaPv(_12);
       __label__ = 3; break;
     case 3: // _bb2
@@ -2550,7 +2555,7 @@ function __Z10var_maxconv() {
       __label__ = 3; break;
     case 0: // _bb
       var _1 = __ZN6vectorI5clineE3popEv(_conlines);
-      var _3 = HEAP[0 + _1];
+      var _3 = HEAP[0 + _1+0*1];
       HEAP[_0] = _3;
       var _4 = HEAP[_0];
       var _5 = 0+(_4 != 0);
@@ -2584,17 +2589,17 @@ function __ZN6vectorIcED1Ev(_this) {
       var _0 = HEAP[_this_addr];
       __ZN6vectorIcE6shrinkEi(_0, 0);
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
+      var _3 = HEAP[0 + _1+0*1];
       var _4 = 0+(_3 != 0);
       if (_4) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 0: // _bb
       var _5 = HEAP[_this_addr];
-      var _7 = HEAP[0 + _5];
+      var _7 = HEAP[0 + _5+0*1];
       var _8 = 0+(_7 != 0);
       if (_8) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9];
+      var _11 = HEAP[0 + _9+0*1];
       __ZdaPv(_11);
       __label__ = 3; break;
     case 3: // _bb2
@@ -2630,17 +2635,17 @@ function __ZN6vectorIP5identED1Ev(_this) {
       var _0 = HEAP[_this_addr];
       __ZN6vectorIP5identE6shrinkEi(_0, 0);
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
+      var _3 = HEAP[0 + _1+0*1];
       var _4 = 0+(_3 != 0);
       if (_4) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 0: // _bb
       var _5 = HEAP[_this_addr];
-      var _7 = HEAP[0 + _5];
+      var _7 = HEAP[0 + _5+0*1];
       var _9 = 0+(_7 != 0);
       if (_9) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _10 = HEAP[_this_addr];
-      var _12 = HEAP[0 + _10];
+      var _12 = HEAP[0 + _10+0*1];
       __ZdaPv(_12);
       __label__ = 3; break;
     case 3: // _bb2
@@ -2713,11 +2718,11 @@ function __Z5fatalPKcz(_s) {
     case 0: // _bb
       HEAP[_ap] = Pointer_make([Array.prototype.slice.call(arguments, __numArgs__).length].concat(Array.prototype.slice.call(arguments, __numArgs__)), 0);
       var _4 = HEAP[_ap];
-      var _5 = _msg;
+      var _5 = _msg+0*1;
       var _6 = HEAP[_s_addr];
       __Z13vformatstringPcPKcS_i(_5, _6, _4, 260);
       ;;
-      var _7 = _msg;
+      var _7 = _msg+0*1;
       var _8 = _puts(_7);
       __label__ = 7; break;
     case 7: // _bb3
@@ -2743,7 +2748,7 @@ function __ZN15stringformatterclEPKcz(_this, _fmt) {
       HEAP[_v] = Pointer_make([Array.prototype.slice.call(arguments, __numArgs__).length].concat(Array.prototype.slice.call(arguments, __numArgs__)), 0);
       var _0 = HEAP[_v];
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1];
+      var _3 = HEAP[0 + _1+0*1];
       var _4 = HEAP[_fmt_addr];
       __Z13vformatstringPcPKcS_i(_3, _4, _0, 260);
       ;;
@@ -2785,12 +2790,12 @@ function __Z8floatstrf(_v) {
       var _13 = _12;
       var _14 = HEAP[__ZL6retidx];
       var _15 = __ZL6retbuf+_14*260;
-      var _16 = _15;
+      var _16 = _15+0*1;
       __ZN15stringformatterC1EPc(_1, _16);
       __ZN15stringformatterclEPKcz(_1, _13, _6);
       var _17 = HEAP[__ZL6retidx];
       var _18 = __ZL6retbuf+_17*260;
-      var _19 = _18;
+      var _19 = _18+0*1;
       HEAP[_0] = _19;
       var _20 = HEAP[_0];
       HEAP[_retval] = _20;
@@ -2818,12 +2823,12 @@ function __Z6intstri(_v) {
       HEAP[__ZL6retidx] = _4;
       var _5 = HEAP[__ZL6retidx];
       var _6 = __ZL6retbuf+_5*260;
-      var _7 = _6;
+      var _7 = _6+0*1;
       __ZN15stringformatterC1EPc(_1, _7);
-      __ZN15stringformatterclEPKcz(_1, __str2, _v_addr);
+      __ZN15stringformatterclEPKcz(_1, __str2+0*1, _v_addr);
       var _9 = HEAP[__ZL6retidx];
       var _10 = __ZL6retbuf+_9*260;
-      var _11 = _10;
+      var _11 = _10+0*1;
       HEAP[_0] = _11;
       var _12 = HEAP[_0];
       HEAP[_retval] = _12;
@@ -2853,9 +2858,9 @@ function __Z8reloadMTv() {
       var _s1;
       var _j;
       var __alloca_point_ = 0;
-      HEAP[_p0] = __ZL5state;
-      HEAP[_p2] = __ZL5state+2;
-      HEAP[_pM] = __ZL5state+397;
+      HEAP[_p0] = __ZL5state+0*1;
+      HEAP[_p2] = __ZL5state+2*1;
+      HEAP[_pM] = __ZL5state+397*1;
       var _1 = HEAP[__ZL4left];
       var _2 = 0+(_1 < -1);
       if (_2) { __label__ = 0; break; } else { __label__ = 1; break; }
@@ -2865,10 +2870,10 @@ function __Z8reloadMTv() {
       __label__ = 1; break;
     case 1: // _bb1
       HEAP[__ZL4left] = 623;
-      HEAP[__ZL4next] = __ZL5state+1;
-      var _4 = HEAP[0 + __ZL5state];
+      HEAP[__ZL4next] = __ZL5state+1*1;
+      var _4 = HEAP[0 + __ZL5state+0*1];
       _s0 = _4;
-      var _5 = HEAP[0 + __ZL5state+1];
+      var _5 = HEAP[0 + __ZL5state+1*1];
       _s1 = _5;
       _j = 228;
       __label__ = 8; break;
@@ -2913,7 +2918,7 @@ function __Z8reloadMTv() {
       var _toBool7 = 0+(_retval_211 != 0);
       if (_toBool7) { __label__ = 3; break; } else { __label__ = 10; break; }
     case 10: // _bb8
-      HEAP[_pM] = __ZL5state;
+      HEAP[_pM] = __ZL5state+0*1;
       _j = 397;
       __label__ = 12; break;
     case 9: // _bb9
@@ -2957,7 +2962,7 @@ function __Z8reloadMTv() {
       var _toBool15 = 0+(_retval_213 != 0);
       if (_toBool15) { __label__ = 9; break; } else { __label__ = 16; break; }
     case 16: // _bb16
-      var _66 = HEAP[0 + __ZL5state];
+      var _66 = HEAP[0 + __ZL5state+0*1];
       _s1 = _66;
       var _67 = HEAP[_pM];
       var _68 = HEAP[_67];
@@ -3080,25 +3085,25 @@ function __ZN7hashsetI14hashtableentryIPKc5identEEC2Ei(_this, _size) {
       HEAP[_this_addr] = _this;
       _size_addr = _size;
       var _0 = HEAP[_this_addr];
-      var _1 = _0;
+      var _1 = _0+0*1;
       HEAP[_1] = _size_addr;
       var _3 = HEAP[_this_addr];
-      HEAP[0 + _3+1] = 0;
+      HEAP[0 + _3+1*1] = 0;
       var _5 = HEAP[_this_addr];
-      HEAP[0 + _5+3] = 0;
+      HEAP[0 + _5+3*1] = 0;
       var _7 = HEAP[_this_addr];
-      HEAP[0 + _7+4] = 0;
+      HEAP[0 + _7+4*1] = 0;
       _size_239 = _size_addr;
       var _11 = _size_239 * 4;
       var _12 = __Znaj(_11);
       var _13 = _12;
       var _14 = HEAP[_this_addr];
-      HEAP[0 + _14+2] = _13;
+      HEAP[0 + _14+2*1] = _13;
       _i = 0;
       __label__ = 1; break;
     case 0: // _bb
       var _16 = HEAP[_this_addr];
-      var _18 = HEAP[0 + _16+2];
+      var _18 = HEAP[0 + _16+2*1];
       HEAP[0 + _18+_i] = 0;
       _i = _i + 1;
       __label__ = 1; break;
@@ -3145,36 +3150,36 @@ function __ZN6vectorI5clineE7growbufEi(_this, _sz) {
       HEAP[_this_addr] = _this;
       _sz_addr = _sz;
       var _1 = HEAP[_this_addr];
-      var _olen = HEAP[0 + _1+1];
-      var _6 = HEAP[0 + _1+1];
+      var _olen = HEAP[0 + _1+1*1];
+      var _6 = HEAP[0 + _1+1*1];
       var _7 = 0+(_6 == 0);
       if (_7) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = __Z3maxIiET_S0_S0_(8, _sz_addr);
       var _10 = HEAP[_this_addr];
-      HEAP[0 + _10+1] = _9;
+      HEAP[0 + _10+1*1] = _9;
       __label__ = 6; break;
     case 1: // _bb1
       __label__ = 7; break;
     case 3: // _bb2
       var _12 = HEAP[_this_addr];
-      var _14 = HEAP[0 + _12+1];
+      var _14 = HEAP[0 + _12+1*1];
       var _15 = _14 * 2;
-      HEAP[0 + _12+1] = _15;
+      HEAP[0 + _12+1*1] = _15;
       __label__ = 7; break;
     case 7: // _bb3
       var _18 = HEAP[_this_addr];
-      var _20 = HEAP[0 + _18+1];
+      var _20 = HEAP[0 + _18+1*1];
       var _22 = 0+(_20 < _sz_addr);
       if (_22) { __label__ = 3; break; } else { __label__ = 6; break; }
     case 6: // _bb4
       var _23 = HEAP[_this_addr];
-      var _25 = HEAP[0 + _23+1];
+      var _25 = HEAP[0 + _23+1*1];
       var _27 = 0+(_25 <= _olen);
       if (_27) { __label__ = 9; break; } else { __label__ = 4; break; }
     case 4: // _bb5
       var _28 = HEAP[_this_addr];
-      var _30 = HEAP[0 + _28+1];
+      var _30 = HEAP[0 + _28+1*1];
       var _31 = __Z9es_sizeofI5clineEiPT_(0);
       _0 = _30 * _31;
       var _34 = __Znaj(_0);
@@ -3185,23 +3190,23 @@ function __ZN6vectorI5clineE7growbufEi(_this, _sz) {
       var _37 = __Z9es_sizeofI5clineEiPT_(0);
       var _39 = _37 * _olen;
       var _40 = HEAP[_this_addr];
-      var _42 = HEAP[0 + _40];
+      var _42 = HEAP[0 + _40+0*1];
       var _43 = HEAP[_newbuf];
       _llvm_memcpy_i32(_43, _42, _39, 1);
       var _45 = HEAP[_this_addr];
-      var _47 = HEAP[0 + _45];
+      var _47 = HEAP[0 + _45+0*1];
       var _49 = 0+(_47 != 0);
       if (_49) { __label__ = 5; break; } else { __label__ = 10; break; }
     case 5: // _bb7
       var _50 = HEAP[_this_addr];
-      var _52 = HEAP[0 + _50];
+      var _52 = HEAP[0 + _50+0*1];
       __ZdaPv(_52);
       __label__ = 10; break;
     case 10: // _bb8
       var _54 = HEAP[_newbuf];
       var _55 = _54;
       var _56 = HEAP[_this_addr];
-      HEAP[0 + _56] = _55;
+      HEAP[0 + _56+0*1] = _55;
       __label__ = 9; break;
     case 9: // _bb9
       __label__ = 2; break;
@@ -3225,20 +3230,20 @@ function __ZN6vectorI5clineE3addERKS0_(_this, _x) {
       HEAP[_this_addr] = _this;
       HEAP[_x_addr] = _x;
       var _2 = HEAP[_this_addr];
-      var _4 = HEAP[0 + _2+2];
-      var _7 = HEAP[0 + _2+1];
+      var _4 = HEAP[0 + _2+2*1];
+      var _7 = HEAP[0 + _2+1*1];
       var _8 = 0+(_4 == _7);
       if (_8) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9+2];
+      var _11 = HEAP[0 + _9+2*1];
       var _12 = _11 + 1;
       __ZN6vectorI5clineE7growbufEi(_9, _12);
       __label__ = 1; break;
     case 1: // _bb1
       var _14 = HEAP[_this_addr];
-      var _16 = HEAP[0 + _14];
-      var _19 = HEAP[0 + _14+2];
+      var _16 = HEAP[0 + _14+0*1];
+      var _19 = HEAP[0 + _14+2*1];
       var _20 = _16+3*_19;
       var _22 = __ZnwjPv(12, _20);
       HEAP[_1] = _22;
@@ -3248,14 +3253,14 @@ function __ZN6vectorI5clineE3addERKS0_(_this, _x) {
     case 3: // _bb2
       var _26 = HEAP[_1];
       var _27 = HEAP[_x_addr];
-      var _28 = _26;
-      var _30 = HEAP[0 + _27];
+      var _28 = _26+0*1;
+      var _30 = HEAP[0 + _27+0*1];
       HEAP[_28] = _30;
-      var _31 = _26+1;
-      var _33 = HEAP[0 + _27+1];
+      var _31 = _26+1*1;
+      var _33 = HEAP[0 + _27+1*1];
       HEAP[_31] = _33;
-      var _34 = _26+2;
-      var _36 = HEAP[0 + _27+2];
+      var _34 = _26+2*1;
+      var _36 = HEAP[0 + _27+2*1];
       HEAP[_34] = _36;
       var _37 = HEAP[_1];
       HEAP[_iftmp_244] = _37;
@@ -3266,13 +3271,13 @@ function __ZN6vectorI5clineE3addERKS0_(_this, _x) {
       __label__ = 6; break;
     case 6: // _bb4
       var _39 = HEAP[_this_addr];
-      var _41 = HEAP[0 + _39];
-      var _44 = HEAP[0 + _39+2];
+      var _41 = HEAP[0 + _39+0*1];
+      var _44 = HEAP[0 + _39+2*1];
       var _45 = _41+3*_44;
       HEAP[_0] = _45;
       var _46 = _44 + 1;
       var _47 = HEAP[_this_addr];
-      HEAP[0 + _47+2] = _46;
+      HEAP[0 + _47+2*1] = _46;
       var _49 = HEAP[_0];
       HEAP[_retval] = _49;
       __label__ = 2; break;
@@ -3298,36 +3303,36 @@ function __ZN6vectorI5clineE6insertEiRKS0_(_this, _i, _e) {
       HEAP[_this_addr] = _this;
       _i_addr = _i;
       HEAP[_e_addr] = _e;
-      var _2 = _1;
-      var _3 = HEAP[0 + __ZZN6vectorI5clineE6insertEiRKS0_E5C_237];
+      var _2 = _1+0*1;
+      var _3 = HEAP[0 + __ZZN6vectorI5clineE6insertEiRKS0_E5C_237+0*1];
       HEAP[_2] = _3;
-      var _4 = _1+1;
-      var _5 = HEAP[0 + __ZZN6vectorI5clineE6insertEiRKS0_E5C_237+1];
+      var _4 = _1+1*1;
+      var _5 = HEAP[0 + __ZZN6vectorI5clineE6insertEiRKS0_E5C_237+1*1];
       HEAP[_4] = _5;
-      var _6 = _1+2;
-      var _7 = HEAP[0 + __ZZN6vectorI5clineE6insertEiRKS0_E5C_237+2];
+      var _6 = _1+2*1;
+      var _7 = HEAP[0 + __ZZN6vectorI5clineE6insertEiRKS0_E5C_237+2*1];
       HEAP[_6] = _7;
       var _8 = HEAP[_this_addr];
       var _9 = __ZN6vectorI5clineE3addERKS0_(_8, _1);
       var _10 = HEAP[_this_addr];
-      var _12 = HEAP[0 + _10+2];
+      var _12 = HEAP[0 + _10+2*1];
       _p = _12 - 1;
       __label__ = 1; break;
     case 0: // _bb
       var _14 = HEAP[_this_addr];
-      var _16 = HEAP[0 + _14];
-      var _19 = HEAP[0 + _14];
+      var _16 = HEAP[0 + _14+0*1];
+      var _19 = HEAP[0 + _14+0*1];
       var _21 = _p - 1;
       var _23 = _16+3*_p;
       var _24 = _19+3*_21;
-      var _25 = _23;
-      var _27 = HEAP[0 + _24];
+      var _25 = _23+0*1;
+      var _27 = HEAP[0 + _24+0*1];
       HEAP[_25] = _27;
-      var _28 = _23+1;
-      var _30 = HEAP[0 + _24+1];
+      var _28 = _23+1*1;
+      var _30 = HEAP[0 + _24+1*1];
       HEAP[_28] = _30;
-      var _31 = _23+2;
-      var _33 = HEAP[0 + _24+2];
+      var _31 = _23+2*1;
+      var _33 = HEAP[0 + _24+2*1];
       HEAP[_31] = _33;
       _p = _p - 1;
       __label__ = 1; break;
@@ -3336,20 +3341,20 @@ function __ZN6vectorI5clineE6insertEiRKS0_(_this, _i, _e) {
       if (_38) { __label__ = 0; break; } else { __label__ = 3; break; }
     case 3: // _bb2
       var _39 = HEAP[_this_addr];
-      var _41 = HEAP[0 + _39];
+      var _41 = HEAP[0 + _39+0*1];
       var _43 = _41+3*_i_addr;
       var _44 = HEAP[_e_addr];
-      var _45 = _43;
-      var _47 = HEAP[0 + _44];
+      var _45 = _43+0*1;
+      var _47 = HEAP[0 + _44+0*1];
       HEAP[_45] = _47;
-      var _48 = _43+1;
-      var _50 = HEAP[0 + _44+1];
+      var _48 = _43+1*1;
+      var _50 = HEAP[0 + _44+1*1];
       HEAP[_48] = _50;
-      var _51 = _43+2;
-      var _53 = HEAP[0 + _44+2];
+      var _51 = _43+2*1;
+      var _53 = HEAP[0 + _44+2*1];
       HEAP[_51] = _53;
       var _54 = HEAP[_this_addr];
-      var _56 = HEAP[0 + _54];
+      var _56 = HEAP[0 + _54+0*1];
       var _58 = _56+3*_i_addr;
       HEAP[_0] = _58;
       var _59 = HEAP[_0];
@@ -3375,36 +3380,36 @@ function __ZN6vectorIcE7growbufEi(_this, _sz) {
       HEAP[_this_addr] = _this;
       _sz_addr = _sz;
       var _1 = HEAP[_this_addr];
-      var _olen = HEAP[0 + _1+1];
-      var _6 = HEAP[0 + _1+1];
+      var _olen = HEAP[0 + _1+1*1];
+      var _6 = HEAP[0 + _1+1*1];
       var _7 = 0+(_6 == 0);
       if (_7) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = __Z3maxIiET_S0_S0_(8, _sz_addr);
       var _10 = HEAP[_this_addr];
-      HEAP[0 + _10+1] = _9;
+      HEAP[0 + _10+1*1] = _9;
       __label__ = 6; break;
     case 1: // _bb1
       __label__ = 7; break;
     case 3: // _bb2
       var _12 = HEAP[_this_addr];
-      var _14 = HEAP[0 + _12+1];
+      var _14 = HEAP[0 + _12+1*1];
       var _15 = _14 * 2;
-      HEAP[0 + _12+1] = _15;
+      HEAP[0 + _12+1*1] = _15;
       __label__ = 7; break;
     case 7: // _bb3
       var _18 = HEAP[_this_addr];
-      var _20 = HEAP[0 + _18+1];
+      var _20 = HEAP[0 + _18+1*1];
       var _22 = 0+(_20 < _sz_addr);
       if (_22) { __label__ = 3; break; } else { __label__ = 6; break; }
     case 6: // _bb4
       var _23 = HEAP[_this_addr];
-      var _25 = HEAP[0 + _23+1];
+      var _25 = HEAP[0 + _23+1*1];
       var _27 = 0+(_25 <= _olen);
       if (_27) { __label__ = 9; break; } else { __label__ = 4; break; }
     case 4: // _bb5
       var _28 = HEAP[_this_addr];
-      var _30 = HEAP[0 + _28+1];
+      var _30 = HEAP[0 + _28+1*1];
       var _31 = __Z9es_sizeofIcEiPT_(0);
       _0 = _30 * _31;
       var _34 = __Znaj(_0);
@@ -3415,22 +3420,22 @@ function __ZN6vectorIcE7growbufEi(_this, _sz) {
       var _37 = __Z9es_sizeofIcEiPT_(0);
       var _39 = _37 * _olen;
       var _40 = HEAP[_this_addr];
-      var _42 = HEAP[0 + _40];
+      var _42 = HEAP[0 + _40+0*1];
       var _43 = HEAP[_newbuf];
       _llvm_memcpy_i32(_43, _42, _39, 1);
       var _44 = HEAP[_this_addr];
-      var _46 = HEAP[0 + _44];
+      var _46 = HEAP[0 + _44+0*1];
       var _47 = 0+(_46 != 0);
       if (_47) { __label__ = 5; break; } else { __label__ = 10; break; }
     case 5: // _bb7
       var _48 = HEAP[_this_addr];
-      var _50 = HEAP[0 + _48];
+      var _50 = HEAP[0 + _48+0*1];
       __ZdaPv(_50);
       __label__ = 10; break;
     case 10: // _bb8
       var _51 = HEAP[_newbuf];
       var _52 = HEAP[_this_addr];
-      HEAP[0 + _52] = _51;
+      HEAP[0 + _52+0*1] = _51;
       __label__ = 9; break;
     case 9: // _bb9
       __label__ = 2; break;
@@ -3454,20 +3459,20 @@ function __ZN6vectorIcE3addERKc(_this, _x) {
       HEAP[_this_addr] = _this;
       HEAP[_x_addr] = _x;
       var _2 = HEAP[_this_addr];
-      var _4 = HEAP[0 + _2+2];
-      var _7 = HEAP[0 + _2+1];
+      var _4 = HEAP[0 + _2+2*1];
+      var _7 = HEAP[0 + _2+1*1];
       var _8 = 0+(_4 == _7);
       if (_8) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9+2];
+      var _11 = HEAP[0 + _9+2*1];
       var _12 = _11 + 1;
       __ZN6vectorIcE7growbufEi(_9, _12);
       __label__ = 1; break;
     case 1: // _bb1
       var _14 = HEAP[_this_addr];
-      var _16 = HEAP[0 + _14];
-      var _19 = HEAP[0 + _14+2];
+      var _16 = HEAP[0 + _14+0*1];
+      var _19 = HEAP[0 + _14+2*1];
       var _20 = _16+_19;
       var _21 = __ZnwjPv(1, _20);
       HEAP[_1] = _21;
@@ -3488,13 +3493,13 @@ function __ZN6vectorIcE3addERKc(_this, _x) {
       __label__ = 6; break;
     case 6: // _bb4
       var _29 = HEAP[_this_addr];
-      var _31 = HEAP[0 + _29];
-      var _34 = HEAP[0 + _29+2];
+      var _31 = HEAP[0 + _29+0*1];
+      var _34 = HEAP[0 + _29+2*1];
       var _35 = _31+_34;
       HEAP[_0] = _35;
       var _36 = _34 + 1;
       var _37 = HEAP[_this_addr];
-      HEAP[0 + _37+2] = _36;
+      HEAP[0 + _37+2*1] = _36;
       var _39 = HEAP[_0];
       HEAP[_retval] = _39;
       __label__ = 2; break;
@@ -3515,21 +3520,21 @@ function __ZN6vectorIcE7reserveEi(_agg_result, _this, _sz) {
       HEAP[_this_addr] = _this;
       _sz_addr = _sz;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
+      var _2 = HEAP[0 + _0+2*1];
       var _4 = _2 + _sz_addr;
-      var _7 = HEAP[0 + _0+1];
+      var _7 = HEAP[0 + _0+1*1];
       var _8 = 0+(_4 > _7);
       if (_8) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9+2];
+      var _11 = HEAP[0 + _9+2*1];
       var _13 = _11 + _sz_addr;
       __ZN6vectorIcE7growbufEi(_9, _13);
       __label__ = 1; break;
     case 1: // _bb1
       var _15 = HEAP[_this_addr];
-      var _17 = HEAP[0 + _15];
-      var _20 = HEAP[0 + _15+2];
+      var _17 = HEAP[0 + _15+0*1];
+      var _20 = HEAP[0 + _15+2*1];
       var _21 = _17+_20;
       __ZN7databufIcEC1IiEEPcT_(_agg_result, _21, _sz_addr);
       __label__ = 2; break;
@@ -3551,41 +3556,41 @@ function __ZN7databufIcE3putEPKci(_this, _vals, _numvals) {
       HEAP[_vals_addr] = _vals;
       _numvals_addr = _numvals;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+2];
-      var _5 = HEAP[0 + _0+1];
+      var _2 = HEAP[0 + _0+2*1];
+      var _5 = HEAP[0 + _0+1*1];
       var _6 = _2 - _5;
       var _8 = 0+(_6 < _numvals_addr);
       if (_8) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9+3];
+      var _11 = HEAP[0 + _9+3*1];
       var _12 = _11 | 2;
-      HEAP[0 + _9+3] = _12;
+      HEAP[0 + _9+3*1] = _12;
       __label__ = 1; break;
     case 1: // _bb1
       var _15 = HEAP[_this_addr];
-      var _17 = HEAP[0 + _15+2];
-      var _20 = HEAP[0 + _15+1];
+      var _17 = HEAP[0 + _15+2*1];
+      var _20 = HEAP[0 + _15+1*1];
       var _21 = _17 - _20;
       var _23 = __Z3minIiET_S0_S0_(_21, _numvals_addr);
       var _24 = __Z9es_sizeofIcEiPT_(0);
       var _25 = _23 * _24;
       var _26 = HEAP[_this_addr];
-      var _28 = HEAP[0 + _26];
-      var _31 = HEAP[0 + _26+1];
+      var _28 = HEAP[0 + _26+0*1];
+      var _31 = HEAP[0 + _26+1*1];
       var _32 = _28+_31;
       var _33 = HEAP[_vals_addr];
       _llvm_memcpy_i32(_32, _33, _25, 1);
       var _34 = HEAP[_this_addr];
-      var _36 = HEAP[0 + _34+1];
-      var _39 = HEAP[0 + _34+2];
+      var _36 = HEAP[0 + _34+1*1];
+      var _39 = HEAP[0 + _34+2*1];
       var _40 = HEAP[_this_addr];
-      var _42 = HEAP[0 + _40+1];
+      var _42 = HEAP[0 + _40+1*1];
       var _43 = _39 - _42;
       var _45 = __Z3minIiET_S0_S0_(_43, _numvals_addr);
       var _46 = _36 + _45;
       var _47 = HEAP[_this_addr];
-      HEAP[0 + _47+1] = _46;
+      HEAP[0 + _47+1*1] = _46;
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -3631,36 +3636,36 @@ function __ZN6vectorIPcE7growbufEi(_this, _sz) {
       HEAP[_this_addr] = _this;
       _sz_addr = _sz;
       var _1 = HEAP[_this_addr];
-      var _olen = HEAP[0 + _1+1];
-      var _6 = HEAP[0 + _1+1];
+      var _olen = HEAP[0 + _1+1*1];
+      var _6 = HEAP[0 + _1+1*1];
       var _7 = 0+(_6 == 0);
       if (_7) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = __Z3maxIiET_S0_S0_(8, _sz_addr);
       var _10 = HEAP[_this_addr];
-      HEAP[0 + _10+1] = _9;
+      HEAP[0 + _10+1*1] = _9;
       __label__ = 6; break;
     case 1: // _bb1
       __label__ = 7; break;
     case 3: // _bb2
       var _12 = HEAP[_this_addr];
-      var _14 = HEAP[0 + _12+1];
+      var _14 = HEAP[0 + _12+1*1];
       var _15 = _14 * 2;
-      HEAP[0 + _12+1] = _15;
+      HEAP[0 + _12+1*1] = _15;
       __label__ = 7; break;
     case 7: // _bb3
       var _18 = HEAP[_this_addr];
-      var _20 = HEAP[0 + _18+1];
+      var _20 = HEAP[0 + _18+1*1];
       var _22 = 0+(_20 < _sz_addr);
       if (_22) { __label__ = 3; break; } else { __label__ = 6; break; }
     case 6: // _bb4
       var _23 = HEAP[_this_addr];
-      var _25 = HEAP[0 + _23+1];
+      var _25 = HEAP[0 + _23+1*1];
       var _27 = 0+(_25 <= _olen);
       if (_27) { __label__ = 9; break; } else { __label__ = 4; break; }
     case 4: // _bb5
       var _28 = HEAP[_this_addr];
-      var _30 = HEAP[0 + _28+1];
+      var _30 = HEAP[0 + _28+1*1];
       var _31 = __Z9es_sizeofIPcEiPT_(0);
       _0 = _30 * _31;
       var _34 = __Znaj(_0);
@@ -3671,23 +3676,23 @@ function __ZN6vectorIPcE7growbufEi(_this, _sz) {
       var _37 = __Z9es_sizeofIPcEiPT_(0);
       var _39 = _37 * _olen;
       var _40 = HEAP[_this_addr];
-      var _42 = HEAP[0 + _40];
+      var _42 = HEAP[0 + _40+0*1];
       var _43 = HEAP[_newbuf];
       _llvm_memcpy_i32(_43, _42, _39, 1);
       var _45 = HEAP[_this_addr];
-      var _47 = HEAP[0 + _45];
+      var _47 = HEAP[0 + _45+0*1];
       var _49 = 0+(_47 != 0);
       if (_49) { __label__ = 5; break; } else { __label__ = 10; break; }
     case 5: // _bb7
       var _50 = HEAP[_this_addr];
-      var _52 = HEAP[0 + _50];
+      var _52 = HEAP[0 + _50+0*1];
       __ZdaPv(_52);
       __label__ = 10; break;
     case 10: // _bb8
       var _54 = HEAP[_newbuf];
       var _55 = _54;
       var _56 = HEAP[_this_addr];
-      HEAP[0 + _56] = _55;
+      HEAP[0 + _56+0*1] = _55;
       __label__ = 9; break;
     case 9: // _bb9
       __label__ = 2; break;
@@ -3711,20 +3716,20 @@ function __ZN6vectorIPcE3addERKS0_(_this, _x) {
       HEAP[_this_addr] = _this;
       HEAP[_x_addr] = _x;
       var _2 = HEAP[_this_addr];
-      var _4 = HEAP[0 + _2+2];
-      var _7 = HEAP[0 + _2+1];
+      var _4 = HEAP[0 + _2+2*1];
+      var _7 = HEAP[0 + _2+1*1];
       var _8 = 0+(_4 == _7);
       if (_8) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9+2];
+      var _11 = HEAP[0 + _9+2*1];
       var _12 = _11 + 1;
       __ZN6vectorIPcE7growbufEi(_9, _12);
       __label__ = 1; break;
     case 1: // _bb1
       var _14 = HEAP[_this_addr];
-      var _16 = HEAP[0 + _14];
-      var _19 = HEAP[0 + _14+2];
+      var _16 = HEAP[0 + _14+0*1];
+      var _19 = HEAP[0 + _14+2*1];
       var _20 = _16+_19;
       var _22 = __ZnwjPv(4, _20);
       HEAP[_1] = _22;
@@ -3745,13 +3750,13 @@ function __ZN6vectorIPcE3addERKS0_(_this, _x) {
       __label__ = 6; break;
     case 6: // _bb4
       var _31 = HEAP[_this_addr];
-      var _33 = HEAP[0 + _31];
-      var _36 = HEAP[0 + _31+2];
+      var _33 = HEAP[0 + _31+0*1];
+      var _36 = HEAP[0 + _31+2*1];
       var _37 = _33+_36;
       HEAP[_0] = _37;
       var _38 = _36 + 1;
       var _39 = HEAP[_this_addr];
-      HEAP[0 + _39+2] = _38;
+      HEAP[0 + _39+2*1] = _38;
       var _41 = HEAP[_0];
       HEAP[_retval] = _41;
       __label__ = 2; break;
@@ -3775,36 +3780,36 @@ function __ZN6vectorIP5identE7growbufEi(_this, _sz) {
       HEAP[_this_addr] = _this;
       _sz_addr = _sz;
       var _1 = HEAP[_this_addr];
-      var _olen = HEAP[0 + _1+1];
-      var _6 = HEAP[0 + _1+1];
+      var _olen = HEAP[0 + _1+1*1];
+      var _6 = HEAP[0 + _1+1*1];
       var _7 = 0+(_6 == 0);
       if (_7) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = __Z3maxIiET_S0_S0_(8, _sz_addr);
       var _10 = HEAP[_this_addr];
-      HEAP[0 + _10+1] = _9;
+      HEAP[0 + _10+1*1] = _9;
       __label__ = 6; break;
     case 1: // _bb1
       __label__ = 7; break;
     case 3: // _bb2
       var _12 = HEAP[_this_addr];
-      var _14 = HEAP[0 + _12+1];
+      var _14 = HEAP[0 + _12+1*1];
       var _15 = _14 * 2;
-      HEAP[0 + _12+1] = _15;
+      HEAP[0 + _12+1*1] = _15;
       __label__ = 7; break;
     case 7: // _bb3
       var _18 = HEAP[_this_addr];
-      var _20 = HEAP[0 + _18+1];
+      var _20 = HEAP[0 + _18+1*1];
       var _22 = 0+(_20 < _sz_addr);
       if (_22) { __label__ = 3; break; } else { __label__ = 6; break; }
     case 6: // _bb4
       var _23 = HEAP[_this_addr];
-      var _25 = HEAP[0 + _23+1];
+      var _25 = HEAP[0 + _23+1*1];
       var _27 = 0+(_25 <= _olen);
       if (_27) { __label__ = 9; break; } else { __label__ = 4; break; }
     case 4: // _bb5
       var _28 = HEAP[_this_addr];
-      var _30 = HEAP[0 + _28+1];
+      var _30 = HEAP[0 + _28+1*1];
       var _31 = __Z9es_sizeofIP5identEiPT_(0);
       _0 = _30 * _31;
       var _34 = __Znaj(_0);
@@ -3815,23 +3820,23 @@ function __ZN6vectorIP5identE7growbufEi(_this, _sz) {
       var _37 = __Z9es_sizeofIP5identEiPT_(0);
       var _39 = _37 * _olen;
       var _40 = HEAP[_this_addr];
-      var _42 = HEAP[0 + _40];
+      var _42 = HEAP[0 + _40+0*1];
       var _43 = HEAP[_newbuf];
       _llvm_memcpy_i32(_43, _42, _39, 1);
       var _45 = HEAP[_this_addr];
-      var _47 = HEAP[0 + _45];
+      var _47 = HEAP[0 + _45+0*1];
       var _49 = 0+(_47 != 0);
       if (_49) { __label__ = 5; break; } else { __label__ = 10; break; }
     case 5: // _bb7
       var _50 = HEAP[_this_addr];
-      var _52 = HEAP[0 + _50];
+      var _52 = HEAP[0 + _50+0*1];
       __ZdaPv(_52);
       __label__ = 10; break;
     case 10: // _bb8
       var _54 = HEAP[_newbuf];
       var _55 = _54;
       var _56 = HEAP[_this_addr];
-      HEAP[0 + _56] = _55;
+      HEAP[0 + _56+0*1] = _55;
       __label__ = 9; break;
     case 9: // _bb9
       __label__ = 2; break;
@@ -3855,20 +3860,20 @@ function __ZN6vectorIP5identE3addERKS1_(_this, _x) {
       HEAP[_this_addr] = _this;
       HEAP[_x_addr] = _x;
       var _2 = HEAP[_this_addr];
-      var _4 = HEAP[0 + _2+2];
-      var _7 = HEAP[0 + _2+1];
+      var _4 = HEAP[0 + _2+2*1];
+      var _7 = HEAP[0 + _2+1*1];
       var _8 = 0+(_4 == _7);
       if (_8) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9+2];
+      var _11 = HEAP[0 + _9+2*1];
       var _12 = _11 + 1;
       __ZN6vectorIP5identE7growbufEi(_9, _12);
       __label__ = 1; break;
     case 1: // _bb1
       var _14 = HEAP[_this_addr];
-      var _16 = HEAP[0 + _14];
-      var _19 = HEAP[0 + _14+2];
+      var _16 = HEAP[0 + _14+0*1];
+      var _19 = HEAP[0 + _14+2*1];
       var _20 = _16+_19;
       var _22 = __ZnwjPv(4, _20);
       HEAP[_1] = _22;
@@ -3889,13 +3894,13 @@ function __ZN6vectorIP5identE3addERKS1_(_this, _x) {
       __label__ = 6; break;
     case 6: // _bb4
       var _31 = HEAP[_this_addr];
-      var _33 = HEAP[0 + _31];
-      var _36 = HEAP[0 + _31+2];
+      var _33 = HEAP[0 + _31+0*1];
+      var _36 = HEAP[0 + _31+2*1];
       var _37 = _33+_36;
       HEAP[_0] = _37;
       var _38 = _36 + 1;
       var _39 = HEAP[_this_addr];
-      HEAP[0 + _39+2] = _38;
+      HEAP[0 + _39+2*1] = _38;
       var _41 = HEAP[_0];
       HEAP[_retval] = _41;
       __label__ = 2; break;
@@ -3919,36 +3924,36 @@ function __ZN6vectorIPS_IcEE7growbufEi(_this, _sz) {
       HEAP[_this_addr] = _this;
       _sz_addr = _sz;
       var _1 = HEAP[_this_addr];
-      var _olen = HEAP[0 + _1+1];
-      var _6 = HEAP[0 + _1+1];
+      var _olen = HEAP[0 + _1+1*1];
+      var _6 = HEAP[0 + _1+1*1];
       var _7 = 0+(_6 == 0);
       if (_7) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = __Z3maxIiET_S0_S0_(8, _sz_addr);
       var _10 = HEAP[_this_addr];
-      HEAP[0 + _10+1] = _9;
+      HEAP[0 + _10+1*1] = _9;
       __label__ = 6; break;
     case 1: // _bb1
       __label__ = 7; break;
     case 3: // _bb2
       var _12 = HEAP[_this_addr];
-      var _14 = HEAP[0 + _12+1];
+      var _14 = HEAP[0 + _12+1*1];
       var _15 = _14 * 2;
-      HEAP[0 + _12+1] = _15;
+      HEAP[0 + _12+1*1] = _15;
       __label__ = 7; break;
     case 7: // _bb3
       var _18 = HEAP[_this_addr];
-      var _20 = HEAP[0 + _18+1];
+      var _20 = HEAP[0 + _18+1*1];
       var _22 = 0+(_20 < _sz_addr);
       if (_22) { __label__ = 3; break; } else { __label__ = 6; break; }
     case 6: // _bb4
       var _23 = HEAP[_this_addr];
-      var _25 = HEAP[0 + _23+1];
+      var _25 = HEAP[0 + _23+1*1];
       var _27 = 0+(_25 <= _olen);
       if (_27) { __label__ = 9; break; } else { __label__ = 4; break; }
     case 4: // _bb5
       var _28 = HEAP[_this_addr];
-      var _30 = HEAP[0 + _28+1];
+      var _30 = HEAP[0 + _28+1*1];
       var _31 = __Z9es_sizeofIP6vectorIcEEiPT_(0);
       _0 = _30 * _31;
       var _34 = __Znaj(_0);
@@ -3959,23 +3964,23 @@ function __ZN6vectorIPS_IcEE7growbufEi(_this, _sz) {
       var _37 = __Z9es_sizeofIP6vectorIcEEiPT_(0);
       var _39 = _37 * _olen;
       var _40 = HEAP[_this_addr];
-      var _42 = HEAP[0 + _40];
+      var _42 = HEAP[0 + _40+0*1];
       var _43 = HEAP[_newbuf];
       _llvm_memcpy_i32(_43, _42, _39, 1);
       var _45 = HEAP[_this_addr];
-      var _47 = HEAP[0 + _45];
+      var _47 = HEAP[0 + _45+0*1];
       var _49 = 0+(_47 != 0);
       if (_49) { __label__ = 5; break; } else { __label__ = 10; break; }
     case 5: // _bb7
       var _50 = HEAP[_this_addr];
-      var _52 = HEAP[0 + _50];
+      var _52 = HEAP[0 + _50+0*1];
       __ZdaPv(_52);
       __label__ = 10; break;
     case 10: // _bb8
       var _54 = HEAP[_newbuf];
       var _55 = _54;
       var _56 = HEAP[_this_addr];
-      HEAP[0 + _56] = _55;
+      HEAP[0 + _56+0*1] = _55;
       __label__ = 9; break;
     case 9: // _bb9
       __label__ = 2; break;
@@ -3999,20 +4004,20 @@ function __ZN6vectorIPS_IcEE3addERKS1_(_this, _x) {
       HEAP[_this_addr] = _this;
       HEAP[_x_addr] = _x;
       var _2 = HEAP[_this_addr];
-      var _4 = HEAP[0 + _2+2];
-      var _7 = HEAP[0 + _2+1];
+      var _4 = HEAP[0 + _2+2*1];
+      var _7 = HEAP[0 + _2+1*1];
       var _8 = 0+(_4 == _7);
       if (_8) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _9 = HEAP[_this_addr];
-      var _11 = HEAP[0 + _9+2];
+      var _11 = HEAP[0 + _9+2*1];
       var _12 = _11 + 1;
       __ZN6vectorIPS_IcEE7growbufEi(_9, _12);
       __label__ = 1; break;
     case 1: // _bb1
       var _14 = HEAP[_this_addr];
-      var _16 = HEAP[0 + _14];
-      var _19 = HEAP[0 + _14+2];
+      var _16 = HEAP[0 + _14+0*1];
+      var _19 = HEAP[0 + _14+2*1];
       var _20 = _16+_19;
       var _22 = __ZnwjPv(4, _20);
       HEAP[_1] = _22;
@@ -4033,13 +4038,13 @@ function __ZN6vectorIPS_IcEE3addERKS1_(_this, _x) {
       __label__ = 6; break;
     case 6: // _bb4
       var _31 = HEAP[_this_addr];
-      var _33 = HEAP[0 + _31];
-      var _36 = HEAP[0 + _31+2];
+      var _33 = HEAP[0 + _31+0*1];
+      var _36 = HEAP[0 + _31+2*1];
       var _37 = _33+_36;
       HEAP[_0] = _37;
       var _38 = _36 + 1;
       var _39 = HEAP[_this_addr];
-      HEAP[0 + _39+2] = _38;
+      HEAP[0 + _39+2*1] = _38;
       var _41 = HEAP[_0];
       HEAP[_retval] = _41;
       __label__ = 2; break;
@@ -4152,23 +4157,23 @@ function __Z7conlineiPKc(_type, _sf) {
       if (_2) { __label__ = 0; break; } else { __label__ = 1; break; }
     case 0: // _bb
       var _3 = __ZN6vectorI5clineE3popEv(_conlines);
-      var _5 = HEAP[0 + _3];
+      var _5 = HEAP[0 + _3+0*1];
       HEAP[_iftmp_204] = _5;
       __label__ = 3; break;
     case 1: // _bb1
-      var _6 = __Z9newstringPKcj(__str3, 511);
+      var _6 = __Z9newstringPKcj(__str3+0*1, 511);
       HEAP[_iftmp_204] = _6;
       __label__ = 3; break;
     case 3: // _bb2
-      var _7 = _cl;
+      var _7 = _cl+0*1;
       var _8 = HEAP[_iftmp_204];
       HEAP[_7] = _8;
-      var _9 = _cl+1;
+      var _9 = _cl+1*1;
       HEAP[_9] = _type_addr;
       var _11 = HEAP[_totalmillis];
-      HEAP[0 + _cl+2] = _11;
+      HEAP[0 + _cl+2*1] = _11;
       var _13 = __ZN6vectorI5clineE6insertEiRKS0_(_conlines, 0, _cl);
-      var _15 = HEAP[0 + _cl];
+      var _15 = HEAP[0 + _cl+0*1];
       var _16 = HEAP[_sf_addr];
       var _17 = __Z10copystringPcPKcj(_15, _16, 512);
       __label__ = 2; break;
@@ -4193,9 +4198,9 @@ function __Z8conoutfviPKcPc(_type, _fmt, _args) {
       var _1 = _0 * 512;
       var _2 = HEAP[_fmt_addr];
       var _3 = HEAP[_args_addr];
-      __Z13vformatstringPcPKcS_i(__ZZ8conoutfviPKcPcE3buf, _2, _3, _1);
-      __Z7conlineiPKc(_type_addr, __ZZ8conoutfviPKcPcE3buf);
-      var _5 = _puts(__ZZ8conoutfviPKcPcE3buf);
+      __Z13vformatstringPcPKcS_i(__ZZ8conoutfviPKcPcE3buf+0*1, _2, _3, _1);
+      __Z7conlineiPKc(_type_addr, __ZZ8conoutfviPKcPcE3buf+0*1);
+      var _5 = _puts(__ZZ8conoutfviPKcPcE3buf+0*1);
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -4261,7 +4266,7 @@ function __Z14setfvarcheckedP5identf(_id, _val) {
     case 0: // _bb
       var _5 = HEAP[_id_addr];
       var _7 = HEAP[0 + _5+2*1];
-      __Z7conoutfiPKcz(4, __str4, _7);
+      __Z7conoutfiPKcz(4, __str4+0*1, _7);
       __label__ = 17; break;
     case 1: // _bb1
       var _8 = HEAP[_overrideidents];
@@ -4283,7 +4288,7 @@ function __Z14setfvarcheckedP5identf(_id, _val) {
     case 4: // _bb5
       var _19 = HEAP[_id_addr];
       var _21 = HEAP[0 + _19+2*1];
-      __Z7conoutfiPKcz(4, __str5, _21);
+      __Z7conoutfiPKcz(4, __str5+0*1, _21);
       __label__ = 17; break;
     case 8: // _bb6
       var _22 = HEAP[_id_addr];
@@ -4297,7 +4302,7 @@ function __Z14setfvarcheckedP5identf(_id, _val) {
       var _30 = HEAP[_28];
       var _31 = HEAP[_30];
       var _33 = _26+8*1;
-      var _34 = _33;
+      var _34 = _33+0*1;
       var _36 = _34;
       HEAP[_36] = _31;
       var _38 = HEAP[_id_addr];
@@ -4361,7 +4366,7 @@ function __Z14setfvarcheckedP5identf(_id, _val) {
       var _89 = __Z8floatstrf(_88);
       var _90 = HEAP[_id_addr];
       var _92 = HEAP[0 + _90+2*1];
-      __Z7conoutfiPKcz(4, __str6, _92, _89, _83);
+      __Z7conoutfiPKcz(4, __str6+0*1, _92, _89, _83);
       __label__ = 20; break;
     case 20: // _bb17
       var _93 = HEAP[_id_addr];
@@ -4403,7 +4408,7 @@ function __Z13setvarcheckedP5identi(_id, _val) {
     case 0: // _bb
       var _5 = HEAP[_id_addr];
       var _7 = HEAP[0 + _5+2*1];
-      __Z7conoutfiPKcz(4, __str4, _7);
+      __Z7conoutfiPKcz(4, __str4+0*1, _7);
       __label__ = 22; break;
     case 1: // _bb1
       var _8 = HEAP[_overrideidents];
@@ -4425,7 +4430,7 @@ function __Z13setvarcheckedP5identi(_id, _val) {
     case 4: // _bb5
       var _19 = HEAP[_id_addr];
       var _21 = HEAP[0 + _19+2*1];
-      __Z7conoutfiPKcz(4, __str5, _21);
+      __Z7conoutfiPKcz(4, __str5+0*1, _21);
       __label__ = 22; break;
     case 8: // _bb6
       var _22 = HEAP[_id_addr];
@@ -4438,7 +4443,7 @@ function __Z13setvarcheckedP5identi(_id, _val) {
       var _29 = HEAP[0 + _27];
       var _30 = HEAP[_29];
       var _32 = _26+8*1;
-      var _33 = _32;
+      var _33 = _32+0*1;
       HEAP[0 + _33] = _30;
       var _36 = HEAP[_id_addr];
       HEAP[0 + _36+5*1] = 0;
@@ -4502,17 +4507,17 @@ function __Z13setvarcheckedP5identi(_id, _val) {
       var _91 = 0+(_90 <= 255);
       if (_91) { __label__ = 17; break; } else { __label__ = 18; break; }
     case 17: // _bb18
-      HEAP[_iftmp_75] = __str7;
+      HEAP[_iftmp_75] = __str7+0*1;
       __label__ = 19; break;
     case 18: // _bb19
-      HEAP[_iftmp_75] = __str8;
+      HEAP[_iftmp_75] = __str8+0*1;
       __label__ = 19; break;
     case 19: // _bb20
       var _92 = HEAP[_iftmp_75];
       HEAP[_iftmp_74] = _92;
       __label__ = 25; break;
     case 24: // _bb21
-      HEAP[_iftmp_74] = __str9;
+      HEAP[_iftmp_74] = __str9+0*1;
       __label__ = 25; break;
     case 25: // _bb22
       var _93 = HEAP[_iftmp_74];
@@ -4566,7 +4571,7 @@ function __ZN7_stdcmdILi1194EE3runEPc(_s) {
       var __alloca_point_ = 0;
       HEAP[_s_addr] = _s;
       var _0 = HEAP[_s_addr];
-      __Z7conoutfPKcz(__str10, _0);
+      __Z7conoutfPKcz(__str10+0*1, _0);
       __label__ = 2; break;
     case 2: // _return
       return;
@@ -5448,7 +5453,7 @@ function __Z14setsvarcheckedP5identPKc(_id, _val) {
     case 0: // _bb
       var _5 = HEAP[_id_addr];
       var _7 = HEAP[0 + _5+2*1];
-      __Z7conoutfiPKcz(4, __str4, _7);
+      __Z7conoutfiPKcz(4, __str4+0*1, _7);
       __label__ = 17; break;
     case 1: // _bb1
       var _8 = HEAP[_overrideidents];
@@ -5470,7 +5475,7 @@ function __Z14setsvarcheckedP5identPKc(_id, _val) {
     case 4: // _bb5
       var _19 = HEAP[_id_addr];
       var _21 = HEAP[0 + _19+2*1];
-      __Z7conoutfiPKcz(4, __str5, _21);
+      __Z7conoutfiPKcz(4, __str5+0*1, _21);
       __label__ = 17; break;
     case 8: // _bb6
       var _22 = HEAP[_id_addr];
@@ -5484,7 +5489,7 @@ function __Z14setsvarcheckedP5identPKc(_id, _val) {
       var _30 = HEAP[_28];
       var _31 = HEAP[_30];
       var _33 = _26+8*1;
-      var _34 = _33;
+      var _34 = _33+0*1;
       var _36 = _34;
       HEAP[_36] = _31;
       var _38 = HEAP[_id_addr];
@@ -5516,7 +5521,7 @@ function __Z14setsvarcheckedP5identPKc(_id, _val) {
     case 14: // _bb12
       var _57 = HEAP[_id_addr];
       var _58 = _57+8*1;
-      var _59 = _58;
+      var _59 = _58+0*1;
       var _61 = _59;
       var _63 = HEAP[_61];
       var _64 = 0+(_63 != 0);
@@ -5524,7 +5529,7 @@ function __Z14setsvarcheckedP5identPKc(_id, _val) {
     case 15: // _bb13
       var _65 = HEAP[_id_addr];
       var _66 = _65+8*1;
-      var _67 = _66;
+      var _67 = _66+0*1;
       var _69 = _67;
       var _71 = HEAP[_69];
       __ZdaPv(_71);
@@ -5604,35 +5609,35 @@ __label__ = 14; break;
     case 1: // _bb1
       var _7 = HEAP[_i_addr];
       var _8 = _7+7*1;
-      var _10 = HEAP[0 + _8];
+      var _10 = HEAP[0 + _8+0*1];
       var _12 = HEAP[0 + _10];
       var _13 = 0+(_12 != 0);
       if (_13) { __label__ = 3; break; } else { __label__ = 8; break; }
     case 3: // _bb2
       var _14 = HEAP[_i_addr];
       var _15 = _14+7*1;
-      var _17 = HEAP[0 + _15];
+      var _17 = HEAP[0 + _15+0*1];
       var _19 = _14+8*1;
-      var _21 = HEAP[0 + _19];
+      var _21 = HEAP[0 + _19+0*1];
       var _22 = 0+(_17 != _21);
       if (_22) { __label__ = 7; break; } else { __label__ = 4; break; }
     case 7: // _bb3
       var _23 = HEAP[_i_addr];
       var _24 = _23+7*1;
-      var _26 = HEAP[0 + _24];
+      var _26 = HEAP[0 + _24+0*1];
       var _27 = 0+(_26 != 0);
       if (_27) { __label__ = 6; break; } else { __label__ = 4; break; }
     case 6: // _bb4
       var _28 = HEAP[_i_addr];
       var _29 = _28+7*1;
-      var _31 = HEAP[0 + _29];
+      var _31 = HEAP[0 + _29+0*1];
       __ZdaPv(_31);
       __label__ = 4; break;
     case 4: // _bb5
-      var _32 = __Z9newstringPKc(__str3);
+      var _32 = __Z9newstringPKc(__str3+0*1);
       var _33 = HEAP[_i_addr];
       var _34 = _33+7*1;
-      HEAP[0 + _34] = _32;
+      HEAP[0 + _34+0*1] = _32;
       __label__ = 8; break;
     case 8: // _bb6
       __label__ = 14; break;
@@ -5641,7 +5646,7 @@ __label__ = 14; break;
       var _37 = _36+9*1;
       var _39 = HEAP[0 + _37];
       var _41 = _36+8*1;
-      var _42 = _41;
+      var _42 = _41+0*1;
       var _45 = HEAP[0 + _42];
       HEAP[_39] = _45;
       var _46 = HEAP[_i_addr];
@@ -5656,7 +5661,7 @@ __label__ = 14; break;
       var _55 = _54;
       var _57 = HEAP[_55];
       var _59 = _53+8*1;
-      var _60 = _59;
+      var _60 = _59+0*1;
       var _62 = _60;
       var _64 = HEAP[_62];
       HEAP[_57] = _64;
@@ -5688,7 +5693,7 @@ __label__ = 14; break;
       var _87 = _86;
       var _89 = HEAP[_87];
       var _91 = _85+8*1;
-      var _92 = _91;
+      var _92 = _91+0*1;
       var _94 = _92;
       var _96 = HEAP[_94];
       HEAP[_89] = _96;
@@ -5723,7 +5728,7 @@ function __Z14clearoverridesv() {
     case 0: // _bb
       var _0 = HEAP[_idents];
       var _1 = _0+0*5;
-      var _3 = HEAP[0 + _1+2];
+      var _3 = HEAP[0 + _1+2*1];
       var _6 = HEAP[0 + _3+_i];
       HEAP[_enumc] = _6;
       __label__ = 7; break;
@@ -5747,7 +5752,7 @@ function __Z14clearoverridesv() {
     case 4: // _bb5
       var _18 = HEAP[_idents];
       var _19 = _18+0*5;
-      var _21 = HEAP[0 + _19];
+      var _21 = HEAP[0 + _19+0*1];
       var _23 = 0+(_21 > _i);
       if (_23) { __label__ = 0; break; } else { __label__ = 8; break; }
     case 8: // _bb6
@@ -6039,7 +6044,7 @@ function __Z6formatPPcPi(_args, _numargs) {
       HEAP[_iftmp_158] = _31;
       __label__ = 8; break;
     case 4: // _bb5
-      HEAP[_iftmp_158] = __str3;
+      HEAP[_iftmp_158] = __str3+0*1;
       __label__ = 8; break;
     case 8: // _bb6
       var _32 = HEAP[_iftmp_158];
@@ -6317,7 +6322,7 @@ function __Z5htcmpIcPKc5identEbPKT_RK14hashtableentryIT0_T1_E(_x, _y) {
       HEAP[_x_addr] = _x;
       HEAP[_y_addr] = _y;
       var _1 = HEAP[_y_addr];
-      var _3 = HEAP[0 + _1+0*11];
+      var _3 = HEAP[0 + _1+__struct_hashtableentry_const_char__ident_____FLATTENER[0]];
       var _4 = HEAP[_x_addr];
       var _5 = __ZL5htcmpPKcS0_(_4, _3);
       _0 = _5;
@@ -6349,17 +6354,17 @@ function __ZN9hashtableIPKc5identE6accessERKS1_(_this, _key) {
       var _3 = __ZL6hthashPKc(_2);
       var _4 = HEAP[_this_addr];
       var _5 = _4+0*5;
-      var _7 = HEAP[0 + _5];
+      var _7 = HEAP[0 + _5+0*1];
       var _8 = _7 - 1;
       _h = _3 & _8;
       var _11 = _4+0*5;
-      var _13 = HEAP[0 + _11+2];
+      var _13 = HEAP[0 + _11+2*1];
       var _16 = HEAP[0 + _13+_h];
       HEAP[_c] = _16;
       __label__ = 7; break;
     case 0: // _bb
       var _17 = HEAP[_c];
-      var _18 = _17+0*12;
+      var _18 = _17+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
       var _19 = HEAP[_key_addr];
       var _20 = HEAP[_19];
       _retval_227 = __Z5htcmpIcPKc5identEbPKT_RK14hashtableentryIT0_T1_E(_20, _18);
@@ -6367,13 +6372,13 @@ function __ZN9hashtableIPKc5identE6accessERKS1_(_this, _key) {
       if (_toBool) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _23 = HEAP[_c];
-      var _24 = _23+0*12;
-      var _25 = _24+1*11;
+      var _24 = _23+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
+      var _25 = _24+__struct_hashtableentry_const_char__ident_____FLATTENER[1];
       HEAP[_0] = _25;
       __label__ = 4; break;
     case 3: // _bb2
       var _26 = HEAP[_c];
-      var _28 = HEAP[0 + _26+1*12];
+      var _28 = HEAP[0 + _26+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[1]];
       HEAP[_c] = _28;
       __label__ = 7; break;
     case 7: // _bb3
@@ -6467,7 +6472,7 @@ __label__ = 4; break;
     case 6: // _bb4
       var _36 = HEAP[_id];
       var _37 = _36+7*1;
-      var _39 = HEAP[0 + _37];
+      var _39 = HEAP[0 + _37+0*1];
       var _40 = HEAP[_n_addr];
       var _41 = __Z11exchangestrPcPKc(_40, _39);
       HEAP[_0] = _41;
@@ -6475,7 +6480,7 @@ __label__ = 4; break;
     case 4: // _bb5
       var _42 = HEAP[_n_addr];
       var _43 = _42+1;
-      __Z7conoutfiPKcz(4, __str11, _43);
+      __Z7conoutfiPKcz(4, __str11+0*1, _43);
       var _44 = HEAP[_n_addr];
       HEAP[_0] = _44;
       __label__ = 8; break;
@@ -6515,11 +6520,11 @@ function __Z8getaliasPKc(_name) {
     case 1: // _bb1
       var _9 = HEAP[_i];
       var _10 = _9+7*1;
-      var _12 = HEAP[0 + _10];
+      var _12 = HEAP[0 + _10+0*1];
       HEAP[_iftmp_71] = _12;
       __label__ = 7; break;
     case 3: // _bb2
-      HEAP[_iftmp_71] = __str3;
+      HEAP[_iftmp_71] = __str3+0*1;
       __label__ = 7; break;
     case 7: // _bb3
       var _13 = HEAP[_iftmp_71];
@@ -6803,7 +6808,7 @@ function __Z7setsvarPKcS0_b(_name, _str, _dofunc) {
     case 8: // _bb6
       var _19 = HEAP[_id];
       var _21 = HEAP[0 + _19+2*1];
-      __Z7conoutfiPKcz(4, __str5, _21);
+      __Z7conoutfiPKcz(4, __str5+0*1, _21);
       __label__ = 24; break;
     case 5: // _bb7
       var _22 = HEAP[_id];
@@ -6817,7 +6822,7 @@ function __Z7setsvarPKcS0_b(_name, _str, _dofunc) {
       var _30 = HEAP[_28];
       var _31 = HEAP[_30];
       var _33 = _26+8*1;
-      var _34 = _33;
+      var _34 = _33+0*1;
       var _36 = _34;
       HEAP[_36] = _31;
       var _38 = HEAP[_id];
@@ -6849,7 +6854,7 @@ function __Z7setsvarPKcS0_b(_name, _str, _dofunc) {
     case 15: // _bb13
       var _57 = HEAP[_id];
       var _58 = _57+8*1;
-      var _59 = _58;
+      var _59 = _58+0*1;
       var _61 = _59;
       var _63 = HEAP[_61];
       var _64 = 0+(_63 != 0);
@@ -6857,7 +6862,7 @@ function __Z7setsvarPKcS0_b(_name, _str, _dofunc) {
     case 12: // _bb14
       var _65 = HEAP[_id];
       var _66 = _65+8*1;
-      var _67 = _66;
+      var _67 = _66+0*1;
       var _69 = _67;
       var _71 = HEAP[_69];
       __ZdaPv(_71);
@@ -6954,7 +6959,7 @@ function __Z7setfvarPKcfbb(_name, _f, _dofunc, _doclamp) {
     case 8: // _bb6
       var _19 = HEAP[_id];
       var _21 = HEAP[0 + _19+2*1];
-      __Z7conoutfiPKcz(4, __str5, _21);
+      __Z7conoutfiPKcz(4, __str5+0*1, _21);
       __label__ = 18; break;
     case 5: // _bb7
       var _22 = HEAP[_id];
@@ -6968,7 +6973,7 @@ function __Z7setfvarPKcfbb(_name, _f, _dofunc, _doclamp) {
       var _30 = HEAP[_28];
       var _31 = HEAP[_30];
       var _33 = _26+8*1;
-      var _34 = _33;
+      var _34 = _33+0*1;
       var _36 = _34;
       HEAP[_36] = _31;
       var _38 = HEAP[_id];
@@ -7076,7 +7081,7 @@ function __Z6setvarPKcibb(_name, _i, _dofunc, _doclamp) {
     case 8: // _bb6
       var _19 = HEAP[_id];
       var _21 = HEAP[0 + _19+2*1];
-      __Z7conoutfiPKcz(4, __str5, _21);
+      __Z7conoutfiPKcz(4, __str5+0*1, _21);
       __label__ = 18; break;
     case 5: // _bb7
       var _22 = HEAP[_id];
@@ -7089,7 +7094,7 @@ function __Z6setvarPKcibb(_name, _i, _dofunc, _doclamp) {
       var _29 = HEAP[0 + _27];
       var _30 = HEAP[_29];
       var _32 = _26+8*1;
-      var _33 = _32;
+      var _33 = _32+0*1;
       HEAP[0 + _33] = _30;
       var _36 = HEAP[_id];
       HEAP[0 + _36+5*1] = 0;
@@ -7171,7 +7176,7 @@ function __Z8resetvarPc(_name) {
     case 1: // _bb1
       var _11 = HEAP[_id];
       var _13 = HEAP[0 + _11+2*1];
-      __Z7conoutfiPKcz(4, __str4, _13);
+      __Z7conoutfiPKcz(4, __str4+0*1, _13);
       __label__ = 7; break;
     case 3: // _bb2
       var _14 = HEAP[_id];
@@ -7860,7 +7865,7 @@ function __Z7listlenPKc(_s) {
       HEAP[_s_addr] = _s;
       _n = 0;
       var _1 = HEAP[_s_addr];
-      var _2 = _strspn(_1, __str12);
+      var _2 = _strspn(_1, __str12+0*1);
       var _3 = HEAP[_s_addr];
       var _4 = _3+_2;
       HEAP[_s_addr] = _4;
@@ -7875,7 +7880,7 @@ function __Z7listlenPKc(_s) {
       var _9 = _8+1;
       HEAP[_s_addr] = _9;
       var _10 = HEAP[_s_addr];
-      var _11 = _strcspn(_10, __str13);
+      var _11 = _strcspn(_10, __str13+0*1);
       var _12 = HEAP[_s_addr];
       var _13 = _12+_11;
       HEAP[_s_addr] = _13;
@@ -7888,14 +7893,14 @@ function __Z7listlenPKc(_s) {
       __label__ = 7; break;
     case 3: // _bb2
       var _20 = HEAP[_s_addr];
-      var _21 = _strcspn(_20, __str14);
+      var _21 = _strcspn(_20, __str14+0*1);
       var _22 = HEAP[_s_addr];
       var _23 = _22+_21;
       HEAP[_s_addr] = _23;
       __label__ = 7; break;
     case 7: // _bb3
       var _24 = HEAP[_s_addr];
-      var _25 = _strspn(_24, __str12);
+      var _25 = _strspn(_24, __str12+0*1);
       var _26 = HEAP[_s_addr];
       var _27 = _26+_25;
       HEAP[_s_addr] = _27;
@@ -7940,7 +7945,7 @@ function __Z10prettylistPKcS0_(_s, _conj) {
       HEAP[_conj_addr] = _conj;
       __ZN6vectorIcEC1Ev(_p);
       var _4 = HEAP[_s_addr];
-      var _5 = _strspn(_4, __str12);
+      var _5 = _strspn(_4, __str12+0*1);
       var _6 = HEAP[_s_addr];
       var _7 = _6+_5;
       HEAP[_s_addr] = _7;
@@ -7960,7 +7965,7 @@ function __Z10prettylistPKcS0_(_s, _conj) {
       var _15 = _14+1;
       HEAP[_s_addr] = _15;
       var _16 = HEAP[_s_addr];
-      var _17 = _strcspn(_16, __str13);
+      var _17 = _strcspn(_16, __str13+0*1);
       var _18 = HEAP[_s_addr];
       var _19 = _18+_17;
       HEAP[_s_addr] = _19;
@@ -7973,7 +7978,7 @@ function __Z10prettylistPKcS0_(_s, _conj) {
       __label__ = 7; break;
     case 3: // _bb2
       var _26 = HEAP[_s_addr];
-      var _27 = _strcspn(_26, __str14);
+      var _27 = _strcspn(_26, __str14+0*1);
       var _28 = HEAP[_s_addr];
       var _29 = _28+_27;
       HEAP[_s_addr] = _29;
@@ -8028,7 +8033,7 @@ function __Z10prettylistPKcS0_(_s, _conj) {
       __label__ = 21; break;
     case 21: // _bb15
       var _60 = HEAP[_s_addr];
-      var _61 = _strspn(_60, __str12);
+      var _61 = _strspn(_60, __str12+0*1);
       var _62 = HEAP[_s_addr];
       var _63 = _62+_61;
       HEAP[_s_addr] = _63;
@@ -8118,7 +8123,7 @@ function __Z9indexlistPKci(_s, _pos) {
       HEAP[_s_addr] = _s;
       _pos_addr = _pos;
       var _1 = HEAP[_s_addr];
-      var _2 = _strspn(_1, __str12);
+      var _2 = _strspn(_1, __str12+0*1);
       var _3 = HEAP[_s_addr];
       var _4 = _3+_2;
       HEAP[_s_addr] = _4;
@@ -8134,7 +8139,7 @@ function __Z9indexlistPKci(_s, _pos) {
       var _9 = _8+1;
       HEAP[_s_addr] = _9;
       var _10 = HEAP[_s_addr];
-      var _11 = _strcspn(_10, __str13);
+      var _11 = _strcspn(_10, __str13+0*1);
       var _12 = HEAP[_s_addr];
       var _13 = _12+_11;
       HEAP[_s_addr] = _13;
@@ -8147,14 +8152,14 @@ function __Z9indexlistPKci(_s, _pos) {
       __label__ = 7; break;
     case 3: // _bb2
       var _20 = HEAP[_s_addr];
-      var _21 = _strcspn(_20, __str14);
+      var _21 = _strcspn(_20, __str14+0*1);
       var _22 = HEAP[_s_addr];
       var _23 = _22+_21;
       HEAP[_s_addr] = _23;
       __label__ = 7; break;
     case 7: // _bb3
       var _24 = HEAP[_s_addr];
-      var _25 = _strspn(_24, __str12);
+      var _25 = _strspn(_24, __str12+0*1);
       var _26 = HEAP[_s_addr];
       var _27 = _26+_25;
       HEAP[_s_addr] = _27;
@@ -8180,7 +8185,7 @@ function __Z9indexlistPKci(_s, _pos) {
       var _41 = _40+1;
       HEAP[_s_addr] = _41;
       var _42 = HEAP[_s_addr];
-      var _43 = _strcspn(_42, __str13);
+      var _43 = _strcspn(_42, __str13+0*1);
       var _44 = HEAP[_s_addr];
       var _45 = _44+_43;
       HEAP[_s_addr] = _45;
@@ -8193,7 +8198,7 @@ function __Z9indexlistPKci(_s, _pos) {
       __label__ = 9; break;
     case 10: // _bb8
       var _52 = HEAP[_s_addr];
-      var _53 = _strcspn(_52, __str14);
+      var _53 = _strcspn(_52, __str14+0*1);
       var _54 = HEAP[_s_addr];
       var _55 = _54+_53;
       HEAP[_s_addr] = _55;
@@ -8269,7 +8274,7 @@ function __Z11explodelistPKcR6vectorIPcE(_s, _elems) {
       HEAP[_s_addr] = _s;
       HEAP[_elems_addr] = _elems;
       var _1 = HEAP[_s_addr];
-      var _2 = _strspn(_1, __str12);
+      var _2 = _strspn(_1, __str12+0*1);
       var _3 = HEAP[_s_addr];
       var _4 = _3+_2;
       HEAP[_s_addr] = _4;
@@ -8286,7 +8291,7 @@ function __Z11explodelistPKcR6vectorIPcE(_s, _elems) {
       var _10 = _9+1;
       HEAP[_s_addr] = _10;
       var _11 = HEAP[_s_addr];
-      var _12 = _strcspn(_11, __str13);
+      var _12 = _strcspn(_11, __str13+0*1);
       var _13 = HEAP[_s_addr];
       var _14 = _13+_12;
       HEAP[_s_addr] = _14;
@@ -8299,7 +8304,7 @@ function __Z11explodelistPKcR6vectorIPcE(_s, _elems) {
       __label__ = 7; break;
     case 3: // _bb2
       var _21 = HEAP[_s_addr];
-      var _22 = _strcspn(_21, __str14);
+      var _22 = _strcspn(_21, __str14+0*1);
       var _23 = HEAP[_s_addr];
       var _24 = _23+_22;
       HEAP[_s_addr] = _24;
@@ -8346,7 +8351,7 @@ function __Z11explodelistPKcR6vectorIPcE(_s, _elems) {
       var _50 = HEAP[_elems_addr];
       var _51 = __ZN6vectorIPcE3addERKS0_(_50, _0);
       var _52 = HEAP[_s_addr];
-      var _53 = _strspn(_52, __str12);
+      var _53 = _strspn(_52, __str12+0*1);
       var _54 = HEAP[_s_addr];
       var _55 = _54+_53;
       HEAP[_s_addr] = _55;
@@ -8385,7 +8390,7 @@ function __Z12listincludesPKcS0_i(_list, _needle, _needlelen) {
       var _1 = HEAP[_list_addr];
       HEAP[_s] = _1;
       var _2 = HEAP[_s];
-      var _3 = _strspn(_2, __str12);
+      var _3 = _strspn(_2, __str12+0*1);
       var _4 = HEAP[_s];
       var _5 = _4+_3;
       HEAP[_s] = _5;
@@ -8403,7 +8408,7 @@ function __Z12listincludesPKcS0_i(_list, _needle, _needlelen) {
       var _11 = _10+1;
       HEAP[_s] = _11;
       var _12 = HEAP[_s];
-      var _13 = _strcspn(_12, __str13);
+      var _13 = _strcspn(_12, __str13+0*1);
       var _14 = HEAP[_s];
       var _15 = _14+_13;
       HEAP[_s] = _15;
@@ -8416,7 +8421,7 @@ function __Z12listincludesPKcS0_i(_list, _needle, _needlelen) {
       __label__ = 7; break;
     case 3: // _bb2
       var _22 = HEAP[_s];
-      var _23 = _strcspn(_22, __str14);
+      var _23 = _strcspn(_22, __str14+0*1);
       var _24 = HEAP[_s];
       var _25 = _24+_23;
       HEAP[_s] = _25;
@@ -8462,7 +8467,7 @@ function __Z12listincludesPKcS0_i(_list, _needle, _needlelen) {
       __label__ = 12; break;
     case 13: // _bb11
       var _52 = HEAP[_s];
-      var _53 = _strspn(_52, __str12);
+      var _53 = _strspn(_52, __str12+0*1);
       var _54 = HEAP[_s];
       var _55 = _54+_53;
       HEAP[_s] = _55;
@@ -8533,7 +8538,7 @@ function __Z7listdelPKcS0_(_s, _del) {
       HEAP[_del_addr] = _del;
       __ZN6vectorIcEC1Ev(_p);
       var _3 = HEAP[_s_addr];
-      var _4 = _strspn(_3, __str12);
+      var _4 = _strspn(_3, __str12+0*1);
       var _5 = HEAP[_s_addr];
       var _6 = _5+_4;
       HEAP[_s_addr] = _6;
@@ -8550,7 +8555,7 @@ function __Z7listdelPKcS0_(_s, _del) {
       var _12 = _11+1;
       HEAP[_s_addr] = _12;
       var _13 = HEAP[_s_addr];
-      var _14 = _strcspn(_13, __str13);
+      var _14 = _strcspn(_13, __str13+0*1);
       var _15 = HEAP[_s_addr];
       var _16 = _15+_14;
       HEAP[_s_addr] = _16;
@@ -8563,7 +8568,7 @@ function __Z7listdelPKcS0_(_s, _del) {
       __label__ = 7; break;
     case 3: // _bb2
       var _23 = HEAP[_s_addr];
-      var _24 = _strcspn(_23, __str14);
+      var _24 = _strcspn(_23, __str14+0*1);
       var _25 = HEAP[_s_addr];
       var _26 = _25+_24;
       HEAP[_s_addr] = _26;
@@ -8621,7 +8626,7 @@ function __Z7listdelPKcS0_(_s, _del) {
       __label__ = 16; break;
     case 16: // _bb16
       var _56 = HEAP[_s_addr];
-      var _57 = _strspn(_56, __str12);
+      var _57 = _strspn(_56, __str12+0*1);
       var _58 = HEAP[_s_addr];
       var _59 = _58+_57;
       HEAP[_s_addr] = _59;
@@ -8745,7 +8750,7 @@ function __Z4concPPcib(_w, _n, _space) {
       var _17 = 0+(_j < _n_addr);
       if (_17) { __label__ = 7; break; } else { __label__ = 4; break; }
     case 4: // _bb5
-      var _19 = __Z9newstringPKcj(__str3, _len);
+      var _19 = __Z9newstringPKcj(__str3+0*1, _len);
       HEAP[_r] = _19;
       _i = 0;
       __label__ = 13; break;
@@ -8762,7 +8767,7 @@ function __Z4concPPcib(_w, _n, _space) {
       if (_toBool8) { __label__ = 9; break; } else { __label__ = 11; break; }
     case 9: // _bb9
       var _31 = HEAP[_r];
-      var _32 = _strcat(_31, __str15);
+      var _32 = _strcat(_31, __str15+0*1);
       __label__ = 11; break;
     case 11: // _bb10
       _i = _i + 1;
@@ -8824,27 +8829,27 @@ function __Z9pushidentR5identPc(_id, _val) {
       HEAP[_stack] = _4;
       var _6 = HEAP[_id_addr];
       var _7 = _6+8*1;
-      var _9 = HEAP[0 + _7];
+      var _9 = HEAP[0 + _7+0*1];
       var _11 = _6+7*1;
-      var _13 = HEAP[0 + _11];
+      var _13 = HEAP[0 + _11+0*1];
       var _14 = 0+(_9 == _13);
       if (_14) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _15 = HEAP[_id_addr];
       var _16 = _15+7*1;
-      var _18 = HEAP[0 + _16];
+      var _18 = HEAP[0 + _16+0*1];
       var _19 = __Z9newstringPKc(_18);
       HEAP[_iftmp_32] = _19;
       __label__ = 7; break;
     case 3: // _bb2
       var _20 = HEAP[_id_addr];
       var _21 = _20+7*1;
-      var _23 = HEAP[0 + _21];
+      var _23 = HEAP[0 + _21+0*1];
       HEAP[_iftmp_32] = _23;
       __label__ = 7; break;
     case 7: // _bb3
       var _24 = HEAP[_stack];
-      var _25 = _24;
+      var _25 = _24+0*1;
       var _26 = HEAP[_iftmp_32];
       HEAP[_25] = _26;
       var _27 = HEAP[_id_addr];
@@ -8852,7 +8857,7 @@ function __Z9pushidentR5identPc(_id, _val) {
       var _29 = _28;
       var _31 = HEAP[_29];
       var _32 = HEAP[_stack];
-      HEAP[0 + _32+1] = _31;
+      HEAP[0 + _32+1*1] = _31;
       var _34 = HEAP[_id_addr];
       var _35 = _34+6*1;
       var _36 = _35;
@@ -8861,7 +8866,7 @@ function __Z9pushidentR5identPc(_id, _val) {
       HEAP[_37] = _38;
       var _39 = HEAP[_id_addr];
       var _40 = _39+7*1;
-      var _41 = _40;
+      var _41 = _40+0*1;
       var _42 = HEAP[_val_addr];
       HEAP[_41] = _42;
       __label__ = 6; break;
@@ -8881,7 +8886,7 @@ function __ZN14hashtableentryIPKc5identED1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _1 = _0+1*11;
+      var _1 = _0+__struct_hashtableentry_const_char__ident_____FLATTENER[1];
       __ZN5identD1Ev(_1);
       __label__ = 0; break;
     case 0: // _bb
@@ -8900,7 +8905,7 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE5chainD1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _1 = _0+0*12;
+      var _1 = _0+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
       __ZN14hashtableentryIPKc5identED1Ev(_1);
       __label__ = 0; break;
     case 0: // _bb
@@ -8928,7 +8933,7 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE10chainchunkC1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _4 = HEAP[_this_addr];
-      var _5 = _4+0*832;
+      var _5 = _4+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _6 = _5+0*13;
       HEAP[_3] = _6;
       var _7 = HEAP[_3];
@@ -9022,7 +9027,7 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE6insertEj(_this, _h) {
       HEAP[_this_addr] = _this;
       _h_addr = _h;
       var _2 = HEAP[_this_addr];
-      var _4 = HEAP[0 + _2+4];
+      var _4 = HEAP[0 + _2+4*1];
       var _5 = 0+(_4 == 0);
       if (_5) { __label__ = 0; break; } else { __label__ = 4; break; }
     case 0: // _bb
@@ -9034,11 +9039,11 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE6insertEj(_this, _h) {
       var _9 = HEAP[_1];
       HEAP[_chunk] = _9;
       var _10 = HEAP[_this_addr];
-      var _12 = HEAP[0 + _10+3];
+      var _12 = HEAP[0 + _10+3*1];
       var _13 = HEAP[_chunk];
-      HEAP[0 + _13+1*832] = _12;
+      HEAP[0 + _13+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[1]] = _12;
       var _15 = HEAP[_this_addr];
-      var _16 = _15+3;
+      var _16 = _15+3*1;
       var _17 = HEAP[_chunk];
       HEAP[_16] = _17;
       _i = 0;
@@ -9057,11 +9062,11 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE6insertEj(_this, _h) {
       var _22 = _i;
       var _24 = _i + 1;
       var _25 = HEAP[_chunk];
-      var _26 = _25+0*832;
+      var _26 = _25+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _27 = _26+_24*13;
-      var _29 = _25+0*832;
+      var _29 = _25+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _30 = _29+_22*13;
-      HEAP[0 + _30+1*12] = _27;
+      HEAP[0 + _30+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[1]] = _27;
       _i = _i + 1;
       __label__ = 7; break;
     case 7: // _bb3
@@ -9069,39 +9074,39 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE6insertEj(_this, _h) {
       if (_35) { __label__ = 3; break; } else { __label__ = 6; break; }
     case 6: // _bb4
       var _36 = HEAP[_this_addr];
-      var _38 = HEAP[0 + _36+4];
+      var _38 = HEAP[0 + _36+4*1];
       var _39 = HEAP[_chunk];
-      var _40 = _39+0*832;
+      var _40 = _39+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _41 = _40+63*13;
-      HEAP[0 + _41+1*12] = _38;
+      HEAP[0 + _41+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[1]] = _38;
       var _43 = HEAP[_chunk];
-      var _44 = _43+0*832;
+      var _44 = _43+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _45 = _44+0*13;
       var _46 = HEAP[_this_addr];
-      HEAP[0 + _46+4] = _45;
+      HEAP[0 + _46+4*1] = _45;
       __label__ = 4; break;
     case 4: // _bb5
       var _48 = HEAP[_this_addr];
-      var _50 = HEAP[0 + _48+4];
+      var _50 = HEAP[0 + _48+4*1];
       HEAP[_c] = _50;
       var _51 = HEAP[_this_addr];
-      var _53 = HEAP[0 + _51+4];
-      var _55 = HEAP[0 + _53+1*12];
-      HEAP[0 + _51+4] = _55;
+      var _53 = HEAP[0 + _51+4*1];
+      var _55 = HEAP[0 + _53+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[1]];
+      HEAP[0 + _51+4*1] = _55;
       var _58 = HEAP[_this_addr];
-      var _60 = HEAP[0 + _58+2];
+      var _60 = HEAP[0 + _58+2*1];
       var _63 = HEAP[0 + _60+_h_addr];
       var _64 = HEAP[_c];
-      HEAP[0 + _64+1*12] = _63;
+      HEAP[0 + _64+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[1]] = _63;
       var _66 = HEAP[_this_addr];
-      var _68 = HEAP[0 + _66+2];
+      var _68 = HEAP[0 + _66+2*1];
       var _70 = _68+_h_addr;
       var _71 = HEAP[_c];
       HEAP[_70] = _71;
       var _72 = HEAP[_this_addr];
-      var _74 = HEAP[0 + _72+1];
+      var _74 = HEAP[0 + _72+1*1];
       var _75 = _74 + 1;
-      HEAP[0 + _72+1] = _75;
+      HEAP[0 + _72+1*1] = _75;
       var _78 = HEAP[_c];
       HEAP[_0] = _78;
       var _79 = HEAP[_0];
@@ -9147,10 +9152,10 @@ function __ZN9hashtableIPKc5identE6insertERKS1_j(_this, _key, _h) {
       var _5 = HEAP[_key_addr];
       var _6 = HEAP[_5];
       var _7 = HEAP[_c];
-      var _8 = _7+0*12;
-      HEAP[0 + _8+0*11] = _6;
+      var _8 = _7+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
+      HEAP[0 + _8+__struct_hashtableentry_const_char__ident_____FLATTENER[0]] = _6;
       var _10 = HEAP[_c];
-      var _11 = _10+0*12;
+      var _11 = _10+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
       HEAP[_0] = _11;
       var _12 = HEAP[_0];
       HEAP[_retval] = _12;
@@ -9183,17 +9188,17 @@ function __ZN9hashtableIPKc5identE6accessERKS1_RKS2_(_this, _key, _data) {
       var _3 = __ZL6hthashPKc(_2);
       var _4 = HEAP[_this_addr];
       var _5 = _4+0*5;
-      var _7 = HEAP[0 + _5];
+      var _7 = HEAP[0 + _5+0*1];
       var _8 = _7 - 1;
       _h = _3 & _8;
       var _11 = _4+0*5;
-      var _13 = HEAP[0 + _11+2];
+      var _13 = HEAP[0 + _11+2*1];
       var _16 = HEAP[0 + _13+_h];
       HEAP[_c] = _16;
       __label__ = 7; break;
     case 0: // _bb
       var _17 = HEAP[_c];
-      var _18 = _17+0*12;
+      var _18 = _17+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
       var _19 = HEAP[_key_addr];
       var _20 = HEAP[_19];
       _retval_228 = __Z5htcmpIcPKc5identEbPKT_RK14hashtableentryIT0_T1_E(_20, _18);
@@ -9201,13 +9206,13 @@ function __ZN9hashtableIPKc5identE6accessERKS1_RKS2_(_this, _key, _data) {
       if (_toBool) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _23 = HEAP[_c];
-      var _24 = _23+0*12;
-      var _25 = _24+1*11;
+      var _24 = _23+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[0];
+      var _25 = _24+__struct_hashtableentry_const_char__ident_____FLATTENER[1];
       HEAP[_0] = _25;
       __label__ = 4; break;
     case 3: // _bb2
       var _26 = HEAP[_c];
-      var _28 = HEAP[0 + _26+1*12];
+      var _28 = HEAP[0 + _26+__struct_hashset_hashtableentry_const_char___ident_____chain____FLATTENER[1]];
       HEAP[_c] = _28;
       __label__ = 7; break;
     case 7: // _bb3
@@ -9218,7 +9223,7 @@ function __ZN9hashtableIPKc5identE6accessERKS1_RKS2_(_this, _key, _data) {
       var _31 = HEAP[_this_addr];
       var _32 = HEAP[_key_addr];
       var _34 = __ZN9hashtableIPKc5identE6insertERKS1_j(_31, _32, _h);
-      var _35 = _34+1*11;
+      var _35 = _34+__struct_hashtableentry_const_char__ident_____FLATTENER[1];
       var _36 = HEAP[_data_addr];
       var _37 = __ZN5identaSERKS_(_35, _36);
       HEAP[_0] = _37;
@@ -9344,7 +9349,7 @@ function __Z6aliasaPKcPc(_name, _action) {
       if (_17) { __label__ = 9; break; } else { __label__ = 14; break; }
     case 9: // _bb9
       var _18 = HEAP[_name_addr];
-      __Z7conoutfiPKcz(4, __str16, _18);
+      __Z7conoutfiPKcz(4, __str16+0*1, _18);
       var _19 = HEAP[_action_addr];
       var _20 = 0+(_19 != 0);
       if (_20) { __label__ = 11; break; } else { __label__ = 13; break; }
@@ -9357,27 +9362,27 @@ function __Z6aliasaPKcPc(_name, _action) {
     case 14: // _bb12
       var _22 = HEAP[_b];
       var _23 = _22+7*1;
-      var _25 = HEAP[0 + _23];
+      var _25 = HEAP[0 + _23+0*1];
       var _27 = _22+8*1;
-      var _29 = HEAP[0 + _27];
+      var _29 = HEAP[0 + _27+0*1];
       var _30 = 0+(_25 != _29);
       if (_30) { __label__ = 15; break; } else { __label__ = 21; break; }
     case 15: // _bb13
       var _31 = HEAP[_b];
       var _32 = _31+7*1;
-      var _34 = HEAP[0 + _32];
+      var _34 = HEAP[0 + _32+0*1];
       var _35 = 0+(_34 != 0);
       if (_35) { __label__ = 12; break; } else { __label__ = 21; break; }
     case 12: // _bb14
       var _36 = HEAP[_b];
       var _37 = _36+7*1;
-      var _39 = HEAP[0 + _37];
+      var _39 = HEAP[0 + _37+0*1];
       __ZdaPv(_39);
       __label__ = 21; break;
     case 21: // _bb15
       var _40 = HEAP[_b];
       var _41 = _40+7*1;
-      var _42 = _41;
+      var _42 = _41+0*1;
       var _43 = HEAP[_action_addr];
       HEAP[_42] = _43;
       var _44 = HEAP[_overrideidents];
@@ -9488,7 +9493,7 @@ function __Z8newidentPKc(_name) {
       _iftmp_34 = 0;
       __label__ = 7; break;
     case 7: // _bb3
-      var _6 = __Z9newstringPKc(__str3);
+      var _6 = __Z9newstringPKc(__str3+0*1);
       var _7 = HEAP[_name_addr];
       var _8 = __Z9newstringPKc(_7);
       __ZN5identC1EiPKcPci(_init, 5, _8, _6, _iftmp_34);
@@ -9559,18 +9564,18 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE10chainchunkD1Ev(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _1 = HEAP[_this_addr];
-      var _2 = _1+0*832;
+      var _2 = _1+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _3 = 0+(_2 != 0);
       if (_3) { __label__ = 0; break; } else { __label__ = 7; break; }
     case 0: // _bb
       var _4 = HEAP[_this_addr];
-      var _5 = _4+0*832;
+      var _5 = _4+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _6 = _5+832*1;
       HEAP[_0] = _6;
       __label__ = 1; break;
     case 1: // _bb1
       var _8 = HEAP[_this_addr];
-      var _9 = _8+0*832;
+      var _9 = _8+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[0];
       var _10 = _9+0*13;
       var _11 = HEAP[_0];
       var _12 = 0+(_11 == _10);
@@ -9716,7 +9721,7 @@ function __Z9svariablePKcS0_PPcPFvvEi(_name, _cur, _storage, _fun, _flags) {
       var _19 = HEAP[_idents];
       var _20 = __ZN9hashtableIPKc5identE6accessERKS1_RKS2_(_19, _name_addr, _v);
       var _21 = _v+7*1;
-      var _22 = _21;
+      var _22 = _21+0*1;
       var _24 = _22;
       var _26 = HEAP[_24];
       HEAP[_0] = _26;
@@ -9921,193 +9926,193 @@ function __Z41__static_initialization_and_destruction_0ii(___initialize_p, ___pr
       var _3 = 0+(___priority_addr == 65535);
       if (_3) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
-      var _4 = __Z10addcommandPKcPFvvES0_(__str17, __Z4pushPcS_, __str18);
+      var _4 = __Z10addcommandPKcPFvvES0_(__str17+0*1, __Z4pushPcS_, __str18+0*1);
       HEAP[__ZL12__dummy_push] = _4;
-      var _5 = __Z10addcommandPKcPFvvES0_(__str19, __Z3popPc, __str20);
+      var _5 = __Z10addcommandPKcPFvvES0_(__str19+0*1, __Z3popPc, __str20+0*1);
       HEAP[__ZL11__dummy_pop] = _5;
-      var _6 = __Z10addcommandPKcPFvvES0_(__str21, __Z8resetvarPc, __str20);
+      var _6 = __Z10addcommandPKcPFvvES0_(__str21+0*1, __Z8resetvarPc, __str20+0*1);
       HEAP[__ZL16__dummy_resetvar] = _6;
-      var _7 = __Z10addcommandPKcPFvvES0_(__str22, __Z5aliasPKcS0_, __str18);
+      var _7 = __Z10addcommandPKcPFvvES0_(__str22+0*1, __Z5aliasPKcS0_, __str18+0*1);
       HEAP[__ZL13__dummy_alias] = _7;
       __ZN6vectorIPS_IcEEC1Ev(__ZL8wordbufs);
       var _8 = ___cxa_atexit(___tcf_2, 0, ___dso_handle);
-      var _9 = __Z8variablePKciiiPiPFvvEi(__str23, 25, 0, 0, __numargs, 0, 0);
+      var _9 = __Z8variablePKciiiPiPFvvEi(__str23+0*1, 25, 0, 0, __numargs, 0, 0);
       HEAP[__numargs] = _9;
-      var _10 = __Z10addcommandPKcPFvvES0_(__str24, __ZN7_stdcmdILi846EE3runEPcS1_S1_, __str25);
+      var _10 = __Z10addcommandPKcPFvvES0_(__str24+0*1, __ZN7_stdcmdILi846EE3runEPcS1_S1_, __str25+0*1);
       HEAP[__ZN7_stdcmdILi846EE4initE] = _10;
-      var _11 = __Z10addcommandPKcPFvvES0_(__str26, __ZN7_stdcmdILi847EE3runEPcS1_S1_, __str25);
+      var _11 = __Z10addcommandPKcPFvvES0_(__str26+0*1, __ZN7_stdcmdILi847EE3runEPcS1_S1_, __str25+0*1);
       HEAP[__ZN7_stdcmdILi847EE4initE] = _11;
-      var _12 = __Z10addcommandPKcPFvvES0_(__str27, __ZN7_stdcmdILi860EE3runEPcPiS1_, __str28);
+      var _12 = __Z10addcommandPKcPFvvES0_(__str27+0*1, __ZN7_stdcmdILi860EE3runEPcPiS1_, __str28+0*1);
       HEAP[__ZN7_stdcmdILi860EE4initE] = _12;
-      var _13 = __Z10addcommandPKcPFvvES0_(__str29, __ZN7_stdcmdILi874EE3runEPcPiS1_S1_, __str30);
+      var _13 = __Z10addcommandPKcPFvvES0_(__str29+0*1, __ZN7_stdcmdILi874EE3runEPcPiS1_S1_, __str30+0*1);
       HEAP[__ZN7_stdcmdILi874EE4initE] = _13;
-      var _14 = __Z10addcommandPKcPFvvES0_(__str31, __ZN7_stdcmdILi875EE3runEPcS1_, __str18);
+      var _14 = __Z10addcommandPKcPFvvES0_(__str31+0*1, __ZN7_stdcmdILi875EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi875EE4initE] = _14;
-      var _15 = __Z10addcommandPKcPFvvES0_(__str32, __Z6concatPKc, __str33);
+      var _15 = __Z10addcommandPKcPFvvES0_(__str32+0*1, __Z6concatPKc, __str33+0*1);
       HEAP[__ZL14__dummy_concat] = _15;
-      var _16 = __Z10addcommandPKcPFvvES0_(__str34, __Z6resultPKc, __str20);
+      var _16 = __Z10addcommandPKcPFvvES0_(__str34+0*1, __Z6resultPKc, __str20+0*1);
       HEAP[__ZL14__dummy_result] = _16;
-      var _17 = __Z10addcommandPKcPFvvES0_(__str35, __Z10concatwordPPcPi, __str36);
+      var _17 = __Z10addcommandPKcPFvvES0_(__str35+0*1, __Z10concatwordPPcPi, __str36+0*1);
       HEAP[__ZL18__dummy_concatword] = _17;
-      var _18 = __Z10addcommandPKcPFvvES0_(__str37, __Z6formatPPcPi, __str36);
+      var _18 = __Z10addcommandPKcPFvvES0_(__str37+0*1, __Z6formatPPcPi, __str36+0*1);
       HEAP[__ZL14__dummy_format] = _18;
-      var _19 = __Z10addcommandPKcPFvvES0_(__str38, __Z2atPcPi, __str39);
+      var _19 = __Z10addcommandPKcPFvvES0_(__str38+0*1, __Z2atPcPi, __str39+0*1);
       HEAP[__ZL10__dummy_at] = _19;
-      var _20 = __Z10addcommandPKcPFvvES0_(__str40, __Z6substrPcPiS_, __str28);
+      var _20 = __Z10addcommandPKcPFvvES0_(__str40+0*1, __Z6substrPcPiS_, __str28+0*1);
       HEAP[__ZL14__dummy_substr] = _20;
-      var _21 = __Z10addcommandPKcPFvvES0_(__str41, __ZN7_stdcmdILi973EE3runEPc, __str20);
+      var _21 = __Z10addcommandPKcPFvvES0_(__str41+0*1, __ZN7_stdcmdILi973EE3runEPc, __str20+0*1);
       HEAP[__ZN7_stdcmdILi973EE4initE] = _21;
-      var _22 = __Z10addcommandPKcPFvvES0_(__str42, __Z9getalias_Pc, __str20);
+      var _22 = __Z10addcommandPKcPFvvES0_(__str42+0*1, __Z9getalias_Pc, __str20+0*1);
       HEAP[__ZL17__dummy_getalias_] = _22;
-      var _23 = __Z10addcommandPKcPFvvES0_(__str43, __Z10prettylistPKcS0_, __str18);
+      var _23 = __Z10addcommandPKcPFvvES0_(__str43+0*1, __Z10prettylistPKcS0_, __str18+0*1);
       HEAP[__ZL18__dummy_prettylist] = _23;
-      var _24 = __Z10addcommandPKcPFvvES0_(__str44, __ZN7_stdcmdILi1070EE3runEPcS1_, __str18);
+      var _24 = __Z10addcommandPKcPFvvES0_(__str44+0*1, __ZN7_stdcmdILi1070EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1070EE4initE] = _24;
-      var _25 = __Z10addcommandPKcPFvvES0_(__str45, __ZN7_stdcmdILi1071EE3runEPcS1_, __str18);
+      var _25 = __Z10addcommandPKcPFvvES0_(__str45+0*1, __ZN7_stdcmdILi1071EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1071EE4initE] = _25;
-      var _26 = __Z10addcommandPKcPFvvES0_(__str46, __ZN7_stdcmdILi1072EE3runEPcS1_S1_, __str25);
+      var _26 = __Z10addcommandPKcPFvvES0_(__str46+0*1, __ZN7_stdcmdILi1072EE3runEPcS1_S1_, __str25+0*1);
       HEAP[__ZN7_stdcmdILi1072EE4initE] = _26;
-      var _27 = __Z10addcommandPKcPFvvES0_(__str47, __ZN7_stdcmdILi1073EE3runEPcS1_S1_, __str25);
+      var _27 = __Z10addcommandPKcPFvvES0_(__str47+0*1, __ZN7_stdcmdILi1073EE3runEPcS1_S1_, __str25+0*1);
       HEAP[__ZN7_stdcmdILi1073EE4initE] = _27;
-      var _28 = __Z10addcommandPKcPFvvES0_(__str48, __ZN7_stdcmdILi1075EE3runEPiS1_, __str49);
+      var _28 = __Z10addcommandPKcPFvvES0_(__str48+0*1, __ZN7_stdcmdILi1075EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1075EE4initE] = _28;
-      var _29 = __Z10addcommandPKcPFvvES0_(__str50, __ZN7_stdcmdILi1076EE3runEPiS1_, __str49);
+      var _29 = __Z10addcommandPKcPFvvES0_(__str50+0*1, __ZN7_stdcmdILi1076EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1076EE4initE] = _29;
-      var _30 = __Z10addcommandPKcPFvvES0_(__str51, __ZN7_stdcmdILi1077EE3runEPiS1_, __str49);
+      var _30 = __Z10addcommandPKcPFvvES0_(__str51+0*1, __ZN7_stdcmdILi1077EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1077EE4initE] = _30;
-      var _31 = __Z10addcommandPKcPFvvES0_(__str52, __ZN7_stdcmdILi1078EE3runEPfS1_, __str53);
+      var _31 = __Z10addcommandPKcPFvvES0_(__str52+0*1, __ZN7_stdcmdILi1078EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1078EE4initE] = _31;
-      var _32 = __Z10addcommandPKcPFvvES0_(__str54, __ZN7_stdcmdILi1079EE3runEPfS1_, __str53);
+      var _32 = __Z10addcommandPKcPFvvES0_(__str54+0*1, __ZN7_stdcmdILi1079EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1079EE4initE] = _32;
-      var _33 = __Z10addcommandPKcPFvvES0_(__str55, __ZN7_stdcmdILi1080EE3runEPfS1_, __str53);
+      var _33 = __Z10addcommandPKcPFvvES0_(__str55+0*1, __ZN7_stdcmdILi1080EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1080EE4initE] = _33;
-      var _34 = __Z10addcommandPKcPFvvES0_(__str56, __ZN7_stdcmdILi1081EE3runEPiS1_, __str49);
+      var _34 = __Z10addcommandPKcPFvvES0_(__str56+0*1, __ZN7_stdcmdILi1081EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1081EE4initE] = _34;
-      var _35 = __Z10addcommandPKcPFvvES0_(__str57, __ZN7_stdcmdILi1082EE3runEPiS1_, __str49);
+      var _35 = __Z10addcommandPKcPFvvES0_(__str57+0*1, __ZN7_stdcmdILi1082EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1082EE4initE] = _35;
-      var _36 = __Z10addcommandPKcPFvvES0_(__str58, __ZN7_stdcmdILi1083EE3runEPiS1_, __str49);
+      var _36 = __Z10addcommandPKcPFvvES0_(__str58+0*1, __ZN7_stdcmdILi1083EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1083EE4initE] = _36;
-      var _37 = __Z10addcommandPKcPFvvES0_(__str59, __ZN7_stdcmdILi1084EE3runEPiS1_, __str49);
+      var _37 = __Z10addcommandPKcPFvvES0_(__str59+0*1, __ZN7_stdcmdILi1084EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1084EE4initE] = _37;
-      var _38 = __Z10addcommandPKcPFvvES0_(__str60, __ZN7_stdcmdILi1085EE3runEPiS1_, __str49);
+      var _38 = __Z10addcommandPKcPFvvES0_(__str60+0*1, __ZN7_stdcmdILi1085EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1085EE4initE] = _38;
-      var _39 = __Z10addcommandPKcPFvvES0_(__str61, __ZN7_stdcmdILi1086EE3runEPiS1_, __str49);
+      var _39 = __Z10addcommandPKcPFvvES0_(__str61+0*1, __ZN7_stdcmdILi1086EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1086EE4initE] = _39;
-      var _40 = __Z10addcommandPKcPFvvES0_(__str62, __ZN7_stdcmdILi1087EE3runEPfS1_, __str53);
+      var _40 = __Z10addcommandPKcPFvvES0_(__str62+0*1, __ZN7_stdcmdILi1087EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1087EE4initE] = _40;
-      var _41 = __Z10addcommandPKcPFvvES0_(__str63, __ZN7_stdcmdILi1088EE3runEPfS1_, __str53);
+      var _41 = __Z10addcommandPKcPFvvES0_(__str63+0*1, __ZN7_stdcmdILi1088EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1088EE4initE] = _41;
-      var _42 = __Z10addcommandPKcPFvvES0_(__str64, __ZN7_stdcmdILi1089EE3runEPfS1_, __str53);
+      var _42 = __Z10addcommandPKcPFvvES0_(__str64+0*1, __ZN7_stdcmdILi1089EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1089EE4initE] = _42;
-      var _43 = __Z10addcommandPKcPFvvES0_(__str65, __ZN7_stdcmdILi1090EE3runEPfS1_, __str53);
+      var _43 = __Z10addcommandPKcPFvvES0_(__str65+0*1, __ZN7_stdcmdILi1090EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1090EE4initE] = _43;
-      var _44 = __Z10addcommandPKcPFvvES0_(__str66, __ZN7_stdcmdILi1091EE3runEPfS1_, __str53);
+      var _44 = __Z10addcommandPKcPFvvES0_(__str66+0*1, __ZN7_stdcmdILi1091EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1091EE4initE] = _44;
-      var _45 = __Z10addcommandPKcPFvvES0_(__str67, __ZN7_stdcmdILi1092EE3runEPfS1_, __str53);
+      var _45 = __Z10addcommandPKcPFvvES0_(__str67+0*1, __ZN7_stdcmdILi1092EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1092EE4initE] = _45;
-      var _46 = __Z10addcommandPKcPFvvES0_(__str68, __ZN7_stdcmdILi1093EE3runEPiS1_, __str49);
+      var _46 = __Z10addcommandPKcPFvvES0_(__str68+0*1, __ZN7_stdcmdILi1093EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1093EE4initE] = _46;
-      var _47 = __Z10addcommandPKcPFvvES0_(__str69, __ZN7_stdcmdILi1094EE3runEPi, __str70);
+      var _47 = __Z10addcommandPKcPFvvES0_(__str69+0*1, __ZN7_stdcmdILi1094EE3runEPi, __str70+0*1);
       HEAP[__ZN7_stdcmdILi1094EE4initE] = _47;
-      var _48 = __Z10addcommandPKcPFvvES0_(__str71, __ZN7_stdcmdILi1095EE3runEPiS1_, __str49);
+      var _48 = __Z10addcommandPKcPFvvES0_(__str71+0*1, __ZN7_stdcmdILi1095EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1095EE4initE] = _48;
-      var _49 = __Z10addcommandPKcPFvvES0_(__str72, __ZN7_stdcmdILi1096EE3runEPiS1_, __str49);
+      var _49 = __Z10addcommandPKcPFvvES0_(__str72+0*1, __ZN7_stdcmdILi1096EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1096EE4initE] = _49;
-      var _50 = __Z10addcommandPKcPFvvES0_(__str73, __ZN7_stdcmdILi1097EE3runEPi, __str70);
+      var _50 = __Z10addcommandPKcPFvvES0_(__str73+0*1, __ZN7_stdcmdILi1097EE3runEPi, __str70+0*1);
       HEAP[__ZN7_stdcmdILi1097EE4initE] = _50;
-      var _51 = __Z10addcommandPKcPFvvES0_(__str74, __ZN7_stdcmdILi1098EE3runEPiS1_, __str49);
+      var _51 = __Z10addcommandPKcPFvvES0_(__str74+0*1, __ZN7_stdcmdILi1098EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1098EE4initE] = _51;
-      var _52 = __Z10addcommandPKcPFvvES0_(__str75, __ZN7_stdcmdILi1099EE3runEPiS1_, __str49);
+      var _52 = __Z10addcommandPKcPFvvES0_(__str75+0*1, __ZN7_stdcmdILi1099EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1099EE4initE] = _52;
-      var _53 = __Z10addcommandPKcPFvvES0_(__str76, __ZN7_stdcmdILi1100EE3runEPiS1_, __str49);
+      var _53 = __Z10addcommandPKcPFvvES0_(__str76+0*1, __ZN7_stdcmdILi1100EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1100EE4initE] = _53;
-      var _54 = __Z10addcommandPKcPFvvES0_(__str77, __ZN7_stdcmdILi1101EE3runEPiS1_, __str49);
+      var _54 = __Z10addcommandPKcPFvvES0_(__str77+0*1, __ZN7_stdcmdILi1101EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1101EE4initE] = _54;
-      var _55 = __Z10addcommandPKcPFvvES0_(__str78, __ZN7_stdcmdILi1102EE3runEPiS1_, __str49);
+      var _55 = __Z10addcommandPKcPFvvES0_(__str78+0*1, __ZN7_stdcmdILi1102EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1102EE4initE] = _55;
-      var _56 = __Z10addcommandPKcPFvvES0_(__str79, __ZN7_stdcmdILi1108EE3runEPPcPi, __str36);
+      var _56 = __Z10addcommandPKcPFvvES0_(__str79+0*1, __ZN7_stdcmdILi1108EE3runEPPcPi, __str36+0*1);
       HEAP[__ZN7_stdcmdILi1108EE4initE] = _56;
-      var _57 = __Z10addcommandPKcPFvvES0_(__str80, __ZN7_stdcmdILi1114EE3runEPPcPi, __str36);
+      var _57 = __Z10addcommandPKcPFvvES0_(__str80+0*1, __ZN7_stdcmdILi1114EE3runEPPcPi, __str36+0*1);
       HEAP[__ZN7_stdcmdILi1114EE4initE] = _57;
-      var _58 = __Z10addcommandPKcPFvvES0_(__str81, __ZN7_stdcmdILi1116EE3runEPiS1_, __str49);
+      var _58 = __Z10addcommandPKcPFvvES0_(__str81+0*1, __ZN7_stdcmdILi1116EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1116EE4initE] = _58;
-      var _59 = __Z10addcommandPKcPFvvES0_(__str82, __ZN7_stdcmdILi1117EE3runEPiS1_, __str49);
+      var _59 = __Z10addcommandPKcPFvvES0_(__str82+0*1, __ZN7_stdcmdILi1117EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1117EE4initE] = _59;
-      var _60 = __Z10addcommandPKcPFvvES0_(__str83, __ZN7_stdcmdILi1118EE3runEPfS1_, __str53);
+      var _60 = __Z10addcommandPKcPFvvES0_(__str83+0*1, __ZN7_stdcmdILi1118EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1118EE4initE] = _60;
-      var _61 = __Z10addcommandPKcPFvvES0_(__str84, __ZN7_stdcmdILi1119EE3runEPfS1_, __str53);
+      var _61 = __Z10addcommandPKcPFvvES0_(__str84+0*1, __ZN7_stdcmdILi1119EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1119EE4initE] = _61;
-      var _62 = __Z10addcommandPKcPFvvES0_(__str85, __ZN7_stdcmdILi1120EE3runEPf, __str86);
+      var _62 = __Z10addcommandPKcPFvvES0_(__str85+0*1, __ZN7_stdcmdILi1120EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1120EE4initE] = _62;
-      var _63 = __Z10addcommandPKcPFvvES0_(__str87, __ZN7_stdcmdILi1121EE3runEPf, __str86);
+      var _63 = __Z10addcommandPKcPFvvES0_(__str87+0*1, __ZN7_stdcmdILi1121EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1121EE4initE] = _63;
-      var _64 = __Z10addcommandPKcPFvvES0_(__str88, __ZN7_stdcmdILi1122EE3runEPf, __str86);
+      var _64 = __Z10addcommandPKcPFvvES0_(__str88+0*1, __ZN7_stdcmdILi1122EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1122EE4initE] = _64;
-      var _65 = __Z10addcommandPKcPFvvES0_(__str89, __ZN7_stdcmdILi1123EE3runEPf, __str86);
+      var _65 = __Z10addcommandPKcPFvvES0_(__str89+0*1, __ZN7_stdcmdILi1123EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1123EE4initE] = _65;
-      var _66 = __Z10addcommandPKcPFvvES0_(__str90, __ZN7_stdcmdILi1124EE3runEPf, __str86);
+      var _66 = __Z10addcommandPKcPFvvES0_(__str90+0*1, __ZN7_stdcmdILi1124EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1124EE4initE] = _66;
-      var _67 = __Z10addcommandPKcPFvvES0_(__str91, __ZN7_stdcmdILi1125EE3runEPf, __str86);
+      var _67 = __Z10addcommandPKcPFvvES0_(__str91+0*1, __ZN7_stdcmdILi1125EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1125EE4initE] = _67;
-      var _68 = __Z10addcommandPKcPFvvES0_(__str92, __ZN7_stdcmdILi1126EE3runEPf, __str86);
+      var _68 = __Z10addcommandPKcPFvvES0_(__str92+0*1, __ZN7_stdcmdILi1126EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1126EE4initE] = _68;
-      var _69 = __Z10addcommandPKcPFvvES0_(__str93, __ZN7_stdcmdILi1127EE3runEPfS1_, __str53);
+      var _69 = __Z10addcommandPKcPFvvES0_(__str93+0*1, __ZN7_stdcmdILi1127EE3runEPfS1_, __str53+0*1);
       HEAP[__ZN7_stdcmdILi1127EE4initE] = _69;
-      var _70 = __Z10addcommandPKcPFvvES0_(__str94, __ZN7_stdcmdILi1128EE3runEPf, __str86);
+      var _70 = __Z10addcommandPKcPFvvES0_(__str94+0*1, __ZN7_stdcmdILi1128EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1128EE4initE] = _70;
-      var _71 = __Z10addcommandPKcPFvvES0_(__str95, __ZN7_stdcmdILi1129EE3runEPf, __str86);
+      var _71 = __Z10addcommandPKcPFvvES0_(__str95+0*1, __ZN7_stdcmdILi1129EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1129EE4initE] = _71;
-      var _72 = __Z10addcommandPKcPFvvES0_(__str96, __ZN7_stdcmdILi1130EE3runEPf, __str86);
+      var _72 = __Z10addcommandPKcPFvvES0_(__str96+0*1, __ZN7_stdcmdILi1130EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1130EE4initE] = _72;
-      var _73 = __Z10addcommandPKcPFvvES0_(__str97, __ZN7_stdcmdILi1131EE3runEPf, __str86);
+      var _73 = __Z10addcommandPKcPFvvES0_(__str97+0*1, __ZN7_stdcmdILi1131EE3runEPf, __str86+0*1);
       HEAP[__ZN7_stdcmdILi1131EE4initE] = _73;
-      var _74 = __Z10addcommandPKcPFvvES0_(__str98, __ZN7_stdcmdILi1137EE3runEPPcPi, __str36);
+      var _74 = __Z10addcommandPKcPFvvES0_(__str98+0*1, __ZN7_stdcmdILi1137EE3runEPPcPi, __str36+0*1);
       HEAP[__ZN7_stdcmdILi1137EE4initE] = _74;
-      var _75 = __Z10addcommandPKcPFvvES0_(__str99, __ZN7_stdcmdILi1143EE3runEPPcPi, __str36);
+      var _75 = __Z10addcommandPKcPFvvES0_(__str99+0*1, __ZN7_stdcmdILi1143EE3runEPPcPi, __str36+0*1);
       HEAP[__ZN7_stdcmdILi1143EE4initE] = _75;
-      var _76 = __Z10addcommandPKcPFvvES0_(__str100, __ZN7_stdcmdILi1149EE3runEPPcPi, __str36);
+      var _76 = __Z10addcommandPKcPFvvES0_(__str100+0*1, __ZN7_stdcmdILi1149EE3runEPPcPi, __str36+0*1);
       HEAP[__ZN7_stdcmdILi1149EE4initE] = _76;
-      var _77 = __Z10addcommandPKcPFvvES0_(__str101, __ZN7_stdcmdILi1155EE3runEPPcPi, __str36);
+      var _77 = __Z10addcommandPKcPFvvES0_(__str101+0*1, __ZN7_stdcmdILi1155EE3runEPPcPi, __str36+0*1);
       HEAP[__ZN7_stdcmdILi1155EE4initE] = _77;
-      var _78 = __Z10addcommandPKcPFvvES0_(__str102, __ZN7_stdcmdILi1167EE3runEPPcPi, __str36);
+      var _78 = __Z10addcommandPKcPFvvES0_(__str102+0*1, __ZN7_stdcmdILi1167EE3runEPPcPi, __str36+0*1);
       HEAP[__ZN7_stdcmdILi1167EE4initE] = _78;
-      var _79 = __Z10addcommandPKcPFvvES0_(__str103, __ZN7_stdcmdILi1182EE3runEPiPPcS1_, __str104);
+      var _79 = __Z10addcommandPKcPFvvES0_(__str103+0*1, __ZN7_stdcmdILi1182EE3runEPiPPcS1_, __str104+0*1);
       HEAP[__ZN7_stdcmdILi1182EE4initE] = _79;
-      var _80 = __Z10addcommandPKcPFvvES0_(__str105, __ZN7_stdcmdILi1183EE3runEPfPPcPi, __str106);
+      var _80 = __Z10addcommandPKcPFvvES0_(__str105+0*1, __ZN7_stdcmdILi1183EE3runEPfPPcPi, __str106+0*1);
       HEAP[__ZN7_stdcmdILi1183EE4initE] = _80;
-      var _81 = __Z10addcommandPKcPFvvES0_(__str107, __ZN7_stdcmdILi1184EE3runEPcPS1_Pi, __str108);
+      var _81 = __Z10addcommandPKcPFvvES0_(__str107+0*1, __ZN7_stdcmdILi1184EE3runEPcPS1_Pi, __str108+0*1);
       HEAP[__ZN7_stdcmdILi1184EE4initE] = _81;
-      var _82 = __Z10addcommandPKcPFvvES0_(__str109, __ZN7_stdcmdILi1186EE3runEPiS1_, __str49);
+      var _82 = __Z10addcommandPKcPFvvES0_(__str109+0*1, __ZN7_stdcmdILi1186EE3runEPiS1_, __str49+0*1);
       HEAP[__ZN7_stdcmdILi1186EE4initE] = _82;
-      var _83 = __Z10addcommandPKcPFvvES0_(__str110, __ZN7_stdcmdILi1187EE3runEPcS1_, __str18);
+      var _83 = __Z10addcommandPKcPFvvES0_(__str110+0*1, __ZN7_stdcmdILi1187EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1187EE4initE] = _83;
-      var _84 = __Z10addcommandPKcPFvvES0_(__str111, __ZN7_stdcmdILi1188EE3runEPcS1_, __str18);
+      var _84 = __Z10addcommandPKcPFvvES0_(__str111+0*1, __ZN7_stdcmdILi1188EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1188EE4initE] = _84;
-      var _85 = __Z10addcommandPKcPFvvES0_(__str112, __ZN7_stdcmdILi1189EE3runEPcS1_, __str18);
+      var _85 = __Z10addcommandPKcPFvvES0_(__str112+0*1, __ZN7_stdcmdILi1189EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1189EE4initE] = _85;
-      var _86 = __Z10addcommandPKcPFvvES0_(__str113, __ZN7_stdcmdILi1190EE3runEPcS1_, __str18);
+      var _86 = __Z10addcommandPKcPFvvES0_(__str113+0*1, __ZN7_stdcmdILi1190EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1190EE4initE] = _86;
-      var _87 = __Z10addcommandPKcPFvvES0_(__str114, __ZN7_stdcmdILi1191EE3runEPcS1_, __str18);
+      var _87 = __Z10addcommandPKcPFvvES0_(__str114+0*1, __ZN7_stdcmdILi1191EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1191EE4initE] = _87;
-      var _88 = __Z10addcommandPKcPFvvES0_(__str115, __ZN7_stdcmdILi1192EE3runEPcS1_, __str18);
+      var _88 = __Z10addcommandPKcPFvvES0_(__str115+0*1, __ZN7_stdcmdILi1192EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1192EE4initE] = _88;
-      var _89 = __Z10addcommandPKcPFvvES0_(__str116, __ZN7_stdcmdILi1193EE3runEPcS1_, __str18);
+      var _89 = __Z10addcommandPKcPFvvES0_(__str116+0*1, __ZN7_stdcmdILi1193EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1193EE4initE] = _89;
-      var _90 = __Z10addcommandPKcPFvvES0_(__str117, __ZN7_stdcmdILi1194EE3runEPc, __str33);
+      var _90 = __Z10addcommandPKcPFvvES0_(__str117+0*1, __ZN7_stdcmdILi1194EE3runEPc, __str33+0*1);
       HEAP[__ZN7_stdcmdILi1194EE4initE] = _90;
-      var _91 = __Z10addcommandPKcPFvvES0_(__str118, __ZN7_stdcmdILi1195EE3runEPc, __str33);
+      var _91 = __Z10addcommandPKcPFvvES0_(__str118+0*1, __ZN7_stdcmdILi1195EE3runEPc, __str33+0*1);
       HEAP[__ZN7_stdcmdILi1195EE4initE] = _91;
-      var _92 = __Z10addcommandPKcPFvvES0_(__str119, __ZN7_stdcmdILi1196EE3runEPcS1_, __str18);
+      var _92 = __Z10addcommandPKcPFvvES0_(__str119+0*1, __ZN7_stdcmdILi1196EE3runEPcS1_, __str18+0*1);
       HEAP[__ZN7_stdcmdILi1196EE4initE] = _92;
-      var _93 = __Z10addcommandPKcPFvvES0_(__str120, __ZN7_stdcmdILi1197EE3runEPc, __str20);
+      var _93 = __Z10addcommandPKcPFvvES0_(__str120+0*1, __ZN7_stdcmdILi1197EE3runEPc, __str20+0*1);
       HEAP[__ZN7_stdcmdILi1197EE4initE] = _93;
-      var _94 = __Z10addcommandPKcPFvvES0_(__str121, __ZN7_stdcmdILi1223EE3runEPcS1_S1_, __str25);
+      var _94 = __Z10addcommandPKcPFvvES0_(__str121+0*1, __ZN7_stdcmdILi1223EE3runEPcS1_S1_, __str25+0*1);
       HEAP[__ZN7_stdcmdILi1223EE4initE] = _94;
       __ZN6vectorI5clineEC1Ev(_conlines);
       var _95 = ___cxa_atexit(___tcf_3, 0, ___dso_handle);
-      var _96 = __Z8variablePKciiiPiPFvvEi(__str122, 10, 200, 1000, _maxcon, __Z10var_maxconv, 1);
+      var _96 = __Z8variablePKciiiPiPFvvEi(__str122+0*1, 10, 200, 1000, _maxcon, __Z10var_maxconv, 1);
       HEAP[_maxcon] = _96;
-      var _97 = __Z8variablePKciiiPiPFvvEi(__str123, 0, 0, 1024, _somevar, 0, 1);
+      var _97 = __Z8variablePKciiiPiPFvvEi(__str123+0*1, 0, 0, 1024, _somevar, 0, 1);
       HEAP[_somevar] = _97;
       __label__ = 3; break;
     case 3: // _bb2
@@ -10229,11 +10234,11 @@ function __ZN7_stdcmdILi860EE3runEPcPiS1_(_var, _n, _body) {
     case 7: // _bb3
       var _11 = HEAP[_id];
       var _12 = _11+7*1;
-      var _14 = HEAP[0 + _12];
-      var _16 = _sprintf(_14, __str2, _i);
+      var _14 = HEAP[0 + _12+0*1];
+      var _16 = _sprintf(_14, __str2+0*1, _i);
       __label__ = 4; break;
     case 6: // _bb4
-      var _17 = __Z9newstringPKcj(__str141, 16);
+      var _17 = __Z9newstringPKcj(__str146+0*1, 16);
       var _18 = HEAP[_id];
       __Z9pushidentR5identPc(_18, _17);
       __label__ = 4; break;
@@ -10296,11 +10301,11 @@ function __ZN7_stdcmdILi874EE3runEPcPiS1_S1_(_var, _n, _cond, _body) {
     case 7: // _bb3
       var _11 = HEAP[_id];
       var _12 = _11+7*1;
-      var _14 = HEAP[0 + _12];
-      var _16 = _sprintf(_14, __str2, _i);
+      var _14 = HEAP[0 + _12+0*1];
+      var _16 = _sprintf(_14, __str2+0*1, _i);
       __label__ = 4; break;
     case 6: // _bb4
-      var _17 = __Z9newstringPKcj(__str141, 16);
+      var _17 = __Z9newstringPKcj(__str146+0*1, 16);
       var _18 = HEAP[_id];
       __Z9pushidentR5identPc(_18, _17);
       __label__ = 4; break;
@@ -10733,21 +10738,21 @@ function __Z8popidentR5ident(_id) {
     case 3: // _bb2
       var _10 = HEAP[_id_addr];
       var _11 = _10+7*1;
-      var _13 = HEAP[0 + _11];
+      var _13 = HEAP[0 + _11+0*1];
       var _15 = _10+8*1;
-      var _17 = HEAP[0 + _15];
+      var _17 = HEAP[0 + _15+0*1];
       var _18 = 0+(_13 != _17);
       if (_18) { __label__ = 7; break; } else { __label__ = 4; break; }
     case 7: // _bb3
       var _19 = HEAP[_id_addr];
       var _20 = _19+7*1;
-      var _22 = HEAP[0 + _20];
+      var _22 = HEAP[0 + _20+0*1];
       var _23 = 0+(_22 != 0);
       if (_23) { __label__ = 6; break; } else { __label__ = 4; break; }
     case 6: // _bb4
       var _24 = HEAP[_id_addr];
       var _25 = _24+7*1;
-      var _27 = HEAP[0 + _25];
+      var _27 = HEAP[0 + _25+0*1];
       __ZdaPv(_27);
       __label__ = 4; break;
     case 4: // _bb5
@@ -10757,12 +10762,12 @@ function __Z8popidentR5ident(_id) {
       var _32 = HEAP[_30];
       HEAP[_stack] = _32;
       var _33 = HEAP[_stack];
-      var _35 = HEAP[0 + _33];
+      var _35 = HEAP[0 + _33+0*1];
       var _36 = HEAP[_id_addr];
       var _37 = _36+7*1;
-      HEAP[0 + _37] = _35;
+      HEAP[0 + _37+0*1] = _35;
       var _39 = HEAP[_stack];
-      var _41 = HEAP[0 + _39+1];
+      var _41 = HEAP[0 + _39+1*1];
       var _42 = HEAP[_id_addr];
       var _43 = _42+6*1;
       var _44 = _43;
@@ -10837,8 +10842,8 @@ function __Z10executeretPKc(_p) {
     case 3: // _bb2
       var _5 = _i;
       var _7 = __Z9parsewordRPKciRi(_p_addr, _i, _infix);
-      HEAP[0 + _w+_5] = _7;
-      var _11 = HEAP[0 + _w+_i];
+      HEAP[0 + _w+_5*1] = _7;
+      var _11 = HEAP[0 + _w+_i*1];
       var _12 = 0+(_11 == 0);
       if (_12) { __label__ = 7; break; } else { __label__ = 6; break; }
     case 7: // _bb3
@@ -10852,7 +10857,7 @@ function __Z10executeretPKc(_p) {
       if (_17) { __label__ = 3; break; } else { __label__ = 8; break; }
     case 8: // _bb6
       var _18 = HEAP[_p_addr];
-      var _20 = _strcspn(_18, __str124);
+      var _20 = _strcspn(_18, __str124+0*1);
       var _21 = _18+_20;
       HEAP[_p_addr] = _21;
       var _22 = HEAP[_p_addr];
@@ -10861,7 +10866,7 @@ function __Z10executeretPKc(_p) {
       _cont = _24;
       var _26 = _22+1;
       HEAP[_p_addr] = _26;
-      var _28 = HEAP[0 + _w];
+      var _28 = HEAP[0 + _w+0*1];
       HEAP[_c] = _28;
       var _29 = HEAP[_c];
       var _30 = 0+(_29 == 0);
@@ -10905,18 +10910,18 @@ __label__ = 18; break;
       var _43 = 0+(_numargs > 2);
       if (_43) { __label__ = 16; break; } else { __label__ = 20; break; }
     case 16: // _bb16
-      var _45 = HEAP[0 + _w+2];
+      var _45 = HEAP[0 + _w+2*1];
       HEAP[_iftmp_114] = _45;
       __label__ = 17; break;
     case 20: // _bb17
-      var _46 = __Z9newstringPKc(__str3);
+      var _46 = __Z9newstringPKc(__str3+0*1);
       HEAP[_iftmp_114] = _46;
       __label__ = 17; break;
     case 17: // _bb18
       var _47 = HEAP[_c];
       var _48 = HEAP[_iftmp_114];
       __Z6aliasaPKcPc(_47, _48);
-      HEAP[0 + _w+2] = 0;
+      HEAP[0 + _w+2*1] = 0;
       __label__ = 18; break;
     case 18: // _bb19
       __label__ = 37; break;
@@ -10939,7 +10944,7 @@ __label__ = 18; break;
       if (_toBool23) { __label__ = 22; break; } else { __label__ = 38; break; }
     case 22: // _bb24
       var _58 = HEAP[_c];
-      __Z7conoutfiPKcz(4, __str125, _58);
+      __Z7conoutfiPKcz(4, __str125+0*1, _58);
       __label__ = 38; break;
     case 38: // _bb25
       var _59 = HEAP[_c];
@@ -10991,14 +10996,14 @@ __label__ = 37; break;
       var _71 = _n;
       var _72 = HEAP[_id];
       var _73 = _72+8*1;
-      var _75 = HEAP[0 + _73];
-      HEAP[0 + _v+_71] = _75;
+      var _75 = HEAP[0 + _73+0*1];
+      HEAP[0 + _v+_71*1] = _75;
       _n = _n + 1;
       __label__ = 35; break;
     case 35: // _bb31
       var _79 = HEAP[_id];
       var _80 = _79+7*1;
-      var _82 = HEAP[0 + _80];
+      var _82 = HEAP[0 + _80+0*1];
       HEAP[_a] = _82;
       __label__ = 41; break;
     case 31: // _bb32
@@ -11029,14 +11034,14 @@ __label__ = 120; break;
       var _90 = 0+(_wn < _numargs);
       if (_90) { __label__ = 42; break; } else { __label__ = 43; break; }
     case 42: // _bb34
-      var _93 = HEAP[0 + _w+_wn];
+      var _93 = HEAP[0 + _w+_wn*1];
       HEAP[_iftmp_119] = _93;
       __label__ = 44; break;
     case 43: // _bb35
-      HEAP[_iftmp_119] = __str3;
+      HEAP[_iftmp_119] = __str3+0*1;
       __label__ = 44; break;
     case 44: // _bb36
-      var _94 = _v+_85;
+      var _94 = _v+_85*1;
       var _95 = HEAP[_iftmp_119];
       HEAP[_94] = _95;
       __label__ = 45; break;
@@ -11046,20 +11051,20 @@ __label__ = 120; break;
       var _101 = 0+(_wn < _numargs);
       if (_101) { __label__ = 46; break; } else { __label__ = 47; break; }
     case 46: // _bb38
-      var _104 = HEAP[0 + _w+_wn];
+      var _104 = HEAP[0 + _w+_wn*1];
       _iftmp_122 = __ZL8parseintPKc(_104);
       __label__ = 48; break;
     case 47: // _bb39
       _iftmp_122 = 0;
       __label__ = 48; break;
     case 48: // _bb40
-      var _106 = _nstor+_96;
+      var _106 = _nstor+_96*1;
       var _107 = _106;
       HEAP[_107] = _iftmp_122;
       var _109 = _n;
-      var _111 = _nstor+_n;
+      var _111 = _nstor+_n*1;
       var _112 = _111;
-      var _113 = _v+_109;
+      var _113 = _v+_109*1;
       HEAP[_113] = _112;
       __label__ = 45; break;
     case 118: // _bb41
@@ -11068,38 +11073,38 @@ __label__ = 120; break;
       var _120 = 0+(_wn < _numargs);
       if (_120) { __label__ = 49; break; } else { __label__ = 50; break; }
     case 49: // _bb42
-      var _123 = HEAP[0 + _w+_wn];
+      var _123 = HEAP[0 + _w+_wn*1];
       _iftmp_127 = __ZL10parsefloatPKc(_123);
       __label__ = 51; break;
     case 50: // _bb43
       _iftmp_127 = 0.000000e+00;
       __label__ = 51; break;
     case 51: // _bb44
-      var _125 = _nstor+_115;
+      var _125 = _nstor+_115*1;
       var _126 = _125;
       var _127 = _126;
       HEAP[_127] = _iftmp_127;
       var _129 = _n;
-      var _131 = _nstor+_n;
+      var _131 = _nstor+_n*1;
       var _132 = _131;
       var _133 = _132;
-      var _134 = _v+_129;
+      var _134 = _v+_129*1;
       HEAP[_134] = _133;
       __label__ = 45; break;
     case 117: // _bb45
-      var _137 = _v+_n;
-      var _138 = _w;
+      var _137 = _v+_n*1;
+      var _138 = _w+0*1;
       var _139 = _138+1;
       HEAP[_137] = _139;
       _n = _n + 1;
       var _143 = _n;
       var _145 = _numargs - 1;
-      var _146 = _nstor+_143;
+      var _146 = _nstor+_143*1;
       HEAP[0 + _146] = _145;
       var _148 = _n;
-      var _150 = _nstor+_n;
+      var _150 = _nstor+_n*1;
       var _151 = _150;
-      var _152 = _v+_148;
+      var _152 = _v+_148*1;
       HEAP[_152] = _151;
       __label__ = 45; break;
     case 116: // _bb46
@@ -11108,18 +11113,18 @@ __label__ = 120; break;
       if (_155) { __label__ = 52; break; } else { __label__ = 53; break; }
     case 52: // _bb47
       var _157 = _numargs - 1;
-      var _158 = _w;
+      var _158 = _w+0*1;
       var _159 = _158+1;
       var _160 = __Z4concPPcib(_159, _157, 1);
       HEAP[_cargs] = _160;
       __label__ = 53; break;
     case 53: // _bb48
-      var _162 = _v+_n;
+      var _162 = _v+_n*1;
       var _163 = HEAP[_cargs];
       HEAP[_162] = _163;
       __label__ = 45; break;
     case 120: // _bb49
-      __Z5fatalPKcz(__str126);
+      __Z5fatalPKcz(__str126+0*1);
       __label__ = 45; break;
     case 45: // _bb50
       var _164 = HEAP[_a];
@@ -11175,7 +11180,7 @@ __label__ = 130; break;
       var _177 = _176+6*1;
       var _179 = HEAP[0 + _177];
       var _180 = _179;
-      var _182 = HEAP[0 + _v];
+      var _182 = HEAP[0 + _v+0*1];
       _180(_182);
       __label__ = 55; break;
     case 123: // _bb55
@@ -11183,8 +11188,8 @@ __label__ = 130; break;
       var _184 = _183+6*1;
       var _186 = HEAP[0 + _184];
       var _187 = _186;
-      var _189 = HEAP[0 + _v+1];
-      var _191 = HEAP[0 + _v];
+      var _189 = HEAP[0 + _v+1*1];
+      var _191 = HEAP[0 + _v+0*1];
       _187(_191, _189);
       __label__ = 55; break;
     case 124: // _bb56
@@ -11192,9 +11197,9 @@ __label__ = 130; break;
       var _193 = _192+6*1;
       var _195 = HEAP[0 + _193];
       var _196 = _195;
-      var _198 = HEAP[0 + _v+2];
-      var _200 = HEAP[0 + _v+1];
-      var _202 = HEAP[0 + _v];
+      var _198 = HEAP[0 + _v+2*1];
+      var _200 = HEAP[0 + _v+1*1];
+      var _202 = HEAP[0 + _v+0*1];
       _196(_202, _200, _198);
       __label__ = 55; break;
     case 125: // _bb57
@@ -11202,10 +11207,10 @@ __label__ = 130; break;
       var _204 = _203+6*1;
       var _206 = HEAP[0 + _204];
       var _207 = _206;
-      var _209 = HEAP[0 + _v+3];
-      var _211 = HEAP[0 + _v+2];
-      var _213 = HEAP[0 + _v+1];
-      var _215 = HEAP[0 + _v];
+      var _209 = HEAP[0 + _v+3*1];
+      var _211 = HEAP[0 + _v+2*1];
+      var _213 = HEAP[0 + _v+1*1];
+      var _215 = HEAP[0 + _v+0*1];
       _207(_215, _213, _211, _209);
       __label__ = 55; break;
     case 126: // _bb58
@@ -11213,11 +11218,11 @@ __label__ = 130; break;
       var _217 = _216+6*1;
       var _219 = HEAP[0 + _217];
       var _220 = _219;
-      var _222 = HEAP[0 + _v+4];
-      var _224 = HEAP[0 + _v+3];
-      var _226 = HEAP[0 + _v+2];
-      var _228 = HEAP[0 + _v+1];
-      var _230 = HEAP[0 + _v];
+      var _222 = HEAP[0 + _v+4*1];
+      var _224 = HEAP[0 + _v+3*1];
+      var _226 = HEAP[0 + _v+2*1];
+      var _228 = HEAP[0 + _v+1*1];
+      var _230 = HEAP[0 + _v+0*1];
       _220(_230, _228, _226, _224, _222);
       __label__ = 55; break;
     case 127: // _bb59
@@ -11225,12 +11230,12 @@ __label__ = 130; break;
       var _232 = _231+6*1;
       var _234 = HEAP[0 + _232];
       var _235 = _234;
-      var _237 = HEAP[0 + _v+5];
-      var _239 = HEAP[0 + _v+4];
-      var _241 = HEAP[0 + _v+3];
-      var _243 = HEAP[0 + _v+2];
-      var _245 = HEAP[0 + _v+1];
-      var _247 = HEAP[0 + _v];
+      var _237 = HEAP[0 + _v+5*1];
+      var _239 = HEAP[0 + _v+4*1];
+      var _241 = HEAP[0 + _v+3*1];
+      var _243 = HEAP[0 + _v+2*1];
+      var _245 = HEAP[0 + _v+1*1];
+      var _247 = HEAP[0 + _v+0*1];
       _235(_247, _245, _243, _241, _239, _237);
       __label__ = 55; break;
     case 128: // _bb60
@@ -11238,13 +11243,13 @@ __label__ = 130; break;
       var _249 = _248+6*1;
       var _251 = HEAP[0 + _249];
       var _252 = _251;
-      var _254 = HEAP[0 + _v+6];
-      var _256 = HEAP[0 + _v+5];
-      var _258 = HEAP[0 + _v+4];
-      var _260 = HEAP[0 + _v+3];
-      var _262 = HEAP[0 + _v+2];
-      var _264 = HEAP[0 + _v+1];
-      var _266 = HEAP[0 + _v];
+      var _254 = HEAP[0 + _v+6*1];
+      var _256 = HEAP[0 + _v+5*1];
+      var _258 = HEAP[0 + _v+4*1];
+      var _260 = HEAP[0 + _v+3*1];
+      var _262 = HEAP[0 + _v+2*1];
+      var _264 = HEAP[0 + _v+1*1];
+      var _266 = HEAP[0 + _v+0*1];
       _252(_266, _264, _262, _260, _258, _256, _254);
       __label__ = 55; break;
     case 129: // _bb61
@@ -11252,18 +11257,18 @@ __label__ = 130; break;
       var _268 = _267+6*1;
       var _270 = HEAP[0 + _268];
       var _271 = _270;
-      var _273 = HEAP[0 + _v+7];
-      var _275 = HEAP[0 + _v+6];
-      var _277 = HEAP[0 + _v+5];
-      var _279 = HEAP[0 + _v+4];
-      var _281 = HEAP[0 + _v+3];
-      var _283 = HEAP[0 + _v+2];
-      var _285 = HEAP[0 + _v+1];
-      var _287 = HEAP[0 + _v];
+      var _273 = HEAP[0 + _v+7*1];
+      var _275 = HEAP[0 + _v+6*1];
+      var _277 = HEAP[0 + _v+5*1];
+      var _279 = HEAP[0 + _v+4*1];
+      var _281 = HEAP[0 + _v+3*1];
+      var _283 = HEAP[0 + _v+2*1];
+      var _285 = HEAP[0 + _v+1*1];
+      var _287 = HEAP[0 + _v+0*1];
       _271(_287, _285, _283, _281, _279, _277, _275, _273);
       __label__ = 55; break;
     case 130: // _bb62
-      __Z5fatalPKcz(__str127);
+      __Z5fatalPKcz(__str127+0*1);
       __label__ = 55; break;
     case 55: // _bb63
       var _288 = HEAP[_cargs];
@@ -11326,7 +11331,7 @@ __label__ = 130; break;
       var _332 = HEAP[0 + _330];
       var _333 = HEAP[_332];
       var _334 = HEAP[_c];
-      __Z7conoutfPKcz(__str128, _334, _333, _328, _321, _314);
+      __Z7conoutfPKcz(__str128+0*1, _334, _333, _328, _321, _314);
       __label__ = 66; break;
     case 63: // _bb74
       var _335 = HEAP[_id];
@@ -11338,10 +11343,10 @@ __label__ = 130; break;
       var _344 = 0+(_343 != 0);
       if (_344) { __label__ = 67; break; } else { __label__ = 68; break; }
     case 67: // _bb75
-      HEAP[_iftmp_136] = __str129;
+      HEAP[_iftmp_136] = __str129+0*1;
       __label__ = 69; break;
     case 68: // _bb76
-      HEAP[_iftmp_136] = __str130;
+      HEAP[_iftmp_136] = __str130+0*1;
       __label__ = 69; break;
     case 69: // _bb77
       var _345 = HEAP[_iftmp_136];
@@ -11351,7 +11356,7 @@ __label__ = 130; break;
     case 66: // _bb78
       __label__ = 70; break;
     case 62: // _bb79
-      var _348 = HEAP[0 + _w+1];
+      var _348 = HEAP[0 + _w+1*1];
       _val = __ZL8parseintPKc(_348);
       var _350 = HEAP[_id];
       var _352 = HEAP[0 + _350+10*1];
@@ -11363,14 +11368,14 @@ __label__ = 130; break;
       if (_356) { __label__ = 73; break; } else { __label__ = 72; break; }
     case 73: // _bb81
       _val = _val << 16;
-      var _360 = HEAP[0 + _w+2];
+      var _360 = HEAP[0 + _w+2*1];
       var _361 = __ZL8parseintPKc(_360);
       var _362 = _361 << 8;
       _val = _362 | _val;
       var _366 = 0+(_numargs > 3);
       if (_366) { __label__ = 74; break; } else { __label__ = 72; break; }
     case 74: // _bb82
-      var _368 = HEAP[0 + _w+3];
+      var _368 = HEAP[0 + _w+3*1];
       var _369 = __ZL8parseintPKc(_368);
       _val = _369 | _val;
       __label__ = 72; break;
@@ -11391,10 +11396,10 @@ __label__ = 130; break;
       var _381 = HEAP[_380];
       var _382 = __Z8floatstrf(_381);
       var _383 = HEAP[_c];
-      __Z7conoutfPKcz(__str131, _383, _382);
+      __Z7conoutfPKcz(__str131+0*1, _383, _382);
       __label__ = 77; break;
     case 76: // _bb87
-      var _385 = HEAP[0 + _w+1];
+      var _385 = HEAP[0 + _w+1*1];
       var _386 = __ZL10parsefloatPKc(_385);
       var _387 = HEAP[_id];
       __Z14setfvarcheckedP5identf(_387, _386);
@@ -11430,18 +11435,18 @@ __label__ = 130; break;
       __Z7conoutfPKcz(_405, _406, _395);
       __label__ = 83; break;
     case 79: // _bb94
-      var _408 = HEAP[0 + _w+1];
+      var _408 = HEAP[0 + _w+1*1];
       var _409 = HEAP[_id];
       __Z14setsvarcheckedP5identPKc(_409, _408);
       __label__ = 83; break;
     case 83: // _bb95
       __label__ = 37; break;
     case 115: // _bb96
-      var _411 = HEAP[0 + _w];
+      var _411 = HEAP[0 + _w+0*1];
       var _412 = 0+(_411 != 0);
       if (_412) { __label__ = 84; break; } else { __label__ = 85; break; }
     case 84: // _bb97
-      var _414 = HEAP[0 + _w];
+      var _414 = HEAP[0 + _w+0*1];
       __ZdaPv(_414);
       __label__ = 85; break;
     case 85: // _bb98
@@ -11471,16 +11476,16 @@ __label__ = 130; break;
       var _toBool105 = 0+(_retval_141 != 0);
       if (_toBool105) { __label__ = 90; break; } else { __label__ = 91; break; }
     case 90: // _bb106
-      var _427 = _argname;
+      var _427 = _argname+0*1;
       __ZN15stringformatterC1EPc(_2, _427);
-      __ZN15stringformatterclEPKcz(_2, __str134, _i103);
-      var _429 = _argname;
+      __ZN15stringformatterclEPKcz(_2, __str134+0*1, _i103);
+      var _429 = _argname+0*1;
       var _430 = __Z8newidentPKc(_429);
       HEAP[_1] = _430;
       var _431 = __ZN6vectorIP5identE3addERKS1_(__ZZ10executeretPKcE6argids, _1);
       __label__ = 91; break;
     case 91: // _bb107
-      var _434 = HEAP[0 + _w+_i103];
+      var _434 = HEAP[0 + _w+_i103*1];
       var _436 = _i103 - 1;
       var _437 = __ZN6vectorIP5identEixEi(__ZZ10executeretPKcE6argids, _436);
       var _438 = HEAP[_437];
@@ -11504,16 +11509,16 @@ __label__ = 130; break;
     case 95: // _bb111
       var _451 = HEAP[_id];
       var _452 = _451+8*1;
-      var _454 = HEAP[0 + _452];
+      var _454 = HEAP[0 + _452+0*1];
       HEAP[_wasexecuting] = _454;
       var _455 = HEAP[_id];
       var _456 = _455+7*1;
-      var _458 = HEAP[0 + _456];
+      var _458 = HEAP[0 + _456+0*1];
       var _460 = _455+8*1;
-      HEAP[0 + _460] = _458;
+      HEAP[0 + _460+0*1] = _458;
       var _462 = HEAP[_id];
       var _463 = _462+7*1;
-      var _465 = HEAP[0 + _463];
+      var _465 = HEAP[0 + _463+0*1];
       var _466 = __Z10executeretPKc(_465);
       HEAP[_rv112] = _466;
       var _467 = HEAP[_rv112];
@@ -11526,34 +11531,34 @@ __label__ = 130; break;
     case 97: // _bb114
       var _470 = HEAP[_id];
       var _471 = _470+8*1;
-      var _473 = HEAP[0 + _471];
+      var _473 = HEAP[0 + _471+0*1];
       var _475 = _470+7*1;
-      var _477 = HEAP[0 + _475];
+      var _477 = HEAP[0 + _475+0*1];
       var _478 = 0+(_473 != _477);
       if (_478) { __label__ = 98; break; } else { __label__ = 99; break; }
     case 98: // _bb115
       var _479 = HEAP[_id];
       var _480 = _479+8*1;
-      var _482 = HEAP[0 + _480];
+      var _482 = HEAP[0 + _480+0*1];
       var _483 = HEAP[_wasexecuting];
       var _484 = 0+(_482 != _483);
       if (_484) { __label__ = 100; break; } else { __label__ = 99; break; }
     case 100: // _bb116
       var _485 = HEAP[_id];
       var _486 = _485+8*1;
-      var _488 = HEAP[0 + _486];
+      var _488 = HEAP[0 + _486+0*1];
       var _489 = 0+(_488 != 0);
       if (_489) { __label__ = 101; break; } else { __label__ = 99; break; }
     case 101: // _bb117
       var _490 = HEAP[_id];
       var _491 = _490+8*1;
-      var _493 = HEAP[0 + _491];
+      var _493 = HEAP[0 + _491+0*1];
       __ZdaPv(_493);
       __label__ = 99; break;
     case 99: // _bb118
       var _494 = HEAP[_id];
       var _495 = _494+8*1;
-      var _496 = _495;
+      var _496 = _495+0*1;
       var _497 = HEAP[_wasexecuting];
       HEAP[_496] = _497;
       HEAP[_overrideidents] = _wasoverriding;
@@ -11575,15 +11580,15 @@ __label__ = 130; break;
       _j = 0;
       __label__ = 105; break;
     case 109: // _bb124
-      var _510 = HEAP[0 + _w+_j];
+      var _510 = HEAP[0 + _w+_j*1];
       var _511 = 0+(_510 != 0);
       if (_511) { __label__ = 106; break; } else { __label__ = 107; break; }
     case 106: // _bb125
-      var _514 = HEAP[0 + _w+_j];
+      var _514 = HEAP[0 + _w+_j*1];
       var _515 = 0+(_514 != 0);
       if (_515) { __label__ = 108; break; } else { __label__ = 107; break; }
     case 108: // _bb126
-      var _518 = HEAP[0 + _w+_j];
+      var _518 = HEAP[0 + _w+_j*1];
       __ZdaPv(_518);
       __label__ = 107; break;
     case 107: // _bb127
@@ -11630,7 +11635,7 @@ function __Z9parsewordRPKciRi(_p, _arg, _infix) {
       var _1 = HEAP[_p_addr];
       var _2 = HEAP[_1];
       var _4 = HEAP[_1];
-      var _5 = _strspn(_4, __str145);
+      var _5 = _strspn(_4, __str150+0*1);
       var _6 = _2+_5;
       var _7 = HEAP[_p_addr];
       HEAP[_7] = _6;
@@ -11655,7 +11660,7 @@ function __Z9parsewordRPKciRi(_p, _arg, _infix) {
       var _22 = HEAP[_p_addr];
       var _23 = HEAP[_22];
       var _25 = HEAP[_22];
-      var _26 = _strcspn(_25, __str143);
+      var _26 = _strcspn(_25, __str148+0*1);
       var _27 = _23+_26;
       var _28 = HEAP[_p_addr];
       HEAP[_28] = _27;
@@ -11733,7 +11738,7 @@ function __Z9parsewordRPKciRi(_p, _arg, _infix) {
       var _75 = HEAP[_p_addr];
       var _76 = HEAP[_75];
       var _78 = HEAP[_75];
-      var _79 = _strcspn(_78, __str146);
+      var _79 = _strcspn(_78, __str151+0*1);
       var _80 = _76+_79;
       var _81 = HEAP[_p_addr];
       HEAP[_81] = _80;
@@ -11885,13 +11890,20 @@ function _main() {
       var _retval;
       var _0;
       var __alloca_point_ = 0;
-      var _1 = __Z7executePKc(__str135);
-      var _2 = __Z7executePKc(__str136);
-      var _3 = __Z7executePKc(__str137);
-      var _4 = __Z7executePKc(__str138);
-      var _5 = __Z7executePKc(__str139);
-      var _6 = __Z6getvarPKc(__str123);
-      var _7 = _printf(__str140, _6);
+      var _1 = _puts(__str50+0*1);
+      var _2 = __Z7executePKc(__str135+0*1);
+      var _3 = __Z7executePKc(__str136+0*1);
+      var _4 = __Z7executePKc(__str137+0*1);
+      var _5 = __Z7executePKc(__str138+0*1);
+      var _6 = __Z7executePKc(__str139+0*1);
+      var _7 = __Z6getvarPKc(__str123+0*1);
+      var _8 = _printf(__str140+0*1, _7);
+      var _9 = __Z7executePKc(__str141+0*1);
+      var _10 = __Z7executePKc(__str142+0*1);
+      var _11 = __Z7executePKc(__str143+0*1);
+      var _12 = __Z7executePKc(__str144+0*1);
+      var _13 = __Z7executePKc(__str145+0*1);
+      var _14 = _puts(__str50+0*1);
       _0 = 0;
       _retval = _0;
       __label__ = 2; break;
@@ -11946,7 +11958,7 @@ function __Z8looplistPKcS0_S0_b(_var, _list, _body, _search) {
       __label__ = 6; break;
     case 6: // _bb4
       var _8 = HEAP[_s];
-      var _9 = _strspn(_8, __str12);
+      var _9 = _strspn(_8, __str12+0*1);
       var _10 = HEAP[_s];
       var _11 = _10+_9;
       HEAP[_s] = _11;
@@ -11974,7 +11986,7 @@ function __Z8looplistPKcS0_S0_b(_var, _list, _body, _search) {
       var _21 = _20+1;
       HEAP[_s] = _21;
       var _22 = HEAP[_s];
-      var _23 = _strcspn(_22, __str13);
+      var _23 = _strcspn(_22, __str13+0*1);
       var _24 = HEAP[_s];
       var _25 = _24+_23;
       HEAP[_s] = _25;
@@ -11987,7 +11999,7 @@ function __Z8looplistPKcS0_S0_b(_var, _list, _body, _search) {
       __label__ = 14; break;
     case 13: // _bb11
       var _32 = HEAP[_s];
-      var _33 = _strcspn(_32, __str14);
+      var _33 = _strcspn(_32, __str14+0*1);
       var _34 = HEAP[_s];
       var _35 = _34+_33;
       HEAP[_s] = _35;
@@ -12138,7 +12150,7 @@ function __Z8parseexpRPKci(_p, _right) {
     case 3: // _bb2
       var _27 = HEAP[_p_addr];
       var _28 = HEAP[_27];
-      _n = _strcspn(_28, __str142);
+      _n = _strcspn(_28, __str147+0*1);
       var _30 = _n;
       var _31 = HEAP[_p_addr];
       var _32 = HEAP[_31];
@@ -12244,7 +12256,7 @@ __label__ = 18; break;
       var _83 = HEAP[_p_addr];
       var _84 = HEAP[_83];
       var _86 = HEAP[_83];
-      var _87 = _strcspn(_86, __str143);
+      var _87 = _strcspn(_86, __str148+0*1);
       var _88 = _84+_87;
       var _89 = HEAP[_p_addr];
       HEAP[_89] = _88;
@@ -12256,7 +12268,7 @@ __label__ = 18; break;
       var _91 = HEAP[_90];
       var _92 = _91+-1;
       HEAP[_90] = _92;
-      __Z7conoutfiPKcz(4, __str144, _right_addr);
+      __Z7conoutfiPKcz(4, __str149+0*1, _right_addr);
       var _95 = HEAP[_wordbuf];
       __ZN6vectorIcE7setsizeEi(_95, 0);
       var _96 = HEAP[__ZL7bufnest];
@@ -12306,7 +12318,7 @@ __label__ = 18; break;
       var _126 = 0+(_125 == 0);
       if (_126) { __label__ = 23; break; } else { __label__ = 22; break; }
     case 23: // _bb23
-      var _127 = __Z9newstringPKc(__str3);
+      var _127 = __Z9newstringPKc(__str3+0*1);
       HEAP[_iftmp_98] = _127;
       __label__ = 38; break;
     case 22: // _bb24
@@ -12517,11 +12529,11 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE12deletechunksEv(_this) {
       __label__ = 7; break;
     case 0: // _bb
       var _1 = HEAP[_this_addr];
-      var _3 = HEAP[0 + _1+3];
-      var _5 = HEAP[0 + _3+1*832];
+      var _3 = HEAP[0 + _1+3*1];
+      var _5 = HEAP[0 + _3+__struct_hashset_hashtableentry_const_char___ident_____chainchunk____FLATTENER[1]];
       HEAP[_nextchunk] = _5;
       var _6 = HEAP[_this_addr];
-      var _8 = HEAP[0 + _6+3];
+      var _8 = HEAP[0 + _6+3*1];
       HEAP[_0] = _8;
       var _9 = HEAP[_0];
       var _10 = 0+(_9 != 0);
@@ -12534,13 +12546,13 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE12deletechunksEv(_this) {
       __label__ = 3; break;
     case 3: // _bb2
       var _14 = HEAP[_this_addr];
-      var _15 = _14+3;
+      var _15 = _14+3*1;
       var _16 = HEAP[_nextchunk];
       HEAP[_15] = _16;
       __label__ = 7; break;
     case 7: // _bb3
       var _17 = HEAP[_this_addr];
-      var _19 = HEAP[0 + _17+3];
+      var _19 = HEAP[0 + _17+3*1];
       var _20 = 0+(_19 != 0);
       if (_20) { __label__ = 0; break; } else { __label__ = 6; break; }
     case 6: // _bb4
@@ -12560,7 +12572,7 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE5clearEv(_this) {
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
-      var _2 = HEAP[0 + _0+1];
+      var _2 = HEAP[0 + _0+1*1];
       var _3 = 0+(_2 == 0);
       if (_3) { __label__ = 6; break; } else { __label__ = 0; break; }
     case 0: // _bb
@@ -12568,20 +12580,20 @@ function __ZN7hashsetI14hashtableentryIPKc5identEE5clearEv(_this) {
       __label__ = 3; break;
     case 1: // _bb1
       var _4 = HEAP[_this_addr];
-      var _6 = HEAP[0 + _4+2];
+      var _6 = HEAP[0 + _4+2*1];
       HEAP[0 + _6+_i] = 0;
       _i = _i + 1;
       __label__ = 3; break;
     case 3: // _bb2
       var _11 = HEAP[_this_addr];
-      var _13 = HEAP[0 + _11];
+      var _13 = HEAP[0 + _11+0*1];
       var _15 = 0+(_13 > _i);
       if (_15) { __label__ = 1; break; } else { __label__ = 7; break; }
     case 7: // _bb3
       var _16 = HEAP[_this_addr];
-      HEAP[0 + _16+1] = 0;
+      HEAP[0 + _16+1*1] = 0;
       var _18 = HEAP[_this_addr];
-      HEAP[0 + _18+4] = 0;
+      HEAP[0 + _18+4*1] = 0;
       var _20 = HEAP[_this_addr];
       __ZN7hashsetI14hashtableentryIPKc5identEE12deletechunksEv(_20);
       __label__ = 6; break;
@@ -12610,19 +12622,19 @@ function __Z10clearstackR5ident(_id) {
       __label__ = 7; break;
     case 0: // _bb
       var _5 = HEAP[_stack];
-      var _7 = HEAP[0 + _5];
+      var _7 = HEAP[0 + _5+0*1];
       var _8 = 0+(_7 != 0);
       if (_8) { __label__ = 1; break; } else { __label__ = 3; break; }
     case 1: // _bb1
       var _9 = HEAP[_stack];
-      var _11 = HEAP[0 + _9];
+      var _11 = HEAP[0 + _9+0*1];
       __ZdaPv(_11);
       __label__ = 3; break;
     case 3: // _bb2
       var _12 = HEAP[_stack];
       HEAP[_tmp] = _12;
       var _13 = HEAP[_stack];
-      var _15 = HEAP[0 + _13+1];
+      var _15 = HEAP[0 + _13+1*1];
       HEAP[_stack] = _15;
       var _16 = HEAP[_tmp];
       __ZdlPv(_16);
@@ -12656,7 +12668,7 @@ function __Z13clear_commandv() {
     case 0: // _bb
       var _0 = HEAP[_idents];
       var _1 = _0+0*5;
-      var _3 = HEAP[0 + _1+2];
+      var _3 = HEAP[0 + _1+2*1];
       var _6 = HEAP[0 + _3+_i];
       HEAP[_enumc] = _6;
       __label__ = 15; break;
@@ -12693,25 +12705,25 @@ function __Z13clear_commandv() {
     case 5: // _bb7
       var _30 = HEAP[_i2];
       var _31 = _30+7*1;
-      var _33 = HEAP[0 + _31];
+      var _33 = HEAP[0 + _31+0*1];
       var _34 = 0+(_33 != 0);
       if (_34) { __label__ = 10; break; } else { __label__ = 13; break; }
     case 10: // _bb8
       var _35 = HEAP[_i2];
       var _36 = _35+7*1;
-      var _38 = HEAP[0 + _36];
+      var _38 = HEAP[0 + _36+0*1];
       var _39 = 0+(_38 != 0);
       if (_39) { __label__ = 9; break; } else { __label__ = 11; break; }
     case 9: // _bb9
       var _40 = HEAP[_i2];
       var _41 = _40+7*1;
-      var _43 = HEAP[0 + _41];
+      var _43 = HEAP[0 + _41+0*1];
       __ZdaPv(_43);
       __label__ = 11; break;
     case 11: // _bb10
       var _44 = HEAP[_i2];
       var _45 = _44+7*1;
-      HEAP[0 + _45] = 0;
+      HEAP[0 + _45+0*1] = 0;
       __label__ = 13; break;
     case 13: // _bb11
       var _47 = HEAP[_i2];
@@ -12734,7 +12746,7 @@ function __Z13clear_commandv() {
     case 21: // _bb15
       var _58 = HEAP[_idents];
       var _59 = _58+0*5;
-      var _61 = HEAP[0 + _59];
+      var _61 = HEAP[0 + _59+0*1];
       var _63 = 0+(_61 > _i);
       if (_63) { __label__ = 0; break; } else { __label__ = 16; break; }
     case 16: // _bb16
@@ -12764,20 +12776,13 @@ function run(args) {
   argv = Pointer_make(argv);
 
   __globalConstructor__();
-
-/* XXX Manually disabled
-  _main(argc, argv);
-
-  while( __ATEXIT__.length > 0) {
-    __ATEXIT__.pop()();
-  }
-*/
 }
 
 try {
-  run(arguments);
+  run(this.arguments ? arguments : []);
 } catch (e) {
   print("Fatal exception: " + e.stack);
   throw e;
 }
+
 
