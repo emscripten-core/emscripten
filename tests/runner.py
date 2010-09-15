@@ -670,6 +670,55 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*staticccz*')
 
+    def test_nestedstructs(self):
+        src = '''
+          #include <stdio.h>
+          #include "emscripten.h"
+
+          struct base {
+            int x;
+            float y;
+            union {
+              int a;
+              float b;
+            };
+            char c;
+          };
+
+          struct hashtableentry {
+            int key;
+            base data;
+          };
+
+          struct hashset {
+            typedef hashtableentry entry;
+            struct chain { entry elem; chain *next; };
+          //  struct chainchunk { chain chains[100]; chainchunk *next; };
+          };
+
+          struct hashtable : hashset {
+            hashtable() {
+              base *b = NULL;
+              entry *e = NULL;
+              chain *c = NULL;
+              printf("*%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
+                ES_SIZEOF(base),
+                int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)), 
+                ES_SIZEOF(hashtableentry),
+                int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)), 
+                ES_SIZEOF(hashset::chain),
+                int(&(c->elem)), int(&(c->next)), int(&(c->elem.key)), int(&(c->elem.data)), int(&(c->elem.data.x)), int(&(c->elem.data.y)), int(&(c->elem.data.a)), int(&(c->elem.data.b)), int(&(c->elem.data.c))
+              );
+            }
+          };
+
+          int main() {
+            hashtable t;
+            return 0;
+          }
+          '''
+        self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*')
+
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:

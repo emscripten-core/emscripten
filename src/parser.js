@@ -1107,6 +1107,7 @@ function analyzer(data) {
       while (more) {
         more = false;
         values(item.types).forEach(function(type) {
+          if (type.flatIndexes) return;
           var ready = true;
           type.fields.forEach(function(field) {
             //print('// zz getT: ' + type.name_ + ' : ' + field);
@@ -1126,31 +1127,26 @@ function analyzer(data) {
             return;
           }
           type.flatSize = 0;
-          type.needsFlattening = false;
           var sizes = [];
           type.flatIndexes = type.fields.map(function(field) {
-            var curr = type.flatSize;
+            var soFar = type.flatSize;
+            var size = 1;
             if (isStructType(field)) {
-              dprint('types', 'type: ' + type.name_ + ' is so far of size ' + curr + ' and has ' + field + ' which is sized ' + item.types[field].flatSize);
-              var size = item.types[field].flatSize;
-              type.flatSize += size;
-              sizes.push(size);
-              type.needsFlattening = true;
-            } else {
-              type.flatSize ++;
+              size = item.types[field].flatSize;
             }
-            return curr;
+            type.flatSize += size;
+            sizes.push(size);
+            return soFar;
           });
-          dprint('types', 'type: ' + type.name_ + ' has FINAL size of ' + type.flatSize);
-          if (type.needsFlattening && dedup(sizes).length == 1) {
+          if (dedup(sizes).length == 1) {
             type.flatFactor = sizes[0];
           }
+          type.needsFlattening = (this.flatFactor != 1);
+          dprint('types', 'type: ' + type.name_ + ' : ' + JSON.stringify(type.fields));
+          dprint('types', '                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
         });
       }
 
-      values(item.types).forEach(function(type) {
-        dprint('types', 'type: ' + type.name_);// + ' : ' + JSON.stringify(type.fields));
-      });
       item.typed = true;
       return [item];
     },
