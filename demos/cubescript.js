@@ -10,12 +10,6 @@ function executeCS(cmd) {
 arguments = []; // Needed since the Emscriptened code expects it
 
 
-
-//===============================================
-// Emscripten-generated code
-//===============================================
-
-
 // === Auto-generated preamble library stuff ===
 
 function __globalConstructor__() {
@@ -516,13 +510,15 @@ this.__defineGetter__("__str142", function() { delete __str142; __str142 = Point
 this.__defineGetter__("__str143", function() { delete __str143; __str143 = Pointer_make([112,117,115,104,32,120,32,49,49,0] /* push x 11\00*/, 0); return __str143 });
 this.__defineGetter__("__str144", function() { delete __str144; __str144 = Pointer_make([112,111,112,32,120,0] /* pop x\00*/, 0); return __str144 });
 this.__defineGetter__("__str145", function() { delete __str145; __str145 = Pointer_make([101,99,104,111,32,36,120,0] /* echo $x\00*/, 0); return __str145 });
-this.__defineGetter__("__str146", function() { delete __str146; __str146 = Pointer_make([48,0] /* 0\00*/, 0); return __str146 });
+this.__defineGetter__("__str146", function() { delete __str146; __str146 = Pointer_make([103,114,101,101,116,32,61,32,91,32,101,99,104,111,32,104,101,108,108,111,44,32,36,97,114,103,49,32,93,0] /* greet = [ echo hello, $arg1 ]\00*/, 0); return __str146 });
+this.__defineGetter__("__str147", function() { delete __str147; __str147 = Pointer_make([103,114,101,101,116,32,101,118,101,114,121,111,110,101,0] /* greet everyone\00*/, 0); return __str147 });
+this.__defineGetter__("__str148", function() { delete __str148; __str148 = Pointer_make([48,0] /* 0\00*/, 0); return __str148 });
 this.__defineGetter__("__ZL7bufnest", function() { delete __ZL7bufnest; __ZL7bufnest = Pointer_make([0], 0); return __ZL7bufnest });
-this.__defineGetter__("__str147", function() { delete __str147; __str147 = Pointer_make([13,64,34,47,40,41,91,93,0] /* \0D@\22/()[]\00*/, 0); return __str147 });
-this.__defineGetter__("__str148", function() { delete __str148; __str148 = Pointer_make([10,0,0] /* \0A\00\00*/, 0); return __str148 });
-this.__defineGetter__("__str149", function() { delete __str149; __str149 = Pointer_make([109,105,115,115,105,110,103,32,34,37,99,34,0] /* missing \22%c\22\00*/, 0); return __str149 });
-this.__defineGetter__("__str150", function() { delete __str150; __str150 = Pointer_make([32,9,13,0] /*  \09\0D\00*/, 0); return __str150 });
-this.__defineGetter__("__str151", function() { delete __str151; __str151 = Pointer_make([47,59,32,9,13,10,0,0] /* /; \09\0D\0A\00\00*/, 0); return __str151 });
+this.__defineGetter__("__str149", function() { delete __str149; __str149 = Pointer_make([13,64,34,47,40,41,91,93,0] /* \0D@\22/()[]\00*/, 0); return __str149 });
+this.__defineGetter__("__str150", function() { delete __str150; __str150 = Pointer_make([10,0,0] /* \0A\00\00*/, 0); return __str150 });
+this.__defineGetter__("__str151", function() { delete __str151; __str151 = Pointer_make([109,105,115,115,105,110,103,32,34,37,99,34,0] /* missing \22%c\22\00*/, 0); return __str151 });
+this.__defineGetter__("__str152", function() { delete __str152; __str152 = Pointer_make([32,9,13,0] /*  \09\0D\00*/, 0); return __str152 });
+this.__defineGetter__("__str153", function() { delete __str153; __str153 = Pointer_make([47,59,32,9,13,10,0,0] /* /; \09\0D\0A\00\00*/, 0); return __str153 });
 this.__defineGetter__("__ZGVZ10parsemacroRPKciR6vectorIcEE5ident", function() { delete __ZGVZ10parsemacroRPKciR6vectorIcEE5ident; __ZGVZ10parsemacroRPKciR6vectorIcEE5ident = Pointer_make([0], 0); return __ZGVZ10parsemacroRPKciR6vectorIcEE5ident });
 this.__defineGetter__("_commandmillis", function() { delete _commandmillis; _commandmillis = Pointer_make([-1], 0); return _commandmillis });
 this.__defineGetter__("_commandbuf", function() { delete _commandbuf; _commandbuf = Pointer_make([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 0); return _commandbuf });
@@ -632,8 +628,12 @@ ___cxa_atexit = function (func) {
     __ATEXIT__.push(func);
   }
 // stub for _strchr
-// stub for ___cxa_guard_acquire
-// stub for ___cxa_guard_release
+___cxa_guard_acquire = function () {
+    return 0;
+  }
+___cxa_guard_release = function () {
+    return 0;
+  }
 // stub for _printf
 // stub for _sprintf
 // stub for _isalnum
@@ -10238,7 +10238,7 @@ function __ZN7_stdcmdILi860EE3runEPcPiS1_(_var, _n, _body) {
       var _16 = _sprintf(_14, __str2+0*1, _i);
       __label__ = 4; break;
     case 6: // _bb4
-      var _17 = __Z9newstringPKcj(__str146+0*1, 16);
+      var _17 = __Z9newstringPKcj(__str148+0*1, 16);
       var _18 = HEAP[_id];
       __Z9pushidentR5identPc(_18, _17);
       __label__ = 4; break;
@@ -10305,7 +10305,7 @@ function __ZN7_stdcmdILi874EE3runEPcPiS1_S1_(_var, _n, _cond, _body) {
       var _16 = _sprintf(_14, __str2+0*1, _i);
       __label__ = 4; break;
     case 6: // _bb4
-      var _17 = __Z9newstringPKcj(__str146+0*1, 16);
+      var _17 = __Z9newstringPKcj(__str148+0*1, 16);
       var _18 = HEAP[_id];
       __Z9pushidentR5identPc(_18, _17);
       __label__ = 4; break;
@@ -11450,7 +11450,7 @@ __label__ = 130; break;
       __ZdaPv(_414);
       __label__ = 85; break;
     case 85: // _bb98
-      var _415 = HEAP[bitcast];
+      var _415 = HEAP[__ZGVZ10executeretPKcE6argids];
       var _416 = 0+(_415 == 0);
       if (_416) { __label__ = 86; break; } else { __label__ = 87; break; }
     case 86: // _bb99
@@ -11635,7 +11635,7 @@ function __Z9parsewordRPKciRi(_p, _arg, _infix) {
       var _1 = HEAP[_p_addr];
       var _2 = HEAP[_1];
       var _4 = HEAP[_1];
-      var _5 = _strspn(_4, __str150+0*1);
+      var _5 = _strspn(_4, __str152+0*1);
       var _6 = _2+_5;
       var _7 = HEAP[_p_addr];
       HEAP[_7] = _6;
@@ -11660,7 +11660,7 @@ function __Z9parsewordRPKciRi(_p, _arg, _infix) {
       var _22 = HEAP[_p_addr];
       var _23 = HEAP[_22];
       var _25 = HEAP[_22];
-      var _26 = _strcspn(_25, __str148+0*1);
+      var _26 = _strcspn(_25, __str150+0*1);
       var _27 = _23+_26;
       var _28 = HEAP[_p_addr];
       HEAP[_28] = _27;
@@ -11738,7 +11738,7 @@ function __Z9parsewordRPKciRi(_p, _arg, _infix) {
       var _75 = HEAP[_p_addr];
       var _76 = HEAP[_75];
       var _78 = HEAP[_75];
-      var _79 = _strcspn(_78, __str151+0*1);
+      var _79 = _strcspn(_78, __str153+0*1);
       var _80 = _76+_79;
       var _81 = HEAP[_p_addr];
       HEAP[_81] = _80;
@@ -11903,7 +11903,9 @@ function _main() {
       var _11 = __Z7executePKc(__str143+0*1);
       var _12 = __Z7executePKc(__str144+0*1);
       var _13 = __Z7executePKc(__str145+0*1);
-      var _14 = _puts(__str50+0*1);
+      var _14 = __Z7executePKc(__str146+0*1);
+      var _15 = __Z7executePKc(__str147+0*1);
+      var _16 = _puts(__str50+0*1);
       _0 = 0;
       _retval = _0;
       __label__ = 2; break;
@@ -12150,7 +12152,7 @@ function __Z8parseexpRPKci(_p, _right) {
     case 3: // _bb2
       var _27 = HEAP[_p_addr];
       var _28 = HEAP[_27];
-      _n = _strcspn(_28, __str147+0*1);
+      _n = _strcspn(_28, __str149+0*1);
       var _30 = _n;
       var _31 = HEAP[_p_addr];
       var _32 = HEAP[_31];
@@ -12256,7 +12258,7 @@ __label__ = 18; break;
       var _83 = HEAP[_p_addr];
       var _84 = HEAP[_83];
       var _86 = HEAP[_83];
-      var _87 = _strcspn(_86, __str148+0*1);
+      var _87 = _strcspn(_86, __str150+0*1);
       var _88 = _84+_87;
       var _89 = HEAP[_p_addr];
       HEAP[_89] = _88;
@@ -12268,7 +12270,7 @@ __label__ = 18; break;
       var _91 = HEAP[_90];
       var _92 = _91+-1;
       HEAP[_90] = _92;
-      __Z7conoutfiPKcz(4, __str149+0*1, _right_addr);
+      __Z7conoutfiPKcz(4, __str151+0*1, _right_addr);
       var _95 = HEAP[_wordbuf];
       __ZN6vectorIcE7setsizeEi(_95, 0);
       var _96 = HEAP[__ZL7bufnest];
@@ -12450,7 +12452,7 @@ function __Z10parsemacroRPKciR6vectorIcE(_p, _level, _wordbuf) {
     case 12: // _bb14
       __label__ = 39; break;
     case 21: // _bb15
-      var _44 = HEAP[bitcast];
+      var _44 = HEAP[__ZGVZ10parsemacroRPKciR6vectorIcEE5ident];
       var _45 = 0+(_44 == 0);
       if (_45) { __label__ = 16; break; } else { __label__ = 18; break; }
     case 16: // _bb16
@@ -12784,5 +12786,6 @@ try {
   print("Fatal exception: " + e.stack);
   throw e;
 }
+
 
 
