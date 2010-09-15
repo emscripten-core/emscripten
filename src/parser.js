@@ -679,10 +679,7 @@ function intertyper(data) {
     processItem: function(item) {
       item.pointerType = item.tokens[1];
       item.type = { text: removePointing(item.pointerType.text) };
-      if (item.tokens[2].text != 'getelementptr') {
-        item.intertype = 'load';
-        item.pointer = item.tokens[2];
-      } else {
+      if (item.tokens[2].text == 'getelementptr') {
         var last = getTokenIndexByText(item.tokens, ';');
         var gepTokens = item.tokens.slice(1, last); // without 'load'
         var segment = [ gepTokens[2], gepTokens[0], null ].concat(gepTokens.slice(3));
@@ -692,6 +689,14 @@ function intertyper(data) {
         item.params = data.params;
         item.pointer = { text: data.ident };
         item.value = data.value;
+      } else {
+        item.intertype = 'load';
+        if (item.tokens[2].text == 'bitcast') {
+          item.pointer = item.tokens[3].item[0].tokens[1]; // XXX item without [0], also below
+          item.originalType = item.tokens[3].item[0].tokens[0];
+        } else {
+          item.pointer = item.tokens[2];
+        }
       }
       item.ident = item.pointer.text;
       return [item];
