@@ -156,6 +156,13 @@ function getTokenIndexByText(tokens, text) {
   return i;
 }
 
+function findTokenText(item, text) {
+  for (var i = 0; i < item.tokens.length; i++) {
+    if (item.tokens[i].text == text) return i;
+  }
+  return -1;
+}
+
 // Splits a list of tokens separated by commas. For example, a list of arguments in a function call
 function splitTokenList(tokens) {
   if (tokens.length == 0) return [];
@@ -173,50 +180,51 @@ function splitTokenList(tokens) {
   return ret;
 }
 
-function makeSplitter(parentSlot, parentSlotValue, parentUnrequiredSlot, childSlot, copySlots) {
+// Splits an item, with the intent of later reintegration
+function splitItem(parent, childSlot, copySlots) {
+  if (!copySlots) copySlots = [];
+  if (!parent[childSlot]) parent[childSlot] = {};
+  var child = parent[childSlot];
+  parent[childSlot] = null;
+  child.parentUid = parent.__uid__;
+  child.parentSlot = childSlot;
+  child.parentLineNum = child.lineNum = parent.lineNum;
+  copySlots.forEach(function(slot) { child[slot] = parent[slot] });
   return {
-    selectItem: function(item) { return item[parentSlot] == parentSlotValue && !item[parentUnrequiredSlot] && item[childSlot] !== null },
-    process: function(parents) {
-      if (!copySlots) copySlots = [];
-      var ret = parents.slice(0);
-      for (var i = 0; i < parents.length; i++) {
-        var parent = parents[i];
-        var child = parent[childSlot];
-        parent[childSlot] = null;
-        child.parentUid = parent.__uid__;
-        child.parentSlot = childSlot;
-        child.lineNum = parent.lineNum; // Debugging
-        copySlots.forEach(function(slot) { child[slot] = parent[slot] });
-        ret.push(child);
-      }
-      return ret;
-    },
+    parent: parent,
+    child: child,
   };
 }
 
-function makeCombiner(parentSlot, parentSlotValue, parentUnrequiredSlot, childRequiredSlot, finalizeFunc) {
+function makeReintegrator(afterFunc) {
+  // reintegration - find intermediate representation-parsed items and
+  // place back in parents TODO: Optimize this code to optimal O(..)
   return {
-    select: function(items) {
+    process: function(items) {
       var ret = [];
-      var parents = items.filter(function(item) { return item[parentSlot] == parentSlotValue && !item[parentUnrequiredSlot] });
-      for (var i = 0; i < parents.length; i++) {
-        var parent = parents[i];
-        var child = items.filter(function(item) { return item[childRequiredSlot] && item.parentUid === parent.__uid__ })[0];
-        if (child) {
-          ret = ret.concat([parent, child]);
+      for (var i = 0; i < items.length; i++) {
+        var found = false;
+        if (items[i] && items[i].parentSlot) {
+          var child = items[i];
+          for (var j = 0; j < items.length; j++) {
+            if (items[j] && items[j].lineNum == items[i].parentLineNum) {
+              var parent = items[j];
+              // process the pair
+              parent[child.parentSlot] = child;
+              delete child.parentLineNum;
+              afterFunc.call(this, parent, child);
+
+              items[i] = null;
+              items[j] = null;
+              found = true;
+              break;
+            }
+          }
         }
       }
+      this.forwardItems(items.filter(function(item) { return !!item }), this.name_); // next time hopefully
       return ret;
-    },
-    process: function(items) {
-      return Zyme.prototype.processPairs(items, function(parent, child) {
-        parent[child.parentSlot] = child;
-        delete child.parentUid;
-        delete child.parentSlot;
-        finalizeFunc(parent);
-        return [parent];
-      });
-    },
+    }
   };
 }
 
@@ -273,6 +281,7 @@ function cleanSegment(segment) {
 // Expects one of the several LVM getelementptr formats:
 // a qualifier, a type, a null, then an () item with tokens
 function parseGetElementPtr(segment) {
+//print("Parse GTP: " + dump(segment));
   segment = segment.slice(0);
   segment = cleanSegment(segment);
   assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
@@ -371,24 +380,8 @@ function intertyper(data) {
 
   substrate = new Substrate('Intertyper');
 
-  // Input
-
-  substrate.addItem({
-    llvmText: data,
-  });
-
-  // Tools
-
-  function findTokenText(item, text) {
-    for (var i = 0; i < item.tokens.length; i++) {
-      if (item.tokens[i].text == text) return i;
-    }
-    return -1;
-  }
-
   // Line splitter.
   substrate.addZyme('LineSplitter', {
-    selectItem: function(item) { return !!item.llvmText; },
     processItem: function(item) {
       var lines = item.llvmText.split('\n');
       var ret = [];
@@ -412,15 +405,13 @@ function intertyper(data) {
           }
         }
       }
-      return ret.filter(function(item) { return item.lineText; });
+      this.forwardItems(ret.filter(function(item) { return item.lineText; }), 'Tokenizer');
     },
   });
 
   // Line tokenizer
   substrate.addZyme('Tokenizer', {
-    selectItem: function(item) { return item.lineText; },
-    processItem: function(item) {
-      //print("line: " + item.lineText);
+    processItem: function(item, inner) {
       var lineText = item.lineText + " ";
       var tokens = [];
       var tokenStart = -1;
@@ -458,7 +449,7 @@ function intertyper(data) {
           if (token.text[0] in enclosers) {
             token.item = that.processItem({
               lineText: token.text.substr(1, token.text.length-2)
-            });
+            }, true);
             token.type = token.text[0];
           }
           if (indent == -1) {
@@ -520,29 +511,86 @@ function intertyper(data) {
             }
         }
       }
-      return [{
+      var item = {
         tokens: tokens,
         indent: indent,
         lineNum: item.lineNum,
-      }];
+      };
+      if (inner) {
+        return [item];
+      } else {
+        this.forwardItem(item, 'Triager');
+      }
+    },
+  });
+
+  substrate.addZyme('Triager', {
+    processItem: function(item) {
+      function triage() {
+        if (!item.intertype) {
+          if (item.tokens[0].text in searchable(';', 'target'))
+            return '/dev/null';
+          if (item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=')
+            return 'Global';
+          if (item.tokens.length >= 4 && item.indent === 0 && item.tokens[0].text == 'define' &&
+             item.tokens.slice(-1)[0].text == '{')
+            return 'FuncHeader';
+          if (item.tokens.length >= 1 && item.indent === 0 && item.tokens[0].text.substr(-1) == ':')
+            return 'Label';
+          if (item.indent === 2 && item.tokens && item.tokens.length >= 3 && findTokenText(item, '=') >= 0 &&
+              !item.intertype)
+            return 'Assign';
+          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'load')
+            return 'Load';
+          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast')
+            return 'Bitcast';
+          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr')
+            return 'GEP';
+          if (item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'call' && !item.intertype)
+            return 'Call';
+          if (item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'invoke' && !item.intertype)
+            return 'Invoke';
+          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'alloca')
+            return 'Alloca';
+          if (item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
+              ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr'].indexOf(item.tokens[0].text) != -1 && !item.intertype)
+            return 'Mathops';
+          if (item.indent === 2 && item.tokens && item.tokens.length >= 5 && item.tokens[0].text == 'store' &&
+                                     !item.intertype)
+            return 'Store';
+          if (item.indent === 2 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'br' &&
+                                     !item.intertype)
+            return 'Branch';
+          if (item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'ret' &&
+                                     !item.intertype)
+            return 'Return';
+          if (item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'switch' &&
+                                     !item.intertype)
+            return 'Switch';
+          if (item.indent === 0 && item.tokens && item.tokens.length >= 1 && item.tokens[0].text == '}' && !item.intertype)
+            return 'FuncEnd';
+          if (item.indent === 0 && item.tokens && item.tokens.length >= 4 && item.tokens[0].text == 'declare' &&
+                                     !item.intertype)
+            return 'External';
+          if (item.indent === 2 && item.tokens && item.tokens[0].text == 'unreachable' &&
+                                     !item.intertype)
+            return 'Unreachable';
+        } else {
+          // Already intertyped
+          if (item.parentSlot)
+            return 'Reintegrator';
+        }
+  print("Item: " + JSON.stringify(item));
+        assert(false);
+      }
+      this.forwardItem(item, triage(item));
     },
   });
 
   // Line parsers to intermediate form
 
-  // Comment
-  substrate.addZyme('Comment', {
-    selectItem: function(item) { return item.tokens && item.tokens[0].text == ';' },
-    processItem: function(item) { return [] },
-  });
-  // target
-  substrate.addZyme('Target', {
-    selectItem: function(item) { return item.tokens && item.tokens[0].text == 'target' },
-    processItem: function(item) { return [] },
-  });
   // globals: type or variable
   substrate.addZyme('Global', {
-    selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=' },
     processItem: function(item) {
       if (item.tokens[2].text == 'type') {
         //dprint('type/const linenum: ' + item.lineNum + ':' + dump(item));
@@ -560,7 +608,7 @@ function intertyper(data) {
           }
         }
         return [{
-        __result__: true,
+        __result__: true, // XXX can remove these
           intertype: 'type',
           name_: item.tokens[0].text,
           fields: fields,
@@ -595,8 +643,6 @@ function intertyper(data) {
   });
   // function header
   substrate.addZyme('FuncHeader', {
-    selectItem: function(item) { return item.tokens && item.tokens.length >= 4 && item.indent === 0 && item.tokens[0].text == 'define' &&
-                                        item.tokens.slice(-1)[0].text == '{' },
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
         return ['internal', 'signext', 'zeroext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{'].indexOf(token.text) == -1;
@@ -613,7 +659,6 @@ function intertyper(data) {
   });
   // label
   substrate.addZyme('Label', {
-    selectItem: function(item) { return item.tokens && item.tokens.length >= 1 && item.indent === 0 && item.tokens[0].text.substr(-1) == ':' },
     processItem: function(item) {
       return [{
         __result__: true,
@@ -623,59 +668,35 @@ function intertyper(data) {
       }];
     },
   });
+
   // assignment
   substrate.addZyme('Assign', {
-    selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 3 && findTokenText(item, '=') >= 0 &&
-                                 !item.intertype },
     processItem: function(item) {
       var opIndex = findTokenText(item, '=');
-      return [{
+      var pair = splitItem({
         intertype: 'assign',
         ident: combineTokens(item.tokens.slice(0, opIndex)).text,
-        value: null,
         lineNum: item.lineNum,
-      }, { // Additional token, to be parsed, and later re-integrated
+      }, 'value');
+      this.forwardItem(pair.parent, 'Reintegrator');
+      this.forwardItem(mergeInto(pair.child, { // Additional token, to be triaged and later re-integrated
         indent: -1,
         tokens: item.tokens.slice(opIndex+1),
-        parentLineNum: item.lineNum,
-        parentSlot: 'value',
-      }];
+      }), 'Triager');
     },
   });
   // reintegration - find intermediate representation-parsed items and
-  // place back in parents
-  substrate.addZyme('Reintegrator', {
-    select: function(items) {
-      var ret = [];
-      for (var i = 0; i < items.length; i++) {
-        if (items[i].parentSlot && items[i].intertype) {
-          for (var j = 0; j < items.length; j++) {
-            if (items[j].lineNum == items[i].parentLineNum) {
-              ret = ret.concat([items[j], items[i]]);
-            }
-          }
-        }
-      }
-      return ret;
-    },
-    process: function(items) {
-      return Zyme.prototype.processPairs(items, function(parent, child) {
-        parent[child.parentSlot] = child;
-        parent.__result__ = true;
-        delete child.parentLineNum;
-
-        // Special re-integration behaviors
-        if (child.intertype == 'fastgetelementptrload') {
-          parent.intertype = 'fastgetelementptrload';
-        }
-
-        return [parent];
-      });
+  // place back in parents TODO: Optimize this code to optimal O(..)
+  substrate.addZyme('Reintegrator', makeReintegrator(function(parent, child) {
+    // Special re-integration behaviors
+    if (child.intertype == 'fastgetelementptrload') {
+      parent.intertype = 'fastgetelementptrload';
     }
-  });
+    this.forwardItem(parent, '/dev/stdout');
+  }));
+
   // 'load'
   substrate.addZyme('Load', {
-    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'load' },
     processItem: function(item) {
       item.pointerType = item.tokens[1];
       item.type = { text: removePointing(item.pointerType.text) };
@@ -692,30 +713,28 @@ function intertyper(data) {
       } else {
         item.intertype = 'load';
         if (item.tokens[2].text == 'bitcast') {
-          item.pointer = item.tokens[3].item[0].tokens[1]; // XXX item without [0], also below
+          item.pointer = item.tokens[3].item[0].tokens[1];
           item.originalType = item.tokens[3].item[0].tokens[0];
         } else {
           item.pointer = item.tokens[2];
         }
       }
       item.ident = item.pointer.text;
-      return [item];
+      this.forwardItem(item, 'Reintegrator');
     },
   });
   // 'bitcast'
   substrate.addZyme('Bitcast', {
-    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast' },
     processItem: function(item) {
       item.intertype = 'bitcast';
       item.type = item.tokens[1];
       item.ident = item.tokens[2].text;
       item.type2 = item.tokens[4];
-      return [item];
+      this.forwardItem(item, 'Reintegrator');
     },
   });
   // 'getelementptr'
   substrate.addZyme('GEP', {
-    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr' },
     processItem: function(item) {
       var last = getTokenIndexByText(item.tokens, ';');
       var segment = [ item.tokens[1], { text: null }, null, { item: [ {
@@ -726,12 +745,11 @@ function intertyper(data) {
       item.type = data.type;
       item.params = data.params;
       item.ident = data.ident;
-      return [item];
+      this.forwardItem(item, 'Reintegrator');
     },
   });
   // 'call'
   substrate.addZyme('Call', {
-    selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'call' && !item.intertype },
     processItem: function(item) {
       item.intertype = 'call';
       if (['signext', 'zeroext'].indexOf(item.tokens[1].text) != -1) {
@@ -749,13 +767,13 @@ function intertyper(data) {
         // standalone call - not in assign
         item.standalone = true;
         item.__result__ = true;
+        return [item];
       }
-      return [item];
+      this.forwardItem(item, 'Reintegrator');
     },
   });
   // 'invoke'
   substrate.addZyme('Invoke', {
-    selectItem: function(item) { return item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'invoke' && !item.intertype },
     processItem: function(item) {
       item.intertype = 'invoke';
       item.type = item.tokens[1];
@@ -773,26 +791,23 @@ function intertyper(data) {
         // standalone call - not in assign
         item.standalone = true;
         item.__result__ = true;
+        return [item];
       }
-      return [item];
+      this.forwardItem(item, 'Reintegrator');
     },
   });
   // 'alloca'
   substrate.addZyme('Alloca', {
-    selectItem: function(item) { return !item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'alloca' },
     processItem: function(item) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1];
       item.type = { text: addPointing(item.tokens[1].text) }; // type of pointer we will get
       item.type2 = { text: item.tokens[1].text }; // value we will create, and get a pointer to
-      return [item];
+      this.forwardItem(item, 'Reintegrator');
     },
   });
   // mathops
   substrate.addZyme('Mathops', {
-    selectItem: function(item) { return item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
-                                 ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']
-                                  .indexOf(item.tokens[0].text) != -1 && !item.intertype },
     processItem: function(item) {
       item.intertype = 'mathop';
       item.op = item.tokens[0].text;
@@ -808,13 +823,11 @@ function intertyper(data) {
       item.ident3 = item.tokens[5] ? item.tokens[5].text : null;
       item.ident4 = item.tokens[8] ? item.tokens[8].text : null;
       //print('// zz got maptop ' + item.op + ',' + item.variant + ',' + item.ident + ',' + item.value);
-      return [item];
+      this.forwardItem(item, 'Reintegrator');
     },
   });
   // 'store'
   substrate.addZyme('Store', {
-    selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 5 && item.tokens[0].text == 'store' &&
-                                 !item.intertype },
     processItem: function(item) {
       if (item.tokens[3].text != ',') {
         assertEq(item.tokens[2].text, 'getelementptr');
@@ -846,8 +859,6 @@ function intertyper(data) {
   });
   // 'br'
   substrate.addZyme('Branch', {
-    selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'br' &&
-                                 !item.intertype },
     processItem: function(item) {
       if (item.tokens[1].text == 'label') {
         return [{
@@ -870,8 +881,6 @@ function intertyper(data) {
   });
   // 'ret'
   substrate.addZyme('Return', {
-    selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'ret' &&
-                                 !item.intertype },
     processItem: function(item) {
       return [{
         __result__: true,
@@ -884,8 +893,6 @@ function intertyper(data) {
   });
   // 'switch'
   substrate.addZyme('Switch', {
-    selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'switch' &&
-                                 !item.intertype },
     processItem: function(item) {
       function parseSwitchLabels(item) {
         var ret = [];
@@ -912,7 +919,6 @@ function intertyper(data) {
   });
   // function end
   substrate.addZyme('FuncEnd', {
-    selectItem: function(item) { return item.indent === 0 && item.tokens && item.tokens.length >= 1 && item.tokens[0].text == '}' && !item.intertype },
     processItem: function(item) {
       return [{
         __result__: true,
@@ -923,8 +929,6 @@ function intertyper(data) {
   });
   // external function stub
   substrate.addZyme('External', {
-    selectItem: function(item) { return item.indent === 0 && item.tokens && item.tokens.length >= 4 && item.tokens[0].text == 'declare' &&
-                                 !item.intertype },
     processItem: function(item) {
       return [{
         __result__: true,
@@ -938,8 +942,6 @@ function intertyper(data) {
   });
   // 'unreachable'
   substrate.addZyme('Unreachable', {
-    selectItem: function(item) { return item.indent === 2 && item.tokens && item.tokens[0].text == 'unreachable' &&
-                                 !item.intertype },
     processItem: function(item) {
       return [{
         __result__: true,
@@ -948,6 +950,12 @@ function intertyper(data) {
       }];
     },
   });
+
+  // Input
+
+  substrate.addItem({
+    llvmText: data,
+  }, 'LineSplitter');
 
   return substrate.solve();
 }
@@ -969,23 +977,16 @@ function analyzer(data) {
 //print('zz analaz')
   substrate = new Substrate('Analyzer');
 
-  substrate.addItem({
-    items: data,
-  });
-
   // Sorter
   substrate.addZyme('Sorter', {
-    selectItem: function(item) { return !item.sorted; },
     processItem: function(item) {
       item.items.sort(function (a, b) { return a.lineNum - b.lineNum });
-      item.sorted = true;
-      return [item];
+      this.forwardItem(item, 'Gatherer');
     },
   });
 
   // Gatherer
   substrate.addZyme('Gatherer', {
-    selectItem: function(item) { return item.sorted && !item.gathered; },
     processItem: function(item) {
       // Single-liners
       ['globalVariable', 'functionStub', 'type'].forEach(function(intertype) {
@@ -1016,14 +1017,12 @@ function analyzer(data) {
         }
       }
       delete item.items;
-      item.gathered = true;
-      return [item];
+      this.forwardItem(item, 'Identinicer');
     },
   });
 
   // IdentiNicer
   substrate.addZyme('Identinicer', {
-    selectItem: function(item) { return item.gathered && !item.identiniced; },
     processItem: function(output) {
       walkJSON(output, function(item) {
         ['', '2', '3', '4', '5'].forEach(function(ext) {
@@ -1031,8 +1030,7 @@ function analyzer(data) {
           item['ident' + ext] = toNiceIdent(item['ident' + ext]);
         });
       });
-      output.identiniced = true;
-      return [output];
+      this.forwardItem(output, 'Typevestigator');
     }
   });
 
@@ -1065,7 +1063,6 @@ function analyzer(data) {
 
   // Typevestigator
   substrate.addZyme('Typevestigator', {
-    selectItem: function(item) { return item.gathered && !item.typevestigated; },
     processItem: function(data) {
       // Convert types list to dict
       var old = data.types;
@@ -1082,14 +1079,12 @@ function analyzer(data) {
           addType(!item.type2.text ? item.type2 : item.type2.text, data);
         }
       });
-      data.typevestigated = true;
-      return [data];
+      this.forwardItem(data, 'Typeanalyzer');
     }
   });
 
   // Type analyzer
-  substrate.addZyme('Type Analyzer', {
-    selectItem: function(item) { return item.typevestigated && !item.typed; },
+  substrate.addZyme('Typeanalyzer', {
     processItem: function(item) {
       //print('zz analaz types')
       // 'fields' is the raw list of LLVM fields. However, we embed
@@ -1152,14 +1147,12 @@ function analyzer(data) {
         });
       }
 
-      item.typed = true;
-      return [item];
+      this.forwardItem(item, 'VariableAnalyzer');
     },
   });
   
   // Variable analyzer
-  substrate.addZyme('Variable Analyzer', {
-    selectItem: function(item) { return item.typevestigated && !item.variablized; },
+  substrate.addZyme('VariableAnalyzer', {
     processItem: function(item) {
       item.functions.forEach(function(func) {
         func.variables = {};
@@ -1233,18 +1226,16 @@ function analyzer(data) {
           //print('// var ' + vname + ': ' + JSON.stringify(variable));
         }
       });
-      item.variablized = true;
-      return [item];
+      this.forwardItem(item, 'Relooper');
     },
   });
 
   // ReLooper - reconstruct nice loops, as much as possible
   substrate.addZyme('Relooper', {
-    selectItem: function(item) { return item.variablized && !item.relooped },
     processItem: function(item) {
+      var that = this;
       function finish() {
-        item.relooped = true;
-        return [item];
+        that.forwardItem(item, 'Optimizer');
       }
 
       // Tools
@@ -1651,10 +1642,9 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
 
   // Optimizer
   substrate.addZyme('Optimizer', {
-    selectItem: function(item) { return item.relooped && !item.optimized; },
     processItem: function(item) {
+      var that = this;
       function finish() {
-        item.optimized = true;
         item.__finalResult__ = true;
         return [item];
       }
@@ -1845,6 +1835,10 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
     },
   });
 
+  substrate.addItem({
+    items: data,
+  }, 'Sorter');
+
   return substrate.solve();
 }
 
@@ -1852,20 +1846,10 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
 function JSify(data) {
   substrate = new Substrate('JSifyer');
 
-  [].concat(values(data.types).filter(function(type) { return type.lineNum != '?' }))
-    .concat(data.globalVariables)
-    .concat(data.functions)
-    .concat(data.functionStubs)
-    .forEach(function(item) {
-      item.passes = {};
-      substrate.addItem(item);
-    });
-
   var TYPES = data.types;
 
   // type
   substrate.addZyme('Type', {
-    selectItem: function(item) { return item.intertype == 'type' && !item.JS },
     processItem: function(item) {
       var type = TYPES[item.name_];
       if (type.needsFlattening) {
@@ -1980,7 +1964,6 @@ function JSify(data) {
 
   // globalVariablw
   substrate.addZyme('GlobalVariable', {
-    selectItem: function(item) { return item.intertype == 'globalVariable' && !item.JS },
     processItem: function(item) {
       dprint('gconst', '// zz global Cons: ' + dump(item) + ' :: ' + dump(item.value));
       if (item.ident == '_llvm_global_ctors') {
@@ -2000,7 +1983,6 @@ function JSify(data) {
 
   // functionStub
   substrate.addZyme('FunctionStub', {
-    selectItem: function(item) { return item.intertype == 'functionStub' && !item.JS },
     processItem: function(item) {
       var shortident = item.ident.substr(1);
       if (shortident in Snippets) {
@@ -2015,7 +1997,6 @@ function JSify(data) {
 
   // function splitter
   substrate.addZyme('FunctionSplitter', {
-    selectItem: function(item) { return item.intertype == 'function' && !item.passes.splitted },
     processItem: function(item) {
       var ret = [item];
       item.splitItems = 0;
@@ -2029,114 +2010,102 @@ function JSify(data) {
         });
       });
 
-      item.passes.splitted = true;
-      return ret;
+      this.forwardItems(ret, 'FuncLineTriager');
     },
   });
   // function reconstructor & post-JS optimizer
   substrate.addZyme('FunctionReconstructor', {
-    select: function(items) {
-      var funcs = items.filter(function(item) { return item.intertype == 'function' && item.passes.splitted });
-      return funcs.map(function(func) {
-        var lines = items.filter(function(item) { return item.JS && item.func === func.ident });
-        if (lines.length === 0) return [];
-        return [func].concat(lines);
-      }).reduce(concatenator, []);
-    },
-    process: function(allItems) {
-      var ret = [];
-      for (var i = 0; i < allItems.length;) {
-        var func = allItems[i];
-        var j = i+1;
-        while (j < allItems.length && allItems[j].intertype != 'function') j++;
-        var lines = allItems.slice(i+1, j);
-        i = j;
-
-        lines.forEach(function(line) {
-          delete line.funcData; // clean up
-
-          var label = func.labels.filter(function(label) { return label.ident == line.parentLabel })[0];
-          label.lines = label.lines.map(function(line2) {
-            return (line2.lineNum !== line.lineNum) ? line2 : line;
-          });
-        });
-
-        func.splitItems -= lines.length;
-        if (func.splitItems === 0) {
-          // Final recombination
-          //print('zz params::::: ' + JSON.stringify(func.params));
-          //print('zz params::::: ' + JSON.stringify(parseParamTokens(func.params.item[0].tokens)));
-
-          var hasVarArgs = false;
-          var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
-            if (param.intertype == 'varargs') {
-              hasVarArgs = true;
-              return null;
-            }
-            return toNiceIdent(param.ident);
-          }).filter(function(param) { return param != null });;
-
-          func.JS = '\nfunction ' + func.ident + '(' + params.join(', ') + ') {\n';
-          if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
-
-          if (hasVarArgs) {
-            func.JS += '  __numArgs__ = ' + params.length + ';\n';
-          }
-
-          // Walk function blocks and generate JS
-          function walkBlock(block, indent) {
-            if (!block) return '';
-            function getLabelLines(label, indent) {
-              var ret = '';
-              if (LABEL_DEBUG) {
-                ret += indent + "  print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
-              }
-              return ret + label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
-            }
-            var ret = '';
-            if (block.type == 'emulated' || block.type == 'simple') {
-              if (block.labels.length > 1) {
-                ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
-                ret += indent + 'while(1) switch(__label__) {\n';
-                ret += block.labels.map(function(label) {
-                  return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n' + getLabelLines(label, indent + '    ');
-                }).join('\n');
-                ret += '\n' + indent + '}';
-              } else {
-                ret += getLabelLines(block.labels[0], indent);
-              }
-              ret += '\n';
-            } else if (block.type == 'loop') {
-  //            if (mustGetTo(first.outLabels[0], [first.ident, first.outLabels[1]])) { /* left branch must return here, or go to right branch */ 
-              ret += indent + block.entry + ': while(1) {\n';
-              ret += walkBlock(block.inc, indent + '  ');
-              ret += walkBlock(block.rest, indent + '  ');
-              ret += indent + '}\n';
-            } else if (block.type == 'breakingif') {
-              ret += walkBlock(block.check, indent);
-              ret += indent + block.entry + ': do { if (' + block.ifVar + ') {\n';
-              ret += walkBlock(block.ifTrue, indent + '  ');
-              ret += indent + '} } while(0);\n';
-            } else if (block.type == 'if') {
-              ret += walkBlock(block.check, indent);
-              ret += indent + 'if (' + block.ifVar + ') {\n';
-              ret += walkBlock(block.ifTrue, indent + '  ');
-              ret += indent + '}\n';
-            } else {
-              ret = 'XXXXXXXXX!';
-            }
-            return ret + walkBlock(block.next, indent);
-          }
-          func.JS += walkBlock(func.block, '  ');
-          // Finalize function
-          if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
-          func.JS += '}\n';
-          func.__result__ = true;
-        }
-
-        ret.push(func);
+    funcs: {},
+    seen: {},
+    processItem: function(item) {
+      if (this.seen[item.__uid__]) return;
+      if (item.intertype == 'function') {
+        this.funcs[item.ident] = item;
+        item.relines = {};
+        this.seen[item.__uid__] = true;
+        return;
       }
-      return ret;
+      var line = item;
+      var func = this.funcs[line.func];
+      if (!func) return;
+
+      // Re-insert our line
+      this.seen[item.__uid__] = true;
+      var label = func.labels.filter(function(label) { return label.ident == line.parentLabel })[0];
+      label.lines = label.lines.map(function(line2) {
+        return (line2.lineNum !== line.lineNum) ? line2 : line;
+      });
+      func.splitItems --;
+      // OLD    delete line.funcData; // clean up
+      if (func.splitItems > 0) return;
+
+      // We have this function all reconstructed, go and finalize it's JS!
+      var hasVarArgs = false;
+      var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
+        if (param.intertype == 'varargs') {
+          hasVarArgs = true;
+          return null;
+        }
+        return toNiceIdent(param.ident);
+      }).filter(function(param) { return param != null });;
+
+      func.JS = '\nfunction ' + func.ident + '(' + params.join(', ') + ') {\n';
+      if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
+
+      if (hasVarArgs) {
+        func.JS += '  __numArgs__ = ' + params.length + ';\n';
+      }
+
+      // Walk function blocks and generate JS
+      function walkBlock(block, indent) {
+        if (!block) return '';
+        function getLabelLines(label, indent) {
+          var ret = '';
+          if (LABEL_DEBUG) {
+            ret += indent + "  print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+          }
+          return ret + label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
+        }
+        var ret = '';
+        if (block.type == 'emulated' || block.type == 'simple') {
+          if (block.labels.length > 1) {
+            ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
+            ret += indent + 'while(1) switch(__label__) {\n';
+            ret += block.labels.map(function(label) {
+              return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n' + getLabelLines(label, indent + '    ');
+            }).join('\n');
+            ret += '\n' + indent + '}';
+          } else {
+            ret += getLabelLines(block.labels[0], indent);
+          }
+          ret += '\n';
+        } else if (block.type == 'loop') {
+//            if (mustGetTo(first.outLabels[0], [first.ident, first.outLabels[1]])) { /* left branch must return here, or go to right branch */ 
+          ret += indent + block.entry + ': while(1) {\n';
+          ret += walkBlock(block.inc, indent + '  ');
+          ret += walkBlock(block.rest, indent + '  ');
+          ret += indent + '}\n';
+        } else if (block.type == 'breakingif') {
+          ret += walkBlock(block.check, indent);
+          ret += indent + block.entry + ': do { if (' + block.ifVar + ') {\n';
+          ret += walkBlock(block.ifTrue, indent + '  ');
+          ret += indent + '} } while(0);\n';
+        } else if (block.type == 'if') {
+          ret += walkBlock(block.check, indent);
+          ret += indent + 'if (' + block.ifVar + ') {\n';
+          ret += walkBlock(block.ifTrue, indent + '  ');
+          ret += indent + '}\n';
+        } else {
+          ret = 'XXXXXXXXX!';
+        }
+        return ret + walkBlock(block.next, indent);
+      }
+      func.JS += walkBlock(func.block, '  ');
+      // Finalize function
+      if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
+      func.JS += '}\n';
+      func.__result__ = true;
+      return func;
     },
   });
 
@@ -2148,10 +2117,31 @@ function JSify(data) {
     }
   }
 
-  // 'assign'
-  // SLOW?! XXX FIXME These two account for most of the runtime in sauer!? 34&25 seconds respectively
-  substrate.addZyme('AssignSplitter', makeSplitter('intertype', 'assign', 'JS', 'value', ['funcData']));
-  substrate.addZyme('AssignCombiner', makeCombiner('intertype', 'assign', 'JS', 'JS', function (item) {
+  substrate.addZyme('FuncLineTriager', {
+    processItem: function(item) {
+      if (item.intertype == 'function') {
+        this.forwardItem(item, 'FunctionReconstructor');
+      } else if (item.JS) {
+        if (item.parentLineNum) {
+          this.forwardItem(item, 'AssignReintegrator');
+        } else {
+          this.forwardItem(item, 'FunctionReconstructor');
+        }
+      } else {
+        this.forwardItem(item, 'Intertype:' + item.intertype);
+      }
+    },
+  });
+
+  // assignment
+  substrate.addZyme('Intertype:assign', {
+    processItem: function(item) {
+      var pair = splitItem(item, 'value', ['funcData']);
+      this.forwardItem(pair.parent, 'AssignReintegrator');
+      this.forwardItem(pair.child, 'FuncLineTriager');
+    },
+  });
+  substrate.addZyme('AssignReintegrator', makeReintegrator(function(item, child) {
     // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
     item.JS = (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
 
@@ -2176,22 +2166,17 @@ function JSify(data) {
     if (value)
       item.JS += ' = ' + value;
     item.JS += ';';
-/*
-    if (LINEDEBUG && value) {
-      item.JS += '\nprint(INDENT + "' + item.ident + ' == " + JSON.stringify(' + item.ident + '));';
-      item.JS += '\nprint(INDENT + "' + item.ident + ' == " + (' + item.ident + ' && ' + item.ident + '.toString ? ' + item.ident + '.toString() : ' + item.ident + '));';
-    }
-*/
+
+    this.forwardItem(item, 'FunctionReconstructor');
   }));
 
   // Function lines
   function makeFuncLineZyme(intertype, func) {
     substrate.addZyme('Intertype:' + intertype, {
-      selectItem: function(item) { return item.intertype == intertype && !item.JS },
       processItem: function(item) {
         item.JS = func(item);
         if (!item.JS) throw "XXX - no JS generated for " + dump(item);
-        return [item];
+        this.forwardItem(item, 'FuncLineTriager');
       },
     });
   }
@@ -2499,6 +2484,13 @@ function JSify(data) {
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'function' }));
     return ret.map(function(item) { return item.JS }).join('\n');
   }
+
+  // Data
+
+  substrate.addItems(values(data.types).filter(function(type) { return type.lineNum != '?' }), 'Type');
+  substrate.addItems(data.globalVariables, 'GlobalVariable');
+  substrate.addItems(data.functions, 'FunctionSplitter');
+  substrate.addItems(data.functionStubs, 'FunctionStub');
 
   return preprocess(read('preamble.js')) + finalCombiner(substrate.solve()) + read('postamble.js');
 //  return finalCombiner(substrate.solve());

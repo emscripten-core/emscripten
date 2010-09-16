@@ -53,6 +53,7 @@ function assertEq(a, b) {
 function assertTrue(a) {
   assertEq(!!a, true);
 }
+assert = assertTrue;
 
 function dedup(items, ident) {
   var seen = {};
@@ -106,6 +107,12 @@ function values(x) {
   return ret;
 }
 
+function bind(self, func) {
+  return function() {
+    func.apply(self, arguments);
+  }
+}
+
 function sum(x) {
   return x.reduce(function(a,b) { return a+b }, 0);
 }
@@ -155,5 +162,12 @@ function PROF(pass) {
 // Usage: arrayOfArrays.reduce(concatenator, []);
 function concatenator(x, y) {
   return x.concat(y);
+}
+
+function mergeInto(obj, other) {
+  for (i in other) {
+    obj[i] = other[i];
+  }
+  return obj;
 }
 

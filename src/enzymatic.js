@@ -7,29 +7,40 @@ DEBUG = false;
 
 Substrate = function(name_) {
   this.name_ = name_;
-  this.items = [];
-  this.zymes = [];
+  this.zymes = {};
   this.currUid = 1;
 };
 
 Substrate.prototype = {
-  addItem: function(item) {
-    if (!item.__uid__) {
-      item.__uid__ = this.currUid;
-      this.currUid ++;
-    }
-    this.items.push(item);
+  addItem: function(item, targetZyme) {
+    this.addItems([item], targetZyme);
   },
 
-  addZyme: function(zyme) {
-    var name_ = '?';
-    if (typeof zyme == 'string') {
-      name_ = zyme;
-      zyme = arguments[1];
+  addItems: function(items, targetZyme) {
+    assert(targetZyme);
+    if (targetZyme == '/dev/null') return;
+    if (targetZyme == '/dev/stdout') {
+      this.results = this.results.concat(items);
+      return;
     }
+    assert(this.zymes[targetZyme]);
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (!item.__uid__) {
+        item.__uid__ = this.currUid;
+        this.currUid ++;
+      }
+    }
+    this.zymes[targetZyme].items = this.zymes[targetZyme].items.concat(items);
+  },
+
+  addZyme: function(name_, zyme) {
+    assert(name_ && zyme);
     zyme.name_ = name_;
-    this.zymes.push(zyme);
-    if (!zyme.select) zyme.select = Zyme.prototype.select;
+    zyme.items = [];
+    zyme.forwardItem  = bind(this, this.addItem);
+    zyme.forwardItems = bind(this, this.addItems);
+    this.zymes[name_] = zyme;
     if (!zyme.process) zyme.process = Zyme.prototype.process;
   },
 
@@ -42,7 +53,7 @@ Substrate.prototype = {
     function midComment(force) {
       var curr = Date.now();
       if (curr - midTime > 1000 || force) {
-        print('// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds. Have ' + that.items.length + ' items.');
+        print('// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds.');
         midTime = curr;
       }
     }
@@ -50,111 +61,74 @@ Substrate.prototype = {
       print('// Completed ' + that.name_ + ' in ' + ((Date.now() - startTime)/1000).toString().substr(0,10) + ' seconds.');
     }
 
-    // Naive solver - sheer brute force.
-    // Assumes list of Zymes is non-changing.
-    var results = [];
-    while (true) {
-      dprint('enzymatic', "Cycle start, " + this.items.length + " items.");
+    var finalResult = null;
+    this.results = [];
+    var finished = false;
+    var that = this;
+    while (!finished) {
+      dprint('enzymatic', "Cycle start, items: ");// + values(this.zymes).map(function(zyme) zyme.items).reduce(function(x,y) x+y, 0));
       var hadProcessing = false;
-      for (var z = 0; z < this.zymes.length; z++) {
+      values(this.zymes).forEach(function(zyme) {
         midComment();
-        var zyme = this.zymes[z];
-        var selected = zyme.select(this.items);
-        if (selected.length > 0) {
-          if (DEBUG) print("Calling: " + (zyme.processItem ? zyme.processItem : zyme.process));
-          if (DEBUG) {
-            try {
-              print("Inputs: \n---\n\n" + outputs.map(JSON.stringify).join('\n\n') + '\n\n---');
-            } catch(e) {
-              print("Inputs: \n---\n\n" + outputs + '\n\n---');
-            }
-          }
-          hadProcessing = true;
-          var outputs;
-          try {
-            dprint('Processing using ' + zyme.name_ + ': ' + selected.length + ' items out of ' + this.items.length);
-            //PROF(true);
-            outputs = zyme.process(selected);
-            //PROF();
-          } catch (e) {
-            print("Exception, current selected are: " + selected.map(dump).join('\n\n'));
-            print("Stack: " + dump(new Error().stack));
-            throw e;
-          }
-          if (DEBUG) {
-            try {
-              print("Outputs: \n---\n\n" + outputs.map(JSON.stringify).join('\n\n') + '\n\n---');
-            } catch(e) {
-              print("Outputs: \n---\n\n" + outputs + '\n\n---');
-            }
-          }
+
+        if (zyme.items.length == 0) return;
+
+        var inputs = zyme.items.slice(0);
+        var outputs;
+        var currResultCount = that.results.length;
+        try {
+          dprint('Processing using ' + zyme.name_ + ': ' + inputs.length);
+          zyme.items = []; // More may be added in process(); we'll get to them next time
+          outputs = zyme.process(inputs);
+          dprint('New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
+        } catch (e) {
+          print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
+          print("Stack: " + dump(new Error().stack));
+          throw e;
+        }
+        hadProcessing = true;
+
+        if (outputs) {
           if (outputs.length === 1 && outputs[0].__finalResult__) {
             if (DEBUG) print("Solving complete: __finalResult__");
             delete outputs[0].__finalResult__; // Might recycle this
             delete outputs[0].__uid__;
             finalComment();
-            return outputs[0];
+            finished = true;
+            finalResult = outputs[0];
+          } else {
+            that.results = that.results.concat(outputs);
           }
-          results = results.concat(outputs.filter(function(output) { return !!output.__result__; }))
-          var nonResults = outputs.filter(function(output) { return !output.__result__; });
-
-          var keptUids = {};
-          for (var i = 0; i < nonResults.length; i++) {
-            var s = nonResults[i];
-            if (s.__uid__) {
-              keptUids[s.__uid__] = true;
-            } else {
-              this.addItem(s);
-            }
-          }
-          var droppedUids = {};
-          for (var i = 0; i < selected.length; i++) {
-            var s = selected[i];
-            if (!keptUids[s.__uid__]) droppedUids[s.__uid__] = true;
-          }
-          this.items = this.items.filter(function(item) {
-            if (!droppedUids[item.__uid__]) {
-              return true;
-            } else {
-              delete item.__uid__;
-            }
-          });
-          //midComment(true);
         }
-      }
-      if (this.items.length === 0) {
+      });
+      if (!hadProcessing) {
         if (DEBUG) print("Solving complete: no remaining items");
         finalComment();
-        results.forEach(function(output) {
+        this.results.forEach(function(output) {
           delete output.__result__; // Might recycle these
           delete output.__uid__;
         });
-        return results;
+        return this.results;
       }
-      if (!hadProcessing) {
-        print("Reached a dead end.");
-        this.items.forEach(function(item) {
-          print("remaining item:" + dump(item));
-        });
-        throw "failure";
+      if (finalResult) {
+        return finalResult;
       }
       midComment();
-      this.items = this.items.filter(function(item) { return item !== null; });
     }
   },
 };
 
 Zyme = function() { };
 Zyme.prototype = {
-  select: function(items) {
-    return items.filter(this.selectItem, this);
-  },
   process: function(items) {
     var ret = [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       try {
-        ret = ret.concat(this.processItem(item));
+        var outputs = this.processItem(item);
+        if (outputs) {
+          ret = ret.concat(outputs);
+        }
       } catch (e) {
         print("Exception in process(), current item is: " + dump(item));
         throw e;
