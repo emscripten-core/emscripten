@@ -100,8 +100,11 @@ function _malloc(size) {
 //  return Pointer_make([]);
 }
 
-__Znwj = _malloc; // Mangled "new"
-__Znaj = _malloc; // Mangled "new"
+// Mangled "new"s... need a heuristic for autogeneration...
+__Znwj = _malloc; // gcc
+__Znaj = _malloc; // gcc
+__Znam = _malloc; // clang
+__Znwm = _malloc; // clang
 
 function _free(ptr) {
 // XXX hardcoded ptr impl
@@ -114,8 +117,9 @@ function _free(ptr) {
 //  ptr[0] = null;
 }
 
-__ZdlPv = _free; // Mangled "delete"
-__ZdaPv = _free; // Mangled "delete"
+// Mangled "delete"s... need a heuristic for autogeneration...
+__ZdlPv = _free; // gcc
+__ZdaPv = _free; // gcc
 
 // stdio.h
 
@@ -207,6 +211,7 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
 //  src = Pointer_niceify(src);
 //  dest.slab = src.slab.slice(src.pos);
 }
+_llvm_memcpy_i64 = _llvm_memcpy_i32;
 
 // Tools
 // println((new Error).stack); // for stack traces

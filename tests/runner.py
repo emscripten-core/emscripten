@@ -56,7 +56,7 @@ class T(unittest.TestCase):
             pass
           os.chdir(dirname)
           cwd = os.getcwd()
-          output = Popen([LLVM_GCC, '-DEMSCRIPTEN', '-emit-llvm', '-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+          output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           os.chdir(cwd)
           if not os.path.exists(filename + '.o'):
             print "Failed to compile C/C++ source:\n\n", output
@@ -740,12 +740,9 @@ class T(unittest.TestCase):
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
 
 if __name__ == '__main__':
-    if DEBUG: print "LLVM_GCC:", LLVM_GCC
-    if DEBUG: print "LLC:", LLC
-    if DEBUG: print "PARSER:", PARSER
-    if DEBUG: print "JS_ENGINE:", JS_ENGINE
-    for cmd in [LLVM_GCC, JS_ENGINE]:
-        if DEBUG: print "Checking for existence of", cmd
+    for cmd in [COMPILER, LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
+        print "Checking for existence of", cmd
         assert(os.path.exists(cmd))
+    print "Running Emscripten tests..."
     unittest.main()
 

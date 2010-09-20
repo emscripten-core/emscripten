@@ -92,6 +92,16 @@ var Snippets = {
   __cxa_guard_release: function() {
     return 0;
   },
+
+  llvm_memset_i32: function(ptr, value, num) {
+    for (var i = 0; i < num; i++) {
+      HEAP[ptr+i] = value;
+    }
+  },
+
+  isdigit: function(chr) {
+    return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
+  },
 };
 
 // Aliases

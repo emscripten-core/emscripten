@@ -80,16 +80,22 @@ function isNumberType(type) {
 }
 
 function isStructPointerType(type) {
-  var proof = '%struct';
-  return type.substr(0, proof.length) == proof;
+  // This test is necessary for clang - in llvm-gcc, we
+  // could check for %struct. The downside is that %1 can
+  // be either a variable or a structure, and we guess it is
+  // a struct, which can lead to |call i32 %5()| having
+  // |%5()| as a function call (like |i32 (i8*)| etc.). So
+  // we must check later on, in call(), where we have more
+  // context, to differentiate such cases.
+  // A similar thing happns in isStructType()
+  return !isNumberType(type) && type[0] == '%';
 }
 
 function isStructType(type) {
-  if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
   if (isPointerType(type)) return false;
-  var proofs = ['%struct', '%"struct'];
-  return type.substr(0, proofs[0].length) == proofs[0] ||
-         type.substr(0, proofs[1].length) == proofs[1];
+  if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
+  // See comment in isStructPointerType()
+  return !isNumberType(type) && type[0] == '%';
 }
 
 function isPointerType(type) { // TODO!
@@ -116,7 +122,7 @@ function isFunctionDef(token) {
   var fail = false;
   splitTokenList(token.item[0].tokens).forEach(function(segment) {
     var subtoken = segment[0];
-    fail = fail || !isType(subtoken.text);
+    fail = fail || !isType(subtoken.text) || segment.length > 1;
   });
   return !fail;
 }
@@ -234,17 +240,28 @@ function parseParamTokens(params) {
   if (params[params.length-1].text != ',') {
     params.push({ text: ',' });
   }
+  var absIndex = 0;
   while (params.length > 0) {
-    //print('params ' + JSON.stringify(params));
     var i = 0;
     while (params[i].text != ',') i++;
     var segment = params.slice(0, i);
     params = params.slice(i+1);
     segment = cleanSegment(segment);
-    if (segment.length == 1 && segment[0].text == '...') {
-      ret.push({
-        intertype: 'varargs',
-      });
+    if (segment.length == 1) {
+      if (segment[0].text == '...') {
+        ret.push({
+          intertype: 'varargs',
+        });
+      } else {
+        // Clang sometimes has a parameter with just a type,
+        // no name... the name is implied to be %{the index}
+        ret.push({
+          intertype: 'value',
+          type: segment[0],
+          value: null,
+          ident: '_' + absIndex,
+        });
+      }
     } else if (segment[1].text === 'getelementptr') {
       ret.push(parseGetElementPtr(segment));
     } else if (segment[1].text === 'bitcast') {
@@ -266,6 +283,7 @@ function parseParamTokens(params) {
       //          } else {
       //            throw "what is this params token? " + JSON.stringify(segment);
     }
+    absIndex ++;
   }
   return ret;
 }
@@ -552,6 +570,8 @@ function intertyper(data) {
             return 'Invoke';
           if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'alloca')
             return 'Alloca';
+          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'phi')
+            return 'Phi';
           if (item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
               ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr'].indexOf(item.tokens[0].text) != -1 && !item.intertype)
             return 'Mathops';
@@ -580,8 +600,7 @@ function intertyper(data) {
           if (item.parentSlot)
             return 'Reintegrator';
         }
-  print("Item: " + JSON.stringify(item));
-        assert(false);
+        throw 'Invalid token, cannot triage: ' + dump(item);
       }
       this.forwardItem(item, triage(item));
     },
@@ -596,8 +615,9 @@ function intertyper(data) {
         //dprint('type/const linenum: ' + item.lineNum + ':' + dump(item));
         var fields = [];
         if (item.tokens[3].text != 'opaque') {
-          if (item.tokens[3].type == '<') // type <{ i8 }> XXX - check spec
+          if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
             item.tokens[3] = item.tokens[3].item[0];
+          }
           var subTokens = item.tokens[3].tokens;
           subTokens.push({text:','});
           while (subTokens[0]) {
@@ -633,6 +653,10 @@ function intertyper(data) {
             ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
           });
         } else {
+          if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
+            item.tokens[3] = item.tokens[3].item[0].tokens;
+          }
+
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
           ret.value = item.tokens[3];
@@ -762,7 +786,17 @@ function intertyper(data) {
         item.tokens.splice(2, 1);
       }
       item.ident = item.tokens[2].text;
-      item.params = parseParamTokens(item.tokens[3].item[0].tokens);
+      if (item.ident.substr(-2) == '()') {
+        // See comment in isStructType()
+        item.ident = item.ident.substr(0, item.ident.length-2);
+        // Also, we remove some spaces which might occur.
+        while (item.ident[item.ident.length-1] == ' ') {
+          item.ident = item.ident.substr(0, item.ident.length-1);
+        }
+        item.params = [];
+      } else {
+        item.params = parseParamTokens(item.tokens[3].item[0].tokens);
+      }
       if (item.indent == 2) {
         // standalone call - not in assign
         item.standalone = true;
@@ -806,6 +840,18 @@ function intertyper(data) {
       this.forwardItem(item, 'Reintegrator');
     },
   });
+  // 'phi'
+  substrate.addZyme('Phi', {
+    processItem: function(item) {
+      item.intertype = 'phi';
+      item.type = { text: item.tokens[1].text }
+      item.label1 = item.tokens[2].item[0].tokens[2].text;
+      item.value1 = item.tokens[2].item[0].tokens[0].text;
+      item.label2 = item.tokens[4].item[0].tokens[2].text;
+      item.value2 = item.tokens[4].item[0].tokens[0].text;
+      this.forwardItem(item, 'Reintegrator');
+    },
+  });
   // mathops
   substrate.addZyme('Mathops', {
     processItem: function(item) {
@@ -822,7 +868,7 @@ function intertyper(data) {
       item.ident2 = item.tokens[4].text;
       item.ident3 = item.tokens[5] ? item.tokens[5].text : null;
       item.ident4 = item.tokens[8] ? item.tokens[8].text : null;
-      //print('// zz got maptop ' + item.op + ',' + item.variant + ',' + item.ident + ',' + item.value);
+      dprint('mathop', item.op + ',' + item.variant + ',' + item.ident + ',' + item.value);
       this.forwardItem(item, 'Reintegrator');
     },
   });
@@ -1911,12 +1957,12 @@ function JSify(data) {
 
   // Gets an entire constant expression
   function parseConst(value, type) {
-    dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type);
+    dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (isNumberType(type) || pointingLevels(type) == 1) {
       return makePointer(parseNumerical(value.text));
     } else if (value.text == 'zeroinitializer') {
       return makePointer(JSON.stringify(makeEmptyStruct(type)));
-    } else if (value.text[0] == '"') {
+    } else if (value.text && value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
       return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/');
     } else {
@@ -1924,17 +1970,15 @@ function JSify(data) {
       function handleSegments(tokens) {
         // Handle a single segment (after comma separation)
         function handleSegment(segment) {
-          //print('// seggg: ' + JSON.stringify(segment) + '\n')
+          dprint('gconst', '// seggg: ' + JSON.stringify(segment) + '\n' + '\n')
           if (segment[1].text == 'null') {
             return '0';
           } else if (segment[1].text == 'zeroinitializer') {
             return JSON.stringify(makeEmptyStruct(segment[0].text));
           } else if (segment[1].text == 'getelementptr') {
             return finalizeGetElementPtr(parseGetElementPtr(segment));
-          } else if (segment[1].text == 'bitcast') {
-            return toNiceIdent(segment[2].item[0].tokens[1].text);
-          } else if (segment[1].text in searchable('inttoptr', 'ptrtoint')) {
-            var type = segment[2].item[0].tokens.slice(-1)[0].text;
+          } else if (segment[1].text in searchable('bitcast', 'inttoptr', 'ptrtoint')) {
+            var type = segment[2].item[0].tokens.slice(-1)[0].text; // TODO: Use this?
             return handleSegment(segment[2].item[0].tokens.slice(0, -2));
           } else if (segment[1].text == 'add') {
             var subSegments = splitTokenList(segment[2].item[0].tokens);
@@ -1944,8 +1988,7 @@ function JSify(data) {
           } else if (segment.length == 2) {
             return parseNumerical(toNiceIdent(segment[1].text));
           } else {
-            //print('// seggg: ' + JSON.stringify(segment) + '???!???\n')
-            return '???!???';
+            throw 'Invalid segment: ' + dump(segment);
           }
         };
         return splitTokenList(tokens).map(handleSegment).map(parseNumerical).join(', ');
@@ -1956,6 +1999,8 @@ function JSify(data) {
       } else if (value.type == '{') {
         // struct
         return makePointer('[ ' + handleSegments(value.tokens) + ' ]');
+      } else if (value[0]) {
+        return makePointer('[ ' + handleSegments(value[0].tokens) + ' ]');
       } else {
         throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
       }
@@ -2040,8 +2085,10 @@ function JSify(data) {
       if (func.splitItems > 0) return;
 
       // We have this function all reconstructed, go and finalize it's JS!
-      var hasVarArgs = false;
+
+      var hasVarArgs = false, hasPhi = false;
       var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
+        hasPhi = hasPhi || param.intertype == 'phi';
         if (param.intertype == 'varargs') {
           hasVarArgs = true;
           return null;
@@ -2072,7 +2119,8 @@ function JSify(data) {
             ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
             ret += indent + 'while(1) switch(__label__) {\n';
             ret += block.labels.map(function(label) {
-              return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n' + getLabelLines(label, indent + '    ');
+              return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n'
+                            + getLabelLines(label, indent + '    ');
             }).join('\n');
             ret += '\n' + indent + '}';
           } else {
@@ -2228,7 +2276,9 @@ function JSify(data) {
         return ';'; // Returning no text might confuse this parser
       }
     } else {
-      return '__label__ = ' + getLabelId(label) + '; break;';
+      // FIXME: We should use __lastLabel__ only if we actually need
+      //        it, which is in the case of phi being used on the label.
+      return '__lastLabel__ = __label__; __label__ = ' + getLabelId(label) + '; break;';
     }
   }
 
@@ -2306,13 +2356,17 @@ function JSify(data) {
     }
   });
   makeFuncLineZyme('alloca', function(item) {
-    dprint('alloca', '// zz alloca: ' + dump(item));
+    dprint('alloca', dump(item));
     if (pointingLevels(item.allocatedType.text) == 0 && isStructType(item.allocatedType.text)) {
       // TODO: allocate on a stack, not on the heap (we currently leak all this)
       return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)));
     } else {
       return makePointer('[0]');
     }
+  });
+  makeFuncLineZyme('phi', function(item) {
+    dprint('phi', dump(item));
+    return '__lastLabel__ == ' + getLabelId(item.label1) + ' ? ' + toNiceIdent(item.value1) + ' : ' + toNiceIdent(item.value2);
   });
   makeFuncLineZyme('mathop', function(item) { with(item) {
     dprint('mathop', 'mathop: ' + dump(item));
