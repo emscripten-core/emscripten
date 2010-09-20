@@ -1132,7 +1132,6 @@ function analyzer(data) {
   // Type analyzer
   substrate.addZyme('Typeanalyzer', {
     processItem: function(item) {
-      //print('zz analaz types')
       // 'fields' is the raw list of LLVM fields. However, we embed
       // child structures into parent structures, basically like C.
       // So { int, { int, int }, int } would be represented as
@@ -1206,9 +1205,7 @@ function analyzer(data) {
         // LLVM is SSA, so we always have a single assignment/write. We care about
         // the reads/other uses.
         walkJSON(func.lines, function(item) {
-//if (item && item.intertype == 'assign') print('zz assign: ' + JSON.stringify(item));
           if (item && item.intertype == 'assign' && ['alloca', 'load', 'call', 'bitcast', 'mathop', 'getelementptr', 'fastgetelementptrload'].indexOf(item.value.intertype) != -1) {
-//print("zz add var " + item.ident + ',' + item.intertype);
             func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type.text,
@@ -1269,7 +1266,7 @@ function analyzer(data) {
           } else {
             variable.impl = VAR_EMULATED;
           }
-          //print('// var ' + vname + ': ' + JSON.stringify(variable));
+          dprint('vars', '// var ' + vname + ': ' + JSON.stringify(variable));
         }
       });
       this.forwardItem(item, 'Relooper');
@@ -1744,7 +1741,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           var b = func.lines[i+1];
           if (a.intertype == 'assign' && a.value.intertype == 'getelementptr' &&
               b.intertype == 'assign' && b.value.intertype == 'load' &&
-              a.ident == b.value.ident) {
+              a.ident == b.value.ident && func.variables[a.ident].uses == 1) {
 //            print("// LOADSUSPECT: " + i + ',' + (i+1) + ':' + a.ident + ':' + b.value.ident);
             a.intertype = 'fastgetelementptrload';
             a.ident = b.ident;
@@ -1762,7 +1759,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           var b = func.lines[i+1];
           if (a.intertype == 'assign' && a.value.intertype == 'getelementptr' &&
               b.intertype == 'store' && b.value.text &&
-              a.ident == b.ident) {
+              a.ident == b.ident && func.variables[a.ident].uses == 1) {
             //print("// STORESUSPECT: " + a.lineNum + ',' + b.lineNum);
             a.intertype = 'fastgetelementptrstore';
             a.ident = toNiceIdent(b.value.text);
@@ -1795,7 +1792,8 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
       // Fast bitcast&something after them
       optimizePairs(function(func, lines) {
         var a = lines[0], b = lines[1];
-        if (a.intertype == 'assign' && a.value.intertype == 'bitcast' && replaceVars(b, a.ident, a.value.ident)) {
+        if (a.intertype == 'assign' && a.value.intertype == 'bitcast' &&
+            func.variables[a.ident].uses == 1 && replaceVars(b, a.ident, a.value.ident)) {
           a.intertype = null;
           return true;
         }
@@ -1844,7 +1842,6 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         for (var i = 0; i < func.lines.length-1; i++) {
           var a = func.lines[i];
           var b = func.lines[i+1];
-          //print('// ??zzaa ' + dump(a) + ',\n // ??zzbb' + dump(b));
           if (b.intertype == 'store' &&
               func.variables[b.ident] && // Not global
               func.variables[b.ident].impl === VAR_NATIVIZED) {
