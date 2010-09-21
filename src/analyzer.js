@@ -12,7 +12,6 @@ function cleanFunc(func) {
 }
 
 function analyzer(data) {
-//print('zz analaz')
   substrate = new Substrate('Analyzer');
 
   // Sorter
@@ -260,6 +259,26 @@ function analyzer(data) {
           }
           dprint('vars', '// var ' + vname + ': ' + JSON.stringify(variable));
         }
+      });
+      this.forwardItem(item, 'LabelAnalyzer');
+    },
+  });
+
+  // Label analyzer
+  substrate.addZyme('LabelAnalyzer', {
+    processItem: function(item) {
+      item.functions.forEach(function(func) {
+        func.hasPhi = false;
+        func.remarkableLabels = [];
+        func.labels.forEach(function(label) {
+          label.lines.forEach(function(line) {
+            if (line.value && line.value.intertype == 'phi') {
+              func.remarkableLabels.push(toNiceIdent(line.value.label1));
+              func.remarkableLabels.push(toNiceIdent(line.value.label2));
+              func.hasPhi = true;
+            }
+          });
+        });
       });
       this.forwardItem(item, 'Relooper');
     },

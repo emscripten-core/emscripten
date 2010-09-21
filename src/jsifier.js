@@ -197,9 +197,8 @@ function JSify(data) {
 
       // We have this function all reconstructed, go and finalize it's JS!
 
-      var hasVarArgs = false, hasPhi = false;
+      var hasVarArgs = false;
       var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
-        hasPhi = hasPhi || param.intertype == 'phi';
         if (param.intertype == 'varargs') {
           hasVarArgs = true;
           return null;
@@ -213,6 +212,9 @@ function JSify(data) {
       if (hasVarArgs) {
         func.JS += '  __numArgs__ = ' + params.length + ';\n';
       }
+      if (func.hasPhi) {
+        func.JS += '  __lastLabel__ = null;\n';
+      }
 
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
@@ -221,6 +223,10 @@ function JSify(data) {
           var ret = '';
           if (LABEL_DEBUG) {
             ret += indent + "  print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+          }
+          // for special labels we care about (for phi), mark that we visited them
+          if (func.remarkableLabels.indexOf(label.ident) >= 0) {
+            ret += '      __lastLabel__ = ' + getLabelId(label.ident) + ';\n';
           }
           return ret + label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
         }
@@ -387,9 +393,7 @@ function JSify(data) {
         return ';'; // Returning no text might confuse this parser
       }
     } else {
-      // FIXME: We should use __lastLabel__ only if we actually need
-      //        it, which is in the case of phi being used on the label.
-      return '__lastLabel__ = __label__; __label__ = ' + getLabelId(label) + '; break;';
+      return '__label__ = ' + getLabelId(label) + '; break;';
     }
   }
 
