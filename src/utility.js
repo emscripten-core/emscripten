@@ -1,3 +1,4 @@
+// General JS utilities
 
 function dump(item) {
   function lineify(text) {
@@ -134,7 +135,6 @@ function splitter(array, filter) {
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
-DEBUG_TAGS_SHOWING = ['labelbranching', 'enzymatic'];
 function dcheck(tag) {
   return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
 }

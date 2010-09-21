@@ -2,7 +2,7 @@
 
 import os, sys, subprocess
 
-COMPILER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'src', 'parser.js')
+COMPILER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'src', 'compiler.js')
 CONFIG_FILE = os.path.expanduser('~/.emscripten')
 JS_ENGINE = None
 
