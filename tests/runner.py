@@ -739,8 +739,19 @@ class T(unittest.TestCase):
       # XXX RELOOP = 1 either is very very slow, or nonfinishing
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
 
+# Test compilation with all the frontend compilers we have
+for compiler_name, compiler_path in COMPILERS.iteritems():
+  class TT(T):
+    def setUp(self):
+      global COMPILER
+      COMPILER=compiler_path
+  exec('T_' + compiler_name + ' = TT')
+  del TT
+
+del T # T is just a shape for the specific subclasses, we don't test it itself
+
 if __name__ == '__main__':
-    for cmd in [COMPILER, LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
+    for cmd in COMPILERS.values() + [LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
         print "Checking for existence of", cmd
         assert(os.path.exists(cmd))
     print "Running Emscripten tests..."

@@ -3,9 +3,7 @@ TEMP_DIR='/dev/shm'
 
 CLANG=os.path.expanduser('~/Dev/llvm-2.7/cbuild/bin/clang++')
 LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-2.7/cbuild/install/bin/llvm-g++')
-
-#COMPILER=LLVM_GCC
-COMPILER=CLANG
+COMPILERS = { 'clang': CLANG, 'llvm_gcc': LLVM_GCC }
 
 COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
                          # various errors on 64bit compilation
