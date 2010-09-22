@@ -34,6 +34,10 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 INDENT = '';
 #endif
 
+#if EXECUTION_TIMEOUT
+START_TIME = Date.now();
+#endif
+
 function abort(text) {
   text = "ABORT: " + text;
   print(text + "\n");

@@ -75,7 +75,7 @@ class T(unittest.TestCase):
           if output is not None and 'Traceback' in output: print output; assert (0) # 'generating JavaScript failed'
           if DEBUG: print "\nGenerated JavaScript:\n\n===\n\n%s\n\n===\n\n" % output
   #        if not DEBUG:
-        js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 20, 'Execution')
+        js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 60, 'Execution')
         if output_nicerizer is not None:
             js_output = output_nicerizer(js_output)
  #       else:

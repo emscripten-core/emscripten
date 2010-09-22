@@ -222,7 +222,10 @@ function JSify(data) {
         function getLabelLines(label, indent) {
           var ret = '';
           if (LABEL_DEBUG) {
-            ret += indent + "  print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+            ret += indent + "print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+          }
+          if (EXECUTION_TIMEOUT > 0) {
+            ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
           }
           // for special labels we care about (for phi), mark that we visited them
           if (func.remarkableLabels.indexOf(label.ident) >= 0) {

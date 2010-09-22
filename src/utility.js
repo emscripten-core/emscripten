@@ -80,6 +80,7 @@ function range(size) {
 }
 
 function searchable() {
+  if (typeof arguments[0] === 'object') arguments = arguments[0];
   var ret = {};
   for (var i = 0; i < arguments.length; i++) {
     ret[arguments[i]] = 0;

@@ -295,12 +295,10 @@ function analyzer(data) {
       // Tools
 
       function replaceLabels(line, labelId, toLabelId) {
-        //print('// XXX replace ' + labelId + ' with ' + toLabelId);
         function process(item) {
           ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
             if (item[id] && item[id] == labelId) {
               item[id] = toLabelId;
-              //print('    replaced!');
             }
           });
         }
@@ -318,7 +316,6 @@ function analyzer(data) {
       }
 
       function replaceInLabels(labels, toReplace, replaceWith) {
-        //print('// XXX replaceIn ' + toReplace + ' with ' + replaceWith);
         assertEq(!replaceWith || toReplace.length == 1, true); // TODO: implement other case
         labels.forEach(function(label) {
           ['inLabels'].forEach(function(l) {
@@ -340,7 +337,6 @@ function analyzer(data) {
         });
         // Find direct branchings
         labels.forEach(function(label) {
-          dprint('find direct branchings at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
           label.lines.forEach(function(line) {
             function process(item) {
               ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel'].forEach(function(id) {
@@ -376,7 +372,6 @@ function analyzer(data) {
         while (worked) {
           worked = false;
           labels.forEach(function(label) {
-            //print('zz at label: ' + label.ident + ':' + label.inLabels + ':' + label.outLabels);
             function inout(s, l) {
               var temp = label[s].slice(0);
               label[s].forEach(function(label2Id) {
@@ -385,7 +380,6 @@ function analyzer(data) {
               temp = dedup(temp);
               temp.sort();
               if (JSON.stringify(label[l]) != JSON.stringify(temp)) {
-                //print('zz noticed ' + label.ident + ' ? ' + s + ',' + l + ' : ' + label[s] + ' | ' + label[l]);
                 label[l] = temp;
                 worked = true;
               }
@@ -397,17 +391,12 @@ function analyzer(data) {
 
         // Find all mustGetTos
         labels.forEach(function(label) {
-          //print('path for: ' + label.ident + ',' + dump(label));
           function walk(path, label) {
-            //print('path is: ' + getLabelIds(path.concat([label])));
             // If all we are is a break/return - then stop here. Otherwise, continue to other path
-            //print('??? ' + label.hasReturn + ' : ' + label.hasBreak + ' : ' + label.outLabels.length);
             if (label.hasReturn || (label.hasBreak && label.outLabels.length == 0)) {
-              //print('path done.');
               return [path.concat([label])]
             };
             if (path.indexOf(label) != -1) {
-              //print('looping path - abort it.');
               return []; // loop - drop this path
             }
             path = path.concat([label]);
@@ -416,12 +405,10 @@ function analyzer(data) {
                         .filter(function(path) { return path.length > 0 });
           }
           var paths = walk([], label).map(function(path) { return getLabelIds(path) });
-          //print('XXX paths: ' + JSON.stringify(paths));
           var possibles = dedup(paths.reduce(function(a,b) { return a.concat(b) }, []));
           label.mustGetTo = possibles.filter(function(possible) {
             return paths.filter(function(path) { return path.indexOf(possible) == -1 }) == 0;
           }).filter(function(possible) { return possible != label.ident });
-          //print('XXX must get to: ' + JSON.stringify(label.mustGetTo));
         });
 
         labels.forEach(function(label) {
@@ -430,13 +417,13 @@ function analyzer(data) {
           });
         });
 
-        if (dcheck('labelbranching')) {
+        if (dcheck('relooping')) {
           labels.forEach(function(label) {
             print('// label: ' + label.ident + ' :out      : ' + JSON.stringify(label.outLabels));
             print('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
             print('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
             print('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
-            print('// ZZZZZZ ' + label.ident + ' must get to all of ' + JSON.stringify(label.mustGetTo));
+            print('// ZZZZZZ ' + label.ident + ' must get to all of ' + JSON.stringify(label.mustGetTo) + '\n');
           });
         }
       }
@@ -450,11 +437,9 @@ function analyzer(data) {
           label1.outLabels = label2.outLabels;
           label2.lines = null;
           func.labels = func.labels.filter(function(label) { return !!label.lines });
-print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           delete func.labelsDict[label2.ident];
           replaceInLabels(func.labels, [label2.ident], label1.ident);
         }
-//print('Labels pre merge : ' + getLabelIds(func.labels));
 
         // Merge trivial labels
         var worked = true;
@@ -462,13 +447,10 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           worked = false;
           func.labels.forEach(function(label) {
             if (label.lines === null) return; // We were deleted
-//print("// Consider: " + label.ident + ' : out/in: ' + label.outLabels.length + ',' + label.inLabels.length);// + dump(label.lines.slice(-1)[0]));
             if (label.outLabels.length == 1 &&
                 label.lines.slice(-1)[0].intertype == 'branch' &&
-//                label.lines.slice(-1)[0].label && // nonconditional branch
                 label.lines.slice(-1)[0].label == label.outLabels[0] &&
                 func.labelsDict[label.outLabels[0]].inLabels.length == 1) {
-//print("// and target: " + func.labelsDict[label.outLabels[0]].inLabels);
               mergeLabels(label.ident, label.outLabels[0]);
               worked = true;
             }
@@ -491,7 +473,9 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         }
 
         function getLastLine(block) {
-          //dprint('get last line at: ' + block.labels[0].ident);
+          if (!block) return null; // Completely empty block (probably had only a branch,
+                                   // which was optimized out)
+          dprint('relooping', 'get last line at: ' + block.labels[0].ident);
           if (block.next) return getLastLine(block.next);
           switch(block.type) {
             case 'loop':
@@ -504,17 +488,13 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
               if (block.labels.length == 1) {
                 return block.labels[0].lines.slice(-1)[0];
               } else {
-                //for (var i = 0; i < block.labels.length; i++)
-                  //print('Remaining label is at line: ' + block.labels[i].lines[0].lineNum);
-                return null; // throw "Not clear what the last line is."
+                return null;
               }
           }
         }
         function getAll(fromId, beforeIds) {
           beforeIds = beforeIds ? beforeIds : [];
-          //print("//getAll : " + fromId + ' : ' + beforeIds);
           if (beforeIds && beforeIds.indexOf(fromId) != -1) return [];
-          //print("getAll proceeding");
           var from = labelsDict[fromId];
           return dedup([from].concat(
             from.outLabels.map(function(outLabel) { return getAll(outLabel, beforeIds.concat(fromId)) })
@@ -526,9 +506,9 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           label.outLabels = [];
           return label;
         }
-        dprint("\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
+        dprint('relooping', "\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
         if (labels.length == 0 || !entry) {
-          print('//empty labels or entry');
+          dprint('relooping', '//empty labels or entry');
           return;
         }
         function forLabelLines(labels, func) {
@@ -544,17 +524,17 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         var split = splitter(labels, function(label) { return label.ident == entry });
         var first = split.splitOut[0];
         if (!first) {
-          print("//no first line");
+          dprint('relooping', "//no first line");
           return;
         }
         var others = split.leftIn;
         var lastLine = first.lines.slice(-1)[0];
-        dprint("//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
+        dprint('relooping', "//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
         // If we have one outgoing, and none incoming - make this a block of 1,
         // and move on the others (forgetting ourself, so they are now also
         // totally self-enclosed, once we start them)
         if (first.inLabels.length == 0 && first.outLabels.length == 1) {
-          dprint('   Creating simple emulated');
+          dprint('relooping', '   Creating simple emulated');
           assertEq(lastLine.intertype, 'branch');
 //          assertEq(!!lastLine.label, true);
           return {
@@ -564,16 +544,13 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
             next: makeBlock(replaceInLabels(others, entry), first.outLabels[0], labelsDict),
           };
         }
-        //print('// loop ? a');
         // Looping structures - in some way, we can get back to here
         if (first.outLabels.length > 0 && first.allInLabels.indexOf(entry) != -1) {
-          //print('// loop ? b');
           // Look for outsiders - labels no longer capable of getting here. Those must be
           // outside the loop. Insiders are those that can get back to the entry
           var split2 = splitter(others, function(label) { return label.allOutLabels.indexOf(entry) == -1 });
           var outsiders = split2.splitOut;
           var insiders = split2.leftIn;
-          //print('//    potential loop : in/out : ' + getLabelIds(insiders) + ' to ' + getLabelIds(outsiders));
           // Hopefully exactly one of the outsiders is a 'pivot' - a label to which all those leaving
           // the loop must go. Then even some |if (falala) { ... break; }| will get ...
           // as an outsider, but it will actually still be in the loop
@@ -587,11 +564,18 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           // as all insiders must go through *all* of these. So we seek a pivot that
           // is never reached by another pivot. That must be the one with fewest
           // mustGetTo
-          //print("//pivots: " + pivots.length + ',' + JSON.stringify(getLabelIds(pivots)));
-          if (pivots.length >= 1) { // We have ourselves a loop
+          var pivot = null;
+          if (pivots.length >= 1) {
             pivots.sort(function(a, b) { return b.mustGetTo.length - a.mustGetTo.length });
-            var pivot = pivots[0];
-            dprint('   Creating LOOP : ' + entry + ' insiders: ' + getLabelIds(insiders) + ' to pivot: ' + pivot.ident);
+            pivot = pivots[0];
+            if (!(pivot.ident in searchable(first.outLabels))) {
+              // pivot must be right outside - no intermediates
+              // TODO: Handle this, so we can reloop a lot more stuff
+              pivot = null;
+            }
+          }
+          if (pivot) { // We have ourselves a loop
+            dprint('relooping', '   Creating LOOP : ' + entry + ' insiders: ' + getLabelIds(insiders) + ' to pivot: ' + pivot.ident);
             var otherLoopLabels = insiders;
             var loopLabels = insiders.concat([first]);
             var nextLabels = outsiders;
@@ -604,7 +588,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
               if (0) {// XXX - make this work :label.outLabels.length == 1 && label.outLabels[0] == entry && !label.hasBreak && !label.hasReturn) {
                       //       it can remove unneeded continues (but does too much right now, as the continue might have been
                       //       placed into an emulated while(1) switch { }
-                replaceLabels(line, entry, 'BNOPP'); print("// zeezee " + line.lineNum);
+                replaceLabels(line, entry, 'BNOPP');
               } else {
                 replaceLabels(line, entry, 'BCONT' + entry);
               }
@@ -620,6 +604,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
             if (nextEntry == entry) { // We loop back to ourselves, the entire loop is just us
               nextEntry = null;
             }
+            dprint('relooping', "Entry into next: " + nextEntry);
             var ret = {
               type: 'loop',
               labels: loopLabels,
@@ -627,7 +612,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
               inc: makeBlock([isolate(first)], entry, labelsDict),
               rest: makeBlock(replaceInLabels(otherLoopLabels, entry), nextEntry, labelsDict),
             };
-            dprint('  getting last line for block starting with ' + entry + ' and nextEntry: ' + nextEntry);
+            dprint('relooping', '  getting last line for block starting with ' + entry + ' and nextEntry: ' + nextEntry);
             var lastLoopLine = getLastLine(nextEntry ? ret.rest : ret.inc);
             if (lastLoopLine) {
               replaceLabels(lastLoopLine, 'BCONT' + entry, 'BNOPP'); // Last line will feed back into the loop anyhow
@@ -642,7 +627,6 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
           if (labelsDict[first.outLabels[1]].mustGetTo.indexOf(first.outLabels[0]) != -1) {
             first.outLabels.push(first.outLabels.shift()); // Reverse order - normalize. Very fast check anyhow
           }
-          //print('// if? labels are ' + JSON.stringify(first.outLabels));
           if (labelsDict[first.outLabels[0]].mustGetTo.indexOf(first.outLabels[1]) != -1) {
             var ifLabelId = first.outLabels[0];
             var outLabelId = first.outLabels[1];
@@ -652,8 +636,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
             var nextLabels = getAll(outLabelId);
             // If we can get to the outside in more than 2 ways (one from if, one from True clause) - have breaks
             var breaking = labelsDict[outLabelId].allInLabels.length > 2;
-            dprint('   Creating XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
-            //print('//   if separation: ' + labels.length + ' = ' + ifLabels.length + ' + ' + nextLabels.length + '   (' + ifTrueLabels.length + ')');
+            dprint('relooping', '   Creating XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
             if (breaking) {
               // Rework branches out of the if into new 'break' labels
               forLabelLines(ifTrueLabels, function(line) {
@@ -676,7 +659,7 @@ print('// zz Merged away! ' + label2.ident + ' into ' + label1.ident);
         }
 
         // Give up on this structure - emulate it
-        dprint('   Creating complex emulated');
+        dprint('relooping', '   Creating complex emulated');
         return def;
       }
 
