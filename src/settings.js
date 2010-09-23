@@ -1,6 +1,6 @@
 // Code embetterments
 OPTIMIZE = 1; // Optimize llvm operations into js commands
-RELOOP = 1; // Recreate js native loops from llvm data
+RELOOP = 0; // Recreate js native loops from llvm data XXX - disabled pending optimizing rewrite
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses

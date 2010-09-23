@@ -9,7 +9,6 @@ if (!this['read']) {
 }
 
 load('settings.js');
-if (LABEL_DEBUG && RELOOP) throw "Cannot debug labels if they have been relooped!";
 
 load('utility.js');
 load('enzymatic.js');

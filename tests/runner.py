@@ -736,8 +736,7 @@ class T(unittest.TestCase):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
-      # XXX RELOOP = 1 either is very very slow, or nonfinishing
-      self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp', emscripten_settings='{"RELOOP": 0}')
+      self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
 # Test compilation with all the frontend compilers we have
 for compiler_name, compiler_path in COMPILERS.iteritems():
