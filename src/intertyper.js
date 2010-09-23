@@ -218,10 +218,15 @@ function intertyper(data) {
   // globals: type or variable
   substrate.addZyme('Global', {
     processItem: function(item) {
+      if (item.tokens[2].text == 'alias') {
+        return; // TODO: handle this. See raytrace.cpp
+      }
       if (item.tokens[2].text == 'type') {
-        //dprint('type/const linenum: ' + item.lineNum + ':' + dump(item));
         var fields = [];
-        if (item.tokens[3].text != 'opaque') {
+        if (isNumberType(item.tokens[3].text)) {
+          // Clang sometimes has |= i32| instead of |= { i32 }|
+          fields = [item.tokens[3].text];
+        } else if (item.tokens[3].text != 'opaque') {
           if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
             item.tokens[3] = item.tokens[3].item[0];
           }

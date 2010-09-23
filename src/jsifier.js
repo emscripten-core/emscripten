@@ -96,6 +96,8 @@ function JSify(data) {
             return '(' + handleSegment(subSegments[0]) + ' + ' + handleSegment(subSegments[1]) + ')';
           } else if (segment[1].type == '{') {
             return '[' + handleSegments(segment[1].tokens) + ']';
+          } else if (segment[1].type == '[') {
+            return '[' + handleSegments(segment[1].item[0].tokens) + ']';
           } else if (segment.length == 2) {
             return parseNumerical(toNiceIdent(segment[1].text));
           } else {

@@ -324,11 +324,26 @@ function _HexToInt(stringy) {
   return ret;
 }
 
+function _IntToHex(x) {
+  assert(x >= 0 && x <= 15);
+  if (x <= 9) {
+    return String.fromCharCode('0'.charCodeAt(0) + x);
+  } else {
+    return String.fromCharCode('A'.charCodeAt(0) + x - 10);
+  }
+}
+
 function IEEEUnHex(stringy) {
-  var a = _HexToInt(stringy.substr(2, 8));
-  var b = _HexToInt(stringy.substr(10));
+  stringy = stringy.substr(2); // '0x';
+  var top = _HexToInt(stringy[0]);
+  var neg = !!(top & 8);
+  if (neg) {
+    stringy = _IntToHex(top & ~8) + stringy.substr(1);
+  }
+  var a = _HexToInt(stringy.substr(0, 8));
+  var b = _HexToInt(stringy.substr(8));
   var e = (a >> ((52 - 32) & 0x7ff)) - 1023;
-  return ((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
+  return (((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e)) * (neg ? -1 : 1)).toString();
 }
 
 function parseNumerical(value, type) {
