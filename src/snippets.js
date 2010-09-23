@@ -102,8 +102,21 @@ var Snippets = {
   isdigit: function(chr) {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
   },
+
+  // iostream
+  _ZNSt8ios_base4InitC1Ev: function() {
+  },
+  _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_: 0, // endl
+
+  // math.h
+  sqrt: function(x) { return Math.sqrt(x) },
+  cos: function(x) { return Math.cos(x) },
+  sin: function(x) { return Math.sin(x) },
 };
 
-// Aliases
+// Aliases ============================
+
 Snippets.__cxa_atexit = Snippets.atexit;
+// iostream
+Snippets._ZNSolsEi = Snippets._ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc = Snippets._ZNSolsEd = Snippets._ZNSolsEPFRSoS_E = function(stream, data) { print(data) };
 
