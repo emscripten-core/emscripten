@@ -725,6 +725,11 @@ class T(unittest.TestCase):
           src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
           self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
+    def zzztest_raytrace(self):
+        src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
+        output = open(path_from_root(['tests', 'raytrace.ppm']), 'r').read()
+        self.do_test(src, output, ['3'])
+
     def test_fasta(self):
         results = [ (1,'''GG*ctt*tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg*tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa*tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
 (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg*tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa*NtactMcSMtYtcMgRtacttctWBacgaa*agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct*ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc*ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa*gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa*ggcatgtatg*''') ]
@@ -738,15 +743,15 @@ class T(unittest.TestCase):
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
-# Test compilation with all the frontend compilers we have
-for compiler_name, compiler_path in COMPILERS.iteritems():
+# Generate tests for all our compilers
+def make_test(compiler):
   class TT(T):
     def setUp(self):
       global COMPILER
-      COMPILER=compiler_path
-  exec('T_' + compiler_name + ' = TT')
-  del TT
-
+      COMPILER=compiler
+  return TT
+for name in COMPILERS.keys():
+  exec('T_' + name + ' = make_test(COMPILERS["' + name + '"])')
 del T # T is just a shape for the specific subclasses, we don't test it itself
 
 if __name__ == '__main__':
