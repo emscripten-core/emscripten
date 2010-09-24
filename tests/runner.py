@@ -74,59 +74,14 @@ class T(unittest.TestCase):
               output_processor(output)
           if output is not None and 'Traceback' in output: print output; assert (0) # 'generating JavaScript failed'
           if DEBUG: print "\nGenerated JavaScript:\n\n===\n\n%s\n\n===\n\n" % output
-  #        if not DEBUG:
+        #assert(0)
         js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 60, 'Execution')
         if output_nicerizer is not None:
             js_output = output_nicerizer(js_output)
- #       else:
-  #          print "[[JS output]]"
-   #         ret = "Output shown on screen, test not actually run!"
-    #        Popen([JS_ENGINE, filename + '.o.js'] + args, stderr=STDOUT).communicate()[0]
         self.assertContained(expected_output, js_output)
         self.assertNotContained('ERROR', js_output)
-        return
 
-        if not no_python:
-          #DEBUG = True
-          SPIDERMONKEY = True
-          if SPIDERMONKEY:
-            if DEBUG: print "[[RJS ==> SpiderMonkey parsed tree]]"
-            args = [SPIDERMONKEY_SHELL, '-e', 'parse(snarf(\"%s\"))' % (filename + '.o.js')]
-            output = Popen(args, stdout=PIPE, stderr=STDOUT).communicate()[0]
-            f = open(filename + 'o.js.sm', 'w')
-            f.write(output)
-            f.close()
-          else:
-            if DEBUG: print "[[RJS ==> RPython]]"
-            output = Popen(['python', RJS_RPYTHON, filename + '.o.js', filename + '.o.js.py'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-            if DEBUG: print output
-
-            py_output = Popen(['python', filename + '.o.js.py'] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
-            if output_nicerizer is not None:
-                py_output = output_nicerizer(py_output)
-            self.assertContained(expected_output, py_output)
-            if js_output != py_output:
-                print "WARNING: js and py outputs not identical (but each is similar enough to the expected_output)"
-
-            PYPY = True
-#            PYPY = False
-            if PYPY:
-              pypy_source = filename.replace('.', '_') + '_o_js_py.py'
-              if DEBUG: print "[[RPython ==> PyPy]]"
-              output = Popen(['python', RJS_PYPY, filename + '.o.js.py', pypy_source], stdout=PIPE, stderr=STDOUT).communicate()[0]
-              print output
-
-#              # Python on pypy-ready source
- #             pypy_output = Popen(['python', pypy_source] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
-  #            if output_nicerizer is not None:
-   #               pypy_output = output_nicerizer(pypy_output)
-    #          self.assertContained(expected_output, pypy_output)
-     #         if js_output != pypy_output:
-      #            print "WARNING: js and PYpy outputs not identical (but each is similar enough to the expected_output)"
-
-            #   PyPy compilation of source to binary
-
-#        shutil.rmtree(dirname)
+#        shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     def assertContained(self, value, string):
         if value not in string:
@@ -228,13 +183,13 @@ class T(unittest.TestCase):
 
           int main(int argc, char **argv)
           {
-            printf("*%d", argc);
+            printf("*%d\\n", argc);
             puts(argv[1]);
             puts(argv[2]);
-            printf("%d", atoi(argv[3])+2);
+            printf("%d\\n", atoi(argv[3])+2);
             const char *foolingthecompiler = "\\rabcd";
-            printf("%d", strlen(foolingthecompiler)); // Tests parsing /0D in llvm - should not be a 0 (end string) then a D!
-            printf("%s*", NULL); // Should print '(null)', not the string at address 0, which is a real address for us!
+            printf("%d\\n", strlen(foolingthecompiler)); // Tests parsing /0D in llvm - should not be a 0 (end string) then a D!
+            printf("%s\\n", NULL); // Should print '(null)', not the string at address 0, which is a real address for us!
             return 0;
           }
         '''
@@ -728,11 +683,11 @@ class T(unittest.TestCase):
     def zzztest_raytrace(self):
         src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
         output = open(path_from_root(['tests', 'raytrace.ppm']), 'r').read()
-        self.do_test(src, output, ['3'])
+        self.do_test(src, output, ['1'])
 
     def test_fasta(self):
-        results = [ (1,'''GG*ctt*tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg*tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa*tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
-(50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg*tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa*NtactMcSMtYtcMgRtacttctWBacgaa*agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct*ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc*ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa*gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa*ggcatgtatg*''') ]
+        results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
+(50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''') ]
         for i, j in results:
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)

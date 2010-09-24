@@ -154,33 +154,6 @@ function __formatString() {
   return Pointer_make(ret);
 }
 
-function _printf() {
-  var text = Pointer_stringify(__formatString.apply(null, arguments));
-  // Our print() will print a \n anyhow... remove dupes
-  if (text[text.length-1] == '\n') {
-    text = text.substr(0, text.length-1);
-  }
-  print(text);
-}
-
-function _puts(p) {
-  _printf(p);
-//  print("\n"); // XXX print already always adds one
-}
-
-function _putchar(p) {
-  print(String.fromCharCode(p));
-}
-
-function _strlen(p) {
-  // XXX hardcoded ptr impl
-  var q = p;
-  while (HEAP[q] != 0) q++;
-  return q - p;
-//  p = Pointer_niceify(p);
-//  return p.slab.length; // XXX might want to find the null terminator...
-}
-
 // Copies a list of num items on the HEAP into a
 // a normal JavaScript array of numbers
 function Array_copy(ptr, num) {
@@ -218,13 +191,20 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
 _llvm_memcpy_i64 = _llvm_memcpy_i32;
 
 // Tools
-// println((new Error).stack); // for stack traces
 
-function println(text) {
-  print(text);// + "\n"); // XXX print already always adds one
+PRINTBUFFER = '';
+function __print__(text) {
+  // We print only when we see a '\n', as console JS engines always add
+  // one anyhow.
+  PRINTBUFFER = PRINTBUFFER + text;
+  var endIndex;
+  while ((endIndex = PRINTBUFFER.indexOf('\n')) != -1) {
+    print(PRINTBUFFER.substr(0, endIndex));
+    PRINTBUFFER = PRINTBUFFER.substr(endIndex + 1);
+  }
 }
 
-function jrint(label, obj) {
+function jrint(label, obj) { // XXX manual debugging
   if (!obj) {
     obj = label;
     label = '';

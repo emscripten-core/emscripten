@@ -1,4 +1,20 @@
 var Snippets = {
+  // stdio.h
+
+  printf: function() {
+    __print__(Pointer_stringify(__formatString.apply(null, arguments)));
+  },
+
+  puts: function(p) {
+    __print__(Pointer_stringify(p) + '\n');
+  },
+
+  putchar: function(p) {
+    __print__(String.fromCharCode(p));
+  },
+
+  // ?
+
   vsnprintf: function(dst, num, src, ptr) {
     var args = Array_copy(ptr+1, HEAP[ptr]); // # of args in in first place
     var text = __formatString.apply(null, [src].concat(args));
@@ -10,6 +26,14 @@ var Snippets = {
 
   atexit: function(func) {
     __ATEXIT__.push(func);
+  },
+
+  // string.h
+
+  strlen: function(p) {
+    var q = p;
+    while (HEAP[q] != 0) q++;
+    return q - p;
   },
 
   strspn: function(pstr, pset) {
@@ -119,4 +143,5 @@ var Snippets = {
 Snippets.__cxa_atexit = Snippets.atexit;
 // iostream
 Snippets._ZNSolsEi = Snippets._ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc = Snippets._ZNSolsEd = Snippets._ZNSolsEPFRSoS_E = function(stream, data) { print(data) };
+Snippets._ZNSt8ios_base4InitD1Ev = Snippets._ZNSt8ios_base4InitC1Ev;
 
