@@ -490,6 +490,8 @@ function JSify(data) {
   });
   makeFuncLineZyme('mathop', function(item) { with(item) {
     dprint('mathop', 'mathop: ' + dump(item));
+    ident = parseNumerical(ident);
+    ident2 = parseNumerical(ident2);
     switch (item.op) {
       case 'add': return ident + ' + ' + ident2;
       case 'sub': return ident + ' - ' + ident2;

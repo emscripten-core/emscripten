@@ -335,7 +335,8 @@ function IEEEUnHex(stringy) {
     }
   }
   e -= 1023; // offset
-  return (((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e)) * (neg ? -1 : 1)).toString();
+  var absolute = ((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
+  return (absolute * (neg ? -1 : 1)).toString();
 }
 
 function parseNumerical(value, type) {

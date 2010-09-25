@@ -136,8 +136,16 @@ function __formatString() {
   while (curr != 0) {
     curr = HEAP[textIndex];
     next = HEAP[textIndex+1];
-    if (curr == '%'.charCodeAt(0) && ['d', 'f'].indexOf(String.fromCharCode(next)) != -1) {
-      String(arguments[argIndex]).split('').forEach(function(chr) {
+    if (curr == '%'.charCodeAt(0) && ['d', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
+      var argText = String(arguments[argIndex]);
+      // Handle very very simply formatting, namely only %.Xf
+      if (HEAP[textIndex+1] == '.'.charCodeAt(0)) {
+        var limit = parseInt(String.fromCharCode(HEAP[textIndex+2]));
+        var dotIndex = argText.indexOf('.');
+        argText = argText.substr(0, dotIndex+1+limit);
+        textIndex += 2;
+      }
+      argText.split('').forEach(function(chr) {
         ret.push(chr.charCodeAt(0));
       });
       argIndex += 1;
