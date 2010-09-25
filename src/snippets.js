@@ -12,6 +12,11 @@ var Snippets = {
   putchar: function(p) {
     __print__(String.fromCharCode(p));
   },
+  _ZNSo3putEc: 'putchar',
+
+  _ZNSo5flushEv: function() {
+    __print__('\n');
+  },
 
   // ?
 
@@ -27,6 +32,7 @@ var Snippets = {
   atexit: function(func) {
     __ATEXIT__.push(func);
   },
+  __cxa_atexit: 'atexit',
 
   // string.h
 
@@ -130,6 +136,7 @@ var Snippets = {
   // iostream
   _ZNSt8ios_base4InitC1Ev: function() {
   },
+  _ZNSt8ios_base4InitD1Ev: '_ZNSt8ios_base4InitC1Ev',
   _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_: 0, // endl
   _ZNSolsEi: function(stream, data) {
     __print__(data);
@@ -143,16 +150,14 @@ var Snippets = {
   _ZNSolsEPFRSoS_E: function(stream, data) {
     __print__('\n');
   },
+  _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_i: function(stream, data, call_) {
+    __print__(Pointer_stringify(data));
+  },
 
   // math.h
-  sqrt: function(x) { return Math.sqrt(x) },
   cos: function(x) { return Math.cos(x) },
   sin: function(x) { return Math.sin(x) },
+  sqrt: function(x) { return Math.sqrt(x) },
+  llvm_sqrt_f64: 'sqrt',
 };
-
-// Aliases ============================
-
-Snippets.__cxa_atexit = Snippets.atexit;
-// iostream
-Snippets._ZNSt8ios_base4InitD1Ev = Snippets._ZNSt8ios_base4InitC1Ev;
 

@@ -144,7 +144,11 @@ function JSify(data) {
     processItem: function(item) {
       var shortident = item.ident.substr(1);
       if (shortident in Snippets) {
-        item.JS = item.ident + ' = ' + Snippets[shortident].toString();
+        var snippet = Snippets[shortident];
+        if (typeof snippet === 'string') {
+          snippet = Snippets[snippet]; // redirection for aliases
+        }
+        item.JS = item.ident + ' = ' + snippet.toString();
       } else {
         item.JS = '// stub for ' + item.ident;
       }
