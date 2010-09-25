@@ -590,7 +590,6 @@ function JSify(data) {
   }
 
   function finalizeGetElementPtr(item) {
-    //print('//zz finalize: ' + dump(item.params));
     // TODO: statically combine indexes here if consts
     return makePointer(makeGetSlab(item.ident), getGetElementPtrIndexes(item));
   }
@@ -639,12 +638,10 @@ function JSify(data) {
   // Optimzed intertypes
 
   makeFuncLineZyme('fastgetelementptrload', function(item) {
-//print('// FAST ' + dump(item));
-    return 'var ' + item.ident + ' = ' + makeGetValue(item.value.ident, getGetElementPtrIndexes(item.value), true) + ';';
+    return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), true) + ';';
   });
   makeFuncLineZyme('fastgetelementptrstore', function(item) {
-//print('// FAST ' + dump(item));
-    return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), item.ident, true) + ';';
+    return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), true) + ';';
   });
 
   makeFuncLineZyme('unreachable', function(item) { return '// unreachable' });
