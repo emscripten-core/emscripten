@@ -327,15 +327,16 @@ function IEEEUnHex(stringy) {
   var a = eval('0x' + stringy.substr(0, 8)); // top half
   var b = eval('0x' + stringy.substr(8)); // bottom half
   var e = a >> ((52 - 32) & 0x7ff); // exponent
+  a = a & 0xfffff;
   if (e === 0x7ff) {
     if (a == 0 && b == 0) {
-      return Infinity;
+      return 'Infinity';
     } else {
-      return NaN;
+      return 'NaN';
     }
   }
   e -= 1023; // offset
-  var absolute = ((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
+  var absolute = ((((a | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
   return (absolute * (neg ? -1 : 1)).toString();
 }
 

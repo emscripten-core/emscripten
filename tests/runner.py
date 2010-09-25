@@ -153,11 +153,11 @@ class T(unittest.TestCase):
           #include <cmath>
           int main()
           {
-            printf("*%.2f,%.2f*\\n", M_PI, -M_PI);
+            printf("*%.2f,%.2f,%f*\\n", M_PI, -M_PI, 1/0.0);
             return 0;
           }
         '''
-        self.do_test(src, '*3.14,-3.14*')
+        self.do_test(src, '*3.14,-3.14,Infinity*')
 
     def test_if(self):
         src = '''
