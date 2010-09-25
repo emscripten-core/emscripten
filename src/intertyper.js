@@ -372,9 +372,11 @@ function intertyper(data) {
   // 'getelementptr'
   substrate.addZyme('GEP', {
     processItem: function(item) {
+      var first = 0;
+      while (!isType(item.tokens[first].text)) first++;
       var last = getTokenIndexByText(item.tokens, ';');
-      var segment = [ item.tokens[1], { text: null }, null, { item: [ {
-        tokens: item.tokens.slice(2, last)
+      var segment = [ item.tokens[first], { text: null }, null, { item: [ {
+        tokens: item.tokens.slice(first, last)
       } ] } ];
       var data = parseGetElementPtr(segment);
       item.intertype = 'getelementptr';
