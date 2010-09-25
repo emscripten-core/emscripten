@@ -12,7 +12,7 @@ load('settings.js');
 
 load('utility.js');
 load('enzymatic.js');
-load('snippets.js');
+load('library.js');
 load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');

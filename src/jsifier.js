@@ -143,10 +143,10 @@ function JSify(data) {
   substrate.addZyme('FunctionStub', {
     processItem: function(item) {
       var shortident = item.ident.substr(1);
-      if (shortident in Snippets) {
-        var snippet = Snippets[shortident];
+      if (shortident in Library) {
+        var snippet = Library[shortident];
         if (typeof snippet === 'string') {
-          snippet = Snippets[snippet]; // redirection for aliases
+          snippet = Library[snippet]; // redirection for aliases
         }
         item.JS = item.ident + ' = ' + snippet.toString();
       } else {

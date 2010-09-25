@@ -1,4 +1,4 @@
-var Snippets = {
+var Library = {
   // stdio.h
 
   printf: function() {
