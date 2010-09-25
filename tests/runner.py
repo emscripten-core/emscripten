@@ -74,7 +74,7 @@ class T(unittest.TestCase):
               output_processor(output)
           if output is not None and 'Traceback' in output: print output; assert (0) # 'generating JavaScript failed'
           if DEBUG: print "\nGenerated JavaScript:\n\n===\n\n%s\n\n===\n\n" % output
-        #assert(0)
+        #assert(0) # XXX
         js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 60, 'Execution')
         if output_nicerizer is not None:
             js_output = output_nicerizer(js_output)
@@ -146,6 +146,18 @@ class T(unittest.TestCase):
           }
         '''
         self.do_test(src, '*1,10,10.5,1,1.2339')
+
+    def test_math(self):
+        src = '''
+          #include <stdio.h>
+          #include <cmath>
+          int main()
+          {
+            printf("*%f\\n", M_PI);
+            return 0;
+          }
+        '''
+        self.do_test(src, '*3.14159')
 
     def test_if(self):
         src = '''

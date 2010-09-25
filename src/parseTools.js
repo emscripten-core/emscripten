@@ -254,7 +254,7 @@ function parseParamTokens(params) {
         intertype: 'value',
         type: segment[0],
         value: segment[1],
-        ident: segment[1].text,
+        ident: parseNumerical(segment[1].text),
       });
       //          } else {
       //            throw "what is this params token? " + JSON.stringify(segment);
@@ -308,22 +308,6 @@ function cleanOutTokens(filterOut, tokens, index) {
   }
 }
 
-function _HexToInt(stringy) {
-  var ret = 0;
-  var mul = 1;
-  var base;
-  for (var i = (stringy.length - 1); i >= 0; i = i - 1) {
-    if (stringy.charCodeAt(i) >= "A".charCodeAt(0)) {
-      base = "A".charCodeAt(0) - 10;
-    } else {
-      base = "0".charCodeAt(0);
-    }
-    ret = ret + (mul*(stringy.charCodeAt(i) - base));
-    mul = mul * 16;
-  }
-  return ret;
-}
-
 function _IntToHex(x) {
   assert(x >= 0 && x <= 15);
   if (x <= 9) {
@@ -334,15 +318,23 @@ function _IntToHex(x) {
 }
 
 function IEEEUnHex(stringy) {
-  stringy = stringy.substr(2); // '0x';
-  var top = _HexToInt(stringy[0]);
-  var neg = !!(top & 8);
+  stringy = stringy.substr(2); // leading '0x';
+  var top = eval('0x' + stringy[0]);
+  var neg = !!(top & 8); // sign
   if (neg) {
     stringy = _IntToHex(top & ~8) + stringy.substr(1);
   }
-  var a = _HexToInt(stringy.substr(0, 8));
-  var b = _HexToInt(stringy.substr(8));
-  var e = (a >> ((52 - 32) & 0x7ff)) - 1023;
+  var a = eval('0x' + stringy.substr(0, 8)); // top half
+  var b = eval('0x' + stringy.substr(8)); // bottom half
+  var e = a >> ((52 - 32) & 0x7ff); // exponent
+  if (e === 0x7ff) {
+    if (a == 0 && b == 0) {
+      return Infinity;
+    } else {
+      return NaN;
+    }
+  }
+  e -= 1023; // offset
   return (((((a & 0xfffff | 0x100000) * 1.0) / Math.pow(2,52-32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e)) * (neg ? -1 : 1)).toString();
 }
 
@@ -370,7 +362,7 @@ function parseLLVMString(str) {
       ret.push(chr.charCodeAt(0));
       i++;
     } else {
-      ret.push(_HexToInt(str[i+1]+str[i+2]));
+      ret.push(eval('0x' + str[i+1]+str[i+2]));
       i += 3;
     }
   }
