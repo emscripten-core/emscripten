@@ -19,7 +19,7 @@ def emscripten(filename, settings):
 if __name__ == '__main__':
   if sys.argv.__len__() not in [2,3,4]:
     print '''
-Emscripten usage:    emscripten.py [INFILE PATH-TO-JS-ENGINE] [SETTINGS]
+Emscripten usage:    emscripten.py INFILE [PATH-TO-JS-ENGINE] [SETTINGS]
 
   INFILE must be in human-readable LLVM disassembly form (i.e., as text,
       not binary).

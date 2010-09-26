@@ -1,0 +1,38 @@
+<html>
+<head>
+  <title>
+    Emscripten: Raytracing
+  </title>
+  <script src="raytrace.js"></script>
+  <script>
+    // print function which the cubescript engine will call
+    function print(text) {
+      document.getElementById('output').innerHTML = text;
+      printed = true;
+    }
+
+    // Do everything - initialize SDL, set up canvas, render
+    function render() {
+      _SDL_Init(32);
+      var canvas = document.getElementById('canvas');
+      HEAP[_screen] = _SDL_SetVideoMode(canvas.width, canvas.height, 32, 0, canvas);
+      var y = canvas.height-1;
+      function drawLine() {
+        __ZL10trace_lineiii(canvas.width, canvas.width, y);
+        print("Generating: " + (canvas.height-y) + "/" + canvas.height);
+        y--;
+        if (y >= 0) {
+          setTimeout(arguments.callee, 1);
+        }
+      }
+      drawLine();
+    }
+  </script>
+</head>
+<body onload='render()'>
+  <canvas id='canvas' width=128 height=128></canvas>
+  <hr>
+  <div id="output" style="font-family: Courier New,Courier,monospace;">Generating scene data, please wait...</div>
+</body>
+</html>
+

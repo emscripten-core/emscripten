@@ -54,7 +54,7 @@ function toNiceIdent(ident) {
 }
 
 function isNumberType(type) {
-  var types = ['i1', 'i8', 'i32', 'i64', 'float', 'double'];
+  var types = ['i1', 'i8', 'i16', 'i32', 'i64', 'float', 'double'];
   return types.indexOf(type) != -1;
 }
 
@@ -389,6 +389,7 @@ function getNativeFieldSize(field, alone) {
     size = {
       'i1': alone ? 1 : 4, // inside a struct, aligned to 4,
       'i8': alone ? 1 : 4, // most likely...? XXX
+      'i16': alone ? 2 : 4, // ditto
       'i32': 4,
       'i64': 8,
       'float': 4,

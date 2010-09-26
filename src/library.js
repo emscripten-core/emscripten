@@ -164,3 +164,5 @@ var Library = {
   llvm_sqrt_f64: 'sqrt',
 };
 
+load('library_sdl.js');
+

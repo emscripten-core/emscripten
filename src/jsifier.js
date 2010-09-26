@@ -704,7 +704,6 @@ function JSify(data) {
   substrate.addItems(data.functionStubs, 'FunctionStub');
 
   var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
-  return preprocess(read('preamble.js'), params) + finalCombiner(substrate.solve()) + preprocess(read('postamble.js'), params);
-//  return finalCombiner(substrate.solve());
+  return preprocess(read('preamble.js') + finalCombiner(substrate.solve()) + read('postamble.js'), params);
 }
 
