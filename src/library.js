@@ -135,6 +135,9 @@ var Library = {
 
   // iostream
   _ZNSt8ios_base4InitC1Ev: function() {
+    // need valid 'file descriptors'
+    __ZSt4cout = 1;
+    __ZSt4cerr = 2;
   },
   _ZNSt8ios_base4InitD1Ev: '_ZNSt8ios_base4InitC1Ev',
   _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_: 0, // endl

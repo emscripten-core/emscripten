@@ -745,7 +745,7 @@ class T(unittest.TestCase):
           src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
           self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
-    def zzztest_raytrace(self):
+    def test_raytrace(self):
         src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
         output = open(path_from_root(['tests', 'raytrace.ppm']), 'r').read()
         self.do_test(src, output, ['1'])
