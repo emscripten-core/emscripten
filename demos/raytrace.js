@@ -1,8 +1,11 @@
-arguments = ['3'] // 6!
+arguments = ['5'] // 6!
 
-//====================
-// Auto-generated code
-//====================
+//====================================================================================
+// Auto-generated code. Original source + changes are
+// sphere flake bvh raytracer (c) 2005, thierry berger-perrin <tbptbp@gmail.com>
+//                            (c) 2010, azakai (Emscripten)
+// this code is released under the GNU Public License.
+//====================================================================================
 
 // === Auto-generated preamble library stuff ===
 
