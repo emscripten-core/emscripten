@@ -79,6 +79,12 @@ function range(size) {
   return ret;
 }
 
+function zeros(size) {
+  var ret = [];
+  for (var i = 0; i < size; i++) ret.push(0);
+  return ret;
+}
+
 function searchable() {
   if (typeof arguments[0] === 'object') arguments = arguments[0];
   var ret = {};

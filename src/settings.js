@@ -1,3 +1,18 @@
+// Tuning
+QUANTUM_SIZE = 1; // This is the size of an individual field in a structure. 1 would
+                  // lead to e.g. doubles and chars both taking 1 memory address. This
+                  // is a form of 'compressed' memory, with shrinking and stretching
+                  // according to the type, when compared to C/C++. On the other hand
+                  // 8 means all fields take 8 memory addresses, so a double takes
+                  // the same as a char. Note that we only actually store something in
+                  // the top address - the others are just empty, an 'alignment cost'
+                  // of sorts.
+                  //
+                  // llvm-gcc works with 1. However, clang uses llvm_memcpy for various
+                  // things, and the number of bytes it copies is hardcoded. A simple
+                  // way to prevent problems with that is to set QUANTUM_SIZE to 8.
+                  // See the 'copyop' automatic test.
+
 // Code embetterments
 OPTIMIZE = 1; // Optimize llvm operations into js commands
 RELOOP = 0; // Recreate js native loops from llvm data XXX - disabled pending optimizing rewrite

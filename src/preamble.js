@@ -8,8 +8,10 @@ var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var __ATEXIT__ = [];
 
-var HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
-var HEAPTOP = HEAP.length+1; // Leave 0 as an invalid address, 'NULL'
+var HEAP = [];
+var HEAPTOP = 0;
+Pointer_make(intArrayFromString('(null)')); // So printing %s of NULL gives '(null)'
+                                            // Also this ensures we leave 0 as an invalid address, 'NULL'
 
 #if SAFE_HEAP
 // Semi-manual memory corruption debugging
@@ -89,14 +91,16 @@ function Pointer_stringify(ptr) {
     if ((ptr.pos+i) >= ptr.slab.length) { break; } else {}
     t = String.fromCharCode(ptr.slab[ptr.pos + i]);
     if (t == "\0") { break; } else {}
-    ret = ret + t;
-    i = i + 1;
+    ret += t;
+    i += 1;
   }
   return ret;
 }
 
 function _malloc(size) {
 // XXX hardcoded ptr impl
+  size = Math.ceil(size/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
+                                                    // Also keeps HEAPTOP aligned
   var ret = HEAPTOP;
   HEAPTOP += size;
   return ret;
@@ -139,7 +143,7 @@ function __formatString() {
     if (curr == '%'.charCodeAt(0) && ['d', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
       var argText = String(arguments[argIndex]);
       // Handle very very simply formatting, namely only %.Xf
-      if (HEAP[textIndex+1] == '.'.charCodeAt(0)) {
+      if (next == '.'.charCodeAt(0)) {
         var limit = parseInt(String.fromCharCode(HEAP[textIndex+2]));
         var dotIndex = argText.indexOf('.');
         argText = argText.substr(0, dotIndex+1+limit);
@@ -156,7 +160,7 @@ function __formatString() {
       textIndex += 2;
     } else {
       ret.push(curr);
-      textIndex ++;
+      textIndex += 1;
     }
   }
   return Pointer_make(ret);

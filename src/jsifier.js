@@ -66,6 +66,33 @@ function JSify(data) {
     return ret;
   }
 
+  function alignStruct(values, type) {
+    dprint('types', 'alignStruct: ' + dump(type));
+    // XXX hardcoded ptr impl
+    var ret = [];
+    var typeData = TYPES[type];
+    assertTrue(typeData);
+    var i = 0;
+    while (i < values.length) {
+      var currField = typeData.fields[i];
+      var currValue = values[i];
+      if (isStructType[currField]) {
+        var fieldTypeData = TYPES[currField];
+        assertTrue(fieldTypeData);
+        ret = ret.concat(alignStruct(values.slice(i, fieldTypeData.fields.length), currField));
+        i += fieldTypeData.fields.length;
+      } else {
+        ret.push(currValue);
+        // pad to align, unless it's a structure and already aligned
+        if (currValue[0] != '[') {
+          ret = ret.concat(zeros(getNativeFieldSize(currField)-1));
+        }
+        i += 1;
+      }
+    }
+    return ret;
+  }
+
   // Gets an entire constant expression
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
@@ -95,25 +122,27 @@ function JSify(data) {
             var subSegments = splitTokenList(segment[2].item[0].tokens);
             return '(' + handleSegment(subSegments[0]) + ' + ' + handleSegment(subSegments[1]) + ')';
           } else if (segment[1].type == '{') {
-            return '[' + handleSegments(segment[1].tokens) + ']';
+            // struct
+            var type = segment[0].text;
+            return '[' + alignStruct(handleSegments(segment[1].tokens), type).join(', ') + ']';
           } else if (segment[1].type == '[') {
-            return '[' + handleSegments(segment[1].item[0].tokens) + ']';
+            return '[' + handleSegments(segment[1].item[0].tokens).join(', ') + ']'; // XXX alignStruct?
           } else if (segment.length == 2) {
             return parseNumerical(toNiceIdent(segment[1].text));
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
         };
-        return splitTokenList(tokens).map(handleSegment).map(parseNumerical).join(', ');
+        return splitTokenList(tokens).map(handleSegment).map(parseNumerical);
       }
       if (value.item) {
         // list of items
-        return makePointer('[ ' + handleSegments(value.item[0].tokens) + ' ]');
+        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]');
       } else if (value.type == '{') {
         // struct
-        return makePointer('[ ' + handleSegments(value.tokens) + ' ]');
+        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]');
       } else if (value[0]) {
-        return makePointer('[ ' + handleSegments(value[0].tokens) + ' ]');
+        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]');
       } else {
         throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
       }
@@ -571,7 +600,11 @@ function JSify(data) {
     var indexes = [makeGetPos(ident)];
     var offset = toNiceIdent(item.params[1].ident);
     if (offset != 0) {
-      indexes.push((isStructType(type) && TYPES[type].flatSize != 1 ? TYPES[type].flatSize + '*' : '') + offset);
+      if (isStructType(type)) {
+        indexes.push((TYPES[type].flatSize != 1 ? TYPES[type].flatSize + '*' : '') + offset);
+      } else {
+        indexes.push(getNativeFieldSize(type, true) + '*' + offset);
+      }
     }
     item.params.slice(2, item.params.length).forEach(function(arg) {
       var curr = toNiceIdent(arg.ident);
@@ -585,7 +618,7 @@ function JSify(data) {
         }
       } else {
         if (curr != 0) {
-          indexes.push(curr);
+          indexes.push(curr); // XXX QUANTUM_SIZE?
         }
       }
       type = TYPES[type] ? TYPES[type].fields[curr] : '';
@@ -669,7 +702,8 @@ function JSify(data) {
   substrate.addItems(data.functions, 'FunctionSplitter');
   substrate.addItems(data.functionStubs, 'FunctionStub');
 
-  return preprocess(read('preamble.js')) + finalCombiner(substrate.solve()) + read('postamble.js');
+  var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
+  return preprocess(read('preamble.js'), params) + finalCombiner(substrate.solve()) + preprocess(read('postamble.js'), params);
 //  return finalCombiner(substrate.solve());
 }
 

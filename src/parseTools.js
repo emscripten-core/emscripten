@@ -1,8 +1,11 @@
 // Various tools for parsing llvm
 
 // Simple #if/else/endif preprocessing for a file. Checks if the
-// ident checked is true in our global.
-function preprocess(text) {
+// ident checked is true in our global. Also replaces some constants
+function preprocess(text, constants) {
+  for (constant in constants) {
+    text = text.replace(eval('/' + constant + '/g'), constants[constant]);
+  }
   var lines = text.split('\n');
   var ret = '';
   var show = true;
@@ -373,5 +376,30 @@ function parseLLVMString(str) {
 
 function getLabelIds(labels) {
   return labels.map(function(label) { return label.ident });
+}
+
+//! Returns the size of a field, as C/C++ would have it (in 32-bit,
+//! for now).
+//! @param field The field type, by name
+//! @param alone Whether this is inside a structure (so padding is
+//!              used) or alone (line in char*, where no padding is done).
+function getNativeFieldSize(field, alone) {
+  var size;
+  if (QUANTUM_SIZE > 1) {
+    size = {
+      'i1': alone ? 1 : 4, // inside a struct, aligned to 4,
+      'i8': alone ? 1 : 4, // most likely...? XXX
+      'i32': 4,
+      'i64': 8,
+      'float': 4,
+      'double':8,
+    }[field]; // XXX 32/64 bit stuff
+    if (!size) {
+      size = 4; // Must be a pointer XXX 32/64
+    }
+  } else {
+    size = 1;
+  }
+  return size;
 }
 

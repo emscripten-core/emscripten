@@ -92,7 +92,7 @@ function analyzer(data) {
     if (isNumberType(type) || isPointerType(type)) return;
     data.types[type] = {
       name_: type,
-      fields: [ 'int32' ], // XXX
+      fields: [ 'i32' ], // XXX
       flatSize: 1,
       lineNum: '?',
     };
@@ -166,9 +166,13 @@ function analyzer(data) {
           var sizes = [];
           type.flatIndexes = type.fields.map(function(field) {
             var soFar = type.flatSize;
-            var size = 1;
-            if (isStructType(field)) {
+            var size;
+            if (isNumberType(field) || isPointerType(field)) {
+              size = getNativeFieldSize(field);
+            } else if (isStructType(field)) {
               size = item.types[field].flatSize;
+            } else {
+              assert(0);
             }
             type.flatSize += size;
             sizes.push(size);

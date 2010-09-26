@@ -27,7 +27,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_python=False, no_build=False, main_file=None, emscripten_settings=[]):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_python=False, no_build=False, main_file=None):
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
@@ -66,16 +66,15 @@ class T(unittest.TestCase):
           output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           if DEBUG: print output
           # Run Emscripten
-          if type(emscripten_settings) not in [list, tuple]:
-            emscripten_settings = [emscripten_settings]
-          Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=open(filename + '.o.js', 'w'), stderr=STDOUT).communicate()
+          emscripten_settings = ['{ "QUANTUM_SIZE": %d }' % QUANTUM_SIZE]
+          timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 120, 'Compiling')
           output = open(filename + '.o.js').read()
           if output_processor is not None:
               output_processor(output)
           if output is not None and 'Traceback' in output: print output; assert (0) # 'generating JavaScript failed'
           if DEBUG: print "\nGenerated JavaScript:\n\n===\n\n%s\n\n===\n\n" % output
         #assert(0) # XXX
-        js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 60, 'Execution')
+        js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 120, 'Execution')
         if output_nicerizer is not None:
             js_output = output_nicerizer(js_output)
         self.assertContained(expected_output, js_output)
@@ -473,18 +472,19 @@ class T(unittest.TestCase):
           };
 
           int main( int argc, const char *argv[] ) {
+             int before = 70;
              IUB iub[] = {
                 { 'a', 0.3029549426680, 5 },
                 { 'c', 0.15, 4 },
                 { 'g', 0.12, 3 },
                 { 't', 0.27, 2 },
              };
-             printf("*%d,%d,%d,%d*\\n", iub[0].c, int(iub[1].p*100), iub[2].pi, int(iub[0].p*10000));
-//             printf("*%d*\\n", int(iub[1].p*100));
+             int after = 90;
+             printf("*%d,%d,%d,%d,%d,%d*\\n", before, iub[0].c, int(iub[1].p*100), iub[2].pi, int(iub[0].p*10000), after);
              return 0;
           }
           '''
-        self.do_test(src, '*97,15,3,3029*')
+        self.do_test(src, '*70,97,15,3,3029,90*')
 
     def test_ptrtoint(self):
         src = '''
@@ -637,6 +637,36 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*staticccz*')
 
+    def test_copyop(self):
+        # clang generated code is vulnerable to this, as it uses
+        # memcpy for assignments, with hardcoded numbers of bytes
+        # (llvm-gcc copies items one by one). See QUANTUM_SIZE in
+        # settings.js.
+        src = '''
+          #include <stdio.h>
+          #include <math.h>
+
+          struct vec {
+            double x,y,z;
+            vec() : x(0), y(0), z(0) { };
+            vec(const double a, const double b, const double c) : x(a), y(b), z(c) { };
+          };
+
+          struct basis {
+            vec a, b, c;
+            basis(const vec& v) {
+              a=v; // should not touch b!
+              printf("*%.2f,%.2f,%.2f*\\n", b.x, b.y, b.z);
+            }
+          };
+
+          int main() {
+            basis B(vec(1,0,0));
+            return 0;
+          }
+          '''
+        self.do_test(src, '*0,0,0*')
+
     def test_nestedstructs(self):
         src = '''
           #include <stdio.h>
@@ -684,7 +714,12 @@ class T(unittest.TestCase):
             return 0;
           }
           '''
-        self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*')
+        if QUANTUM_SIZE == 1:
+          # Compressed memory
+          self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*')
+        else:
+          # Bloated memory; same layout as C/C++
+          self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*')
 
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
@@ -715,14 +750,16 @@ def make_test(compiler):
   class TT(T):
     def setUp(self):
       global COMPILER
-      COMPILER=compiler
+      COMPILER = compiler['path']
+      global QUANTUM_SIZE
+      QUANTUM_SIZE = compiler['quantum_size']
   return TT
 for name in COMPILERS.keys():
-  exec('T_' + name + ' = make_test(COMPILERS["' + name + '"])')
+  exec('T_%s = make_test(COMPILERS["%s"])' % (name, name))
 del T # T is just a shape for the specific subclasses, we don't test it itself
 
 if __name__ == '__main__':
-    for cmd in COMPILERS.values() + [LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
+    for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
         print "Checking for existence of", cmd
         assert(os.path.exists(cmd))
     print "Running Emscripten tests..."
