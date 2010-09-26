@@ -439,6 +439,24 @@ class T(unittest.TestCase):
         '''
         self.do_test(src, '*zzcheezzz*')
 
+    def test_array2(self):
+        src = '''
+          #include <stdio.h>
+
+          static const double grid[4][2] = {
+	          {-3/3.,-1/3.},{+1/3.,-3/3.},
+	          {-1/3.,+3/3.},{+3/3.,+1/3.}
+          };
+
+          int main() {
+            for (int i = 0; i < 4; i++)
+              printf("%d:%.2f,%.2f ", i, grid[i][0], grid[i][1]);
+            printf("\\n");
+            return 0;
+          }
+          '''
+        self.do_test(src, '0:-1.00,-0.33 1:0.33,-1.00 2:-0.33,1.00 3:1.00,0.33')
+
     def test_constglobalstructs(self):
         src = '''
           #include <stdio.h>
@@ -665,7 +683,7 @@ class T(unittest.TestCase):
             return 0;
           }
           '''
-        self.do_test(src, '*0,0,0*')
+        self.do_test(src, '*0.00,0.00,0.00*')
 
     def test_nestedstructs(self):
         src = '''

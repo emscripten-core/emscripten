@@ -126,7 +126,8 @@ function JSify(data) {
             var type = segment[0].text;
             return '[' + alignStruct(handleSegments(segment[1].tokens), type).join(', ') + ']';
           } else if (segment[1].type == '[') {
-            return '[' + handleSegments(segment[1].item[0].tokens).join(', ') + ']'; // XXX alignStruct?
+            var type = segment[0].text;
+            return '[' + alignStruct(handleSegments(segment[1].item[0].tokens), type).join(', ') + ']';
           } else if (segment.length == 2) {
             return parseNumerical(toNiceIdent(segment[1].text));
           } else {

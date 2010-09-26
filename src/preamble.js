@@ -146,6 +146,11 @@ function __formatString() {
       if (next == '.'.charCodeAt(0)) {
         var limit = parseInt(String.fromCharCode(HEAP[textIndex+2]));
         var dotIndex = argText.indexOf('.');
+        if (dotIndex == -1) {
+          dotIndex = argText.length;
+          argText += '.';
+        }
+        argText += '00000000000'; // padding
         argText = argText.substr(0, dotIndex+1+limit);
         textIndex += 2;
       }
