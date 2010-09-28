@@ -490,29 +490,16 @@ function intertyper(data) {
   substrate.addZyme('Store', {
     processItem: function(item) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
-      if (item.tokens[3].text != ',') {
-        // complex input - likely getelementptr
-        var commaIndex = 4;
-        while (item.tokens[commaIndex].text != ',') commaIndex ++;
-        return [{
-          __result__: true,
-          intertype: 'store',
-          valueType: item.tokens[1],
-          value: parseFunctionCall(item.tokens.slice(1, commaIndex)),
-          pointerType: item.tokens[commaIndex+1],
-          pointer: item.tokens[commaIndex+2],
-          ident: item.tokens[commaIndex+2].text,
-          lineNum: item.lineNum,
-        }];
-      }
+      var commaIndex = 3;
+      while (item.tokens[commaIndex].text != ',') commaIndex ++;
       return [{
         __result__: true,
         intertype: 'store',
         valueType: item.tokens[1],
-        value: addIdent(item.tokens[2]),
-        pointerType: item.tokens[4],
-        pointer: item.tokens[5],
-        ident: item.tokens[5].text,
+        value: commaIndex == 3 ? addIdent(item.tokens[2]) : parseFunctionCall(item.tokens.slice(1, commaIndex)),
+        pointerType: item.tokens[commaIndex+1],
+        pointer: item.tokens[commaIndex+2],
+        ident: item.tokens[commaIndex+2].text,
         lineNum: item.lineNum,
       }];
     },
