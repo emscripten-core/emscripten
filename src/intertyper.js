@@ -181,7 +181,7 @@ function intertyper(data) {
           if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'phi')
             return 'Phi';
           if (item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
-              ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr'].indexOf(item.tokens[0].text) != -1 && !item.intertype)
+              ['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr'].indexOf(item.tokens[0].text) != -1 && !item.intertype)
             return 'Mathops';
           if (item.indent === 2 && item.tokens && item.tokens.length >= 5 &&
               (item.tokens[0].text == 'store' || item.tokens[1].text == 'store'))
