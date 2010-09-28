@@ -18,7 +18,7 @@ function preprocess(text, constants) {
     } else {
       if (line[1] == 'i') { // if
         var ident = line.substr(4);
-        show = !!this[ident];
+        show = !!this[ident] && this[ident] > 0;
       } else if (line[2] == 'l') { // else
         show = !show;
       } else if (line[2] == 'n') { // endif
