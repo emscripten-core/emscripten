@@ -27,10 +27,15 @@
 #ifdef EMSCRIPTEN
   template<class T>
   int es_sizeof(T* x) { return int(&x[1]); }
-  #define ES_SIZEOF(T) es_sizeof((T*)NULL)
+  #define ES_SIZEOF(T) es_sizeof((T*)0)
   template<class T>
-  int es_sizeov(T* x) { return es_sizeof((T*)NULL); }
+  int es_sizeov(T* x) { return es_sizeof((T*)0); }
   #define ES_SIZEOV(V) es_sizeof(V)
+
+  // Undefine normal archs, so asm is not attempted
+  #define __EMSCRIPTEN__
+  #undef __i386__
+  #undef __x86_64__
 #else
   #define ES_SIZEOF(T) sizeof(T)
 #endif
