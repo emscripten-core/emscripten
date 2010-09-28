@@ -340,9 +340,7 @@ function intertyper(data) {
       item.type = { text: removePointing(item.pointerType.text) };
       if (item.tokens[2].text == 'getelementptr') {
         var last = getTokenIndexByText(item.tokens, ';');
-        var gepTokens = item.tokens.slice(1, last); // without 'load'
-        var segment = [ gepTokens[2], gepTokens[0], null ].concat(gepTokens.slice(3));
-        var data = parseFunctionCall(segment);
+        var data = parseFunctionCall(item.tokens.slice(1, last));
         item.intertype = 'fastgetelementptrload';
         item.type = data.type;
         item.params = data.params;

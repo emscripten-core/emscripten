@@ -241,10 +241,8 @@ function parseParamTokens(params) {
           ident: '_' + absIndex,
         });
       }
-    } else if (segment[1].text === 'getelementptr') {
+    } else if (segment[1].text in PARSABLE_FUNCTIONS) {
       ret.push(parseFunctionCall(segment));
-    } else if (segment[1].text === 'bitcast') {
-      ret.push(parseBitcast(segment));
     } else {
       if (segment[2] && segment[2].text == 'to') { // part of bitcast params
         segment = segment.slice(0, 2);
@@ -275,34 +273,27 @@ function cleanSegment(segment) {
   return segment;
 }
 
+PARSABLE_FUNCTIONS = searchable('getelementptr', 'bitcast');
+
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)
 // e.g.
 //         i32* getelementptr inbounds (...)
 function parseFunctionCall(segment) {
-//print("Parse functioncall: " + dump(segment));
   segment = segment.slice(0);
   segment = cleanSegment(segment);
+  // Remove additional modifiers
+  if (!segment[2] || !segment[2].item) {
+    segment.splice(2, 1);
+  }
   assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
+  assert(segment[1].text in PARSABLE_FUNCTIONS);
   var ret = {
     intertype: segment[1].text,
-    type: segment[0],
-    params: parseParamTokens(segment[3].item[0].tokens),
-  };
-  ret.ident = toNiceIdent(ret.params[0].ident);
-  return ret;
-}
-
-// TODO: use this
-function parseBitcast(segment) {
-  //print('zz parseBC pre: ' + dump(segment));
-  var ret = {
-    intertype: 'bitcast',
     type: segment[0],
     params: parseParamTokens(segment[2].item[0].tokens),
   };
   ret.ident = toNiceIdent(ret.params[0].ident);
-//print('zz parseBC: ' + dump(ret));
   return ret;
 }
 
