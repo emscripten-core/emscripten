@@ -241,8 +241,8 @@ function parseParamTokens(params) {
           ident: '_' + absIndex,
         });
       }
-    } else if (segment[1].text in PARSABLE_FUNCTIONS) {
-      ret.push(parseFunctionCall(segment));
+    } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
+      ret.push(parseLLVMFunctionCall(segment));
     } else {
       if (segment[2] && segment[2].text == 'to') { // part of bitcast params
         segment = segment.slice(0, 2);
@@ -273,13 +273,13 @@ function cleanSegment(segment) {
   return segment;
 }
 
-PARSABLE_FUNCTIONS = searchable('getelementptr', 'bitcast');
+PARSABLE_LLVM_FUNCTIONS = searchable('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint');
 
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)
 // e.g.
 //         i32* getelementptr inbounds (...)
-function parseFunctionCall(segment) {
+function parseLLVMFunctionCall(segment) {
   segment = segment.slice(0);
   segment = cleanSegment(segment);
   // Remove additional modifiers
@@ -287,7 +287,7 @@ function parseFunctionCall(segment) {
     segment.splice(2, 1);
   }
   assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
-  assert(segment[1].text in PARSABLE_FUNCTIONS);
+  assert(segment[1].text in PARSABLE_LLVM_FUNCTIONS);
   var ret = {
     intertype: segment[1].text,
     type: segment[0],

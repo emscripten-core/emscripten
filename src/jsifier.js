@@ -113,11 +113,11 @@ function JSify(data) {
             return '0';
           } else if (segment[1].text == 'zeroinitializer') {
             return JSON.stringify(makeEmptyStruct(segment[0].text));
-          } else if (segment[1].text == 'getelementptr') {
-            return finalizeGetElementPtr(parseFunctionCall(segment));
-          } else if (segment[1].text in searchable('bitcast', 'inttoptr', 'ptrtoint')) {
+          } else if (segment[1].text in searchable('bitcast', 'inttoptr', 'ptrtoint')) { // TODO: Use parse/finalizeLLVMFunctionCall
             var type = segment[2].item[0].tokens.slice(-1)[0].text; // TODO: Use this?
             return handleSegment(segment[2].item[0].tokens.slice(0, -2));
+          } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
+            return finalizeLLVMFunctionCall(parseLLVMFunctionCall(segment));
           } else if (segment[1].text == 'add') {
             var subSegments = splitTokenList(segment[2].item[0].tokens);
             return '(' + handleSegment(subSegments[0]) + ' + ' + handleSegment(subSegments[1]) + ')';
@@ -388,8 +388,8 @@ function JSify(data) {
     //print('// zzqqzz ' + dump(item.value) + ' :::: ' + dump(item.pointer) + ' :::: ');
     var ident = toNiceIdent(item.ident);
     var value;
-    if (item.value.intertype == 'getelementptr') {
-      value = finalizeGetElementPtr(item.value);
+    if (item.value.intertype in PARSABLE_LLVM_FUNCTIONS) {
+      value = finalizeLLVMFunctionCall(item.value);
     } else {
       value = toNiceIdent(item.value.ident);
     }
@@ -627,14 +627,17 @@ function JSify(data) {
     return indexes.join('+');
   }
 
-  function finalizeGetElementPtr(item) {
-    // TODO: statically combine indexes here if consts
-    return makePointer(makeGetSlab(item.ident), getGetElementPtrIndexes(item));
-  }
-
-  function finalizeBitcast(item) {
-    //print('//zz finalizeBC: ' + dump(item));
-    return item.ident;
+  function finalizeLLVMFunctionCall(item) {
+    switch(item.intertype) {
+      case 'getelementptr':
+        return makePointer(makeGetSlab(item.ident), getGetElementPtrIndexes(item));
+      case 'bitcast':
+      case 'inttoptr':
+      case 'ptrtoint':
+        return item.ident;
+      default:
+        throw 'Invalid function to finalize: ' + dump(item);
+    }
   }
 
   makeFuncLineZyme('bitcast', function(item) {
@@ -643,6 +646,7 @@ function JSify(data) {
     var ident = toNiceIdent(item.ident);
     return ident;
   });
+
   function makeFunctionCall(ident, params) {
     // Special cases
     if (ident == '_llvm_va_start') {
@@ -658,17 +662,15 @@ function JSify(data) {
     }
 
     var params = params.map(function(param) {
-      if (param.intertype === 'getelementptr') {
-        return finalizeGetElementPtr(param);
-      } else if (param.intertype === 'bitcast') {
-        return finalizeBitcast(param);
+      if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
+        return finalizeLLVMFunctionCall(param);
       } else {
-        return toNiceIdent(param.ident); //.value;//'??arg ' + param.intertype + '??';
+        return toNiceIdent(param.ident);
       }
     });
     return ident + '(' + params.join(', ') + ')';
   }
-  makeFuncLineZyme('getelementptr', function(item) { return finalizeGetElementPtr(item) });
+  makeFuncLineZyme('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineZyme('call', function(item) {
     return makeFunctionCall(item.ident, item.params) + (item.standalone ? ';' : '');
   });

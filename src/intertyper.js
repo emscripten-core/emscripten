@@ -340,7 +340,7 @@ function intertyper(data) {
       item.type = { text: removePointing(item.pointerType.text) };
       if (item.tokens[2].text == 'getelementptr') {
         var last = getTokenIndexByText(item.tokens, ';');
-        var data = parseFunctionCall(item.tokens.slice(1, last));
+        var data = parseLLVMFunctionCall(item.tokens.slice(1, last));
         item.intertype = 'fastgetelementptrload';
         item.type = data.type;
         item.params = data.params;
@@ -378,7 +378,7 @@ function intertyper(data) {
       var segment = [ item.tokens[first], { text: 'getelementptr' }, null, { item: [ {
         tokens: item.tokens.slice(first, last)
       } ] } ];
-      var data = parseFunctionCall(segment);
+      var data = parseLLVMFunctionCall(segment);
       item.intertype = 'getelementptr';
       item.type = data.type;
       item.params = data.params;
@@ -496,7 +496,7 @@ function intertyper(data) {
         __result__: true,
         intertype: 'store',
         valueType: item.tokens[1],
-        value: commaIndex == 3 ? addIdent(item.tokens[2]) : parseFunctionCall(item.tokens.slice(1, commaIndex)),
+        value: commaIndex == 3 ? addIdent(item.tokens[2]) : parseLLVMFunctionCall(item.tokens.slice(1, commaIndex)),
         pointerType: item.tokens[commaIndex+1],
         pointer: item.tokens[commaIndex+2],
         ident: item.tokens[commaIndex+2].text,
