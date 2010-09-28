@@ -242,7 +242,7 @@ function parseParamTokens(params) {
         });
       }
     } else if (segment[1].text === 'getelementptr') {
-      ret.push(parseGetElementPtr(segment));
+      ret.push(parseFunctionCall(segment));
     } else if (segment[1].text === 'bitcast') {
       ret.push(parseBitcast(segment));
     } else {
@@ -275,16 +275,17 @@ function cleanSegment(segment) {
   return segment;
 }
 
-// Expects one of the several LVM getelementptr formats:
-// a qualifier, a type, a null, then an () item with tokens
-function parseGetElementPtr(segment) {
-//print("Parse GTP: " + dump(segment));
+// Parses a function call of form
+//         TYPE functionname MODIFIERS (...)
+// e.g.
+//         i32* getelementptr inbounds (...)
+function parseFunctionCall(segment) {
+//print("Parse functioncall: " + dump(segment));
   segment = segment.slice(0);
   segment = cleanSegment(segment);
   assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
-  //dprint('// zz: ' + dump(segment) + '\n\n\n');
   var ret = {
-    intertype: 'getelementptr',
+    intertype: segment[1].text,
     type: segment[0],
     params: parseParamTokens(segment[3].item[0].tokens),
   };

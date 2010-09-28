@@ -165,7 +165,8 @@ function intertyper(data) {
           if (item.indent === 2 && item.tokens && item.tokens.length >= 3 && findTokenText(item, '=') >= 0 &&
               !item.intertype)
             return 'Assign';
-          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'load')
+          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
+              (item.tokens[0].text == 'load' || item.tokens[1].text == 'load'))
             return 'Load';
           if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast')
             return 'Bitcast';
@@ -182,8 +183,8 @@ function intertyper(data) {
           if (item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
               ['add', 'sub', 'sdiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr'].indexOf(item.tokens[0].text) != -1 && !item.intertype)
             return 'Mathops';
-          if (item.indent === 2 && item.tokens && item.tokens.length >= 5 && item.tokens[0].text == 'store' &&
-                                     !item.intertype)
+          if (item.indent === 2 && item.tokens && item.tokens.length >= 5 &&
+              (item.tokens[0].text == 'store' || item.tokens[1].text == 'store'))
             return 'Store';
           if (item.indent === 2 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'br' &&
                                      !item.intertype)
@@ -334,13 +335,14 @@ function intertyper(data) {
   // 'load'
   substrate.addZyme('Load', {
     processItem: function(item) {
+      if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       item.pointerType = item.tokens[1];
       item.type = { text: removePointing(item.pointerType.text) };
       if (item.tokens[2].text == 'getelementptr') {
         var last = getTokenIndexByText(item.tokens, ';');
         var gepTokens = item.tokens.slice(1, last); // without 'load'
         var segment = [ gepTokens[2], gepTokens[0], null ].concat(gepTokens.slice(3));
-        var data = parseGetElementPtr(segment);
+        var data = parseFunctionCall(segment);
         item.intertype = 'fastgetelementptrload';
         item.type = data.type;
         item.params = data.params;
@@ -375,10 +377,10 @@ function intertyper(data) {
       var first = 0;
       while (!isType(item.tokens[first].text)) first++;
       var last = getTokenIndexByText(item.tokens, ';');
-      var segment = [ item.tokens[first], { text: null }, null, { item: [ {
+      var segment = [ item.tokens[first], { text: 'getelementptr' }, null, { item: [ {
         tokens: item.tokens.slice(first, last)
       } ] } ];
-      var data = parseGetElementPtr(segment);
+      var data = parseFunctionCall(segment);
       item.intertype = 'getelementptr';
       item.type = data.type;
       item.params = data.params;
@@ -489,8 +491,8 @@ function intertyper(data) {
   // 'store'
   substrate.addZyme('Store', {
     processItem: function(item) {
+      if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       if (item.tokens[3].text != ',') {
-        assertEq(item.tokens[2].text, 'getelementptr');
         // complex input - likely getelementptr
         var commaIndex = 4;
         while (item.tokens[commaIndex].text != ',') commaIndex ++;
@@ -498,7 +500,7 @@ function intertyper(data) {
           __result__: true,
           intertype: 'store',
           valueType: item.tokens[1],
-          value: parseGetElementPtr(item.tokens.slice(1, commaIndex)),
+          value: parseFunctionCall(item.tokens.slice(1, commaIndex)),
           pointerType: item.tokens[commaIndex+1],
           pointer: item.tokens[commaIndex+2],
           ident: item.tokens[commaIndex+2].text,

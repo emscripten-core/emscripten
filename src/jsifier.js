@@ -114,7 +114,7 @@ function JSify(data) {
           } else if (segment[1].text == 'zeroinitializer') {
             return JSON.stringify(makeEmptyStruct(segment[0].text));
           } else if (segment[1].text == 'getelementptr') {
-            return finalizeGetElementPtr(parseGetElementPtr(segment));
+            return finalizeGetElementPtr(parseFunctionCall(segment));
           } else if (segment[1].text in searchable('bitcast', 'inttoptr', 'ptrtoint')) {
             var type = segment[2].item[0].tokens.slice(-1)[0].text; // TODO: Use this?
             return handleSegment(segment[2].item[0].tokens.slice(0, -2));
