@@ -8,31 +8,51 @@
     // print function which the cubescript engine will call
     function print(text) {
       document.getElementById('output').innerHTML = text;
-      printed = true;
     }
 
+    var drawing = false;
+    var hasSceneData = false;
     // Do everything - initialize SDL, set up canvas, render
-    function render() {
-      _SDL_Init(32);
-      var canvas = document.getElementById('canvas');
-      HEAP[_screen] = _SDL_SetVideoMode(canvas.width, canvas.height, 32, 0, canvas);
-      var y = canvas.height-1;
-      function drawLine() {
-        __ZL10trace_lineiii(canvas.width, canvas.width, y);
-        print("Generating: " + (canvas.height-y) + "/" + canvas.height);
-        y--;
-        if (y >= 0) {
-          setTimeout(arguments.callee, 1);
-        }
+    function render(size) {
+      if (drawing) return;
+      drawing = true;
+      if (!hasSceneData) {
+        print('Generating scene data, please wait...');
       }
-      drawLine();
+      setTimeout(function() {
+        if (!hasSceneData) {
+          run(['5']);
+          _SDL_Init(32);
+          hasSceneData = true;
+        }
+        var canvas = document.getElementById('canvas');
+        canvas.width = canvas.height = size;
+        HEAP[_screen] = _SDL_SetVideoMode(canvas.width, canvas.height, 32, 0, canvas);
+        var y = canvas.height-1;
+        function drawLine() {
+          print("Raytracing line: <b>" + (canvas.height-y) + "/" + canvas.height + '</b>');
+          __ZL10trace_lineiii(canvas.width, canvas.width, y);
+          y--;
+          if (y >= 0) {
+            setTimeout(arguments.callee, 1);
+          } else {
+            print('');
+            drawing = false;
+          }
+        }
+        drawLine();
+      });
     }
   </script>
 </head>
-<body onload='render()'>
-  <canvas id='canvas' width=128 height=128></canvas>
+<body>
+  <canvas id='canvas' width=1 height=1></canvas>
   <hr>
-  <div id="output" style="font-family: Courier New,Courier,monospace;">Generating scene data, please wait...</div>
+  <form onsubmit="setTimeout(function() { render(parseInt(size.value)) }); return false">
+    Size (pixels): <input type="text" name="size" value="128">
+    <input type="submit" value="Go!">
+  </form>
+  <div id="output" style="font-family: Courier New,Courier,monospace;"></div>
   <hr>
   Simple raytracing demo. The <a href="http://ompf.org/ray/sphereflake/">original C++ source</a> was
   automatically converted to JavaScript using <a href="http://emscripten.org">Emscripten</a>.

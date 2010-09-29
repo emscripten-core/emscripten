@@ -1,5 +1,3 @@
-arguments = ['5'] // 6!
-
 //====================================================================================
 // Auto-generated code. Original source + changes are
 // sphere flake bvh raytracer (c) 2005, thierry berger-perrin <tbptbp@gmail.com>
@@ -2088,13 +2086,4 @@ function run(args) {
     __ATEXIT__.pop()();
   }
 }
-
-try {
-  run(this.arguments ? arguments : []);
-} catch (e) {
-  print("Fatal exception: " + e.stack);
-  throw e;
-}
-
-
 
