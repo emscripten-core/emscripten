@@ -16,14 +16,8 @@ var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var __ATEXIT__ = [];
 
-var HEAP = [];
-var HEAPTOP = 0;
-Pointer_make(intArrayFromString('(null)')); // So printing %s of NULL gives '(null)'
-                                            // Also this ensures we leave 0 as an invalid address, 'NULL'
 
 
-
-START_TIME = Date.now();
 
 function abort(text) {
   text = "ABORT: " + text;
@@ -42,7 +36,7 @@ function Pointer_niceify(ptr) {
 //    return ptr;
 }
 
-function Pointer_make(slab, pos) {
+function Pointer_make(slab, pos, stacked) {
   pos = pos ? pos : 0;
 // XXX hardcoded ptr impl
   if (slab === HEAP) return pos;
@@ -53,7 +47,7 @@ function Pointer_make(slab, pos) {
   }
   var slab = flatten(slab);
   // Finalize
-  var ret = _malloc(Math.max(slab.length - pos, 1));
+  var ret = (stacked ? stackAlloc : _malloc)(Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
     HEAP[ret + i] = slab[pos + i];
   }
@@ -78,37 +72,53 @@ function Pointer_stringify(ptr) {
   return ret;
 }
 
-function _malloc(size) {
-// XXX hardcoded ptr impl
+// Stack allocation
+function stackEnter() {
+  STACK_STACK.push(STACKTOP);
+}
+function stackExit() {
+  STACKTOP = STACK_STACK.pop();
+}
+function stackAlloc(size) {
   size = Math.ceil(size/1)*1; // Allocate blocks of proper minimum size
-                                                    // Also keeps HEAPTOP aligned
-  var ret = HEAPTOP;
-  HEAPTOP += size;
+                                                    // Also keeps STACKTOP aligned
+  var ret = STACKTOP;
+  STACKTOP += size;
   return ret;
-  // We don't actually do new Array(size) - memory is uninitialized anyhow
-//  return Pointer_make([]);
 }
 
+// If we don't have malloc/free implemented, use a simple implementation. This
+// allows compiled C/C++ to implement its own malloc/free
+if (!this._malloc) {
+  _malloc = function(size) {
+    size = Math.ceil(size/1)*1; // Allocate blocks of proper minimum size
+                                                      // Also keeps HEAPTOP aligned
+    var ret = HEAPTOP;
+    HEAPTOP += size;
+    return ret;
+  }
+
+  _free = function(ptr) {
+    // XXX TODO - actual implementation! Currently we leak it all
+  }
+}
 // Mangled "new"s... need a heuristic for autogeneration...
 __Znwj = _malloc; // gcc
 __Znaj = _malloc; // gcc
 __Znam = _malloc; // clang
 __Znwm = _malloc; // clang
-
-function _free(ptr) {
-// XXX hardcoded ptr impl
-  // XXX TODO - actual implementation! Currently we leak it all
-
-  // Nothing needs to be done! But we mark the pointer
-  // as invalid. Note that we should do it for all other
-  // pointers of this slab too.
-//  ptr.slab = null;
-//  ptr[0] = null;
-}
-
 // Mangled "delete"s... need a heuristic for autogeneration...
 __ZdlPv = _free; // gcc
 __ZdaPv = _free; // gcc
+
+var HEAP = [];
+var HEAPTOP = 0;
+Pointer_make(intArrayFromString('(null)')); // So printing %s of NULL gives '(null)'
+                                            // Also this ensures we leave 0 as an invalid address, 'NULL'
+STACK_STACK = [];
+STACKTOP = HEAPTOP;
+TOTAL_STACK = 64*1024; // Reserved room for stack
+HEAPTOP += TOTAL_STACK;
 
 // stdio.h
 
@@ -348,25 +358,28 @@ _SDL_Quit = function () {
 
 
 function __GLOBAL__I_screen() {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
       __Z41__static_initialization_and_destruction_0ii(1, 65535);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZnwjPv(_unnamed_arg, ___p) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
       var _unnamed_arg_addr;
-      var ___p_addr = Pointer_make([0], 0);
-      var _retval = Pointer_make([0], 0);
-      var _0 = Pointer_make([0], 0);
+      var ___p_addr = Pointer_make([0], 0, true);
+      var _retval = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       _unnamed_arg_addr = _unnamed_arg;
       HEAP[___p_addr] = ___p;
@@ -379,31 +392,35 @@ function __ZnwjPv(_unnamed_arg, ___p) {
       __label__ = 0; break;
     case 0: // _return
       var _retval1 = HEAP[_retval];
-      return _retval1;
+      stackExit();
+return _retval1;
   }
 }
 
 
 function __ZN3v_tC1Ev(_this) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK3v_tplERKS_(_agg_result, _this, _v) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       HEAP[_v_addr] = _v;
@@ -425,17 +442,19 @@ function __ZNK3v_tplERKS_(_agg_result, _this, _v) {
       __ZN3v_tC1Eddd(_agg_result, _20, _13, _6);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK3v_tmiERKS_(_agg_result, _this, _v) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       HEAP[_v_addr] = _v;
@@ -457,16 +476,18 @@ function __ZNK3v_tmiERKS_(_agg_result, _this, _v) {
       __ZN3v_tC1Eddd(_agg_result, _20, _13, _6);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK3v_tngEv(_agg_result, _this) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
@@ -481,16 +502,18 @@ function __ZNK3v_tngEv(_agg_result, _this) {
       __ZN3v_tC1Eddd(_agg_result, _11, _7, _3);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK3v_tmlEd(_agg_result, _this, _d) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var _d_addr;
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
@@ -507,17 +530,19 @@ function __ZNK3v_tmlEd(_agg_result, _this, _d) {
       __ZN3v_tC1Eddd(_agg_result, _14, _9, _4);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK3v_t5crossERKS_(_agg_result, _this, _v) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       HEAP[_v_addr] = _v;
@@ -557,17 +582,19 @@ function __ZNK3v_t5crossERKS_(_agg_result, _this, _v) {
       __ZN3v_tC1Eddd(_agg_result, _44, _29, _14);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK3v_t3dotERKS_(_this, _v) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
       var _retval;
       var _0;
       var __alloca_point_ = 0;
@@ -594,19 +621,21 @@ function __ZNK3v_t3dotERKS_(_this, _v) {
       __label__ = 0; break;
     case 0: // _return
       var _retval1 = _retval;
-      return _retval1;
+      stackExit();
+return _retval1;
   }
 }
 
 
 function __ZSt3maxIdERKT_S2_S2_(___a, ___b) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var ___a_addr = Pointer_make([0], 0);
-      var ___b_addr = Pointer_make([0], 0);
-      var _retval = Pointer_make([0], 0);
-      var _0 = Pointer_make([0], 0);
+      var ___a_addr = Pointer_make([0], 0, true);
+      var ___b_addr = Pointer_make([0], 0, true);
+      var _retval = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[___a_addr] = ___a;
       HEAP[___b_addr] = ___b;
@@ -630,19 +659,21 @@ function __ZSt3maxIdERKT_S2_S2_(___a, ___b) {
       __label__ = 0; break;
     case 0: // _return
       var _retval3 = HEAP[_retval];
-      return _retval3;
+      stackExit();
+return _retval3;
   }
 }
 
 
 function __ZSt3maxIiERKT_S2_S2_(___a, ___b) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var ___a_addr = Pointer_make([0], 0);
-      var ___b_addr = Pointer_make([0], 0);
-      var _retval = Pointer_make([0], 0);
-      var _0 = Pointer_make([0], 0);
+      var ___a_addr = Pointer_make([0], 0, true);
+      var ___b_addr = Pointer_make([0], 0, true);
+      var _retval = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[___a_addr] = ___a;
       HEAP[___b_addr] = ___b;
@@ -666,31 +697,35 @@ function __ZSt3maxIiERKT_S2_S2_(___a, ___b) {
       __label__ = 0; break;
     case 0: // _return
       var _retval3 = HEAP[_retval];
-      return _retval3;
+      stackExit();
+return _retval3;
   }
 }
 
 
 function ___tcf_0(_unnamed_arg) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _unnamed_arg_addr = Pointer_make([0], 0);
+      var _unnamed_arg_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_unnamed_arg_addr] = _unnamed_arg;
       __ZNSt8ios_base4InitD1Ev(__ZStL8__ioinit);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN3v_tC1Eddd(_this, _a, _b, _c) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var _a_addr;
       var _b_addr;
       var _c_addr;
@@ -710,17 +745,19 @@ function __ZN3v_tC1Eddd(_this, _a, _b, _c) {
       HEAP[_7] = _c_addr;
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN5ray_tC1ERK3v_t(_this, _v) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       HEAP[_v_addr] = _v;
@@ -741,18 +778,20 @@ function __ZN5ray_tC1ERK3v_t(_this, _v) {
       __ZN3v_tC1Ev(_13);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN5ray_tC1ERK3v_tS2_(_this, _v, _w) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
-      var _w_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
+      var _w_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       HEAP[_v_addr] = _v;
@@ -783,16 +822,18 @@ function __ZN5ray_tC1ERK3v_tS2_(_this, _v, _w) {
       HEAP[_21] = _23;
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN5hit_tC1Ev(_this) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
@@ -802,16 +843,18 @@ function __ZN5hit_tC1Ev(_this) {
       HEAP[0 + _2+_struct_hit_t___FLATTENER[1]] = Infinity;
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN8sphere_tC1Ev(_this) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
@@ -819,17 +862,19 @@ function __ZN8sphere_tC1Ev(_this) {
       __ZN3v_tC1Ev(_1);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN8sphere_tC1ERK3v_td(_this, _v, _d) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
       var _d_addr;
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
@@ -852,18 +897,20 @@ function __ZN8sphere_tC1ERK3v_td(_this, _v, _d) {
       HEAP[_13] = _d_addr;
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK8sphere_t10get_normalERK3v_t(_agg_result, _this, _v) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
-      var _0 = Pointer_make([0,0,0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0,0,0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       HEAP[_v_addr] = _v;
@@ -877,16 +924,18 @@ function __ZNK8sphere_t10get_normalERK3v_t(_agg_result, _this, _v) {
       __ZNK3v_tmlEd(_agg_result, _0, _4);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN6node_tC1Ev(_this) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
@@ -897,18 +946,20 @@ function __ZN6node_tC1Ev(_this) {
       __ZN8sphere_tC1Ev(_3);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN6node_tC1ERK8sphere_tS2_l(_this, _b, _l, _jump) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _b_addr = Pointer_make([0], 0);
-      var _l_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _b_addr = Pointer_make([0], 0, true);
+      var _l_addr = Pointer_make([0], 0, true);
       var _jump_addr;
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
@@ -954,21 +1005,23 @@ function __ZN6node_tC1ERK8sphere_tS2_l(_this, _b, _l, _jump) {
       HEAP[_35] = _jump_addr;
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN7basis_tC1ERK3v_t(_this, _v) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _v_addr = Pointer_make([0], 0);
-      var _0 = Pointer_make([0,0,0], 0);
-      var _n = Pointer_make([0,0,0], 0);
-      var _memtmp = Pointer_make([0,0,0], 0);
-      var _memtmp12 = Pointer_make([0,0,0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _v_addr = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0,0,0], 0, true);
+      var _n = Pointer_make([0,0,0], 0, true);
+      var _memtmp = Pointer_make([0,0,0], 0, true);
+      var _memtmp12 = Pointer_make([0,0,0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       HEAP[_v_addr] = _v;
@@ -1147,16 +1200,18 @@ function __ZN7basis_tC1ERK3v_t(_this, _v) {
       HEAP[_165] = _167;
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK3v_t6magsqrEv(_this) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var _retval;
       var _0;
       var __alloca_point_ = 0;
@@ -1168,16 +1223,18 @@ function __ZNK3v_t6magsqrEv(_this) {
       __label__ = 0; break;
     case 0: // _return
       var _retval1 = _retval;
-      return _retval1;
+      stackExit();
+return _retval1;
   }
 }
 
 
 function __ZNK3v_t4normEv(_agg_result, _this) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_this_addr] = _this;
       var _0 = HEAP[_this_addr];
@@ -1188,18 +1245,20 @@ function __ZNK3v_t4normEv(_agg_result, _this) {
       __ZNK3v_tmlEd(_agg_result, _4, _3);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __Z41__static_initialization_and_destruction_0ii(___initialize_p, ___priority) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
       var ___initialize_p_addr;
       var ___priority_addr;
-      var _0 = Pointer_make([0,0,0], 0);
+      var _0 = Pointer_make([0,0,0], 0, true);
       var __alloca_point_ = 0;
       ___initialize_p_addr = ___initialize_p;
       ___priority_addr = ___priority;
@@ -1217,21 +1276,23 @@ function __Z41__static_initialization_and_destruction_0ii(___initialize_p, ___pr
     case 3: // _bb2
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZNK8sphere_t9intersectERK5ray_t(_this, _ray) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _this_addr = Pointer_make([0], 0);
-      var _ray_addr = Pointer_make([0], 0);
+      var _this_addr = Pointer_make([0], 0, true);
+      var _ray_addr = Pointer_make([0], 0, true);
       var _retval;
       var _iftmp_88;
       var _0;
-      var _v = Pointer_make([0,0,0], 0);
+      var _v = Pointer_make([0,0,0], 0, true);
       var _b;
       var _disc;
       var _d;
@@ -1288,23 +1349,25 @@ function __ZNK8sphere_t9intersectERK5ray_t(_this, _ray) {
       __label__ = 0; break;
     case 0: // _return
       var _retval8 = _retval;
-      return _retval8;
+      stackExit();
+return _retval8;
   }
 }
 
 
 function __ZN6node_t9intersectILb0EEEvRK5ray_tR5hit_t(_ray, _hit) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _ray_addr = Pointer_make([0], 0);
-      var _hit_addr = Pointer_make([0], 0);
-      var _0 = Pointer_make([0,0,0], 0);
-      var _1 = Pointer_make([0,0,0], 0);
+      var _ray_addr = Pointer_make([0], 0, true);
+      var _hit_addr = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0,0,0], 0, true);
+      var _1 = Pointer_make([0,0,0], 0, true);
       var _retval_114;
-      var _p = Pointer_make([0], 0);
+      var _p = Pointer_make([0], 0, true);
       var _t;
-      var _memtmp = Pointer_make([0,0,0], 0);
+      var _memtmp = Pointer_make([0,0,0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_ray_addr] = _ray;
       HEAP[_hit_addr] = _hit;
@@ -1376,21 +1439,23 @@ function __ZN6node_t9intersectILb0EEEvRK5ray_tR5hit_t(_ray, _hit) {
     case 5: // _bb6
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZN6node_t9intersectILb1EEEvRK5ray_tR5hit_t(_ray, _hit) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _ray_addr = Pointer_make([0], 0);
-      var _hit_addr = Pointer_make([0], 0);
-      var _0 = Pointer_make([0,0,0], 0);
-      var _1 = Pointer_make([0,0,0], 0);
+      var _ray_addr = Pointer_make([0], 0, true);
+      var _hit_addr = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0,0,0], 0, true);
+      var _1 = Pointer_make([0,0,0], 0, true);
       var _retval_116;
-      var _p = Pointer_make([0], 0);
+      var _p = Pointer_make([0], 0, true);
       var _t;
       var __alloca_point_ = 0;
       HEAP[_ray_addr] = _ray;
@@ -1443,30 +1508,32 @@ function __ZN6node_t9intersectILb1EEEvRK5ray_tR5hit_t(_ray, _hit) {
     case 5: // _bb6
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function __ZL9ray_tracePK6node_tRK5ray_t(_scene, _ray) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _scene_addr = Pointer_make([0], 0);
-      var _ray_addr = Pointer_make([0], 0);
+      var _scene_addr = Pointer_make([0], 0, true);
+      var _ray_addr = Pointer_make([0], 0, true);
       var _retval;
       var _iftmp_90;
-      var _0 = Pointer_make([0,0,0], 0);
-      var _1 = Pointer_make([0,0,0], 0);
-      var _2 = Pointer_make([0,0,0], 0);
-      var _3 = Pointer_make([0,0,0], 0);
-      var _4 = Pointer_make([0,0,0], 0);
+      var _0 = Pointer_make([0,0,0], 0, true);
+      var _1 = Pointer_make([0,0,0], 0, true);
+      var _2 = Pointer_make([0,0,0], 0, true);
+      var _3 = Pointer_make([0,0,0], 0, true);
+      var _4 = Pointer_make([0,0,0], 0, true);
       var _5;
       var _iftmp_89;
-      var _hit = Pointer_make([0,0,0,0], 0);
+      var _hit = Pointer_make([0,0,0,0], 0, true);
       var _diffuse;
-      var _sray = Pointer_make([0,0,0,0,0,0], 0);
-      var _shit = Pointer_make([0,0,0,0], 0);
+      var _sray = Pointer_make([0,0,0,0,0,0], 0, true);
+      var _shit = Pointer_make([0,0,0,0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_scene_addr] = _scene;
       HEAP[_ray_addr] = _ray;
@@ -1523,53 +1590,55 @@ function __ZL9ray_tracePK6node_tRK5ray_t(_scene, _ray) {
       __label__ = 0; break;
     case 0: // _return
       var _retval9 = _retval;
-      return _retval9;
+      stackExit();
+return _retval9;
   }
 }
 
 
 function __ZL6createP6node_tii3v_tS1_d(_n, _lvl, _dist, _c, _d, _r) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
-      var _n_addr = Pointer_make([0], 0);
+      var _n_addr = Pointer_make([0], 0, true);
       var _lvl_addr;
       var _dist_addr;
       var _r_addr;
-      var _retval = Pointer_make([0], 0);
-      var _0 = Pointer_make([0,0,0], 0);
-      var _1 = Pointer_make([0,0,0], 0);
-      var _2 = Pointer_make([0,0,0], 0);
-      var _3 = Pointer_make([0,0,0], 0);
-      var _4 = Pointer_make([0,0,0], 0);
-      var _5 = Pointer_make([0,0,0], 0);
-      var _6 = Pointer_make([0,0,0], 0);
-      var _7 = Pointer_make([0,0,0], 0);
-      var _8 = Pointer_make([0,0,0], 0);
-      var _9 = Pointer_make([0,0,0], 0);
-      var _10 = Pointer_make([0,0,0], 0);
-      var _11 = Pointer_make([0,0,0], 0);
-      var _12 = Pointer_make([0,0,0], 0);
-      var _13 = Pointer_make([0,0,0], 0);
-      var _14 = Pointer_make([0], 0);
-      var _15 = Pointer_make([0], 0);
-      var _16 = Pointer_make([0], 0);
+      var _retval = Pointer_make([0], 0, true);
+      var _0 = Pointer_make([0,0,0], 0, true);
+      var _1 = Pointer_make([0,0,0], 0, true);
+      var _2 = Pointer_make([0,0,0], 0, true);
+      var _3 = Pointer_make([0,0,0], 0, true);
+      var _4 = Pointer_make([0,0,0], 0, true);
+      var _5 = Pointer_make([0,0,0], 0, true);
+      var _6 = Pointer_make([0,0,0], 0, true);
+      var _7 = Pointer_make([0,0,0], 0, true);
+      var _8 = Pointer_make([0,0,0], 0, true);
+      var _9 = Pointer_make([0,0,0], 0, true);
+      var _10 = Pointer_make([0,0,0], 0, true);
+      var _11 = Pointer_make([0,0,0], 0, true);
+      var _12 = Pointer_make([0,0,0], 0, true);
+      var _13 = Pointer_make([0,0,0], 0, true);
+      var _14 = Pointer_make([0], 0, true);
+      var _15 = Pointer_make([0], 0, true);
+      var _16 = Pointer_make([0], 0, true);
       var _iftmp_104;
-      var _iftmp_103 = Pointer_make([0], 0);
-      var _17 = Pointer_make([0], 0);
-      var _18 = Pointer_make([0,0,0,0], 0);
-      var _19 = Pointer_make([0], 0);
-      var _20 = Pointer_make([0,0,0,0], 0);
-      var _21 = Pointer_make([0], 0);
-      var _b = Pointer_make([0,0,0,0,0,0,0,0,0], 0);
+      var _iftmp_103 = Pointer_make([0], 0, true);
+      var _17 = Pointer_make([0], 0, true);
+      var _18 = Pointer_make([0,0,0,0], 0, true);
+      var _19 = Pointer_make([0], 0, true);
+      var _20 = Pointer_make([0,0,0,0], 0, true);
+      var _21 = Pointer_make([0], 0, true);
+      var _b = Pointer_make([0,0,0,0,0,0,0,0,0], 0, true);
       var _nr;
       var _daL;
       var _daU;
       var _a;
       var _i;
-      var _ndir = Pointer_make([0,0,0], 0);
+      var _ndir = Pointer_make([0,0,0], 0, true);
       var _i11;
-      var _ndir13 = Pointer_make([0,0,0], 0);
+      var _ndir13 = Pointer_make([0,0,0], 0, true);
       var __alloca_point_ = 0;
       HEAP[_n_addr] = _n;
       _lvl_addr = _lvl;
@@ -1693,37 +1762,39 @@ function __ZL6createP6node_tii3v_tS1_d(_n, _lvl, _dist, _c, _d, _r) {
       __label__ = 0; break;
     case 0: // _return
       var _retval17 = HEAP[_retval];
-      return _retval17;
+      stackExit();
+return _retval17;
   }
 }
 
 
 function __ZL10trace_lineiii(_width, _height, _y) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
       var _width_addr;
       var _height_addr;
       var _y_addr;
-      var _0 = Pointer_make([0,0,0], 0);
-      var _1 = Pointer_make([0,0,0], 0);
+      var _0 = Pointer_make([0,0,0], 0, true);
+      var _1 = Pointer_make([0,0,0], 0, true);
       var _2;
-      var _3 = Pointer_make([0], 0);
-      var _4 = Pointer_make([0], 0);
-      var _retval_91 = Pointer_make([0], 0);
-      var _5 = Pointer_make([0,0,0], 0);
-      var _w = Pointer_make([0], 0);
-      var _h = Pointer_make([0], 0);
+      var _3 = Pointer_make([0], 0, true);
+      var _4 = Pointer_make([0], 0, true);
+      var _retval_91 = Pointer_make([0], 0, true);
+      var _5 = Pointer_make([0,0,0], 0, true);
+      var _w = Pointer_make([0], 0, true);
+      var _h = Pointer_make([0], 0, true);
       var _rcp;
       var _scale;
-      var _ray = Pointer_make([0,0,0,0,0,0], 0);
-      var _rgss = Pointer_make([0,0,0,0,0,0,0,0,0,0,0,0], 0);
-      var _scan = Pointer_make([0,0,0], 0);
+      var _ray = Pointer_make([0,0,0,0,0,0], 0, true);
+      var _rgss = Pointer_make([0,0,0,0,0,0,0,0,0,0,0,0], 0, true);
+      var _scan = Pointer_make([0,0,0], 0, true);
       var _i;
       var _j;
       var _g;
       var _idx;
-      var _memtmp = Pointer_make([0,0,0], 0);
+      var _memtmp = Pointer_make([0,0,0], 0, true);
       var _k;
       var __alloca_point_ = 0;
       _width_addr = _width;
@@ -1866,31 +1937,33 @@ function __ZL10trace_lineiii(_width, _height, _y) {
       var _116 = _SDL_Flip(_115);
       __label__ = 0; break;
     case 0: // _return
-      return;
+      stackExit();
+return;
   }
 }
 
 
 function _main(_argc, _argv) {
+  stackEnter();
   var __label__ = 18; /* _entry */
   while(1) switch(__label__) {
     case 18: // _entry
       var _argc_addr;
-      var _argv_addr = Pointer_make([0], 0);
+      var _argv_addr = Pointer_make([0], 0, true);
       var _retval;
       var _0;
-      var _1 = Pointer_make([0,0,0], 0);
-      var _2 = Pointer_make([0,0,0], 0);
-      var _3 = Pointer_make([0,0,0], 0);
+      var _1 = Pointer_make([0,0,0], 0, true);
+      var _2 = Pointer_make([0,0,0], 0, true);
+      var _3 = Pointer_make([0,0,0], 0, true);
       var _4;
-      var _5 = Pointer_make([0], 0);
-      var _6 = Pointer_make([0], 0);
-      var _retval_108 = Pointer_make([0], 0);
+      var _5 = Pointer_make([0], 0, true);
+      var _6 = Pointer_make([0], 0, true);
+      var _retval_108 = Pointer_make([0], 0, true);
       var _count_107;
-      var _7 = Pointer_make([0], 0);
+      var _7 = Pointer_make([0], 0, true);
       var _retval_106;
-      var _8 = Pointer_make([0], 0);
-      var _9 = Pointer_make([0], 0);
+      var _8 = Pointer_make([0], 0, true);
+      var _9 = Pointer_make([0], 0, true);
       var _iftmp_105;
       var _lvl;
       var _count;
@@ -1987,7 +2060,8 @@ function _main(_argc, _argv) {
       __label__ = 0; break;
     case 0: // _return
       var _retval12 = _retval;
-      return _retval12;
+      stackExit();
+return _retval12;
   }
 }
 
