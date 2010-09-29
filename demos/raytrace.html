@@ -10,21 +10,21 @@
       document.getElementById('output').innerHTML = text;
     }
 
-    var drawing = false;
-    var hasSceneData = false;
+    var drawingNow = false;
+    var calcedDepth = -1;
     // Do everything - initialize SDL, set up canvas, render
-    function render(size) {
-      if (drawing) return;
-      drawing = true;
-      if (!hasSceneData) {
-        print('Generating scene data, please wait...');
+    function render(size, depth) {
+      if (drawingNow) return;
+      drawingNow = true;
+      if (calcedDepth != depth) {
+        print('<b>Generating scene data, please wait...</b>');
       }
       setTimeout(function() {
-        if (!hasSceneData) {
-          run(['5']);
-          _SDL_Init(32);
-          hasSceneData = true;
+        if (calcedDepth != depth) {
+          run([depth.toString()]);
+          calcedDepth = depth;
         }
+        _SDL_Init(size);
         var canvas = document.getElementById('canvas');
         canvas.width = canvas.height = size;
         HEAP[_screen] = _SDL_SetVideoMode(canvas.width, canvas.height, 32, 0, canvas);
@@ -37,7 +37,7 @@
             setTimeout(arguments.callee, 1);
           } else {
             print('');
-            drawing = false;
+            drawingNow = false;
           }
         }
         drawLine();
@@ -48,8 +48,9 @@
 <body>
   <canvas id='canvas' width=1 height=1></canvas>
   <hr>
-  <form onsubmit="setTimeout(function() { render(parseInt(size.value)) }); return false">
-    Size (pixels): <input type="text" name="size" value="128">
+  <form onsubmit="setTimeout(function() { render(parseInt(size.value), parseInt(depth.value)) }); return false">
+    Rendered width/height (pixels): <input type="text" name="size" value="128">(use less for slower machines)<br>
+    Scene recursion (child spheres/sphere): <input type="text" name="depth" value="5">(use less for slower machines; careful with values > 6!)<br>
     <input type="submit" value="Go!">
   </form>
   <div id="output" style="font-family: Courier New,Courier,monospace;"></div>
