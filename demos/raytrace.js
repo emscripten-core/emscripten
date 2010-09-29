@@ -288,7 +288,6 @@ _SDL_LockSurface = function (surf) {
     surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
-    surfData.buffer = _malloc(num);
     for (var i = 0; i < num; i++) {
       HEAP[surfData.buffer+i] = surfData.image.data[i];
     }
@@ -311,8 +310,6 @@ _SDL_UnlockSurface = function (surf) {
     surfData.ctx.putImageData(surfData.image, 0, 0);
     // Cleanup
     surfData.image = null;
-    _free(surfData.buffer);
-    surfData.buffer = null;
   }
 _SDL_Flip = function (surf) {
     // We actually do this in Unlock...
@@ -332,6 +329,7 @@ _SDL_SetVideoMode = function (width, height, depth, flags, canvas) {
       canvas: canvas,
       ctx: canvas.getContext('2d'),
       surf: surf,
+      buffer: _malloc(width*height*4),
     };
     return surf;
   }

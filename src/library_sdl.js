@@ -13,6 +13,7 @@ mergeInto(Library, {
       canvas: canvas,
       ctx: canvas.getContext('2d'),
       surf: surf,
+      buffer: _malloc(width*height*4),
     };
     return surf;
   },
@@ -26,7 +27,6 @@ mergeInto(Library, {
     surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
-    surfData.buffer = _malloc(num);
     for (var i = 0; i < num; i++) {
       HEAP[surfData.buffer+i] = surfData.image.data[i];
     }
@@ -50,8 +50,6 @@ mergeInto(Library, {
     surfData.ctx.putImageData(surfData.image, 0, 0);
     // Cleanup
     surfData.image = null;
-    _free(surfData.buffer);
-    surfData.buffer = null;
   },
 
   SDL_Flip: function(surf) {
