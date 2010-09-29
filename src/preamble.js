@@ -8,11 +8,6 @@ var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var __ATEXIT__ = [];
 
-var HEAP = [];
-var HEAPTOP = 0;
-Pointer_make(intArrayFromString('(null)')); // So printing %s of NULL gives '(null)'
-                                            // Also this ensures we leave 0 as an invalid address, 'NULL'
-
 #if SAFE_HEAP
 // Semi-manual memory corruption debugging
 HEAP_WATCHED = {};
@@ -57,7 +52,7 @@ function Pointer_niceify(ptr) {
 //    return ptr;
 }
 
-function Pointer_make(slab, pos) {
+function Pointer_make(slab, pos, stacked) {
   pos = pos ? pos : 0;
 // XXX hardcoded ptr impl
   if (slab === HEAP) return pos;
@@ -68,7 +63,7 @@ function Pointer_make(slab, pos) {
   }
   var slab = flatten(slab);
   // Finalize
-  var ret = _malloc(Math.max(slab.length - pos, 1));
+  var ret = (stacked ? stackAlloc : _malloc)(Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
 #if SAFE_HEAP
     SAFE_HEAP_STORE(ret + i, slab[pos + i]);
@@ -97,37 +92,53 @@ function Pointer_stringify(ptr) {
   return ret;
 }
 
-function _malloc(size) {
-// XXX hardcoded ptr impl
+// Stack allocation
+function stackEnter() {
+  STACK_STACK.push(STACKTOP);
+}
+function stackExit() {
+  STACKTOP = STACK_STACK.pop();
+}
+function stackAlloc(size) {
   size = Math.ceil(size/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
-                                                    // Also keeps HEAPTOP aligned
-  var ret = HEAPTOP;
-  HEAPTOP += size;
+                                                    // Also keeps STACKTOP aligned
+  var ret = STACKTOP;
+  STACKTOP += size;
   return ret;
-  // We don't actually do new Array(size) - memory is uninitialized anyhow
-//  return Pointer_make([]);
 }
 
+// If we don't have malloc/free implemented, use a simple implementation. This
+// allows compiled C/C++ to implement its own malloc/free
+if (!this._malloc) {
+  _malloc = function(size) {
+    size = Math.ceil(size/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
+                                                      // Also keeps HEAPTOP aligned
+    var ret = HEAPTOP;
+    HEAPTOP += size;
+    return ret;
+  }
+
+  _free = function(ptr) {
+    // XXX TODO - actual implementation! Currently we leak it all
+  }
+}
 // Mangled "new"s... need a heuristic for autogeneration...
 __Znwj = _malloc; // gcc
 __Znaj = _malloc; // gcc
 __Znam = _malloc; // clang
 __Znwm = _malloc; // clang
-
-function _free(ptr) {
-// XXX hardcoded ptr impl
-  // XXX TODO - actual implementation! Currently we leak it all
-
-  // Nothing needs to be done! But we mark the pointer
-  // as invalid. Note that we should do it for all other
-  // pointers of this slab too.
-//  ptr.slab = null;
-//  ptr[0] = null;
-}
-
 // Mangled "delete"s... need a heuristic for autogeneration...
 __ZdlPv = _free; // gcc
 __ZdaPv = _free; // gcc
+
+var HEAP = [];
+var HEAPTOP = 0;
+Pointer_make(intArrayFromString('(null)')); // So printing %s of NULL gives '(null)'
+                                            // Also this ensures we leave 0 as an invalid address, 'NULL'
+STACK_STACK = [];
+STACKTOP = HEAPTOP;
+TOTAL_STACK = 64*1024; // Reserved room for stack
+HEAPTOP += TOTAL_STACK;
 
 // stdio.h
 

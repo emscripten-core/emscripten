@@ -27,7 +27,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_python=False, no_build=False, main_file=None):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
@@ -185,6 +185,28 @@ class T(unittest.TestCase):
           }
         '''
         self.do_test(src, '*3600*')
+
+    def test_stack(self):
+        src = '''
+          #include <stdio.h>
+          int test(int i) {
+            int x = 10;
+            if (i > 0) {
+              return test(i-1);
+            }
+            return int(&x);
+          }
+          int main()
+          {
+            // We should get the same value for the first and last - stack has unwound
+            int x1 = test(0);
+            int x2 = test(100);
+            int x3 = test(0);
+            printf("*%d,%d*\\n", x3-x1, x2 != x1);
+            return 0;
+          }
+        '''
+        self.do_test(src, '*0,1*')
 
     def test_strings(self):
         src = '''
@@ -759,7 +781,7 @@ class T(unittest.TestCase):
 (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''') ]
         for i, j in results:
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
-          self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_python=True, no_build=i>1)
+          self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def test_sauer(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being

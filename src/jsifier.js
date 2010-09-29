@@ -19,15 +19,13 @@ function JSify(data) {
     },
   });
 
-  function makePointer(slab, pos) {
+  function makePointer(slab, pos, stacked) {
     // XXX hardcoded ptr impl
     if (slab == 'HEAP') return pos;
     if (slab[0] != '[') {
       slab = '[' + slab + ']';
     }
-    return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + ')';
-    //    return '{ slab: ' + slab + ', pos: ' + (pos ? pos : 0) + ' }';
-    //    return '[' + slab + ', ' + (pos ? pos : 0) + ']';
+    return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (stacked ? ', true' : '') + ')';
   }
 
   function makeGetSlab(ptr) {
@@ -243,6 +241,7 @@ function JSify(data) {
       }).filter(function(param) { return param != null });;
 
       func.JS = '\nfunction ' + func.ident + '(' + params.join(', ') + ') {\n';
+      func.JS += '  stackEnter();\n';
       if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
       if (hasVarArgs) {
@@ -479,7 +478,7 @@ function JSify(data) {
     return ret;
   });
   makeFuncLineZyme('return', function(item) {
-    var ret = '';
+    var ret = 'stackExit();\n';
     if (LABEL_DEBUG) ret += "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     ret += 'return';
     if (item.value) {
@@ -513,9 +512,9 @@ function JSify(data) {
     dprint('alloca', dump(item));
     if (pointingLevels(item.allocatedType.text) == 0 && isStructType(item.allocatedType.text)) {
       // TODO: allocate on a stack, not on the heap (we currently leak all this)
-      return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)));
+      return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)), null, true);
     } else {
-      return makePointer('[0]');
+      return makePointer('[0]', null, true);
     }
   });
   makeFuncLineZyme('phi', function(item) {
