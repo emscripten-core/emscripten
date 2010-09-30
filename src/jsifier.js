@@ -19,13 +19,13 @@ function JSify(data) {
     },
   });
 
-  function makePointer(slab, pos, stacked) {
+  function makePointer(slab, pos, allocator) {
     // XXX hardcoded ptr impl
     if (slab == 'HEAP') return pos;
     if (slab[0] != '[') {
       slab = '[' + slab + ']';
     }
-    return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (stacked ? ', true' : '') + ')';
+    return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ')';
   }
 
   function makeGetSlab(ptr) {
@@ -95,12 +95,12 @@ function JSify(data) {
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (isNumberType(type) || pointingLevels(type) == 1) {
-      return makePointer(parseNumerical(value.text));
+      return makePointer(parseNumerical(value.text), null, 'ALLOC_UNFREEABLE');
     } else if (value.text == 'zeroinitializer') {
-      return makePointer(JSON.stringify(makeEmptyStruct(type)));
+      return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_UNFREEABLE');
     } else if (value.text && value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
-      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/');
+      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/', null, 'ALLOC_UNFREEABLE');
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
@@ -136,12 +136,12 @@ function JSify(data) {
       }
       if (value.item) {
         // list of items
-        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]');
+        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_UNFREEABLE');
       } else if (value.type == '{') {
         // struct
-        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]');
+        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]', null, 'ALLOC_UNFREEABLE');
       } else if (value[0]) {
-        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]');
+        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_UNFREEABLE');
       } else {
         throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
       }
@@ -512,9 +512,9 @@ function JSify(data) {
     dprint('alloca', dump(item));
     if (pointingLevels(item.allocatedType.text) == 0 && isStructType(item.allocatedType.text)) {
       // TODO: allocate on a stack, not on the heap (we currently leak all this)
-      return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)), null, true);
+      return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)), null, 'ALLOC_STACK');
     } else {
-      return makePointer('[0]', null, true);
+      return makePointer('[0]', null, 'ALLOC_STACK');
     }
   });
   makeFuncLineZyme('phi', function(item) {

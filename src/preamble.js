@@ -35,26 +35,22 @@ INDENT = '';
 START_TIME = Date.now();
 #endif
 
-function abort(text) {
-  text = "ABORT: " + text;
-  print(text + "\n");
-//  print((new Error).stack); // for stack traces
-  print("\n");
-  throw text;
+function assert(condition, text) {
+  if (!condition) {
+    throw 'Assertion failed: ' + text + ':\n' + (new Error).stack;
+  }
 }
 
 function Pointer_niceify(ptr) {
-// XXX hardcoded ptr impl
   return { slab: HEAP, pos: ptr };
-//  if (!ptr.slab)
-//    return { slab: ptr[0], pos: ptr[1] };
-//  else
-//    return ptr;
 }
 
-function Pointer_make(slab, pos, stacked) {
+// Creates a pointer for a certain slab and a certain address in that slab.
+// If just a slab is given, will allocate room for it and copy it there. In
+// other words, do whatever is necessary in order to return a pointer, that
+// points to the slab (and possibly position) we are given.
+function Pointer_make(slab, pos, allocator) {
   pos = pos ? pos : 0;
-// XXX hardcoded ptr impl
   if (slab === HEAP) return pos;
   // Flatten out - needed for global consts/vars
   function flatten(slab) {
@@ -63,7 +59,7 @@ function Pointer_make(slab, pos, stacked) {
   }
   var slab = flatten(slab);
   // Finalize
-  var ret = (stacked ? stackAlloc : _malloc)(Math.max(slab.length - pos, 1));
+  var ret = [_malloc, stackAlloc, unfreeableMalloc][allocator ? allocator : ALLOC_UNFREEABLE](Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
 #if SAFE_HEAP
     SAFE_HEAP_STORE(ret + i, slab[pos + i]);
@@ -72,7 +68,6 @@ function Pointer_make(slab, pos, stacked) {
 #endif
   }
   return ret;
-//  return { slab: slab, pos: pos ? pos : 0 };
 }
 
 function Pointer_stringify(ptr) {
@@ -92,6 +87,12 @@ function Pointer_stringify(ptr) {
   return ret;
 }
 
+// Memory management
+
+ALLOC_NORMAL = 0;
+ALLOC_STACK = 1;
+ALLOC_UNFREEABLE = 2;
+
 // Stack allocation
 function stackEnter() {
   STACK_STACK.push(STACKTOP);
@@ -102,43 +103,47 @@ function stackExit() {
 function stackAlloc(size) {
   size = Math.ceil(size/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
                                                     // Also keeps STACKTOP aligned
+  assert(STACKTOP + size < TOTAL_STACK);
   var ret = STACKTOP;
   STACKTOP += size;
   return ret;
 }
 
+function unfreeableMalloc(size) {
+  size = Math.ceil(size/1)*1; // Allocate blocks of proper minimum size
+                              // Also keeps HEAPTOP aligned
+  var ret = HEAPTOP;
+  HEAPTOP += size;
+  return ret;
+}
+
+function unfreeableFree(ptr) {
+}
+
 // If we don't have malloc/free implemented, use a simple implementation. This
 // allows compiled C/C++ to implement its own malloc/free
 if (!this._malloc) {
-  _malloc = function(size) {
-    size = Math.ceil(size/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
-                                                      // Also keeps HEAPTOP aligned
-    var ret = HEAPTOP;
-    HEAPTOP += size;
-    return ret;
-  }
-
-  _free = function(ptr) {
-    // XXX TODO - actual implementation! Currently we leak it all
-  }
+  _malloc = unfreeableMalloc;
+  _free = unfreeableFree;
 }
+
 // Mangled "new"s... need a heuristic for autogeneration...
-__Znwj = _malloc; // gcc
-__Znaj = _malloc; // gcc
+__Znwj = _malloc; // llvm-gcc
+__Znaj = _malloc; // llvm-gcc
 __Znam = _malloc; // clang
 __Znwm = _malloc; // clang
 // Mangled "delete"s... need a heuristic for autogeneration...
-__ZdlPv = _free; // gcc
-__ZdaPv = _free; // gcc
+__ZdlPv = _free; // llvm-gcc
+__ZdaPv = _free; // llvm-gcc
 
-var HEAP = [];
-var HEAPTOP = 0;
-Pointer_make(intArrayFromString('(null)')); // So printing %s of NULL gives '(null)'
-                                            // Also this ensures we leave 0 as an invalid address, 'NULL'
-STACK_STACK = [];
-STACKTOP = HEAPTOP;
-TOTAL_STACK = 64*1024; // Reserved room for stack
-HEAPTOP += TOTAL_STACK;
+function __initializeRuntime__() {
+  HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
+                                       // Also this ensures we leave 0 as an invalid address, 'NULL'
+  TOTAL_STACK = 64*1024; // Reserved room for stack
+  STACK_STACK = [];
+  STACKTOP = HEAP.length;
+  HEAPTOP = STACKTOP + TOTAL_STACK;
+}
 
 // stdio.h
 
@@ -179,7 +184,7 @@ function __formatString() {
       textIndex += 1;
     }
   }
-  return Pointer_make(ret);
+  return Pointer_make(ret); // Leak!
 }
 
 // Copies a list of num items on the HEAP into a
