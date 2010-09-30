@@ -265,6 +265,19 @@ function parseParamTokens(params) {
   return ret;
 }
 
+// Segment ==> Parameter
+function parseLLVMSegment(segment) {
+  if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
+    return parseLLVMFunctionCall(segment);
+  } else {
+    return {
+      intertype: 'value',
+      ident: segment[1].text,
+      type: segment[0].text,
+    };
+  }
+}
+
 function cleanSegment(segment) {
   if (segment.length == 1) return segment;
   while (['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext'].indexOf(segment[1].text) != -1) {

@@ -384,14 +384,9 @@ function JSify(data) {
     });
   }
   makeFuncLineZyme('store', function(item) {
-    //print('// zzqqzz ' + dump(item.value) + ' :::: ' + dump(item.pointer) + ' :::: ');
     var ident = toNiceIdent(item.ident);
     var value;
-    if (item.value.intertype in PARSABLE_LLVM_FUNCTIONS) {
-      value = finalizeLLVMFunctionCall(item.value);
-    } else {
-      value = toNiceIdent(item.value.ident);
-    }
+    value = finalizeLLVMParameter(item.value);
     if (pointingLevels(item.pointerType.text) == 1) {
       value = parseNumerical(value, removePointing(item.pointerType.text));
     }
@@ -636,6 +631,15 @@ function JSify(data) {
         return item.ident;
       default:
         throw 'Invalid function to finalize: ' + dump(item);
+    }
+  }
+
+  // From parseLLVMSegment
+  function finalizeLLVMParameter(param) {
+    if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
+      return finalizeLLVMFunctionCall(param);
+    } else {
+      return parseNumerical(param.ident);
     }
   }
 

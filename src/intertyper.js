@@ -490,18 +490,18 @@ function intertyper(data) {
   substrate.addZyme('Store', {
     processItem: function(item) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
-      var commaIndex = 3;
-      while (item.tokens[commaIndex].text != ',') commaIndex ++;
-      return [{
+      var segments = splitTokenList(item.tokens.slice(1));
+      var ret = {
         __result__: true,
         intertype: 'store',
         valueType: item.tokens[1],
-        value: commaIndex == 3 ? addIdent(item.tokens[2]) : parseLLVMFunctionCall(item.tokens.slice(1, commaIndex)),
-        pointerType: item.tokens[commaIndex+1],
-        pointer: item.tokens[commaIndex+2],
-        ident: item.tokens[commaIndex+2].text,
+        value: parseLLVMSegment(segments[0]), // TODO: Make everything use this method, with finalizeLLVMParameter too
+        pointer: parseLLVMSegment(segments[1]),
         lineNum: item.lineNum,
-      }];
+      };
+      ret.ident = ret.pointer.ident;
+      ret.pointerType = { text: ret.pointer.type }; // TODO: unobject this
+      return [ret];
     },
   });
   // 'br'
