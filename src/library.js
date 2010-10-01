@@ -18,8 +18,6 @@ var Library = {
     __print__('\n');
   },
 
-  // ?
-
   vsnprintf: function(dst, num, src, ptr) {
     var args = Array_copy(ptr+1, HEAP[ptr]); // # of args in in first place
     var text = __formatString.apply(null, [src].concat(args));
@@ -28,6 +26,8 @@ var Library = {
       if (HEAP[dst+i] == 0) break;
     }
   },
+
+  // stdlib.h
 
   atexit: function(func) {
     __ATEXIT__.push(func);
@@ -120,6 +120,7 @@ var Library = {
   },
 
   // Threading stuff LLVM adds sometimes
+
   __cxa_guard_acquire: function() {
     return 0;
   },
@@ -138,6 +139,7 @@ var Library = {
   },
 
   // iostream
+
   _ZNSt8ios_base4InitC1Ev: function() {
     // need valid 'file descriptors'
     __ZSt4cout = 1;
@@ -162,10 +164,34 @@ var Library = {
   },
 
   // math.h
+
   cos: function(x) { return Math.cos(x) },
   sin: function(x) { return Math.sin(x) },
   sqrt: function(x) { return Math.sqrt(x) },
   llvm_sqrt_f64: 'sqrt',
+
+  // unistd.h
+
+  sysconf: function(name_) {
+    switch(name_) {
+      case 30: return 4096; // _SC_PAGE_SIZE
+      default: throw 'unknown sysconf param: ' + name_;
+    }
+  },
+
+  sbrk: function(bytes) {
+    return unfreeableMalloc(bytes);
+  },
+
+  // time.h
+
+  time: function(ptr) {
+    var ret = Math.floor(Date.now()/1000);
+    if (ptr) {
+      HEAP[ptr] = ret;
+    }
+    return ret;
+  },
 };
 
 load('library_sdl.js');
