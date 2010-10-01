@@ -34,6 +34,10 @@ var Library = {
   },
   __cxa_atexit: 'atexit',
 
+  abort: function(code) {
+    throw 'ABORT: ' + code + ', at ' + (new Error().stack);
+  },
+
   // string.h
 
   strlen: function(p) {

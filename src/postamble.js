@@ -30,7 +30,7 @@ function run(args) {
 try {
   run(this.arguments ? arguments : []);
 } catch (e) {
-  print("Fatal exception: " + e.stack);
+  print("Fatal exception: " + e);
   throw e;
 }
 
