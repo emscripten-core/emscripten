@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time
+import os, unittest, tempfile, shutil, time, inspect
 
 # Params
 
@@ -28,6 +28,8 @@ def timeout_run(proc, timeout, note):
 
 class T(unittest.TestCase):
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
+        if not no_build:
+          print 'Running test:', inspect.stack()[1][3], '[%s]'%COMPILER.split(os.sep)[-1]
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
@@ -820,5 +822,6 @@ if __name__ == '__main__':
         print "Checking for existence of", cmd
         assert(os.path.exists(cmd))
     print "Running Emscripten tests..."
+    print '', # indent so when next lines have '.', they all align
     unittest.main()
 
