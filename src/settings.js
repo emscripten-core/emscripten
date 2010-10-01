@@ -13,6 +13,10 @@ QUANTUM_SIZE = 1; // This is the size of an individual field in a structure. 1 w
                   // way to prevent problems with that is to set QUANTUM_SIZE to 8.
                   // See the 'copyop' automatic test.
 
+GUARD_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
+                 // Decreases performance with additional runtime checks. Might not be
+                 // needed in some kinds of code.
+
 // Code embetterments
 OPTIMIZE = 1; // Optimize llvm operations into js commands
 RELOOP = 0; // Recreate js native loops from llvm data XXX - disabled pending optimizing rewrite

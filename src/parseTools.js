@@ -53,9 +53,11 @@ function toNiceIdent(ident) {
   return ident.replace(/[" \.@%:<>,\*]/g, '_');
 }
 
+INT_TYPES = searchable('i1', 'i8', 'i16', 'i32', 'i64');
+FLOAT_TYPES = searchable('float', 'double');
+
 function isNumberType(type) {
-  var types = ['i1', 'i8', 'i16', 'i32', 'i64', 'float', 'double'];
-  return types.indexOf(type) != -1;
+  return type in INT_TYPES || type in FLOAT_TYPES;
 }
 
 function isStructPointerType(type) {

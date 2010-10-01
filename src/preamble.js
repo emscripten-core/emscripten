@@ -156,7 +156,7 @@ function __formatString() {
   while (curr != 0) {
     curr = HEAP[textIndex];
     next = HEAP[textIndex+1];
-    if (curr == '%'.charCodeAt(0) && ['d', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
+    if (curr == '%'.charCodeAt(0) && ['d', 'u', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
       var argText = String(arguments[argIndex]);
       // Handle very very simply formatting, namely only %.Xf
       if (next == '.'.charCodeAt(0)) {
@@ -169,6 +169,8 @@ function __formatString() {
         argText += '00000000000'; // padding
         argText = argText.substr(0, dotIndex+1+limit);
         textIndex += 2;
+      } else if (next == 'u'.charCodeAt(0)) {
+        argText = String(unSign(arguments[argIndex], 32));
       }
       argText.split('').forEach(function(chr) {
         ret.push(chr.charCodeAt(0));
@@ -258,6 +260,13 @@ function intArrayFromString(stringy) {
   }
   ret.push(0);
   return ret;
+}
+
+// Converts a value we have as signed, into an unsigned value. For
+// example, -1 in int32 would be a very large number as unsigned.
+function unSign(value, bits) {
+  if (value >= 0) return value;
+  return 2*Math.abs(1 << (bits-1)) + value;
 }
 
 // === Body ===

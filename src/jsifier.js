@@ -516,11 +516,26 @@ function JSify(data) {
     dprint('phi', dump(item));
     return '__lastLabel__ == ' + getLabelId(item.label1) + ' ? ' + toNiceIdent(item.value1) + ' : ' + toNiceIdent(item.value2);
   });
+
+  function makeUnSign(value, type) {
+    if (type in INT_TYPES) {
+      return 'unSign(' + value + ', ' + type.substr(1) + ')';
+    } else {
+      return value;
+    }
+  }
+
   makeFuncLineZyme('mathop', function(item) { with(item) {
     dprint('mathop', 'mathop: ' + dump(item));
     ident = parseNumerical(ident);
     ident2 = parseNumerical(ident2);
-    switch (item.op) {
+    if (GUARD_SIGNS) {
+      if (op[0] == 'u' || (variant && variant[0] == 'u')) {
+        ident = makeUnSign(ident, type.text);
+        ident2 = makeUnSign(ident2, type.text);
+      }
+    }
+    switch (op) {
       case 'add': return ident + ' + ' + ident2;
       case 'sub': return ident + ' - ' + ident2;
       case 'sdiv': case 'udiv': return 'Math.floor(' + ident + ' / ' + ident2 + ')';

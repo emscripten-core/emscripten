@@ -132,6 +132,19 @@ class T(unittest.TestCase):
         '''
         self.do_test(src, '*5,23,10,19,121,1,37,1,0*')
 
+    def test_unsigned(self):
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
+            int varey = 100;
+            unsigned int MAXEY = -1, MAXEY2 = -77;
+            printf("*%u,%d,%u*\\n", MAXEY, varey >= MAXEY, MAXEY2); // 100 >= -1? not in unsigned!
+            return 0;
+          }
+        '''
+        self.do_test(src, '*4294967295,0,4294967219*')
+
     def test_floatvars(self):
         src = '''
           #include <stdio.h>
