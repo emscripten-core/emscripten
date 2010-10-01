@@ -477,12 +477,13 @@ function intertyper(data) {
         item.variant = item.tokens[1].text;
         item.tokens.splice(1, 1);
       }
-      item.type = item.tokens[1];
-      item.ident = item.tokens[2].text;
-      item.ident2 = item.tokens[4].text;
-      item.ident3 = item.tokens[5] ? item.tokens[5].text : null;
-      item.ident4 = item.tokens[8] ? item.tokens[8].text : null;
-      dprint('mathop', item.op + ',' + item.variant + ',' + item.ident + ',' + item.value);
+      var segments = splitTokenList(item.tokens.slice(1));
+      for (var i = 1; i <= 4; i++) {
+        if (segments[i-1]) {
+          item['param'+i] = parseLLVMSegment(segments[i-1]);
+        }
+      }
+      item.type = { text: item.param1.type }; // TODO: unobject this
       this.forwardItem(item, 'Reintegrator');
     },
   });

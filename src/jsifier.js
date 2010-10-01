@@ -527,62 +527,65 @@ function JSify(data) {
 
   makeFuncLineZyme('mathop', function(item) { with(item) {
     dprint('mathop', 'mathop: ' + dump(item));
-    ident = parseNumerical(ident);
-    ident2 = parseNumerical(ident2);
+    for (var i = 1; i <= 4; i++) {
+      if (item['param'+i]) {
+        item['ident'+i] = finalizeLLVMParameter(item['param'+i]);
+      }
+    }
     if (GUARD_SIGNS) {
       if (op[0] == 'u' || (variant && variant[0] == 'u')) {
-        ident = makeUnSign(ident, type.text);
+        ident1 = makeUnSign(ident1, type.text);
         ident2 = makeUnSign(ident2, type.text);
       }
     }
     switch (op) {
-      case 'add': return ident + ' + ' + ident2;
-      case 'sub': return ident + ' - ' + ident2;
-      case 'sdiv': case 'udiv': return 'Math.floor(' + ident + ' / ' + ident2 + ')';
-      case 'mul': return ident + ' * ' + ident2;
-      case 'urem': case 'srem': return 'Math.floor(' + ident + ' % ' + ident2 + ')';
-      case 'or': return ident + ' | ' + ident2;
-      case 'and': return ident + ' & ' + ident2;
-      case 'xor': return ident + ' ^ ' + ident2;
-      case 'shl': case 'ashl': case 'lshl': return ident + ' << ' + ident2;
-      case 'shr': case 'ashr': case 'lshr': return ident + ' >> ' + ident2;
-      case 'fadd': return ident + ' + ' + ident2;
-      case 'fsub': return ident + ' - ' + ident2;
-      case 'fdiv': return ident + ' / ' + ident2;
-      case 'fmul': return ident + ' * ' + ident2;
-      case 'uitofp': case 'sitofp': return ident;
-      case 'fptoui': case 'fptosi': return 'Math.floor(' + ident + ')';
+      case 'add': return ident1 + ' + ' + ident2;
+      case 'sub': return ident1 + ' - ' + ident2;
+      case 'sdiv': case 'udiv': return 'Math.floor(' + ident1 + ' / ' + ident2 + ')';
+      case 'mul': return ident1 + ' * ' + ident2;
+      case 'urem': case 'srem': return 'Math.floor(' + ident1 + ' % ' + ident2 + ')';
+      case 'or': return ident1 + ' | ' + ident2;
+      case 'and': return ident1 + ' & ' + ident2;
+      case 'xor': return ident1 + ' ^ ' + ident2;
+      case 'shl': case 'ashl': case 'lshl': return ident1 + ' << ' + ident2;
+      case 'shr': case 'ashr': case 'lshr': return ident1 + ' >> ' + ident2;
+      case 'fadd': return ident1 + ' + ' + ident2;
+      case 'fsub': return ident1 + ' - ' + ident2;
+      case 'fdiv': return ident1 + ' / ' + ident2;
+      case 'fmul': return ident1 + ' * ' + ident2;
+      case 'uitofp': case 'sitofp': return ident1;
+      case 'fptoui': case 'fptosi': return 'Math.floor(' + ident1 + ')';
       case 'icmp': {
         switch (variant) {
-          case 'uge': case 'sge': return '0+(' + ident + ' >= ' + ident2 + ')';
-          case 'ule': case 'sle': return '0+(' + ident + ' <= ' + ident2 + ')';
-          case 'ugt': case 'sgt': return '0+(' + ident + ' > ' + ident2 + ')';
-          case 'ult': case 'slt': return '0+(' + ident + ' < ' + ident2 + ')';
-          case 'ne': case 'une': return '0+(' + ident + ' != ' + ident2 + ')';
-          case 'eq': return '0+(' + ident + ' == ' + ident2 + ')';
+          case 'uge': case 'sge': return '0+(' + ident1 + ' >= ' + ident2 + ')';
+          case 'ule': case 'sle': return '0+(' + ident1 + ' <= ' + ident2 + ')';
+          case 'ugt': case 'sgt': return '0+(' + ident1 + ' > ' + ident2 + ')';
+          case 'ult': case 'slt': return '0+(' + ident1 + ' < ' + ident2 + ')';
+          case 'ne': case 'une': return '0+(' + ident1 + ' != ' + ident2 + ')';
+          case 'eq': return '0+(' + ident1 + ' == ' + ident2 + ')';
           default: throw 'Unknown icmp variant: ' + variant
         }
       }
       case 'fcmp': {
         switch (variant) {
-          case 'uge': case 'oge': return '0+(' + ident + ' >= ' + ident2 + ')';
-          case 'ule': case 'ole': return '0+(' + ident + ' <= ' + ident2 + ')';
-          case 'ugt': case 'ogt': return '0+(' + ident + ' > ' + ident2 + ')';
-          case 'ult': case 'olt': return '0+(' + ident + ' < ' + ident2 + ')';
-          case 'une': case 'one': return '0+(' + ident + ' != ' + ident2 + ')';
-          case 'ueq': case 'oeq': return '0+(' + ident + ' == ' + ident2 + ')';
+          case 'uge': case 'oge': return '0+(' + ident1 + ' >= ' + ident2 + ')';
+          case 'ule': case 'ole': return '0+(' + ident1 + ' <= ' + ident2 + ')';
+          case 'ugt': case 'ogt': return '0+(' + ident1 + ' > ' + ident2 + ')';
+          case 'ult': case 'olt': return '0+(' + ident1 + ' < ' + ident2 + ')';
+          case 'une': case 'one': return '0+(' + ident1 + ' != ' + ident2 + ')';
+          case 'ueq': case 'oeq': return '0+(' + ident1 + ' == ' + ident2 + ')';
           default: throw 'Unknown fcmp variant: ' + variant
         }
       }
-      case 'zext': case 'fpext': case 'trunc': case 'sext': case 'fptrunc': return ident;
-      case 'select': return '(' + ident + ' ? ' + ident3 + ' : ' + ident4 + ')';
+      case 'zext': case 'fpext': case 'trunc': case 'sext': case 'fptrunc': return ident1;
+      case 'select': return '(' + ident1 + ' ? ' + ident2 + ' : ' + ident3 + ')';
       case 'ptrtoint': {
         if (type.text != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
-        return ident;
+        return ident1;
       }
       case 'inttoptr': {
         print('// XXX Warning: inttoptr operation on line ' + lineNum);
-        return ident;
+        return ident1;
       }
       default: throw 'Unknown mathcmp op: ' + item.op
     }

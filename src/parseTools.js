@@ -156,14 +156,19 @@ function splitTokenList(tokens) {
   if (tokens.slice(-1)[0].text != ',') tokens.push({text:','});
   var ret = [];
   var seg = [];
-  tokens.forEach(function(token) {
-    if (token.text == ',') {
+  var SPLITTERS = searchable(',', 'to'); // 'to' can separate parameters as well...
+  for (var i = 0; i < tokens.length; i++) {
+    var token = tokens[i];
+    if (token.text in SPLITTERS) {
       ret.push(seg);
       seg = [];
+    } else if (token.text == ';') {
+      ret.push(seg);
+      break;
     } else {
       seg.push(token);
     }
-  });
+  }
   return ret;
 }
 
@@ -269,7 +274,13 @@ function parseParamTokens(params) {
 
 // Segment ==> Parameter
 function parseLLVMSegment(segment) {
-  if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
+  if (segment.length == 1) {
+    return {
+      intertype: 'value',
+      ident: segment[0].text,
+      type: '?',
+    };
+  } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall(segment);
   } else {
     return {
