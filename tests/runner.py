@@ -82,7 +82,7 @@ class T(unittest.TestCase):
         self.assertContained(expected_output, js_output)
         self.assertNotContained('ERROR', js_output)
 
-#        shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
+        #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     def assertContained(self, value, string):
         if value not in string:

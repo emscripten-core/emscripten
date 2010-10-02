@@ -95,12 +95,12 @@ function JSify(data) {
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (isNumberType(type) || pointingLevels(type) == 1) {
-      return makePointer(parseNumerical(value.text), null, 'ALLOC_UNFREEABLE');
+      return makePointer(parseNumerical(value.text), null, 'ALLOC_STATIC');
     } else if (value.text == 'zeroinitializer') {
-      return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_UNFREEABLE');
+      return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_STATIC');
     } else if (value.text && value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
-      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/', null, 'ALLOC_UNFREEABLE');
+      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/', null, 'ALLOC_STATIC');
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
@@ -136,12 +136,12 @@ function JSify(data) {
       }
       if (value.item) {
         // list of items
-        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_UNFREEABLE');
+        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC');
       } else if (value.type == '{') {
         // struct
-        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]', null, 'ALLOC_UNFREEABLE');
+        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC');
       } else if (value[0]) {
-        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_UNFREEABLE');
+        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC');
       } else {
         throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
       }
@@ -489,6 +489,7 @@ function JSify(data) {
             + makeFunctionCall(item.ident, item.params) + '; '
             + '__THREW__ = false } catch(e) { '
             + '__THREW__ = true; '
+            + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
             + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel) + ' } else { ' + makeBranch(item.unwindLabel) + ' }';
     return ret;
   });

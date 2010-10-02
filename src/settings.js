@@ -24,6 +24,7 @@ RELOOP = 0; // Recreate js native loops from llvm data XXX - disabled pending op
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses
 LABEL_DEBUG = 0; // Print out labels and functions as we enter them
+EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 
 // Compiler debugging options

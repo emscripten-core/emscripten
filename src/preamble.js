@@ -37,7 +37,8 @@ START_TIME = Date.now();
 
 function assert(condition, text) {
   if (!condition) {
-    throw 'Assertion failed: ' + text + ':\n' + (new Error).stack;
+    print('Assertion failed: ' + text + ':\n' + (new Error).stack);
+    throw "Assertion";
   }
 }
 
@@ -59,7 +60,7 @@ function Pointer_make(slab, pos, allocator) {
   }
   var slab = flatten(slab);
   // Finalize
-  var ret = [_malloc, stackAlloc, unfreeableMalloc][allocator ? allocator : ALLOC_UNFREEABLE](Math.max(slab.length - pos, 1));
+  var ret = [_malloc, stackAlloc, staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
 #if SAFE_HEAP
     SAFE_HEAP_STORE(ret + i, slab[pos + i]);
@@ -89,11 +90,20 @@ function Pointer_stringify(ptr) {
 
 // Memory management
 
-ALLOC_NORMAL = 0;
-ALLOC_STACK = 1;
-ALLOC_UNFREEABLE = 2;
+ALLOC_NORMAL = 0; // Tries to use _malloc()
+ALLOC_STACK = 1; // Lives for the duration of the current function call
+ALLOC_STATIC = 2; // Cannot be freed
 
-// Stack allocation
+function alignMemory(x) {
+  return Math.ceil(x/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
+                                                 // Also keeps STACKTOP/etc. aligned
+}
+
+PAGE_SIZE = 4096;
+function alignMemoryPage(x) {
+  return Math.ceil(x/PAGE_SIZE)*PAGE_SIZE;
+}
+
 function stackEnter() {
   STACK_STACK.push(STACKTOP);
 }
@@ -101,30 +111,25 @@ function stackExit() {
   STACKTOP = STACK_STACK.pop();
 }
 function stackAlloc(size) {
-  size = Math.ceil(size/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
-                                                    // Also keeps STACKTOP aligned
-  assert(STACKTOP + size < TOTAL_STACK);
+  size = alignMemory(size);
+  assert(STACKTOP + size - STACKROOT < TOTAL_STACK, "No room on stack!");
   var ret = STACKTOP;
   STACKTOP += size;
   return ret;
 }
 
-function unfreeableMalloc(size) {
-  size = Math.ceil(size/1)*1; // Allocate blocks of proper minimum size
-                              // Also keeps HEAPTOP aligned
-  var ret = HEAPTOP;
-  HEAPTOP += size;
+function staticAlloc(size) {
+  size = alignMemory(size);
+  assert(STATICTOP + size - STATICROOT < TOTAL_STATIC, "No room for static allocation!");
+  var ret = STATICTOP;
+  STATICTOP += size;
   return ret;
 }
 
-function unfreeableFree(ptr) {
-}
-
-// If we don't have malloc/free implemented, use a simple implementation. This
-// allows compiled C/C++ to implement its own malloc/free
+// If we don't have malloc/free implemented, use a simple implementation.
 if (!this._malloc) {
-  _malloc = unfreeableMalloc;
-  _free = unfreeableFree;
+  _malloc = staticAlloc;
+  _free = function() { }; // leak!
 }
 
 // Mangled "new"s... need a heuristic for autogeneration...
@@ -139,10 +144,15 @@ __ZdaPv = _free; // llvm-gcc
 function __initializeRuntime__() {
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                        // Also this ensures we leave 0 as an invalid address, 'NULL'
-  TOTAL_STACK = 64*1024; // Reserved room for stack
+
+  if (!this['TOTAL_STATIC']) TOTAL_STATIC = 64*1024; // Reserved room for static allocation
+  STATICROOT = STATICTOP = alignMemoryPage(HEAP.length);
+
+  if (!this['TOTAL_STACK']) TOTAL_STACK = 64*1024; // Reserved room for stack
   STACK_STACK = [];
-  STACKTOP = HEAP.length;
-  HEAPTOP = STACKTOP + TOTAL_STACK;
+  STACKROOT = STACKTOP = alignMemoryPage(STATICROOT + TOTAL_STATIC);
+
+  HEAPTOP = alignMemoryPage(STACKROOT + TOTAL_STACK); // Start of the "processes' data segment"
 }
 
 // stdio.h
@@ -186,7 +196,7 @@ function __formatString() {
       textIndex += 1;
     }
   }
-  return Pointer_make(ret); // Leak!
+  return Pointer_make(ret, 0, ALLOC_STACK); // NB: Stored on the stack
 }
 
 // Copies a list of num items on the HEAP into a

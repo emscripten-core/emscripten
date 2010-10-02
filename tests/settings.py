@@ -20,7 +20,7 @@ COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
 
 LLVM_DIS=os.path.expanduser('~/Dev/llvm-2.7/cbuild/bin/llvm-dis')
 
-SPIDERMONKEY_ENGINE=os.path.expanduser('~/Dev/m-c/js/src/js')
+SPIDERMONKEY_ENGINE=os.path.expanduser('~/Dev/mozilla-central/js/src/js')
 V8_ENGINE=os.path.expanduser('~/Dev/v8/d8')
 
 # XXX Warning: Running the 'sauer' test in SpiderMonkey can lead to an extreme amount of memory being

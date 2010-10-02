@@ -139,7 +139,7 @@ var Library = {
   },
 
   llvm_eh_exception: function() {
-    return 'code-generated exception';
+    return 'code-generated exception: ' + (new Error().stack);
   },
 
   llvm_eh_selector: function(exception, personality, num) {
@@ -188,13 +188,24 @@ var Library = {
 
   sysconf: function(name_) {
     switch(name_) {
-      case 30: return 4096; // _SC_PAGE_SIZE
+      case 30: return PAGE_SIZE; // _SC_PAGE_SIZE
       default: throw 'unknown sysconf param: ' + name_;
     }
   },
 
   sbrk: function(bytes) {
-    return unfreeableMalloc(bytes);
+    // We need to make sure no one else allocates unfreeable memory!
+    // We must control this entirely. So we don't even need to do
+    // unfreeable allocations - the HEAP is ours, from HEAPTOP up.
+    // TODO: We could in theory slice off the top of the HEAP when
+    // sbrk gets a negative increment in |bytes|...
+    var self = arguments.callee;
+    if (!self.HEAPTOP) {
+      self.HEAPTOP = HEAPTOP;
+    } else {
+      assert(self.HEAPTOP == HEAPTOP, "Noone should touch the heap!");
+    }
+    return alignMemoryPage(HEAPTOP);
   },
 
   // time.h
