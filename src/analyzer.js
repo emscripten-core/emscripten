@@ -682,6 +682,9 @@ function analyzer(data) {
   });
 
   // Optimizer
+  // XXX: load, store and gep now have pointer/value/data from which we copy the ident into a toplevel ident.
+  //      However, we later read the non-toplevel ident in some cases, so optimizer changes can lead to bugs.
+  //      Need to remove the toplevel, work entirely with the non-toplevel. Single location.
   substrate.addZyme('Optimizer', {
     processItem: function(item) {
       var that = this;

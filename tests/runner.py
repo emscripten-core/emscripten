@@ -541,6 +541,28 @@ class T(unittest.TestCase):
           '''
         self.do_test(src, '*70,97,15,3,3029,90*')
 
+    def test_mod_globalstruct(self):
+        src = '''
+          #include <stdio.h>
+
+          struct malloc_params {
+            size_t magic, page_size;
+          };
+
+          malloc_params mparams;
+
+          #define SIZE_T_ONE ((size_t)1)
+          #define page_align(S) (((S) + (mparams.page_size - SIZE_T_ONE)) & ~(mparams.page_size - SIZE_T_ONE))
+
+          int main()
+          {
+            mparams.page_size = 4096;
+            printf("*%d,%d,%d,%d*\\n", mparams.page_size, page_align(1000), page_align(6000), page_align(66474));
+            return 0;
+          }
+        '''
+        self.do_test(src, '*4096,4096,8192,69632*')
+
     def test_ptrtoint(self):
         src = '''
           #include <stdio.h>

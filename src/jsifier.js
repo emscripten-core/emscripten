@@ -384,27 +384,28 @@ function JSify(data) {
     });
   }
   makeFuncLineZyme('store', function(item) {
-    var ident = toNiceIdent(item.ident);
-    var value;
-    value = finalizeLLVMParameter(item.value);
+    var value = finalizeLLVMParameter(item.value);
     if (pointingLevels(item.pointerType.text) == 1) {
       value = parseNumerical(value, removePointing(item.pointerType.text));
     }
-    //print("// zz seek " + ident + ',' + dump(item));
-    var impl = getVarData(item.funcData, item.ident);
-    var ret;
+    var impl = VAR_EMULATED;
+    if (item.pointer.intertype == 'value') {
+      impl = getVarData(item.funcData, item.ident);
+    }
     switch (impl) {
-      case VAR_NATIVIZED: ret = ident + ' = ' + value + ';'; break; // We have the actual value here
-      case VAR_EMULATED: ret = makeSetValue(ident, 0, value) + ';'; break;
-      default: print('zz unknown [store] impl: ' + impl);
+      case VAR_NATIVIZED:
+        return item.ident + ' = ' + value + ';'; // We have the actual value here
+        break;
+      case VAR_EMULATED:
+        if (item.pointer.intertype == 'value') {
+          return makeSetValue(item.ident, 0, value) + ';';
+        } else {
+          return makeSetValue(0, getGetElementPtrIndexes(item.pointer), value) + ';';
+        }
+        break;
+      default:
+        throw 'unknown [store] impl: ' + impl;
     }
-/*
-    if (LINEDEBUG && value) {
-      ret += '\nprint(INDENT + "' + ident + ' == " + JSON.stringify(' + ident + '));';
-      ret += '\nprint(INDENT + "' + ident + ' == " + (' + ident + ' && ' + ident + '.toString ? ' + ident + '.toString() : ' + ident + '));';
-    }
-*/
-    return ret;
   });
 
   var LABEL_IDs = {};

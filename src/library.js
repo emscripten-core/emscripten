@@ -139,7 +139,7 @@ var Library = {
   },
 
   llvm_eh_exception: function() {
-    return Error();
+    return 'code-generated exception';
   },
 
   llvm_eh_selector: function(exception, personality, num) {
@@ -147,6 +147,9 @@ var Library = {
 
   __cxa_call_unexpected: function(exception) {
     throw exception;
+  },
+
+  __gxx_personality_v0: function() {
   },
 
   // iostream
