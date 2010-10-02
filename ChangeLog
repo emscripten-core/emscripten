@@ -1,16 +1,22 @@
+?: Version 0.3
+
+  * Much faster compilation (still a lot more left to do though)
+  * Clang support
+  * Optional memory alignment that precisely matches C/C++
+  * Proper call stack support
+  * Initial support for SDL
+  * Raytracing test + web demo
+  * Many code cleanups, bug fixes, additional tests and library implementations
+
 2010-09-11: Version 0.2
 
   * sauer (cubescript) test passes (without RELOOPing), + web demo
   * ES_SIZEOF - safe&portable sizeof replacement
   * emscripten.py tool for easy compiling
-  * Support for various additional llvm ops (switch, float ops, ptrtoint, etc.)
-  * Support for functions with variable numbers of arguments (varargs)
   * Better debugging support, using SAFE_HEAP and LABEL_DEBUG, using internal preprocessor
   * Compiler can now run all tests in both SpiderMonkey and V8
-  * Various stdlib functions (strcpy/strcat/etc., atexit, etc.)
-  * Various code cleanups and simplifications
   * Various compiler optimizations (still barely scratched the surface though)
-  * Many bug fixes and additional tests
+  * Many code cleanups, bug fixes, additional tests and library implementations
 
 2010-08-28: Version 0.1
 
