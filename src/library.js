@@ -194,6 +194,10 @@ var Library = {
   },
 
   sbrk: function(bytes) {
+    // Implement a Linux-like 'memory area' for our 'process'.
+    // Changes the size of the memory area by |bytes|; returns the
+    // address of the previous top ('break') of the memory area
+
     // We need to make sure no one else allocates unfreeable memory!
     // We must control this entirely. So we don't even need to do
     // unfreeable allocations - the HEAP is ours, from HEAPTOP up.
@@ -201,11 +205,15 @@ var Library = {
     // sbrk gets a negative increment in |bytes|...
     var self = arguments.callee;
     if (!self.HEAPTOP) {
+      HEAPTOP = alignMemoryPage(HEAPTOP);
       self.HEAPTOP = HEAPTOP;
+      self.DATASIZE = 0;
     } else {
       assert(self.HEAPTOP == HEAPTOP, "Noone should touch the heap!");
     }
-    return alignMemoryPage(HEAPTOP);
+    var ret = HEAPTOP + self.DATASIZE;
+    self.DATASIZE += alignMemoryPage(bytes);
+    return ret; // previous break location
   },
 
   // time.h

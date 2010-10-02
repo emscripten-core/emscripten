@@ -809,9 +809,9 @@ class T(unittest.TestCase):
         output = open(path_from_root(['tests', 'raytrace.ppm']), 'r').read()
         self.do_test(src, output, ['1'])
 
-    def zzztest_dlmalloc(self):
+    def test_dlmalloc(self):
         src = open(path_from_root(['tests', 'dlmalloc.c']), 'r').read()
-        self.do_test(src, 'malloced', ['1'])
+        self.do_test(src, '*1,0*')
 
     def test_fasta(self):
         results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
