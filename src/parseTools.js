@@ -280,6 +280,8 @@ function parseLLVMSegment(segment) {
       ident: segment[0].text,
       type: '?',
     };
+  } else if (segment[0].text in PARSABLE_LLVM_FUNCTIONS) {
+    return parseLLVMFunctionCall([{text: '?'}].concat(segment));
   } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall(segment);
   } else {

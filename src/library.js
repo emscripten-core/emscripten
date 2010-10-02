@@ -115,11 +115,15 @@ var Library = {
     }
   },
 
+  isdigit: function(chr) {
+    return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
+  },
+
+  // LLVM specifics
+
   __assert_fail: function(condition, file, line) {
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
   },
-
-  // Threading stuff LLVM adds sometimes
 
   __cxa_guard_acquire: function() {
     return 0;
@@ -134,8 +138,15 @@ var Library = {
     }
   },
 
-  isdigit: function(chr) {
-    return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
+  llvm_eh_exception: function() {
+    return Error();
+  },
+
+  llvm_eh_selector: function(exception, personality, num) {
+  },
+
+  __cxa_call_unexpected: function(exception) {
+    throw exception;
   },
 
   // iostream
