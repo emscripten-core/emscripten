@@ -453,28 +453,32 @@ function analyzer(data) {
         }
         if (!RELOOP) return emulated();
 
-        // === 'splitter' ===
+        var s_entries = searchable(entries);
+        assert(entries[0]); // need at least 1 entry
+        dprint('relooping', 'makeBlock: ' + entries + ',' + labels.length + ' labels');
 
-        if (entries.length > 1) {
-          return emulated();
-        }
+        var entryLabels = entries.map(function(entry) { return labelsDict[entry] });
+        assert(entryLabels[0]);
 
-        var entry = entries[0];
-        assert(entry);
-        dprint('relooping', 'makeBlock: ' + entry + ',' + labels.length + ' labels');
+        var canReturn = false;
+        entryLabels.forEach(function(entryLabel) {
+          canReturn = canReturn || values(entryLabel.inLabels).length > 0;
+        });
 
-        var entryLabel = labelsDict[entry];
-        assert(entryLabel);
-        var lastLine = entryLabel.lines.slice(-1)[0];
-        var others = labels.filter(function(label) { return label.ident != entry });
-
-        var canReturn = values(entryLabel.inLabels).length > 0;
-
-        labels = labels.filter(function(label) { return label === entryLabel || label.ident in entryLabel.allOutLabels }); // ignore unreachables
+        // Remove unreachables
+        allOutLabels = {};
+        entryLabels.forEach(function(entryLabel) {
+          mergeInto(allOutLabels, entryLabel.allOutLabels);
+        });
+        labels = labels.filter(function(label) { return label.ident in s_entries || label.ident in allOutLabels });
 
         // === (simple) 'emulated' ===
 
-        if (!canReturn && values(entryLabel.outLabels).length == 1) {
+        if (entries.length == 1 && !canReturn && values(entryLabels[0].outLabels).length == 1) {
+          var entry = entries[0];
+          var entryLabel = entryLabels[0];
+          var others = labels.filter(function(label) { return label.ident != entry });
+
           dprint('relooping', '   Creating simple emulated, outlabels: ' + keys(entryLabel.outLabels));
           var next = keys(entryLabel.outLabels)[0];
           if (next in exitLabels) {
@@ -495,18 +499,22 @@ function analyzer(data) {
 
         // === 'reloop' away a loop, if there is one ===
 
-        if (canReturn) {
+        if (entries.length == 1 && canReturn) {
           var ret = {
             type: 'reloop',
-            entry: entry,
+            entries: entries,
             labels: labels,
           };
 
           // Find internal and external labels
-          var split_ = splitter(labels, function(label) { return !(entry in label.allOutLabels) });
+          var split_ = splitter(labels, function(label) {
+            return !(label.ident in s_entries) && values(setIntersect(s_entries, label.allOutLabels)).length == 0
+          });
           var externals = split_.splitOut;
           var internals = split_.leftIn;
           var currExitLabels = set(getLabelIds(externals));
+
+          dprint('relooping', function() { return '   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels) });
 
           // Verify that no external can reach an internal
           var inLabels = set(getLabelIds(internals));
@@ -517,24 +525,33 @@ function analyzer(data) {
             }
           });
 
-          dprint('relooping', function() { return '   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels) });
+          // We will be in a loop, |continue| gets us back to the entry
+          entries.forEach(function(entry) {
+            replaceLabelLabels(internals, searchable(entry), 'BCONT' + entries[0]); // entries[0] is the name of the loop, see walkBlock
+          });
 
-          replaceLabelLabels(internals, searchable(entry), 'BCONT' + entry); // we will be in a loop, |continue| gets us back to the entry
+          // To get to any of our (not our parents') exit labels, we will break.
           dprint('relooping', 'for exit purposes, Replacing: ' + dump(currExitLabels));
-          var enteredExitLabels = replaceLabelLabels(internals, currExitLabels, 'BREAK' + entry); // to get to any of our (not our parents') exit labels,
-                                                                                                  // we will break.
-          dprint('relooping', dump(currExitLabels) + ' enteredExitLabels: ' + dump(enteredExitLabels));
-          enteredExitLabels = enteredExitLabels.map(cleanLabel);
-          dprint('relooping', ' enteredExitLabels: ' + dump(enteredExitLabels));
+          var enteredExitLabels = {};
+          if (externals.length > 0) {
+            entries.forEach(function(entry) {
+              mergeInto(enteredExitLabels, set(replaceLabelLabels(internals, currExitLabels, 'BREAK' + entries[0]))); // see comment on entries[0] above
+            });
+            enteredExitLabels = keys(enteredExitLabels).map(cleanLabel);
+            dprint('relooping', 'enteredExitLabels: ' + dump(enteredExitLabels));
+            assert(enteredExitLabels.length > 0);
+          }
 
           // inner
           var allExitLabels = mergeInto(set(currExitLabels), exitLabels);
           var currExitLabelsHit = {};
-          ret.inner = makeBlock(internals, [entry], labelsDict, allExitLabels, currExitLabelsHit);
+          ret.inner = makeBlock(internals, entries, labelsDict, allExitLabels, currExitLabelsHit);
 
-          // outer
-          ret.outer = makeBlock(externals, enteredExitLabels, labelsDict, exitLabels, currExitLabelsHit);
-          mergeInto(exitLabelsHit, setSub(currExitLabelsHit, currExitLabels)); // Don't really need setSub, but nicer
+          if (externals.length > 0) {
+            // outer
+            ret.outer = makeBlock(externals, enteredExitLabels, labelsDict, exitLabels, currExitLabelsHit);
+            mergeInto(exitLabelsHit, setSub(currExitLabelsHit, currExitLabels)); // Don't really need setSub, but nicer
+          }
 
           return ret;
         }
