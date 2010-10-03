@@ -29,7 +29,7 @@ def timeout_run(proc, timeout, note):
 class T(unittest.TestCase):
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
         if not no_build:
-          print 'Running test:', inspect.stack()[1][3], '[%s]'%COMPILER.split(os.sep)[-1]
+          print 'Running test:', inspect.stack()[1][3], '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop' if RELOOP else '')
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
@@ -68,7 +68,7 @@ class T(unittest.TestCase):
           output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           if DEBUG: print output
           # Run Emscripten
-          emscripten_settings = ['{ "QUANTUM_SIZE": %d }' % QUANTUM_SIZE]
+          emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d }' % (QUANTUM_SIZE, RELOOP)]
           timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 2400, 'Compiling')
           output = open(filename + '.o.js').read()
           if output_processor is not None:
@@ -824,19 +824,26 @@ class T(unittest.TestCase):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
+
+      # FIXME - hangs the compiler after an assert
+      assert not RELOOP
+
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
 # Generate tests for all our compilers
-def make_test(compiler):
+def make_test(compiler, reloop):
   class TT(T):
     def setUp(self):
       global COMPILER
       COMPILER = compiler['path']
       global QUANTUM_SIZE
       QUANTUM_SIZE = compiler['quantum_size']
+      global RELOOP
+      RELOOP = reloop
   return TT
-for name in COMPILERS.keys():
-  exec('T_%s = make_test(COMPILERS["%s"])' % (name, name))
+for reloop in [0,1]:
+  for name in COMPILERS.keys():
+    exec('T_%s_%d = make_test(COMPILERS["%s"],%d)' % (name, reloop, name, reloop))
 del T # T is just a shape for the specific subclasses, we don't test it itself
 
 if __name__ == '__main__':
