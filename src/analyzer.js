@@ -320,6 +320,8 @@ function analyzer(data) {
         }
         if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
           process(line);
+        } else if (line.intertype == 'assign' && line.value.intertype == 'invoke') {
+          process(line.value);
         } else if (line.intertype == 'switch') {
           process(line);
           line.switchLabels.forEach(process);
@@ -361,6 +363,8 @@ function analyzer(data) {
             }
             if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
               process(line);
+            } else if (line.intertype == 'assign' && line.value.intertype == 'invoke') {
+              process(line.value);
             } else if (line.intertype == 'switch') {
               process(line);
               line.switchLabels.forEach(process);

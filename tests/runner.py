@@ -826,8 +826,6 @@ class T(unittest.TestCase):
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
 
-      assert not RELOOP
-
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
 # Generate tests for all our compilers
