@@ -18,8 +18,8 @@ GUARD_SIGNS = 1; // Whether we make sure to convert unsigned values to signed va
                  // needed in some kinds of code.
 
 // Code embetterments
-OPTIMIZE = 1; // Optimize llvm operations into js commands
-RELOOP = 0; // Recreate js native loops from llvm data XXX - disabled pending optimizing rewrite
+OPTIMIZE = 0; // Optimize llvm operations into js commands
+RELOOP = 0; // Recreate js native loops from llvm data
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses

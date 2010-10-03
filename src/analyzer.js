@@ -298,14 +298,6 @@ function analyzer(data) {
 
       // Tools
 
-      function cleanLabel(label) {
-        if (label[0] == 'B') {
-          return label.substr(5);
-        } else {
-          return label;
-        }
-      }
-
       function replaceLabels(line, labelIds, toLabelId) {
         var ret = [];
         function process(item) {
@@ -461,7 +453,12 @@ function analyzer(data) {
         }
         if (!RELOOP) return emulated();
 
-        if (entries.length > 1) return emulated();
+        // === 'splitter' ===
+
+        if (entries.length > 1) {
+          return emulated();
+        }
+
         var entry = entries[0];
         assert(entry);
         dprint('relooping', 'makeBlock: ' + entry + ',' + labels.length + ' labels');
@@ -513,16 +510,12 @@ function analyzer(data) {
 
           // Verify that no external can reach an internal
           var inLabels = set(getLabelIds(internals));
-          var fail = false;
           externals.forEach(function(external) {
-            if (fail || values(setIntersect(external.outLabels, inLabels)).length > 0) {
-              fail = true;
+            if (values(setIntersect(external.outLabels, inLabels)).length > 0) {
+              dprint('relooping', 'Found an external that wants to reach an internal, fallback to |return emulated()|?');
+              throw "Spaghetti label flow";
             }
           });
-          if (fail) {
-            dprint('relooping', 'Found an external that wants to reach an internal, fallback to flow emulation');
-            return emulated();
-          }
 
           dprint('relooping', function() { return '   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels) });
 

@@ -29,7 +29,7 @@ def timeout_run(proc, timeout, note):
 class T(unittest.TestCase):
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
         if not no_build:
-          print 'Running test:', inspect.stack()[1][3], '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop' if RELOOP else '')
+          print 'Running test:', inspect.stack()[1][3], '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
         global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
@@ -68,7 +68,7 @@ class T(unittest.TestCase):
           output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
           if DEBUG: print output
           # Run Emscripten
-          emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d }' % (QUANTUM_SIZE, RELOOP)]
+          emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE)]
           out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
           timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
           output = open(filename + '.o.js').read()
@@ -829,7 +829,7 @@ class T(unittest.TestCase):
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
 # Generate tests for all our compilers
-def make_test(compiler, reloop):
+def make_test(compiler, embetter):
   class TT(T):
     def setUp(self):
       global COMPILER
@@ -837,11 +837,13 @@ def make_test(compiler, reloop):
       global QUANTUM_SIZE
       QUANTUM_SIZE = compiler['quantum_size']
       global RELOOP
-      RELOOP = reloop
+      RELOOP = embetter
+      global OPTIMIZE
+      OPTIMIZE = embetter
   return TT
-for reloop in [0,1]:
+for embetter in [0,1]:
   for name in COMPILERS.keys():
-    exec('T_%s_%d = make_test(COMPILERS["%s"],%d)' % (name, reloop, name, reloop))
+    exec('T_%s_%d = make_test(COMPILERS["%s"],%d)' % (name, embetter, name, embetter))
 del T # T is just a shape for the specific subclasses, we don't test it itself
 
 if __name__ == '__main__':

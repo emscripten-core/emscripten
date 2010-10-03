@@ -425,3 +425,11 @@ function getNativeFieldSize(field, alone) {
   return size;
 }
 
+function cleanLabel(label) {
+  if (label[0] == 'B') {
+    return label.substr(5);
+  } else {
+    return label;
+  }
+}
+

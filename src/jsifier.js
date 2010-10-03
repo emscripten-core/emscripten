@@ -291,7 +291,7 @@ function JSify(data) {
           }
           ret += '\n';
         } else if (block.type == 'reloop') {
-          ret += indent + block.entry + ': while(1) {\n';
+          ret += indent + block.entry + ': while(1) { // ' + block.entry + '\n';
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
           ret += walkBlock(block.outer, indent);
@@ -428,7 +428,7 @@ function JSify(data) {
     if (label[0] == 'B') {
       if (label[1] == 'R') {
         assert(oldLabel);
-        return '__label__ = ' + getLabelId(oldLabel) + '; /* ' + label + ' */' + // TODO: optimize away
+        return '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ ' + // TODO: optimize away
                'break ' + label.substr(5) + ';';
       } else if (label[1] == 'C') {
         return 'continue ' + label.substr(5) + ';';
@@ -436,7 +436,7 @@ function JSify(data) {
         return ';'; // Returning no text might confuse this parser
       }
     } else {
-      return '__label__ = ' + getLabelId(label) + '; /* ' + label + ' */ break;';
+      return '__label__ = ' + getLabelId(label) + '; /* ' + cleanLabel(label) + ' */ break;';
     }
   }
 
