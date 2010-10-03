@@ -500,7 +500,7 @@ function analyzer(data) {
 
         // === 'reloop' away a loop, if there is one ===
 
-        if (entries.length == 1 && canReturn) {
+        if (canReturn) {
           var ret = {
             type: 'reloop',
             entries: entries,
