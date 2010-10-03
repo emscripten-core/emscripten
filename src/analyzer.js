@@ -348,7 +348,7 @@ function analyzer(data) {
         labels.forEach(function(label) {
           label.lines.forEach(function(line) {
             function process(item) {
-              ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel'].forEach(function(id) {
+              ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
                 if (item[id]) {
                   if (item[id][0] == 'B') { // BREAK, BCONT, BNOPP
                     label.hasBreak = true;
@@ -460,7 +460,7 @@ function analyzer(data) {
         if (entries.length > 1) return emulated();
         var entry = entries[0];
         assert(entry);
-        dprint('relooping', 'Relooping: ' + entry + ',' + labels.length + ' labels');
+        dprint('relooping', 'makeBlock: ' + entry + ',' + labels.length + ' labels');
 
         var entryLabel = labelsDict[entry];
         assert(entryLabel);
@@ -469,11 +469,12 @@ function analyzer(data) {
 
         var canReturn = values(entryLabel.inLabels).length > 0;
 
+        labels = labels.filter(function(label) { return label === entryLabel || label.ident in entryLabel.allOutLabels }); // ignore unreachables
+
         // === (simple) 'emulated' ===
 
         if (!canReturn && values(entryLabel.outLabels).length == 1) {
           dprint('relooping', '   Creating simple emulated, outlabels: ' + keys(entryLabel.outLabels));
-          assertEq(lastLine.intertype, 'branch');
           var next = keys(entryLabel.outLabels)[0];
           if (next in exitLabels) {
             exitLabelsHit[next] = true;
@@ -505,6 +506,19 @@ function analyzer(data) {
           var externals = split_.splitOut;
           var internals = split_.leftIn;
           var currExitLabels = set(getLabelIds(externals));
+
+          // Verify that no external can reach an internal
+          var inLabels = set(getLabelIds(internals));
+          var fail = false;
+          externals.forEach(function(external) {
+            if (fail || values(setIntersect(external.outLabels, inLabels)).length > 0) {
+              fail = true;
+            }
+          });
+          if (fail) {
+            dprint('relooping', 'Found an external that wants to reach an internal, fallback to flow emulation');
+            return emulated();
+          }
 
           dprint('relooping', function() { return '   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels) });
 

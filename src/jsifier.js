@@ -260,6 +260,7 @@ function JSify(data) {
         if (!block.entry && block.entries.length == 1) block.entry = block.entries[0];
         dprint('relooping', 'walking block: ' + block.type + ',' + block.entry + ',' + block.entries + ' : ' + block.labels.length);
         function getLabelLines(label, indent) {
+          if (!label) return '';
           var ret = '';
           if (LABEL_DEBUG) {
             ret += indent + "print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
@@ -427,7 +428,7 @@ function JSify(data) {
     if (label[0] == 'B') {
       if (label[1] == 'R') {
         assert(oldLabel);
-        return '__label__ = ' + getLabelId(oldLabel) + '; ' + // TODO: optimize away
+        return '__label__ = ' + getLabelId(oldLabel) + '; /* ' + label + ' */' + // TODO: optimize away
                'break ' + label.substr(5) + ';';
       } else if (label[1] == 'C') {
         return 'continue ' + label.substr(5) + ';';
@@ -435,7 +436,7 @@ function JSify(data) {
         return ';'; // Returning no text might confuse this parser
       }
     } else {
-      return '__label__ = ' + getLabelId(label) + '; break;';
+      return '__label__ = ' + getLabelId(label) + '; /* ' + label + ' */ break;';
     }
   }
 

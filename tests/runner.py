@@ -69,7 +69,8 @@ class T(unittest.TestCase):
           if DEBUG: print output
           # Run Emscripten
           emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d }' % (QUANTUM_SIZE, RELOOP)]
-          timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 2400, 'Compiling')
+          out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
+          timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
           output = open(filename + '.o.js').read()
           if output_processor is not None:
               output_processor(output)
@@ -825,7 +826,6 @@ class T(unittest.TestCase):
       #              used, see Mozilla bug 593659.
       assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
 
-      # FIXME - hangs the compiler after an assert
       assert not RELOOP
 
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')

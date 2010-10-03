@@ -33,3 +33,5 @@ JS_ENGINE=SPIDERMONKEY_ENGINE
 
 JS_ENGINE_OPTS=[]
 
+OUTPUT_TO_SCREEN = 0 # useful for debugging specific tests, or for subjectively seeing what parts are slow
+

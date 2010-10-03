@@ -202,3 +202,14 @@ function setSub(x, y) {
   return ret;
 }
 
+// Intersection of 2 sets. Faster if |xx| << |yy|
+function setIntersect(x, y) {
+  var ret = {};
+  for (xx in x) {
+    if (xx in y) {
+      ret[xx] = true;
+    }
+  }
+  return ret;
+}
+

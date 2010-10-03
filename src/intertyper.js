@@ -559,7 +559,7 @@ function intertyper(data) {
         intertype: 'switch',
         type: item.tokens[1].text,
         ident: item.tokens[2].text,
-        defaultLabel: item.tokens[5].text,
+        defaultLabel: toNiceIdent(item.tokens[5].text),
         switchLabels: parseSwitchLabels(item.tokens[6]),
         lineNum: item.lineNum,
       }];
