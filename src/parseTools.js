@@ -48,6 +48,7 @@ function pointingLevels(type) {
 }
 
 function toNiceIdent(ident) {
+  assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
   return ident.replace(/[" \.@%:<>,\*]/g, '_');

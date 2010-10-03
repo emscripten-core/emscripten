@@ -244,6 +244,9 @@ function JSify(data) {
       func.JS += '  stackEnter();\n';
       if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
+      if (true) { // TODO: optimize away when not needed
+        func.JS += '  var __label__;\n';
+      }
       if (hasVarArgs) {
         func.JS += '  __numArgs__ = ' + params.length + ';\n';
       }
@@ -254,6 +257,8 @@ function JSify(data) {
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
         if (!block) return '';
+        if (!block.entry && block.entries.length == 1) block.entry = block.entries[0];
+        dprint('relooping', 'walking block: ' + block.type + ',' + block.entry + ',' + block.entries + ' : ' + block.labels.length);
         function getLabelLines(label, indent) {
           var ret = '';
           if (LABEL_DEBUG) {
@@ -269,25 +274,26 @@ function JSify(data) {
           return ret + label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
         }
         var ret = '';
-        if (block.type == 'emulated' || block.type == 'simple') {
+        if (block.type == 'emulated') {
           if (block.labels.length > 1) {
-            ret += indent + 'var __label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
+            if (block.entry) {
+              ret += indent + '__label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
+            } // otherwise, should have been set before!
             ret += indent + 'while(1) switch(__label__) {\n';
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n');
-            ret += '\n' + indent + '}';
+            ret += '\n' + indent + '  default: assert(0, "bad label: " + __label__);\n' + indent + '}';
           } else {
             ret += getLabelLines(block.labels[0], indent);
           }
           ret += '\n';
-        } else if (block.type == 'loop') {
-//            if (mustGetTo(first.outLabels[0], [first.ident, first.outLabels[1]])) { /* left branch must return here, or go to right branch */ 
+        } else if (block.type == 'reloop') {
           ret += indent + block.entry + ': while(1) {\n';
-          ret += walkBlock(block.inc, indent + '  ');
-          ret += walkBlock(block.rest, indent + '  ');
+          ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
+          ret += walkBlock(block.outer, indent);
         } else if (block.type == 'breakingif') {
           ret += walkBlock(block.check, indent);
           ret += indent + block.entry + ': do { if (' + block.ifVar + ') {\n';
@@ -417,10 +423,12 @@ function JSify(data) {
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
   }
 
-  function makeBranch(label) {
+  function makeBranch(label, oldLabel) {
     if (label[0] == 'B') {
       if (label[1] == 'R') {
-        return 'break ' + label.substr(5) + ';';
+        assert(oldLabel);
+        return '__label__ = ' + getLabelId(oldLabel) + '; ' + // TODO: optimize away
+               'break ' + label.substr(5) + ';';
       } else if (label[1] == 'C') {
         return 'continue ' + label.substr(5) + ';';
       } else { // NOPP
@@ -436,8 +444,8 @@ function JSify(data) {
     if (!item.ident) {
       return makeBranch(item.label);
     } else {
-      var labelTrue = makeBranch(item.labelTrue);
-      var labelFalse = makeBranch(item.labelFalse);
+      var labelTrue = makeBranch(item.labelTrue, item.old_labelTrue);
+      var labelFalse = makeBranch(item.labelFalse, item.old_labelFalse);
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + item.ident + ') { ';
       var head2 = 'if (!(' + item.ident + ')) { ';
@@ -462,11 +470,11 @@ function JSify(data) {
         first = false;
       }
       ret += 'if (' + item.ident + ' == ' + switchLabel.value + ') {\n';
-      ret += '  ' + makeBranch(switchLabel.label) + '\n';
+      ret += '  ' + makeBranch(switchLabel.label, switchLabel.old_label) + '\n';
       ret += '}\n';
     });
     ret += 'else {\n';
-    ret += makeBranch(item.defaultLabel) + '\n';
+    ret += makeBranch(item.defaultLabel, item.old_defaultLabel) + '\n';
     ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
@@ -490,7 +498,7 @@ function JSify(data) {
             + '__THREW__ = false } catch(e) { '
             + '__THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
-            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel) + ' } else { ' + makeBranch(item.unwindLabel) + ' }';
+            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.old_toLabel) + ' } else { ' + makeBranch(item.unwindLabel, item.old_unwindLabel) + ' }';
     return ret;
   });
   makeFuncLineZyme('load', function(item) {

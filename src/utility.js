@@ -145,6 +145,14 @@ function splitter(array, filter) {
 function dcheck(tag) {
   return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
 }
+DPRINT_INDENT = '';
+function dprint_indent() {
+  DPRINT_INDENT += '   ';
+}
+function dprint_unindent() {
+  DPRINT_INDENT = DPRINT_INDENT.substr(3);
+}
+
 function dprint() {
   var text;
   if (arguments[1]) {
@@ -153,7 +161,10 @@ function dprint() {
   } else {
     text = arguments[0];
   }
-  text = '// ' + text;
+  if (typeof text === 'function') {
+    text = text(); // Allows deferred calculation, so dprints don't slow us down when not needed
+  }
+  text = DPRINT_INDENT + '// ' + text;
   print(text);
 }
 
@@ -176,5 +187,18 @@ function mergeInto(obj, other) {
     obj[i] = other[i];
   }
   return obj;
+}
+
+// Sets
+
+set = searchable; // Create a 'set'
+function setSub(x, y) {
+  var ret = set(values(x));
+  for (yy in y) {
+    if (yy in ret) {
+      delete ret.yy;
+    }
+  }
+  return ret;
 }
 

@@ -22,7 +22,7 @@ def timeout_run(proc, timeout, note):
   while time.time() - start < timeout and proc.poll() is None:
     time.sleep(0.1)
   if proc.poll() is None:
-    proc.kill()
+    proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
     raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
@@ -69,7 +69,7 @@ class T(unittest.TestCase):
           if DEBUG: print output
           # Run Emscripten
           emscripten_settings = ['{ "QUANTUM_SIZE": %d }' % QUANTUM_SIZE]
-          timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 120, 'Compiling')
+          timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=open(filename + '.o.js', 'w'), stderr=STDOUT), 2400, 'Compiling')
           output = open(filename + '.o.js').read()
           if output_processor is not None:
               output_processor(output)

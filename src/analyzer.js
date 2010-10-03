@@ -298,10 +298,22 @@ function analyzer(data) {
 
       // Tools
 
-      function replaceLabels(line, labelId, toLabelId) {
+      function cleanLabel(label) {
+        if (label[0] == 'B') {
+          return label.substr(5);
+        } else {
+          return label;
+        }
+      }
+
+      function replaceLabels(line, labelIds, toLabelId) {
+        var ret = [];
         function process(item) {
           ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
-            if (item[id] && item[id] == labelId) {
+            if (item[id] && item[id] in labelIds) {
+              dprint('relooping', 'zz replace ' + item[id] + ' with ' + toLabelId);
+              ret.push(item[id]);
+              item['old_' + id] = item[id]; // Save it; we need this later for labels before breaks, when we have multiple entries later
               item[id] = toLabelId;
             }
           });
@@ -312,22 +324,15 @@ function analyzer(data) {
           process(line);
           line.switchLabels.forEach(process);
         }
+        return ret;
       }
 
-      function replaceLabelLabels(label, labelId, toLabelId) {
-        label.lines.forEach(function(line) { replaceLabels(line, labelId, toLabelId) });
-        return label;
-      }
-
-      function replaceInLabels(labels, toReplace, replaceWith) {
-        assertEq(!replaceWith || toReplace.length == 1, true); // TODO: implement other case
+      function replaceLabelLabels(labels, labelIds, toLabelId) {
+        ret = [];
         labels.forEach(function(label) {
-          ['inLabels'].forEach(function(l) {
-            label[l] = label[l].map(function(labelId) { return toReplace.indexOf(labelId) == -1 ? labelId : replaceWith})
-                               .filter(function(labelId) { return !!labelId });
-          });
+          ret = ret.concat(replaceLabels(label.lines[label.lines.length-1], labelIds, toLabelId));
         });
-        return labels;
+        return ret;
       }
 
       function calcLabelBranchingData(labels, labelsDict) {
@@ -368,8 +373,6 @@ function analyzer(data) {
         labels.forEach(function(label) {
           label.allInLabels = [];
           label.allOutLabels = [];
-          //! MustGetTo ignores return - |if (x) return; else Y| must get to Y.
-          label.mustGetHere = [];
         });
 
         var worked = true;
@@ -393,278 +396,145 @@ function analyzer(data) {
           });
         }
 
-        // Find all mustGetTos
-        labels.forEach(function(label) {
-          function walk(path, label) {
-            // If all we are is a break/return - then stop here. Otherwise, continue to other path
-            if (label.hasReturn || (label.hasBreak && label.outLabels.length == 0)) {
-              return [path.concat([label])]
-            };
-            if (path.indexOf(label) != -1) {
-              return []; // loop - drop this path
-            }
-            path = path.concat([label]);
-            return label.outLabels.map(function(outLabelId) { return walk(path, labelsDict[outLabelId]) })
-                        .reduce(function(a, b) { return a.concat(b) }, [])
-                        .filter(function(path) { return path.length > 0 });
-          }
-          var paths = walk([], label).map(function(path) { return getLabelIds(path) });
-          var possibles = dedup(paths.reduce(function(a,b) { return a.concat(b) }, []));
-          label.mustGetTo = possibles.filter(function(possible) {
-            return paths.filter(function(path) { return path.indexOf(possible) == -1 }) == 0;
-          }).filter(function(possible) { return possible != label.ident });
-        });
-
-        labels.forEach(function(label) {
-          label.mustGetTo.forEach(function (mustGetTo) {
-            labelsDict[mustGetTo].mustGetHere.push(label.ident);
-          });
-        });
-
         if (dcheck('relooping')) {
           labels.forEach(function(label) {
-            print('// label: ' + label.ident + ' :out      : ' + JSON.stringify(label.outLabels));
-            print('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
-            print('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
-            print('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
-            print('// ZZZZZZ ' + label.ident + ' must get to all of ' + JSON.stringify(label.mustGetTo) + '\n');
+            dprint('// label: ' + label.ident + ' :out      : ' + JSON.stringify(label.outLabels));
+            dprint('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
+            dprint('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
+            dprint('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
+
+            // Convert to searchables, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
+            // FIXME TODO XXX do we need all these?
+            label.outLabels = searchable(label.outLabels);
+            label.inLabels = searchable(label.inLabels);
+            label.allOutLabels = searchable(label.allOutLabels);
+            label.allInLabels = searchable(label.allInLabels);
           });
         }
       }
 
-/* // Disabled merging as it seems it just removes a return now and then.
-        function mergeLabels(label1Ident, label2Ident) {
-          var label1 = func.labelsDict[label1Ident];
-          var label2 = func.labelsDict[label2Ident];
-          label1.lines.pop();
-          label1.lines = label1.lines.concat(label2.lines);
-          label1.outLabels = label2.outLabels;
-          label2.lines = null;
-          func.labels = func.labels.filter(function(label) { return !!label.lines });
-          delete func.labelsDict[label2.ident];
-          replaceInLabels(func.labels, [label2.ident], label1.ident);
-        }
-
-        // Merge trivial labels
-        var worked = true;
-        while (worked) {
-          worked = false;
-          func.labels.forEach(function(label) {
-            if (label.lines === null) return; // We were deleted
-            if (label.outLabels.length == 1 &&
-                label.lines.slice(-1)[0].intertype == 'branch' &&
-                label.lines.slice(-1)[0].label == label.outLabels[0] &&
-                func.labelsDict[label.outLabels[0]].inLabels.length == 1) {
-              mergeLabels(label.ident, label.outLabels[0]);
-              worked = true;
-            }
-          });
-        }
-*/
-
-      // 'block': A self-enclosed part of the program, for example a loop or an if
-      function makeBlock(labels, entry, labelsDict) {
-        var def = {
-          type: 'emulated', // a block we cannot map to a nicer structure like a loop. We emulate it with a barbaric switch
-          labels: labels,
-          entry: entry,
-        };
-        if (!RELOOP) return def;
-
-        if (!entry) {
-          assertTrue(labels.length == 0);
-          return null; // Empty block - not even an entry
-        }
-
-        function getLastLine(block) {
-          if (!block) return null; // Completely empty block (probably had only a branch,
-                                   // which was optimized out)
-          dprint('relooping', 'get last line at: ' + block.labels[0].ident);
-          if (block.next) return getLastLine(block.next);
-          switch(block.type) {
-            case 'loop':
-              return getLastLine(block.rest);
-            case 'if':
-            case 'breakingif':
-              return getLastLine(block.ifTrue);
-            case 'emulated':
-            case 'simple':
-              if (block.labels.length == 1) {
-                return block.labels[0].lines.slice(-1)[0];
-              } else {
-                return null;
-              }
-          }
-        }
-        function getAll(fromId, beforeIds) {
-          beforeIds = beforeIds ? beforeIds : [];
-          if (beforeIds && beforeIds.indexOf(fromId) != -1) return [];
-          var from = labelsDict[fromId];
-          return dedup([from].concat(
-            from.outLabels.map(function(outLabel) { return getAll(outLabel, beforeIds.concat(fromId)) })
-                          .reduce(function(a,b) { return a.concat(b) }, [])
-          ), 'ident');
-        }
-        function isolate(label) {
-          label.inLabels = [];
-          label.outLabels = [];
-          return label;
-        }
-        dprint('relooping', "\n\n// XXX MAKEBLOCK " + entry + ', num labels: ' + labels.length + ' and they are: ' + getLabelIds(labels));
-        if (labels.length == 0 || !entry) {
-          dprint('relooping', '//empty labels or entry');
-          return;
-        }
-        function forLabelLines(labels, func) {
-          labels.forEach(function(label) {
-            label.lines.forEach(function(line) { func(line, label) });
-          });
-        }
-
-        // Begin
+      // There are X main kinds of blocks:
+      //
+      //  'emulated': A soup of labels, implemented as a barbaric switch in a loop
+      //
+      //  'reloop': That is a block of the following shape:
+      //
+      //       loopX: while(1) {
+      //         // internal labels, etc. Labels are internal to the current one, if
+      //         // they can return to it.
+      //         //
+      //         // Such labels can either do |continue loopX| to get back to the entry label,
+      //         // or set __label__ and do |break loopX| to get to any of the external entries
+      //         // they need to get to. External labels, of course, are those that cannot
+      //         // get to the entry
+      //       }
+      //       // external labels
+      //
+      //  'multiple': A block that branches into multiple subblocks, somehow.
+      //
+      // @param exitLabels Labels which we should not implement; our parent block will
+      //                   do them. These are the external labels for our parent. Note that
+      //                   they include BCONT etc., as the labels have been replaced to be that way.
+      // @param exitLabelsHit Exit labels which were actually encountered - we update that. XXX do we need this?!
+      function makeBlock(labels, entries, labelsDict, exitLabels, exitLabelsHit) {
+        dprint('relooping', 'prelooping: ' + entries + ',' + labels.length + ' labels');
+        assert(entries);
 
         calcLabelBranchingData(labels, labelsDict);
 
-        var split = splitter(labels, function(label) { return label.ident == entry });
-        var first = split.splitOut[0];
-        if (!first) {
-          dprint('relooping', "//no first line");
-          return;
-        }
-        var others = split.leftIn;
-        var lastLine = first.lines.slice(-1)[0];
-        dprint('relooping', "//     makeBlock " + entry + ' : ' + getLabelIds(labels) + ' IN: ' + first.inLabels + '   OUT: ' + first.outLabels);
-        // If we have one outgoing, and none incoming - make this a block of 1,
-        // and move on the others (forgetting ourself, so they are now also
-        // totally self-enclosed, once we start them)
-        if (first.inLabels.length == 0 && first.outLabels.length == 1) {
-          dprint('relooping', '   Creating simple emulated');
-          assertEq(lastLine.intertype, 'branch');
-//          assertEq(!!lastLine.label, true);
+        function emulated() {
+          labels.forEach(function(label) {
+            for (l in label.outLabels) {
+              exitLabelsHit[l] = true;
+            }
+          });
+          assert(entries[0]);
           return {
-            type: 'simple',
-            labels: [replaceLabelLabels(first, first.outLabels[0], 'BNOPP')],
-            entry: entry,
-            next: makeBlock(replaceInLabels(others, entry), first.outLabels[0], labelsDict),
+            type: 'emulated',
+            labels: labels,
+            entries: entries.slice(0),
           };
         }
-        // Looping structures - in some way, we can get back to here
-        if (first.outLabels.length > 0 && first.allInLabels.indexOf(entry) != -1) {
-          // Look for outsiders - labels no longer capable of getting here. Those must be
-          // outside the loop. Insiders are those that can get back to the entry
-          var split2 = splitter(others, function(label) { return label.allOutLabels.indexOf(entry) == -1 });
-          var outsiders = split2.splitOut;
-          var insiders = split2.leftIn;
-          // Hopefully exactly one of the outsiders is a 'pivot' - a label to which all those leaving
-          // the loop must go. Then even some |if (falala) { ... break; }| will get ...
-          // as an outsider, but it will actually still be in the loop
-          var pivots =
-            outsiders.filter(function(outsider) {
-              return insiders.filter(function(insider) {
-                return insider.mustGetTo.indexOf(outsider.ident) == -1;
-              }) == 0;
-            });
-          // Find the earliest pivot. They must be staggered, each leading to another,
-          // as all insiders must go through *all* of these. So we seek a pivot that
-          // is never reached by another pivot. That must be the one with fewest
-          // mustGetTo
-          var pivot = null;
-          if (pivots.length >= 1) {
-            pivots.sort(function(a, b) { return b.mustGetTo.length - a.mustGetTo.length });
-            pivot = pivots[0];
-            if (!(pivot.ident in searchable(first.outLabels))) {
-              // pivot must be right outside - no intermediates
-              // TODO: Handle this, so we can reloop a lot more stuff
-              pivot = null;
-            }
+        if (!RELOOP) return emulated();
+
+        if (entries.length > 1) return emulated();
+        var entry = entries[0];
+        assert(entry);
+        dprint('relooping', 'Relooping: ' + entry + ',' + labels.length + ' labels');
+
+        var entryLabel = labelsDict[entry];
+        assert(entryLabel);
+        var lastLine = entryLabel.lines.slice(-1)[0];
+        var others = labels.filter(function(label) { return label.ident != entry });
+
+        var canReturn = values(entryLabel.inLabels).length > 0;
+
+        // === (simple) 'emulated' ===
+
+        if (!canReturn && values(entryLabel.outLabels).length == 1) {
+          dprint('relooping', '   Creating simple emulated, outlabels: ' + keys(entryLabel.outLabels));
+          assertEq(lastLine.intertype, 'branch');
+          var next = keys(entryLabel.outLabels)[0];
+          if (next in exitLabels) {
+            exitLabelsHit[next] = true;
+            next = null;
+          } else {
+            replaceLabelLabels(others, searchable(entry));
           }
-          if (pivot) { // We have ourselves a loop
-            dprint('relooping', '   Creating LOOP : ' + entry + ' insiders: ' + getLabelIds(insiders) + ' to pivot: ' + pivot.ident);
-            var otherLoopLabels = insiders;
-            var loopLabels = insiders.concat([first]);
-            var nextLabels = outsiders;
-            // Rework branches out of the loop into new 'break' labels
-            forLabelLines(loopLabels, function(line) {
-              replaceLabels(line, pivot.ident, 'BREAK' + entry);
-            });
-            // Rework branches to the inc part of the loop into |continues|
-            forLabelLines(loopLabels, function(line, label) {
-              if (0) {// XXX - make this work :label.outLabels.length == 1 && label.outLabels[0] == entry && !label.hasBreak && !label.hasReturn) {
-                      //       it can remove unneeded continues (but does too much right now, as the continue might have been
-                      //       placed into an emulated while(1) switch { }
-                replaceLabels(line, entry, 'BNOPP');
-              } else {
-                replaceLabels(line, entry, 'BCONT' + entry);
-              }
-            });
-            // Fix inc branch into rest
-            var nextEntry = null;
-            first.outLabels.forEach(function(outLabel) {
-              if (outLabel != pivot.ident) {
-                replaceLabels(lastLine, outLabel, 'BNOPP');
-                nextEntry = outLabel;
-              }
-            });
-            if (nextEntry == entry) { // We loop back to ourselves, the entire loop is just us
-              nextEntry = null;
-            }
-            dprint('relooping', "Entry into next: " + nextEntry);
-            var ret = {
-              type: 'loop',
-              labels: loopLabels,
-              entry: entry,
-              inc: makeBlock([isolate(first)], entry, labelsDict),
-              rest: makeBlock(replaceInLabels(otherLoopLabels, entry), nextEntry, labelsDict),
-            };
-            dprint('relooping', '  getting last line for block starting with ' + entry + ' and nextEntry: ' + nextEntry);
-            var lastLoopLine = getLastLine(nextEntry ? ret.rest : ret.inc);
-            if (lastLoopLine) {
-              replaceLabels(lastLoopLine, 'BCONT' + entry, 'BNOPP'); // Last line will feed back into the loop anyhow
-            }
-            ret.next = makeBlock(replaceInLabels(nextLabels, getLabelIds(loopLabels)), pivot.ident, labelsDict);
-            return ret;
-          }
+          dprint('relooping', '      next: ' + next);
+          replaceLabelLabels([entryLabel], searchable(next), 'BNOPP'); // remove unneeded branch
+          return {
+            type: 'emulated',
+            labels: [entryLabel],
+            entry: entry,
+            next: next ? makeBlock(others, [next], labelsDict, exitLabels, exitLabelsHit) : null,
+          };
         }
 
-        // Try an 'if' structure
-        if (first.outLabels.length == 2) {
-          if (labelsDict[first.outLabels[1]].mustGetTo.indexOf(first.outLabels[0]) != -1) {
-            first.outLabels.push(first.outLabels.shift()); // Reverse order - normalize. Very fast check anyhow
-          }
-          if (labelsDict[first.outLabels[0]].mustGetTo.indexOf(first.outLabels[1]) != -1) {
-            var ifLabelId = first.outLabels[0];
-            var outLabelId = first.outLabels[1];
-            // 0 - the if area. 1 - where we all exit to later
-            var ifTrueLabels = getAll(ifLabelId, [outLabelId]);
-            var ifLabels = ifTrueLabels.concat([first]);
-            var nextLabels = getAll(outLabelId);
-            // If we can get to the outside in more than 2 ways (one from if, one from True clause) - have breaks
-            var breaking = labelsDict[outLabelId].allInLabels.length > 2;
-            dprint('relooping', '   Creating XXX IF: ' + getLabelIds(ifTrueLabels) + ' to ' + outLabelId + ' ==> ' + getLabelIds(nextLabels) + ' breaking: ' + breaking);
-            if (breaking) {
-              // Rework branches out of the if into new 'break' labels
-              forLabelLines(ifTrueLabels, function(line) {
-                replaceLabels(line, outLabelId, 'BREAK' + entry);
-              });
-            }
-            // Remove branching op - we will do it manually
-            replaceLabels(lastLine, ifLabelId, 'BNOPP');
-            replaceLabels(lastLine, outLabelId, 'BNOPP');
-            return {
-              type: (breaking ? 'breaking' : '') + 'if',
-              labels: ifLabels,
-              entry: entry,
-              ifVar: lastLine.ident,
-              check: makeBlock([isolate(first)], entry, labelsDict),
-              ifTrue: makeBlock(replaceInLabels(ifTrueLabels, entry), ifLabelId, labelsDict),
-              next: makeBlock(replaceInLabels(nextLabels, getLabelIds(ifLabels)), outLabelId, labelsDict),
-            };
-          }
+        // === 'reloop' away a loop, if there is one ===
+
+        if (canReturn) {
+          var ret = {
+            type: 'reloop',
+            entry: entry,
+            labels: labels,
+          };
+
+          // Find internal and external labels
+          var split_ = splitter(labels, function(label) { return !(entry in label.allOutLabels) });
+          var externals = split_.splitOut;
+          var internals = split_.leftIn;
+          var currExitLabels = set(getLabelIds(externals));
+
+          dprint('relooping', function() { return '   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels) });
+
+          replaceLabelLabels(internals, searchable(entry), 'BCONT' + entry); // we will be in a loop, |continue| gets us back to the entry
+          dprint('relooping', 'for exit purposes, Replacing: ' + dump(currExitLabels));
+          var enteredExitLabels = replaceLabelLabels(internals, currExitLabels, 'BREAK' + entry); // to get to any of our (not our parents') exit labels,
+                                                                                                  // we will break.
+          dprint('relooping', dump(currExitLabels) + ' enteredExitLabels: ' + dump(enteredExitLabels));
+          enteredExitLabels = enteredExitLabels.map(cleanLabel);
+          dprint('relooping', ' enteredExitLabels: ' + dump(enteredExitLabels));
+
+          // inner
+          var allExitLabels = mergeInto(set(currExitLabels), exitLabels);
+          var currExitLabelsHit = {};
+          ret.inner = makeBlock(internals, [entry], labelsDict, allExitLabels, currExitLabelsHit);
+
+          // outer
+          ret.outer = makeBlock(externals, enteredExitLabels, labelsDict, exitLabels, currExitLabelsHit);
+          mergeInto(exitLabelsHit, setSub(currExitLabelsHit, currExitLabels)); // Don't really need setSub, but nicer
+
+          return ret;
         }
+
+        // === handle multiple branches from the entry with a 'multiple' ===
+
+        // TODO
 
         // Give up on this structure - emulate it
         dprint('relooping', '   Creating complex emulated');
-        return def;
+        return emulated();
       }
 
       // TODO: each of these can be run in parallel
@@ -674,7 +544,7 @@ function analyzer(data) {
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
         });
-        func.block = makeBlock(func.labels, toNiceIdent('%entry'), func.labelsDict);
+        func.block = makeBlock(func.labels, [toNiceIdent('%entry')], func.labelsDict, {}, {});
       });
 
       return finish();
