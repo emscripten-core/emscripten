@@ -270,9 +270,13 @@ function JSify(data) {
           }
           // for special labels we care about (for phi), mark that we visited them
           if (func.remarkableLabels.indexOf(label.ident) >= 0) {
-            ret += '      __lastLabel__ = ' + getLabelId(label.ident) + ';\n';
+            ret += indent + '__lastLabel__ = ' + getLabelId(label.ident) + ';\n';
           }
-          return ret + label.lines.map(function(line) { return indent + line.JS + (line.comment ? ' // ' + line.comment : '') }).join('\n');
+          return ret + label.lines.map(function(line) { return line.JS + (line.comment ? ' // ' + line.comment : '') })
+                                  .join('\n')
+                                  .split('\n') // some lines include line breaks
+                                  .map(function(line) { return indent + line })
+                                  .join('\n');
         }
         var ret = '';
         if (block.type == 'emulated') {
