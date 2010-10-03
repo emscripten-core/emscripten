@@ -257,8 +257,8 @@ function JSify(data) {
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
         if (!block) return '';
-        if (!block.entry && block.entries.length == 1) block.entry = block.entries[0];
-        dprint('relooping', 'walking block: ' + block.type + ',' + block.entry + ',' + block.entries + ' : ' + block.labels.length);
+        block.entry = block.entries[0];
+        dprint('relooping', 'walking block: ' + block.type + ',' + block.entries + ' : ' + block.labels.length);
         function getLabelLines(label, indent) {
           if (!label) return '';
           var ret = '';
@@ -277,7 +277,7 @@ function JSify(data) {
         var ret = '';
         if (block.type == 'emulated') {
           if (block.labels.length > 1) {
-            if (block.entry) {
+            if (block.entries.length == 1) {
               ret += indent + '__label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
             } // otherwise, should have been set before!
             ret += indent + 'while(1) switch(__label__) {\n';
@@ -431,7 +431,8 @@ function JSify(data) {
         return '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ ' + // TODO: optimize away
                'break ' + label.substr(5) + ';';
       } else if (label[1] == 'C') {
-        return 'continue ' + label.substr(5) + ';';
+        return '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ ' + // TODO: optimize away
+               'continue ' + label.substr(5) + ';';
       } else { // NOPP
         return ';'; // Returning no text might confuse this parser
       }
@@ -443,7 +444,7 @@ function JSify(data) {
   makeFuncLineZyme('branch', function(item) {
     //print('branch: ' + dump(item));
     if (!item.ident) {
-      return makeBranch(item.label);
+      return makeBranch(item.label, item.old_label);
     } else {
       var labelTrue = makeBranch(item.labelTrue, item.old_labelTrue);
       var labelFalse = makeBranch(item.labelFalse, item.old_labelFalse);

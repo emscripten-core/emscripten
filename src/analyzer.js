@@ -303,9 +303,10 @@ function analyzer(data) {
         function process(item) {
           ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
             if (item[id] && item[id] in labelIds) {
-              dprint('relooping', 'zz replace ' + item[id] + ' with ' + toLabelId);
               ret.push(item[id]);
+              assert(!item['old_' + id]);
               item['old_' + id] = item[id]; // Save it; we need this later for labels before breaks, when we have multiple entries later
+              dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId + '; old: ' + item['old_' + id]);
               item[id] = toLabelId;
             }
           });
@@ -492,7 +493,7 @@ function analyzer(data) {
           return {
             type: 'emulated',
             labels: [entryLabel],
-            entry: entry,
+            entries: entries,
             next: next ? makeBlock(others, [next], labelsDict, exitLabels, exitLabelsHit) : null,
           };
         }
@@ -527,7 +528,7 @@ function analyzer(data) {
 
           // We will be in a loop, |continue| gets us back to the entry
           entries.forEach(function(entry) {
-            replaceLabelLabels(internals, searchable(entry), 'BCONT' + entries[0]); // entries[0] is the name of the loop, see walkBlock
+            replaceLabelLabels(internals, searchable(entries), 'BCONT' + entries[0]); // entries[0] is the name of the loop, see walkBlock
           });
 
           // To get to any of our (not our parents') exit labels, we will break.
