@@ -435,27 +435,27 @@ function analyzer(data) {
       // @param exitLabelsHit Exit labels which were actually encountered - we update that. XXX do we need this?!
       function makeBlock(labels, entries, labelsDict, exitLabels, exitLabelsHit) {
         dprint('relooping', 'prelooping: ' + entries + ',' + labels.length + ' labels');
-        assert(entries);
+        assert(entries && entries[0]); // need at least 1 entry
 
-        calcLabelBranchingData(labels, labelsDict);
+        var emulated = {
+          type: 'emulated',
+          labels: labels,
+          entries: entries.slice(0),
+        };
+        if (!RELOOP) return emulated;
 
-        function emulated() {
+        function getEmulated() {
           labels.forEach(function(label) {
             for (l in label.outLabels) {
               exitLabelsHit[l] = true;
             }
           });
-          assert(entries[0]);
-          return {
-            type: 'emulated',
-            labels: labels,
-            entries: entries.slice(0),
-          };
+          return emulated;
         }
-        if (!RELOOP) return emulated();
+
+        calcLabelBranchingData(labels, labelsDict);
 
         var s_entries = searchable(entries);
-        assert(entries[0]); // need at least 1 entry
         dprint('relooping', 'makeBlock: ' + entries + ',' + labels.length + ' labels');
 
         var entryLabels = entries.map(function(entry) { return labelsDict[entry] });
@@ -521,7 +521,7 @@ function analyzer(data) {
           var inLabels = set(getLabelIds(internals));
           externals.forEach(function(external) {
             if (values(setIntersect(external.outLabels, inLabels)).length > 0) {
-              dprint('relooping', 'Found an external that wants to reach an internal, fallback to |return emulated()|?');
+              dprint('relooping', 'Found an external that wants to reach an internal, fallback to emulated?');
               throw "Spaghetti label flow";
             }
           });
@@ -563,7 +563,7 @@ function analyzer(data) {
 
         // Give up on this structure - emulate it
         dprint('relooping', '   Creating complex emulated');
-        return emulated();
+        return getEmulated();
       }
 
       // TODO: each of these can be run in parallel
