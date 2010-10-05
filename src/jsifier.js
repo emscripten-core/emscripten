@@ -254,10 +254,13 @@ function JSify(data) {
         func.JS += '  __lastLabel__ = null;\n';
       }
 
+      var usedLabels = {}; // We can get a loop and inside it a multiple, which will try to use the same
+                           // label for their loops (until we remove loops from multiples! TODO). So, just
+                           // do not use the label twice, that will prevent that
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
         if (!block) return '';
-        block.entry = block.entries[0];
+        block.entry = block.entries[0]; // convention: first entry is the representative
         dprint('relooping', 'walking block: ' + block.type + ',' + block.entries + ' : ' + block.labels.length);
         function getLabelLines(label, indent) {
           if (!label) return '';
@@ -295,6 +298,7 @@ function JSify(data) {
           }
           ret += '\n';
         } else if (block.type == 'reloop') {
+          usedLabels[block.entry] = 1;
           ret += indent + block.entry + ': while(1) { // ' + block.entry + '\n';
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
@@ -309,8 +313,20 @@ function JSify(data) {
           ret += indent + 'if (' + block.ifVar + ') {\n';
           ret += walkBlock(block.ifTrue, indent + '  ');
           ret += indent + '}\n';
+        } else if (block.type == 'multiple') {
+          // TODO: Remove the loop here
+          var first = true;
+          ret += indent + ((block.entry in usedLabels) ? '' : (block.entry+':')) + ' do { \n';
+          block.entryLabels.forEach(function(entryLabel) {
+            ret += indent + (first ? '' : '  else ') + '  if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
+            ret += walkBlock(entryLabel.block, indent + '    ');
+            ret += indent + '  }\n';
+            first = false;
+          });
+          ret += indent + '  else { throw "Bad multiple branching: " + __label__ + " : " + (new Error().stack); }\n';
+          ret += indent + '} while(0);\n';
         } else {
-          ret = 'XXXXXXXXX!';
+          throw "Walked into an invalid block type: " + block.type;
         }
         return ret + walkBlock(block.next, indent);
       }
@@ -428,17 +444,22 @@ function JSify(data) {
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
   }
 
+  // TODO: remove 'oldLabel', store that inside the label: BXXX|Labeltobreak|Labeltogetto
   function makeBranch(label, oldLabel) {
     if (label[0] == 'B') {
+      var labelSetting = '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ '; // TODO: optimize away
+      var trueLabel = label.substr(5);
+      assert(oldLabel);
       if (label[1] == 'R') {
-        assert(oldLabel);
-        return '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ ' + // TODO: optimize away
-               'break ' + label.substr(5) + ';';
-      } else if (label[1] == 'C') {
-        return '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ ' + // TODO: optimize away
-               'continue ' + label.substr(5) + ';';
-      } else { // NOPP
+        return labelSetting + 'break ' + trueLabel + ';';
+      } else if (label[1] == 'C') { // CONT
+        return labelSetting + 'continue ' + trueLabel + ';';
+      } else if (label[1] == 'N') { // NOPP
         return ';'; // Returning no text might confuse this parser
+      } else if (label[1] == 'J') { // JSET
+        return labelSetting;
+      } else {
+        throw 'Invalid B-op in branch: ' + trueLabel + ',' + oldLabel;
       }
     } else {
       return '__label__ = ' + getLabelId(label) + '; /* ' + cleanLabel(label) + ' */ break;';

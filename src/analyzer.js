@@ -401,6 +401,7 @@ function analyzer(data) {
             dprint('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
 
             // Convert to searchables, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
+            // Also removes duplicates (which we can get in llvm switches)
             // FIXME TODO XXX do we need all these?
             label.outLabels = searchable(label.outLabels);
             label.inLabels = searchable(label.inLabels);
@@ -412,7 +413,10 @@ function analyzer(data) {
 
       // There are X main kinds of blocks:
       //
-      //  'emulated': A soup of labels, implemented as a barbaric switch in a loop
+      //----------------------------------------------------------------------------------------
+      //
+      //  'emulated': A soup of labels, implemented as a barbaric switch in a loop. Any
+      //              label can get to any label. No block follows this.
       //
       //  'reloop': That is a block of the following shape:
       //
@@ -427,13 +431,19 @@ function analyzer(data) {
       //       }
       //       // external labels
       //
-      //  'multiple': A block that branches into multiple subblocks, somehow.
+      //  'multiple': A block that branches into multiple subblocks, each independent,
+      //              finally leading outside into another block afterwards
+      //              For now, we do this in a loop, so we can break out of it easily to get
+      //              to the labels afterwards. TODO: Optimize that out
       //
-      // @param exitLabels Labels which we should not implement; our parent block will
-      //                   do them. These are the external labels for our parent. Note that
-      //                   they include BCONT etc., as the labels have been replaced to be that way.
-      // @param exitLabelsHit Exit labels which were actually encountered - we update that. XXX do we need this?!
+      //----------------------------------------------------------------------------------------
+      //!
+      //! @param exitLabels Labels which we should not implement; our parent block will
+      //!                   do them. These are the external labels for our parent. Note that
+      //!                   they include BCONT etc., as the labels have been replaced to be that way.
+      //! @param exitLabelsHit Exit labels which were actually encountered - we update that. XXX do we need this?!
       function makeBlock(labels, entries, labelsDict, exitLabels, exitLabelsHit) {
+        if (labels.length == 0) return null;
         dprint('relooping', 'prelooping: ' + entries + ',' + labels.length + ' labels');
         assert(entries && entries[0]); // need at least 1 entry
 
@@ -461,9 +471,11 @@ function analyzer(data) {
         var entryLabels = entries.map(function(entry) { return labelsDict[entry] });
         assert(entryLabels[0]);
 
-        var canReturn = false;
+        var canReturn = false, mustReturn = true;
         entryLabels.forEach(function(entryLabel) {
-          canReturn = canReturn || values(entryLabel.inLabels).length > 0;
+          var curr = values(entryLabel.inLabels).length > 0;
+          canReturn = canReturn || curr;
+          mustReturn = mustReturn && curr;
         });
 
         // Remove unreachables
@@ -475,28 +487,30 @@ function analyzer(data) {
 
         // === (simple) 'emulated' ===
 
-        if (entries.length == 1 && !canReturn && values(entryLabels[0].outLabels).length == 1) {
+        if (entries.length == 1 && !canReturn) {
           var entry = entries[0];
           var entryLabel = entryLabels[0];
           var others = labels.filter(function(label) { return label.ident != entry });
 
-          dprint('relooping', '   Creating simple emulated, outlabels: ' + keys(entryLabel.outLabels));
-          var next = keys(entryLabel.outLabels)[0];
-          if (next in exitLabels) {
-            exitLabelsHit[next] = true;
-            next = null;
-          } else {
-            replaceLabelLabels(others, searchable(entry));
-          }
-          dprint('relooping', '      next: ' + next);
-          replaceLabelLabels([entryLabel], searchable(next), 'BNOPP'); // remove unneeded branch
+          var nextEntries = keys(entryLabel.outLabels);
+          dprint('relooping', '   Creating simple emulated, outlabels: ' + nextEntries);
+//          if (nextEntries.length == 1) {
+//            replaceLabelLabels([entryLabel], set(nextEntries), 'BNOPP'); // remove unneeded branch
+//          } else {
+            nextEntries.forEach(function(nextEntry) {
+              replaceLabelLabels([entryLabel], set(nextEntry), 'BJSET' + nextEntry); // Just SET __label__ - no break or continue or whatnot
+            });
+ //         }
           return {
             type: 'emulated',
             labels: [entryLabel],
             entries: entries,
-            next: next ? makeBlock(others, [next], labelsDict, exitLabels, exitLabelsHit) : null,
+            next: makeBlock(others, keys(entryLabel.outLabels), labelsDict, exitLabels, exitLabelsHit),
           };
         }
+
+
+
 
         // === 'reloop' away a loop, if there is one ===
 
@@ -557,13 +571,83 @@ function analyzer(data) {
           return ret;
         }
 
+
+
+
         // === handle multiple branches from the entry with a 'multiple' ===
+        //
+        // We cannot loop back to the entries, but aside from that we know nothing. We
+        // try to create as much structure as possible, leaving subblocks to be |emulated|
+        // if we can't do any better.
 
-        // TODO
+        // For each entry, try to 'build it out' as much as possible. Add labels, until
+        //    * hit a post label
+        //    * hit a label reachable by another actual entry
 
-        // Give up on this structure - emulate it
-        dprint('relooping', '   Creating complex emulated');
-        return getEmulated();
+        dprint('relooping', 'trying multiple...');
+
+        var shouldNotReach = entryLabels;
+        var handlingNow = [];
+        var actualEntryLabels = [];
+        var postEntryLabels = {};
+        entryLabels.forEach(function(entryLabel) {
+          entryLabel.blockChildren = [];
+          var visited = {};
+          function tryAdd(label) {
+            if (label.ident in visited) return;
+            visited[label.ident] = true;
+            function isReachable(label, otherLabels, ignoreLabel) { // is label reachable by otherLabels, ignoring ignoreLabel in those otherLabels
+              var reachable = false;
+              otherLabels.forEach(function(otherLabel) {
+                reachable = reachable || (otherLabel !== ignoreLabel && label.ident in otherLabel.allOutLabels);
+              });
+              return reachable;
+            }
+
+            if (!isReachable(label, shouldNotReach, entryLabel)) {
+              entryLabel.blockChildren.push(label);
+              handlingNow.push(label);
+              keys(label.outLabels).forEach(function(outLabelId) { tryAdd(labelsDict[outLabelId]) });
+            } else {
+              postEntryLabels[label.ident] = true; // This will be an entry in the next block
+            }
+          }
+          tryAdd(entryLabel);
+          if (entryLabel.blockChildren.length > 0) {
+            dprint('relooping', '  Considering multiple, found a valid entry, ' + entryLabel.ident);
+            actualEntryLabels.push(entryLabel);
+          }
+        });
+
+        dprint('relooping', '  Considering multiple, canHandle: ' + getLabelIds(handlingNow));
+
+        if (handlingNow.length == 0) {
+          // spaghetti - cannot even find a single label to do before the rest. What a mess.
+          dprint('relooping', '   Creating complex emulated');
+          return getEmulated();
+        }
+
+        // This is a 'multiple'
+
+        var actualEntries = getLabelIds(actualEntryLabels);
+        dprint('relooping', '   Creating multiple, with entries: ' + actualEntries + ', post entries: ' + dump(postEntryLabels));
+        actualEntryLabels.forEach(function(actualEntryLabel) {
+          dprint('relooping', '      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
+
+          // TODO: Move this into BJSET
+          keys(postEntryLabels).forEach(function(post) {
+            replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK' + actualEntries[0]);
+          });
+          // Create child block
+          actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict, {}, {});
+        });
+        return {
+          type: 'multiple',
+          entries: actualEntries,
+          entryLabels: actualEntryLabels,
+          labels: handlingNow,
+          next: makeBlock(labels.filter(function(label) { return handlingNow.indexOf(label) == -1 }), keys(postEntryLabels), labelsDict, {}, {}),
+        };
       }
 
       // TODO: each of these can be run in parallel
