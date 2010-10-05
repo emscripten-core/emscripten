@@ -436,13 +436,7 @@ function analyzer(data) {
       //              For now, we do this in a loop, so we can break out of it easily to get
       //              to the labels afterwards. TODO: Optimize that out
       //
-      //----------------------------------------------------------------------------------------
-      //!
-      //! @param exitLabels Labels which we should not implement; our parent block will
-      //!                   do them. These are the external labels for our parent. Note that
-      //!                   they include BCONT etc., as the labels have been replaced to be that way.
-      //! @param exitLabelsHit Exit labels which were actually encountered - we update that. XXX do we need this?!
-      function makeBlock(labels, entries, labelsDict, exitLabels, exitLabelsHit) {
+      function makeBlock(labels, entries, labelsDict) {
         if (labels.length == 0) return null;
         dprint('relooping', 'prelooping: ' + entries + ',' + labels.length + ' labels');
         assert(entries && entries[0]); // need at least 1 entry
@@ -453,15 +447,6 @@ function analyzer(data) {
           entries: entries.slice(0),
         };
         if (!RELOOP) return emulated;
-
-        function getEmulated() {
-          labels.forEach(function(label) {
-            for (l in label.outLabels) {
-              exitLabelsHit[l] = true;
-            }
-          });
-          return emulated;
-        }
 
         calcLabelBranchingData(labels, labelsDict);
 
@@ -505,7 +490,7 @@ function analyzer(data) {
             type: 'emulated',
             labels: [entryLabel],
             entries: entries,
-            next: makeBlock(others, keys(entryLabel.outLabels), labelsDict, exitLabels, exitLabelsHit),
+            next: makeBlock(others, keys(entryLabel.outLabels), labelsDict),
           };
         }
 
@@ -558,14 +543,11 @@ function analyzer(data) {
           }
 
           // inner
-          var allExitLabels = mergeInto(set(currExitLabels), exitLabels);
-          var currExitLabelsHit = {};
-          ret.inner = makeBlock(internals, entries, labelsDict, allExitLabels, currExitLabelsHit);
+          ret.inner = makeBlock(internals, entries, labelsDict);
 
           if (externals.length > 0) {
             // outer
-            ret.outer = makeBlock(externals, enteredExitLabels, labelsDict, exitLabels, currExitLabelsHit);
-            mergeInto(exitLabelsHit, setSub(currExitLabelsHit, currExitLabels)); // Don't really need setSub, but nicer
+            ret.outer = makeBlock(externals, enteredExitLabels, labelsDict);
           }
 
           return ret;
@@ -624,7 +606,7 @@ function analyzer(data) {
         if (handlingNow.length == 0) {
           // spaghetti - cannot even find a single label to do before the rest. What a mess.
           dprint('relooping', '   Creating complex emulated');
-          return getEmulated();
+          return emulated;
         }
 
         // This is a 'multiple'
@@ -639,14 +621,14 @@ function analyzer(data) {
             replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK' + actualEntries[0]);
           });
           // Create child block
-          actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict, {}, {});
+          actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict);
         });
         return {
           type: 'multiple',
           entries: actualEntries,
           entryLabels: actualEntryLabels,
           labels: handlingNow,
-          next: makeBlock(labels.filter(function(label) { return handlingNow.indexOf(label) == -1 }), keys(postEntryLabels), labelsDict, {}, {}),
+          next: makeBlock(labels.filter(function(label) { return handlingNow.indexOf(label) == -1 }), keys(postEntryLabels), labelsDict),
         };
       }
 
@@ -657,7 +639,7 @@ function analyzer(data) {
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
         });
-        func.block = makeBlock(func.labels, [toNiceIdent('%entry')], func.labelsDict, {}, {});
+        func.block = makeBlock(func.labels, [toNiceIdent('%entry')], func.labelsDict);
       });
 
       return finish();
