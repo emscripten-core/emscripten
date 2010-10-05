@@ -37,8 +37,10 @@ START_TIME = Date.now();
 
 function assert(condition, text) {
   if (!condition) {
-    print('Assertion failed: ' + text + ':\n' + (new Error).stack);
-    throw "Assertion";
+    var text = "Assertion failed: " + text;
+    print(text + ':\n' + (new Error).stack);
+    if (this[alert]) alert(text)
+    throw "Assertion: " + text;
   }
 }
 
@@ -145,10 +147,10 @@ function __initializeRuntime__() {
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                        // Also this ensures we leave 0 as an invalid address, 'NULL'
 
-  if (!this['TOTAL_STATIC']) TOTAL_STATIC = 64*1024; // Reserved room for static allocation
+  if (!this['TOTAL_STATIC']) TOTAL_STATIC = 64*1024*100; // Reserved room for static allocation
   STATICROOT = STATICTOP = alignMemoryPage(HEAP.length);
 
-  if (!this['TOTAL_STACK']) TOTAL_STACK = 64*1024; // Reserved room for stack
+  if (!this['TOTAL_STACK']) TOTAL_STACK = 64*1024*10; // Reserved room for stack
   STACK_STACK = [];
   STACKROOT = STACKTOP = alignMemoryPage(STATICROOT + TOTAL_STATIC);
 
