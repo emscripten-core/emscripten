@@ -476,13 +476,14 @@ function analyzer(data) {
 
           var nextEntries = keys(entryLabel.outLabels);
           dprint('relooping', '   Creating simple emulated, outlabels: ' + nextEntries);
-//          if (nextEntries.length == 1) {
-//            replaceLabelLabels([entryLabel], set(nextEntries), 'BNOPP'); // remove unneeded branch
-//          } else {
+          if (nextEntries.length == 1) {
+            replaceLabelLabels([entryLabel], set(nextEntries), 'BNOPP'); // remove unneeded branch XXX - this is dangerous, as we may
+                                                                         // have 1 next entry, but 1 or more B-labels...
+          } else {
             nextEntries.forEach(function(nextEntry) {
               replaceLabelLabels([entryLabel], set(nextEntry), 'BJSET' + nextEntry); // Just SET __label__ - no break or continue or whatnot
             });
- //         }
+          }
           return {
             type: 'emulated',
             labels: [entryLabel],
@@ -604,6 +605,7 @@ function analyzer(data) {
           // spaghetti - cannot even find a single label to do before the rest. What a mess.
           // TODO: try a loop, if possible?
           dprint('relooping', '   WARNING: Creating complex emulated');
+          throw "Spaghetti encountered in relooping."
           return emulated;
         }
 
