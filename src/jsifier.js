@@ -323,7 +323,9 @@ function JSify(data) {
             ret += indent + '  }\n';
             first = false;
           });
-          ret += indent + '  else { throw "Bad multiple branching: " + __label__ + " : " + (new Error().stack); }\n';
+          if (GUARD_LABELS) {
+            ret += indent + '  else { throw "Bad multiple branching: " + __label__ + " : " + (new Error().stack); }\n';
+          }
           ret += indent + '} while(0);\n';
         } else {
           throw "Walked into an invalid block type: " + block.type;

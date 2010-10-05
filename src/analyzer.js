@@ -298,20 +298,16 @@ function analyzer(data) {
 
       // Tools
 
-      function replaceLabels(line, labelIds, toLabelId) {
-        var ret = [];
-        function process(item) {
+      var BRANCH_INVOKE = searchable('branch', 'invoke');
+      function operateOnLabels(line, func) {
+        function process(item, id) {
           ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
-            if (item[id] && item[id] in labelIds) {
-              ret.push(item[id]);
-              assert(!item['old_' + id]);
-              item['old_' + id] = item[id]; // Save it; we need this later for labels before breaks, when we have multiple entries later
-              dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId + '; old: ' + item['old_' + id]);
-              item[id] = toLabelId;
+            if (item[id]) {
+              func(item, id);
             }
           });
         }
-        if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
+        if (line.intertype in BRANCH_INVOKE) {
           process(line);
         } else if (line.intertype == 'assign' && line.value.intertype == 'invoke') {
           process(line.value);
@@ -319,6 +315,19 @@ function analyzer(data) {
           process(line);
           line.switchLabels.forEach(process);
         }
+      }
+
+      function replaceLabels(line, labelIds, toLabelId) {
+        var ret = [];
+        operateOnLabels(line, function process(item, id) {
+          if (item[id] in labelIds) {
+            ret.push(item[id]);
+            assert(!item['old_' + id]);
+            item['old_' + id] = item[id]; // Save it; we need this later for labels before breaks, when we have multiple entries later
+            dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId + '; old: ' + item['old_' + id]);
+            item[id] = toLabelId;
+          }
+        });
         return ret;
       }
 
@@ -342,26 +351,14 @@ function analyzer(data) {
         // Find direct branchings
         labels.forEach(function(label) {
           label.lines.forEach(function(line) {
-            function process(item) {
-              ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
-                if (item[id]) {
-                  if (item[id][0] == 'B') { // BREAK, BCONT, BNOPP
-                    label.hasBreak = true;
-                  } else {
-                    label.outLabels.push(item[id]);
-                    labelsDict[item[id]].inLabels.push(label.ident);
-                  }
-                }
-              });
-            }
-            if (['branch', 'invoke'].indexOf(line.intertype) != -1) {
-              process(line);
-            } else if (line.intertype == 'assign' && line.value.intertype == 'invoke') {
-              process(line.value);
-            } else if (line.intertype == 'switch') {
-              process(line);
-              line.switchLabels.forEach(process);
-            }
+            operateOnLabels(line, function process(item, id) {
+              if (item[id][0] == 'B') { // BREAK, BCONT, BNOPP, BJSET
+                label.hasBreak = true;
+              } else {
+                label.outLabels.push(item[id]);
+                labelsDict[item[id]].inLabels.push(label.ident);
+              }
+            });
 
             label.hasReturn |= line.intertype == 'return';
           });
@@ -393,22 +390,22 @@ function analyzer(data) {
           });
         }
 
-        if (dcheck('relooping')) {
-          labels.forEach(function(label) {
+        labels.forEach(function(label) {
+          if (dcheck('relooping')) {
             dprint('// label: ' + label.ident + ' :out      : ' + JSON.stringify(label.outLabels));
             dprint('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
             dprint('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
             dprint('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
+          }
 
-            // Convert to searchables, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
-            // Also removes duplicates (which we can get in llvm switches)
-            // FIXME TODO XXX do we need all these?
-            label.outLabels = searchable(label.outLabels);
-            label.inLabels = searchable(label.inLabels);
-            label.allOutLabels = searchable(label.allOutLabels);
-            label.allInLabels = searchable(label.allInLabels);
-          });
-        }
+          // Convert to searchables, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
+          // Also removes duplicates (which we can get in llvm switches)
+          // FIXME TODO XXX do we need all these?
+          label.outLabels = searchable(label.outLabels);
+          label.inLabels = searchable(label.inLabels);
+          label.allOutLabels = searchable(label.allOutLabels);
+          label.allInLabels = searchable(label.allInLabels);
+        });
       }
 
       // There are X main kinds of blocks:
@@ -605,7 +602,8 @@ function analyzer(data) {
 
         if (handlingNow.length == 0) {
           // spaghetti - cannot even find a single label to do before the rest. What a mess.
-          dprint('relooping', '   Creating complex emulated');
+          // TODO: try a loop, if possible?
+          dprint('relooping', '   WARNING: Creating complex emulated');
           return emulated;
         }
 

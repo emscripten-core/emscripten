@@ -16,6 +16,8 @@ QUANTUM_SIZE = 1; // This is the size of an individual field in a structure. 1 w
 GUARD_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                  // Decreases performance with additional runtime checks. Might not be
                  // needed in some kinds of code.
+GUARD_LABELS = 0; // Whether we should throw if we encounter a bad __label__, i.e.,
+                  // if code flow runs into a fault
 
 // Code embetterments
 OPTIMIZE = 0; // Optimize llvm operations into js commands
