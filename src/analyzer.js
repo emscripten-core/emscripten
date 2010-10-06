@@ -492,12 +492,9 @@ function analyzer(data) {
           };
         }
 
+        // === 'reloop' away a loop, if we need to ===
 
-
-
-        // === 'reloop' away a loop, if there is one ===
-
-        if (canReturn) {
+        function makeLoop() {
           var ret = {
             type: 'reloop',
             entries: entries,
@@ -551,8 +548,7 @@ function analyzer(data) {
           return ret;
         }
 
-
-
+        if (mustReturn) return makeLoop();
 
         // === handle multiple branches from the entry with a 'multiple' ===
         //
@@ -579,7 +575,8 @@ function analyzer(data) {
             function isReachable(label, otherLabels, ignoreLabel) { // is label reachable by otherLabels, ignoring ignoreLabel in those otherLabels
               var reachable = false;
               otherLabels.forEach(function(otherLabel) {
-                reachable = reachable || (otherLabel !== ignoreLabel && label.ident in otherLabel.allOutLabels);
+                reachable = reachable || (otherLabel !== ignoreLabel && (label.ident == otherLabel.ident ||
+                                                                         label.ident in otherLabel.allOutLabels));
               });
               return reachable;
             }
@@ -602,11 +599,13 @@ function analyzer(data) {
         dprint('relooping', '  Considering multiple, canHandle: ' + getLabelIds(handlingNow));
 
         if (handlingNow.length == 0) {
-          // spaghetti - cannot even find a single label to do before the rest. What a mess.
-          // TODO: try a loop, if possible?
-          dprint('relooping', '   WARNING: Creating complex emulated');
-          throw "Spaghetti encountered in relooping."
-          return emulated;
+          // Spaghetti - cannot even find a single label to do before the rest. What a mess.
+          // But if there is looping, perhaps we can use that to simplify matters?
+          if (canReturn) {
+            return makeLoop();
+          } else {
+            throw "Spaghetti encountered in relooping.";
+          }
         }
 
         // This is a 'multiple'
