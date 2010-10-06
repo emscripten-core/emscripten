@@ -1,9 +1,10 @@
-?: Version 0.3
+2010-10-05: Version 0.3
 
-  * Much faster compilation (still a lot more left to do though)
+  * Much faster compilation (but still slow with relooper)
   * Clang support
   * Optional memory alignment that precisely matches C/C++
   * Proper memory management, including stack and (optional) dlmalloc
+  * Rewritten relooper; no emulated blocks in any test
   * Initial support for SDL
   * Raytracing test + web demo
   * Many code cleanups, bug fixes, additional tests and library implementations

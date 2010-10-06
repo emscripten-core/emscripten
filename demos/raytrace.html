@@ -4,8 +4,8 @@
     Emscripten: Raytracing
   </title>
   <script src="raytrace.js"></script>
-  <script>
-    // print function which the cubescript engine will call
+  <script type="text/javascript">
+    // print function which the runtime will call
     function print(text) {
       document.getElementById('output').innerHTML = text;
     }
@@ -57,6 +57,7 @@
   <hr>
   Simple raytracing demo. The <a href="http://ompf.org/ray/sphereflake/">original C++ source</a> was
   automatically converted to JavaScript using <a href="http://emscripten.org">Emscripten</a>.
+  <b>Note</b>: This was done with Emscripten 0.3, which is designed for correctness, not speed!
 </body>
 </html>
 
