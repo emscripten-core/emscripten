@@ -545,10 +545,9 @@ function JSify(data) {
   makeFuncLineZyme('alloca', function(item) {
     dprint('alloca', dump(item));
     if (pointingLevels(item.allocatedType.text) == 0 && isStructType(item.allocatedType.text)) {
-      // TODO: allocate on a stack, not on the heap (we currently leak all this)
-      return makePointer(JSON.stringify(makeEmptyStruct(item.allocatedType.text)), null, 'ALLOC_STACK');
+      return RuntimeGenerator.stackAlloc(makeEmptyStruct(item.allocatedType.text).length);
     } else {
-      return makePointer('[0]', null, 'ALLOC_STACK');
+      return RuntimeGenerator.stackAlloc(1);
     }
   });
   makeFuncLineZyme('phi', function(item) {

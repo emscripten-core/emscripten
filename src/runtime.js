@@ -1,20 +1,23 @@
+////////////QUANTUM_SIZE = GUARD_STACK = 1;
 // Generates code that can be placed inline in generated code.
 // This is not the cleanest way to write this kind of code - it is
 // optimized for generating fast inline code.
 RuntimeGenerator = {
-  alloc: function(target, size, type) {
-    var ret = target + ' = ' + type + 'TOP; ' + type + 'TOP += ' + size + ';';
+  alloc: function(size, type) {
+    var ret = type + 'TOP';
+//    ret += '; for (var i = 0; i < ' + size + '; i++) HEAP[' + type + 'TOP+i] = 0';
+    ret += '; ' + type + 'TOP += ' + size;
     if (QUANTUM_SIZE > 1) {
-      ret += RuntimeGenerator.alignMemory(type + 'TOP');
+      ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP');
     }
     return ret;
   },
 
   // An allocation that lives as long as the current function call
-  stackAlloc: function(target, size) {
-    var ret = RuntimeGenerator.alloc(target, size, 'STACK');
+  stackAlloc: function(size) {
+    var ret = RuntimeGenerator.alloc(size, 'STACK');
     if (GUARD_STACK) {
-      ret += ' assert(STACKTOP < STACK_ROOT + STACK_MAX);';
+      ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX)';
     }
     return ret;
   },
@@ -28,8 +31,8 @@ RuntimeGenerator = {
   },
 
   // An allocation that cannot be free'd
-  staticAlloc: function(target, size) {
-    return RuntimeGenerator.alloc(target, size, 'STATIC');
+  staticAlloc: function(size) {
+    return RuntimeGenerator.alloc(size, 'STATIC');
   },
 
   alignMemory: function(target) {
@@ -38,8 +41,8 @@ RuntimeGenerator = {
 };
 
 function unInline(name_, params) {
-  var src = '(function ' + name_ + '(' + params + ') { var ret; ' + RuntimeGenerator[name_].apply(null, ['ret'].concat(params)) + ' return ret; })';
-  print('src: ' + src);
+  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
+  //print('src: ' + src);
   return eval(src);
 }
 
@@ -57,6 +60,6 @@ function getRuntime() {
   for (i in Runtime) {
     ret += Runtime[i].toString() + '\n';
   }
-  return ret;
+  return ret + '\n';
 }
 

@@ -39,7 +39,6 @@ function assert(condition, text) {
   if (!condition) {
     var text = "Assertion failed: " + text;
     print(text + ':\n' + (new Error).stack);
-    if (this[alert]) alert(text)
     throw "Assertion: " + text;
   }
 }
