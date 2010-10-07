@@ -17,6 +17,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
+load('runtime.js');
 
 //===============================
 // Main

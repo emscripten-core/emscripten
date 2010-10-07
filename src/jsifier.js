@@ -241,7 +241,7 @@ function JSify(data) {
       }).filter(function(param) { return param != null });;
 
       func.JS = '\nfunction ' + func.ident + '(' + params.join(', ') + ') {\n';
-      func.JS += '  stackEnter();\n';
+      func.JS += '  ' + RuntimeGenerator.stackEnter() + '\n';
       if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed
@@ -511,7 +511,7 @@ function JSify(data) {
     return ret;
   });
   makeFuncLineZyme('return', function(item) {
-    var ret = 'stackExit();\n';
+    var ret = RuntimeGenerator.stackExit() + '\n';
     if (LABEL_DEBUG) ret += "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     ret += 'return';
     if (item.value) {
@@ -766,6 +766,6 @@ function JSify(data) {
   substrate.addItems(data.functionStubs, 'FunctionStub');
 
   var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
-  return preprocess(read('preamble.js') + finalCombiner(substrate.solve()) + read('postamble.js'), params);
+  return preprocess(read('preamble.js') + getRuntime() + finalCombiner(substrate.solve()) + read('postamble.js'), params);
 }
 

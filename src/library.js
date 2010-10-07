@@ -200,18 +200,18 @@ var Library = {
 
     // We need to make sure no one else allocates unfreeable memory!
     // We must control this entirely. So we don't even need to do
-    // unfreeable allocations - the HEAP is ours, from HEAPTOP up.
+    // unfreeable allocations - the HEAP is ours, from STATICTOP up.
     // TODO: We could in theory slice off the top of the HEAP when
     // sbrk gets a negative increment in |bytes|...
     var self = arguments.callee;
-    if (!self.HEAPTOP) {
-      HEAPTOP = alignMemoryPage(HEAPTOP);
-      self.HEAPTOP = HEAPTOP;
+    if (!self.STATICTOP) {
+      STATICTOP = alignMemoryPage(STATICTOP);
+      self.STATICTOP = STATICTOP;
       self.DATASIZE = 0;
     } else {
-      assert(self.HEAPTOP == HEAPTOP, "Noone should touch the heap!");
+      assert(self.STATICTOP == STATICTOP, "Noone should touch the heap!");
     }
-    var ret = HEAPTOP + self.DATASIZE;
+    var ret = STATICTOP + self.DATASIZE;
     self.DATASIZE += alignMemoryPage(bytes);
     return ret; // previous break location
   },

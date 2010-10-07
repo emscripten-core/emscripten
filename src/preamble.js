@@ -52,6 +52,11 @@ function Pointer_niceify(ptr) {
 // If just a slab is given, will allocate room for it and copy it there. In
 // other words, do whatever is necessary in order to return a pointer, that
 // points to the slab (and possibly position) we are given.
+
+ALLOC_NORMAL = 0; // Tries to use _malloc()
+ALLOC_STACK = 1; // Lives for the duration of the current function call
+ALLOC_STATIC = 2; // Cannot be freed
+
 function Pointer_make(slab, pos, allocator) {
   pos = pos ? pos : 0;
   if (slab === HEAP) return pos;
@@ -92,40 +97,9 @@ function Pointer_stringify(ptr) {
 
 // Memory management
 
-ALLOC_NORMAL = 0; // Tries to use _malloc()
-ALLOC_STACK = 1; // Lives for the duration of the current function call
-ALLOC_STATIC = 2; // Cannot be freed
-
-function alignMemory(x) {
-  return Math.ceil(x/QUANTUM_SIZE)*QUANTUM_SIZE; // Allocate blocks of proper minimum size
-                                                 // Also keeps STACKTOP/etc. aligned
-}
-
 PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
   return Math.ceil(x/PAGE_SIZE)*PAGE_SIZE;
-}
-
-function stackEnter() {
-  STACK_STACK.push(STACKTOP);
-}
-function stackExit() {
-  STACKTOP = STACK_STACK.pop();
-}
-function stackAlloc(size) {
-  size = alignMemory(size);
-  assert(STACKTOP + size - STACKROOT < TOTAL_STACK, "No room on stack!");
-  var ret = STACKTOP;
-  STACKTOP += size;
-  return ret;
-}
-
-function staticAlloc(size) {
-  size = alignMemory(size);
-  assert(STATICTOP + size - STATICROOT < TOTAL_STATIC, "No room for static allocation!");
-  var ret = STATICTOP;
-  STATICTOP += size;
-  return ret;
 }
 
 // If we don't have malloc/free implemented, use a simple implementation.
@@ -147,14 +121,12 @@ function __initializeRuntime__() {
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                        // Also this ensures we leave 0 as an invalid address, 'NULL'
 
-  if (!this['TOTAL_STATIC']) TOTAL_STATIC = 64*1024*100; // Reserved room for static allocation
-  STATICROOT = STATICTOP = alignMemoryPage(HEAP.length);
-
-  if (!this['TOTAL_STACK']) TOTAL_STACK = 64*1024*10; // Reserved room for stack
   STACK_STACK = [];
-  STACKROOT = STACKTOP = alignMemoryPage(STATICROOT + TOTAL_STATIC);
+  STACK_ROOT = STACKTOP = alignMemoryPage(10);
+  if (!this['TOTAL_STACK']) TOTAL_STACK = 64*1024*100; // Reserved room for stack
+  STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
-  HEAPTOP = alignMemoryPage(STACKROOT + TOTAL_STACK); // Start of the "processes' data segment"
+  STATICTOP = alignMemoryPage(STACK_MAX);
 }
 
 // stdio.h

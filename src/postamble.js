@@ -10,13 +10,13 @@ function run(args) {
       argv.push(0);
     }
   }
-  var argv = [Pointer_make(intArrayFromString("/bin/this.program"), null, ALLOC_STATIC) ];
+  var argv = [Pointer_make(intArrayFromString("/bin/this.program"), null) ];
   pad();
   for (var i = 0; i < argc-1; i = i + 1) {
-    argv.push(Pointer_make(intArrayFromString(args[i]), null, ALLOC_STATIC));
+    argv.push(Pointer_make(intArrayFromString(args[i]), null));
     pad();
   }
-  argv = Pointer_make(argv, null, ALLOC_STATIC);
+  argv = Pointer_make(argv, null);
 
   __globalConstructor__();
 
