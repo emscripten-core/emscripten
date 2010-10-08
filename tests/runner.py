@@ -68,6 +68,9 @@ class T(unittest.TestCase):
           output_processor(output)
       if output is not None and 'Traceback' in output: print output; assert 0
 
+    def run_generated_code(self, filename, args=[]):
+      return timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename] + args, stdout=PIPE, stderr=STDOUT), 120, 'Execution')
+
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
         if not no_build:
@@ -80,7 +83,7 @@ class T(unittest.TestCase):
           self.build(src, dirname, filename, output_processor, main_file)
 
         # Run
-        js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 120, 'Execution')
+        js_output = self.run_generated_code(filename + '.o.js', args)
         if output_nicerizer is not None:
             js_output = output_nicerizer(js_output)
         self.assertContained(expected_output, js_output)
