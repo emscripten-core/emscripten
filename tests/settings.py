@@ -1,7 +1,7 @@
-DEBUG=False
 TEMP_DIR='/dev/shm'
 
 CLANG=os.path.expanduser('~/Dev/llvm-2.7/cbuild/bin/clang++')
+#CLANG=os.path.expanduser('~/Dev/llvm-2.8/cbuild/Release/bin/clang++')
 LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-2.7/cbuild/install/bin/llvm-g++')
 
 COMPILERS = {

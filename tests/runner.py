@@ -27,56 +27,59 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
+    ## Build JavaScript code from source code
+    def build(self, src, dirname, filename, output_processor=None, main_file=None):
+      # Copy over necessary files for compiling the source
+      if main_file is None:
+        f = open(filename, 'w')
+        f.write(src)
+        f.close()
+      else:
+        # copy whole directory, and use a specific main .cpp file
+        for f in os.listdir(src):
+          shutil.copy(os.path.join(src, f), dirname)
+        shutil.move(os.path.join(dirname, main_file), filename)
+
+      # Copy Emscripten C++ API
+      shutil.copy(path_from_root(['src', 'include', 'emscripten.h']), dirname)
+
+      # C++ => LLVM binary
+      try:
+        os.remove(filename + '.o')
+      except:
+        pass
+      os.chdir(dirname)
+      cwd = os.getcwd()
+      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      os.chdir(cwd)
+      if not os.path.exists(filename + '.o'):
+        print "Failed to compile C/C++ source:\n\n", output
+        raise Exception("Compilation error");
+
+      # LLVM binary ==> LLVM assembly
+      output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+
+      # Run Emscripten
+      emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE)]
+      out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
+      timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
+      output = open(filename + '.o.js').read()
+      if output_processor is not None:
+          output_processor(output)
+      if output is not None and 'Traceback' in output: print output; assert 0
+
+    ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
         if not no_build:
           print 'Running test:', inspect.stack()[1][3], '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
-        global DEBUG
         dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
         if not os.path.exists(dirname):
           os.makedirs(dirname)
         filename = os.path.join(dirname, 'src.cpp')
         if not no_build:
-          if main_file is None:
-            f = open(filename, 'w')
-            f.write(src)
-            f.close()
-          else:
-            # copy whole directory, and use a specific main .cpp file
-            for f in os.listdir(src):
-              shutil.copy(os.path.join(src, f), dirname)
-            shutil.move(os.path.join(dirname, main_file), filename)
+          self.build(src, dirname, filename, output_processor, main_file)
 
-          # Copy Emscripten C++ API
-          shutil.copy(path_from_root(['src', 'include', 'emscripten.h']), dirname)
-
-          # Begin
-
-          if DEBUG: print "[[C++ => LLVM]]"
-          try:
-            os.remove(filename + '.o')
-          except:
-            pass
-          os.chdir(dirname)
-          cwd = os.getcwd()
-          output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-          os.chdir(cwd)
-          if not os.path.exists(filename + '.o'):
-            print "Failed to compile C/C++ source:\n\n", output
-            raise Exception("Compilation error");
-          if DEBUG: print output
-          if DEBUG: print "[[C++ ==> LLVM]]"
-          output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-          if DEBUG: print output
-          # Run Emscripten
-          emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE)]
-          out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
-          timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
-          output = open(filename + '.o.js').read()
-          if output_processor is not None:
-              output_processor(output)
-          if output is not None and 'Traceback' in output: print output; assert (0) # 'generating JavaScript failed'
-          if DEBUG: print "\nGenerated JavaScript:\n\n===\n\n%s\n\n===\n\n" % output
-        #assert(0) # XXX
+        # Run
         js_output = timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename + '.o.js'] + args, stdout=PIPE, stderr=STDOUT), 120, 'Execution')
         if output_nicerizer is not None:
             js_output = output_nicerizer(js_output)
