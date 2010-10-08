@@ -27,8 +27,8 @@ V8_ENGINE=os.path.expanduser('~/Dev/v8/d8')
 
 # XXX Warning: Compiling the 'sauer' test in SpiderMonkey can lead to an extreme amount of memory being
 #              used, see Mozilla bug 593659. Possibly also some other tests as well.
-PARSER_ENGINE=SPIDERMONKEY_ENGINE
-#PARSER_ENGINE=V8_ENGINE
+#PARSER_ENGINE=SPIDERMONKEY_ENGINE
+PARSER_ENGINE=V8_ENGINE
 
 JS_ENGINE=SPIDERMONKEY_ENGINE
 #JS_ENGINE=V8_ENGINE
