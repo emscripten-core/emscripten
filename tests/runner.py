@@ -57,12 +57,12 @@ class T(unittest.TestCase):
         raise Exception("Compilation error");
 
       # LLVM binary ==> LLVM assembly
-      output = Popen([LLVM_DIS, filename + '.o', '-o=' + filename + '.o.llvm'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
       # Run Emscripten
       emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE)]
       out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
-      timeout_run(Popen([EMSCRIPTEN, filename + '.o.llvm', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
+      timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
       output = open(filename + '.o.js').read()
       if output_processor is not None:
           output_processor(output)

@@ -1,4 +1,3 @@
-
 // === Auto-generated preamble library stuff ===
 
 function __globalConstructor__() {
@@ -207,6 +206,7 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
 //  dest.slab = src.slab.slice(src.pos);
 }
 _llvm_memcpy_i64 = _llvm_memcpy_i32;
+_llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_i32;
 
 // Tools
 

@@ -440,7 +440,9 @@ function JSify(data) {
   var LABEL_IDs = {};
   var LABEL_ID_COUNTER = 0;
   function getLabelId(label) {
-    //print('needs id: ' + label + ' : ' + JSON.stringify(LABEL_IDs));
+    label = label.substr(1);
+    if (label === 'entry') return '-1';
+    if (label === parseInt(label)) return label; // clang
     label = toNiceIdent(label);
     if (label in LABEL_IDs) return LABEL_IDs[label];
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;

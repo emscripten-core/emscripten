@@ -3,6 +3,8 @@
 function intertyper(data) {
   // Substrate
 
+  LLVM_STYLE = data.indexOf('<label>') == -1 ? 'old' : 'new'; // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
+
   substrate = new Substrate('Intertyper');
 
   // Line splitter.
@@ -153,15 +155,16 @@ function intertyper(data) {
     processItem: function(item) {
       function triage() {
         if (!item.intertype) {
-          if (item.tokens[0].text in searchable(';', 'target'))
-            return '/dev/null';
           if (item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=')
             return 'Global';
           if (item.tokens.length >= 4 && item.indent === 0 && item.tokens[0].text == 'define' &&
              item.tokens.slice(-1)[0].text == '{')
             return 'FuncHeader';
-          if (item.tokens.length >= 1 && item.indent === 0 && item.tokens[0].text.substr(-1) == ':')
+          if ((item.tokens.length >= 1 && item.indent === 0 && item.tokens[0].text.substr(-1) == ':') || // XXX LLVM 2.7 format, or llvm-gcc in 2.8
+              (item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '<label>'))
             return 'Label';
+          if (item.tokens[0].text in searchable(';', 'target'))
+            return '/dev/null';
           if (item.indent === 2 && item.tokens && item.tokens.length >= 3 && findTokenText(item, '=') >= 0 &&
               !item.intertype)
             return 'Assign';
@@ -284,7 +287,7 @@ function intertyper(data) {
       item.tokens = item.tokens.filter(function(token) {
         return ['noalias', 'available_externally', 'weak', 'internal', 'signext', 'zeroext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{'].indexOf(token.text) == -1;
       });
-      return [{
+      var ret = [{
         __result__: true,
         intertype: 'function',
         ident: item.tokens[1].text,
@@ -292,6 +295,16 @@ function intertyper(data) {
         params: item.tokens[2],
         lineNum: item.lineNum,
       }];
+      if (LLVM_STYLE == 'new') {
+        // no explicit 'entry' label in clang on LLVM 2.8, so we add one
+        ret.push({
+          __result__: true,
+          intertype: 'label',
+          ident: '%entry',
+          lineNum: item.lineNum + 'b',
+        });
+      }
+      return ret;
     },
   });
   // label
@@ -300,7 +313,9 @@ function intertyper(data) {
       return [{
         __result__: true,
         intertype: 'label',
-        ident: '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1),
+        ident: LLVM_STYLE == 'old' ?
+                               '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
+                               '%' + item.tokens[2].text.substr(1),
         lineNum: item.lineNum,
       }];
     },

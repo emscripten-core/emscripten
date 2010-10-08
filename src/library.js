@@ -137,6 +137,7 @@ var Library = {
       HEAP[ptr+i] = value;
     }
   },
+  llvm_memset_p0i8_i32: 'llvm_memset_i32',
 
   llvm_eh_exception: function() {
     return 'code-generated exception: ' + (new Error().stack);
