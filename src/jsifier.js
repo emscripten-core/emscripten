@@ -533,7 +533,6 @@ function JSify(data) {
     return ret;
   });
   makeFuncLineZyme('load', function(item) {
-    //print('// zz LOAD ' + dump(item) + ' :: ' + dump(item.tokens));
     var ident = toNiceIdent(item.ident);
     var impl = getVarData(item.funcData, item.ident);
     switch (impl) {
@@ -543,6 +542,11 @@ function JSify(data) {
       case VAR_EMULATED: return makeGetValue(ident);
       default: return "unknown [load] impl: " + impl;
     }
+  });
+  makeFuncLineZyme('extractvalue', function(item) {
+    assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
+                                      //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
+    return item.ident + '.f' + item.indexes[0][0].text;
   });
   makeFuncLineZyme('alloca', function(item) {
     dprint('alloca', dump(item));

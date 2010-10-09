@@ -172,6 +172,8 @@ function intertyper(data) {
           if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
               (item.tokens[0].text == 'load' || item.tokens[1].text == 'load'))
             return 'Load';
+          if (!item.intertype && item.indent === -1 && item.tokens.length >= 3 && item.tokens[0].text == 'extractvalue')
+            return 'ExtractValue';
           if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast')
             return 'Bitcast';
           if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr')
@@ -372,6 +374,17 @@ function intertyper(data) {
         }
       }
       item.ident = item.pointer.text;
+      this.forwardItem(item, 'Reintegrator');
+    },
+  });
+  // 'extractvalue'
+  substrate.addZyme('ExtractValue', {
+    processItem: function(item) {
+      var last = getTokenIndexByText(item.tokens, ';');
+      item.intertype = 'extractvalue';
+      item.type = item.tokens[1].text; // Of the origin aggregate - not what we extract from it. For that, can only infer it later
+      item.ident = item.tokens[2].text;
+      item.indexes = splitTokenList(item.tokens.slice(4, last));
       this.forwardItem(item, 'Reintegrator');
     },
   });

@@ -153,6 +153,13 @@ var Library = {
   __gxx_personality_v0: function() {
   },
 
+  llvm_umul_with_overflow_i32: function(x, y) {
+    return {
+      f1: x*y,
+      f2: 0, // We never overflow... for now
+    };
+  },
+
   // iostream
 
   _ZNSt8ios_base4InitC1Ev: function() {
