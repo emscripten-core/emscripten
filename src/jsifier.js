@@ -65,8 +65,8 @@ function JSify(data) {
   }
 
   function alignStruct(values, type) {
+    // XXX Need to add padding at the end of structures, using alignMemory()?
     dprint('types', 'alignStruct: ' + dump(type));
-    // XXX hardcoded ptr impl
     var ret = [];
     var typeData = TYPES[type];
     assertTrue(typeData);

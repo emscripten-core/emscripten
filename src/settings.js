@@ -18,8 +18,9 @@ GUARD_SIGNS = 1; // Whether we make sure to convert unsigned values to signed va
                  // needed in some kinds of code.
 GUARD_LABELS = 0; // Whether we should throw if we encounter a bad __label__, i.e.,
                   // if code flow runs into a fault
-GUARD_STACK = 1; // Whether we should check that each allocation to the stack does not
-                 // exceed it's size
+GUARD_MEMORY = 1; // Whether we should check that each allocation to the stack does not
+                  // exceed it's size, whether all allocations (stack and static) are
+                  // of positive size, etc.
 
 // Code embetterments
 OPTIMIZE = 0; // Optimize llvm operations into js commands

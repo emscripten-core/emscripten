@@ -6,6 +6,9 @@ RuntimeGenerator = {
   alloc: function(size, type) {
     var ret = type + 'TOP';
 //    ret += '; for (var i = 0; i < ' + size + '; i++) HEAP[' + type + 'TOP+i] = 0';
+    if (GUARD_MEMORY) {
+      ret += '; assert(' + size + ' > 0)';
+    }
     ret += '; ' + type + 'TOP += ' + size;
     if (QUANTUM_SIZE > 1) {
       ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP');
@@ -16,7 +19,7 @@ RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size) {
     var ret = RuntimeGenerator.alloc(size, 'STACK');
-    if (GUARD_STACK) {
+    if (GUARD_MEMORY) {
       ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX)';
     }
     return ret;
