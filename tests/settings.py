@@ -6,10 +6,10 @@ CLANG=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-g++')
 
 COMPILERS = {
-#  'clang': {
-#    'path': CLANG,
-#    'quantum_size': 4, # See settings.js
-#  },
+  'clang': {
+    'path': CLANG,
+    'quantum_size': 4, # See settings.js
+  },
   'llvm_gcc': {
     'path': LLVM_GCC,
     'quantum_size': 1,

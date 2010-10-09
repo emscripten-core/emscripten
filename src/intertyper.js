@@ -3,7 +3,8 @@
 function intertyper(data) {
   // Substrate
 
-  LLVM_STYLE = data.indexOf('<label>') == -1 ? 'old' : 'new'; // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
+  LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new'; // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
+  dprint('LLVM_STYLE: ' + LLVM_STYLE);
 
   substrate = new Substrate('Intertyper');
 
@@ -301,7 +302,7 @@ function intertyper(data) {
           __result__: true,
           intertype: 'label',
           ident: '%entry',
-          lineNum: item.lineNum + 'b',
+          lineNum: item.lineNum + '.5',
         });
       }
       return ret;
