@@ -298,15 +298,6 @@ function intertyper(data) {
         params: item.tokens[2],
         lineNum: item.lineNum,
       }];
-      if (LLVM_STYLE == 'new') {
-        // no explicit 'entry' label in clang on LLVM 2.8, so we add one
-        ret.push({
-          __result__: true,
-          intertype: 'label',
-          ident: '%entry',
-          lineNum: item.lineNum + '.5',
-        });
-      }
       return ret;
     },
   });

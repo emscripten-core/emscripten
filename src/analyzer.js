@@ -40,6 +40,15 @@ function analyzer(data) {
           subItem.endLineNum = null;
           subItem.lines = [];
           subItem.labels = [];
+
+          // no explicit 'entry' label in clang on LLVM 2.8 - most of the time, but not all the time! - so we add one if necessary
+          if (LLVM_STYLE == 'new' && item.items[i+1].intertype !== 'label') {
+            item.items.splice(i+1, 0, {
+              intertype: 'label',
+              ident: '%entry',
+              lineNum: subItem.lineNum + '.5',
+            });
+          }
         } else if (subItem.intertype == 'functionEnd') {
           item.functions.slice(-1)[0].endLineNum = subItem.lineNum;
         } else if (subItem.intertype == 'label') {
@@ -638,7 +647,7 @@ function analyzer(data) {
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
         });
-        func.block = makeBlock(func.labels, [toNiceIdent('%entry')], func.labelsDict);
+        func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict);
       });
 
       return finish();
