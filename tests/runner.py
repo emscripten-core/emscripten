@@ -45,7 +45,9 @@ class T(unittest.TestCase):
 
       # C++ => LLVM binary
       try:
+        # Make sure we notice if compilation steps failed
         os.remove(filename + '.o')
+        os.remove(filename + '.o.ll')
       except:
         pass
       os.chdir(dirname)

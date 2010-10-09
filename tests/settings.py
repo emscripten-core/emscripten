@@ -1,6 +1,7 @@
 TEMP_DIR='/dev/shm'
 
 LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.8/cbuild/Release/bin') # Might not need 'Release'
+#LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.7/cbuild/bin') # Might not need 'Release'
 
 CLANG=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-g++')
@@ -20,7 +21,9 @@ COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
                          # various errors on 64bit compilation
 
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
-LLVM_DIS_OPTS=['-show-annotations']
+LLVM_DIS_OPTS = []
+if '2.8' in LLVM_ROOT:
+  LLVM_DIS_OPTS += ['-show-annotations']
 
 SPIDERMONKEY_ENGINE=os.path.expanduser('~/Dev/mozilla-central/js/src/js')
 V8_ENGINE=os.path.expanduser('~/Dev/v8/d8')
