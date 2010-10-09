@@ -795,17 +795,26 @@ class T(unittest.TestCase):
             }
           };
 
+          struct B { char buffer[62]; int last; char laster; char laster2; };
+
           int main() {
             hashtable t;
+
+            // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
+            // one is aligned properly. Also handle char; char; etc. properly.
+            B *b = NULL;
+            printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
+                                                      int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), ES_SIZEOF(B));
+
             return 0;
           }
           '''
         if QUANTUM_SIZE == 1:
           # Compressed memory
-          self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*')
+          self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,65*')
         else:
           # Bloated memory; same layout as C/C++
-          self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*')
+          self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*')
 
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]

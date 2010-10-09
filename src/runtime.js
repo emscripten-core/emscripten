@@ -11,7 +11,7 @@ RuntimeGenerator = {
     }
     ret += '; ' + type + 'TOP += ' + size;
     if (QUANTUM_SIZE > 1) {
-      ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP');
+      ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP', QUANTUM_SIZE);
     }
     return ret;
   },
@@ -38,8 +38,11 @@ RuntimeGenerator = {
     return RuntimeGenerator.alloc(size, 'STATIC');
   },
 
-  alignMemory: function(target) {
-    return target + ' = Math.ceil(' + target + '/QUANTUM_SIZE)*QUANTUM_SIZE;';
+  alignMemory: function(target, quantum) {
+    if (typeof quantum !== 'number') {
+      quantum = '(quantum ? quantum : QUANTUM_SIZE)';
+    }
+    return target + ' = Math.ceil(' + target + '/' + quantum + ')*' + quantum + ';';
   },
 };
 
@@ -56,6 +59,7 @@ function unInline(name_, params) {
 Runtime = {
   stackAlloc: unInline('stackAlloc', ['size']),
   staticAlloc: unInline('staticAlloc', ['size']),
+  alignMemory: unInline('alignMemory', ['size', 'quantum']),
 };
 
 function getRuntime() {

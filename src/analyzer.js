@@ -177,7 +177,7 @@ function analyzer(data) {
             var soFar = type.flatSize;
             var size;
             if (isNumberType(field) || isPointerType(field)) {
-              size = getNativeFieldSize(field);
+              size = getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
             } else if (isStructType(field)) {
               size = item.types[field].flatSize;
             } else {
@@ -185,8 +185,9 @@ function analyzer(data) {
             }
             type.flatSize += size;
             sizes.push(size);
-            return soFar;
+            return Runtime.alignMemory(soFar, Math.min(QUANTUM_SIZE, size)); // if necessary, place this on aligned memory
           });
+          type.flatSize = Runtime.alignMemory(type.flatSize); // padding at end
           if (dedup(sizes).length == 1) {
             type.flatFactor = sizes[0];
           }
