@@ -167,17 +167,16 @@ static node_t *create(node_t*n,const int lvl,int dist,v_t c,v_t d,double r) {
 	return n;
 }
 
-#define SIZE 8
 int main(int argc,char*argv[]){
-	enum{ w = SIZE, h = w }; /* resolution */
-	const int lvl=(argc==2?std::max(atoi(argv[1]),2):6);
+	const int lvl=atoi(argv[1]);
+	const int size=atoi(argv[2]);
 	int count=childs, dec=lvl;
 	while(--dec > 1) count=(count*childs)+childs;
 	++count;
 	pool=new node_t[count];  /* raw */
 	end=pool+count;
 	create(pool,lvl,count,v_t(0,0,0),v_t(+.25,+1,-.5).norm(),1.); /* cooked */
-	std::cout << "P2\n" << w << " " << h << "\n" << SIZE << "\n";
-	trace_rgss(w,h); /* served */
+	std::cout << "P2\n" << size << " " << size << "\n" << size << "\n";
+	trace_rgss(size, size); /* served */
 	return 0;
 }

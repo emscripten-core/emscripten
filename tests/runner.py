@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect
+import os, unittest, tempfile, shutil, time, inspect, sys, math
 
 # Params
 
@@ -27,60 +27,67 @@ def timeout_run(proc, timeout, note):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
-class T(unittest.TestCase):
-    ## Build JavaScript code from source code
-    def build(self, src, dirname, filename, output_processor=None, main_file=None):
-      # Copy over necessary files for compiling the source
-      if main_file is None:
-        f = open(filename, 'w')
-        f.write(src)
-        f.close()
-      else:
-        # copy whole directory, and use a specific main .cpp file
-        for f in os.listdir(src):
-          shutil.copy(os.path.join(src, f), dirname)
-        shutil.move(os.path.join(dirname, main_file), filename)
+class RunnerCore(unittest.TestCase):
+  def get_dir(self):
+    dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
+    if not os.path.exists(dirname):
+      os.makedirs(dirname)
+    return dirname
 
-      # Copy Emscripten C++ API
-      shutil.copy(path_from_root(['src', 'include', 'emscripten.h']), dirname)
+  ## Build JavaScript code from source code
+  def build(self, src, dirname, filename, output_processor=None, main_file=None):
+    # Copy over necessary files for compiling the source
+    if main_file is None:
+      f = open(filename, 'w')
+      f.write(src)
+      f.close()
+    else:
+      # copy whole directory, and use a specific main .cpp file
+      for f in os.listdir(src):
+        shutil.copy(os.path.join(src, f), dirname)
+      shutil.move(os.path.join(dirname, main_file), filename)
 
-      # C++ => LLVM binary
-      try:
-        # Make sure we notice if compilation steps failed
-        os.remove(filename + '.o')
-        os.remove(filename + '.o.ll')
-      except:
-        pass
-      os.chdir(dirname)
-      cwd = os.getcwd()
-      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-      os.chdir(cwd)
-      if not os.path.exists(filename + '.o'):
-        print "Failed to compile C/C++ source:\n\n", output
-        raise Exception("Compilation error");
+    # Copy Emscripten C++ API
+    shutil.copy(path_from_root(['src', 'include', 'emscripten.h']), dirname)
 
-      # LLVM binary ==> LLVM assembly
-      output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    # C++ => LLVM binary
+    try:
+      # Make sure we notice if compilation steps failed
+      os.remove(filename + '.o')
+      os.remove(filename + '.o.ll')
+    except:
+      pass
+    os.chdir(dirname)
+    cwd = os.getcwd()
+    output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    os.chdir(cwd)
+    if not os.path.exists(filename + '.o'):
+      print "Failed to compile C/C++ source:\n\n", output
+      raise Exception("Compilation error");
 
-      # Run Emscripten
-      emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE)]
-      out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
-      timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
-      output = open(filename + '.o.js').read()
-      if output_processor is not None:
-          output_processor(output)
-      if output is not None and 'Traceback' in output: print output; assert 0
+    # LLVM binary ==> LLVM assembly
+    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
-    def run_generated_code(self, filename, args=[], check_timeout=True):
-      return timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename] + args, stdout=PIPE, stderr=STDOUT), 120 if check_timeout else None, 'Execution')
+    # Run Emscripten
+    emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE)]
+    out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
+    timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
+    output = open(filename + '.o.js').read()
+    if output_processor is not None:
+        output_processor(output)
+    if output is not None and 'Traceback' in output: print output; assert 0
 
+  def run_generated_code(self, filename, args=[], check_timeout=True):
+    return timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename] + ([] if JS_ENGINE == SPIDERMONKEY_ENGINE else ['--']) + args,
+                       stdout=PIPE, stderr=STDOUT), 120 if check_timeout else None, 'Execution')
+
+if 'benchmark' not in sys.argv:
+  class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
         if not no_build:
-          print 'Running test:', inspect.stack()[1][3], '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
-        dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
-        if not os.path.exists(dirname):
-          os.makedirs(dirname)
+          print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
+        dirname = self.get_dir()
         filename = os.path.join(dirname, 'src.cpp')
         if not no_build:
           self.build(src, dirname, filename, output_processor, main_file)
@@ -826,7 +833,7 @@ class T(unittest.TestCase):
     def test_raytrace(self):
         src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
         output = open(path_from_root(['tests', 'raytrace.ppm']), 'r').read()
-        self.do_test(src, output, ['1'])
+        self.do_test(src, output, ['3', '16'])
 
     def test_dlmalloc(self):
         src = open(path_from_root(['tests', 'dlmalloc.c']), 'r').read()
@@ -846,29 +853,86 @@ class T(unittest.TestCase):
 
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
-# Generate tests for all our compilers
-def make_test(compiler, embetter):
-  class TT(T):
-    def setUp(self):
-      global COMPILER
-      COMPILER = compiler['path']
-      global QUANTUM_SIZE
-      QUANTUM_SIZE = compiler['quantum_size']
-      global RELOOP
-      RELOOP = embetter
-      global OPTIMIZE
-      OPTIMIZE = embetter
-  return TT
-for embetter in [0,1]:
-  for name in COMPILERS.keys():
-    exec('T_%s_%d = make_test(COMPILERS["%s"],%d)' % (name, embetter, name, embetter))
-del T # T is just a shape for the specific subclasses, we don't test it itself
+  # Generate tests for all our compilers
+  def make_test(compiler, embetter):
+    class TT(T):
+      def setUp(self):
+        global COMPILER
+        COMPILER = compiler['path']
+        global QUANTUM_SIZE
+        QUANTUM_SIZE = compiler['quantum_size']
+        global RELOOP
+        RELOOP = embetter
+        global OPTIMIZE
+        OPTIMIZE = embetter
+    return TT
+  for embetter in [0,1]:
+    for name in COMPILERS.keys():
+      exec('T_%s_%d = make_test(COMPILERS["%s"],%d)' % (name, embetter, name, embetter))
+  del T # T is just a shape for the specific subclasses, we don't test it itself
+
+else:
+  # Benchmarks
+
+  sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
+
+  COMPILER = LLVM_GCC
+  PARSER_ENGINE = JS_ENGINE = V8_ENGINE
+  RELOOP = OPTIMIZE = 1
+  QUANTUM_SIZE = 1
+  TEST_REPS = 10
+  TOTAL_TESTS = 2
+
+  tests_done = 0
+  total_times = map(lambda x: 0., range(TEST_REPS))
+
+  class Benchmark(RunnerCore): # Short name, to make it more fun to use manually on the commandline
+    def print_stats(self, times):
+      mean = sum(times)/len(times)
+      squared_times = map(lambda x: x*x, times)
+      mean_of_squared = sum(squared_times)/len(times)
+      std = math.sqrt(mean_of_squared - mean*mean)
+      print '   mean: %.2f (+-%.2f) seconds          (max: %.2f, min: %.2f, noise/signal: %.2f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
+
+    def do_benchmark(self, src, args=[], main_file=None):
+      print 'Running benchmark:', inspect.stack()[1][3].replace('test_', '')
+
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'src.cpp')
+      self.build(src, dirname, filename, main_file=main_file)
+
+      # Run
+      global total_times
+      times = []
+      for i in range(TEST_REPS):
+        start = time.time()
+        self.run_generated_code(filename + '.o.js', args, check_timeout=False)
+        curr = time.time()-start
+        times.append(curr)
+        total_times[i] += curr
+
+      self.print_stats(times)
+
+      global tests_done
+      tests_done += 1
+      if tests_done == TOTAL_TESTS:
+        print
+        print 'Total stats:'
+        self.print_stats(total_times)
+
+    def test_fannkuch(self):
+      src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
+      self.do_benchmark(src, ['9'])
+
+    def test_raytrace(self):
+      src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
+      self.do_benchmark(src, ['5', '64'])
 
 if __name__ == '__main__':
-    for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
-        print "Checking for existence of", cmd
-        assert(os.path.exists(cmd))
-    print "Running Emscripten tests..."
-    print '', # indent so when next lines have '.', they all align
-    unittest.main()
+  for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
+    print "Checking for existence of", cmd
+    assert(os.path.exists(cmd))
+  print "Running Emscripten tests..."
+  print '', # indent so when next lines have '.', they all align
+  unittest.main()
 
