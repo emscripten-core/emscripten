@@ -19,11 +19,12 @@ exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'settings.py'
 
 def timeout_run(proc, timeout, note):
   start = time.time()
-  while time.time() - start < timeout and proc.poll() is None:
-    time.sleep(0.1)
-  if proc.poll() is None:
-    proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-    raise Exception("Timed out: " + note)
+  if timeout is not None:
+    while time.time() - start < timeout and proc.poll() is None:
+      time.sleep(0.1)
+    if proc.poll() is None:
+      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
+      raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
 class T(unittest.TestCase):
@@ -70,8 +71,8 @@ class T(unittest.TestCase):
           output_processor(output)
       if output is not None and 'Traceback' in output: print output; assert 0
 
-    def run_generated_code(self, filename, args=[]):
-      return timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename] + args, stdout=PIPE, stderr=STDOUT), 120, 'Execution')
+    def run_generated_code(self, filename, args=[], check_timeout=True):
+      return timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename] + args, stdout=PIPE, stderr=STDOUT), 120 if check_timeout else None, 'Execution')
 
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
