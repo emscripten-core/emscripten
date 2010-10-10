@@ -9,7 +9,7 @@ function JSify(data) {
   substrate.addZyme('Type', {
     processItem: function(item) {
       var type = TYPES[item.name_];
-      if (type.needsFlattening) {
+      if (type.needsFlattening && !type.flatFactor) {
         item.JS = 'var ' + toNiceIdent(item.name_) + '___FLATTENER = ' + JSON.stringify(TYPES[item.name_].flatIndexes) + ';';
       } else {
         item.JS = '// type: ' + item.name_;

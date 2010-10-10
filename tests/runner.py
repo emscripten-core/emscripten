@@ -881,10 +881,13 @@ else:
   COMPILER = LLVM_GCC
   PARSER_ENGINE = V8_ENGINE
   JS_ENGINE = SPIDERMONKEY_ENGINE
+  if JS_ENGINE == SPIDERMONKEY_ENGINE:
+    JS_ENGINE_OPTS += ['-j', '-m'] # TODO: use this everywhere else
+
   RELOOP = OPTIMIZE = 1
   GUARD_MEMORY = 0
   QUANTUM_SIZE = 1
-  TEST_REPS = 10
+  TEST_REPS = 20
   TOTAL_TESTS = 2
 
   tests_done = 0
@@ -896,7 +899,7 @@ else:
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
       std = math.sqrt(mean_of_squared - mean*mean)
-      print '   mean: %.2f (+-%.2f) seconds          (max: %.2f, min: %.2f, noise/signal: %.2f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
+      print '   mean: %.3f (+-%.3f) seconds          (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
 
     def do_benchmark(self, src, args=[], main_file=None):
       print 'Running benchmark:', inspect.stack()[1][3].replace('test_', '')

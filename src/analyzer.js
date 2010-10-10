@@ -172,9 +172,9 @@ function analyzer(data) {
             return;
           }
           type.flatSize = 0;
-          var sizes = [];
+          var diffs = [];
+          var prev = -1;
           type.flatIndexes = type.fields.map(function(field) {
-            var soFar = type.flatSize;
             var size;
             if (isNumberType(field) || isPointerType(field)) {
               size = getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
@@ -183,14 +183,20 @@ function analyzer(data) {
             } else {
               assert(0);
             }
-            type.flatSize += size;
-            sizes.push(size);
-            return Runtime.alignMemory(soFar, Math.min(QUANTUM_SIZE, size)); // if necessary, place this on aligned memory
+            var curr = Runtime.alignMemory(type.flatSize, Math.min(QUANTUM_SIZE, size)); // if necessary, place this on aligned memory
+            type.flatSize = curr + size;
+            if (prev >= 0) {
+              diffs.push(curr-prev);
+            }
+            prev = curr;
+            return curr;
           });
-          type.flatSize = Runtime.alignMemory(type.flatSize); // padding at end
-          if (dedup(sizes).length == 1) {
-            type.flatFactor = sizes[0];
+          if (diffs.length == 0) {
+            type.flatFactor = type.flatSize;
+          } else if (dedup(diffs).length == 1) {
+            type.flatFactor = diffs[0];
           }
+          type.flatSize = Runtime.alignMemory(type.flatSize); // final padding at end
           type.needsFlattening = (this.flatFactor != 1);
           dprint('types', 'type: ' + type.name_ + ' : ' + JSON.stringify(type.fields));
           dprint('types', '                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
