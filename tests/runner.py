@@ -69,7 +69,7 @@ class RunnerCore(unittest.TestCase):
     output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
     # Run Emscripten
-    emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE)]
+    emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d, "GUARD_MEMORY": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY)]
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
     timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
     output = open(filename + '.o.js').read()
@@ -865,6 +865,8 @@ if 'benchmark' not in sys.argv:
         RELOOP = embetter
         global OPTIMIZE
         OPTIMIZE = embetter
+        global GUARD_MEMORY
+        GUARD_MEMORY = 1-embetter
     return TT
   for embetter in [0,1]:
     for name in COMPILERS.keys():
@@ -879,6 +881,7 @@ else:
   COMPILER = LLVM_GCC
   PARSER_ENGINE = JS_ENGINE = V8_ENGINE
   RELOOP = OPTIMIZE = 1
+  GUARD_MEMORY = 0
   QUANTUM_SIZE = 1
   TEST_REPS = 10
   TOTAL_TESTS = 2
