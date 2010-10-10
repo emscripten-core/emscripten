@@ -119,7 +119,7 @@ function analyzer(data) {
       walkJSON(data, function(item) {
         if (!item) return;
         if (item.type) {
-          addType(!item.type.text ? item.type : item.type.text, data);
+          addType(!item.type ? item.type : item.type, data);
         }
         if (item.type2) {
           addType(!item.type2.text ? item.type2 : item.type2.text, data);
@@ -213,7 +213,7 @@ function analyzer(data) {
           if (item && item.intertype == 'assign' && ['alloca', 'load', 'call', 'bitcast', 'mathop', 'getelementptr', 'fastgetelementptrload'].indexOf(item.value.intertype) != -1) {
             func.variables[item.ident] = {
               ident: item.ident,
-              type: item.value.type.text,
+              type: item.value.type,
               origin: item.value.intertype,
               uses: parseInt(item.value.tokens.slice(-1)[0].item[0].tokens[0].text.split('=')[1]),
             };

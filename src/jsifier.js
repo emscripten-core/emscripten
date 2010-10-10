@@ -162,11 +162,11 @@ function JSify(data) {
         item.JS = '\n__globalConstructor__ = function() {\n' +
                     item.ctors.map(function(ctor) { return '  ' + toNiceIdent(ctor) + '();' }).join('\n') +
                   '\n}\n';
-      } else if (item.type.text == 'external') {
+      } else if (item.type == 'external') {
         item.JS = 'var ' + item.ident + ' = ' + '0; /* external value? */';
       } else {
         // GETTER - lazy loading, fixes issues with ordering.
-        item.JS = 'this.__defineGetter__("' + item.ident + '", function() { delete ' + item.ident + '; ' + item.ident + ' = ' + parseConst(item.value, item.type.text) + '; return ' + item.ident + ' });';
+        item.JS = 'this.__defineGetter__("' + item.ident + '", function() { delete ' + item.ident + '; ' + item.ident + ' = ' + parseConst(item.value, item.type) + '; return ' + item.ident + ' });';
       }
       item.__result__ = true;
       return [item];
@@ -383,7 +383,7 @@ function JSify(data) {
     // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
     item.JS = (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
 
-    var type = item.value.type.text;
+    var type = item.value.type;
     var value = parseNumerical(item.value.JS);
     //print("zz var: " + item.JS);
     var impl = getVarData(item.funcData, item.ident);
@@ -420,8 +420,8 @@ function JSify(data) {
   }
   makeFuncLineZyme('store', function(item) {
     var value = finalizeLLVMParameter(item.value);
-    if (pointingLevels(item.pointerType.text) == 1) {
-      value = parseNumerical(value, removePointing(item.pointerType.text));
+    if (pointingLevels(item.pointerType) == 1) {
+      value = parseNumerical(value, removePointing(item.pointerType));
     }
     var impl = VAR_EMULATED;
     if (item.pointer.intertype == 'value') {
@@ -556,8 +556,8 @@ function JSify(data) {
   });
   makeFuncLineZyme('alloca', function(item) {
     dprint('alloca', dump(item));
-    if (pointingLevels(item.allocatedType.text) == 0 && isStructType(item.allocatedType.text)) {
-      return RuntimeGenerator.stackAlloc(makeEmptyStruct(item.allocatedType.text).length);
+    if (pointingLevels(item.allocatedType) == 0 && isStructType(item.allocatedType)) {
+      return RuntimeGenerator.stackAlloc(makeEmptyStruct(item.allocatedType).length);
     } else {
       return RuntimeGenerator.stackAlloc(1);
     }
@@ -584,8 +584,8 @@ function JSify(data) {
     }
     if (GUARD_SIGNS) {
       if (op[0] == 'u' || (variant && variant[0] == 'u')) {
-        ident1 = makeUnSign(ident1, type.text);
-        ident2 = makeUnSign(ident2, type.text);
+        ident1 = makeUnSign(ident1, type);
+        ident2 = makeUnSign(ident2, type);
       }
     }
     switch (op) {
@@ -630,7 +630,7 @@ function JSify(data) {
       case 'zext': case 'fpext': case 'trunc': case 'sext': case 'fptrunc': return ident1;
       case 'select': return '(' + ident1 + ' ? ' + ident2 + ' : ' + ident3 + ')';
       case 'ptrtoint': {
-        if (type.text != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
+        if (type != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
         return ident1;
       }
       case 'inttoptr': {
@@ -683,7 +683,7 @@ function JSify(data) {
 
   function getGetElementPtrIndexes(item) {
     var ident = item.ident;
-    var type = item.params[0].type.text; // param 0 == type
+    var type = item.params[0].type; // param 0 == type
     // struct pointer, struct*, and getting a ptr to an element in that struct. Param 1 is which struct, then we have items in that
     // struct, and possibly further substructures, all embedded
     // can also be to 'blocks': [8 x i32]*, not just structs

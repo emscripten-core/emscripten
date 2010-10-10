@@ -244,7 +244,7 @@ function parseParamTokens(params) {
         // no name... the name is implied to be %{the index}
         ret.push({
           intertype: 'value',
-          type: segment[0],
+          type: segment[0].text,
           value: null,
           ident: '_' + absIndex,
         });
@@ -261,7 +261,7 @@ function parseParamTokens(params) {
       }
       ret.push({
         intertype: 'value',
-        type: segment[0],
+        type: segment[0].text,
         value: segment[1],
         ident: parseNumerical(segment[1].text),
       });
@@ -319,7 +319,7 @@ function parseLLVMFunctionCall(segment) {
   assert(segment[1].text in PARSABLE_LLVM_FUNCTIONS);
   var ret = {
     intertype: segment[1].text,
-    type: segment[0],
+    type: segment[0].text,
     params: parseParamTokens(segment[2].item[0].tokens),
   };
   ret.ident = toNiceIdent(ret.params[0].ident);

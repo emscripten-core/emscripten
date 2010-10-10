@@ -262,7 +262,7 @@ function intertyper(data) {
           __result__: true,
           intertype: 'globalVariable',
           ident: ident,
-          type: item.tokens[2],
+          type: item.tokens[2].text,
           lineNum: item.lineNum,
         };
         if (ident == '@llvm.global_ctors') {
@@ -345,8 +345,8 @@ function intertyper(data) {
   substrate.addZyme('Load', {
     processItem: function(item) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
-      item.pointerType = item.tokens[1];
-      item.type = { text: removePointing(item.pointerType.text) };
+      item.pointerType = item.tokens[1].text;
+      item.type = removePointing(item.pointerType);
       if (item.tokens[2].text == 'getelementptr') {
         var last = getTokenIndexByText(item.tokens, ';');
         var data = parseLLVMFunctionCall(item.tokens.slice(1, last));
@@ -359,7 +359,7 @@ function intertyper(data) {
         item.intertype = 'load';
         if (item.tokens[2].text == 'bitcast') {
           item.pointer = item.tokens[3].item[0].tokens[1];
-          item.originalType = item.tokens[3].item[0].tokens[0];
+          item.originalType = item.tokens[3].item[0].tokens[0].text;
         } else {
           item.pointer = item.tokens[2];
         }
@@ -383,7 +383,7 @@ function intertyper(data) {
   substrate.addZyme('Bitcast', {
     processItem: function(item) {
       item.intertype = 'bitcast';
-      item.type = item.tokens[1];
+      item.type = item.tokens[1].text;
       item.ident = item.tokens[2].text;
       item.type2 = item.tokens[4];
       this.forwardItem(item, 'Reintegrator');
@@ -413,7 +413,7 @@ function intertyper(data) {
       if (['signext', 'zeroext'].indexOf(item.tokens[1].text) != -1) {
         item.tokens.splice(1, 1);
       }
-      item.type = item.tokens[1];
+      item.type = item.tokens[1].text;
       item.functionType = '';
       while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1) {
         item.functionType += item.tokens[2].text;
@@ -444,7 +444,7 @@ function intertyper(data) {
   substrate.addZyme('Invoke', {
     processItem: function(item) {
       item.intertype = 'invoke';
-      item.type = item.tokens[1];
+      item.type = item.tokens[1].text;
       item.functionType = '';
       while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1) {
         item.functionType += item.tokens[2].text;
@@ -468,9 +468,9 @@ function intertyper(data) {
   substrate.addZyme('Alloca', {
     processItem: function(item) {
       item.intertype = 'alloca';
-      item.allocatedType = item.tokens[1];
-      item.type = { text: addPointing(item.tokens[1].text) }; // type of pointer we will get
-      item.type2 = { text: item.tokens[1].text }; // value we will create, and get a pointer to
+      item.allocatedType = item.tokens[1].text;
+      item.type = addPointing(item.tokens[1].text); // type of pointer we will get
+      item.type2 = item.tokens[1].text; // value we will create, and get a pointer to
       this.forwardItem(item, 'Reintegrator');
     },
   });
@@ -478,7 +478,7 @@ function intertyper(data) {
   substrate.addZyme('Phi', {
     processItem: function(item) {
       item.intertype = 'phi';
-      item.type = { text: item.tokens[1].text }
+      item.type = item.tokens[1].text
       item.label1 = item.tokens[2].item[0].tokens[2].text;
       item.value1 = item.tokens[2].item[0].tokens[0].text;
       item.label2 = item.tokens[4].item[0].tokens[2].text;
@@ -503,7 +503,7 @@ function intertyper(data) {
           item['param'+i] = parseLLVMSegment(segments[i-1]);
         }
       }
-      item.type = { text: item.param1.type }; // TODO: unobject this
+      item.type = item.param1.type;
       this.forwardItem(item, 'Reintegrator');
     },
   });
@@ -515,13 +515,13 @@ function intertyper(data) {
       var ret = {
         __result__: true,
         intertype: 'store',
-        valueType: item.tokens[1],
+        valueType: item.tokens[1].text,
         value: parseLLVMSegment(segments[0]), // TODO: Make everything use this method, with finalizeLLVMParameter too
         pointer: parseLLVMSegment(segments[1]),
         lineNum: item.lineNum,
       };
       ret.ident = ret.pointer.ident;
-      ret.pointerType = { text: ret.pointer.type }; // TODO: unobject this
+      ret.pointerType = ret.pointer.type;
       return [ret];
     },
   });
