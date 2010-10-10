@@ -213,3 +213,7 @@ function setIntersect(x, y) {
   return ret;
 }
 
+function isNumber(x) {
+  return x == parseInt(x);
+}
+

@@ -40,15 +40,21 @@ function JSify(data) {
     return ptr;
   }
 
+  function calcFastOffset(ptr, pos, noNeedFirst) {
+    var offset = noNeedFirst ? '0' : makeGetPos(ptr);
+    return getFastValue(offset, '+', pos);
+  }
+
   function makeGetValue(ptr, pos, noNeedFirst) {
-    return makeGetSlab(ptr) + '[' + (noNeedFirst ? '0' : makeGetPos(ptr)) + (pos ? ' + ' + pos : '') + ']';
+    return makeGetSlab(ptr) + '[' + calcFastOffset(ptr, pos, noNeedFirst) + ']';
   }
 
   function makeSetValue(ptr, pos, value, noNeedFirst) {
+    var offset = calcFastOffset(ptr, pos, noNeedFirst);
     if (SAFE_HEAP) {
-      return 'SAFE_HEAP_STORE(' + (noNeedFirst ? '0' : makeGetPos(ptr)) + (pos ? ' + ' + pos : '') + ', ' + value + ')';
+      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ')';
     } else {
-      return makeGetSlab(ptr) + '[' + (noNeedFirst ? '0' : makeGetPos(ptr)) + (pos ? ' + ' + pos : '') + '] = ' + value;
+      return makeGetSlab(ptr) + '[' + offset + '] = ' + value;
     }
   }
 
@@ -647,6 +653,34 @@ function JSify(data) {
       }];
 */
 
+  // Given two values and an operation, returns the result of that operation.
+  // Tries to do as much as possible at compile time.
+  function getFastValue(a, op, b) {
+    if (isNumber(a) && isNumber(b)) {
+      return eval(a + op + b);
+    }
+    if (op == '*') {
+      if (!a) a = 1;
+      if (!b) b = 1;
+      if (a == 0 || b == 0) {
+        return 0;
+      } else if (a == 1) {
+        return b;
+      } else if (b == 1) {
+        return a;
+      }
+    } else if (op == '+') {
+      if (!a) a = 0;
+      if (!b) b = 0;
+      if (a == 0) {
+        return b;
+      } else if (b == 0) {
+        return a;
+      }
+    }
+    return a + op + b;
+  }
+
   function getGetElementPtrIndexes(item) {
     var ident = item.ident;
     var type = item.params[0].type.text; // param 0 == type
@@ -658,9 +692,9 @@ function JSify(data) {
     var offset = toNiceIdent(item.params[1].ident);
     if (offset != 0) {
       if (isStructType(type)) {
-        indexes.push((TYPES[type].flatSize != 1 ? TYPES[type].flatSize + '*' : '') + offset);
+        indexes.push(getFastValue(TYPES[type].flatSize, '*', offset));
       } else {
-        indexes.push(getNativeFieldSize(type, true) + '*' + offset);
+        indexes.push(getFastValue(getNativeFieldSize(type, true), '*', offset));
       }
     }
     item.params.slice(2, item.params.length).forEach(function(arg) {
@@ -669,7 +703,7 @@ function JSify(data) {
       var typeData = TYPES[type];
       if (isStructType(type) && typeData.needsFlattening) {
         if (typeData.flatFactor) {
-          indexes.push(curr + '*' + typeData.flatFactor);
+          indexes.push(getFastValue(curr, '*', typeData.flatFactor));
         } else {
           indexes.push(toNiceIdent(type) + '___FLATTENER[' + curr + ']');
         }
@@ -680,7 +714,11 @@ function JSify(data) {
       }
       type = TYPES[type] ? TYPES[type].fields[curr] : '';
     });
-    return indexes.join('+');
+    var ret = indexes[0];
+    for (var i = 1; i < indexes.length; i++) {
+      ret = getFastValue(ret, '+', indexes[i]);
+    }
+    return ret;
   }
 
   function finalizeLLVMFunctionCall(item) {
