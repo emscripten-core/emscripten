@@ -353,18 +353,18 @@ function intertyper(data) {
         item.intertype = 'fastgetelementptrload';
         item.type = data.type;
         item.params = data.params;
-        item.pointer = { text: data.ident };
+        item.pointer = data.ident;
         item.value = data.value;
       } else {
         item.intertype = 'load';
         if (item.tokens[2].text == 'bitcast') {
-          item.pointer = item.tokens[3].item[0].tokens[1];
+          item.pointer = item.tokens[3].item[0].tokens[1].text;
           item.originalType = item.tokens[3].item[0].tokens[0].text;
         } else {
-          item.pointer = item.tokens[2];
+          item.pointer = item.tokens[2].text;
         }
       }
-      item.ident = item.pointer.text;
+      item.ident = item.pointer;
       this.forwardItem(item, 'Reintegrator');
     },
   });
