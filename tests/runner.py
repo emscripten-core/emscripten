@@ -879,7 +879,8 @@ else:
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
 
   COMPILER = LLVM_GCC
-  PARSER_ENGINE = JS_ENGINE = V8_ENGINE
+  PARSER_ENGINE = V8_ENGINE
+  JS_ENGINE = SPIDERMONKEY_ENGINE
   RELOOP = OPTIMIZE = 1
   GUARD_MEMORY = 0
   QUANTUM_SIZE = 1

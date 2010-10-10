@@ -346,7 +346,7 @@ function intertyper(data) {
     processItem: function(item) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       item.pointerType = item.tokens[1].text;
-      item.type = removePointing(item.pointerType);
+      item.valueType = item.type = removePointing(item.pointerType);
       if (item.tokens[2].text == 'getelementptr') {
         var last = getTokenIndexByText(item.tokens, ';');
         var data = parseLLVMFunctionCall(item.tokens.slice(1, last));

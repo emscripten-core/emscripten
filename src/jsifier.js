@@ -19,8 +19,7 @@ function JSify(data) {
     },
   });
 
-  function makePointer(slab, pos, allocator) {
-    // XXX hardcoded ptr impl
+  function makePointer(slab, pos, allocator, type) { // type is FFU
     if (slab == 'HEAP') return pos;
     if (slab[0] != '[') {
       slab = '[' + slab + ']';
@@ -29,13 +28,11 @@ function JSify(data) {
   }
 
   function makeGetSlab(ptr) {
-    // XXX hardcoded ptr impl
     //    return ptr + '.slab';
     return 'HEAP';
   }
 
   function makeGetPos(ptr) {
-    // XXX hardcoded ptr impl
     //    return ptr + '.pos';
     return ptr;
   }
@@ -45,11 +42,11 @@ function JSify(data) {
     return getFastValue(offset, '+', pos);
   }
 
-  function makeGetValue(ptr, pos, noNeedFirst) {
+  function makeGetValue(ptr, pos, noNeedFirst, type) {
     return makeGetSlab(ptr) + '[' + calcFastOffset(ptr, pos, noNeedFirst) + ']';
   }
 
-  function makeSetValue(ptr, pos, value, noNeedFirst) {
+  function makeSetValue(ptr, pos, value, noNeedFirst, type) {
     var offset = calcFastOffset(ptr, pos, noNeedFirst);
     if (SAFE_HEAP) {
       return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ')';
@@ -101,12 +98,12 @@ function JSify(data) {
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (isNumberType(type) || pointingLevels(type) == 1) {
-      return makePointer(parseNumerical(value.text), null, 'ALLOC_STATIC');
+      return makePointer(parseNumerical(value.text), null, 'ALLOC_STATIC', type);
     } else if (value.text == 'zeroinitializer') {
-      return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_STATIC');
+      return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_STATIC', type);
     } else if (value.text && value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
-      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/', null, 'ALLOC_STATIC');
+      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/', null, 'ALLOC_STATIC', type);
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
@@ -142,12 +139,12 @@ function JSify(data) {
       }
       if (value.item) {
         // list of items
-        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC');
+        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
       } else if (value.type == '{') {
         // struct
-        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC');
+        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
       } else if (value[0]) {
-        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC');
+        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
       } else {
         throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
       }
@@ -433,9 +430,9 @@ function JSify(data) {
         break;
       case VAR_EMULATED:
         if (item.pointer.intertype == 'value') {
-          return makeSetValue(item.ident, 0, value) + ';';
+          return makeSetValue(item.ident, 0, value, null, item.valueType) + ';';
         } else {
-          return makeSetValue(0, getGetElementPtrIndexes(item.pointer), value) + ';';
+          return makeSetValue(0, getGetElementPtrIndexes(item.pointer), value, null, item.valueType) + ';';
         }
         break;
       default:
@@ -545,7 +542,7 @@ function JSify(data) {
       case VAR_NATIVIZED: {
         return ident; // We have the actual value here
       }
-      case VAR_EMULATED: return makeGetValue(ident);
+      case VAR_EMULATED: return makeGetValue(ident, null, null, item.type);
       default: return "unknown [load] impl: " + impl;
     }
   });
@@ -724,7 +721,7 @@ function JSify(data) {
   function finalizeLLVMFunctionCall(item) {
     switch(item.intertype) {
       case 'getelementptr':
-        return makePointer(makeGetSlab(item.ident), getGetElementPtrIndexes(item));
+        return makePointer(makeGetSlab(item.ident), getGetElementPtrIndexes(item), null, item.type);
       case 'bitcast':
       case 'inttoptr':
       case 'ptrtoint':
@@ -781,10 +778,10 @@ function JSify(data) {
   // Optimzed intertypes
 
   makeFuncLineZyme('fastgetelementptrload', function(item) {
-    return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), true) + ';';
+    return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), true, item.value.valueType) + ';';
   });
   makeFuncLineZyme('fastgetelementptrstore', function(item) {
-    return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), true) + ';';
+    return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), true, item.type) + ';';
   });
 
   makeFuncLineZyme('unreachable', function(item) { return '// unreachable' });

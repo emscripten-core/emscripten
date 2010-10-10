@@ -719,6 +719,7 @@ function analyzer(data) {
               a.ident == b.value.ident && func.variables[a.ident].uses == 1) {
 //            print("// LOADSUSPECT: " + i + ',' + (i+1) + ':' + a.ident + ':' + b.value.ident);
             a.intertype = 'fastgetelementptrload';
+            a.value.valueType = b.value.valueType;
             a.ident = b.ident;
             b.intertype = null;
             i++;
