@@ -69,17 +69,19 @@ class RunnerCore(unittest.TestCase):
     output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
     # Run Emscripten
-    emscripten_settings = ['{ "QUANTUM_SIZE": %d, "RELOOP": %d, "OPTIMIZE": %d, "GUARD_MEMORY": %d }' % (QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY)]
+    exported_settings = {}
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS']:
+      exported_settings[setting] = eval(setting)
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
-    timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', PARSER_ENGINE] + emscripten_settings, stdout=out, stderr=STDOUT), 240, 'Compiling')
+    timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), 240, 'Compiling')
     output = open(filename + '.o.js').read()
     if output_processor is not None:
         output_processor(output)
     if output is not None and 'Traceback' in output: print output; assert 0
 
-  def run_generated_code(self, filename, args=[], check_timeout=True):
-    return timeout_run(Popen([JS_ENGINE] + JS_ENGINE_OPTS + [filename] + ([] if JS_ENGINE == SPIDERMONKEY_ENGINE else ['--']) + args,
-                       stdout=PIPE, stderr=STDOUT), 120 if check_timeout else None, 'Execution')
+  def run_generated_code(self, engine, filename, args=[], check_timeout=True):
+    return timeout_run(Popen(engine + [filename] + ([] if engine == SPIDERMONKEY_ENGINE else ['--']) + args,
+                       stdout=PIPE, stderr=STDOUT), 30 if check_timeout else None, 'Execution')
 
 if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
@@ -92,12 +94,14 @@ if 'benchmark' not in sys.argv:
         if not no_build:
           self.build(src, dirname, filename, output_processor, main_file)
 
-        # Run
-        js_output = self.run_generated_code(filename + '.o.js', args)
-        if output_nicerizer is not None:
-            js_output = output_nicerizer(js_output)
-        self.assertContained(expected_output, js_output)
-        self.assertNotContained('ERROR', js_output)
+        # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
+        engines = [V8_ENGINE] if not OPTIMIZE else [V8_ENGINE, SPIDERMONKEY_ENGINE]
+        for engine in engines:
+          js_output = self.run_generated_code(engine, filename + '.o.js', args)
+          if output_nicerizer is not None:
+              js_output = output_nicerizer(js_output)
+          self.assertContained(expected_output, js_output)
+          self.assertNotContained('ERROR', js_output)
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
@@ -475,6 +479,26 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*11,74*')
 
+    def test_funcptr(self):
+        src = '''
+          #include <stdio.h>
+          int calc1() { return 26; }
+          int calc2() { return 90; }
+          typedef int (*fp_t)();
+          int main()
+          {
+            fp_t fp = calc1;
+            void *vp = (void*)fp;
+            fp_t fpb = (fp_t)vp;
+            fp_t fp2 = calc2;
+            void *vp2 = (void*)fp2;
+            fp_t fpb2 = (fp_t)vp2;
+            printf("*%d,%d,%d,%d*\\n", fp(), fpb(), fp2(), fpb2());
+            return 0;
+          }
+        '''
+        self.do_test(src, '*26,26,90,90*')
+
     def test_emptyclass(self):
         src = '''
         #include <stdio.h>
@@ -849,7 +873,7 @@ if 'benchmark' not in sys.argv:
     def test_sauer(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
-      assert PARSER_ENGINE != SPIDERMONKEY_ENGINE
+      assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE
 
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
@@ -857,15 +881,10 @@ if 'benchmark' not in sys.argv:
   def make_test(compiler, embetter):
     class TT(T):
       def setUp(self):
-        global COMPILER
+        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS
         COMPILER = compiler['path']
-        global QUANTUM_SIZE
         QUANTUM_SIZE = compiler['quantum_size']
-        global RELOOP
-        RELOOP = embetter
-        global OPTIMIZE
-        OPTIMIZE = embetter
-        global GUARD_MEMORY
+        RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
         GUARD_MEMORY = 1-embetter
     return TT
   for embetter in [0,1]:
@@ -879,15 +898,14 @@ else:
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
 
   COMPILER = LLVM_GCC
-  PARSER_ENGINE = V8_ENGINE
   JS_ENGINE = SPIDERMONKEY_ENGINE
-  if JS_ENGINE == SPIDERMONKEY_ENGINE:
-    JS_ENGINE_OPTS += ['-j', '-m'] # TODO: use this everywhere else
+  #JS_ENGINE = V8_ENGINE
 
-  RELOOP = OPTIMIZE = 1
-  GUARD_MEMORY = 0
   QUANTUM_SIZE = 1
-  TEST_REPS = 20
+  RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = 1
+  GUARD_MEMORY = 0
+
+  TEST_REPS = 10
   TOTAL_TESTS = 2
 
   tests_done = 0
@@ -913,7 +931,7 @@ else:
       times = []
       for i in range(TEST_REPS):
         start = time.time()
-        self.run_generated_code(filename + '.o.js', args, check_timeout=False)
+        self.run_generated_code(JS_ENGINE, filename + '.o.js', args, check_timeout=False)
         curr = time.time()-start
         times.append(curr)
         total_times[i] += curr
@@ -936,7 +954,7 @@ else:
       self.do_benchmark(src, ['5', '64'])
 
 if __name__ == '__main__':
-  for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, PARSER_ENGINE, JS_ENGINE]:
+  for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
     print "Checking for existence of", cmd
     assert(os.path.exists(cmd))
   print "Running Emscripten tests..."

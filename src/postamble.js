@@ -23,7 +23,11 @@ function run(args) {
   _main(argc, argv);
 
   while( __ATEXIT__.length > 0) {
-    __ATEXIT__.pop()();
+    var func = __ATEXIT__.pop();
+    if (typeof func === 'number') {
+      func = FUNCTION_TABLE[func];
+    }
+    func();
   }
 }
 

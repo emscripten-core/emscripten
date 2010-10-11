@@ -25,6 +25,7 @@ GUARD_MEMORY = 1; // Whether we should check that each allocation to the stack d
 // Code embetterments
 OPTIMIZE = 0; // Optimize llvm operations into js commands
 RELOOP = 0; // Recreate js native loops from llvm data
+USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses

@@ -4,6 +4,10 @@ function JSify(data) {
   substrate = new Substrate('JSifyer');
 
   var TYPES = data.types;
+  var FUNCTIONS = {};
+  data.functions.forEach(function(func) {
+    FUNCTIONS[func.ident] = func;
+  });
 
   // type
   substrate.addZyme('Type', {
@@ -20,20 +24,29 @@ function JSify(data) {
   });
 
   function makePointer(slab, pos, allocator, type) { // type is FFU
-    if (slab == 'HEAP') return pos;
+    if (slab in set('HEAP', 'IHEAP', 'FHEAP')) return pos;
     if (slab[0] != '[') {
       slab = '[' + slab + ']';
     }
     return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ')';
   }
 
-  function makeGetSlab(ptr) {
-    //    return ptr + '.slab';
-    return 'HEAP';
+  function makeGetSlab(ptr, type) {
+    assert(type);
+    if (!USE_TYPED_ARRAYS) {
+      return 'HEAP';
+    } else {
+      if (type in FLOAT_TYPES || type === 'int64') {
+        return 'FHEAP';
+      } else if (type in INT_TYPES || isPointerType(type)) {
+        return 'IHEAP';
+      } else {
+        return 'HEAP';
+      }
+    }
   }
 
   function makeGetPos(ptr) {
-    //    return ptr + '.pos';
     return ptr;
   }
 
@@ -43,15 +56,23 @@ function JSify(data) {
   }
 
   function makeGetValue(ptr, pos, noNeedFirst, type) {
-    return makeGetSlab(ptr) + '[' + calcFastOffset(ptr, pos, noNeedFirst) + ']';
+    return makeGetSlab(ptr, type) + '[' + calcFastOffset(ptr, pos, noNeedFirst) + ']';
+  }
+
+  function indexizeFunctions(value) { // TODO: Also check for other functions (externals, library, etc.)
+    if (value in FUNCTIONS) {
+      value = value + '.__index__'; // Store integer value
+    }
+    return value;
   }
 
   function makeSetValue(ptr, pos, value, noNeedFirst, type) {
+    value = indexizeFunctions(value);
     var offset = calcFastOffset(ptr, pos, noNeedFirst);
     if (SAFE_HEAP) {
       return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ')';
     } else {
-      return makeGetSlab(ptr) + '[' + offset + '] = ' + value;
+      return makeGetSlab(ptr, type) + '[' + offset + '] = ' + value;
     }
   }
 
@@ -135,7 +156,7 @@ function JSify(data) {
             throw 'Invalid segment: ' + dump(segment);
           }
         };
-        return splitTokenList(tokens).map(handleSegment).map(parseNumerical);
+        return splitTokenList(tokens).map(handleSegment).map(parseNumerical).map(indexizeFunctions);
       }
       if (value.item) {
         // list of items
@@ -206,6 +227,17 @@ function JSify(data) {
       this.forwardItems(ret, 'FuncLineTriager');
     },
   });
+
+  var FUNCTION_INDEX = 0;
+  var FUNCTION_HASH = {};
+  function getFunctionIndex(name_) {
+    if (!(name_ in FUNCTION_HASH)) {
+      FUNCTION_HASH[name_] = FUNCTION_INDEX;
+      FUNCTION_INDEX++;
+    }
+    return FUNCTION_HASH[name_];
+  }
+
   // function reconstructor & post-JS optimizer
   substrate.addZyme('FunctionReconstructor', {
     funcs: {},
@@ -339,14 +371,21 @@ function JSify(data) {
       // Finalize function
       if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
       func.JS += '}\n';
+      func.JS += func.ident + '.__index__ = ' + getFunctionIndex(func.ident) + ';\n';
+      func.JS += 'FUNCTION_TABLE[' + getFunctionIndex(func.ident) + '] = ' + func.ident + ';\n';
       func.__result__ = true;
       return func;
     },
   });
 
-  function getVarData(funcData, ident) {
-    if (funcData.variables[ident]) {
-      return funcData.variables[ident].impl;
+  function getVarData(funcData, ident) { // XXX - need to check globals as well!
+    return funcData.variables[ident];
+  }
+
+  function getVarImpl(funcData, ident) {
+    var data = getVarData(funcData, ident);
+    if (data) {
+      return data.impl;
     } else {
       return 'emulated'; // All global are emulated
     }
@@ -383,7 +422,7 @@ function JSify(data) {
     var type = item.value.type;
     var value = parseNumerical(item.value.JS);
     //print("zz var: " + item.JS);
-    var impl = getVarData(item.funcData, item.ident);
+    var impl = getVarImpl(item.funcData, item.ident);
     switch (impl) {
       case VAR_NATIVE: {
         break;
@@ -422,7 +461,7 @@ function JSify(data) {
     }
     var impl = VAR_EMULATED;
     if (item.pointer.intertype == 'value') {
-      impl = getVarData(item.funcData, item.ident);
+      impl = getVarImpl(item.funcData, item.ident);
     }
     switch (impl) {
       case VAR_NATIVIZED:
@@ -537,7 +576,7 @@ function JSify(data) {
   });
   makeFuncLineZyme('load', function(item) {
     var ident = toNiceIdent(item.ident);
-    var impl = getVarData(item.funcData, item.ident);
+    var impl = getVarImpl(item.funcData, item.ident);
     switch (impl) {
       case VAR_NATIVIZED: {
         return ident; // We have the actual value here
@@ -721,7 +760,7 @@ function JSify(data) {
   function finalizeLLVMFunctionCall(item) {
     switch(item.intertype) {
       case 'getelementptr':
-        return makePointer(makeGetSlab(item.ident), getGetElementPtrIndexes(item), null, item.type);
+        return makePointer(makeGetSlab(item.ident, item.type), getGetElementPtrIndexes(item), null, item.type);
       case 'bitcast':
       case 'inttoptr':
       case 'ptrtoint':
@@ -747,7 +786,7 @@ function JSify(data) {
     return ident;
   });
 
-  function makeFunctionCall(ident, params) {
+  function makeFunctionCall(ident, params, funcData) {
     // Special cases
     if (ident == '_llvm_va_start') {
       var args = 'Array.prototype.slice.call(arguments, __numArgs__)';
@@ -755,7 +794,7 @@ function JSify(data) {
       if (SAFE_HEAP) {
         return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', 0)';
       } else {
-        return 'HEAP[' + params[0].ident + '] = ' + data;
+        return 'IHEAP[' + params[0].ident + '] = ' + data;
       }
     } else if (ident == '_llvm_va_end') {
       return ';'
@@ -767,12 +806,17 @@ function JSify(data) {
       } else {
         return toNiceIdent(param.ident);
       }
-    });
+    }).map(indexizeFunctions);
+
+    if (funcData && getVarData(funcData, ident)) {
+      ident = 'FUNCTION_TABLE[' + ident + ']';
+    }
+
     return ident + '(' + params.join(', ') + ')';
   }
   makeFuncLineZyme('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineZyme('call', function(item) {
-    return makeFunctionCall(item.ident, item.params) + (item.standalone ? ';' : '');
+    return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 
   // Optimzed intertypes

@@ -3,6 +3,10 @@
 function __globalConstructor__() {
 }
 
+// Maps ints ==> functions. This lets us pass around ints, which are
+// actually pointers to functions, and we convert at call()time
+FUNCTION_TABLE = [];
+
 var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var __ATEXIT__ = [];
@@ -43,7 +47,7 @@ function assert(condition, text) {
 }
 
 function Pointer_niceify(ptr) {
-  return { slab: HEAP, pos: ptr };
+  return { slab: IHEAP, pos: ptr };
 }
 
 // Creates a pointer for a certain slab and a certain address in that slab.
@@ -70,7 +74,18 @@ function Pointer_make(slab, pos, allocator) {
 #if SAFE_HEAP
     SAFE_HEAP_STORE(ret + i, slab[pos + i]);
 #else
+#if USE_TYPED_ARRAYS
+    // TODO: Check - also in non-typedarray case - for functions, and if so add |.__index__|
+    var curr = slab[pos + i];
+    if (typeof curr === 'number') {
+      IHEAP[ret + i] = curr; // TODO: optimize. Can easily detect floats, but 1.0 might look like an int...
+      FHEAP[ret + i] = curr;
+    } else {
+      HEAP[ret + i] = curr;
+    }
+#else
     HEAP[ret + i] = slab[pos + i];
+#endif
 #endif
   }
   return ret;
@@ -118,10 +133,28 @@ __ZdaPv = _free; // llvm-gcc
 function __initializeRuntime__() {
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                        // Also this ensures we leave 0 as an invalid address, 'NULL'
+#if USE_TYPED_ARRAYS
+  if (!this['TOTAL_MEMORY']) TOTAL_MEMORY = 50*1024*1024;
+  if (this['Int32Array']) { // check for engine support
+    IHEAP = new Int32Array(TOTAL_MEMORY);
+    for (var i = 0; i < HEAP.length; i++) {
+      IHEAP[i] = HEAP[i];
+    }
+  } else {
+    IHEAP = HEAP; // fallback
+  }
+  if (this['Float64Array']) { // check for engine support
+    FHEAP = new Float64Array(TOTAL_MEMORY);
+  } else {
+    FHEAP = HEAP; // fallback
+  }
+#else
+  IHEAP = HEAP; // We use that name in our runtime code that processes strings etc., see library.js
+#endif
 
   STACK_STACK = [];
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
-  if (!this['TOTAL_STACK']) TOTAL_STACK = 64*1024*100; // Reserved room for stack
+  if (!this['TOTAL_STACK']) TOTAL_STACK = 1024*1024; // Reserved room for stack
   STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
   STATICTOP = alignMemoryPage(STACK_MAX);
@@ -136,13 +169,22 @@ function __formatString() {
   var ret = [];
   var curr = -1;
   while (curr != 0) {
+#if USE_TYPED_ARRAYS
+    curr = IHEAP[textIndex];
+    next = IHEAP[textIndex+1];
+#else
     curr = HEAP[textIndex];
     next = HEAP[textIndex+1];
+#endif
     if (curr == '%'.charCodeAt(0) && ['d', 'u', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
       var argText = String(arguments[argIndex]);
       // Handle very very simply formatting, namely only %.Xf
       if (next == '.'.charCodeAt(0)) {
+#if USE_TYPED_ARRAYS
+        var limit = parseInt(String.fromCharCode(IHEAP[textIndex+2]));
+#else
         var limit = parseInt(String.fromCharCode(HEAP[textIndex+2]));
+#endif
         var dotIndex = argText.indexOf('.');
         if (dotIndex == -1) {
           dotIndex = argText.length;
@@ -174,14 +216,16 @@ function __formatString() {
 // Copies a list of num items on the HEAP into a
 // a normal JavaScript array of numbers
 function Array_copy(ptr, num) {
-  // XXX hardcoded ptr impl
-  return HEAP.slice(ptr, ptr+num);
+#if USE_TYPED_ARRAYS
+  return Array.prototype.slice.call(IHEAP.slice(ptr, ptr+num)); // Make a normal array out of the typed one
+#else
+  return IHEAP.slice(ptr, ptr+num);
+#endif
 }
 
 // Copies a C-style string, terminated by a zero, from the HEAP into
 // a normal JavaScript array of numbers
 function String_copy(ptr, addZero) {
-  // XXX hardcoded ptr impl
   return Array_copy(ptr, _strlen(ptr)).concat(addZero ? [0] : []);
 }
 
@@ -199,6 +243,11 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
     SAFE_HEAP_STORE(dest + i, HEAP[src + i]);
 #else
     HEAP[dest + i] = HEAP[src + i];
+#if USE_TYPED_ARRAYS
+    // TODO: optimize somehow - this is slower than without typed arrays
+    IHEAP[dest + i] = IHEAP[src + i];
+    FHEAP[dest + i] = FHEAP[src + i];
+#endif
 #endif
   }
 //  dest = Pointer_niceify(dest);
@@ -207,6 +256,17 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
 }
 _llvm_memcpy_i64 = _llvm_memcpy_i32;
 _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_i32;
+
+function llvm_memset_i32(ptr, value, num) {
+  for (var i = 0; i < num; i++) {
+#if USE_TYPED_ARRAYS
+    HEAP[ptr+i] = IHEAP[ptr+i] = FHEAP[ptr+i] = value;
+#else
+    HEAP[ptr+i] = value;
+#endif
+  }
+}
+_llvm_memset_p0i8_i32 = llvm_memset_i32;
 
 // Tools
 

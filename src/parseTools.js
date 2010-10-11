@@ -8,26 +8,27 @@ function preprocess(text, constants) {
   }
   var lines = text.split('\n');
   var ret = '';
-  var show = true;
+  var showStack = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     if (line[0] != '#') {
-      if (show) {
+      if (showStack.indexOf(false) == -1) {
         ret += line + '\n';
       }
     } else {
       if (line[1] == 'i') { // if
         var ident = line.substr(4);
-        show = !!this[ident] && this[ident] > 0;
+        showStack.push(!!this[ident] && this[ident] > 0);
       } else if (line[2] == 'l') { // else
-        show = !show;
+        showStack.push(!showStack.pop());
       } else if (line[2] == 'n') { // endif
-        show = true;
+        showStack.pop();
       } else {
         throw "Unclear preprocessor command: " + line;
       }
     }
   }
+  assert(showStack.length == 0);
   return ret;
 }
 
@@ -45,6 +46,10 @@ function pointingLevels(type) {
     ret ++;
   }
   return ret;
+}
+
+function removeAllPointing(type) {
+  return removePointing(type, pointingLevels(type));
 }
 
 function toNiceIdent(ident) {
@@ -80,7 +85,7 @@ function isStructType(type) {
   return !isNumberType(type) && type[0] == '%';
 }
 
-function isPointerType(type) { // TODO!
+function isPointerType(type) {
   return pointingLevels(type) > 0;
 }
 
@@ -88,18 +93,13 @@ function isVoidType(type) {
   return type == 'void';
 }
 
-function isType(type) { // TODO!
-  return isVoidType(type) || isNumberType(type) || isStructType(type) || isPointerType(type);
-}
-
 // Detects a function definition, ([...|type,[type,...]])
 function isFunctionDef(token) {
   var text = token.text;
-  var pointing = pointingLevels(text);
-  var nonPointing = removePointing(text, pointing);
+  var nonPointing = removeAllPointing(text);
   if (nonPointing[0] != '(' || nonPointing.substr(-1) != ')')
     return false;
-  if (nonPointing == '(...)') return true;
+  if (nonPointing in set('()', '(...)')) return true;
   if (!token.item) return false;
   var fail = false;
   splitTokenList(token.item[0].tokens).forEach(function(segment) {
@@ -107,6 +107,19 @@ function isFunctionDef(token) {
     fail = fail || !isType(subtoken.text) || segment.length > 1;
   });
   return !fail;
+}
+
+function isFunctionType(type) {
+  var parts = type.split(' ');
+  if (parts.length != 2) return false;
+  if (pointingLevels(type) !== 1) return false;
+  var text = removeAllPointing(parts[1]);
+  var ret = isType(parts[0]) && isFunctionDef({ text: text, item: [{tokens: [{text: text.substr(1, text.length-2)}]}] });
+  return ret;
+}
+
+function isType(type) { // TODO!
+  return isVoidType(type) || isNumberType(type) || isStructType(type) || isPointerType(type) || isFunctionType(type);
 }
 
 function addIdent(token) {

@@ -29,6 +29,10 @@ for (setting in settings) {
   this[setting] = settings[setting];
 }
 
+// Sanity of settings
+
+assert(!(USE_TYPED_ARRAYS && SAFE_HEAP));
+
 // Read llvm
 var lines = [];
 var line;

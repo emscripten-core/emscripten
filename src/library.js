@@ -19,11 +19,11 @@ var Library = {
   },
 
   vsnprintf: function(dst, num, src, ptr) {
-    var args = Array_copy(ptr+1, HEAP[ptr]); // # of args in in first place
+    var args = Array_copy(ptr+1, IHEAP[ptr]); // # of args in in first place
     var text = __formatString.apply(null, [src].concat(args));
     for (var i = 0; i < num; i++) {
-      HEAP[dst+i] = HEAP[text+i];
-      if (HEAP[dst+i] == 0) break;
+      IHEAP[dst+i] = IHEAP[text+i];
+      if (IHEAP[dst+i] == 0) break;
     }
   },
 
@@ -42,7 +42,7 @@ var Library = {
 
   strlen: function(p) {
     var q = p;
-    while (HEAP[q] != 0) q++;
+    while (IHEAP[q] != 0) q++;
     return q - p;
   },
 
@@ -65,22 +65,22 @@ var Library = {
   strcpy: function(pdest, psrc) {
     var i = 0;
     do {
-      HEAP[pdest+i] = HEAP[psrc+i];
+      IHEAP[pdest+i] = IHEAP[psrc+i];
       i ++;
-    } while (HEAP[psrc+i-1] != 0);
+    } while (IHEAP[psrc+i-1] != 0);
   },
 
   strncpy: function(pdest, psrc, num) {
     var padding = false;
     for (var i = 0; i < num; i++) {
-      HEAP[pdest+i] = padding ? 0 : HEAP[psrc+i];
-      padding = padding || HEAP[psrc+i] == 0;
+      IHEAP[pdest+i] = padding ? 0 : IHEAP[psrc+i];
+      padding = padding || IHEAP[psrc+i] == 0;
     }
   },
 
   strlen: function(ptr) {
     var i = 0;
-    while (HEAP[ptr+i] != 0) i++;
+    while (IHEAP[ptr+i] != 0) i++;
     return i;
   },
 
@@ -88,9 +88,9 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     do {
-      HEAP[pdest+len+i] = HEAP[psrc+i];
+      IHEAP[pdest+len+i] = IHEAP[psrc+i];
       i ++;
-    } while (HEAP[psrc+i-1] != 0);
+    } while (IHEAP[psrc+i-1] != 0);
   },
 
   strtol: function(ptr) {
@@ -101,8 +101,8 @@ var Library = {
   strcmp: function(px, py) {
     var i = 0;
     while (true) {
-      var x = HEAP[px+i];
-      var y = HEAP[py+i];
+      var x = IHEAP[px+i];
+      var y = IHEAP[py+i];
       if (x == y && x == 0) return 0;
       if (x == 0) return -1;
       if (y == 0) return 1;
@@ -131,13 +131,6 @@ var Library = {
   __cxa_guard_release: function() {
     return 0;
   },
-
-  llvm_memset_i32: function(ptr, value, num) {
-    for (var i = 0; i < num; i++) {
-      HEAP[ptr+i] = value;
-    }
-  },
-  llvm_memset_p0i8_i32: 'llvm_memset_i32',
 
   llvm_eh_exception: function() {
     return 'code-generated exception: ' + (new Error().stack);
@@ -229,7 +222,7 @@ var Library = {
   time: function(ptr) {
     var ret = Math.floor(Date.now()/1000);
     if (ptr) {
-      HEAP[ptr] = ret;
+      IHEAP[ptr] = ret;
     }
     return ret;
   },
