@@ -276,7 +276,9 @@ function JSify(data) {
       }).filter(function(param) { return param != null });;
 
       func.JS = '\nfunction ' + func.ident + '(' + params.join(', ') + ') {\n';
-      func.JS += '  ' + RuntimeGenerator.stackEnter() + '\n';
+
+      func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack) + ';\n';
+
       if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed
@@ -591,15 +593,10 @@ function JSify(data) {
     return item.ident + '.f' + item.indexes[0][0].text;
   });
   makeFuncLineZyme('alloca', function(item) {
-    dprint('alloca', dump(item));
-    if (pointingLevels(item.allocatedType) == 0 && isStructType(item.allocatedType)) {
-      return RuntimeGenerator.stackAlloc(makeEmptyStruct(item.allocatedType).length);
-    } else {
-      return RuntimeGenerator.stackAlloc(1);
-    }
+    assert(typeof item.allocatedIndex === 'number'); // or, return RuntimeGenerator.stackAlloc(calcAllocatedSize(item.allocatedType, TYPES));
+    return getFastValue('STACKTOP', '-', item.allocatedIndex.toString());
   });
   makeFuncLineZyme('phi', function(item) {
-    dprint('phi', dump(item));
     return '__lastLabel__ == ' + getLabelId(item.label1) + ' ? ' + toNiceIdent(item.value1) + ' : ' + toNiceIdent(item.value2);
   });
 
@@ -612,7 +609,6 @@ function JSify(data) {
   }
 
   makeFuncLineZyme('mathop', function(item) { with(item) {
-    dprint('mathop', 'mathop: ' + dump(item));
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
         item['ident'+i] = finalizeLLVMParameter(item['param'+i]);
@@ -705,7 +701,7 @@ function JSify(data) {
       } else if (b == 1) {
         return a;
       }
-    } else if (op == '+') {
+    } else if (op in set('+', '-')) {
       if (!a) a = 0;
       if (!b) b = 0;
       if (a == 0) {

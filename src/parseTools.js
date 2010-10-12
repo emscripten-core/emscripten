@@ -446,3 +446,11 @@ function cleanLabel(label) {
   }
 }
 
+function calcAllocatedSize(type, TYPES) {
+  if (pointingLevels(type) == 0 && isStructType(type)) {
+    return TYPES[type].flatSize; // makeEmptyStruct(item.allocatedType).length;
+  } else {
+    return 1;
+  }
+}
+

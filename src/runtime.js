@@ -25,8 +25,12 @@ RuntimeGenerator = {
     return ret;
   },
 
-  stackEnter: function() {
-    return 'STACK_STACK.push(STACKTOP);';
+  stackEnter: function(initial) {
+    var ret = 'STACK_STACK.push(STACKTOP); STACKTOP += ' + initial;
+    if (GUARD_MEMORY) {
+      ret += '; assert(STACKTOP < STACK_MAX)';
+    }
+    return ret;
   },
 
   stackExit: function() {

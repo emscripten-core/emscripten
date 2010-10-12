@@ -300,7 +300,34 @@ function analyzer(data) {
           });
         });
       });
-      this.forwardItem(item, 'Relooper');
+      this.forwardItem(item, 'StackAnalyzer');
+    },
+  });
+
+  // Stack analyzer - calculate the base stack usage
+  substrate.addZyme('StackAnalyzer', {
+    processItem: function(data) {
+      data.functions.forEach(function(func) {
+        var total = 0;
+        var lines = func.labels[0].lines;
+        for (var i = 0; i < lines.length; i++) {
+          var item = lines[i].value;
+          if (!item || item.intertype != 'alloca') break;
+          // FIXME: This ignores nativized variables, but probably negligible
+          item.allocatedSize = calcAllocatedSize(item.allocatedType, data.types);
+          total += item.allocatedSize;
+        }
+        func.initialStack = total;
+        var index = 0;
+        for (var i = 0; i < lines.length; i++) {
+          var item = lines[i].value;
+          if (!item || item.intertype != 'alloca') break;
+          index += item.allocatedSize;
+          item.allocatedIndex = index;
+          delete item.allocatedSize;
+        }
+      });
+      this.forwardItem(data, 'Relooper');
     },
   });
 
