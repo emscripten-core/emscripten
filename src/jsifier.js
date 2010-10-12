@@ -492,12 +492,12 @@ function JSify(data) {
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
   }
 
-  // TODO: remove 'oldLabel', store that inside the label: BXXX|Labeltobreak|Labeltogetto
-  function makeBranch(label, oldLabel) {
+  function makeBranch(label) {
     if (label[0] == 'B') {
+      var parts = label.split('|');
+      var trueLabel = parts[1];
+      var oldLabel = parts[2];
       var labelSetting = '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ '; // TODO: optimize away
-      var trueLabel = label.substr(5);
-      assert(oldLabel);
       if (label[1] == 'R') {
         return labelSetting + 'break ' + trueLabel + ';';
       } else if (label[1] == 'C') { // CONT
@@ -517,10 +517,10 @@ function JSify(data) {
   makeFuncLineZyme('branch', function(item) {
     //print('branch: ' + dump(item));
     if (!item.ident) {
-      return makeBranch(item.label, item.old_label);
+      return makeBranch(item.label);
     } else {
-      var labelTrue = makeBranch(item.labelTrue, item.old_labelTrue);
-      var labelFalse = makeBranch(item.labelFalse, item.old_labelFalse);
+      var labelTrue = makeBranch(item.labelTrue);
+      var labelFalse = makeBranch(item.labelFalse);
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + item.ident + ') { ';
       var head2 = 'if (!(' + item.ident + ')) { ';
@@ -545,11 +545,11 @@ function JSify(data) {
         first = false;
       }
       ret += 'if (' + item.ident + ' == ' + switchLabel.value + ') {\n';
-      ret += '  ' + makeBranch(switchLabel.label, switchLabel.old_label) + '\n';
+      ret += '  ' + makeBranch(switchLabel.label) + '\n';
       ret += '}\n';
     });
     ret += 'else {\n';
-    ret += makeBranch(item.defaultLabel, item.old_defaultLabel) + '\n';
+    ret += makeBranch(item.defaultLabel) + '\n';
     ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
@@ -573,7 +573,7 @@ function JSify(data) {
             + '__THREW__ = false } catch(e) { '
             + '__THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
-            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.old_toLabel) + ' } else { ' + makeBranch(item.unwindLabel, item.old_unwindLabel) + ' }';
+            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel) + ' } else { ' + makeBranch(item.unwindLabel) + ' }';
     return ret;
   });
   makeFuncLineZyme('load', function(item) {

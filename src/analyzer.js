@@ -365,10 +365,8 @@ function analyzer(data) {
         operateOnLabels(line, function process(item, id) {
           if (item[id] in labelIds) {
             ret.push(item[id]);
-            assert(!item['old_' + id]);
-            item['old_' + id] = item[id]; // Save it; we need this later for labels before breaks, when we have multiple entries later
             dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId + '; old: ' + item['old_' + id]);
-            item[id] = toLabelId;
+            item[id] = toLabelId + '|' + item[id];
           }
         });
         return ret;
@@ -520,11 +518,11 @@ function analyzer(data) {
           var nextEntries = keys(entryLabel.outLabels);
           dprint('relooping', '   Creating simple emulated, outlabels: ' + nextEntries);
           //if (nextEntries.length == 1) {
-          //  replaceLabelLabels([entryLabel], set(nextEntries), 'BNOPP'); // remove unneeded branch XXX - this is dangerous, as we may
+          //  replaceLabelLabels([entryLabel], set(nextEntries), 'BNOPP|XXX'); // remove unneeded branch XXX - this is dangerous, as we may
           //                                                               // have 1 next entry, but 1 or more B-labels...
           //} else {
             nextEntries.forEach(function(nextEntry) {
-              replaceLabelLabels([entryLabel], set(nextEntry), 'BJSET' + nextEntry); // Just SET __label__ - no break or continue or whatnot
+              replaceLabelLabels([entryLabel], set(nextEntry), 'BJSET|' + nextEntry); // Just SET __label__ - no break or continue or whatnot
             });
           //}
           return {
@@ -565,7 +563,7 @@ function analyzer(data) {
 
           // We will be in a loop, |continue| gets us back to the entry
           entries.forEach(function(entry) {
-            replaceLabelLabels(internals, searchable(entries), 'BCONT' + entries[0]); // entries[0] is the name of the loop, see walkBlock
+            replaceLabelLabels(internals, searchable(entries), 'BCONT|' + entries[0]); // entries[0] is the name of the loop, see walkBlock
           });
 
           // To get to any of our (not our parents') exit labels, we will break.
@@ -573,7 +571,7 @@ function analyzer(data) {
           var enteredExitLabels = {};
           if (externals.length > 0) {
             entries.forEach(function(entry) {
-              mergeInto(enteredExitLabels, set(replaceLabelLabels(internals, currExitLabels, 'BREAK' + entries[0]))); // see comment on entries[0] above
+              mergeInto(enteredExitLabels, set(replaceLabelLabels(internals, currExitLabels, 'BREAK|' + entries[0]))); // see comment on entries[0] above
             });
             enteredExitLabels = keys(enteredExitLabels).map(cleanLabel);
             dprint('relooping', 'enteredExitLabels: ' + dump(enteredExitLabels));
@@ -660,7 +658,7 @@ function analyzer(data) {
 
           // TODO: Move this into BJSET
           keys(postEntryLabels).forEach(function(post) {
-            replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK' + actualEntries[0]);
+            replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + actualEntries[0]);
           });
           // Create child block
           actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict);
