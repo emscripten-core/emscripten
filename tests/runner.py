@@ -897,6 +897,8 @@ else:
 
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
 
+  assert(os.path.exists(CLOSURE_COMPILER))
+
   COMPILER = LLVM_GCC
   JS_ENGINE = SPIDERMONKEY_ENGINE
   #JS_ENGINE = V8_ENGINE
@@ -926,12 +928,21 @@ else:
       filename = os.path.join(dirname, 'src.cpp')
       self.build(src, dirname, filename, main_file=main_file)
 
+      # Optimize using closure compiler
+      try:
+        os.remove(filename + '.cc.js')
+      except:
+        pass
+      cc_output = Popen(['java', '-jar', CLOSURE_COMPILER, '--compilation_level', 'ADVANCED_OPTIMIZATIONS', '--formatting', 'PRETTY_PRINT',
+                        '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      assert('ERROR' not in cc_output)
+
       # Run
       global total_times
       times = []
       for i in range(TEST_REPS):
         start = time.time()
-        self.run_generated_code(JS_ENGINE, filename + '.o.js', args, check_timeout=False)
+        self.run_generated_code(JS_ENGINE, filename + '.cc.js', args, check_timeout=False)
         curr = time.time()-start
         times.append(curr)
         total_times[i] += curr
