@@ -25,7 +25,7 @@ LLVM_DIS_OPTS = []
 if '2.8' in LLVM_ROOT:
   LLVM_DIS_OPTS += ['-show-annotations']
 
-SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m'] # No |-j| due to Mozilla bug XXX
+SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/tracemonkey/js/src/js'), '-m'] # No |-j| due to Mozilla bug XXX
 V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
 
 # XXX Warning: Compiling the 'sauer' test in SpiderMonkey can lead to an extreme amount of memory being
