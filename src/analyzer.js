@@ -211,6 +211,8 @@ function analyzer(data) {
   substrate.addZyme('VariableAnalyzer', {
     processItem: function(item) {
       item.functions.forEach(function(func) {
+        dprint('vars', 'Analyzing variables in ' + func.ident);
+
         func.variables = {};
 
         // LLVM is SSA, so we always have a single assignment/write. We care about
@@ -266,10 +268,10 @@ function analyzer(data) {
           if (variable.origin == 'getelementptr') {
             // Use our implementation that emulates pointers etc.
             variable.impl = VAR_EMULATED;
-          } else if ( variable.pointingLevels === 0 && !variable.hasAddrTaken ) {
+          } else if (OPTIMIZE && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
             // A simple int value, can be implemented as a native variable
             variable.impl = VAR_NATIVE;
-          } else if ( variable.pointingLevels === 1 && variable.origin === 'alloca' && !isStructPointerType(variable.type) && !variable.hasAddrTaken && !variable.hasValueTaken ) {
+          } else if (OPTIMIZE && variable.origin === 'alloca' && !variable.hasAddrTaken && !variable.hasValueTaken) {
             // A pointer to a value which is only accessible through this pointer. Basically
             // a local value on the stack, which nothing fancy is done on. So we can
             // optimize away the pointing altogether, and just have a native variable
@@ -336,7 +338,8 @@ function analyzer(data) {
     processItem: function(item) {
       var that = this;
       function finish() {
-        that.forwardItem(item, 'Optimizer');
+        item.__finalResult__ = true;
+        return [item];
       }
 
       // Tools
@@ -689,205 +692,6 @@ function analyzer(data) {
   // TODO: LoopOptimizer. The Relooper generates native loop structures, that are
   //       logically correct. The LoopOptimizer works on that, doing further optimizations
   //       like switching to BNOPP when possible, etc.
-
-  // Optimizer
-  // XXX: load, store and gep now have pointer/value/data from which we copy the ident into a toplevel ident.
-  //      However, we later read the non-toplevel ident in some cases, so optimizer changes can lead to bugs.
-  //      Need to remove the toplevel, work entirely with the non-toplevel. Single location.
-  substrate.addZyme('Optimizer', {
-    processItem: function(item) {
-      var that = this;
-      function finish() {
-        item.__finalResult__ = true;
-        return [item];
-      }
-      if (!OPTIMIZE) return finish();
-
-      // Check if a line has side effects *aside* from an explicit assign if it has one
-      function isLineSideEffecting(line) {
-        if (line.intertype == 'assign' && line.value.intertype !== 'call') return false;
-        if (['fastgetelementptrload'].indexOf(line.intertype) != -1) return false;
-        return true;
-      }
-
-      function replaceVars(line, ident, replaceWith) {
-        if (!replaceWith) {
-          print('// Not replacing ' + dump(ident) + ' : ' + dump(replaceWith));
-          return false;
-        }
-        var found = false;
-        // assigns, loads, mathops
-        var POSSIBLE_VARS = ['ident', 'ident2'];
-        for (var i = 0; i < POSSIBLE_VARS.length; i++) {
-          var possible = POSSIBLE_VARS[i];
-          if (line[possible] == ident) {
-            line[possible] = replaceWith;
-            found = true;
-          }
-          if (line.value && line.value[possible] == ident) {
-            line.value[possible] = replaceWith;
-            found = true;
-          }
-        }
-        // getelementptr, call params
-        [line, line.value].forEach(function(element) {
-          if (!element || !element.params) return;
-          var params = element.params;
-          for (var j = 0; j < params.length; j++) {
-            var param = params[j];
-            if (param.intertype == 'value' && param.ident == ident) {
-              param.ident = replaceWith;
-              found = true;
-            }
-          }
-        });
-        return found;
-      }
-
-      // Fast getelementptr loads
-      item.functions.forEach(function(func) {
-        for (var i = 0; i < func.lines.length-1; i++) {
-          var a = func.lines[i];
-          var b = func.lines[i+1];
-          if (a.intertype == 'assign' && a.value.intertype == 'getelementptr' &&
-              b.intertype == 'assign' && b.value.intertype == 'load' &&
-              a.ident == b.value.ident && func.variables[a.ident].uses == 1) {
-//            print("// LOADSUSPECT: " + i + ',' + (i+1) + ':' + a.ident + ':' + b.value.ident);
-            a.intertype = 'fastgetelementptrload';
-            a.value.valueType = b.value.valueType;
-            a.ident = b.ident;
-            b.intertype = null;
-            i++;
-          }
-        }
-        cleanFunc(func);
-      });
-
-      // Fast getelementptr stores
-      item.functions.forEach(function(func) {
-        for (var i = 0; i < func.lines.length-1; i++) {
-          var a = func.lines[i];
-          var b = func.lines[i+1];
-          if (a.intertype == 'assign' && a.value.intertype == 'getelementptr' &&
-              b.intertype == 'store' && b.value.text &&
-              a.ident == b.ident && func.variables[a.ident].uses == 1) {
-            //print("// STORESUSPECT: " + a.lineNum + ',' + b.lineNum);
-            a.intertype = 'fastgetelementptrstore';
-            a.ident = toNiceIdent(b.value.text);
-            b.intertype = null;
-            i++;
-          }
-        }
-        cleanFunc(func);
-      });
-
-      // TODO: Use for all that can
-      function optimizePairs(worker, minSlice, maxSlice) {
-        minSlice = minSlice ? minSlice : 2;
-        maxSlice = maxSlice ? maxSlice : 2;
-        item.functions.forEach(function(func) {
-          func.labels.forEach(function(label) {
-            for (var i = 0; i < label.lines.length-1; i++) {
-              for (var j = i+minSlice-1; j < Math.min(i+maxSlice+1, label.lines.length); j++) {
-                if (worker(func, label.lines.slice(i, j+1))) {
-                  i += j-i;
-                  break; // stop working on this i
-                }
-              }
-            }
-          });
-          cleanFunc(func);
-        });
-      }
-
-      // Fast bitcast&something after them
-      optimizePairs(function(func, lines) {
-        var a = lines[0], b = lines[1];
-        if (a.intertype == 'assign' && a.value.intertype == 'bitcast' &&
-            func.variables[a.ident].uses == 1 && replaceVars(b, a.ident, a.value.ident)) {
-          a.intertype = null;
-          return true;
-        }
-      });
-
-/*
-      // Remove unnecessary branches
-      item.functions.forEach(function(func) {
-        for (var i = 0; i < func.labels.length-1; i++) {
-          var a = func.labels[i].lines.slice(-1)[0];
-          var b = func.labels[i+1];
-          if (a.intertype == 'branch' && a.label == b.ident) {
-            a.intertype = null;
-          }
-        }
-        cleanFunc(func);
-      });
-*/
-
-      // Remove temp variables around nativized
-      item.functions.forEach(function(func) {
-        // loads, mathops
-        var worked = true;
-        while (worked) {
-          worked = false;
-          for (var i = 0; i < func.lines.length-1; i++) {
-            var a = func.lines[i];
-            var b = func.lines[i+1];
-            if (a.intertype == 'assign' && a.value.intertype == 'load' &&
-                func.variables[a.value.ident] && // Not global
-                func.variables[a.value.ident].impl === VAR_NATIVIZED) {
-              //print('// ??zzzz ' + dump(a) + ',\n // ??zzbb' + dump(b));
-              // If target is only used on next line - do not need it.
-              if (func.variables[a.ident].uses == 1 &&
-                  replaceVars(b, a.ident, a.value.ident)) {
-                a.intertype = null;
-                i ++;
-                worked = true;
-              }
-            }
-          }
-          cleanFunc(func);
-        }
-
-        // stores
-        for (var i = 0; i < func.lines.length-1; i++) {
-          var a = func.lines[i];
-          var b = func.lines[i+1];
-          if (b.intertype == 'store' &&
-              func.variables[b.ident] && // Not global
-              func.variables[b.ident].impl === VAR_NATIVIZED) {
-            // If target is only used on prev line - do not need it.
-            if (func.variables[b.value.ident] && func.variables[b.value.ident].uses == 1 &&
-                ['assign', 'fastgetelementptrload'].indexOf(a.intertype) != -1 && a.ident == b.value.ident) {
-              a.ident = b.ident;
-              a.overrideSSA = true;
-              b.intertype = null;
-              i ++;
-            }
-          }
-        }
-        cleanFunc(func);
-      });
-
-      // Remove redundant vars - SLOW! XXX
-      optimizePairs(function(func, lines) {
-        // a - a line defining a var
-        // b - a line defining a var that is identical to a
-        // c - the only line using b, hopefully
-        var a = lines[0], b = lines[lines.length-2], c = lines[lines.length-1];
-        if (a.intertype == 'assign' && b.intertype == 'assign' &&
-            func.variables[b.ident] && func.variables[b.ident].uses == 1 &&
-            compareTokens(a.value, b.value) &&
-            lines.slice(0,-1).filter(isLineSideEffecting).length == 0 &&
-            replaceVars(c, b.ident, a.ident)) {
-          b.intertype = null;
-          return true;
-        }
-      }, 3, 12);
-
-      return finish();
-    },
-  });
 
   substrate.addItem({
     items: data,

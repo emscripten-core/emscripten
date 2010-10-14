@@ -457,7 +457,7 @@ function JSify(data) {
     });
   }
   makeFuncLineZyme('store', function(item) {
-    var value = finalizeLLVMParameter(item.value);
+    var value = indexizeFunctions(finalizeLLVMParameter(item.value));
     if (pointingLevels(item.pointerType) == 1) {
       value = parseNumerical(value, removePointing(item.pointerType));
     }

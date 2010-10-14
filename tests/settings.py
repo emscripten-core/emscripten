@@ -13,7 +13,7 @@ COMPILERS = {
   },
   'llvm_gcc': {
     'path': LLVM_GCC,
-    'quantum_size': 1,
+    'quantum_size': 4,
   }
 }
 
