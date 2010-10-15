@@ -639,28 +639,28 @@ function JSify(data) {
       case 'fptoui': case 'fptosi': return 'Math.floor(' + ident1 + ')';
       case 'icmp': {
         switch (variant) {
-          case 'uge': case 'sge': return '0+(' + ident1 + ' >= ' + ident2 + ')';
-          case 'ule': case 'sle': return '0+(' + ident1 + ' <= ' + ident2 + ')';
-          case 'ugt': case 'sgt': return '0+(' + ident1 + ' > ' + ident2 + ')';
-          case 'ult': case 'slt': return '0+(' + ident1 + ' < ' + ident2 + ')';
-          case 'ne': case 'une': return '0+(' + ident1 + ' != ' + ident2 + ')';
-          case 'eq': return '0+(' + ident1 + ' == ' + ident2 + ')';
+          case 'uge': case 'sge': return ident1 + ' >= ' + ident2;
+          case 'ule': case 'sle': return ident1 + ' <= ' + ident2;
+          case 'ugt': case 'sgt': return ident1 + ' > ' + ident2;
+          case 'ult': case 'slt': return ident1 + ' < ' + ident2;
+          case 'ne': case 'une': return ident1 + ' != ' + ident2;
+          case 'eq': return ident1 + ' == ' + ident2;
           default: throw 'Unknown icmp variant: ' + variant
         }
       }
       case 'fcmp': {
         switch (variant) {
-          case 'uge': case 'oge': return '0+(' + ident1 + ' >= ' + ident2 + ')';
-          case 'ule': case 'ole': return '0+(' + ident1 + ' <= ' + ident2 + ')';
-          case 'ugt': case 'ogt': return '0+(' + ident1 + ' > ' + ident2 + ')';
-          case 'ult': case 'olt': return '0+(' + ident1 + ' < ' + ident2 + ')';
-          case 'une': case 'one': return '0+(' + ident1 + ' != ' + ident2 + ')';
-          case 'ueq': case 'oeq': return '0+(' + ident1 + ' == ' + ident2 + ')';
+          case 'uge': case 'oge': return ident1 + ' >= ' + ident2;
+          case 'ule': case 'ole': return ident1 + ' <= ' + ident2;
+          case 'ugt': case 'ogt': return ident1 + ' > ' + ident2;
+          case 'ult': case 'olt': return ident1 + ' < ' + ident2;
+          case 'une': case 'one': return ident1 + ' != ' + ident2;
+          case 'ueq': case 'oeq': return ident1 + ' == ' + ident2;
           default: throw 'Unknown fcmp variant: ' + variant
         }
       }
       case 'zext': case 'fpext': case 'trunc': case 'sext': case 'fptrunc': return ident1;
-      case 'select': return '(' + ident1 + ' ? ' + ident2 + ' : ' + ident3 + ')';
+      case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
       case 'ptrtoint': {
         if (type != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
         return ident1;

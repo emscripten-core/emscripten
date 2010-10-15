@@ -77,7 +77,7 @@ function Pointer_make(slab, pos, allocator) {
 #if USE_TYPED_ARRAYS
     // TODO: Check - also in non-typedarray case - for functions, and if so add |.__index__|
     var curr = slab[pos + i];
-    if (typeof curr === 'number') {
+    if (typeof curr === 'number' || typeof curr === 'boolean') {
       IHEAP[ret + i] = curr; // TODO: optimize. Can easily detect floats, but 1.0 might look like an int...
       FHEAP[ret + i] = curr;
     } else {
@@ -177,7 +177,7 @@ function __formatString() {
     next = HEAP[textIndex+1];
 #endif
     if (curr == '%'.charCodeAt(0) && ['d', 'u', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
-      var argText = String(arguments[argIndex]);
+      var argText = String(+arguments[argIndex]); // +: boolean=>int
       // Handle very very simply formatting, namely only %.Xf
       if (next == '.'.charCodeAt(0)) {
 #if USE_TYPED_ARRAYS
