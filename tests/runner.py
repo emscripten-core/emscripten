@@ -83,6 +83,16 @@ class RunnerCore(unittest.TestCase):
     return timeout_run(Popen(engine + [filename] + ([] if engine == SPIDERMONKEY_ENGINE else ['--']) + args,
                        stdout=PIPE, stderr=STDOUT), 30 if check_timeout else None, 'Execution')
 
+  def assertContained(self, value, string):
+    if value not in string:
+      print "Expected to find '%s' in '%s'" % (value, string)
+      self.assertTrue(value in string)
+
+  def assertNotContained(self, value, string):
+    if value in string:
+      print "Expected to NOT find '%s' in '%s'" % (value, string)
+      self.assertTrue(value not in string)
+
 if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -104,16 +114,6 @@ if 'benchmark' not in sys.argv:
           self.assertNotContained('ERROR', js_output)
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
-
-    def assertContained(self, value, string):
-        if value not in string:
-            print "Expected to find '%s' in '%s'" % (value, string)
-            self.assertTrue(value in string)
-
-    def assertNotContained(self, value, string):
-         if value in string:
-             print "Expected to NOT find '%s' in '%s'" % (value, string)
-             self.assertTrue(value not in string)
 
     def test_hello_world(self):
         src = '''
@@ -921,7 +921,7 @@ else:
       std = math.sqrt(mean_of_squared - mean*mean)
       print '   mean: %.3f (+-%.3f) seconds          (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
 
-    def do_benchmark(self, src, args=[], main_file=None):
+    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
       print 'Running benchmark:', inspect.stack()[1][3].replace('test_', '')
 
       dirname = self.get_dir()
@@ -945,10 +945,13 @@ else:
       times = []
       for i in range(TEST_REPS):
         start = time.time()
-        self.run_generated_code(JS_ENGINE, filename + '.cc.js', args, check_timeout=False)
+        js_output = self.run_generated_code(JS_ENGINE, filename + '.cc.js', args, check_timeout=False)
         curr = time.time()-start
         times.append(curr)
         total_times[i] += curr
+        if i == 0:
+          # Sanity check on output
+          self.assertContained(expected_output, js_output)
 
       self.print_stats(times)
 
@@ -961,11 +964,11 @@ else:
 
     def test_fannkuch(self):
       src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
-      self.do_benchmark(src, ['9'])
+      self.do_benchmark(src, ['9'], 'Pfannkuchen(9) = 30.')
 
     def test_raytrace(self):
       src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
-      self.do_benchmark(src, ['5', '64'])
+      self.do_benchmark(src, ['5', '64'], open(path_from_root(['tests', 'raytrace_5_64.ppm']), 'r').read())
 
 if __name__ == '__main__':
   for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
