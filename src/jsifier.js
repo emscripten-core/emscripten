@@ -198,7 +198,9 @@ function JSify(data) {
       if (shortident in Library) {
         var snippet = Library[shortident];
         if (typeof snippet === 'string') {
-          snippet = Library[snippet]; // redirection for aliases
+          if (Library[snippet]) {
+            snippet = Library[snippet]; // redirection for aliases
+          }
         }
         item.JS = item.ident + ' = ' + snippet.toString();
       } else {

@@ -180,10 +180,10 @@ var Library = {
 
   // math.h
 
-  cos: function(x) { return Math.cos(x) },
-  sin: function(x) { return Math.sin(x) },
-  sqrt: function(x) { return Math.sqrt(x) },
-  llvm_sqrt_f64: 'sqrt',
+  cos: 'Math.cos',
+  sin: 'Math.sin',
+  sqrt: 'Math.sqrt',
+  llvm_sqrt_f64: 'Math.sqrt',
 
   // unistd.h
 
