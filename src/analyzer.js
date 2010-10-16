@@ -716,7 +716,7 @@ function analyzer(data) {
           if (block.labels.length == 1 && block.next) {
             var label = block.labels[0];
             dprint('relooping', '//       simple emulated: ' + label.originalOutLabels + ' || ' + block.next.entries);
-            if (label.originalOutLabels.length == 1 && block.next.entries.length == 1) {
+            if (label.originalOutLabels.length == 1) {
               dprint('relooping', '//         removing!');
               replaceLabelLabels([label], set('BJSET|' + label.originalOutLabels[0] + '|' + label.originalOutLabels[0]), 'BNOPP');
             }
