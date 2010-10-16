@@ -343,17 +343,23 @@ function JSify(data) {
           ret += indent + '}\n';
         } else if (block.type == 'multiple') {
           var first = true;
-          ret += indent + ((block.entry in usedLabels) ? '' : (block.entry+':')) + ' do { \n';
+          var multipleIdent = '';
+          if (!block.loopless) {
+            ret += indent + ((block.entry in usedLabels) ? '' : (block.entry+':')) + ' do { \n';
+            multipleIdent = '  ';
+          }
           block.entryLabels.forEach(function(entryLabel) {
-            ret += indent + (first ? '' : '  else ') + '  if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
-            ret += walkBlock(entryLabel.block, indent + '    ');
-            ret += indent + '  }\n';
+            ret += indent + (first ? '' : 'else ') + multipleIdent + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
+            ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
+            ret += indent + multipleIdent + '}\n';
             first = false;
           });
           if (GUARD_LABELS) {
-            ret += indent + '  else { throw "Bad multiple branching: " + __label__ + " : " + (new Error().stack); }\n';
+            ret += indent + multipleIdent + 'else { throw "Bad multiple branching: " + __label__ + " : " + (new Error().stack); }\n';
           }
-          ret += indent + '} while(0);\n';
+          if (!block.loopless) {
+            ret += indent + '} while(0);\n';
+          }
         } else {
           throw "Walked into an invalid block type: " + block.type;
         }

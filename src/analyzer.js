@@ -353,6 +353,7 @@ function analyzer(data) {
     }
   }
 
+  //! @param toLabelId If false, just a dry run - useful to search for labels
   function replaceLabels(line, labelIds, toLabelId) {
     var ret = [];
 
@@ -362,18 +363,22 @@ function analyzer(data) {
     var wildcardParts = null;
     if (wildcard) {
       wildcardParts = value.split('|');
-      assert(wildcardParts[1] == '*'); // For now, just handle that case
     }
     function wildcardCheck(s) {
       var parts = s.split('|');
-      return wildcardParts[0] == parts[0] && wildcardParts[2] == parts[2];
+      for (var i = 0; i < 3; i++) {
+        if (wildcardParts[i] !== '*' && wildcardParts[i] != parts[i]) return false;
+      }
+      return true;
     }
 
     operateOnLabels(line, function process(item, id) {
       if (item[id] in labelIds || (wildcard && wildcardCheck(item[id]))) {
         ret.push(item[id]);
         dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId);
-        item[id] = toLabelId + '|' + item[id];
+        if (toLabelId) {
+          item[id] = toLabelId + '|' + item[id];
+        }
       }
     });
     return ret;
@@ -769,6 +774,13 @@ function analyzer(data) {
         }
 
         recurseBlock(block, optimizeBlock);
+
+        if (block.type === 'multiple') {
+          // Check if the one-time loop (that allows breaking out) is actually needed
+          if (replaceLabelLabels(block.labels, set('BREAK|' + block.entries[0] + '|*')).length === 0) {
+            block.loopless = true;
+          }
+        }
       }
 
       // TODO: Parallelize
