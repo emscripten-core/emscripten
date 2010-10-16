@@ -754,6 +754,7 @@ function analyzer(data) {
         if (block.willGetTo) {
           dprint('relooping', '//         removing (trying)');
           replaceLabelLabels(block.labels, set('BJSET|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
+          replaceLabelLabels(block.labels, set('BCONT|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
         }
 
         recurseBlock(block, optimizeBlock);
