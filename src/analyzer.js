@@ -333,55 +333,54 @@ function analyzer(data) {
     },
   });
 
+  var BRANCH_INVOKE = searchable('branch', 'invoke');
+  function operateOnLabels(line, func) {
+    function process(item, id) {
+      ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
+        if (item[id]) {
+          func(item, id);
+        }
+      });
+    }
+    if (line.intertype in BRANCH_INVOKE) {
+      process(line);
+    } else if (line.intertype == 'assign' && line.value.intertype == 'invoke') {
+      process(line.value);
+    } else if (line.intertype == 'switch') {
+      process(line);
+      line.switchLabels.forEach(process);
+    }
+  }
+
+  function replaceLabels(line, labelIds, toLabelId) {
+    var ret = [];
+    operateOnLabels(line, function process(item, id) {
+      if (item[id] in labelIds) {
+        ret.push(item[id]);
+        dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId + '; old: ' + item['old_' + id]);
+        item[id] = toLabelId + '|' + item[id];
+      }
+    });
+    return ret;
+  }
+
+  function replaceLabelLabels(labels, labelIds, toLabelId) {
+    ret = [];
+    labels.forEach(function(label) {
+      ret = ret.concat(replaceLabels(label.lines[label.lines.length-1], labelIds, toLabelId));
+    });
+    return ret;
+  }
+
   // ReLooper - reconstruct nice loops, as much as possible
   substrate.addZyme('Relooper', {
     processItem: function(item) {
       var that = this;
       function finish() {
-        item.__finalResult__ = true;
-        return [item];
+        that.forwardItem(item, 'LoopOptimizer');
       }
 
       // Tools
-
-      var BRANCH_INVOKE = searchable('branch', 'invoke');
-      function operateOnLabels(line, func) {
-        function process(item, id) {
-          ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
-            if (item[id]) {
-              func(item, id);
-            }
-          });
-        }
-        if (line.intertype in BRANCH_INVOKE) {
-          process(line);
-        } else if (line.intertype == 'assign' && line.value.intertype == 'invoke') {
-          process(line.value);
-        } else if (line.intertype == 'switch') {
-          process(line);
-          line.switchLabels.forEach(process);
-        }
-      }
-
-      function replaceLabels(line, labelIds, toLabelId) {
-        var ret = [];
-        operateOnLabels(line, function process(item, id) {
-          if (item[id] in labelIds) {
-            ret.push(item[id]);
-            dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId + '; old: ' + item['old_' + id]);
-            item[id] = toLabelId + '|' + item[id];
-          }
-        });
-        return ret;
-      }
-
-      function replaceLabelLabels(labels, labelIds, toLabelId) {
-        ret = [];
-        labels.forEach(function(label) {
-          ret = ret.concat(replaceLabels(label.lines[label.lines.length-1], labelIds, toLabelId));
-        });
-        return ret;
-      }
 
       function calcLabelBranchingData(labels, labelsDict) {
         item.functions.forEach(function(func) {
@@ -390,11 +389,15 @@ function analyzer(data) {
             label.inLabels = [];
             label.hasReturn = false;
             label.hasBreak = false;
+            if (!label.originalOutlabels) {
+              label.originalOutLabels = [];
+              label.needOriginalOutLabels = true;
+            }
           });
         });
         // Find direct branchings
         labels.forEach(function(label) {
-          label.lines.forEach(function(line) {
+          [label.lines[label.lines.length-1]].forEach(function(line) {
             operateOnLabels(line, function process(item, id) {
               if (item[id][0] == 'B') { // BREAK, BCONT, BNOPP, BJSET
                 label.hasBreak = true;
@@ -402,8 +405,11 @@ function analyzer(data) {
                 label.outLabels.push(item[id]);
                 labelsDict[item[id]].inLabels.push(label.ident);
               }
+              if (label.needOriginalOutLabels) {
+                label.originalOutLabels.push(item[id]);
+              }
             });
-
+            label.needOriginalOutLabels = false;
             label.hasReturn |= line.intertype == 'return';
           });
         });
@@ -440,6 +446,7 @@ function analyzer(data) {
             dprint('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
             dprint('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
             dprint('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
+            dprint('//        ' + label.ident + ' :origOut  : ' + JSON.stringify(label.originalOutLabels));
           }
 
           // Convert to searchables, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
@@ -689,9 +696,44 @@ function analyzer(data) {
     },
   });
 
-  // TODO: LoopOptimizer. The Relooper generates native loop structures, that are
+  // LoopOptimizer. The Relooper generates native loop structures, that are
   //       logically correct. The LoopOptimizer works on that, doing further optimizations
   //       like switching to BNOPP when possible, etc.
+
+  substrate.addZyme('LoopOptimizer', {
+    processItem: function(item) {
+      var that = this;
+      function finish() {
+        item.__finalResult__ = true;
+        return [item];
+      }
+      if (!RELOOP) return finish();
+
+      function walkBlock(block) {
+        dprint('relooping', "//    loopOptimizing block: " + block.type + ' : ' + block.entries);
+        if (block.type == 'emulated') {
+          if (block.labels.length == 1 && block.next) {
+            var label = block.labels[0];
+            dprint('relooping', '//       simple emulated: ' + label.originalOutLabels + ' || ' + block.next.entries);
+            if (label.originalOutLabels.length == 1 && block.next.entries.length == 1) {
+              dprint('relooping', '//         removing!');
+              replaceLabelLabels([label], set('BJSET|' + label.originalOutLabels[0] + '|' + label.originalOutLabels[0]), 'BNOPP');
+            }
+          }
+        } else if (block.type == 'reloop') {
+        } else if (block.type == 'multiple') {
+        } else {
+          throw "Walked into an invalid block type: " + block.type;
+        }
+      }
+
+      item.functions.forEach(function(func) {
+        dprint('relooping', "// loopOptimizing function: " + func.ident);
+        walkBlock(func.block);
+      });
+      return finish();
+    },
+  });
 
   substrate.addItem({
     items: data,

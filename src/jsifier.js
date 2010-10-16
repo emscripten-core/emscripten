@@ -340,16 +340,6 @@ function JSify(data) {
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
           ret += walkBlock(block.outer, indent);
-        } else if (block.type == 'breakingif') {
-          ret += walkBlock(block.check, indent);
-          ret += indent + block.entry + ': do { if (' + block.ifVar + ') {\n';
-          ret += walkBlock(block.ifTrue, indent + '  ');
-          ret += indent + '} } while(0);\n';
-        } else if (block.type == 'if') {
-          ret += walkBlock(block.check, indent);
-          ret += indent + 'if (' + block.ifVar + ') {\n';
-          ret += walkBlock(block.ifTrue, indent + '  ');
-          ret += indent + '}\n';
         } else if (block.type == 'multiple') {
           // TODO: Remove the loop here
           var first = true;
