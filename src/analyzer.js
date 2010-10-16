@@ -593,7 +593,7 @@ function analyzer(data) {
 
           if (externals.length > 0) {
             // outer
-            ret.outer = makeBlock(externals, enteredExitLabels, labelsDict);
+            ret.next = makeBlock(externals, enteredExitLabels, labelsDict);
           }
 
           return ret;
@@ -710,6 +710,7 @@ function analyzer(data) {
       if (!RELOOP) return finish();
 
       function walkBlock(block) {
+        if (!block) return;
         dprint('relooping', "//    loopOptimizing block: " + block.type + ' : ' + block.entries);
         if (block.type == 'emulated') {
           if (block.labels.length == 1 && block.next) {
@@ -721,10 +722,13 @@ function analyzer(data) {
             }
           }
         } else if (block.type == 'reloop') {
+          walkBlock(block.inner);
         } else if (block.type == 'multiple') {
+          block.entryLabels.forEach(function(entryLabel) { walkBlock(entryLabel.block) });
         } else {
           throw "Walked into an invalid block type: " + block.type;
         }
+        walkBlock(block.next);
       }
 
       item.functions.forEach(function(func) {

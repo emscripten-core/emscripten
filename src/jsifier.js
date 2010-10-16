@@ -339,7 +339,6 @@ function JSify(data) {
           ret += indent + block.entry + ': while(1) { // ' + block.entry + '\n';
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
-          ret += walkBlock(block.outer, indent);
         } else if (block.type == 'multiple') {
           // TODO: Remove the loop here
           var first = true;
