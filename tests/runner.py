@@ -208,6 +208,22 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*yes*')
 
+    def test_if_else(self):
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
+            int x = 5;
+            if (x > 10) {
+              printf("*yes*\\n");
+            } else {
+              printf("*no*\\n");
+            }
+            return 0;
+          }
+        '''
+        self.do_test(src, '*no*')
+
     def test_loop(self):
         src = '''
           #include <stdio.h>

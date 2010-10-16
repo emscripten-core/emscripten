@@ -342,7 +342,6 @@ function JSify(data) {
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
         } else if (block.type == 'multiple') {
-          // TODO: Remove the loop here
           var first = true;
           ret += indent + ((block.entry in usedLabels) ? '' : (block.entry+':')) + ' do { \n';
           block.entryLabels.forEach(function(entryLabel) {

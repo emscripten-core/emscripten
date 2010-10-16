@@ -355,10 +355,24 @@ function analyzer(data) {
 
   function replaceLabels(line, labelIds, toLabelId) {
     var ret = [];
+
+    var value = keys(labelIds)[0];
+    var wildcard = value.indexOf('*') >= 0;
+    assert(!wildcard || values(labelIds).length == 1); // For now, just handle that case
+    var wildcardParts = null;
+    if (wildcard) {
+      wildcardParts = value.split('|');
+      assert(wildcardParts[1] == '*'); // For now, just handle that case
+    }
+    function wildcardCheck(s) {
+      var parts = s.split('|');
+      return wildcardParts[0] == parts[0] && wildcardParts[2] == parts[2];
+    }
+
     operateOnLabels(line, function process(item, id) {
-      if (item[id] in labelIds) {
+      if (item[id] in labelIds || (wildcard && wildcardCheck(item[id]))) {
         ret.push(item[id]);
-        dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId + '; old: ' + item['old_' + id]);
+        dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId);
         item[id] = toLabelId + '|' + item[id];
       }
     });
@@ -724,25 +738,21 @@ function analyzer(data) {
 
         dprint('relooping', "//    exploring block: " + block.type + ' : ' + block.entries);
 
-        if (block.type == 'emulated') {
-          if (block.labels.length == 1) {
-            if (block.next) {
-              block.willGetTo = singular(block.next);
-            } else {
-              block.willGetTo = endOfTheWorld;
-            }
-          }
-        } else if (block.type == 'reloop') {
+        if (block.type == 'reloop') {
           exploreBlock(block.inner, singular(block.inner));
         } else if (block.type == 'multiple') {
           block.entryLabels.forEach(function(entryLabel) { exploreBlock(entryLabel.block, singular(block.next)) });
-        } else {
-          throw "Explored into an invalid block type: " + block.type;
         }
 
-        dprint('relooping', "//    explored block: " + block.type + ' , willGetTo: ' + block.willGetTo);
-
         exploreBlock(block.next, endOfTheWorld);
+
+        if (block.next) {
+          block.willGetTo = singular(block.next);
+        } else {
+          block.willGetTo = endOfTheWorld;
+        }
+
+        dprint('relooping', "//    explored block: " + block.type + ' : ' + block.entries + ' , willGetTo: ' + block.willGetTo);
       }
 
       // Remove unneeded label settings, if we set it to where we will get anyhow
@@ -751,10 +761,11 @@ function analyzer(data) {
 
         dprint('relooping', "//    optimizing block: " + block.type + ' : ' + block.entries);
 
-        if (block.willGetTo) {
+        if (block.type === 'emulated' && block.willGetTo) {
           dprint('relooping', '//         removing (trying)');
           replaceLabelLabels(block.labels, set('BJSET|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BCONT|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
+          replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
         }
 
         recurseBlock(block, optimizeBlock);
