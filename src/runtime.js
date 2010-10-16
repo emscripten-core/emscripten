@@ -26,6 +26,10 @@ RuntimeGenerator = {
   },
 
   stackEnter: function(initial) {
+    if (initial === 0) return ''; // XXX Note that we don't even push the stack! This is faster, but
+                                  // means that we don't clear stack allocations done in this function
+                                  // until the parent unwinds its stack. So potentially if we are in
+                                  // a loop, we can use a lot of memory.
     var ret = 'STACK_STACK.push(STACKTOP); STACKTOP += ' + initial;
     if (GUARD_MEMORY) {
       ret += '; assert(STACKTOP < STACK_MAX)';
@@ -33,7 +37,8 @@ RuntimeGenerator = {
     return ret;
   },
 
-  stackExit: function() {
+  stackExit: function(initial) {
+    if (initial === 0) return ''; // XXX See comment in stackEnter
     return 'STACKTOP = STACK_STACK.pop();';
   },
 

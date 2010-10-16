@@ -313,10 +313,11 @@ function analyzer(data) {
         var total = 0;
         var lines = func.labels[0].lines;
         for (var i = 0; i < lines.length; i++) {
-          var item = lines[i].value;
+          var line = lines[i];
+          var item = line.value;
           if (!item || item.intertype != 'alloca') break;
-          // FIXME: This ignores nativized variables, but probably negligible
-          item.allocatedSize = calcAllocatedSize(item.allocatedType, data.types);
+          item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
+            calcAllocatedSize(item.allocatedType, data.types) : 0;
           total += item.allocatedSize;
         }
         func.initialStack = total;

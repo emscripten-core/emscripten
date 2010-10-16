@@ -546,7 +546,7 @@ function JSify(data) {
     return ret;
   });
   makeFuncLineZyme('return', function(item) {
-    var ret = RuntimeGenerator.stackExit() + '\n';
+    var ret = RuntimeGenerator.stackExit(item.funcData.initialStack) + ';\n';
     if (LABEL_DEBUG) ret += "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     ret += 'return';
     if (item.value) {
@@ -583,6 +583,7 @@ function JSify(data) {
   });
   makeFuncLineZyme('alloca', function(item) {
     assert(typeof item.allocatedIndex === 'number'); // or, return RuntimeGenerator.stackAlloc(calcAllocatedSize(item.allocatedType, TYPES));
+    if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
     return getFastValue('STACKTOP', '-', item.allocatedIndex.toString());
   });
   makeFuncLineZyme('phi', function(item) {
