@@ -454,3 +454,15 @@ function calcAllocatedSize(type, TYPES) {
   }
 }
 
+// Flow blocks
+
+function recurseBlock(block, func) {
+  if (block.type == 'reloop') {
+    func(block.inner);
+  } else if (block.type == 'multiple') {
+    block.entryLabels.forEach(function(entryLabel) { func(entryLabel.block) });
+  }
+
+  func(block.next);
+}
+

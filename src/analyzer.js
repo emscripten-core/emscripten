@@ -667,7 +667,6 @@ function analyzer(data) {
         actualEntryLabels.forEach(function(actualEntryLabel) {
           dprint('relooping', '      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
 
-          // TODO: Move this into BJSET
           keys(postEntryLabels).forEach(function(post) {
             replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + actualEntries[0]);
           });
@@ -710,31 +709,61 @@ function analyzer(data) {
       }
       if (!RELOOP) return finish();
 
-      function walkBlock(block) {
+      // Find where each block will 'naturally' get to, just by the flow of code
+      function exploreBlock(block, endOfTheWorld) { // endoftheworld - where we will get, if we have nothing else to get to - 'fall off the face of the earth'
         if (!block) return;
-        dprint('relooping', "//    loopOptimizing block: " + block.type + ' : ' + block.entries);
+
+        function singular(block) {
+          if (!block || block.type === 'multiple') return null;
+          if (block.entries.length == 1) {
+            return block.entries[0];
+          } else {
+            return null;
+          }
+        }
+
+        dprint('relooping', "//    exploring block: " + block.type + ' : ' + block.entries);
+
         if (block.type == 'emulated') {
-          if (block.labels.length == 1 && block.next) {
-            var label = block.labels[0];
-            dprint('relooping', '//       simple emulated: ' + label.originalOutLabels + ' || ' + block.next.entries);
-            if (label.originalOutLabels.length == 1) {
-              dprint('relooping', '//         removing!');
-              replaceLabelLabels([label], set('BJSET|' + label.originalOutLabels[0] + '|' + label.originalOutLabels[0]), 'BNOPP');
+          if (block.labels.length == 1) {
+            if (block.next) {
+              block.willGetTo = singular(block.next);
+            } else {
+              block.willGetTo = endOfTheWorld;
             }
           }
         } else if (block.type == 'reloop') {
-          walkBlock(block.inner);
+          exploreBlock(block.inner, singular(block.inner));
         } else if (block.type == 'multiple') {
-          block.entryLabels.forEach(function(entryLabel) { walkBlock(entryLabel.block) });
+          block.entryLabels.forEach(function(entryLabel) { exploreBlock(entryLabel.block, singular(block.next)) });
         } else {
-          throw "Walked into an invalid block type: " + block.type;
+          throw "Explored into an invalid block type: " + block.type;
         }
-        walkBlock(block.next);
+
+        dprint('relooping', "//    explored block: " + block.type + ' , willGetTo: ' + block.willGetTo);
+
+        exploreBlock(block.next, endOfTheWorld);
       }
 
+      // Remove unneeded label settings, if we set it to where we will get anyhow
+      function optimizeBlock(block) {
+        if (!block) return;
+
+        dprint('relooping', "//    optimizing block: " + block.type + ' : ' + block.entries);
+
+        if (block.willGetTo) {
+          dprint('relooping', '//         removing (trying)');
+          replaceLabelLabels(block.labels, set('BJSET|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
+        }
+
+        recurseBlock(block, optimizeBlock);
+      }
+
+      // TODO: Parallelize
       item.functions.forEach(function(func) {
         dprint('relooping', "// loopOptimizing function: " + func.ident);
-        walkBlock(func.block);
+        exploreBlock(func.block);
+        optimizeBlock(func.block);
       });
       return finish();
     },
