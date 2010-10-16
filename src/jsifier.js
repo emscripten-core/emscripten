@@ -349,7 +349,7 @@ function JSify(data) {
             multipleIdent = '  ';
           }
           block.entryLabels.forEach(function(entryLabel) {
-            ret += indent + (first ? '' : 'else ') + multipleIdent + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
+            ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
             ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
             ret += indent + multipleIdent + '}\n';
             first = false;

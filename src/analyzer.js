@@ -733,7 +733,8 @@ function analyzer(data) {
         if (!block) return;
 
         function singular(block) {
-          if (!block || block.type === 'multiple') return null;
+          if (!block) return endOfTheWorld;
+          if (block.type === 'multiple') return null;
           if (block.entries.length == 1) {
             return block.entries[0];
           } else {
