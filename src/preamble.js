@@ -152,7 +152,6 @@ function __initializeRuntime__() {
   IHEAP = HEAP; // We use that name in our runtime code that processes strings etc., see library.js
 #endif
 
-  STACK_STACK = [];
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
   if (!this['TOTAL_STACK']) TOTAL_STACK = 1024*1024; // Reserved room for stack
   STACK_MAX = STACK_ROOT + TOTAL_STACK;

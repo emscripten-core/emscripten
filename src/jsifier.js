@@ -586,7 +586,7 @@ function JSify(data) {
   makeFuncLineZyme('alloca', function(item) {
     assert(typeof item.allocatedIndex === 'number'); // or, return RuntimeGenerator.stackAlloc(calcAllocatedSize(item.allocatedType, TYPES));
     if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
-    return getFastValue('STACKTOP', '-', item.allocatedIndex.toString());
+    return getFastValue('__stackBase__', '+', item.allocatedIndex.toString());
   });
   makeFuncLineZyme('phi', function(item) {
     return '__lastLabel__ == ' + getLabelId(item.label1) + ' ? ' + toNiceIdent(item.value1) + ' : ' + toNiceIdent(item.value2);

@@ -325,8 +325,8 @@ function analyzer(data) {
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i].value;
           if (!item || item.intertype != 'alloca') break;
-          index += item.allocatedSize;
           item.allocatedIndex = index;
+          index += item.allocatedSize;
           delete item.allocatedSize;
         }
       });

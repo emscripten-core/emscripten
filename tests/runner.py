@@ -230,7 +230,7 @@ if 'benchmark' not in sys.argv:
             if (i > 0) {
               return test(i-1);
             }
-            return int(&x);
+            return int(&x); // both useful for the number, and forces x to not be nativized
           }
           int main()
           {

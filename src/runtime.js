@@ -30,7 +30,7 @@ RuntimeGenerator = {
                                   // means that we don't clear stack allocations done in this function
                                   // until the parent unwinds its stack. So potentially if we are in
                                   // a loop, we can use a lot of memory.
-    var ret = 'STACK_STACK.push(STACKTOP); STACKTOP += ' + initial;
+    var ret = 'var __stackBase__  = STACKTOP; STACKTOP += ' + initial;
     if (GUARD_MEMORY) {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
@@ -39,7 +39,7 @@ RuntimeGenerator = {
 
   stackExit: function(initial) {
     if (initial === 0) return ''; // XXX See comment in stackEnter
-    return 'STACKTOP = STACK_STACK.pop();';
+    return 'STACKTOP = __stackBase__';
   },
 
   // An allocation that cannot be free'd
