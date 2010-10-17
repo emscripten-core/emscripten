@@ -348,12 +348,35 @@ function JSify(data) {
             ret += indent + ((block.entry in usedLabels) ? '' : (block.entry+':')) + ' do { \n';
             multipleIdent = '  ';
           }
-          block.entryLabels.forEach(function(entryLabel) {
-            ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
-            ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
-            ret += indent + multipleIdent + '}\n';
-            first = false;
-          });
+          var stolen = block.stolenCondition;
+          if (stolen) {
+            function getActualLabelId(labelId) {
+              return labelId.split('|').slice(-1)[0];
+            }
+            var intendedTrueLabel = stolen.labelTrue;
+            assert(block.entryLabels.length <= 2);
+            [stolen.labelTrue, stolen.labelFalse].forEach(function(entry) {
+              var branch = makeBranch(entry);
+              entryLabel = block.entryLabels.filter(function(possible) { return possible.ident === getActualLabelId(entry) })[0];
+              if (branch.length < 5 && !entryLabel) return;
+              //ret += indent + multipleIdent + (first ? '' : 'else ') +
+              //       'if (' + (entry == intendedTrueLabel ? '' : '!') + stolen.ident + ')' + ' {\n';
+              ret += indent + multipleIdent + (first ? 'if (' + (entry == intendedTrueLabel ? '' : '!') + stolen.ident + ')' : 'else') + ' {\n';
+              ret += indent + multipleIdent + '  ' + branch + '\n';
+              if (entryLabel) {
+                ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
+              }
+              ret += indent + multipleIdent + '}\n';
+              first = false;
+            });
+          } else {
+            block.entryLabels.forEach(function(entryLabel) {
+              ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
+              ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
+              ret += indent + multipleIdent + '}\n';
+              first = false;
+            });
+          }
           if (GUARD_LABELS) {
             ret += indent + multipleIdent + 'else { throw "Bad multiple branching: " + __label__ + " : " + (new Error().stack); }\n';
           }
@@ -477,12 +500,15 @@ function JSify(data) {
     }
   });
 
+  makeFuncLineZyme('deleted', function(item) { return ';' });
+
   var LABEL_IDs = {};
   var LABEL_ID_COUNTER = 0;
   function getLabelId(label) {
     label = label.substr(1);
     if (label === 'entry') return '-1';
     if (label === parseInt(label)) return label; // clang
+    //return '"' + label + '"'; // XXX debugging
     label = toNiceIdent(label);
     if (label in LABEL_IDs) return LABEL_IDs[label];
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;

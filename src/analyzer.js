@@ -774,6 +774,17 @@ function analyzer(data) {
           replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
         }
 
+        if (block.type === 'emulated' && block.next && block.next.type === 'multiple') {
+          assert(block.labels.length == 1);
+          var lastLine = block.labels[0].lines.slice(-1)[0];
+          if (lastLine.intertype == 'branch' && lastLine.ident) { // TODO: handle switch, and other non-branch2 things
+            // 'Steal' the condition
+            block.next.stolenCondition = lastLine;
+            lastLine.intertype = 'deleted';
+            dprint('relooping', 'steal condition: ' + block.next.stolenCondition.ident);
+          }
+        }
+
         recurseBlock(block, optimizeBlock);
 
         if (block.type === 'multiple') {
