@@ -1,3 +1,12 @@
+2010-10-17: Version 0.4
+
+  * Much faster optimized code, now 10X the speed of our unoptimized code
+  * Support for the recently-released LLVM 2.8
+  * Support for typed arrays
+  * Integration with the Closure Compiler
+  * Benchmarking framework in test runner
+  * Many code cleanups, bug fixes, and additional tests
+
 2010-10-05: Version 0.3
 
   * Much faster compilation (but still slow with relooper)
