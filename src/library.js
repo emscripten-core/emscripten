@@ -149,7 +149,7 @@ var Library = {
   llvm_umul_with_overflow_i32: function(x, y) {
     return {
       f0: x*y,
-      f1: 0, // We never overflow... for now
+      f1: 0 // We never overflow... for now
     };
   },
 
