@@ -748,6 +748,15 @@ function analyzer(data) {
           exploreBlock(block.inner, singular(block.inner));
         } else if (block.type == 'multiple') {
           block.entryLabels.forEach(function(entryLabel) { exploreBlock(entryLabel.block, singular(block.next)) });
+        } else if (block.type === 'emulated' && block.next && block.next.type === 'multiple') {
+          assert(block.labels.length == 1);
+          var lastLine = block.labels[0].lines.slice(-1)[0];
+          if (lastLine.intertype == 'branch' && lastLine.ident) { // TODO: handle switch, and other non-branch2 things
+            // 'Steal' the condition
+            block.next.stolenCondition = lastLine;
+            dprint('relooping', 'steal condition: ' + block.next.stolenCondition.ident);
+            lastLine.stolen = true;
+          }
         }
 
         exploreBlock(block.next, endOfTheWorld);
@@ -767,27 +776,27 @@ function analyzer(data) {
 
         dprint('relooping', "//    optimizing block: " + block.type + ' : ' + block.entries);
 
+        recurseBlock(block, optimizeBlock);
+
         if (block.type === 'emulated' && block.willGetTo) {
-          dprint('relooping', '//         removing (trying)');
+          dprint('relooping', '//         removing (trying): ' + block.willGetTo);
           replaceLabelLabels(block.labels, set('BJSET|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BCONT|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
-        }
-
-        if (block.type === 'emulated' && block.next && block.next.type === 'multiple') {
-          assert(block.labels.length == 1);
-          var lastLine = block.labels[0].lines.slice(-1)[0];
-          if (lastLine.intertype == 'branch' && lastLine.ident) { // TODO: handle switch, and other non-branch2 things
-            // 'Steal' the condition
-            block.next.stolenCondition = lastLine;
-            lastLine.intertype = 'deleted';
-            dprint('relooping', 'steal condition: ' + block.next.stolenCondition.ident);
+        } else if (block.type === 'multiple') {
+          // Stolen conditions can be optimized further than the same branches in their original position
+          var stolen = block.stolenCondition;
+          if (stolen) {
+            [stolen.labelTrue, stolen.labelFalse].forEach(function(entry) {
+              entryLabel = block.entryLabels.filter(function(possible) { return possible.ident === getActualLabelId(entry) })[0];
+              if (entryLabel) {
+                replaceLabelLabels([{ lines: [stolen] }], set(entry), 'BNOPP');
+              } else {
+                replaceLabelLabels([{ lines: [stolen] }], set('BJSET|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
+              }
+            });
           }
-        }
 
-        recurseBlock(block, optimizeBlock);
-
-        if (block.type === 'multiple') {
           // Check if the one-time loop (that allows breaking out) is actually needed
           if (replaceLabelLabels(block.labels, set('BREAK|' + block.entries[0] + '|*')).length === 0) {
             block.loopless = true;

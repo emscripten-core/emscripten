@@ -466,3 +466,7 @@ function recurseBlock(block, func) {
   func(block.next);
 }
 
+function getActualLabelId(labelId) {
+  return labelId.split('|').slice(-1)[0];
+}
+

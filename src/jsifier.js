@@ -350,9 +350,6 @@ function JSify(data) {
           }
           var stolen = block.stolenCondition;
           if (stolen) {
-            function getActualLabelId(labelId) {
-              return labelId.split('|').slice(-1)[0];
-            }
             var intendedTrueLabel = stolen.labelTrue;
             assert(block.entryLabels.length <= 2);
             [stolen.labelTrue, stolen.labelFalse].forEach(function(entry) {
@@ -537,7 +534,7 @@ function JSify(data) {
   }
 
   makeFuncLineZyme('branch', function(item) {
-    //print('branch: ' + dump(item));
+    if (item.stolen) return ';'; // We will appear where we were stolen to
     if (!item.ident) {
       return makeBranch(item.label);
     } else {
