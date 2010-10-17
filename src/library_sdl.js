@@ -13,7 +13,7 @@ mergeInto(Library, {
       canvas: canvas,
       ctx: canvas.getContext('2d'),
       surf: surf,
-      buffer: _malloc(width*height*4),
+      buffer: _malloc(width*height*4)
     };
     return surf;
   },
@@ -28,12 +28,12 @@ mergeInto(Library, {
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
-      HEAP[surfData.buffer+i] = surfData.image.data[i];
+      IHEAP[surfData.buffer+i] = surfData.image.data[i];
     }
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
-    HEAP[surf + 5*QUANTUM_SIZE] = surfData.buffer;
+    IHEAP[surf + 5*QUANTUM_SIZE] = surfData.buffer;
   },
 
   SDL_UnlockSurface: function(surf) {
@@ -41,7 +41,7 @@ mergeInto(Library, {
     // Copy pixel data to image
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
-      surfData.image.data[i] = HEAP[surfData.buffer+i];
+      surfData.image.data[i] = IHEAP[surfData.buffer+i];
     }
     for (var i = 0; i < num/4; i++) {
       surfData.image.data[i*4+3] = 255; // opacity, as canvases blend alpha

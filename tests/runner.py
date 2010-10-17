@@ -954,7 +954,8 @@ else:
                          '--formatting', 'PRETTY_PRINT',
                          '--variable_map_output_file', filename + '.vars',
                          '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-      assert('ERROR' not in cc_output)
+      if 'ERROR' in cc_output:
+        raise Exception('Error in cc output: ' + cc_output)
 
       # Run
       global total_times

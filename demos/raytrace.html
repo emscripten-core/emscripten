@@ -14,6 +14,8 @@
     var calcedDepth = -1;
     // Do everything - initialize SDL, set up canvas, render
     function render(size, depth) {
+      var startTime = Date.now();
+
       if (drawingNow) return;
       drawingNow = true;
       if (calcedDepth != depth) {
@@ -27,7 +29,7 @@
         _SDL_Init(size);
         var canvas = document.getElementById('canvas');
         canvas.width = canvas.height = size;
-        HEAP[_screen] = _SDL_SetVideoMode(canvas.width, canvas.height, 32, 0, canvas);
+        IHEAP[_screen] = _SDL_SetVideoMode(canvas.width, canvas.height, 32, 0, canvas);
         var y = canvas.height-1;
         function drawLine() {
           print("Raytracing line: <b>" + (canvas.height-y) + "/" + canvas.height + '</b>');
@@ -36,7 +38,7 @@
           if (y >= 0) {
             setTimeout(arguments.callee, 1);
           } else {
-            print('');
+            print('Finished in ' + (Date.now() - startTime)/1000 + ' seconds.');
             drawingNow = false;
           }
         }
