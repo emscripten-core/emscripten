@@ -76,10 +76,16 @@ Substrate.prototype = {
         var inputs = zyme.items.slice(0);
         var outputs;
         var currResultCount = that.results.length;
-        dprint('Processing using ' + zyme.name_ + ': ' + inputs.length);
-        zyme.items = []; // More may be added in process(); we'll get to them next time
-        outputs = zyme.process(inputs);
-        dprint('New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
+        try {
+          dprint('Processing using ' + zyme.name_ + ': ' + inputs.length);
+          zyme.items = []; // More may be added in process(); we'll get to them next time
+          outputs = zyme.process(inputs);
+          dprint('New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
+        } catch (e) {
+          print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
+          print("Stack: " + dump(new Error().stack));
+          throw e;
+        }
         hadProcessing = true;
 
         if (outputs) {
@@ -118,9 +124,14 @@ Zyme.prototype = {
     var ret = [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      var outputs = this.processItem(item);
-      if (outputs) {
-        ret = ret.concat(outputs);
+      try {
+        var outputs = this.processItem(item);
+        if (outputs) {
+          ret = ret.concat(outputs);
+        }
+      } catch (e) {
+        print("Exception in process(), current item is: " + dump(item));
+        throw e;
       }
     }
     return ret;

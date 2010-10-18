@@ -315,7 +315,7 @@ function analyzer(data) {
         for (var i = 0; i < lines.length; i++) {
           var line = lines[i];
           var item = line.value;
-          if (!item || item.intertype != 'alloca') break;
+          if (!item || item.intertype != 'alloca') continue;
           item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
             calcAllocatedSize(item.allocatedType, data.types) : 0;
           total += item.allocatedSize;
@@ -324,7 +324,7 @@ function analyzer(data) {
         var index = 0;
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i].value;
-          if (!item || item.intertype != 'alloca') break;
+          if (!item || item.intertype != 'alloca') continue;
           item.allocatedIndex = index;
           index += item.allocatedSize;
           delete item.allocatedSize;
