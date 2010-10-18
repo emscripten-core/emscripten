@@ -203,29 +203,32 @@ function splitItem(parent, childSlot, copySlots) {
 }
 
 function makeReintegrator(afterFunc) {
-  // reintegration - find intermediate representation-parsed items and
-  // place back in parents TODO: Optimize this code to optimal O(..)
+  // Reintegration - find intermediate representation-parsed items and
+  // place back in parents
   return {
     process: function(items) {
       var ret = [];
+      var lineDict = {};
       for (var i = 0; i < items.length; i++) {
-        var found = false;
-        if (items[i] && items[i].parentSlot) {
-          var child = items[i];
-          for (var j = 0; j < items.length; j++) {
-            if (items[j] && items[j].lineNum == items[i].parentLineNum) {
-              var parent = items[j];
-              // process the pair
-              parent[child.parentSlot] = child;
-              delete child.parentLineNum;
-              afterFunc.call(this, parent, child);
+        var item = items[i];
+        if (!item.parentSlot) {
+          assert(!lineDict[item.lineNum]);
+          lineDict[item.lineNum] = i;
+        }
+      }
+      for (var i = 0; i < items.length; i++) {
+        var child = items[i];
+        var j = lineDict[child.parentLineNum];
+        if (typeof j === 'number') {
+          var parent = items[j];
+          // process the pair
+          parent[child.parentSlot] = child;
+          delete child.parentLineNum;
+          afterFunc.call(this, parent, child);
 
-              items[i] = null;
-              items[j] = null;
-              found = true;
-              break;
-            }
-          }
+          items[i] = null;
+          items[j] = null;
+          lineDict[child.parentLineNum] = null;
         }
       }
       this.forwardItems(items.filter(function(item) { return !!item }), this.name_); // next time hopefully

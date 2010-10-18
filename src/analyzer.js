@@ -181,6 +181,7 @@ function analyzer(data) {
             } else if (isStructType(field)) {
               size = item.types[field].flatSize;
             } else {
+              dprint('Unclear type in struct: ' + field + ', in ' + type.name_);
               assert(0);
             }
             var curr = Runtime.alignMemory(type.flatSize, Math.min(QUANTUM_SIZE, size)); // if necessary, place this on aligned memory

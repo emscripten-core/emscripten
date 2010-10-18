@@ -267,10 +267,12 @@ function intertyper(data) {
         };
         if (ident == '@llvm.global_ctors') {
           ret.ctors = [];
-          var subTokens = item.tokens[3].item[0].tokens;
-          splitTokenList(subTokens).forEach(function(segment) {
-            ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
-          });
+          if (item.tokens[3].item) {
+            var subTokens = item.tokens[3].item[0].tokens;
+            splitTokenList(subTokens).forEach(function(segment) {
+              ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
+            });
+          }
         } else {
           if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
             item.tokens[3] = item.tokens[3].item[0].tokens;
@@ -331,8 +333,7 @@ function intertyper(data) {
       }), 'Triager');
     },
   });
-  // reintegration - find intermediate representation-parsed items and
-  // place back in parents TODO: Optimize this code to optimal O(..)
+
   substrate.addZyme('Reintegrator', makeReintegrator(function(parent, child) {
     // Special re-integration behaviors
     if (child.intertype == 'fastgetelementptrload') {
