@@ -153,7 +153,7 @@ function compareTokens(a, b) {
 
 function getTokenIndexByText(tokens, text) {
   var i = 0;
-  while (tokens[i].text != ';') i++;
+  while (tokens[i] && tokens[i].text != text) i++;
   return i;
 }
 

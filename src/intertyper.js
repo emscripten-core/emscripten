@@ -178,7 +178,7 @@ function intertyper(data) {
             return 'Bitcast';
           if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr')
             return 'GEP';
-          if (item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'call' && !item.intertype)
+          if (item.tokens && item.tokens.length >= 3 && (item.tokens[0].text == 'call' || item.tokens[1].text == 'call') && !item.intertype)
             return 'Call';
           if (item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'invoke' && !item.intertype)
             return 'Invoke';
@@ -410,6 +410,10 @@ function intertyper(data) {
   substrate.addZyme('Call', {
     processItem: function(item) {
       item.intertype = 'call';
+      if (['tail'].indexOf(item.tokens[0].text) != -1) {
+        item.tokens.splice(0, 1);
+      }
+      assertEq(item.tokens[0].text, 'call');
       if (['signext', 'zeroext'].indexOf(item.tokens[1].text) != -1) {
         item.tokens.splice(1, 1);
       }

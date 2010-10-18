@@ -13,7 +13,7 @@ def emscripten(filename, settings):
   data = open(filename, 'r').read()
   cwd = os.getcwd()
   os.chdir(os.path.dirname(COMPILER))
-  subprocess.Popen([JS_ENGINE, COMPILER], stdin=subprocess.PIPE).communicate(settings+'\n'+data)[0]
+  subprocess.Popen(JS_ENGINE + [COMPILER], stdin=subprocess.PIPE).communicate(settings+'\n'+data)[0]
   os.chdir(cwd)
 
 if __name__ == '__main__':
@@ -32,6 +32,6 @@ Emscripten usage:    emscripten.py INFILE [PATH-TO-JS-ENGINE] [SETTINGS]
 '''
   else:
     if len(sys.argv) >= 3:
-      JS_ENGINE = sys.argv[2]
+      JS_ENGINE = [sys.argv[2]]
     emscripten(sys.argv[1], sys.argv[3] if len(sys.argv) == 4 else "{}")
 
