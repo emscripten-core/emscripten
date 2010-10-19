@@ -152,63 +152,66 @@ function intertyper(data) {
     },
   });
 
+  MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
+
   substrate.addZyme('Triager', {
     processItem: function(item) {
       function triage() {
         if (!item.intertype) {
-          if (item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '=')
-            return 'Global';
-          if (item.tokens.length >= 4 && item.indent === 0 && item.tokens[0].text == 'define' &&
-             item.tokens.slice(-1)[0].text == '{')
-            return 'FuncHeader';
-          if ((item.tokens.length >= 1 && item.indent === 0 && item.tokens[0].text.substr(-1) == ':') || // XXX LLVM 2.7 format, or llvm-gcc in 2.8
-              (item.tokens.length >= 3 && item.indent === 0 && item.tokens[1].text == '<label>'))
-            return 'Label';
-          if (item.tokens[0].text in searchable(';', 'target'))
-            return '/dev/null';
-          if (item.indent === 2 && item.tokens && item.tokens.length >= 3 && findTokenText(item, '=') >= 0 &&
-              !item.intertype)
-            return 'Assign';
-          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
-              (item.tokens[0].text == 'load' || item.tokens[1].text == 'load'))
-            return 'Load';
-          if (!item.intertype && item.indent === -1 && item.tokens.length >= 3 && item.tokens[0].text == 'extractvalue')
-            return 'ExtractValue';
-          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'bitcast')
-            return 'Bitcast';
-          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'getelementptr')
-            return 'GEP';
-          if (item.tokens && item.tokens.length >= 3 && (item.tokens[0].text == 'call' || item.tokens[1].text == 'call') && !item.intertype)
+          var token0Text = item.tokens[0].text;
+          var token1Text = item.tokens[1] ? item.tokens[1].text : null;
+          var tokensLength = item.tokens.length;
+          if (item.indent === 2) {
+            if (tokensLength >= 5 &&
+                (token0Text == 'store' || token1Text == 'store'))
+              return 'Store';
+            if (tokensLength >= 3 && findTokenText(item, '=') >= 0)
+              return 'Assign';
+            if (tokensLength >= 3 && token0Text == 'br')
+              return 'Branch';
+            if (tokensLength >= 2 && token0Text == 'ret')
+              return 'Return';
+            if (tokensLength >= 2 && token0Text == 'switch')
+              return 'Switch';
+            if (token0Text == 'unreachable')
+              return 'Unreachable';
+          } else if (item.indent === -1) {
+            if (tokensLength >= 3 &&
+                (token0Text == 'load' || token1Text == 'load'))
+              return 'Load';
+            if (tokensLength >= 3 &&
+                token0Text in MATHOPS)
+              return 'Mathops';
+            if (tokensLength >= 3 && token0Text == 'bitcast')
+              return 'Bitcast';
+            if (tokensLength >= 3 && token0Text == 'getelementptr')
+              return 'GEP';
+            if (tokensLength >= 3 && token0Text == 'alloca')
+              return 'Alloca';
+            if (tokensLength >= 3 && token0Text == 'extractvalue')
+              return 'ExtractValue';
+            if (tokensLength >= 3 && token0Text == 'phi')
+              return 'Phi';
+          } else if (item.indent === 0) {
+            if ((tokensLength >= 1 && token0Text.substr(-1) == ':') || // XXX LLVM 2.7 format, or llvm-gcc in 2.8
+                (tokensLength >= 3 && token1Text == '<label>'))
+              return 'Label';
+            if (tokensLength >= 4 && token0Text == 'declare')
+              return 'External';
+            if (tokensLength >= 3 && token1Text == '=')
+              return 'Global';
+            if (tokensLength >= 4 && token0Text == 'define' &&
+               item.tokens.slice(-1)[0].text == '{')
+              return 'FuncHeader';
+            if (tokensLength >= 1 && token0Text == '}')
+              return 'FuncEnd';
+          }
+          if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
             return 'Call';
-          if (item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'invoke' && !item.intertype)
+          if (token0Text in searchable(';', 'target'))
+            return '/dev/null';
+          if (tokensLength >= 3 && token0Text == 'invoke')
             return 'Invoke';
-          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'alloca')
-            return 'Alloca';
-          if (!item.intertype && item.indent === -1 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'phi')
-            return 'Phi';
-          if (item.indent === -1 && item.tokens && item.tokens.length >= 3 &&
-              ['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr'].indexOf(item.tokens[0].text) != -1 && !item.intertype)
-            return 'Mathops';
-          if (item.indent === 2 && item.tokens && item.tokens.length >= 5 &&
-              (item.tokens[0].text == 'store' || item.tokens[1].text == 'store'))
-            return 'Store';
-          if (item.indent === 2 && item.tokens && item.tokens.length >= 3 && item.tokens[0].text == 'br' &&
-                                     !item.intertype)
-            return 'Branch';
-          if (item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'ret' &&
-                                     !item.intertype)
-            return 'Return';
-          if (item.indent === 2 && item.tokens && item.tokens.length >= 2 && item.tokens[0].text == 'switch' &&
-                                     !item.intertype)
-            return 'Switch';
-          if (item.indent === 0 && item.tokens && item.tokens.length >= 1 && item.tokens[0].text == '}' && !item.intertype)
-            return 'FuncEnd';
-          if (item.indent === 0 && item.tokens && item.tokens.length >= 4 && item.tokens[0].text == 'declare' &&
-                                     !item.intertype)
-            return 'External';
-          if (item.indent === 2 && item.tokens && item.tokens[0].text == 'unreachable' &&
-                                     !item.intertype)
-            return 'Unreachable';
         } else {
           // Already intertyped
           if (item.parentSlot)
