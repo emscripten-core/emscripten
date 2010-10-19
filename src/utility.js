@@ -95,10 +95,20 @@ function searchable() {
 }
 
 function walkJSON(item, func) {
-  func(item);
-  for (x in item) {
-    if (typeof item[x] === 'object') {
-      walkJSON(item[x], func);
+  if (item.length) {
+    for (var x = 0; x < item.length; x++) {
+      var y = item[x];
+      if (y && typeof y === 'object') {
+        walkJSON(y, func);
+      }
+    }
+  } else {
+    func(item);
+    for (x in item) {
+      var y = item[x];
+      if (y && typeof y === 'object') {
+        walkJSON(y, func);
+      }
     }
   }
 }

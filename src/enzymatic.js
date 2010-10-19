@@ -83,7 +83,7 @@ Substrate.prototype = {
           outputs = zyme.process(inputs);
           dprint('New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
         } catch (e) {
-          print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
+          //print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
           print("Stack: " + new Error().stack);
           throw e;
         }

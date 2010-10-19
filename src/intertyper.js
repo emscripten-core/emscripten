@@ -259,7 +259,7 @@ function intertyper(data) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce'))
+        while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce', 'weak'))
           item.tokens.splice(2, 1);
         var ret = {
           __result__: true,
@@ -389,7 +389,7 @@ function intertyper(data) {
       item.intertype = 'bitcast';
       item.type = item.tokens[1].text;
       item.ident = item.tokens[2].text;
-      item.type2 = item.tokens[4];
+      item.type2 = item.tokens[4].text;
       this.forwardItem(item, 'Reintegrator');
     },
   });

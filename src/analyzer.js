@@ -84,7 +84,7 @@ function analyzer(data) {
     if (type.length == 1) return;
     if (data.types[type]) return;
     if (['internal', 'inbounds', 'void'].indexOf(type) != -1) return;
-    dprint('types', '// addType: ' + type);
+    //dprint('types', '// addType: ' + type);
     var check = new RegExp(/^\[(\d+)\ x\ (.*)\]$/g).exec(type);
     // 'blocks': [14 x %struct.X] etc.
     if (check) {
@@ -119,10 +119,16 @@ function analyzer(data) {
       walkJSON(data, function(item) {
         if (!item) return;
         if (item.type) {
-          addType(!item.type ? item.type : item.type, data);
+          addType(item.type, data);
         }
         if (item.type2) {
-          addType(!item.type2.text ? item.type2 : item.type2.text, data);
+          addType(item.type2, data);
+        }
+        if (item.pointerType) {
+          addType(item.pointerType, data);
+        }
+        if (item.valueType) {
+          addType(item.valueType, data);
         }
       });
       this.forwardItem(data, 'Typeanalyzer');
