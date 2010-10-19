@@ -42,6 +42,7 @@ Substrate.prototype = {
     zyme.forwardItems = bind(this, this.addItems);
     this.zymes[name_] = zyme;
     if (!zyme.process) zyme.process = Zyme.prototype.process;
+    return zyme;
   },
 
   solve: function() {
@@ -83,7 +84,7 @@ Substrate.prototype = {
           dprint('New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
         } catch (e) {
           print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
-          print("Stack: " + dump(new Error().stack));
+          print("Stack: " + new Error().stack);
           throw e;
         }
         hadProcessing = true;

@@ -538,8 +538,8 @@ if 'benchmark' not in sys.argv:
           #include <stdio.h>
 
           static const double grid[4][2] = {
-	          {-3/3.,-1/3.},{+1/3.,-3/3.},
-	          {-1/3.,+3/3.},{+3/3.,+1/3.}
+           {-3/3.,-1/3.},{+1/3.,-3/3.},
+           {-1/3.,+3/3.},{+3/3.,+1/3.}
           };
 
           int main() {
@@ -845,6 +845,17 @@ if 'benchmark' not in sys.argv:
 
           struct B { char buffer[62]; int last; char laster; char laster2; };
 
+          struct Bits {
+            unsigned short A : 1;
+            unsigned short B : 1;
+            unsigned short C : 1;
+            unsigned short D : 1;
+            unsigned short x1 : 1;
+            unsigned short x2 : 1;
+            unsigned short x3 : 1;
+            unsigned short x4 : 1;
+          };
+
           int main() {
             hashtable t;
 
@@ -854,15 +865,19 @@ if 'benchmark' not in sys.argv:
             printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
                                                       int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), ES_SIZEOF(B));
 
+            // Part 3 - bitfields, and small structures
+            Bits *b2 = NULL;
+            printf("*%d*\\n", ES_SIZEOF(Bits));
+
             return 0;
           }
           '''
         if QUANTUM_SIZE == 1:
           # Compressed memory
-          self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,65*')
+          self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,65*\n*1*')
         else:
           # Bloated memory; same layout as C/C++
-          self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*')
+          self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]

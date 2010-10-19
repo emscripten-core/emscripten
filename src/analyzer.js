@@ -197,7 +197,9 @@ function analyzer(data) {
           } else if (dedup(diffs).length == 1) {
             type.flatFactor = diffs[0];
           }
-          type.flatSize = Runtime.alignMemory(type.flatSize); // final padding at end
+          if (type.flatSize > QUANTUM_SIZE) {
+            type.flatSize = Runtime.alignMemory(type.flatSize); // final padding at end
+          }
           type.needsFlattening = (this.flatFactor != 1);
           dprint('types', 'type: ' + type.name_ + ' : ' + JSON.stringify(type.fields));
           dprint('types', '                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));

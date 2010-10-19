@@ -38,7 +38,7 @@ function intertyper(data) {
   });
 
   // Line tokenizer
-  substrate.addZyme('Tokenizer', {
+  var tokenizer = substrate.addZyme('Tokenizer', {
     processItem: function(item, inner) {
       var lineText = item.lineText + " ";
       var tokens = [];
@@ -238,7 +238,7 @@ function intertyper(data) {
           fields = [item.tokens[3].text];
         } else if (item.tokens[3].text != 'opaque') {
           if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
-            item.tokens[3] = item.tokens[3].item[0];
+            item.tokens[3] = tokenizer.processItem({ lineText: '{ ' + item.tokens[3].item[0].tokens[0].text + ' }' }, true)[0].tokens[0];
           }
           var subTokens = item.tokens[3].tokens;
           subTokens.push({text:','});
