@@ -753,6 +753,7 @@ function JSify(data) {
       var curr = toNiceIdent(arg.ident);
       // TODO: If index is constant, optimize
       var typeData = TYPES[type];
+      assert(typeData);
       if (isStructType(type) && typeData.needsFlattening) {
         if (typeData.flatFactor) {
           indexes.push(getFastValue(curr, '*', typeData.flatFactor));
@@ -764,7 +765,15 @@ function JSify(data) {
           indexes.push(curr); // XXX QUANTUM_SIZE?
         }
       }
-      type = TYPES[type] ? TYPES[type].fields[curr] : '';
+      if (!isNumber(curr)) {
+        // We have a *variable* to index with. FIXME: Generate something dynamic here.
+        // But, most likely all the possible types are the same, so do that case here now...
+        for (var i = 1; i < typeData.fields.length; i++) {
+          assert(typeData.fields[0] === typeData.fields[i]);
+        }
+        curr = 0;
+      }
+      type = typeData ? typeData.fields[curr] : '';
     });
     var ret = indexes[0];
     for (var i = 1; i < indexes.length; i++) {
