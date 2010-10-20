@@ -418,7 +418,7 @@ function intertyper(data) {
         item.tokens.splice(0, 1);
       }
       assertEq(item.tokens[0].text, 'call');
-      if (['signext', 'zeroext'].indexOf(item.tokens[1].text) != -1) {
+      if (['signext', 'zeroext', 'fastcc'].indexOf(item.tokens[1].text) != -1) {
         item.tokens.splice(1, 1);
       }
       item.type = item.tokens[1].text;
@@ -452,13 +452,14 @@ function intertyper(data) {
   substrate.addZyme('Invoke', {
     processItem: function(item) {
       item.intertype = 'invoke';
-      item.type = item.tokens[1].text;
       item.functionType = '';
+      cleanOutTokens(['fastcc'], item.tokens, 1);
       while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1) {
         item.functionType += item.tokens[2].text;
         item.tokens.splice(2, 1);
       }
       cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
+      item.type = item.tokens[1].text;
       item.ident = item.tokens[2].text;
       item.params = parseParamTokens(item.tokens[3].item[0].tokens);
       item.toLabel = toNiceIdent(item.tokens[6].text);
