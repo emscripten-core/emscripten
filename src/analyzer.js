@@ -84,21 +84,26 @@ function analyzer(data) {
     if (type.length == 1) return;
     if (data.types[type]) return;
     if (['internal', 'inbounds', 'void'].indexOf(type) != -1) return;
-    //dprint('types', '// addType: ' + type);
-    var check = new RegExp(/^\[(\d+)\ x\ (.*)\]$/g).exec(type);
-    // 'blocks': [14 x %struct.X] etc.
-    if (check) {
+    if (isNumberType(type)) return;
+
+    // 'blocks': [14 x %struct.X] etc. If this is a pointer, we need
+    // to look at the underlying type - it was not defined explicitly
+    // anywhere else.
+    var nonPointing = removeAllPointing(type);
+    var check = new RegExp(/^\[(\d+)\ x\ (.*)\]$/g).exec(nonPointing);
+    if (check && !data.types[nonPointing]) {
       var num = parseInt(check[1]);
       var subType = check[2];
-      data.types[type] = {
-        name_: type,
+      data.types[nonPointing] = {
+        name_: nonPointing,
         fields: range(num).map(function() { return subType }),
         lineNum: '?',
       };
       return;
     }
+
+    if (isPointerType(type)) return;
     if (['['].indexOf(type) != -1) return;
-    if (isNumberType(type) || isPointerType(type)) return;
     data.types[type] = {
       name_: type,
       fields: [ 'i32' ], // XXX
