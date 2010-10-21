@@ -750,23 +750,24 @@ function JSify(data) {
       }
     }
     item.params.slice(2, item.params.length).forEach(function(arg) {
+      dprint('types', 'GEP type: ' + type);
       var curr = toNiceIdent(arg.ident);
       // TODO: If index is constant, optimize
       var typeData = TYPES[type];
-      assert(typeData);
       if (isStructType(type) && typeData.needsFlattening) {
         if (typeData.flatFactor) {
           indexes.push(getFastValue(curr, '*', typeData.flatFactor));
         } else {
-          indexes.push(toNiceIdent(type) + '___FLATTENER[' + curr + ']');
+          indexes.push(toNiceIdent(type) + '___FLATTENER[' + curr + ']'); // TODO: If curr is constant, optimize out the flattener struct
         }
       } else {
         if (curr != 0) {
           indexes.push(curr); // XXX QUANTUM_SIZE?
         }
       }
-      if (!isNumber(curr)) {
-        // We have a *variable* to index with. FIXME: Generate something dynamic here.
+      if (!isNumber(curr) || parseInt(curr) < 0) {
+        // We have a *variable* to index with, or a negative number. In both
+        // cases, in theory we might need to do something dynamic here. FIXME?
         // But, most likely all the possible types are the same, so do that case here now...
         for (var i = 1; i < typeData.fields.length; i++) {
           assert(typeData.fields[0] === typeData.fields[i]);
