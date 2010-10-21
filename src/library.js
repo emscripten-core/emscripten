@@ -119,6 +119,15 @@ var Library = {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
   },
 
+  memcmp: function(p1, p2, num) {
+    for (var i = 0; i < num; i++) {
+      var v1 = IHEAP[p1+i];
+      var v2 = IHEAP[p2+i];
+      if (v1 != v2) return v1 > v2 ? 1 : -1;
+    }
+    return 0;
+  },
+
   // LLVM specifics
 
   __assert_fail: function(condition, file, line) {
@@ -151,6 +160,21 @@ var Library = {
       f0: x*y,
       f1: 0 // We never overflow... for now
     };
+  },
+
+  llvm_stacksave: function() {
+    var self = _llvm_stacksave;
+    if (!self.LLVM_SAVEDSTACKS) {
+      self.LLVM_SAVEDSTACKS = [];
+    }
+    self.LLVM_SAVEDSTACKS.push(STACKTOP);
+    return self.LLVM_SAVEDSTACKS.length-1;
+  },
+  llvm_stackrestore: function(p) {
+    var self = _llvm_stacksave;
+    var ret = self.LLVM_SAVEDSTACKS[p];
+    self.LLVM_SAVEDSTACKS.splice(p, 1);
+    return ret;
   },
 
   // iostream

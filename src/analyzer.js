@@ -333,6 +333,7 @@ function analyzer(data) {
           var line = lines[i];
           var item = line.value;
           if (!item || item.intertype != 'alloca') continue;
+          assert(item.allocatedNum === 1);
           item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
             calcAllocatedSize(item.allocatedType, data.types) : 0;
           total += item.allocatedSize;

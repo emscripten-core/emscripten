@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#define IN_LIBGCC2
 
 /* Demangler for g++ V3 ABI.
    Copyright (C) 2003, 2004, 2005 Free Software Foundation, Inc.
@@ -4215,4 +4216,11 @@ is_gnu_v3_mangled_dtor (const char *name)
 }
 
 #endif /* IN_GLIBCPP_V3 */
+
+int main()
+{
+  int status;
+  printf("*%s*\n", __cxa_demangle("_ZL10d_demanglePKciPj", 0, 0, &status));
+  return 1;
+}
 

@@ -56,7 +56,7 @@ function toNiceIdent(ident) {
   assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
-  return ident.replace(/[" \.@%:<>,\*]/g, '_');
+  return ident.replace(/[" \.@%:<>,\*\[\]]/g, '_');
 }
 
 INT_TYPES = searchable('i1', 'i8', 'i16', 'i32', 'i64');

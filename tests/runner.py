@@ -908,8 +908,8 @@ if 'benchmark' not in sys.argv:
 
       self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
-    def test_gcc_unmangler(self):
-      self.do_test(path_from_root(['third_party']), '*unmangled*', main_file='gcc_demangler.c')
+    def zzztest_gcc_unmangler(self):
+      self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', main_file='gcc_demangler.c')
 
   # Generate tests for all our compilers
   def make_test(compiler, embetter):

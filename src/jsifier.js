@@ -612,9 +612,12 @@ function JSify(data) {
     return item.ident + '.f' + item.indexes[0][0].text;
   });
   makeFuncLineZyme('alloca', function(item) {
-    assert(typeof item.allocatedIndex === 'number'); // or, return RuntimeGenerator.stackAlloc(calcAllocatedSize(item.allocatedType, TYPES));
-    if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
-    return getFastValue('__stackBase__', '+', item.allocatedIndex.toString());
+    if (typeof item.allocatedIndex === 'number') {
+      if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
+      return getFastValue('__stackBase__', '+', item.allocatedIndex.toString());
+    } else {
+      return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType, TYPES), '*', item.allocatedNum));
+    }
   });
   makeFuncLineZyme('phi', function(item) {
     return '__lastLabel__ == ' + getLabelId(item.label1) + ' ? ' + toNiceIdent(item.value1) + ' : ' + toNiceIdent(item.value2);
