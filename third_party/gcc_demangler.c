@@ -4217,10 +4217,10 @@ is_gnu_v3_mangled_dtor (const char *name)
 
 #endif /* IN_GLIBCPP_V3 */
 
-int main()
+int main(int argc, char **argv)
 {
   int status;
-  printf("*%s*\n", __cxa_demangle("_ZL10d_demanglePKciPj", 0, 0, &status));
+  printf("*%s*\n", __cxa_demangle(argv[1], 0, 0, &status));
   return 1;
 }
 
