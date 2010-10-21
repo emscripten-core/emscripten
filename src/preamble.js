@@ -121,14 +121,14 @@ if (!this._malloc) {
   _free = function() { }; // leak!
 }
 
-// Mangled "new"s... need a heuristic for autogeneration...
-__Znwj = _malloc; // llvm-gcc
-__Znaj = _malloc; // llvm-gcc
-__Znam = _malloc; // clang
-__Znwm = _malloc; // clang
-// Mangled "delete"s... need a heuristic for autogeneration...
-__ZdlPv = _free; // llvm-gcc
-__ZdaPv = _free; // llvm-gcc
+// Mangled "new"
+__Znwj = _malloc; // new(uint)
+__Znaj = _malloc; // new[](uint)
+__Znam = _malloc; // new(ulong)
+__Znwm = _malloc; // new[](ulong)
+// Mangled "delete"
+__ZdlPv = _free; // delete(..)
+__ZdaPv = _free; // delete[](..)
 
 function __initializeRuntime__() {
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
