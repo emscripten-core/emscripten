@@ -56,21 +56,16 @@ function intertyper(data) {
         '<': 0,
         '>': '<',
       };
-      function notEnclosed() {
-        if (enclosers['['] > 0 || enclosers['('] > 0 || enclosers['<'] > 0)
-          return false;
-        return true;
-      }
+      var ENCLOSER_STARTERS = set('[', '(', '<');
+      var totalEnclosing = 0;
       var that = this;
       function tryStartToken() {
-        if (tokenStart == -1 && notEnclosed() && quotes == 0) {
-          //print("try START " + tokenStart + ',' + JSON.stringify(enclosers));
+        if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) {
           tokenStart = i;
         }
       }
       function tryFinishToken(includeThis) {
-        if (tokenStart >= 0 && notEnclosed() && quotes == 0) {
-          //print("try finish " + tokenStart + ',' + JSON.stringify(enclosers));
+        if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) {
           var token = {
             text: lineText.substr(tokenStart, i-tokenStart + (includeThis ? 1 : 0)),
           };
@@ -101,13 +96,11 @@ function intertyper(data) {
             tokens.push(token);
             lastToken = token;
           }
-          // print("new token: " + dump(lastToken));
           tokenStart = -1;
         }
       }
       for (; i < lineText.length; i++) {
         var letter = lineText[i];
-        //print("letter: " + letter);
         switch (letter) {
           case ' ':
             tryFinishToken();
@@ -119,21 +112,22 @@ function intertyper(data) {
             break;
           case ',':
             tryFinishToken();
-            if (notEnclosed() && quotes == 0) {
+            if (totalEnclosing == 0 && quotes == 0) {
               tokens.push({ text: ',' });
             }
             break;
           default:
             if (letter in enclosers && quotes == 0) {
-              if (typeof enclosers[letter] === 'number') {
+              if (letter in ENCLOSER_STARTERS) {
                 tryFinishToken();
                 tryStartToken();
                 enclosers[letter]++;
+                totalEnclosing++;
               } else {
                 enclosers[enclosers[letter]]--;
+                totalEnclosing--;
                 tryFinishToken(true);
               }
-              //print('     post-enclosers: ' + JSON.stringify(enclosers));
             } else {
               tryStartToken();
             }
