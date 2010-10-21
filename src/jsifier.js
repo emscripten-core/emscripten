@@ -768,8 +768,8 @@ function JSify(data) {
         if (typeData.flatFactor) {
           indexes.push(getFastValue(curr, '*', typeData.flatFactor));
         } else {
-          if (curr == 0) {
-            indexes.push(0); // The first index is always 0 anyhow TODO: Assert this in the other places
+          if (isNumber(curr)) {
+            indexes.push(typeData.flatIndexes[curr]);
           } else {
             indexes.push(toNiceIdent(type) + '___FLATTENER[' + curr + ']'); // TODO: If curr is constant, optimize out the flattener struct
           }
