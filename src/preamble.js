@@ -204,6 +204,10 @@ function __formatString() {
       ret = ret.concat(String_copy(arguments[argIndex]));
       argIndex += 1;
       textIndex += 2;
+    } else if (curr == '%'.charCodeAt(0) && next == 'c'.charCodeAt(0)) {
+      ret = ret.concat(arguments[argIndex]);
+      argIndex += 1;
+      textIndex += 2;
     } else {
       ret.push(curr);
       textIndex += 1;
