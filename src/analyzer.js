@@ -332,17 +332,17 @@ function analyzer(data) {
         for (var i = 0; i < lines.length; i++) {
           var line = lines[i];
           var item = line.value;
-          if (!item || item.intertype != 'alloca') continue;
-          assert(item.allocatedNum === 1);
+          if (!item || item.intertype != 'alloca') break;
+          assert(isNumber(item.allocatedNum));
           item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
-            calcAllocatedSize(item.allocatedType, data.types) : 0;
+            calcAllocatedSize(item.allocatedType, data.types)*item.allocatedNum: 0;
           total += item.allocatedSize;
         }
         func.initialStack = total;
         var index = 0;
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i].value;
-          if (!item || item.intertype != 'alloca') continue;
+          if (!item || item.intertype != 'alloca') break;
           item.allocatedIndex = index;
           index += item.allocatedSize;
           delete item.allocatedSize;
