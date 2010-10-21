@@ -93,6 +93,11 @@ function analyzer(data) {
     var check = new RegExp(/^\[(\d+)\ x\ (.*)\]$/g).exec(nonPointing);
     if (check && !data.types[nonPointing]) {
       var num = parseInt(check[1]);
+      num = Math.max(num, 1); // [0 x something] is used not for allocations and such of course, but
+                              // for indexing - for an |array of unknown length|, basically. So we
+                              // define the 'type' as having a single field. TODO: Ensure as a sanity
+                              // check that we never allocate with this (either as a child structure
+                              // in the analyzer, or in calcSize in alloca).
       var subType = check[2];
       data.types[nonPointing] = {
         name_: nonPointing,
