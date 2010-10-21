@@ -768,7 +768,11 @@ function JSify(data) {
         if (typeData.flatFactor) {
           indexes.push(getFastValue(curr, '*', typeData.flatFactor));
         } else {
-          indexes.push(toNiceIdent(type) + '___FLATTENER[' + curr + ']'); // TODO: If curr is constant, optimize out the flattener struct
+          if (curr == 0) {
+            indexes.push(0); // The first index is always 0 anyhow TODO: Assert this in the other places
+          } else {
+            indexes.push(toNiceIdent(type) + '___FLATTENER[' + curr + ']'); // TODO: If curr is constant, optimize out the flattener struct
+          }
         }
       } else {
         if (curr != 0) {
