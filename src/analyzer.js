@@ -312,8 +312,9 @@ function analyzer(data) {
         func.labels.forEach(function(label) {
           label.lines.forEach(function(line) {
             if (line.value && line.value.intertype == 'phi') {
-              func.remarkableLabels.push(toNiceIdent(line.value.label1));
-              func.remarkableLabels.push(toNiceIdent(line.value.label2));
+              for (var i = 0; i < line.value.params.length; i++) {
+                func.remarkableLabels.push(line.value.params[i].label);
+              }
               func.hasPhi = true;
             }
           });

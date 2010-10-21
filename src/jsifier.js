@@ -620,7 +620,14 @@ function JSify(data) {
     }
   });
   makeFuncLineZyme('phi', function(item) {
-    return '__lastLabel__ == ' + getLabelId(item.label1) + ' ? ' + toNiceIdent(item.value1) + ' : ' + toNiceIdent(item.value2);
+    var params = item.params;
+    function makeOne(i) {
+      if (i === params.length-1) {
+        return params[i].value;
+      }
+      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + params[i].value + ' : (' + makeOne(i+1) + ')';
+    }
+    return makeOne(0);
   });
 
   function makeUnSign(value, type) {

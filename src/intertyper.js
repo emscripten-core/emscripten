@@ -483,11 +483,14 @@ function intertyper(data) {
   substrate.addZyme('Phi', {
     processItem: function(item) {
       item.intertype = 'phi';
-      item.type = item.tokens[1].text
-      item.label1 = item.tokens[2].item[0].tokens[2].text;
-      item.value1 = item.tokens[2].item[0].tokens[0].text;
-      item.label2 = item.tokens[4].item[0].tokens[2].text;
-      item.value2 = item.tokens[4].item[0].tokens[0].text;
+      item.type = item.tokens[1].text;
+      var last = getTokenIndexByText(item.tokens, ';');
+      item.params = splitTokenList(item.tokens.slice(2, last)).map(function(segment) {
+        return {
+          label: toNiceIdent(segment[0].item[0].tokens[2].text),
+          value: toNiceIdent(segment[0].item[0].tokens[0].text),
+        };
+      });
       this.forwardItem(item, 'Reintegrator');
     },
   });
