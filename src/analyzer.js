@@ -187,39 +187,9 @@ function analyzer(data) {
             more = true;
             return;
           }
-          // Calculate aligned size, just like C structs should be. TODO: Consider
-          // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
-          // which would remove much of the complexity here.
-          type.flatSize = 0;
-          var diffs = [];
-          var prev = -1, maxSize = -1;
-          type.flatIndexes = type.fields.map(function(field) {
-            var size;
-            if (isNumberType(field) || isPointerType(field)) {
-              size = getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
-              maxSize = Math.max(maxSize, size);
-            } else if (isStructType(field)) {
-              size = item.types[field].flatSize;
-              maxSize = Math.max(maxSize, QUANTUM_SIZE);
-            } else {
-              dprint('Unclear type in struct: ' + field + ', in ' + type.name_);
-              assert(0);
-            }
-            var curr = Runtime.alignMemory(type.flatSize, Math.min(QUANTUM_SIZE, size)); // if necessary, place this on aligned memory
-            type.flatSize = curr + size;
-            if (prev >= 0) {
-              diffs.push(curr-prev);
-            }
-            prev = curr;
-            return curr;
-          });
-          type.flatSize = Runtime.alignMemory(type.flatSize, maxSize);
-          if (diffs.length == 0) {
-            type.flatFactor = type.flatSize;
-          } else if (dedup(diffs).length == 1) {
-            type.flatFactor = diffs[0];
-          }
-          type.needsFlattening = (this.flatFactor != 1);
+
+          Runtime.calculateStructAlignment(type, item.types);
+
           dprint('types', 'type: ' + type.name_ + ' : ' + JSON.stringify(type.fields));
           dprint('types', '                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
         });

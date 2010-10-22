@@ -250,6 +250,15 @@ var Library = {
     }
     return ret;
   },
+
+  gettimeofday: function(ptr) {
+    // %struct.timeval = type { i32, i32 }
+    var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
+    var now = Date.now();
+    IHEAP[ptr + indexes[0]] = Math.floor(now/1000); // seconds
+    IHEAP[ptr + indexes[1]] = Math.floor((now-1000*Math.floor(now/1000))*1000); // microseconds
+    return 0;
+  },
 };
 
 load('library_sdl.js');

@@ -76,6 +76,50 @@ Runtime = {
     FUNCTION_TABLE[key] = func;
     return key;
   },
+
+  // TODO: cleanup
+  isNumberType: isNumberType,
+  INT_TYPES: INT_TYPES,
+  getNativeFieldSize: getNativeFieldSize,
+  dedup: dedup,
+
+  // Calculate aligned size, just like C structs should be. TODO: Consider
+  // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
+  // which would remove much of the complexity here.
+  calculateStructAlignment: function calculateStructAlignment(type, otherTypes) {
+    type.flatSize = 0;
+    var diffs = [];
+    var prev = -1, maxSize = -1;
+    type.flatIndexes = type.fields.map(function(field) {
+      var size;
+      if (isNumberType(field) || isPointerType(field)) {
+        size = getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
+        maxSize = Math.max(maxSize, size);
+      } else if (isStructType(field)) {
+        size = otherTypes[field].flatSize;
+        maxSize = Math.max(maxSize, QUANTUM_SIZE);
+      } else {
+        dprint('Unclear type in struct: ' + field + ', in ' + type.name_);
+        assert(0);
+      }
+      var curr = Runtime.alignMemory(type.flatSize, Math.min(QUANTUM_SIZE, size)); // if necessary, place this on aligned memory
+      type.flatSize = curr + size;
+      if (prev >= 0) {
+        diffs.push(curr-prev);
+      }
+      prev = curr;
+      return curr;
+    });
+    type.flatSize = Runtime.alignMemory(type.flatSize, maxSize);
+    if (diffs.length == 0) {
+      type.flatFactor = type.flatSize;
+    } else if (dedup(diffs).length == 1) {
+      type.flatFactor = diffs[0];
+    }
+    type.needsFlattening = (this.flatFactor != 1);
+    return type.flatIndexes;
+  }
+
 };
 
 function getRuntime() {

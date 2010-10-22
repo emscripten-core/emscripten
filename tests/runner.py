@@ -737,10 +737,11 @@ if 'benchmark' not in sys.argv:
           '''
         self.do_test(src, '*cheez: 0+24*\nQ85*')
 
-    def test_atexit(self):
+    def test_stdlibs(self):
         src = '''
           #include <stdio.h>
           #include <stdlib.h>
+          #include <sys/time.h>
 
           void clean()
           {
@@ -748,6 +749,9 @@ if 'benchmark' not in sys.argv:
           }
 
           int main() {
+            timeval t;
+            gettimeofday(&t, NULL);
+            printf("*%d,%d\\n", int(t.tv_sec), int(t.tv_usec));
             atexit(clean);
             return 0;
           }
