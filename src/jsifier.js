@@ -120,7 +120,7 @@ function JSify(data) {
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (isNumberType(type) || pointingLevels(type) == 1) {
-      return makePointer(parseNumerical(value.text), null, 'ALLOC_STATIC', type);
+      return makePointer(indexizeFunctions(parseNumerical(toNiceIdent(value.text))), null, 'ALLOC_STATIC', type);
     } else if (value.text == 'zeroinitializer') {
       return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_STATIC', type);
     } else if (value.text && value.text[0] == '"') {
@@ -157,7 +157,7 @@ function JSify(data) {
             throw 'Invalid segment: ' + dump(segment);
           }
         };
-        return splitTokenList(tokens).map(handleSegment).map(parseNumerical).map(indexizeFunctions);
+        return splitTokenList(tokens).map(handleSegment).map(indexizeFunctions).map(parseNumerical);
       }
       if (value.item) {
         // list of items
@@ -230,16 +230,6 @@ function JSify(data) {
       this.forwardItems(ret, 'FuncLineTriager');
     },
   });
-
-  var FUNCTION_INDEX = 0;
-  var FUNCTION_HASH = {};
-  function getFunctionIndex(name_) {
-    if (!(name_ in FUNCTION_HASH)) {
-      FUNCTION_HASH[name_] = FUNCTION_INDEX;
-      FUNCTION_INDEX++;
-    }
-    return FUNCTION_HASH[name_];
-  }
 
   // function reconstructor & post-JS optimizer
   substrate.addZyme('FunctionReconstructor', {
@@ -390,8 +380,7 @@ function JSify(data) {
       // Finalize function
       if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
       func.JS += '}\n';
-      func.JS += func.ident + '.__index__ = ' + getFunctionIndex(func.ident) + ';\n';
-      func.JS += 'FUNCTION_TABLE[' + getFunctionIndex(func.ident) + '] = ' + func.ident + ';\n';
+      func.JS += func.ident + '.__index__ = Runtime.getFunctionIndex(' + func.ident + ');\n';
       func.__result__ = true;
       return func;
     },

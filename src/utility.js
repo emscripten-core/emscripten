@@ -224,6 +224,6 @@ function setIntersect(x, y) {
 }
 
 function isNumber(x) {
-  return x == parseInt(x);
+  return x == parseFloat(x);
 }
 

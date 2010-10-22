@@ -3,6 +3,9 @@
 function __globalConstructor__() {
 }
 
+// This way of accessing is faster than adding |Runtime.| everywhere
+Runtime = this;
+
 // Maps ints ==> functions. This lets us pass around ints, which are
 // actually pointers to functions, and we convert at call()time
 FUNCTION_TABLE = [];
@@ -71,12 +74,15 @@ function Pointer_make(slab, pos, allocator) {
   // Finalize
   var ret = [_malloc, stackAlloc, staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
+    var curr = slab[pos + i];
+    if (typeof curr === 'function') {
+      curr = Runtime.getFunctionIndex(curr);
+    }
 #if SAFE_HEAP
-    SAFE_HEAP_STORE(ret + i, slab[pos + i]);
+    SAFE_HEAP_STORE(ret + i, curr);
 #else
 #if USE_TYPED_ARRAYS
     // TODO: Check - also in non-typedarray case - for functions, and if so add |.__index__|
-    var curr = slab[pos + i];
     if (typeof curr === 'number' || typeof curr === 'boolean') {
       IHEAP[ret + i] = curr; // TODO: optimize. Can easily detect floats, but 1.0 might look like an int...
       FHEAP[ret + i] = curr;
@@ -84,7 +90,7 @@ function Pointer_make(slab, pos, allocator) {
       HEAP[ret + i] = curr;
     }
 #else
-    HEAP[ret + i] = slab[pos + i];
+    HEAP[ret + i] = curr;
 #endif
 #endif
   }

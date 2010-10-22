@@ -69,12 +69,24 @@ Runtime = {
   stackAlloc: unInline('stackAlloc', ['size']),
   staticAlloc: unInline('staticAlloc', ['size']),
   alignMemory: unInline('alignMemory', ['size', 'quantum']),
+
+  FUNCTION_TABLE: [],
+  getFunctionIndex: function getFunctionIndex(func) {
+    var key = Runtime.FUNCTION_TABLE.length;
+    FUNCTION_TABLE[key] = func;
+    return key;
+  },
 };
 
 function getRuntime() {
   var ret = '';
   for (i in Runtime) {
-    ret += Runtime[i].toString() + '\n';
+    var item = Runtime[i];
+    if (typeof item === 'function') {
+      ret += item.toString() + '\n';
+    } else {
+      ret += 'var ' + i + ' = ' + JSON.stringify(item) + ';\n';
+    }
   }
   return ret + '\n';
 }
