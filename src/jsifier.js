@@ -13,10 +13,11 @@ function JSify(data) {
   substrate.addZyme('Type', {
     processItem: function(item) {
       var type = TYPES[item.name_];
+      var niceName = toNiceIdent(item.name_)
+      // We might export all of TYPES, cleaner that way, but do not want slowdowns in accessing flatteners
+      item.JS = 'var ' + niceName + '___SIZE = ' + TYPES[item.name_].flatSize + '; // ' + item.name_ + '\n';
       if (type.needsFlattening && !type.flatFactor) {
-        item.JS = 'var ' + toNiceIdent(item.name_) + '___FLATTENER = ' + JSON.stringify(TYPES[item.name_].flatIndexes) + ';';
-      } else {
-        item.JS = '// type: ' + item.name_;
+        item.JS += 'var ' + niceName + '___FLATTENER = ' + JSON.stringify(TYPES[item.name_].flatIndexes) + ';';
       }
       item.__result__ = true;
       return [item];
