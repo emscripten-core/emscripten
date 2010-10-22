@@ -3,6 +3,8 @@
 '''
 Simple tool to run the demangler.
 
+(C) 2010 Alon Zakai, MIT licensed
+
 Usage: demangler.py FILENAME SPLITTER
 
 Make sure you define ~/.emscripten, and fill it with something like
@@ -29,10 +31,10 @@ SEEN = {}
 for line in data:
   if line[0] == ' ': continue
   if line[0] != '_': continue
-  func = line.split(splitter)[0][1:]
+  func = line.split(splitter)[0]
   if func in SEEN: continue
   SEEN[func] = True
-  args = JS_ENGINE + ['gcc_demangler.js'] + JS_ENGINE_PARAMS + [func]
+  args = JS_ENGINE + ['gcc_demangler.js'] + JS_ENGINE_PARAMS + [func[1:]]
   cleaned = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
   if cleaned is None: continue
   cleaned = cleaned[1:-2]
