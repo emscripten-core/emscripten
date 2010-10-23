@@ -215,7 +215,7 @@ function analyzer(data) {
               ident: item.ident,
               type: item.value.type,
               origin: item.value.intertype,
-              uses: parseInt(item.value.tokens.slice(-1)[0].item[0].tokens[0].text.split('=')[1]),
+              uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1]),
             };
           }
         });

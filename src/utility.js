@@ -1,15 +1,16 @@
 // General JS utilities
 
 function dump(item) {
+  var CHUNK = 500;
   function lineify(text) {
     var ret = '';
     while (text.length > 0) {
-      if (text.length < 80) {
+      if (text.length < CHUNK) {
         ret += text;
         return ret;
       }
-      var subText = text.substring(60, 80);
-      var index = 61+Math.max(subText.indexOf(','), subText.indexOf(']'), subText.indexOf('}'), 21);
+      var subText = text.substring(CHUNK-20, CHUNK);
+      var index = CHUNK-19+Math.max(subText.indexOf(','), subText.indexOf(']'), subText.indexOf('}'), 21);
       ret += text.substr(0,index) + '\n';
       text = '// ' + text.substr(index);
     }

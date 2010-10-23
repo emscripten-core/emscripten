@@ -137,12 +137,12 @@ function JSify(data) {
           } else if (segment[1].text == 'zeroinitializer') {
             return JSON.stringify(makeEmptyStruct(segment[0].text));
           } else if (segment[1].text in searchable('bitcast', 'inttoptr', 'ptrtoint')) { // TODO: Use parse/finalizeLLVMFunctionCall
-            var type = segment[2].item[0].tokens.slice(-1)[0].text; // TODO: Use this?
-            return handleSegment(segment[2].item[0].tokens.slice(0, -2));
+            var type = segment[2].item.tokens.slice(-1)[0].text; // TODO: Use this?
+            return handleSegment(segment[2].item.tokens.slice(0, -2));
           } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
             return finalizeLLVMFunctionCall(parseLLVMFunctionCall(segment));
           } else if (segment[1].text == 'add') {
-            var subSegments = splitTokenList(segment[2].item[0].tokens);
+            var subSegments = splitTokenList(segment[2].item.tokens);
             return '(' + handleSegment(subSegments[0]) + ' + ' + handleSegment(subSegments[1]) + ')';
           } else if (segment[1].type == '{') {
             // struct
@@ -150,7 +150,7 @@ function JSify(data) {
             return '[' + alignStruct(handleSegments(segment[1].tokens), type).join(', ') + ']';
           } else if (segment[1].type == '[') {
             var type = segment[0].text;
-            return '[' + alignStruct(handleSegments(segment[1].item[0].tokens), type).join(', ') + ']';
+            return '[' + alignStruct(handleSegments(segment[1].item.tokens), type).join(', ') + ']';
           } else if (segment.length == 2) {
             return parseNumerical(toNiceIdent(segment[1].text));
           } else {
@@ -161,7 +161,7 @@ function JSify(data) {
       }
       if (value.item) {
         // list of items
-        return makePointer('[ ' + alignStruct(handleSegments(value.item[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
+        return makePointer('[ ' + alignStruct(handleSegments(value.item.tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
       } else if (value.type == '{') {
         // struct
         return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
@@ -260,7 +260,7 @@ function JSify(data) {
       // We have this function all reconstructed, go and finalize it's JS!
 
       var hasVarArgs = false;
-      var params = parseParamTokens(func.params.item[0].tokens).map(function(param) {
+      var params = parseParamTokens(func.params.item.tokens).map(function(param) {
         if (param.intertype == 'varargs') {
           hasVarArgs = true;
           return null;

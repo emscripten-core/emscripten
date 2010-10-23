@@ -102,7 +102,7 @@ function isFunctionDef(token) {
   if (nonPointing in set('()', '(...)')) return true;
   if (!token.item) return false;
   var fail = false;
-  splitTokenList(token.item[0].tokens).forEach(function(segment) {
+  splitTokenList(token.item.tokens).forEach(function(segment) {
     var subtoken = segment[0];
     fail = fail || !isType(subtoken.text) || segment.length > 1;
   });
@@ -114,7 +114,7 @@ function isFunctionType(type) {
   if (parts.length != 2) return false;
   if (pointingLevels(type) !== 1) return false;
   var text = removeAllPointing(parts[1]);
-  var ret = isType(parts[0]) && isFunctionDef({ text: text, item: [{tokens: [{text: text.substr(1, text.length-2)}]}] });
+  var ret = isType(parts[0]) && isFunctionDef({ text: text, item: {tokens: [{text: text.substr(1, text.length-2)}]} });
   return ret;
 }
 
@@ -336,7 +336,7 @@ function parseLLVMFunctionCall(segment) {
   var ret = {
     intertype: segment[1].text,
     type: segment[0].text,
-    params: parseParamTokens(segment[2].item[0].tokens),
+    params: parseParamTokens(segment[2].item.tokens),
   };
   ret.ident = toNiceIdent(ret.params[0].ident);
   return ret;

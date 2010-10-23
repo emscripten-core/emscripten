@@ -49,7 +49,7 @@ function intertyper(data) {
       var quotes = 0;
       var lastToken = null;
       var i = 0;
-      var CHUNKSIZE = 50; // How much forward to peek forward. Too much means too many string segments copied
+      var CHUNKSIZE = 64; // How much forward to peek forward. Too much means too many string segments copied
       // Note: '{' is not an encloser, as its use in functions is split over many lines
       var enclosers = {
         '[': 0,
@@ -150,7 +150,7 @@ function intertyper(data) {
         lineNum: item.lineNum,
       };
       if (inner) {
-        return [item];
+        return item;
       } else {
         this.forwardItem(item, 'Triager');
       }
@@ -243,7 +243,7 @@ function intertyper(data) {
           fields = [item.tokens[3].text];
         } else if (item.tokens[3].text != 'opaque') {
           if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
-            item.tokens[3] = tokenizer.processItem({ lineText: '{ ' + item.tokens[3].item[0].tokens[0].text + ' }' }, true)[0].tokens[0];
+            item.tokens[3] = tokenizer.processItem({ lineText: '{ ' + item.tokens[3].item.tokens[0].text + ' }' }, true).tokens[0];
           }
           var subTokens = item.tokens[3].tokens;
           subTokens.push({text:','});
@@ -276,14 +276,14 @@ function intertyper(data) {
         if (ident == '@llvm.global_ctors') {
           ret.ctors = [];
           if (item.tokens[3].item) {
-            var subTokens = item.tokens[3].item[0].tokens;
+            var subTokens = item.tokens[3].item.tokens;
             splitTokenList(subTokens).forEach(function(segment) {
               ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
             });
           }
         } else {
           if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
-            item.tokens[3] = item.tokens[3].item[0].tokens;
+            item.tokens[3] = item.tokens[3].item.tokens;
           }
 
           if (item.tokens[3].text == 'c')
@@ -367,8 +367,8 @@ function intertyper(data) {
       } else {
         item.intertype = 'load';
         if (item.tokens[2].text == 'bitcast') {
-          item.pointer = item.tokens[3].item[0].tokens[1].text;
-          item.originalType = item.tokens[3].item[0].tokens[0].text;
+          item.pointer = item.tokens[3].item.tokens[1].text;
+          item.originalType = item.tokens[3].item.tokens[0].text;
         } else {
           item.pointer = item.tokens[2].text;
         }
@@ -404,9 +404,9 @@ function intertyper(data) {
       var first = 0;
       while (!isType(item.tokens[first].text)) first++;
       var last = getTokenIndexByText(item.tokens, ';');
-      var segment = [ item.tokens[first], { text: 'getelementptr' }, null, { item: [ {
+      var segment = [ item.tokens[first], { text: 'getelementptr' }, null, { item: {
         tokens: item.tokens.slice(first, last)
-      } ] } ];
+      } } ];
       var data = parseLLVMFunctionCall(segment);
       item.intertype = 'getelementptr';
       item.type = data.type;
@@ -442,7 +442,7 @@ function intertyper(data) {
         }
         item.params = [];
       } else {
-        item.params = parseParamTokens(item.tokens[3].item[0].tokens);
+        item.params = parseParamTokens(item.tokens[3].item.tokens);
       }
       if (item.indent == 2) {
         // standalone call - not in assign
@@ -466,7 +466,7 @@ function intertyper(data) {
       cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
       item.type = item.tokens[1].text;
       item.ident = item.tokens[2].text;
-      item.params = parseParamTokens(item.tokens[3].item[0].tokens);
+      item.params = parseParamTokens(item.tokens[3].item.tokens);
       item.toLabel = toNiceIdent(item.tokens[6].text);
       item.unwindLabel = toNiceIdent(item.tokens[9].text);
       if (item.indent == 2) {
@@ -498,8 +498,8 @@ function intertyper(data) {
       var last = getTokenIndexByText(item.tokens, ';');
       item.params = splitTokenList(item.tokens.slice(2, last)).map(function(segment) {
         return {
-          label: toNiceIdent(segment[0].item[0].tokens[2].text),
-          value: toNiceIdent(segment[0].item[0].tokens[0].text),
+          label: toNiceIdent(segment[0].item.tokens[2].text),
+          value: toNiceIdent(segment[0].item.tokens[0].text),
         };
       });
       this.forwardItem(item, 'Reintegrator');
@@ -583,7 +583,7 @@ function intertyper(data) {
     processItem: function(item) {
       function parseSwitchLabels(item) {
         var ret = [];
-        var tokens = item.item[0].tokens;
+        var tokens = item.item.tokens;
         while (tokens.length > 0) {
           ret.push({
             value: tokens[1].text,
