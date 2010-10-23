@@ -13,17 +13,25 @@ Substrate = function(name_) {
 
 Substrate.prototype = {
   addItem: function(item, targetZyme) {
-    this.addItems([item], targetZyme);
+    if (targetZyme == '/dev/null') return;
+    if (targetZyme == '/dev/stdout') {
+      this.results.push(item);
+      return;
+    }
+    this.zymes[targetZyme].inbox.push(item);
   },
 
   addItems: function(items, targetZyme) {
-    assert(targetZyme);
     if (targetZyme == '/dev/null') return;
     if (targetZyme == '/dev/stdout') {
       this.results = this.results.concat(items);
       return;
     }
-    assert(this.zymes[targetZyme]);
+    this.zymes[targetZyme].inbox = this.zymes[targetZyme].inbox.concat(items);
+  },
+
+  checkInbox: function(zyme) {
+    var items = zyme.inbox;
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       if (!item.__uid__) {
@@ -31,13 +39,15 @@ Substrate.prototype = {
         this.currUid ++;
       }
     }
-    this.zymes[targetZyme].items = this.zymes[targetZyme].items.concat(items);
+    zyme.inbox = [];
+    zyme.items = zyme.items.concat(items);
   },
 
   addZyme: function(name_, zyme) {
     assert(name_ && zyme);
     zyme.name_ = name_;
     zyme.items = [];
+    zyme.inbox = [];
     zyme.forwardItem  = bind(this, this.addItem);
     zyme.forwardItems = bind(this, this.addItems);
     this.zymes[name_] = zyme;
@@ -72,6 +82,7 @@ Substrate.prototype = {
       values(this.zymes).forEach(function(zyme) {
         midComment();
 
+        that.checkInbox(zyme);
         if (zyme.items.length == 0) return;
 
         var inputs = zyme.items.slice(0);
