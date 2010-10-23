@@ -40,6 +40,8 @@ function intertyper(data) {
   // Line tokenizer
   var tokenizer = substrate.addZyme('Tokenizer', {
     processItem: function(item, inner) {
+      //assert(item.lineNum != 40000);
+      //if (item.lineNum) print(item.lineNum);
       var lineText = item.lineText + " ";
       var tokens = [];
       var tokenStart = -1;
@@ -47,6 +49,7 @@ function intertyper(data) {
       var quotes = 0;
       var lastToken = null;
       var i = 0;
+      var CHUNKSIZE = 50; // How much forward to peek forward. Too much means too many string segments copied
       // Note: '{' is not an encloser, as its use in functions is split over many lines
       var enclosers = {
         '[': 0,
@@ -59,59 +62,62 @@ function intertyper(data) {
       var ENCLOSER_STARTERS = set('[', '(', '<');
       var totalEnclosing = 0;
       var that = this;
-      function tryStartToken() {
-        if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) {
-          tokenStart = i;
-        }
-      }
-      function tryFinishToken(includeThis) {
-        if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) {
-          var token = {
-            text: lineText.substr(tokenStart, i-tokenStart + (includeThis ? 1 : 0)),
-          };
-          if (token.text[0] in enclosers) {
-            token.item = that.processItem({
-              lineText: token.text.substr(1, token.text.length-2)
-            }, true);
-            token.type = token.text[0];
-          }
-          if (indent == -1) {
-            indent = tokenStart;
-          }
-          // merge certain tokens
-          if ( (lastToken && lastToken.text == '%' && token.text[0] == '"' ) ||
-               (lastToken && token.text.replace(/\*/g, '') == '') ) {
-            lastToken.text += token.text;
-          } else if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
-            lastToken.text += ' ' + token.text;
-          } else if (lastToken && token.text[token.text.length-1] == '}') {
-            var openBrace = tokens.length-1;
-            while (tokens[openBrace].text != '{') openBrace --;
-            token = combineTokens(tokens.slice(openBrace+1));
-            tokens.splice(openBrace, tokens.length-openBrace+1);
-            tokens.push(token);
-            token.type = '{';
-            lastToken = token;
-          } else {
-            tokens.push(token);
-            lastToken = token;
-          }
+      function finishToken(includeThis) {
+        var text = lineText.substr(tokenStart, i-tokenStart + (includeThis ? 1 : 0));
+
+        // merge certain tokens
+        if ( (lastToken && lastToken.text == '%' && text[0] == '"' ) ||
+             (lastToken && text.replace(/\*/g, '') == '') ) {
+          lastToken.text += text;
           tokenStart = -1;
+          return;
         }
+
+        var token = {
+          text: text,
+        };
+        if (text[0] in enclosers) {
+          token.item = that.processItem({
+            lineText: text.substr(1, text.length-2)
+          }, true);
+          token.type = text[0];
+        }
+        if (indent == -1) {
+          indent = tokenStart;
+        }
+        // merge certain tokens
+        if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
+          lastToken.text += ' ' + text;
+        } else if (lastToken && text[text.length-1] == '}') {
+          var openBrace = tokens.length-1;
+          while (tokens[openBrace].text != '{') openBrace --;
+          token = combineTokens(tokens.slice(openBrace+1));
+          tokens.splice(openBrace, tokens.length-openBrace+1);
+          tokens.push(token);
+          token.type = '{';
+          lastToken = token;
+        } else {
+          tokens.push(token);
+          lastToken = token;
+        }
+        tokenStart = -1;
       }
       for (; i < lineText.length; i++) {
         var letter = lineText[i];
         switch (letter) {
           case ' ':
-            tryFinishToken();
+            if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
             break;
           case '"':
-            tryFinishToken();
-            tryStartToken();
+            if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
+            if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) tokenStart = i;
             quotes = 1-quotes;
+            if (tokenStart == i) {
+              i += Math.max(0, lineText.substr(i+1, i+1+CHUNKSIZE).search(/[!"]/));
+            }
             break;
           case ',':
-            tryFinishToken();
+            if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
             if (totalEnclosing == 0 && quotes == 0) {
               tokens.push({ text: ',' });
             }
@@ -119,17 +125,22 @@ function intertyper(data) {
           default:
             if (letter in enclosers && quotes == 0) {
               if (letter in ENCLOSER_STARTERS) {
-                tryFinishToken();
-                tryStartToken();
+                if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
+                if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) {
+                  tokenStart = i;
+                }
                 enclosers[letter]++;
                 totalEnclosing++;
               } else {
                 enclosers[enclosers[letter]]--;
                 totalEnclosing--;
-                tryFinishToken(true);
+                if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken(true);
               }
             } else {
-              tryStartToken();
+              if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) {
+                tokenStart = i;
+              }
+              i += Math.max(0, lineText.substr(i+1, i+1+CHUNKSIZE).search(/[\[\]\(\)<>, "]/));
             }
         }
       }
