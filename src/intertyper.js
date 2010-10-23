@@ -37,18 +37,21 @@ function intertyper(data) {
     },
   });
 
+  var ENCLOSER_STARTERS = set('[', '(', '<');
+  var ENCLOSER_ENDERS = {
+    '[': ']',
+    '(': ')',
+    '<': '>',
+  };
+
   // Line tokenizer
   var tokenizer = substrate.addZyme('Tokenizer', {
     processItem: function(item, inner) {
       //assert(item.lineNum != 40000);
       //if (item.lineNum) print(item.lineNum);
-      var lineText = item.lineText + " ";
       var tokens = [];
-      var tokenStart = -1;
-      var indent = -1;
       var quotes = 0;
       var lastToken = null;
-      var i = 0;
       var CHUNKSIZE = 64; // How much forward to peek forward. Too much means too many string segments copied
       // Note: '{' is not an encloser, as its use in functions is split over many lines
       var enclosers = {
@@ -59,17 +62,14 @@ function intertyper(data) {
         '<': 0,
         '>': '<',
       };
-      var ENCLOSER_STARTERS = set('[', '(', '<');
       var totalEnclosing = 0;
       var that = this;
-      function finishToken(includeThis) {
-        var text = lineText.substr(tokenStart, i-tokenStart + (includeThis ? 1 : 0));
-
+      function makeToken(text) {
+        if (text.length == 0) return;
         // merge certain tokens
         if ( (lastToken && lastToken.text == '%' && text[0] == '"' ) ||
              (lastToken && text.replace(/\*/g, '') == '') ) {
           lastToken.text += text;
-          tokenStart = -1;
           return;
         }
 
@@ -81,9 +81,6 @@ function intertyper(data) {
             lineText: text.substr(1, text.length-2)
           }, true);
           token.type = text[0];
-        }
-        if (indent == -1) {
-          indent = tokenStart;
         }
         // merge certain tokens
         if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
@@ -100,53 +97,82 @@ function intertyper(data) {
           tokens.push(token);
           lastToken = token;
         }
-        tokenStart = -1;
       }
-      for (; i < lineText.length; i++) {
-        var letter = lineText[i];
+      // Split using meaningful characters
+      var lineText = item.lineText + ' ';
+      var re = /[\[\]\(\)<>, "]/g;
+      var segments = lineText.split(re);
+      segments.pop();
+      var len = segments.length;
+      var i = -1;
+      var curr = '';
+      var segment, letter;
+      for (var s = 0; s < len; s++) {
+        segment = segments[s];
+        i += segment.length + 1;
+        letter = lineText[i];
+        curr += segment;
         switch (letter) {
           case ' ':
-            if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
-            break;
-          case '"':
-            if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
-            if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) tokenStart = i;
-            quotes = 1-quotes;
-            if (tokenStart == i) {
-              i += Math.max(0, lineText.substr(i+1, i+1+CHUNKSIZE).search(/[!"]/));
+            if (totalEnclosing == 0 && quotes == 0) {
+              makeToken(curr);
+              curr = '';
+            } else {
+              curr += ' ';
             }
             break;
+          case '"':
+            if (totalEnclosing == 0) {
+              if (quotes == 0) {
+                makeToken(curr);
+                curr = '"';
+              } else {
+                makeToken(curr + '"');
+                curr = '';
+              }
+            } else {
+              curr += '"';
+            }
+            quotes = 1-quotes;
+            break;
           case ',':
-            if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
             if (totalEnclosing == 0 && quotes == 0) {
+              makeToken(curr);
+              curr = '';
               tokens.push({ text: ',' });
+            } else {
+              curr += ',';
             }
             break;
           default:
-            if (letter in enclosers && quotes == 0) {
-              if (letter in ENCLOSER_STARTERS) {
-                if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken();
-                if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) {
-                  tokenStart = i;
-                }
-                enclosers[letter]++;
-                totalEnclosing++;
-              } else {
-                enclosers[enclosers[letter]]--;
-                totalEnclosing--;
-                if (tokenStart >= 0 && totalEnclosing == 0 && quotes == 0) finishToken(true);
+            assert(letter in enclosers);
+            if (quotes) {
+              curr += letter;
+              break;
+            }
+            if (letter in ENCLOSER_STARTERS) {
+              if (totalEnclosing == 0) {
+                makeToken(curr);
+                curr = '';
               }
+              curr += letter;
+              enclosers[letter]++;
+              totalEnclosing++;
             } else {
-              if (tokenStart == -1 && totalEnclosing == 0 && quotes == 0) {
-                tokenStart = i;
+              enclosers[enclosers[letter]]--;
+              totalEnclosing--;
+              if (totalEnclosing == 0) {
+                makeToken(curr + letter);
+                curr = '';
+              } else {
+                curr += letter;
               }
-              i += Math.max(0, lineText.substr(i+1, i+1+CHUNKSIZE).search(/[\[\]\(\)<>, "]/));
             }
         }
       }
       var item = {
         tokens: tokens,
-        indent: indent,
+        indent: lineText.search(/[^ ]/),
         lineNum: item.lineNum,
       };
       if (inner) {
