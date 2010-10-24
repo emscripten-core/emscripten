@@ -165,6 +165,10 @@ var Library = {
     return ret;
   },
 
+  __cxa_pure_virtual: function() {
+    throw 'Pure virtual function called!';
+  },
+
   // iostream
 
   _ZNSt8ios_base4InitC1Ev: function() {

@@ -479,21 +479,26 @@ if 'benchmark' not in sys.argv:
     def test_polymorph(self):
         src = '''
           #include <stdio.h>
-          struct Parent {
+          struct Pure {
+            virtual int implme() = 0;
+          };
+          struct Parent : Pure {
             virtual int getit() { return 11; };
+            int implme() { return 32; }
           };
           struct Child : Parent {
             int getit() { return 74; }
+            int implme() { return 1012; }
           };
           int main()
           {
             Parent *x = new Parent();
             Parent *y = new Child();
-            printf("*%d,%d*\\n", x->getit(), y->getit());
+            printf("*%d,%d,%d,%d*\\n", x->getit(), y->getit(), x->implme(), y->implme());
             return 0;
           }
         '''
-        self.do_test(src, '*11,74*')
+        self.do_test(src, '*11,74,32,1012*')
 
     def test_funcptr(self):
         src = '''
