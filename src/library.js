@@ -125,10 +125,10 @@ var Library = {
   },
 
   __cxa_guard_acquire: function() {
-    return 0;
+    return 1;
   },
   __cxa_guard_release: function() {
-    return 0;
+    return 1;
   },
 
   llvm_eh_exception: function() {

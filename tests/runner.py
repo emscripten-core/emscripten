@@ -806,12 +806,30 @@ if 'benchmark' not in sys.argv:
               puts(buf);
           }
 
+          struct XYZ {
+            float x, y, z;
+            XYZ(float a, float b, float c) : x(a), y(b), z(c) { }
+            static const XYZ& getIdentity()
+            {
+              static XYZ iT(1,2,3);
+              return iT;
+            }
+          };
+          struct S {
+            static const XYZ& getIdentity()
+            {
+              static const XYZ iT(XYZ::getIdentity());
+              return iT;
+            }
+          };
+
           int main() {
             conoutfv("*staticccz*");
+            printf("*%.2f,%.2f,%.2f*\\n", S::getIdentity().x, S::getIdentity().y, S::getIdentity().z);
             return 0;
           }
           '''
-        self.do_test(src, '*staticccz*')
+        self.do_test(src, '*staticccz*\n*1.00,2.00,3.00*')
 
     def test_copyop(self):
         # clang generated code is vulnerable to this, as it uses

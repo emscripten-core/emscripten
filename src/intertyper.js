@@ -290,7 +290,7 @@ function intertyper(data) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce', 'weak'))
+        while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce', 'linkonce_odr', 'weak'))
           item.tokens.splice(2, 1);
         var ret = {
           __result__: true,
