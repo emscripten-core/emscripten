@@ -210,7 +210,7 @@ function analyzer(data) {
         // LLVM is SSA, so we always have a single assignment/write. We care about
         // the reads/other uses.
         walkJSON(func.lines, function(item) {
-          if (item && item.intertype == 'assign' && ['alloca', 'load', 'call', 'bitcast', 'mathop', 'getelementptr', 'fastgetelementptrload'].indexOf(item.value.intertype) != -1) {
+          if (item && item.intertype == 'assign') {
             func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
