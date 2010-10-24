@@ -433,7 +433,7 @@ function getNativeFieldSize(field, alone) {
       'i32': 4,
       'i64': 8,
       'float': 4,
-      'double':8,
+      'double':8
     }[field]; // XXX 32/64 bit stuff
     if (!size) {
       size = 4; // Must be a pointer XXX 32/64

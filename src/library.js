@@ -35,6 +35,7 @@ var Library = {
   __cxa_atexit: 'atexit',
 
   abort: function(code) {
+    ABORT = true;
     throw 'ABORT: ' + code + ', at ' + (new Error().stack);
   },
 
@@ -119,6 +120,7 @@ var Library = {
   // LLVM specifics
 
   __assert_fail: function(condition, file, line) {
+    ABORT = true;
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
   },
 
@@ -137,6 +139,7 @@ var Library = {
   },
 
   __cxa_call_unexpected: function(exception) {
+    ABORT = true;
     throw exception;
   },
 
@@ -166,6 +169,7 @@ var Library = {
   },
 
   __cxa_pure_virtual: function() {
+    ABORT = true;
     throw 'Pure virtual function called!';
   },
 

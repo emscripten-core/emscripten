@@ -490,15 +490,28 @@ if 'benchmark' not in sys.argv:
             int getit() { return 74; }
             int implme() { return 1012; }
           };
+
+          struct Other {
+            int one() { return 11; }
+            int two() { return 22; }
+          };
+
           int main()
           {
             Parent *x = new Parent();
             Parent *y = new Child();
             printf("*%d,%d,%d,%d*\\n", x->getit(), y->getit(), x->implme(), y->implme());
+
+            Other *o = new Other;
+            int (Other::*Ls)() = &Other::one;
+            printf("*%d*\\n", (o->*(Ls))());
+            Ls = &Other::two;
+            printf("*%d*\\n", (o->*(Ls))());
+
             return 0;
           }
         '''
-        self.do_test(src, '*11,74,32,1012*')
+        self.do_test(src, '*11,74,32,1012*\n*11*\n*22*')
 
     def test_funcptr(self):
         src = '''

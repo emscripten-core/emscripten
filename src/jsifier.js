@@ -584,7 +584,7 @@ function JSify(data) {
     var ret = '(function() { try { __THREW__ = false; return '
             + makeFunctionCall(item.ident, item.params, item.funcData) + ' '
             + '} catch(e) { '
-            + '__THREW__ = true; '
+            + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
             + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';

@@ -41,10 +41,13 @@ INDENT = '';
 START_TIME = Date.now();
 #endif
 
+ABORT = false;
+
 function assert(condition, text) {
   if (!condition) {
     var text = "Assertion failed: " + text;
     print(text + ':\n' + (new Error).stack);
+    ABORT = true;
     throw "Assertion: " + text;
   }
 }

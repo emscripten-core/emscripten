@@ -74,6 +74,7 @@ Runtime = {
   getFunctionIndex: function getFunctionIndex(func) {
     var key = Runtime.FUNCTION_TABLE.length;
     FUNCTION_TABLE[key] = func;
+    FUNCTION_TABLE[key+1] = null; // Need to have keys be even numbers, see |polymorph| test
     return key;
   },
 
