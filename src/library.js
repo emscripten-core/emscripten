@@ -197,9 +197,23 @@ var Library = {
   // math.h
 
   cos: 'Math.cos',
+  cosf: 'Math.cos',
   sin: 'Math.sin',
+  sinf: 'Math.sin',
+  tan: 'Math.tan',
+  tanf: 'Math.tan',
+  acos: 'Math.acos',
+  acosf: 'Math.acos',
+  asin: 'Math.asin',
+  asinf: 'Math.asin',
+  atan: 'Math.atan',
+  atanf: 'Math.atan',
   sqrt: 'Math.sqrt',
+  sqrtf: 'Math.sqrt',
+  fabs: 'Math.abs',
+  fabsf: 'Math.abs',
   llvm_sqrt_f64: 'Math.sqrt',
+  llvm_pow_f32: 'Math.pow',
 
   // unistd.h
 
