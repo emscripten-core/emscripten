@@ -579,7 +579,7 @@ function JSify(data) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
     var ret = '(function() { try { __THREW__ = false; return '
-            + makeFunctionCall(item.ident, item.params) + ' '
+            + makeFunctionCall(item.ident, item.params, item.funcData) + ' '
             + '} catch(e) { '
             + '__THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
@@ -840,7 +840,7 @@ function JSify(data) {
       }
     }).map(indexizeFunctions);
 
-    if (funcData && getVarData(funcData, ident)) {
+    if (getVarData(funcData, ident)) {
       ident = 'FUNCTION_TABLE[' + ident + ']';
     }
 
