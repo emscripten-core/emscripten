@@ -275,7 +275,7 @@ function llvm_memset_i32(ptr, value, num) {
 #endif
   }
 }
-_llvm_memset_p0i8_i32 = llvm_memset_i32;
+_llvm_memset_p0i8_i64 = _llvm_memset_p0i8_i32 = llvm_memset_i32;
 
 function _strlen(ptr) {
   var i = 0;
