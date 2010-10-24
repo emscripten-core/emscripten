@@ -40,12 +40,6 @@ var Library = {
 
   // string.h
 
-  strlen: function(p) {
-    var q = p;
-    while (IHEAP[q] != 0) q++;
-    return q - p;
-  },
-
   strspn: function(pstr, pset) {
     var str = String_copy(pstr, true);
     var set = String_copy(pset);
@@ -76,12 +70,6 @@ var Library = {
       IHEAP[pdest+i] = padding ? 0 : IHEAP[psrc+i];
       padding = padding || IHEAP[psrc+i] == 0;
     }
-  },
-
-  strlen: function(ptr) {
-    var i = 0;
-    while (IHEAP[ptr+i] != 0) i++;
-    return i;
   },
 
   strcat: function(pdest, psrc) {

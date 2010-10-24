@@ -277,6 +277,12 @@ function llvm_memset_i32(ptr, value, num) {
 }
 _llvm_memset_p0i8_i32 = llvm_memset_i32;
 
+function _strlen(ptr) {
+  var i = 0;
+  while (IHEAP[ptr+i] != 0) i++;
+  return i;
+}
+
 // Tools
 
 PRINTBUFFER = '';

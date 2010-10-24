@@ -600,7 +600,7 @@ function intertyper(data) {
         __result__: true,
         intertype: 'return',
         type: item.tokens[1].text,
-        value: item.tokens[2] ? item.tokens[2].text : null,
+        value: item.tokens[2] ? parseLLVMSegment(item.tokens.slice(2)) : null,
         lineNum: item.lineNum,
       }];
     },

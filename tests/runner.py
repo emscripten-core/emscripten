@@ -678,6 +678,22 @@ if 'benchmark' not in sys.argv:
           '''
         self.do_test(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
+    def test_tinyfuncstr(self):
+        src = '''
+          #include <stdio.h>
+
+          struct Class {
+            static char *name1() { return "nameA"; }
+                   char *name2() { return "nameB"; }
+          };
+
+          int main() {
+            printf("*%s,%s*\\n", Class::name1(), (new Class())->name2());
+            return 0;
+          }
+          '''
+        self.do_test(src, '*nameA,nameB*')
+
     def test_llvmswitch(self):
         src = '''
           #include <stdio.h>

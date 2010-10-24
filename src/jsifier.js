@@ -571,7 +571,7 @@ function JSify(data) {
     if (LABEL_DEBUG) ret += "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     ret += 'return';
     if (item.value) {
-      ret += ' ' + toNiceIdent(item.value);
+      ret += ' ' + finalizeLLVMParameter(item.value);
     }
     return ret + ';';
   });
