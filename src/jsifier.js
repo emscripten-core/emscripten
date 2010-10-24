@@ -568,7 +568,10 @@ function JSify(data) {
   });
   makeFuncLineZyme('return', function(item) {
     var ret = RuntimeGenerator.stackExit(item.funcData.initialStack) + ';\n';
-    if (LABEL_DEBUG) ret += "INDENT = INDENT.substr(0, INDENT.length-2);\n";
+    if (LABEL_DEBUG) {
+      ret += "print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
+          +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
+    }
     ret += 'return';
     if (item.value) {
       ret += ' ' + finalizeLLVMParameter(item.value);
