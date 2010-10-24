@@ -282,13 +282,25 @@ function analyzer(data) {
   substrate.addZyme('LabelAnalyzer', {
     processItem: function(item) {
       item.functions.forEach(function(func) {
+        func.labelsDict = {};
+        func.labels.forEach(function(label) {
+          func.labelsDict[label.ident] = label;
+        });
         func.hasPhi = false;
         func.remarkableLabels = [];
         func.labels.forEach(function(label) {
           label.lines.forEach(function(line) {
             if (line.value && line.value.intertype == 'phi') {
               for (var i = 0; i < line.value.params.length; i++) {
-                func.remarkableLabels.push(line.value.params[i].label);
+                var remarkableLabelId = line.value.params[i].label;
+                func.remarkableLabels.push(remarkableLabelId);
+                var remarkableLabel = func.labelsDict[remarkableLabelId];
+                var lastLine = remarkableLabel.lines.slice(-1)[0];
+                if (lastLine.value) {
+                  lastLine.value.currLabelId = remarkableLabelId;
+                } else {
+                  lastLine.currLabelId = remarkableLabelId;
+                }
               }
               func.hasPhi = true;
             }
@@ -698,10 +710,6 @@ function analyzer(data) {
       // TODO: each of these can be run in parallel
       item.functions.forEach(function(func) {
         dprint('relooping', "// relooping function: " + func.ident);
-        func.labelsDict = {};
-        func.labels.forEach(function(label) {
-          func.labelsDict[label.ident] = label;
-        });
         func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict);
       });
 

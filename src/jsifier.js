@@ -278,10 +278,10 @@ function JSify(data) {
         func.JS += '  var __label__;\n';
       }
       if (hasVarArgs) {
-        func.JS += '  __numArgs__ = ' + params.length + ';\n';
+        func.JS += '  var __numArgs__ = ' + params.length + ';\n';
       }
       if (func.hasPhi) {
-        func.JS += '  __lastLabel__ = null;\n';
+        func.JS += '  var __lastLabel__ = null;\n';
       }
 
       var usedLabels = {}; // We can get a loop and inside it a multiple, which will try to use the same
@@ -302,9 +302,6 @@ function JSify(data) {
             ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
           }
           // for special labels we care about (for phi), mark that we visited them
-          if (func.remarkableLabels.indexOf(label.ident) >= 0) {
-            ret += indent + '__lastLabel__ = ' + getLabelId(label.ident) + ';\n';
-          }
           return ret + label.lines.map(function(line) { return line.JS + (line.comment ? ' // ' + line.comment : '') })
                                   .join('\n')
                                   .split('\n') // some lines include line breaks
@@ -344,7 +341,7 @@ function JSify(data) {
             var intendedTrueLabel = stolen.labelTrue;
             assert(block.entryLabels.length <= 2);
             [stolen.labelTrue, stolen.labelFalse].forEach(function(entry) {
-              var branch = makeBranch(entry);
+              var branch = makeBranch(entry, stolen.currLabelId);
               entryLabel = block.entryLabels.filter(function(possible) { return possible.ident === getActualLabelId(entry) })[0];
               if (branch.length < 5 && !entryLabel) return;
               //ret += indent + multipleIdent + (first ? '' : 'else ') +
@@ -501,35 +498,39 @@ function JSify(data) {
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
   }
 
-  function makeBranch(label) {
+  function makeBranch(label, lastLabel) {
+    var pre = '';
+    if (lastLabel) {
+      pre = '__lastLabel__ = ' + getLabelId(lastLabel) + '; ';
+    }
     if (label[0] == 'B') {
       var parts = label.split('|');
       var trueLabel = parts[1];
       var oldLabel = parts[2];
       var labelSetting = '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ '; // TODO: optimize away
       if (label[1] == 'R') {
-        return labelSetting + 'break ' + trueLabel + ';';
+        return pre + labelSetting + 'break ' + trueLabel + ';';
       } else if (label[1] == 'C') { // CONT
-        return labelSetting + 'continue ' + trueLabel + ';';
+        return pre + labelSetting + 'continue ' + trueLabel + ';';
       } else if (label[1] == 'N') { // NOPP
-        return ';'; // Returning no text might confuse this parser
+        return pre + ';'; // Returning no text might confuse this parser
       } else if (label[1] == 'J') { // JSET
-        return labelSetting;
+        return pre + labelSetting;
       } else {
         throw 'Invalid B-op in branch: ' + trueLabel + ',' + oldLabel;
       }
     } else {
-      return '__label__ = ' + getLabelId(label) + '; /* ' + cleanLabel(label) + ' */ break;';
+      return pre + '__label__ = ' + getLabelId(label) + '; /* ' + cleanLabel(label) + ' */ break;';
     }
   }
 
   makeFuncLineZyme('branch', function(item) {
     if (item.stolen) return ';'; // We will appear where we were stolen to
     if (!item.ident) {
-      return makeBranch(item.label);
+      return makeBranch(item.label, item.currLabelId);
     } else {
-      var labelTrue = makeBranch(item.labelTrue);
-      var labelFalse = makeBranch(item.labelFalse);
+      var labelTrue = makeBranch(item.labelTrue, item.currLabelId);
+      var labelFalse = makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + item.ident + ') { ';
       var head2 = 'if (!(' + item.ident + ')) { ';
@@ -554,11 +555,11 @@ function JSify(data) {
         first = false;
       }
       ret += 'if (' + item.ident + ' == ' + switchLabel.value + ') {\n';
-      ret += '  ' + makeBranch(switchLabel.label) + '\n';
+      ret += '  ' + makeBranch(switchLabel.label, item.currLabelId) + '\n';
       ret += '}\n';
     });
     ret += 'else {\n';
-    ret += makeBranch(item.defaultLabel) + '\n';
+    ret += makeBranch(item.defaultLabel, item.currLabelId) + '\n';
     ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
@@ -582,7 +583,8 @@ function JSify(data) {
             + '__THREW__ = false } catch(e) { '
             + '__THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
-            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel) + ' } else { ' + makeBranch(item.unwindLabel) + ' }';
+            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
+            + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
   makeFuncLineZyme('load', function(item) {
@@ -613,9 +615,9 @@ function JSify(data) {
     var params = item.params;
     function makeOne(i) {
       if (i === params.length-1) {
-        return params[i].value;
+        return finalizeLLVMParameter(params[i].value);
       }
-      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + params[i].value + ' : (' + makeOne(i+1) + ')';
+      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
     }
     return makeOne(0);
   });

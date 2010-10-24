@@ -523,9 +523,10 @@ function intertyper(data) {
       item.type = item.tokens[1].text;
       var last = getTokenIndexByText(item.tokens, ';');
       item.params = splitTokenList(item.tokens.slice(2, last)).map(function(segment) {
+        var subSegments = splitTokenList(segment[0].item.tokens);
         return {
-          label: toNiceIdent(segment[0].item.tokens[2].text),
-          value: toNiceIdent(segment[0].item.tokens[0].text),
+          label: toNiceIdent(subSegments[1][0].text),
+          value: parseLLVMSegment(subSegments[0]),
         };
       });
       this.forwardItem(item, 'Reintegrator');
