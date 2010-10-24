@@ -384,13 +384,16 @@ function parseNumerical(value, type) {
   if ((!type || type == 'double' || type == 'float') && value.substr(0,2) == '0x') {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
-    return IEEEUnHex(value);
-  }
-  if (value == 'null') {
+    value = IEEEUnHex(value);
+  } else if (value == 'null') {
     // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
-    return '0';
+    value = '0';
   }
-  return value;
+  if (isNumber(value)) {
+    return eval(value).toString(); // will change e.g. 5.000000e+01 to 50
+  } else {
+    return value;
+  }
 }
 
 // \0Dsometext is really '\r', then sometext
