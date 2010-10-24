@@ -578,9 +578,9 @@ function JSify(data) {
   makeFuncLineZyme('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
-    var ret = '(function() { try { return '
-            + makeFunctionCall(item.ident, item.params) + '; '
-            + '__THREW__ = false } catch(e) { '
+    var ret = '(function() { try { __THREW__ = false; return '
+            + makeFunctionCall(item.ident, item.params) + ' '
+            + '} catch(e) { '
             + '__THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
             + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
