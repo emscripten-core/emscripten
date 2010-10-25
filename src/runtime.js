@@ -142,6 +142,6 @@ function getRuntime() {
     }
     ret += ',\n';
   }
-  return ret + '}\n';
+  return ret + '  __dummy__: 0\n}\n';
 }
 
