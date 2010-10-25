@@ -37,9 +37,9 @@ function JSify(data) {
     if (!USE_TYPED_ARRAYS) {
       return 'HEAP';
     } else {
-      if (type in FLOAT_TYPES || type === 'int64') {
+      if (type in Runtime.FLOAT_TYPES || type === 'int64') {
         return 'FHEAP';
-      } else if (type in INT_TYPES || isPointerType(type)) {
+      } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
         return 'IHEAP';
       } else {
         return 'HEAP';
@@ -119,7 +119,7 @@ function JSify(data) {
   // Gets an entire constant expression
   function parseConst(value, type) {
     dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
-    if (isNumberType(type) || pointingLevels(type) == 1) {
+    if (Runtime.isNumberType(type) || pointingLevels(type) == 1) {
       return makePointer(indexizeFunctions(parseNumerical(toNiceIdent(value.text))), null, 'ALLOC_STATIC', type);
     } else if (value.text == 'zeroinitializer') {
       return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_STATIC', type);
@@ -626,7 +626,7 @@ function JSify(data) {
   });
 
   function makeUnSign(value, type) {
-    if (type in INT_TYPES) {
+    if (type in Runtime.INT_TYPES) {
       return 'unSign(' + value + ', ' + type.substr(1) + ')';
     } else {
       return value;
@@ -885,6 +885,6 @@ function JSify(data) {
   substrate.addItems(data.functionStubs, 'FunctionStub');
 
   var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
-  return preprocess(read('preamble.js') + getRuntime() + finalCombiner(substrate.solve()) + read('postamble.js'), params);
+  return preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + finalCombiner(substrate.solve()) + read('postamble.js'), params);
 }
 

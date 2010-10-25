@@ -59,13 +59,6 @@ function toNiceIdent(ident) {
   return ident.replace(/[" \.@%:<>,\*\[\]-]/g, '_');
 }
 
-INT_TYPES = searchable('i1', 'i8', 'i16', 'i32', 'i64');
-FLOAT_TYPES = searchable('float', 'double');
-
-function isNumberType(type) {
-  return type in INT_TYPES || type in FLOAT_TYPES;
-}
-
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -75,14 +68,14 @@ function isStructPointerType(type) {
   // we must check later on, in call(), where we have more
   // context, to differentiate such cases.
   // A similar thing happns in isStructType()
-  return !isNumberType(type) && type[0] == '%';
+  return !Runtime.isNumberType(type) && type[0] == '%';
 }
 
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
   // See comment in isStructPointerType()
-  return !isNumberType(type) && type[0] == '%';
+  return !Runtime.isNumberType(type) && type[0] == '%';
 }
 
 function isPointerType(type) {
@@ -119,7 +112,7 @@ function isFunctionType(type) {
 }
 
 function isType(type) { // TODO!
-  return isVoidType(type) || isNumberType(type) || isStructType(type) || isPointerType(type) || isFunctionType(type);
+  return isVoidType(type) || Runtime.isNumberType(type) || isStructType(type) || isPointerType(type) || isFunctionType(type);
 }
 
 function addIdent(token) {

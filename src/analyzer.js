@@ -84,7 +84,7 @@ function analyzer(data) {
     if (type.length == 1) return;
     if (data.types[type]) return;
     if (['internal', 'inbounds', 'void'].indexOf(type) != -1) return;
-    if (isNumberType(type)) return;
+    if (Runtime.isNumberType(type)) return;
 
     // 'blocks': [14 x %struct.X] etc. If this is a pointer, we need
     // to look at the underlying type - it was not defined explicitly

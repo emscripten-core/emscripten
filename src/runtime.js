@@ -70,17 +70,24 @@ Runtime = {
   staticAlloc: unInline('staticAlloc', ['size']),
   alignMemory: unInline('alignMemory', ['size', 'quantum']),
 
-  FUNCTION_TABLE: [],
   getFunctionIndex: function getFunctionIndex(func) {
-    var key = Runtime.FUNCTION_TABLE.length;
+    var key = FUNCTION_TABLE.length;
     FUNCTION_TABLE[key] = func;
     FUNCTION_TABLE[key+1] = null; // Need to have keys be even numbers, see |polymorph| test
     return key;
   },
 
   // TODO: cleanup
-  isNumberType: isNumberType,
-  INT_TYPES: INT_TYPES,
+  isNumberType: function(type) {
+    return type in Runtime.INT_TYPES || type in Runtime.FLOAT_TYPES;
+  },
+
+  isPointerType: isPointerType,
+  isStructType: isStructType,
+
+  INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
+  FLOAT_TYPES: set('float', 'double'),
+
   getNativeFieldSize: getNativeFieldSize,
   dedup: dedup,
 
@@ -93,10 +100,10 @@ Runtime = {
     var prev = -1, maxSize = -1;
     type.flatIndexes = type.fields.map(function(field) {
       var size;
-      if (isNumberType(field) || isPointerType(field)) {
-        size = getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
+      if (Runtime.isNumberType(field) || Runtime.isPointerType(field)) {
+        size = Runtime.getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
         maxSize = Math.max(maxSize, size);
-      } else if (isStructType(field)) {
+      } else if (Runtime.isStructType(field)) {
         size = otherTypes[field].flatSize;
         maxSize = Math.max(maxSize, QUANTUM_SIZE);
       } else {
@@ -114,7 +121,7 @@ Runtime = {
     type.flatSize = Runtime.alignMemory(type.flatSize, maxSize);
     if (diffs.length == 0) {
       type.flatFactor = type.flatSize;
-    } else if (dedup(diffs).length == 1) {
+    } else if (Runtime.dedup(diffs).length == 1) {
       type.flatFactor = diffs[0];
     }
     type.needsFlattening = (this.flatFactor != 1);
@@ -124,15 +131,17 @@ Runtime = {
 };
 
 function getRuntime() {
-  var ret = '';
+  var ret = 'Runtime = {\n';
   for (i in Runtime) {
     var item = Runtime[i];
+    ret += '  ' + i + ': ';
     if (typeof item === 'function') {
-      ret += item.toString() + '\n';
+      ret += item.toString();
     } else {
-      ret += 'var ' + i + ' = ' + JSON.stringify(item) + ';\n';
+      ret += JSON.stringify(item);
     }
+    ret += ',\n';
   }
-  return ret + '\n';
+  return ret + '}\n';
 }
 

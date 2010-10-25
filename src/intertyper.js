@@ -264,7 +264,7 @@ function intertyper(data) {
       }
       if (item.tokens[2].text == 'type') {
         var fields = [];
-        if (isNumberType(item.tokens[3].text)) {
+        if (Runtime.isNumberType(item.tokens[3].text)) {
           // Clang sometimes has |= i32| instead of |= { i32 }|
           fields = [item.tokens[3].text];
         } else if (item.tokens[3].text != 'opaque') {
@@ -510,7 +510,7 @@ function intertyper(data) {
     processItem: function(item) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1].text;
-      item.allocatedNum = isNumberType(item.tokens[3].text) ? toNiceIdent(item.tokens[4].text) : 1;
+      item.allocatedNum = Runtime.isNumberType(item.tokens[3].text) ? toNiceIdent(item.tokens[4].text) : 1;
       item.type = addPointing(item.tokens[1].text); // type of pointer we will get
       item.type2 = item.tokens[1].text; // value we will create, and get a pointer to
       this.forwardItem(item, 'Reintegrator');

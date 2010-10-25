@@ -1,10 +1,9 @@
 // === Auto-generated preamble library stuff ===
 
+{{RUNTIME}}
+
 function __globalConstructor__() {
 }
-
-// This way of accessing is faster than adding |Runtime.| everywhere
-Runtime = this;
 
 // Maps ints ==> functions. This lets us pass around ints, which are
 // actually pointers to functions, and we convert at call()time
@@ -75,7 +74,7 @@ function Pointer_make(slab, pos, allocator) {
   }
   var slab = flatten(slab);
   // Finalize
-  var ret = [_malloc, stackAlloc, staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(slab.length - pos, 1));
+  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
     var curr = slab[pos + i];
     if (typeof curr === 'function') {
@@ -126,7 +125,7 @@ function alignMemoryPage(x) {
 
 // If we don't have malloc/free implemented, use a simple implementation.
 if (!this._malloc) {
-  _malloc = staticAlloc;
+  _malloc = Runtime.staticAlloc;
   _free = function() { }; // leak!
 }
 
