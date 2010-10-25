@@ -68,12 +68,15 @@ class RunnerCore(unittest.TestCase):
     # LLVM binary ==> LLVM assembly
     output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
+    self.do_emscripten(filename, output_processor)
+
+  def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
     for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS']:
       exported_settings[setting] = eval(setting)
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
-    timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), 240, 'Compiling')
+    timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
     output = open(filename + '.o.js').read()
     if output_processor is not None:
         output_processor(output)
@@ -102,7 +105,7 @@ if 'benchmark' not in sys.argv:
         dirname = self.get_dir()
         filename = os.path.join(dirname, 'src.cpp')
         if not no_build:
-          self.build(src, dirname, filename, output_processor, main_file)
+          self.build(src, dirname, filename, main_file=main_file)
 
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         engines = [V8_ENGINE] if not OPTIMIZE else [V8_ENGINE, SPIDERMONKEY_ENGINE]
@@ -970,6 +973,18 @@ if 'benchmark' not in sys.argv:
 
     def test_gcc_unmangler(self):
       self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
+
+    def test_bullet(self):
+      if COMPILER != LLVM_GCC: return # Only support that for now, FIXME
+      if OPTIMIZE: return # TODO
+
+      # No building - just process an existing .ll file
+      filename = os.path.join(self.get_dir(), 'src.cpp')
+      shutil.copy(path_from_root(['tests', 'bullet', 'bulletTest.ll']), filename + '.o.ll')
+      self.do_emscripten(filename)
+      self.do_test(path_from_root(['third_party']),
+                   open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read(),
+                   no_build=True)
 
   # Generate tests for all our compilers
   def make_test(compiler, embetter):
