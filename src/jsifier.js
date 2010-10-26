@@ -440,7 +440,7 @@ function JSify(data) {
       case VAR_EMULATED: {
         break;
       }
-      default: print('zz unknown impl: ' + impl);
+      default: throw 'zz unknown impl: ' + impl;
     }
     if (value)
       item.JS += ' = ' + value;
@@ -598,7 +598,7 @@ function JSify(data) {
         return ident; // We have the actual value here
       }
       case VAR_EMULATED: return makeGetValue(ident, null, null, item.type);
-      default: return "unknown [load] impl: " + impl;
+      default: throw "unknown [load] impl: " + impl;
     }
   });
   makeFuncLineZyme('extractvalue', function(item) {

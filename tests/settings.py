@@ -35,7 +35,7 @@ COMPILER_ENGINE=V8_ENGINE
 
 OUTPUT_TO_SCREEN = 0 # useful for debugging specific tests, or for subjectively seeing what parts are slow
 
-TIMEOUT = 360
+TIMEOUT = None
 
 CLOSURE_COMPILER = os.path.expanduser('~/Dev/closure-compiler/compiler.jar')
 

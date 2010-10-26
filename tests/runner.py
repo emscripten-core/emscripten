@@ -1022,7 +1022,7 @@ else:
   tests_done = 0
   total_times = map(lambda x: 0., range(TEST_REPS))
 
-  class Benchmark(RunnerCore): # Short name, to make it more fun to use manually on the commandline
+  class Benchmark(RunnerCore):
     def print_stats(self, times):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
@@ -1042,6 +1042,9 @@ else:
         os.remove(filename + '.cc.js')
       except:
         pass
+      # Something like this:
+      #   java -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --formatting PRETTY_PRINT --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+
       cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
                          '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
                          '--formatting', 'PRETTY_PRINT',
