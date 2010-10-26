@@ -549,11 +549,13 @@ function intertyper(data) {
           item['param'+i] = parseLLVMSegment(segments[i-1]);
         }
       }
-      if (item.op !== 'select') {
-        item.type = item.param1.type;
-      } else {
+      if (item.op === 'select') {
         assert(item.param2.type === item.param3.type);
         item.type = item.param2.type;
+      } else if (item.op === 'inttoptr' || item.op === 'ptrtoint') {
+        item.type = item.param2.type;
+      } else {
+        item.type = item.param1.type;
       }
       this.forwardItem(item, 'Reintegrator');
     },

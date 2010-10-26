@@ -288,7 +288,7 @@ function parseLLVMSegment(segment) {
     return {
       intertype: 'value',
       ident: segment[0].text,
-      type: '?',
+      type: isType(segment[0].text) ? segment[0].text : '?',
     };
   } else if (segment[0].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall([{text: '?'}].concat(segment));
