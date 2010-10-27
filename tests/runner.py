@@ -99,7 +99,7 @@ class RunnerCore(unittest.TestCase):
 if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None):
         if not no_build:
           print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
         dirname = self.get_dir()
@@ -108,8 +108,9 @@ if 'benchmark' not in sys.argv:
           self.build(src, dirname, filename, main_file=main_file)
 
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
-        engines = [V8_ENGINE] if not OPTIMIZE else [V8_ENGINE, SPIDERMONKEY_ENGINE]
-        for engine in engines:
+        if js_engines is None:
+          js_engines = [V8_ENGINE] if not OPTIMIZE else [V8_ENGINE, SPIDERMONKEY_ENGINE]
+        for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
               js_output = output_nicerizer(js_output)
@@ -976,7 +977,6 @@ if 'benchmark' not in sys.argv:
 
     def test_bullet(self):
       if COMPILER != LLVM_GCC: return # Only support that for now, FIXME
-      if OPTIMIZE: return # TODO
 
       # No building - just process an existing .ll file
       filename = os.path.join(self.get_dir(), 'src.cpp')
@@ -984,7 +984,8 @@ if 'benchmark' not in sys.argv:
       self.do_emscripten(filename)
       self.do_test(path_from_root(['third_party']),
                    open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read(),
-                   no_build=True)
+                   no_build=True,
+                   js_engines=[V8_ENGINE]) # mozilla bug XXX
 
   # Generate tests for all our compilers
   def make_test(compiler, embetter):
