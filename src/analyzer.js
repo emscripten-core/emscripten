@@ -485,6 +485,12 @@ function analyzer(data) {
         });
       }
 
+      var idCounter = 0;
+      function makeBlockId(entries) {
+        idCounter++;
+        return entries.join('$') + '$' + idCounter;
+      }
+
       // There are X main kinds of blocks:
       //
       //----------------------------------------------------------------------------------------
@@ -515,8 +521,11 @@ function analyzer(data) {
         dprint('relooping', 'prelooping: ' + entries + ',' + labels.length + ' labels');
         assert(entries && entries[0]); // need at least 1 entry
 
+        var blockId = makeBlockId(entries);
+
         var emulated = {
           type: 'emulated',
+          id: blockId,
           labels: labels,
           entries: entries.slice(0),
         };
@@ -563,6 +572,7 @@ function analyzer(data) {
           //}
           return {
             type: 'emulated',
+            id: blockId,
             labels: [entryLabel],
             entries: entries,
             next: makeBlock(others, keys(entryLabel.outLabels), labelsDict),
@@ -574,6 +584,7 @@ function analyzer(data) {
         function makeLoop() {
           var ret = {
             type: 'reloop',
+            id: blockId,
             entries: entries,
             labels: labels,
           };
@@ -599,7 +610,7 @@ function analyzer(data) {
 
           // We will be in a loop, |continue| gets us back to the entry
           entries.forEach(function(entry) {
-            replaceLabelLabels(internals, searchable(entries), 'BCONT|' + entries[0]); // entries[0] is the name of the loop, see walkBlock
+            replaceLabelLabels(internals, searchable(entries), 'BCONT|' + blockId);
           });
 
           // To get to any of our (not our parents') exit labels, we will break.
@@ -607,7 +618,7 @@ function analyzer(data) {
           var enteredExitLabels = {};
           if (externals.length > 0) {
             entries.forEach(function(entry) {
-              mergeInto(enteredExitLabels, set(replaceLabelLabels(internals, currExitLabels, 'BREAK|' + entries[0]))); // see comment on entries[0] above
+              mergeInto(enteredExitLabels, set(replaceLabelLabels(internals, currExitLabels, 'BREAK|' + blockId)));
             });
             enteredExitLabels = keys(enteredExitLabels).map(cleanLabel);
             dprint('relooping', 'enteredExitLabels: ' + dump(enteredExitLabels));
@@ -693,13 +704,14 @@ function analyzer(data) {
           dprint('relooping', '      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
 
           keys(postEntryLabels).forEach(function(post) {
-            replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + actualEntries[0]);
+            replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + blockId);
           });
           // Create child block
           actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict);
         });
         return {
           type: 'multiple',
+          id: blockId,
           entries: actualEntries,
           entryLabels: actualEntryLabels,
           labels: handlingNow,
@@ -800,7 +812,7 @@ function analyzer(data) {
           }
 
           // Check if the one-time loop (that allows breaking out) is actually needed
-          if (replaceLabelLabels(block.labels, set('BREAK|' + block.entries[0] + '|*')).length === 0) {
+          if (replaceLabelLabels(block.labels, set('BREAK|' + block.id + '|*')).length === 0) {
             block.loopless = true;
           }
         }

@@ -284,13 +284,9 @@ function JSify(data) {
         func.JS += '  var __lastLabel__ = null;\n';
       }
 
-      var usedLabels = {}; // We can get a loop and inside it a multiple, which will try to use the same
-                           // label for their loops (until we remove loops from multiples! TODO). So, just
-                           // do not use the label twice, that will prevent that
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
         if (!block) return '';
-        block.entry = block.entries[0]; // convention: first entry is the representative
         dprint('relooping', 'walking block: ' + block.type + ',' + block.entries + ' : ' + block.labels.length);
         function getLabelLines(label, indent) {
           if (!label) return '';
@@ -312,7 +308,7 @@ function JSify(data) {
         if (block.type == 'emulated') {
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
-              ret += indent + '__label__ = ' + getLabelId(block.entry) + '; /* ' + block.entry + ' */\n';
+              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; /* ' + block.entries[0] + ' */\n';
             } // otherwise, should have been set before!
             ret += indent + 'while(1) switch(__label__) {\n';
             ret += block.labels.map(function(label) {
@@ -325,15 +321,14 @@ function JSify(data) {
           }
           ret += '\n';
         } else if (block.type == 'reloop') {
-          usedLabels[block.entry] = 1;
-          ret += indent + block.entry + ': while(1) { // ' + block.entry + '\n';
+          ret += indent + block.id + ': while(1) { // ' + block.entries + '\n';
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
         } else if (block.type == 'multiple') {
           var first = true;
           var multipleIdent = '';
           if (!block.loopless) {
-            ret += indent + ((block.entry in usedLabels) ? '' : (block.entry+':')) + ' do { \n';
+            ret += indent + block.id + ':' + ' do { \n';
             multipleIdent = '  ';
           }
           var stolen = block.stolenCondition;
