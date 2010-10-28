@@ -469,3 +469,14 @@ function getActualLabelId(labelId) {
   return labelId.split('|').slice(-1)[0];
 }
 
+// Misc
+
+function indentify(text, indent) {
+  if (typeof indent === 'number') {
+    var len = indent;
+    indent = '';
+    for (var i = 0; i < len; i++) indent += ' ';
+  }
+  return text.split('\n').map(function(line) { return indent + line }).join('\n');
+}
+

@@ -7,7 +7,7 @@ function __globalConstructor__() {
 
 // Maps ints ==> functions. This lets us pass around ints, which are
 // actually pointers to functions, and we convert at call()time
-FUNCTION_TABLE = [];
+var FUNCTION_TABLE = [];
 
 var __THREW__ = false; // Used in checking for thrown exceptions.
 
@@ -15,7 +15,7 @@ var __ATEXIT__ = [];
 
 #if SAFE_HEAP
 // Semi-manual memory corruption debugging
-HEAP_WATCHED = {};
+var HEAP_WATCHED = {};
 function SAFE_HEAP_STORE(dest, value) {
   if (dest in HEAP_WATCHED) {
     print((new Error()).stack);
@@ -33,14 +33,14 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 #endif
 
 #if LABEL_DEBUG
-INDENT = '';
+var INDENT = '';
 #endif
 
 #if EXECUTION_TIMEOUT
-START_TIME = Date.now();
+var START_TIME = Date.now();
 #endif
 
-ABORT = false;
+var ABORT = false;
 
 function assert(condition, text) {
   if (!condition) {
@@ -60,9 +60,9 @@ function Pointer_niceify(ptr) {
 // other words, do whatever is necessary in order to return a pointer, that
 // points to the slab (and possibly position) we are given.
 
-ALLOC_NORMAL = 0; // Tries to use _malloc()
-ALLOC_STACK = 1; // Lives for the duration of the current function call
-ALLOC_STATIC = 2; // Cannot be freed
+var ALLOC_NORMAL = 0; // Tries to use _malloc()
+var ALLOC_STACK = 1; // Lives for the duration of the current function call
+var ALLOC_STATIC = 2; // Cannot be freed
 
 function Pointer_make(slab, pos, allocator) {
   pos = pos ? pos : 0;
@@ -118,27 +118,23 @@ function Pointer_stringify(ptr) {
 
 // Memory management
 
-PAGE_SIZE = 4096;
+var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
   return Math.ceil(x/PAGE_SIZE)*PAGE_SIZE;
 }
 
-// If we don't have malloc/free implemented, use a simple implementation.
-if (!this._malloc) {
-  _malloc = Runtime.staticAlloc;
-  _free = function() { }; // leak!
-}
+var HEAP, IHEAP, FHEAP;
+var STACK_ROOT, STACKTOP, STACK_MAX;
+var STATICTOP;
 
-// Mangled "new"
-__Znwj = _malloc; // new(uint)
-__Znaj = _malloc; // new[](uint)
-__Znam = _malloc; // new(ulong)
-__Znwm = _malloc; // new[](ulong)
-// Mangled "delete"
-__ZdlPv = _free; // delete(..)
-__ZdaPv = _free; // delete[](..)
+// Mangled |new| and |free| (various manglings, for int, long params; new and new[], etc.
+var _malloc, _free, __Znwj, __Znaj, __Znam, __Znwm, __ZdlPv, __ZdaPv;
 
 function __initializeRuntime__() {
+  // If we don't have malloc/free implemented, use a simple implementation.
+  _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
+  _free = __ZdlPv = __ZdaPv = Module['_free'] ? Module['_free'] : function() { };
+
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                        // Also this ensures we leave 0 as an invalid address, 'NULL'
 #if USE_TYPED_ARRAYS

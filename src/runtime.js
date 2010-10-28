@@ -70,10 +70,11 @@ Runtime = {
   staticAlloc: unInline('staticAlloc', ['size']),
   alignMemory: unInline('alignMemory', ['size', 'quantum']),
 
-  getFunctionIndex: function getFunctionIndex(func) {
+  getFunctionIndex: function getFunctionIndex(func, ident) {
     var key = FUNCTION_TABLE.length;
     FUNCTION_TABLE[key] = func;
     FUNCTION_TABLE[key+1] = null; // Need to have keys be even numbers, see |polymorph| test
+    Module[ident] = func; // Export using full name, for Closure Compiler
     return key;
   },
 
@@ -124,7 +125,7 @@ Runtime = {
     } else if (Runtime.dedup(diffs).length == 1) {
       type.flatFactor = diffs[0];
     }
-    type.needsFlattening = (this.flatFactor != 1);
+    type.needsFlattening = (type.flatFactor != 1);
     return type.flatIndexes;
   }
 

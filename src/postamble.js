@@ -32,7 +32,7 @@ function run(args) {
 }
 
 try {
-  run(this.arguments ? arguments : []);
+  run(this.args ? this.args : (this.arguments ? this.arguments : []));
 } catch (e) {
   print("Fatal exception: " + e);
   throw e;

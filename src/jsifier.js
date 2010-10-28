@@ -372,7 +372,7 @@ function JSify(data) {
       // Finalize function
       if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
       func.JS += '}\n';
-      func.JS += func.ident + '.__index__ = Runtime.getFunctionIndex(' + func.ident + ');\n';
+      func.JS += func.ident + '.__index__ = Runtime.getFunctionIndex(' + func.ident + ', "' + func.ident + '");\n';
       func.__result__ = true;
       return func;
     },
@@ -880,6 +880,7 @@ function JSify(data) {
   substrate.addItems(data.functionStubs, 'FunctionStub');
 
   var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
-  return preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + finalCombiner(substrate.solve()) + read('postamble.js'), params);
+  var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + finalCombiner(substrate.solve()) + read('postamble.js'), params);
+  return read('shell.js').replace('{{BODY}}', indentify(body, 2));
 }
 
