@@ -34,9 +34,10 @@ for line in data:
   func = line.split(splitter)[0]
   if func in SEEN: continue
   SEEN[func] = True
-  args = JS_ENGINE + ['gcc_demangler.js'] + JS_ENGINE_PARAMS + [func[1:]]
+  args = JS_ENGINE + [os.path.join(os.path.dirname(__file__), 'gcc_demangler.js')] + JS_ENGINE_PARAMS + [func[1:]]
   cleaned = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
   if cleaned is None: continue
+  if 'Fatal exception' in cleaned: continue
   cleaned = cleaned[1:-2]
   if cleaned == '(null)': continue
   if ' throw ' in cleaned: continue
