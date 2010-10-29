@@ -955,6 +955,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, output, ['3', '16'])
 
     def test_dlmalloc(self):
+        assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE # See sauer test
         src = open(path_from_root(['tests', 'dlmalloc.c']), 'r').read()
         self.do_test(src, '*1,0*')
 
