@@ -77,6 +77,7 @@ function Pointer_make(slab, pos, allocator) {
   var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(slab.length - pos, 1));
   for (var i = 0; i < slab.length - pos; i++) {
     var curr = slab[pos + i];
+    if (curr === undefined) throw 'Invalid element in slab'; // This can be caught, and you can try again to allocate later, see globalFuncs in run()
     if (typeof curr === 'function') {
       curr = Runtime.getFunctionIndex(curr);
     }

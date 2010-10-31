@@ -173,10 +173,11 @@ function JSify(data) {
     }
   }
 
-  // globalVariablw
+  // globalVariable
   substrate.addZyme('GlobalVariable', {
     processItem: function(item) {
-      dprint('gconst', '// zz global Cons: ' + dump(item) + ' :: ' + dump(item.value));
+      item.intertype = 'GlobalVariableStub';
+      item.__result__ = true;
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
                     item.ctors.map(function(ctor) { return '  ' + toNiceIdent(ctor) + '();' }).join('\n') +
@@ -184,10 +185,13 @@ function JSify(data) {
       } else if (item.type == 'external') {
         item.JS = 'var ' + item.ident + ' = ' + '0; /* external value? */';
       } else {
-        // GETTER - lazy loading, fixes issues with ordering.
-        item.JS = 'this.__defineGetter__("' + item.ident + '", function() { delete ' + item.ident + '; ' + item.ident + ' = ' + parseConst(item.value, item.type) + '; return ' + item.ident + ' });';
+        item.JS = 'var ' + item.ident + ';';
+        return [item, {
+          intertype: 'GlobalVariable',
+          JS: 'globalFuncs.push(function() { ' + item.ident + ' = ' + parseConst(item.value, item.type) + ' });',
+          __result__: true,
+        }];
       }
-      item.__result__ = true;
       return [item];
     },
   });
@@ -864,12 +868,25 @@ function JSify(data) {
 
   function finalCombiner(items) {
     var ret = items.filter(function(item) { return item.intertype == 'type' });
-    ret = ret.concat(items.filter(function(item) { return item.intertype == 'globalVariable' }));
+    ret = ret.concat(items.filter(function(item) { return item.intertype == 'GlobalVariableStub' }));
     ret.push('\n');
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'functionStub' }));
     ret.push('\n');
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'function' }));
-    return ret.map(function(item) { return item.JS }).join('\n');
+    ret = ret.map(function(item) { return item.JS }).join('\n');
+
+    var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
+    var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), params);
+    function reverse_(x) {
+      if (LLVM_STYLE === 'old') {
+        return x.reverse();
+      } else {
+        return x;
+      }
+    }
+    var globalVars = reverse_(items.filter(function(item) { return item.intertype == 'GlobalVariable' }).map(function(item) { return item.JS })).join('\n');
+    return read('shell.js').replace('{{BODY}}', indentify(body, 2))
+                           .replace('{{GLOBAL_VARS}}', indentify(globalVars, 4));
   }
 
   // Data
@@ -879,8 +896,6 @@ function JSify(data) {
   substrate.addItems(data.functions, 'FunctionSplitter');
   substrate.addItems(data.functionStubs, 'FunctionStub');
 
-  var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
-  var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + finalCombiner(substrate.solve()) + read('postamble.js'), params);
-  return read('shell.js').replace('{{BODY}}', indentify(body, 2));
+  return finalCombiner(substrate.solve());
 }
 
