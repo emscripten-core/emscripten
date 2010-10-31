@@ -48,10 +48,5 @@ function run(args) {
   }
 }
 
-try {
-  run(this.args ? this.args : (this.arguments ? this.arguments : []));
-} catch (e) {
-  print("Fatal exception: " + e);
-  throw e;
-}
+run(args);
 
