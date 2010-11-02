@@ -133,8 +133,8 @@ var _malloc, _free, __Znwj, __Znaj, __Znam, __Znwm, __ZdlPv, __ZdaPv;
 
 function __initializeRuntime__() {
   // If we don't have malloc/free implemented, use a simple implementation.
-  _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
-  _free = __ZdlPv = __ZdaPv = Module['_free'] ? Module['_free'] : function() { };
+  Module['_malloc'] = _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
+  Module['_free']   = _free = __ZdlPv = __ZdaPv =                   Module['_free']   ? Module['_free']   : function() { };
 
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                        // Also this ensures we leave 0 as an invalid address, 'NULL'
@@ -156,6 +156,10 @@ function __initializeRuntime__() {
 #else
   IHEAP = HEAP; // We use that name in our runtime code that processes strings etc., see library.js
 #endif
+
+  Module['HEAP'] = HEAP;
+  Module['IHEAP'] = IHEAP;
+  Module['FHEAP'] = FHEAP;
 
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
   if (!this['TOTAL_STACK']) TOTAL_STACK = 1024*1024; // Reserved room for stack
