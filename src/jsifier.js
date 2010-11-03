@@ -57,6 +57,15 @@ function JSify(data) {
   }
 
   function makeGetValue(ptr, pos, noNeedFirst, type) {
+    if (isStructType(type)) {
+      var typeData = TYPES[type];
+      var ret = [];
+      for (var i = 0; i < typeData.fields.length; i++) {
+        ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], noNeedFirst, typeData.fields[i]));
+      }
+      return '{ ' + ret.join(', ') + ' }';
+    }
+
     return makeGetSlab(ptr, type) + '[' + calcFastOffset(ptr, pos, noNeedFirst) + ']';
   }
 
@@ -68,6 +77,15 @@ function JSify(data) {
   }
 
   function makeSetValue(ptr, pos, value, noNeedFirst, type) {
+    if (isStructType(type)) {
+      var typeData = TYPES[type];
+      var ret = [];
+      for (var i = 0; i < typeData.fields.length; i++) {
+        ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], noNeedFirst, typeData.fields[i]));
+      }
+      return ret.join('; ');
+    }
+
     value = indexizeFunctions(value);
     var offset = calcFastOffset(ptr, pos, noNeedFirst);
     if (SAFE_HEAP) {
@@ -808,8 +826,12 @@ function JSify(data) {
   function finalizeLLVMParameter(param) {
     if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return finalizeLLVMFunctionCall(param);
-    } else {
+    } else if (param.intertype == 'value') {
       return parseNumerical(param.ident);
+    } else if (param.intertype == 'structvalue') {
+      return param.values.map(finalizeLLVMParameter);
+    } else {
+      throw 'invalid llvm parameter: ' + param.intertype;
     }
   }
 

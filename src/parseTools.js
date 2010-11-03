@@ -290,6 +290,12 @@ function parseLLVMSegment(segment) {
       ident: segment[0].text,
       type: isType(segment[0].text) ? segment[0].text : '?',
     };
+  } else if (segment[1].type == '{') {
+    return {
+      intertype: 'structvalue',
+      values: splitTokenList(segment[1].tokens).map(parseLLVMSegment),
+      type: segment[0].text,
+    };
   } else if (segment[0].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall([{text: '?'}].concat(segment));
   } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {

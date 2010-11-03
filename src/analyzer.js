@@ -257,13 +257,15 @@ function analyzer(data) {
  
           // Decision time
 
+          var pointedType = removePointing(variable.type);
           if (variable.origin == 'getelementptr') {
             // Use our implementation that emulates pointers etc.
             variable.impl = VAR_EMULATED;
           } else if (OPTIMIZE && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
             // A simple int value, can be implemented as a native variable
             variable.impl = VAR_NATIVE;
-          } else if (OPTIMIZE && variable.origin === 'alloca' && !variable.hasAddrTaken && !variable.hasValueTaken) {
+          } else if (OPTIMIZE && variable.origin === 'alloca' && !variable.hasAddrTaken && !variable.hasValueTaken &&
+                     (Runtime.isNumberType(pointedType) || Runtime.isPointerType(pointedType))) {
             // A pointer to a value which is only accessible through this pointer. Basically
             // a local value on the stack, which nothing fancy is done on. So we can
             // optimize away the pointing altogether, and just have a native variable
