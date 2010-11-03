@@ -1,3 +1,12 @@
+2010-11-02: Version 0.5
+
+  * Much faster compilation, in particular of large projects
+  * Bullet physics library test
+  * GCC name demangling test
+  * Module-ization of generated code (optional)
+  * Name demangler and namespace generator tools
+  * Many code cleanups, bug fixes, additional tests and library implementations
+
 2010-10-17: Version 0.4
 
   * Much faster optimized code, now 10X the speed of our unoptimized code
