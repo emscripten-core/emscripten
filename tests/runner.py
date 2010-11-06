@@ -1010,17 +1010,22 @@ if 'benchmark' not in sys.argv:
           int ScriptMe::mulVal(int mul) { value *= mul; }
         '''
         script_src = '''
-          var sme = Scriptable.ScriptMe.__alloc__();
-          Scriptable.ScriptMe.ScriptMe(sme, 83);
-          Scriptable.ScriptMe.mulVal(sme, 2);
-          print('*' + Scriptable.ScriptMe.getVal(sme) + '*');
-          _free(sme);
+          var sme = Module._.ScriptMe.__alloc__();          // malloc(sizeof(ScriptMe))
+          Module._.ScriptMe.ScriptMe(sme, 83);              // ScriptMe::ScriptMe(sme, 83)    new ScriptMe(83) (at addr sme)
+          Module._.ScriptMe.mulVal(sme, 2);                 // ScriptMe::mulVal(sme, 2)       sme.mulVal(2)
+          print('*' + Module._.ScriptMe.getVal(sme) + '*'); 
+          Module._free(sme);
           print('*ok*');
         '''
         def post(filename):
           Popen(['python', DEMANGLER, filename, '.'], stdout=open(filename + '.tmp', 'w')).communicate()
           Popen(['python', NAMESPACER, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
-          src = open(filename, 'r').read() + 'var Scriptable = ' + open(filename + '.tmp2', 'r').read().rstrip() + ';\n\n' + script_src
+          src = open(filename, 'r').read().replace(
+            '// {{MODULE_ADDITIONS}',
+            'Module["_"] = ' + open(filename + '.tmp2', 'r').read().rstrip() + ';\n\n' + script_src + '\n\n' +
+              '// {{MODULE_ADDITIONS}'
+          )
+
           open(filename, 'w').write(src)
         self.do_test(src, '*166*\n*ok*', post_build=post)
 

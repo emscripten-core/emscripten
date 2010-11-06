@@ -9,6 +9,8 @@ var Module = {};
 var args = arguments;
   {{BODY}}
 
+  // {{MODULE_ADDITIONS}}
+
 //  return Module;
 //})({}, this.arguments); // Replace parameters as needed
 
