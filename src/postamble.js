@@ -37,14 +37,9 @@ function run(args) {
 
   __globalConstructor__();
 
-  _main(argc, argv);
-
-  while( __ATEXIT__.length > 0) {
-    var func = __ATEXIT__.pop();
-    if (typeof func === 'number') {
-      func = FUNCTION_TABLE[func];
-    }
-    func();
+  if (Module['_main']) {
+    _main(argc, argv);
+    __shutdownRuntime__();
   }
 }
 

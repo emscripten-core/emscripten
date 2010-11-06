@@ -29,9 +29,10 @@ splitter = sys.argv[2]
 
 SEEN = {}
 for line in data:
-  if line[0] == ' ': continue
-  if line[0] != '_': continue
-  func = line.split(splitter)[0]
+  if len(line) < 4: continue
+  if line[:2] != '  ': continue
+  if line[2] != '_': continue
+  func = line.lstrip().split(splitter)[0]
   if func in SEEN: continue
   SEEN[func] = True
   args = JS_ENGINE + [os.path.join(os.path.dirname(__file__), 'gcc_demangler.js')] + JS_ENGINE_PARAMS + [func[1:]]

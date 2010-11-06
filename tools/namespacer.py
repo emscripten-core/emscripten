@@ -45,7 +45,8 @@ for line in data:
     if '<' not in ret and '[' not in ret and '(' not in ret:
       func = func[i+1:]
 
-  funcparts = ['Namespace'] + func.split('::')
+  #funcparts = ['Namespace'] + func.split('::')
+  funcparts = func.split('::')
 
   currspace = space
   for part in funcparts[:-1]:

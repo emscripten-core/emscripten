@@ -99,13 +99,16 @@ class RunnerCore(unittest.TestCase):
 if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None):
         if not no_build:
           print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
         dirname = self.get_dir()
         filename = os.path.join(dirname, 'src.cpp')
         if not no_build:
           self.build(src, dirname, filename, main_file=main_file)
+
+        if post_build is not None:
+          post_build(filename + '.o.js')
 
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         if js_engines is None:
@@ -943,6 +946,8 @@ if 'benchmark' not in sys.argv:
           # Bloated memory; same layout as C/C++
           self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
+    ### 'Big' tests
+
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:
@@ -987,6 +992,32 @@ if 'benchmark' not in sys.argv:
                    open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read(),
                    no_build=True,
                    js_engines=[V8_ENGINE]) # mozilla bug XXX
+
+    ### Integration tests
+
+    def test_scriptaclass(self):
+        src = '''
+          struct ScriptMe {
+            int value;
+            ScriptMe(int val);
+            int getVal(); // XXX Sadly, inlining these will result in LLVM not
+                          // producing any code for them (when just building
+                          // as a library)
+            int mulVal(int mul);
+          };
+          ScriptMe::ScriptMe(int val) : value(val) { }
+          int ScriptMe::getVal() { return value; }
+          int ScriptMe::mulVal(int mul) { value *= mul; }
+        '''
+        script_src = '''
+          // TODO
+        '''
+        def post(filename):
+          Popen(['python', DEMANGLER, filename, '.'], stdout=open(filename + '.tmp', 'w')).communicate()
+          Popen(['python', NAMESPACER, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
+          src = open(filename, 'r').read() + 'var Scriptable = ' + open(filename + '.tmp2', 'r').read().rstrip() + ';\n\n' + script_src
+          open(filename, 'w').write(src)
+        self.do_test(src, '', post_build=post)
 
   # Generate tests for all our compilers
   def make_test(compiler, embetter):

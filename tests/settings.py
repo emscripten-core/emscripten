@@ -1,3 +1,10 @@
+# XXX: Aside from these settings, you should create ~/.emscripten, and fill it with
+#      something like this:
+#
+#            JS_ENGINE=[os.path.expanduser('~/Dev/tracemonkey/js/src/js'), '-m']
+#            JS_ENGINE_PARAMS=[]
+#
+
 TEMP_DIR='/dev/shm'
 
 LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.8/cbuild/Release/bin') # Might not need 'Release'
@@ -37,5 +44,9 @@ OUTPUT_TO_SCREEN = 0 # useful for debugging specific tests, or for subjectively 
 
 TIMEOUT = None
 
+# Tools
+
 CLOSURE_COMPILER = os.path.expanduser('~/Dev/closure-compiler/compiler.jar')
+DEMANGLER = path_from_root(['third_party', 'demangler.py'])
+NAMESPACER = path_from_root(['tools', 'namespacer.py'])
 

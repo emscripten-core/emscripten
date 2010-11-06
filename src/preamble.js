@@ -168,6 +168,16 @@ function __initializeRuntime__() {
   STATICTOP = alignMemoryPage(STACK_MAX);
 }
 
+function __shutdownRuntime__() {
+  while( __ATEXIT__.length > 0) {
+    var func = __ATEXIT__.pop();
+    if (typeof func === 'number') {
+      func = FUNCTION_TABLE[func];
+    }
+    func();
+  }
+}
+
 // stdio.h
 
 // C-style: we work on ints on the HEAP.
