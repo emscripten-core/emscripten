@@ -1010,8 +1010,7 @@ if 'benchmark' not in sys.argv:
           int ScriptMe::mulVal(int mul) { value *= mul; }
         '''
         script_src = '''
-          var sme = Module._.ScriptMe.__alloc__();          // malloc(sizeof(ScriptMe))
-          Module._.ScriptMe.ScriptMe(sme, 83);              // ScriptMe::ScriptMe(sme, 83)    new ScriptMe(83) (at addr sme)
+          var sme = Module._.ScriptMe.__new__(83);          // malloc(sizeof(ScriptMe)), ScriptMe::ScriptMe(sme, 83) / new ScriptMe(83) (at addr sme)
           Module._.ScriptMe.mulVal(sme, 2);                 // ScriptMe::mulVal(sme, 2)       sme.mulVal(2)
           print('*' + Module._.ScriptMe.getVal(sme) + '*'); 
           Module._free(sme);

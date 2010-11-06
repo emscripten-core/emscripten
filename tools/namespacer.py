@@ -31,6 +31,8 @@ data = open(sys.argv[1], 'r').readlines()
 
 space = {}
 
+counts = {}
+
 for line in data:
   line = line.rstrip()
 
@@ -52,14 +54,19 @@ for line in data:
   for part in funcparts[:-1]:
     currspace = currspace.setdefault(part, {})
 
-  i = 0
-  base = funcparts[-1]
-  while funcparts[-1] in currspace:
-    funcparts[-1] = base + '_' + str(i)
+  key = str(funcparts)
+  if key in counts:
+    i = counts[key]
+    counts[key] += 1
+    funcparts[-1] += '_' + str(i)
+  else:
+    counts[key] = 1
   currspace[funcparts[-1]] = realname
-  currspace[funcparts[-1] + '_params'] = params
-  if funcparts[-1] == funcparts[-2]:
-    currspace['__alloc__'] = 'function() { return _malloc(_struct_%s___SIZE) }' % funcparts[-1]
+  currspace[funcparts[-1] + '__params'] = params
+  if len(funcparts) >= 2 and funcparts[-1] == funcparts[-2]:
+    currspace['__new__'] = 'function() { var ret = _malloc(_struct_%s___SIZE); Module._.%s.%s.apply(null, [ret].concat(Array.prototype.slice.apply(arguments))); return ret; }' % (
+      funcparts[-1], funcparts[-1], funcparts[-1]
+    )
 
 def finalize(line):
   try:
