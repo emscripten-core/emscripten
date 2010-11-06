@@ -54,18 +54,24 @@ for line in data:
   for part in funcparts[:-1]:
     currspace = currspace.setdefault(part, {})
 
+  finalname = funcparts[-1]
   key = str(funcparts)
   if key in counts:
     i = counts[key]
     counts[key] += 1
-    funcparts[-1] += '_' + str(i)
+    finalname += '_' + str(i)
   else:
+    i = 0
     counts[key] = 1
-  currspace[funcparts[-1]] = realname
-  currspace[funcparts[-1] + '__params'] = params
+  currspace[finalname] = realname
+  currspace[finalname + '__params'] = params
   if len(funcparts) >= 2 and funcparts[-1] == funcparts[-2]:
-    currspace['__new__'] = 'function() { var ret = _malloc(_struct_%s___SIZE); Module._.%s.%s.apply(null, [ret].concat(Array.prototype.slice.apply(arguments))); return ret; }' % (
-      funcparts[-1], funcparts[-1], funcparts[-1]
+    size = '_struct_%s' % '__'.join(funcparts[:-1])
+    if len(funcparts) > 2:
+      size = '_' + size + '_'
+    size = size + '___SIZE'
+    currspace['__new__' + ('' if i == 0 else str(i))] = 'function() { var ret = _malloc(%s); Module._.%s.%s.apply(null, [ret].concat(Array.prototype.slice.apply(arguments))); return ret; }' % (
+      size, '.'.join(funcparts[:-1]), finalname
     )
 
 def finalize(line):
