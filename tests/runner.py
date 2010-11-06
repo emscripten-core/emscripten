@@ -1010,14 +1010,19 @@ if 'benchmark' not in sys.argv:
           int ScriptMe::mulVal(int mul) { value *= mul; }
         '''
         script_src = '''
-          // TODO
+          var sme = Scriptable.ScriptMe.__alloc__();
+          Scriptable.ScriptMe.ScriptMe(sme, 83);
+          Scriptable.ScriptMe.mulVal(sme, 2);
+          print('*' + Scriptable.ScriptMe.getVal(sme) + '*');
+          _free(sme);
+          print('*ok*');
         '''
         def post(filename):
           Popen(['python', DEMANGLER, filename, '.'], stdout=open(filename + '.tmp', 'w')).communicate()
           Popen(['python', NAMESPACER, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
           src = open(filename, 'r').read() + 'var Scriptable = ' + open(filename + '.tmp2', 'r').read().rstrip() + ';\n\n' + script_src
           open(filename, 'w').write(src)
-        self.do_test(src, '', post_build=post)
+        self.do_test(src, '*166*\n*ok*', post_build=post)
 
   # Generate tests for all our compilers
   def make_test(compiler, embetter):

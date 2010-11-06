@@ -51,25 +51,15 @@ for line in data:
   currspace = space
   for part in funcparts[:-1]:
     currspace = currspace.setdefault(part, {})
-  currspace.setdefault(funcparts[-1], []).append((realname,params));
 
-def clean(currspace):
-  if type(currspace) is list:
-    if len(currspace) == 1:
-      return currspace[0][0]
-    else:
-      ret = {}
-      for item in currspace:
-        i = str(len(ret)/2)
-        ret[i] = item[0]
-        ret[i + '_params'] = item[1]
-      return ret
-  else:
-    for key in currspace.keys():
-      currspace[key] = clean(currspace[key])
-    return currspace
-
-space = clean(space)
+  i = 0
+  base = funcparts[-1]
+  while funcparts[-1] in currspace:
+    funcparts[-1] = base + '_' + str(i)
+  currspace[funcparts[-1]] = realname
+  currspace[funcparts[-1] + '_params'] = params
+  if funcparts[-1] == funcparts[-2]:
+    currspace['__alloc__'] = 'function() { return _malloc(_struct_%s___SIZE) }' % funcparts[-1]
 
 def finalize(line):
   try:
