@@ -212,6 +212,8 @@ var Library = {
   asinf: 'Math.asin',
   atan: 'Math.atan',
   atanf: 'Math.atan',
+  atan2: 'Math.atan2',
+  atan2f: 'Math.atan2',
   sqrt: 'Math.sqrt',
   sqrtf: 'Math.sqrt',
   fabs: 'Math.abs',
