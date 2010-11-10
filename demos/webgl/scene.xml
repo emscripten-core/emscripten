@@ -26,16 +26,24 @@
 	<camera id="maincamera" loc_y="3" loc_z="35"/>
 	
 	<material id="boxmaterial1">
-		<texture id="boxtexture1" src="skin1.jpg"/>
+		<texture id="boxtexture1" src="cube1.jpg"/>
 		<material_layer texture="#boxtexture1" mapinput="UV1" mapto="M_COLOR"/>
 	</material>
 	<material id="boxmaterial2">
-		<texture id="boxtexture2" src="skin2.jpg"/>
+		<texture id="boxtexture2" src="cube2.jpg"/>
 		<material_layer texture="#boxtexture2" mapinput="UV1" mapto="M_COLOR"/>
 	</material>
 	<material id="boxmaterial3">
-		<texture id="boxtexture3" src="skin3.jpg"/>
+		<texture id="boxtexture3" src="cube3.jpg"/>
 		<material_layer texture="#boxtexture3" mapinput="UV1" mapto="M_COLOR"/>
+	</material>
+	<material id="boxmaterial4">
+		<texture id="boxtexture4" src="cube4.jpg"/>
+		<material_layer texture="#boxtexture4" mapinput="UV1" mapto="M_COLOR"/>
+	</material>
+	<material id="boxmaterial5">
+		<texture id="boxtexture5" src="cube5.jpg"/>
+		<material_layer texture="#boxtexture5" mapinput="UV1" mapto="M_COLOR"/>
 	</material>
 		
 	<scene id="mainscene" camera="#maincamera" ambient_color="#fff">

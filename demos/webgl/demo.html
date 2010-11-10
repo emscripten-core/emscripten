@@ -11,6 +11,10 @@
     </head>
     <body>
       <center>
+        <form onsubmit="run(); return false">
+          <input type="submit" value="restart">
+        </form>
+
         <canvas id="canvas" width="500" height="500"></canvas>
         <script type="text/javascript">
           var doc = new GLGE.Document();
@@ -34,7 +38,7 @@
             for (var i = 0; i < 5; i++) {
               var box = new GLGE.Object('box_' + i);
               box.setMesh(mesh);
-              box.setMaterial(doc.getElement("boxmaterial" + (i%2 == 0 ? 1 : 3)));
+              box.setMaterial(doc.getElement("boxmaterial"+(i+1)));
               box.setId('box_' + i);
               box.setLoc(i*2, 10, 0);
               box.setScale(1, 1, 1);
@@ -74,6 +78,11 @@
         </script>
         <br><br>
         <div id="out">waka</div>
+        <br>
+        <b>Bullet/WebGL Demo</b>: The <a href="http://www.bulletphysics.com">Bullet physics engine</a>, compiled from C++ to JavaScript using <a href="http://emscripten.org">Emscripten</a>, with rendering by <a href="http://glge.org">GLGE</a> using WebGL.
+        <br><br>
+        Tested with Firefox 4 nightly builds (minefield) and Chrome 7 (requires --enable-webgl on the commandline); should work with any
+        <a href="http://www.khronos.org/webgl/wiki/Getting_a_WebGL_Implementation">browser that supports WebGL</a>
       </center>
     </body>
 </html>

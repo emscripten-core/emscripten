@@ -5403,7 +5403,7 @@ GLGE.Renderer=function(canvas,error){
 		if(!error){
 			var div=document.createElement("div");
 			div.setAttribute("style","position: absolute; top: 10px; left: 10px; font-family: sans-serif; font-size: 14px; padding: 10px;background-color: #fcffcb;color: #800; width: 200px; border:2px solid #f00");
-			div.innerHTML="Cannot detect webgl please download a compatible browser";
+			div.innerHTML="Cannot detect webgl, please download a <b><a href='http://www.khronos.org/webgl/wiki/Getting_a_WebGL_Implementation'>compatible browser</a></b>";
 			document.getElementsByTagName("body")[0].appendChild(div);
 			throw "cannot create webgl context";
 		}else{
