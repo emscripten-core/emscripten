@@ -960,7 +960,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, output, ['3', '16'])
 
     def test_dlmalloc(self):
-        assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE # See sauer test
+        assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE # See cubescript test
         src = open(path_from_root(['tests', 'dlmalloc.c']), 'r').read()
         self.do_test(src, '*1,0*')
 
@@ -971,12 +971,12 @@ if 'benchmark' not in sys.argv:
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
-    def test_sauer(self):
+    def test_cubescript(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
       assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE
 
-      self.do_test(path_from_root(['tests', 'sauer']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+      self.do_test(path_from_root(['tests', 'cubescript']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
       self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
