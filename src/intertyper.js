@@ -331,7 +331,7 @@ function intertyper(data) {
         intertype: 'function',
         ident: item.tokens[1].text,
         returnType: item.tokens[0],
-        params: item.tokens[2],
+        params: parseParamTokens(item.tokens[2].item.tokens),
         lineNum: item.lineNum,
       }];
       return ret;

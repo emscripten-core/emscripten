@@ -282,7 +282,7 @@ function JSify(data) {
       // We have this function all reconstructed, go and finalize it's JS!
 
       var hasVarArgs = false;
-      var params = parseParamTokens(func.params.item.tokens).map(function(param) {
+      var params = func.params.map(function(param) {
         if (param.intertype == 'varargs') {
           hasVarArgs = true;
           return null;
