@@ -6,7 +6,7 @@ var LLVM_STYLE = null;
 //!                       want to parse all of them at once, and have all their
 //!                       lines and data in memory at the same time.
 function intertyper(data, parseFunctions) {
-  //parseFunctions = true; // Uncomment to do all parsing in a single big RAM-heavy pass
+  //parseFunctions = true; // Uncomment to do all parsing in a single big RAM-heavy pass. Faster, if you have the RAM
 
   // Substrate
 

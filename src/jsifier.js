@@ -12,8 +12,12 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     FUNCTIONS[func.ident] = func;
   });
 
+  var unparsedCounter = 0;
   data.unparsedFunctions.forEach(function(func) {
+    dprint('unparsedFunctions', 'processing |' + func.ident + '|, ' + unparsedCounter + '/' + data.unparsedFunctions.length);
+    unparsedCounter++;
     func.JS = JSify(analyzer(intertyper(func.lines, true), TYPES), true, TYPES, FUNCTIONS);
+    // TODO: unlink all other fields of func, to allow GC to work. Also do not do | = func|! do | = true|.
   });
 
   // type
@@ -506,7 +510,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         if (item.pointer.intertype == 'value') {
           return makeSetValue(item.ident, 0, value, null, item.valueType) + ';';
         } else {
-          return makeSetValue(0, getGetElementPtrIndexes(item.pointer), value, null, item.valueType) + ';';
+          return makeSetValue(0, indexizeFunctions(finalizeLLVMParameter(item.pointer)), value, null, item.valueType) + ';';
         }
         break;
       default:
