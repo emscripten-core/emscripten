@@ -8,7 +8,7 @@ function intertyper(data) {
 
   substrate = new Substrate('Intertyper');
 
-  var IGNORE_FUNCTIONS = false; // Debugging
+  var IGNORE_FUNCTIONS = 0; // Debugging
 
   // Line splitter.
   substrate.addZyme('LineSplitter', {
