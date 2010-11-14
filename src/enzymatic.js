@@ -109,6 +109,7 @@ Substrate.prototype = {
             finished = true;
             finalResult = outputs[0];
           } else {
+            outputs.forEach(function(output) { delete output.tokens }); // clean up tokens to save memory
             that.results = that.results.concat(outputs);
           }
         }
