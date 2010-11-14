@@ -56,7 +56,7 @@ Substrate.prototype = {
   },
 
   solve: function() {
-    print("// Solving " + this.name_ + "...");
+    dprint('enzymatic', "// Solving " + this.name_ + "...");
 
     var startTime = Date.now();
     var midTime = startTime;
@@ -64,12 +64,12 @@ Substrate.prototype = {
     function midComment(force) {
       var curr = Date.now();
       if (curr - midTime > 1000 || force) {
-        print('// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds.');
+        dprint('enzymatic', '// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds.');
         midTime = curr;
       }
     }
     function finalComment() {
-      print('// Completed ' + that.name_ + ' in ' + ((Date.now() - startTime)/1000).toString().substr(0,10) + ' seconds.');
+      dprint('enzymatic', '// Completed ' + that.name_ + ' in ' + ((Date.now() - startTime)/1000).toString().substr(0,10) + ' seconds.');
     }
 
     var finalResult = null;
@@ -89,10 +89,10 @@ Substrate.prototype = {
         var outputs;
         var currResultCount = that.results.length;
         try {
-          dprint('Processing using ' + zyme.name_ + ': ' + inputs.length);
+          dprint('enzymatic', 'Processing using ' + zyme.name_ + ': ' + inputs.length);
           zyme.items = []; // More may be added in process(); we'll get to them next time
           outputs = zyme.process(inputs);
-          dprint('New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
+          dprint('enzymatic', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
         } catch (e) {
           //print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
           print("Stack: " + new Error().stack);

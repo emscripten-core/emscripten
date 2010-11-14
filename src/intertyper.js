@@ -1,14 +1,22 @@
 // llvm => internal intermediate representation
 
-function intertyper(data) {
+var LLVM_STYLE = null;
+
+//! @param parseFunctions We parse functions only on later passes, since we do not
+//!                       want to parse all of them at once, and have all their
+//!                       lines and data in memory at the same time.
+function intertyper(data, parseFunctions) {
+  //parseFunctions = true; // Uncomment to do all parsing in a single big RAM-heavy pass
+
   // Substrate
 
-  LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new'; // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
-  dprint('LLVM_STYLE: ' + LLVM_STYLE);
+  if (LLVM_STYLE === null) {
+    // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
+    LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new';
+    dprint('LLVM_STYLE: ' + LLVM_STYLE);
+  }
 
   substrate = new Substrate('Intertyper');
-
-  var IGNORE_FUNCTIONS = 0; // Debugging
 
   // Line splitter.
   substrate.addZyme('LineSplitter', {
@@ -17,12 +25,17 @@ function intertyper(data) {
       var ret = [];
       var inContinual = false;
       var inFunction = false;
+      var currFunctionLines;
+      var currFunctionLineNum;
+      var unparsedFunctions = [];
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-        if (/^define .*/.test(line)) {
+        if (!parseFunctions && /^define .*/.test(line)) {
           inFunction = true;
+          currFunctionLines = [];
+          currFunctionLineNum = i + 1;
         }
-        if (!(IGNORE_FUNCTIONS && inFunction)) {
+        if (!inFunction || parseFunctions) {
           if (inContinual || new RegExp(/^\ +to.*/g).test(line)) {
             // to after invoke
             ret.slice(-1)[0].lineText += line;
@@ -39,12 +52,26 @@ function intertyper(data) {
               inContinual = true;
             }
           }
+        } else {
+          currFunctionLines.push(line);
         }
-        if (/^}.*/.test(line)) {
+        if (!parseFunctions && /^}.*/.test(line)) {
           inFunction = false;
+          if (!parseFunctions) {
+            unparsedFunctions.push({
+              __result__: true,
+              intertype: 'unparsedFunction',
+              // We need this early, to know all function idents
+              ident: toNiceIdent(funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0] }, true))[0].ident),
+              lineNum: currFunctionLineNum,
+              lines: currFunctionLines,
+            });
+            currFunctionLines = [];
+          }
         }
       }
       this.forwardItems(ret.filter(function(item) { return item.lineText; }), 'Tokenizer');
+      return unparsedFunctions;
     },
   });
 
@@ -332,7 +359,7 @@ function intertyper(data) {
     },
   });
   // function header
-  substrate.addZyme('FuncHeader', {
+  funcHeader = substrate.addZyme('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
         return ['noalias', 'available_externally', 'weak', 'internal', 'signext', 'zeroext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{', 'fastcc'].indexOf(token.text) == -1;

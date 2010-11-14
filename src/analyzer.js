@@ -11,7 +11,7 @@ function cleanFunc(func) {
   });
 }
 
-function analyzer(data) {
+function analyzer(data, givenTypes) {
   substrate = new Substrate('Analyzer');
 
   // Sorter
@@ -26,7 +26,11 @@ function analyzer(data) {
   substrate.addZyme('Gatherer', {
     processItem: function(item) {
       // Single-liners
-      ['globalVariable', 'functionStub', 'type'].forEach(function(intertype) {
+      ['globalVariable', 'functionStub', 'type', 'unparsedFunction'].forEach(function(intertype) {
+        if (intertype === 'type' && givenTypes) {
+          item.types = givenTypes;
+          return;
+        }
         var temp = splitter(item.items, function(item) { return item.intertype == intertype });
         item[intertype + 's'] = temp.splitOut;
         item.items = temp.leftIn;
@@ -54,7 +58,7 @@ function analyzer(data) {
         } else if (subItem.intertype == 'label') {
           item.functions.slice(-1)[0].labels.push(subItem);
           subItem.lines = [];
-        } else if (item.functions.slice(-1)[0].endLineNum === null) {
+        } else if (item.functions.length > 0 && item.functions.slice(-1)[0].endLineNum === null) {
           // Internal line
           item.functions.slice(-1)[0].lines.push(subItem);
           item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem);
@@ -121,9 +125,11 @@ function analyzer(data) {
   substrate.addZyme('Typevestigator', {
     processItem: function(data) {
       // Convert types list to dict
-      var old = data.types;
-      data.types = {};
-      old.forEach(function(type) { data.types[type.name_] = type });
+      if (data.types.length !== undefined) {
+        var old = data.types;
+        data.types = {};
+        old.forEach(function(type) { data.types[type.name_] = type });
+      }
 
       // Find additional types
       walkJSON(data, function(item) {

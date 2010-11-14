@@ -1,12 +1,19 @@
 // Convert analyzed data to javascript
 
-function JSify(data) {
+function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   substrate = new Substrate('JSifyer');
 
-  var TYPES = data.types;
-  var FUNCTIONS = {};
-  data.functions.forEach(function(func) {
+  var TYPES = functionsOnly ? givenTypes : data.types;
+
+  var FUNCTIONS = functionsOnly ? givenFunctions : {};
+
+  // Now that analysis has completed, we can get around to handling unparsedFunctions
+  (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
     FUNCTIONS[func.ident] = func;
+  });
+
+  data.unparsedFunctions.forEach(function(func) {
+    func.JS = JSify(analyzer(intertyper(func.lines, true), TYPES), true, TYPES, FUNCTIONS);
   });
 
   // type
@@ -710,11 +717,11 @@ function JSify(data) {
       case 'zext': case 'fpext': case 'trunc': case 'sext': case 'fptrunc': return ident1;
       case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
       case 'ptrtoint': {
-        if (type != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
+        //if (type != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
         return ident1;
       }
       case 'inttoptr': {
-        print('// XXX Warning: inttoptr operation on line ' + lineNum);
+        //print('// XXX Warning: inttoptr operation on line ' + lineNum);
         return ident1;
       }
       default: throw 'Unknown mathcmp op: ' + item.op
@@ -895,13 +902,20 @@ function JSify(data) {
   // Final combiner
 
   function finalCombiner(items) {
-    var ret = items.filter(function(item) { return item.intertype == 'type' });
-    ret = ret.concat(items.filter(function(item) { return item.intertype == 'GlobalVariableStub' }));
-    ret.push('\n');
-    ret = ret.concat(items.filter(function(item) { return item.intertype == 'functionStub' }));
-    ret.push('\n');
+    var ret = [];
+    if (!functionsOnly) {
+      ret = ret.concat(items.filter(function(item) { return item.intertype == 'type' }));
+      ret = ret.concat(items.filter(function(item) { return item.intertype == 'GlobalVariableStub' }));
+      ret.push('\n');
+      ret = ret.concat(items.filter(function(item) { return item.intertype == 'functionStub' }));
+      ret.push('\n');
+    }
     ret = ret.concat(items.filter(function(item) { return item.intertype == 'function' }));
+    ret = ret.concat(data.unparsedFunctions);
+
     ret = ret.map(function(item) { return item.JS }).join('\n');
+
+    if (functionsOnly) return ret;
 
     var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
     var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), params);
