@@ -92,12 +92,12 @@ function isFunctionDef(token) {
   var nonPointing = removeAllPointing(text);
   if (nonPointing[0] != '(' || nonPointing.substr(-1) != ')')
     return false;
-  if (nonPointing in set('()', '(...)')) return true;
+  if (nonPointing === '()') return true;
   if (!token.item) return false;
   var fail = false;
   splitTokenList(token.item.tokens).forEach(function(segment) {
-    var subtoken = segment[0];
-    fail = fail || !isType(subtoken.text) || segment.length > 1;
+    var subtext = segment[0].text;
+    fail = fail || segment.length > 1 || !(isType(subtext) || subtext == '...');
   });
   return !fail;
 }

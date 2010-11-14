@@ -8,29 +8,40 @@ function intertyper(data) {
 
   substrate = new Substrate('Intertyper');
 
+  var IGNORE_FUNCTIONS = false; // Debugging
+
   // Line splitter.
   substrate.addZyme('LineSplitter', {
     processItem: function(item) {
       var lines = item.llvmText.split('\n');
       var ret = [];
       var inContinual = false;
+      var inFunction = false;
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-        if (inContinual || new RegExp(/^\ +to.*/g).test(line)) {
-          // to after invoke
-          ret.slice(-1)[0].lineText += line;
-          if (new RegExp(/^\ +\]/g).test(line)) { // end of llvm switch
-            inContinual = false;
+        if (/^define .*/.test(line)) {
+          inFunction = true;
+        }
+        if (!(IGNORE_FUNCTIONS && inFunction)) {
+          if (inContinual || new RegExp(/^\ +to.*/g).test(line)) {
+            // to after invoke
+            ret.slice(-1)[0].lineText += line;
+            if (new RegExp(/^\ +\]/g).test(line)) { // end of llvm switch
+              inContinual = false;
+            }
+          } else {
+            ret.push({
+              lineText: line,
+              lineNum: i + 1,
+            });
+            if (new RegExp(/^\ +switch\ .*/g).test(line)) {
+              // beginning of llvm switch
+              inContinual = true;
+            }
           }
-        } else {
-          ret.push({
-            lineText: line,
-            lineNum: i + 1,
-          });
-          if (new RegExp(/^\ +switch\ .*/g).test(line)) {
-            // beginning of llvm switch
-            inContinual = true;
-          }
+        }
+        if (/^}.*/.test(line)) {
+          inFunction = false;
         }
       }
       this.forwardItems(ret.filter(function(item) { return item.lineText; }), 'Tokenizer');
