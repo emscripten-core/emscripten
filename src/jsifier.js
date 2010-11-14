@@ -136,7 +136,7 @@ function JSify(data) {
 
   // Gets an entire constant expression
   function parseConst(value, type) {
-    dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
+    //dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (Runtime.isNumberType(type) || pointingLevels(type) == 1) {
       return makePointer(indexizeFunctions(parseNumerical(toNiceIdent(value.text))), null, 'ALLOC_STATIC', type);
     } else if (value.text == 'zeroinitializer') {
@@ -147,9 +147,10 @@ function JSify(data) {
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
+        //dprint('gconst', '// segggS: ' + JSON.stringify(tokens) + '\n' + '\n')
         // Handle a single segment (after comma separation)
         function handleSegment(segment) {
-          dprint('gconst', '// seggg: ' + JSON.stringify(segment) + '\n' + '\n')
+          //dprint('gconst', '// seggg: ' + JSON.stringify(segment) + '\n' + '\n')
           if (segment[1].text == 'null') {
             return '0';
           } else if (segment[1].text == 'zeroinitializer') {
@@ -171,6 +172,11 @@ function JSify(data) {
             return '[' + alignStruct(handleSegments(segment[1].item.tokens), type).join(', ') + ']';
           } else if (segment.length == 2) {
             return parseNumerical(toNiceIdent(segment[1].text));
+          } else if (segment[1].text === 'c') {
+            // string
+            var text = segment[2].text;
+            text = text.substr(1, text.length-2);
+            return JSON.stringify(parseLLVMString(text)) + ' /* ' + text + '*/';
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
