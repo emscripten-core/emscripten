@@ -41,8 +41,7 @@ do {
   if (line == null) break;
   lines.push(line);
 } while(true);
-var data = lines.join("\n");
 
 // Do it
-print(JSify(analyzer(intertyper(data))));
+print(JSify(analyzer(intertyper(lines))));
 

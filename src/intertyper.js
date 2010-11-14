@@ -13,7 +13,7 @@ function intertyper(data) {
   // Line splitter.
   substrate.addZyme('LineSplitter', {
     processItem: function(item) {
-      var lines = item.llvmText.split('\n');
+      var lines = item.llvmLines;
       var ret = [];
       var inContinual = false;
       var inFunction = false;
@@ -686,7 +686,7 @@ function intertyper(data) {
   // Input
 
   substrate.addItem({
-    llvmText: data,
+    llvmLines: data,
   }, 'LineSplitter');
 
   return substrate.solve();
