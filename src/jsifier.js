@@ -9,16 +9,15 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
   // Now that analysis has completed, we can get around to handling unparsedFunctions
   (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
-    FUNCTIONS[func.ident] = func;
+    FUNCTIONS[func.ident] = true;
   });
 
-  var unparsedCounter = 0;
-  data.unparsedFunctions.forEach(function(func) {
-    dprint('unparsedFunctions', 'processing |' + func.ident + '|, ' + unparsedCounter + '/' + data.unparsedFunctions.length);
-    unparsedCounter++;
+  for (var i = 0; i < data.unparsedFunctions.length; i++) {
+    var func = data.unparsedFunctions[i];
+    dprint('unparsedFunctions', 'processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
     func.JS = JSify(analyzer(intertyper(func.lines, true), TYPES), true, TYPES, FUNCTIONS);
-    // TODO: unlink all other fields of func, to allow GC to work. Also do not do | = func|! do | = true|.
-  });
+    delete func.lines; // clean up memory as much as possible
+  }
 
   // type
   substrate.addZyme('Type', {
