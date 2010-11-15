@@ -34,10 +34,11 @@ EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 
 // Compiler debugging options
-DEBUG_TAGS_SHOWING = ['unparsedFunctions'];
+DEBUG_TAGS_SHOWING = [];
   // Some useful items:
   //    enzymatic
   //    gconst
   //    types
   //    relooping
+  //    unparsedFunctions
 
