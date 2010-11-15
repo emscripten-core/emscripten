@@ -352,7 +352,11 @@ function intertyper(data, parseFunctions) {
 
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
+
           ret.value = item.tokens[3];
+          if (ret.value.text in PARSABLE_LLVM_FUNCTIONS) {
+            ret.value = parseLLVMFunctionCall(item.tokens.slice(2));
+          }
         }
         return [ret];
       }

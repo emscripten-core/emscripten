@@ -147,7 +147,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   // Gets an entire constant expression
   function parseConst(value, type) {
     //dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
-    if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
+    if (value.intertype) {
+      return makePointer(finalizeLLVMFunctionCall(value), null, 'ALLOC_STATIC', type);
+    } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
       return makePointer(indexizeFunctions(parseNumerical(toNiceIdent(value.text))), null, 'ALLOC_STATIC', type);
     } else if (value.text == 'zeroinitializer') {
       return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_STATIC', type);
@@ -222,7 +224,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         item.JS = 'var ' + item.ident + ';';
         return [item, {
           intertype: 'GlobalVariable',
-          JS: 'globalFuncs.push(function() { ' + item.ident + ' = ' + parseConst(item.value, item.type) + ' });',
+          JS: 'globalFuncs.push(function() { return ' + item.ident + ' = ' + parseConst(item.value, item.type) + ' });',
           __result__: true,
         }];
       }

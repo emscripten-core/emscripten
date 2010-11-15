@@ -13,13 +13,14 @@ function run(args) {
     counter--;
     var func = globalFuncs.pop();
     try {
-      func();
+      var x = func();
+      if (x == undefined) throw 'undefined';
     } catch (e) {
       globalFuncs.unshift(func);
       // We will try again later. The global vars we depend on should be resolved by then
-      // XXX: We leak here, as we malloc, then fail and catch...
     }
   }
+  assert(counter > 0);
 
   var argc = args.length+1;
   function pad() {

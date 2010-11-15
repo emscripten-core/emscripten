@@ -369,6 +369,23 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*7*')
 
+    def test_globals(self):
+        src = '''
+          #include <stdio.h>
+
+
+          char cache[256], *next = cache;
+
+          int main()
+          {
+            cache[10] = 25;
+            next[20] = 51;
+            printf("*%d,%d*\\n", next[10], cache[20]);
+            return 0;
+          }
+        '''
+        self.do_test(src, '*25,51*')
+
     def test_linked_list(self):
         src = '''
           #include <stdio.h>
