@@ -104,10 +104,6 @@ var Library = {
     }
   },
 
-  isdigit: function(chr) {
-    return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
-  },
-
   memcmp: function(p1, p2, num) {
     for (var i = 0; i < num; i++) {
       var v1 = IHEAP[p1+i];
@@ -115,6 +111,30 @@ var Library = {
       if (v1 != v2) return v1 > v2 ? 1 : -1;
     }
     return 0;
+  },
+
+  // ctype.h
+
+  isdigit: function(chr) {
+    return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
+  },
+
+  isxdigit: function(chr) {
+    return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
+           (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
+           (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
+  },
+
+  isalpha: function(chr) {
+    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
+           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+  },
+
+  toupper: function(chr) {
+    if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
+      return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
+    }
+    return chr;
   },
 
   // LLVM specifics
