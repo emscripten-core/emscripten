@@ -1,7 +1,30 @@
 mergeInto(Library, {
   SDL_Init: function(what) {
+    SDL_INFO = {
+      width: 320,
+      height: 240,
+    };
     SDL_SURFACES = {};
     return 1;
+  },
+
+  SDL_GetVideoInfo: function() {
+    // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
+    var ret = _malloc(5*QUANTUM_SIZE);
+    IHEAP[ret] = 0; // TODO
+    IHEAP[ret+QUANTUM_SIZE] = 0; // TODO
+    IHEAP[ret+QUANTUM_SIZE*2] = 0; // TODO
+    IHEAP[ret+QUANTUM_SIZE*3] = SDL_INFO.width;
+    IHEAP[ret+QUANTUM_SIZE*4] = SDL_INFO.height;
+    return ret;
+  },
+
+  SDL_ListModes: function(format, flags) {
+    return -1; // -1 == all modes are ok. TODO
+  },
+
+  SDL_GL_SetAttribute: function(attr, value) {
+    // TODO
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags, canvas) {
