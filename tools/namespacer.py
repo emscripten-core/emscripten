@@ -66,7 +66,7 @@ for line in data:
   currspace[finalname] = realname
   currspace[finalname + '__params'] = params
   if len(funcparts) >= 2 and funcparts[-1] == funcparts[-2]:
-    size = '_struct_%s' % '__'.join(funcparts[:-1])
+    size = '$struct_%s' % '__'.join(funcparts[:-1])
     if len(funcparts) > 2:
       size = '_' + size + '_'
     size = size + '___SIZE'

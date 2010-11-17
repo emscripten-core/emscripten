@@ -56,7 +56,7 @@ function toNiceIdent(ident) {
   assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
-  return ident.replace(/["\\ \.@%:<>,\*\[\]-]/g, '_');
+  return ident.replace('%', '$').replace(/["\\ \.@:<>,\*\[\]-]/g, '_');
 }
 
 function isStructPointerType(type) {
@@ -255,7 +255,7 @@ function parseParamTokens(params) {
           intertype: 'value',
           type: segment[0].text,
           value: null,
-          ident: '_' + absIndex,
+          ident: toNiceIdent('%') + absIndex,
         });
       }
     } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
