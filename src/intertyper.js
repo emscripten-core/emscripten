@@ -162,8 +162,12 @@ function intertyper(data, parseFunctions) {
           case '"':
             if (totalEnclosing == 0) {
               if (quotes == 0) {
-                makeToken(curr);
-                curr = '"';
+                if (curr == '@' || curr == '%') {
+                  curr += '"';
+                } else {
+                  makeToken(curr);
+                  curr = '"';
+                }
               } else {
                 makeToken(curr + '"');
                 curr = '';
@@ -328,7 +332,7 @@ function intertyper(data, parseFunctions) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce', 'linkonce_odr', 'weak'))
+        while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce', 'linkonce_odr', 'weak', 'hidden'))
           item.tokens.splice(2, 1);
         var ret = {
           __result__: true,
@@ -366,7 +370,7 @@ function intertyper(data, parseFunctions) {
   funcHeader = substrate.addZyme('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
-        return ['noalias', 'available_externally', 'weak', 'internal', 'signext', 'zeroext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{', 'fastcc'].indexOf(token.text) == -1;
+        return ['noalias', 'available_externally', 'weak', 'internal', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{', 'fastcc'].indexOf(token.text) == -1;
       });
       var ret = [{
         __result__: true,

@@ -99,11 +99,10 @@ class RunnerCore(unittest.TestCase):
 if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None):
-        if not no_build:
-          print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None, basename='src.cpp'):
+        print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
         dirname = self.get_dir()
-        filename = os.path.join(dirname, 'src.cpp')
+        filename = os.path.join(dirname, basename)
         if not no_build:
           self.build(src, dirname, filename, main_file=main_file)
 
@@ -1019,6 +1018,16 @@ if 'benchmark' not in sys.argv:
                    open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read(),
                    no_build=True,
                    js_engines=[V8_ENGINE]) # mozilla bug XXX
+
+    ### Test cases in separate files
+
+    def test_cases(self):
+      for name in os.listdir(path_from_root(['tests', 'cases'])):
+        shortname = name.replace('.ll', '')
+        filename = os.path.join(self.get_dir(), shortname)
+        shutil.copy(path_from_root(['tests', 'cases', name]), filename+'.o.ll')
+        self.do_emscripten(filename)
+        self.do_test(None, 'hello, world!', no_build=True, basename=shortname)
 
     ### Integration tests
 

@@ -87,7 +87,7 @@ function analyzer(data, givenTypes) {
   function addType(type, data) {
     if (type.length == 1) return;
     if (data.types[type]) return;
-    if (['internal', 'inbounds', 'void'].indexOf(type) != -1) return;
+    if (['internal', 'hidden', 'inbounds', 'void'].indexOf(type) != -1) return;
     if (Runtime.isNumberType(type)) return;
 
     // 'blocks': [14 x %struct.X] etc. If this is a pointer, we need
