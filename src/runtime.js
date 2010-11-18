@@ -5,7 +5,7 @@
 RuntimeGenerator = {
   alloc: function(size, type) {
     var ret = type + 'TOP';
-//    ret += '; for (var i = 0; i < ' + size + '; i++) HEAP[' + type + 'TOP+i] = 0';
+//    ret += '; for (var i = 0; i < ' + size + '; i++) HEAP[' + type + 'TOP+i] = 0'; // No need for typed arrays - per the spec, initialized to 0 anyhow
     if (GUARD_MEMORY) {
       ret += '; assert(' + size + ' > 0)';
     }

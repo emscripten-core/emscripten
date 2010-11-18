@@ -1039,11 +1039,11 @@ if 'benchmark' not in sys.argv:
             int getVal(); // XXX Sadly, inlining these will result in LLVM not
                           // producing any code for them (when just building
                           // as a library)
-            int mulVal(int mul);
+            void mulVal(int mul);
           };
           ScriptMe::ScriptMe(int val) : value(val) { }
           int ScriptMe::getVal() { return value; }
-          int ScriptMe::mulVal(int mul) { value *= mul; }
+          void ScriptMe::mulVal(int mul) { value *= mul; }
         '''
         script_src = '''
           var sme = Module._.ScriptMe.__new__(83);          // malloc(sizeof(ScriptMe)), ScriptMe::ScriptMe(sme, 83) / new ScriptMe(83) (at addr sme)

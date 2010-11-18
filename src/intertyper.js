@@ -389,7 +389,7 @@ function intertyper(data, parseFunctions) {
       return [{
         __result__: true,
         intertype: 'label',
-        ident: LLVM_STYLE == 'old' ?
+        ident: item.tokens[0].text.substr(-1) == ':' ?
                                '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
                                '%' + item.tokens[2].text.substr(1),
         lineNum: item.lineNum,

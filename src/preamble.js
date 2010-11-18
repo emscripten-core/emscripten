@@ -226,7 +226,7 @@ function __formatString() {
   var argIndex = 1;
   var ret = [];
   var curr = -1;
-  while (curr != 0) {
+  while (curr) { // Note: should be curr != 0, technically. But this helps catch bugs with undefineds
 #if USE_TYPED_ARRAYS
     curr = IHEAP[textIndex];
     next = IHEAP[textIndex+1];
@@ -332,7 +332,7 @@ _llvm_memset_p0i8_i64 = _llvm_memset_p0i8_i32 = llvm_memset_i32;
 
 function _strlen(ptr) {
   var i = 0;
-  while (IHEAP[ptr+i] != 0) i++;
+  while (IHEAP[ptr+i]) i++; // Note: should be IHEAP[ptr+i] != 0, technically. But this helps catch bugs with undefineds
   return i;
 }
 
