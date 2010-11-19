@@ -59,7 +59,7 @@ class RunnerCore(unittest.TestCase):
       pass
     os.chdir(dirname)
     cwd = os.getcwd()
-    output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + (['-O3'] if F_OPTS else []) + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
     os.chdir(cwd)
     if not os.path.exists(filename + '.o'):
       print "Failed to compile C/C++ source:\n\n", output
@@ -100,7 +100,7 @@ if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None, basename='src.cpp'):
-        print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s%s]' % (COMPILER.split(os.sep)[-1], ',reloop&optimize' if RELOOP else '')
+        print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'frontend-optimizations' if F_OPTS else '', 'reloop&optimize' if RELOOP else '')
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
         if not no_build:
@@ -1005,10 +1005,12 @@ if 'benchmark' not in sys.argv:
       self.do_test(path_from_root(['tests', 'cubescript']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
+      if F_OPTS: return # See issue #8 - frontend optimizations fail here
       self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
 
     def test_bullet(self):
       if COMPILER != LLVM_GCC: return # Only support that for now, FIXME
+      if F_OPTS: return # We use existing .ll, so frontend stuff is unimportant
 
       # No building - just process an existing .ll file
       filename = os.path.join(self.get_dir(), 'src.cpp')
@@ -1022,6 +1024,8 @@ if 'benchmark' not in sys.argv:
     ### Test cases in separate files
 
     def test_cases(self):
+      if F_OPTS: return # We use existing .ll, so frontend stuff is unimportant
+
       for name in os.listdir(path_from_root(['tests', 'cases'])):
         shortname = name.replace('.ll', '')
         filename = os.path.join(self.get_dir(), shortname)
@@ -1065,18 +1069,20 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*166*\n*ok*', post_build=post)
 
   # Generate tests for all our compilers
-  def make_test(compiler, embetter):
+  def make_test(compiler, f_opts, embetter):
     class TT(T):
       def setUp(self):
-        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS
+        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, F_OPTS
         COMPILER = compiler['path']
         QUANTUM_SIZE = compiler['quantum_size']
         RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
         GUARD_MEMORY = 1-embetter
+        F_OPTS = f_opts
     return TT
   for embetter in [0,1]:
-    for name in COMPILERS.keys():
-      exec('T_%s_%d = make_test(COMPILERS["%s"],%d)' % (name, embetter, name, embetter))
+    for f_opts in [0,1]:
+      for name in COMPILERS.keys():
+        exec('T_%s_%d_%d = make_test(COMPILERS["%s"],%d,%d)' % (name, f_opts, embetter, name, f_opts, embetter))
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
 else:
@@ -1093,6 +1099,7 @@ else:
   QUANTUM_SIZE = 4
   RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = 1
   GUARD_MEMORY = 0
+  F_OPTS = 1
 
   TEST_REPS = 10
   TOTAL_TESTS = 2
