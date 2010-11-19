@@ -39,6 +39,7 @@ DEBUG_TAGS_SHOWING = [];
   //    enzymatic
   //    gconst
   //    types
+  //    vars
   //    relooping
   //    unparsedFunctions
 

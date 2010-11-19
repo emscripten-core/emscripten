@@ -221,6 +221,7 @@ function analyzer(data, givenTypes) {
               ident: item.ident,
               type: item.value.type,
               origin: item.value.intertype,
+              lineNum: item.lineNum,
               uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1]),
             };
           }
@@ -266,6 +267,8 @@ function analyzer(data, givenTypes) {
           var pointedType = removePointing(variable.type);
           if (variable.origin == 'getelementptr') {
             // Use our implementation that emulates pointers etc.
+            // XXX Can we perhaps nativize some of these? However to do so, we need to discover their
+            //     true types; we have '?' for them now, as they cannot be discovered in the intertyper.
             variable.impl = VAR_EMULATED;
           } else if (OPTIMIZE && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
             // A simple int value, can be implemented as a native variable

@@ -482,7 +482,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } } ];
       var data = parseLLVMFunctionCall(segment);
       item.intertype = 'getelementptr';
-      item.type = data.type;
+      item.type = '?'; // We need type info to determine this
       item.params = data.params;
       item.ident = data.ident;
       this.forwardItem(item, 'Reintegrator');
@@ -496,7 +496,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.tokens.splice(0, 1);
       }
       assertEq(item.tokens[0].text, 'call');
-      if (['signext', 'zeroext', 'fastcc'].indexOf(item.tokens[1].text) != -1) {
+      while (['signext', 'zeroext', 'fastcc', 'noalias'].indexOf(item.tokens[1].text) != -1) {
         item.tokens.splice(1, 1);
       }
       item.type = item.tokens[1].text;
