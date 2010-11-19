@@ -5,8 +5,9 @@ var LLVM_STYLE = null;
 //! @param parseFunctions We parse functions only on later passes, since we do not
 //!                       want to parse all of them at once, and have all their
 //!                       lines and data in memory at the same time.
-function intertyper(data, parseFunctions) {
+function intertyper(data, parseFunctions, baseLineNum) {
   //parseFunctions = true; // Uncomment to do all parsing in a single big RAM-heavy pass. Faster, if you have the RAM
+  baseLineNum = baseLineNum || 0;
 
   // Substrate
 
@@ -45,7 +46,7 @@ function intertyper(data, parseFunctions) {
           } else {
             ret.push({
               lineText: line,
-              lineNum: i + 1,
+              lineNum: i + 1 + baseLineNum,
             });
             if (new RegExp(/^\ +switch\ .*/g).test(line)) {
               // beginning of llvm switch

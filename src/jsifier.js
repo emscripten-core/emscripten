@@ -15,7 +15,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
     dprint('unparsedFunctions', 'processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
-    func.JS = JSify(analyzer(intertyper(func.lines, true), TYPES), true, TYPES, FUNCTIONS);
+    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1), TYPES), true, TYPES, FUNCTIONS);
     delete func.lines; // clean up memory as much as possible
   }
 
