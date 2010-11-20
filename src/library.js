@@ -306,6 +306,20 @@ var Library = {
     IHEAP[ptr + indexes[1]] = Math.floor((now-1000*Math.floor(now/1000))*1000); // microseconds
     return 0;
   },
+
+  // setjmp.h
+
+  _setjmp: function(env) {
+    // not really working...
+    assert(!arguments.callee.called);
+    arguments.callee.called = true;
+    return 0;
+  },
+
+  _longjmp: function(env, val) {
+    // not really working...
+    assert(0);
+  },
 };
 
 load('library_sdl.js');

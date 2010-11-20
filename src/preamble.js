@@ -314,7 +314,7 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
 #endif
   }
 }
-_memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_i32;
+_memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_p0i8_p0i8_i64 = _llvm_memcpy_i32;
 
 function llvm_memset_i32(ptr, value, num) {
   for (var i = 0; i < num; i++) {
