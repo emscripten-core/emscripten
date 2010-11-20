@@ -42,6 +42,8 @@ var START_TIME = Date.now();
 
 var ABORT = false;
 
+var undef = 0;
+
 function assert(condition, text) {
   if (!condition) {
     var text = "Assertion failed: " + text;
