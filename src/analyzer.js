@@ -215,6 +215,21 @@ function analyzer(data, givenTypes) {
 
         // LLVM is SSA, so we always have a single assignment/write. We care about
         // the reads/other uses.
+
+        // Function parameters
+        func.params.forEach(function(param) {
+          if (param.intertype !== 'varargs') {
+            func.variables[param.ident] = {
+              ident: param.ident,
+              type: param.type,
+              origin: 'funcparam',
+              lineNum: func.lineNum,
+              uses: null,
+            };
+          }
+        });
+
+        // Normal variables
         walkJSON(func.lines, function(item) {
           if (item && item.intertype == 'assign') {
             func.variables[item.ident] = {
@@ -269,6 +284,8 @@ function analyzer(data, givenTypes) {
             // Use our implementation that emulates pointers etc.
             // XXX Can we perhaps nativize some of these? However to do so, we need to discover their
             //     true types; we have '?' for them now, as they cannot be discovered in the intertyper.
+            variable.impl = VAR_EMULATED;
+          } else if (variable.origin == 'funcparam') {
             variable.impl = VAR_EMULATED;
           } else if (OPTIMIZE && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
             // A simple int value, can be implemented as a native variable
