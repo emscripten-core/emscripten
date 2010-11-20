@@ -710,12 +710,17 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       }
       case 'fcmp': {
         switch (variant) {
+          // XXX 'o' ones should be 'ordered (no NaN) and',
+          //     'u' ones should be 'unordered or'.
           case 'uge': case 'oge': return ident1 + ' >= ' + ident2;
           case 'ule': case 'ole': return ident1 + ' <= ' + ident2;
           case 'ugt': case 'ogt': return ident1 + ' > ' + ident2;
           case 'ult': case 'olt': return ident1 + ' < ' + ident2;
           case 'une': case 'one': return ident1 + ' != ' + ident2;
           case 'ueq': case 'oeq': return ident1 + ' == ' + ident2;
+          case 'ord': return '!isNaN(' + ident1 + ') && !isNaN(' + ident2 + ')';
+          case 'uno': return 'isNaN(' + ident1 + ') || isNaN(' + ident2 + ')';
+          case 'true': return '1';
           default: throw 'Unknown fcmp variant: ' + variant
         }
       }
