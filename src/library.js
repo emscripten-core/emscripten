@@ -39,6 +39,21 @@ var Library = {
     throw 'ABORT: ' + code + ', at ' + (new Error().stack);
   },
 
+  realloc: function(ptr, size) {
+    // Very simple, inefficient implementation - if you use a real malloc, best to use
+    // a real realloc with it
+    if (!size) {
+      if (ptr) _free(ptr);
+      return 0;
+    }
+    var ret = _malloc(size);
+    if (ptr) {
+      _memcpy(ret, ptr, size); // might be some invalid reads
+      _free(ptr);
+    }
+    return ret;
+  },
+
   // string.h
 
   strspn: function(pstr, pset) {

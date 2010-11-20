@@ -301,7 +301,6 @@ function _atoi(s) {
 }
 
 function _llvm_memcpy_i32(dest, src, num, idunno) {
-// XXX hardcoded ptr impl
   for (var i = 0; i < num; i++) {
 #if SAFE_HEAP
     SAFE_HEAP_STORE(dest + i, HEAP[src + i]);
@@ -314,12 +313,8 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
 #endif
 #endif
   }
-//  dest = Pointer_niceify(dest);
-//  src = Pointer_niceify(src);
-//  dest.slab = src.slab.slice(src.pos);
 }
-_llvm_memcpy_i64 = _llvm_memcpy_i32;
-_llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_i32;
+_memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_i32;
 
 function llvm_memset_i32(ptr, value, num) {
   for (var i = 0; i < num; i++) {
