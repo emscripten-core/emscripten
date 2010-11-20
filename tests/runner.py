@@ -121,6 +121,19 @@ if 'benchmark' not in sys.argv:
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
+    # No building - just process an existing .ll file
+    def do_ll_test(self, ll_file, output):
+      if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
+      if F_OPTS: return # We use existing .ll, so frontend stuff is unimportant
+
+      filename = os.path.join(self.get_dir(), 'src.cpp')
+      shutil.copy(ll_file, filename + '.o.ll')
+      self.do_emscripten(filename)
+      self.do_test(None,
+                   output,
+                   no_build=True,
+                   js_engines=[V8_ENGINE]) # mozilla bug XXX
+
     def test_hello_world(self):
         src = '''
           #include <stdio.h>
@@ -1035,29 +1048,13 @@ if 'benchmark' not in sys.argv:
       self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
 
     def test_bullet(self):
-      if COMPILER != LLVM_GCC: return # Only support that for now, FIXME
-      if F_OPTS: return # We use existing .ll, so frontend stuff is unimportant
-
-      # No building - just process an existing .ll file
-      filename = os.path.join(self.get_dir(), 'src.cpp')
-      shutil.copy(path_from_root(['tests', 'bullet', 'bulletTest.ll']), filename + '.o.ll')
-      self.do_emscripten(filename)
-      self.do_test(path_from_root(['third_party']),
-                   open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read(),
-                   no_build=True,
-                   js_engines=[V8_ENGINE]) # mozilla bug XXX
+      self.do_ll_test(path_from_root(['tests', 'bullet', 'bulletTest.ll']), open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read())
 
     ### Test cases in separate files
 
     def test_cases(self):
-      if F_OPTS: return # We use existing .ll, so frontend stuff is unimportant
-
       for name in os.listdir(path_from_root(['tests', 'cases'])):
-        shortname = name.replace('.ll', '')
-        filename = os.path.join(self.get_dir(), shortname)
-        shutil.copy(path_from_root(['tests', 'cases', name]), filename+'.o.ll')
-        self.do_emscripten(filename)
-        self.do_test(None, 'hello, world!', no_build=True, basename=shortname)
+        self.do_ll_test(path_from_root(['tests', 'cases', name]), 'hello, world!')
 
     ### Integration tests
 
