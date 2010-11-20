@@ -166,11 +166,21 @@ var Library = {
     return 1;
   },
 
+  // Exceptions - minimal support, only (...) for now (no actual exception objects can be caught)
+  __cxa_allocate_exception: function(size) {
+    return _malloc(size); // warning: leaked
+  },
+  __cxa_throw: function(ptr, data, dunno) {
+    throw ptr;
+  },
   llvm_eh_exception: function() {
     return 'code-generated exception: ' + (new Error().stack);
   },
-
   llvm_eh_selector: function(exception, personality, num) {
+  },
+  __cxa_begin_catch: function(ptr) {
+  },
+  __cxa_end_catch: function(ptr) {
   },
 
   __cxa_call_unexpected: function(exception) {

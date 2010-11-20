@@ -442,6 +442,32 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, 'Assertion failed: 1 == false')
 
+    def test_exceptions(self):
+        src = '''
+          #include <stdio.h>
+          void thrower() {
+            printf("infunc...");
+            throw(99);
+            printf("FAIL");
+          }
+          int main() {
+            try {
+              printf("*throw...");
+              throw(1);
+              printf("FAIL");
+            } catch(...) {
+              printf("caught!");
+            }
+            try {
+              thrower();
+            } catch(...) {
+              printf("done!*\\n");
+            }
+            return 1;
+          }
+        '''
+        self.do_test(src, '*throw...caught!infunc...done!*')
+
     def test_class(self):
         src = '''
           #include <stdio.h>
