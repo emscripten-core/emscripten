@@ -1051,8 +1051,8 @@ if 'benchmark' not in sys.argv:
     def test_bullet(self):
       self.do_ll_test(path_from_root(['tests', 'bullet', 'bulletTest.ll']), open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read())
 
-    #def test_lua(self):
-    #  self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']), 'hello world!', args=['-e', '''"print('hello world!')"'''])
+    def test_lua(self):
+      self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']), 'hello lua world!', args=['-e', '''print("hello lua world!")'''])
 
     ### Test cases in separate files
 

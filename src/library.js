@@ -19,7 +19,7 @@ var Library = {
     __print__(Pointer_stringify(p) + '\n');
   },
 
-  fputs: function(file, p) {
+  fputs: function(p, stream) {
     __print__(Pointer_stringify(p) + '\n');
   },
 
@@ -93,7 +93,6 @@ var Library = {
   },
 
   getenv: function(name_) {
-    print('getenv: ' + name_); // XXX
     return 0; // TODO
   },
 
