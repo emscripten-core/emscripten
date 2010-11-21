@@ -590,6 +590,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.variant = item.tokens[1].text;
         item.tokens.splice(1, 1);
       }
+      if (item.tokens[1].text == 'exact') item.tokens.splice(1, 1); // XXX - do we need a check at runtime?
       var segments = splitTokenList(item.tokens.slice(1));
       for (var i = 1; i <= 4; i++) {
         if (segments[i-1]) {

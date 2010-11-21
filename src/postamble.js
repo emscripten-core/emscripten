@@ -34,6 +34,7 @@ function run(args) {
     argv.push(Pointer_make(intArrayFromString(args[i]), null));
     pad();
   }
+  argv.push(0);
   argv = Pointer_make(argv, null);
 
   __globalConstructor__();

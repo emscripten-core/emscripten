@@ -337,6 +337,12 @@ function _strlen(ptr) {
 
 PRINTBUFFER = '';
 function __print__(text) {
+  if (text === null) {
+    // Flush
+    print(PRINTBUFFER);
+    PRINTBUFFER = '';
+    return;
+  }
   // We print only when we see a '\n', as console JS engines always add
   // one anyhow.
   PRINTBUFFER = PRINTBUFFER + text;

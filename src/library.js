@@ -5,7 +5,21 @@ var Library = {
     __print__(Pointer_stringify(__formatString.apply(null, arguments)));
   },
 
+  fprintf: function() {
+    var file = arguments[0]; // TODO: something clever with this
+    var args = Array.prototype.slice.call(arguments, 1);
+    __print__(Pointer_stringify(__formatString.apply(null, args)));
+  },
+
+  fflush: function(file) {
+    __print__(null);
+  },
+
   puts: function(p) {
+    __print__(Pointer_stringify(p) + '\n');
+  },
+
+  fputs: function(file, p) {
     __print__(Pointer_stringify(p) + '\n');
   },
 
@@ -13,6 +27,30 @@ var Library = {
     __print__(String.fromCharCode(p));
   },
   _ZNSo3putEc: 'putchar',
+
+  fopen: function(filename, mode) {
+    return 1; // XXX
+  },
+
+  _IO_getc: function(file) {
+    return -1; // EOF
+  },
+
+  ungetc: function(chr, stream) {
+    return chr;
+  },
+
+  feof: function(stream) {
+    return 1;
+  },
+
+  ferror: function(stream) {
+    return 0;
+  },
+
+  fclose: function(stream) {
+    return 0;
+  },
 
   _ZNSo5flushEv: function() {
     __print__('\n');
@@ -52,6 +90,11 @@ var Library = {
       _free(ptr);
     }
     return ret;
+  },
+
+  getenv: function(name_) {
+    print('getenv: ' + name_); // XXX
+    return 0; // TODO
   },
 
   // string.h
@@ -128,6 +171,16 @@ var Library = {
     return 0;
   },
 
+  strchr: function(ptr, chr) {
+    ptr--;
+    do {
+      ptr++;
+      var val = IHEAP[ptr];
+      if (val == chr) return ptr;
+    } while (val);
+    return 0;
+  },
+
   // ctype.h
 
   isdigit: function(chr) {
@@ -143,6 +196,16 @@ var Library = {
   isalpha: function(chr) {
     return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+  },
+
+  isalnum: function(chr) {
+    return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
+           (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
+           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+  },
+
+  isspace: function(chr) {
+    return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
   },
 
   toupper: function(chr) {
@@ -329,6 +392,13 @@ var Library = {
   _longjmp: function(env, val) {
     // not really working...
     assert(0);
+  },
+
+  // signal.h
+
+  signal: function(sig, func) {
+    // TODO
+    return 0;
   },
 };
 

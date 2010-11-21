@@ -122,7 +122,7 @@ if 'benchmark' not in sys.argv:
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     # No building - just process an existing .ll file
-    def do_ll_test(self, ll_file, output):
+    def do_ll_test(self, ll_file, output, args=[]):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
       if F_OPTS: return # We use existing .ll, so frontend stuff is unimportant
 
@@ -131,6 +131,7 @@ if 'benchmark' not in sys.argv:
       self.do_emscripten(filename)
       self.do_test(None,
                    output,
+                   args,
                    no_build=True,
                    js_engines=[V8_ENGINE]) # mozilla bug XXX
 
@@ -1049,6 +1050,9 @@ if 'benchmark' not in sys.argv:
 
     def test_bullet(self):
       self.do_ll_test(path_from_root(['tests', 'bullet', 'bulletTest.ll']), open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read())
+
+    #def test_lua(self):
+    #  self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']), 'hello world!', args=['-e', '''"print('hello world!')"'''])
 
     ### Test cases in separate files
 
