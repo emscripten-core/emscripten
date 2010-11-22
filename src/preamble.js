@@ -25,19 +25,20 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
   // You cannot, however, do the nonportable act of store X and load Y!
   if (store) {
-    HEAP_HISTORY[dest] = [{ type: type, /*stack: new Error().stack */ }]; // |stack| is useful for debugging
+    HEAP_HISTORY[dest] = type; // [{ type: type, stack: new Error().stack }]; // |stack| is useful for debugging. Also uncomment the lines later down
   } else {
     if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false) { // false can be the result of a mathop comparator
       throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
     }
     var history = HEAP_HISTORY[dest];
-    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
-    if (history[0].type && history[0].type !== type) {
+    if (history === null) return;
+    assert(history);
+//    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
+//    if (history[0].type !== type) {
+    if (history !== type) {
       print('Load-store consistency assumption failure! ' + dest);
       print('\n');
-      print(history.map(function(item) {
-        return item.type + ' :: ' + JSON.stringify(item.stack);
-      }).join('\n\n'));
+      print(JSON.stringify(history));
       print('\n');
       print('LOAD: ' + type + ', ' + new Error().stack);
       print('\n');
