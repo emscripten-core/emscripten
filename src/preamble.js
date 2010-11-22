@@ -27,8 +27,8 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
   if (store) {
     HEAP_HISTORY[dest] = [{ type: type, /*stack: new Error().stack */ }]; // |stack| is useful for debugging
   } else {
-    if (!HEAP[dest] && HEAP[dest] !== 0) {
-      print('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
+    if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false) { // false can be the result of a mathop comparator
+      throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
     }
     var history = HEAP_HISTORY[dest];
     assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');

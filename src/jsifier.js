@@ -914,7 +914,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), true, item.type) + ';';
   });
 
-  makeFuncLineZyme('unreachable', function(item) { return '// unreachable' });
+  makeFuncLineZyme('unreachable', function(item) { return 'throw "Reached an unreachable! Original .ll line: ' + item.lineNum + '";' });
 
   // Final combiner
 

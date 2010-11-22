@@ -459,7 +459,7 @@ function calcAllocatedSize(type, TYPES) {
   if (pointingLevels(type) == 0 && isStructType(type)) {
     return TYPES[type].flatSize; // makeEmptyStruct(item.allocatedType).length;
   } else {
-    return 1;
+    return getNativeFieldSize(type, true); // We can really get away with '1', though, at least on the stack...
   }
 }
 

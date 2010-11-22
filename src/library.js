@@ -247,6 +247,7 @@ var Library = {
     return 'code-generated exception: ' + (new Error().stack);
   },
   llvm_eh_selector: function(exception, personality, num) {
+    return 0;
   },
   __cxa_begin_catch: function(ptr) {
   },
