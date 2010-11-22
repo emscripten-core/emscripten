@@ -76,7 +76,12 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       return '{ ' + ret.join(', ') + ' }';
     }
 
-    return makeGetSlab(ptr, type) + '[' + calcFastOffset(ptr, pos, noNeedFirst) + ']';
+    var offset = calcFastOffset(ptr, pos, noNeedFirst);
+    if (SAFE_HEAP) {
+      return 'SAFE_HEAP_LOAD(' + offset + ', "' + safeQuote(type) + '")';
+    } else {
+      return makeGetSlab(ptr, type) + '[' + offset + ']';
+    }
   }
 
   function indexizeFunctions(value) { // TODO: Also check for other functions (externals, library, etc.)
@@ -99,15 +104,13 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     value = indexizeFunctions(value);
     var offset = calcFastOffset(ptr, pos, noNeedFirst);
     if (SAFE_HEAP) {
-      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ')';
+      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', "' + safeQuote(type) + '")';
     } else {
       return makeGetSlab(ptr, type) + '[' + offset + '] = ' + value;
     }
   }
 
   function makeEmptyStruct(type) {
-    dprint('types', '??makeemptystruct?? ' + dump(type));
-    // XXX hardcoded ptr impl
     var ret = [];
     var typeData = TYPES[type];
     assertTrue(typeData);
@@ -218,13 +221,16 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         item.JS = '\n__globalConstructor__ = function() {\n' +
                     item.ctors.map(function(ctor) { return '  ' + toNiceIdent(ctor) + '();' }).join('\n') +
                   '\n}\n';
-      } else if (item.type == 'external') {
-        item.JS = 'var ' + item.ident + ' = ' + '0; /* external value? */';
       } else {
         item.JS = 'var ' + item.ident + ';';
         return [item, {
           intertype: 'GlobalVariable',
-          JS: 'globalFuncs.push(function() { return ' + item.ident + ' = ' + parseConst(item.value, item.type) + ' });',
+          JS: 'globalFuncs.push(function() { return ' + item.ident + ' = ' + (
+            item.external ?
+              makePointer(JSON.stringify(makeEmptyStruct(item.type)), null, 'ALLOC_STATIC', item.type) + ' /* external value? */'
+              :
+              parseConst(item.value, item.type) 
+            ) + ' });',
           __result__: true,
         }];
       }
@@ -868,10 +874,11 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   function makeFunctionCall(ident, params, funcData) {
     // Special cases
     if (ident == '_llvm_va_start') {
+      // varargs
       var args = 'Array.prototype.slice.call(arguments, __numArgs__)';
       var data = 'Pointer_make([' + args + '.length].concat(' + args + '), 0)';
       if (SAFE_HEAP) {
-        return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', 0)';
+        return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', null)';
       } else {
         return 'IHEAP[' + params[0].ident + '] = ' + data;
       }
@@ -927,8 +934,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
     if (functionsOnly) return ret;
 
-    var params = { 'QUANTUM_SIZE': QUANTUM_SIZE };
-    var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), params);
+    var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), CONSTANTS);
     function reverse_(x) {
       if (LLVM_STYLE === 'old') {
         return x.reverse();

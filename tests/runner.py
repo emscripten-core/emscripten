@@ -73,7 +73,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP']:
       exported_settings[setting] = eval(setting)
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
     timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
@@ -84,17 +84,15 @@ class RunnerCore(unittest.TestCase):
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
     return timeout_run(Popen(engine + [filename] + ([] if engine == SPIDERMONKEY_ENGINE else ['--']) + args,
-                       stdout=PIPE, stderr=STDOUT), 30 if check_timeout else None, 'Execution')
+                       stdout=PIPE, stderr=STDOUT), 120 if check_timeout else None, 'Execution')
 
   def assertContained(self, value, string):
     if value not in string:
-      print "Expected to find '%s' in '%s'" % (value, string)
-      self.assertTrue(value in string)
+      raise Exception("Expected to find '%s' in '%s'" % (value, string))
 
   def assertNotContained(self, value, string):
     if value in string:
-      print "Expected to NOT find '%s' in '%s'" % (value, string)
-      self.assertTrue(value not in string)
+      raise Exception("Expected to NOT find '%s' in '%s'" % (value, string))
 
 if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
@@ -122,9 +120,12 @@ if 'benchmark' not in sys.argv:
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     # No building - just process an existing .ll file
-    def do_ll_test(self, ll_file, output, args=[]):
+    def do_ll_test(self, ll_file, output, args=[], f_opt_ll_file=None, js_engines=[V8_ENGINE]):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
-      if F_OPTS: return # We use existing .ll, so frontend stuff is unimportant
+      if F_OPTS:
+        return # TODO: enable the lines below
+        #if f_opt_ll_file is None: return # We use existing .ll, so frontend stuff is unimportant, unless we are given an optimized .ll
+        #ll_file = f_opt_ll_file
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
       shutil.copy(ll_file, filename + '.o.ll')
@@ -133,7 +134,7 @@ if 'benchmark' not in sys.argv:
                    output,
                    args,
                    no_build=True,
-                   js_engines=[V8_ENGINE]) # mozilla bug XXX
+                   js_engines=js_engines)
 
     def test_hello_world(self):
         src = '''
@@ -1015,12 +1016,16 @@ if 'benchmark' not in sys.argv:
     ### 'Big' tests
 
     def test_fannkuch(self):
+        global SAFE_HEAP; SAFE_HEAP = 0 # Too slow for that
+
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:
           src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
           self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
+        global SAFE_HEAP; SAFE_HEAP = 0 # Too slow for that
+
         src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
         output = open(path_from_root(['tests', 'raytrace.ppm']), 'r').read()
         self.do_test(src, output, ['3', '16'])
@@ -1042,6 +1047,8 @@ if 'benchmark' not in sys.argv:
       #              used, see Mozilla bug 593659.
       assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE
 
+      global SAFE_HEAP; SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
+
       self.do_test(path_from_root(['tests', 'cubescript']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
@@ -1049,10 +1056,15 @@ if 'benchmark' not in sys.argv:
       self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
 
     def test_bullet(self):
+      global SAFE_HEAP; SAFE_HEAP = 0 # Too slow for that
       self.do_ll_test(path_from_root(['tests', 'bullet', 'bulletTest.ll']), open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read())
 
     def test_lua(self):
-      self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']), 'hello lua world!', args=['-e', '''print("hello lua world!")'''])
+      self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
+                      'hello lua world!',
+                      args=['-e', '''print("hello lua world!")'''],
+                      f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']),
+                      js_engines=[SPIDERMONKEY_ENGINE])
 
     ### Test cases in separate files
 
@@ -1095,15 +1107,35 @@ if 'benchmark' not in sys.argv:
           open(filename, 'w').write(src)
         self.do_test(src, '*166*\n*ok*', post_build=post)
 
+    ### Tests for tools
+
+    def test_safe_heap(self):
+      if not SAFE_HEAP: return
+      if F_OPTS: return
+      src = '''
+        #include<stdio.h>
+        int main() {
+          int *x = new int;
+          *x = 20;
+          float *y = (float*)x;
+          printf("%f\\n", *y);
+          return 0;
+        }
+      '''
+      try:
+        self.do_test(src, '*nothingatall*')
+      except Exception, e:
+        assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
+
   # Generate tests for all our compilers
   def make_test(compiler, f_opts, embetter):
     class TT(T):
       def setUp(self):
-        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, F_OPTS
+        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, F_OPTS, SAFE_HEAP
         COMPILER = compiler['path']
         QUANTUM_SIZE = compiler['quantum_size']
         RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
-        GUARD_MEMORY = 1-embetter
+        GUARD_MEMORY = SAFE_HEAP = 1-embetter
         F_OPTS = f_opts
     return TT
   for embetter in [0,1]:
@@ -1125,7 +1157,7 @@ else:
 
   QUANTUM_SIZE = 4
   RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = 1
-  GUARD_MEMORY = 0
+  GUARD_MEMORY = SAFE_HEAP = 0
   F_OPTS = 1
 
   TEST_REPS = 10

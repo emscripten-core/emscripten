@@ -1,5 +1,10 @@
 // General JS utilities
 
+function safeQuote(x) {
+  return x.replace(/"/g, '\\"')
+          .replace(/'/g, "\\'");
+}
+
 function dump(item) {
   var CHUNK = 500;
   function lineify(text) {

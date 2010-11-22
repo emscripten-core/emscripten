@@ -12,12 +12,10 @@ load('settings.js');
 
 load('utility.js');
 load('enzymatic.js');
-load('library.js');
 load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-load('runtime.js');
 
 //===============================
 // Main
@@ -28,6 +26,9 @@ var settings = JSON.parse(readline());
 for (setting in settings) {
   this[setting] = settings[setting];
 }
+var CONSTANTS = { 'QUANTUM_SIZE': QUANTUM_SIZE };
+
+load('runtime.js');
 
 // Sanity of settings
 
@@ -43,5 +44,6 @@ do {
 } while(true);
 
 // Do it
+eval(preprocess(read('library.js'), CONSTANTS));
 print(JSify(analyzer(intertyper(lines))));
 

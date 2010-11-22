@@ -6,6 +6,9 @@ RuntimeGenerator = {
   alloc: function(size, type) {
     var ret = type + 'TOP';
 //    ret += '; for (var i = 0; i < ' + size + '; i++) HEAP[' + type + 'TOP+i] = 0'; // No need for typed arrays - per the spec, initialized to 0 anyhow
+    if (SAFE_HEAP) {
+      ret += '; for (var j = 0; j < ' + size + '; j++) SAFE_HEAP_CLEAR(' + type + 'TOP+j);';
+    }
     if (GUARD_MEMORY) {
       ret += '; assert(' + size + ' > 0)';
     }
@@ -26,11 +29,14 @@ RuntimeGenerator = {
   },
 
   stackEnter: function(initial) {
-    if (initial === 0) return ''; // XXX Note that we don't even push the stack! This is faster, but
-                                  // means that we don't clear stack allocations done in this function
-                                  // until the parent unwinds its stack. So potentially if we are in
-                                  // a loop, we can use a lot of memory.
+    if (!GUARD_MEMORY && initial === 0) return ''; // XXX Note that we don't even push the stack! This is faster, but
+                                                   // means that we don't clear stack allocations done in this function
+                                                   // until the parent unwinds its stack. So potentially if we are in
+                                                   // a loop, we can use a lot of memory.
     var ret = 'var __stackBase__  = STACKTOP; STACKTOP += ' + initial;
+    if (SAFE_HEAP) {
+      ret += '; for (var i = __stackBase__; i < STACKTOP; i++) SAFE_HEAP_STORE(i, 0, null);';
+    }
     if (GUARD_MEMORY) {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
@@ -39,7 +45,11 @@ RuntimeGenerator = {
 
   stackExit: function(initial) {
     if (initial === 0) return ''; // XXX See comment in stackEnter
-    return 'STACKTOP = __stackBase__';
+    var ret = '';
+    if (SAFE_HEAP) {
+      ret += 'for (var i = __stackBase__; i < STACKTOP; i++) SAFE_HEAP_CLEAR(i);';
+    }
+    return ret += 'STACKTOP = __stackBase__';
   },
 
   // An allocation that cannot be free'd

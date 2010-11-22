@@ -387,6 +387,10 @@ function parseNumerical(value, type) {
   } else if (value == 'null') {
     // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
     value = '0';
+  } else if (value === 'true') {
+    return '1';
+  } else if (value === 'false') {
+    return '0';
   }
   if (isNumber(value)) {
     return eval(value).toString(); // will change e.g. 5.000000e+01 to 50

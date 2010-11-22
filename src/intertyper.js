@@ -335,11 +335,17 @@ function intertyper(data, parseFunctions, baseLineNum) {
         var ident = item.tokens[0].text;
         while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce', 'linkonce_odr', 'weak', 'hidden'))
           item.tokens.splice(2, 1);
+        var external = false;
+        if (item.tokens[2].text === 'external') {
+          external = true;
+          item.tokens.splice(2, 1);
+        }
         var ret = {
           __result__: true,
           intertype: 'globalVariable',
           ident: ident,
           type: item.tokens[2].text,
+          external: external,
           lineNum: item.lineNum,
         };
         if (ident == '@llvm.global_ctors') {
@@ -699,6 +705,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // external function stub
   substrate.addZyme('External', {
     processItem: function(item) {
+      if (item.tokens[1].text == 'noalias') {
+        item.tokens.splice(1, 1);
+      }
       return [{
         __result__: true,
         intertype: 'functionStub',

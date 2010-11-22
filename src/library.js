@@ -117,7 +117,11 @@ var Library = {
   strcpy: function(pdest, psrc) {
     var i = 0;
     do {
+#if SAFE_HEAP
+      SAFE_HEAP_STORE(pdest+i, IHEAP[psrc+i], null);
+#else
       IHEAP[pdest+i] = IHEAP[psrc+i];
+#endif
       i ++;
     } while (IHEAP[psrc+i-1] != 0);
   },
@@ -125,7 +129,11 @@ var Library = {
   strncpy: function(pdest, psrc, num) {
     var padding = false;
     for (var i = 0; i < num; i++) {
+#if SAFE_HEAP
+      SAFE_HEAP_STORE(pdest+i, padding ? 0 : IHEAP[psrc+i], null);
+#else
       IHEAP[pdest+i] = padding ? 0 : IHEAP[psrc+i];
+#endif
       padding = padding || IHEAP[psrc+i] == 0;
     }
   },

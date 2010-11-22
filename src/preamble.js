@@ -16,12 +16,46 @@ var __ATEXIT__ = [];
 #if SAFE_HEAP
 // Semi-manual memory corruption debugging
 var HEAP_WATCHED = {};
-function SAFE_HEAP_STORE(dest, value) {
+var HEAP_HISTORY = {};
+function SAFE_HEAP_CLEAR(dest) {
+  HEAP_HISTORY[dest] = [];
+}
+function SAFE_HEAP_ACCESS(dest, type, store) {
+  if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
+  // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
+  // You cannot, however, do the nonportable act of store X and load Y!
+  if (store) {
+    HEAP_HISTORY[dest] = [{ type: type, /*stack: new Error().stack */ }]; // |stack| is useful for debugging
+  } else {
+    if (!HEAP[dest] && HEAP[dest] !== 0) {
+      print('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
+    }
+    var history = HEAP_HISTORY[dest];
+    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
+    if (history[0].type && history[0].type !== type) {
+      print('Load-store consistency assumption failure! ' + dest);
+      print('\n');
+      print(history.map(function(item) {
+        return item.type + ' :: ' + JSON.stringify(item.stack);
+      }).join('\n\n'));
+      print('\n');
+      print('LOAD: ' + type + ', ' + new Error().stack);
+      print('\n');
+      assert(0, 'Load-store consistency assumption failure!');
+    }
+  }
+}
+function SAFE_HEAP_STORE(dest, value, type) {
+  SAFE_HEAP_ACCESS(dest, type, true);
   if (dest in HEAP_WATCHED) {
     print((new Error()).stack);
     throw "Bad store!" + dest;
   }
   HEAP[dest] = value;
+}
+function SAFE_HEAP_LOAD(dest, type) {
+  SAFE_HEAP_ACCESS(dest, type);
+  return HEAP[dest];
 }
 function __Z16PROTECT_HEAPADDRPv(dest) {
   HEAP_WATCHED[dest] = true;
@@ -120,7 +154,7 @@ function Pointer_make(slab, pos, allocator) {
       curr = Runtime.getFunctionIndex(curr);
     }
 #if SAFE_HEAP
-    SAFE_HEAP_STORE(ret + i, curr);
+    SAFE_HEAP_STORE(ret + i, curr, null);
 #else
 #if USE_TYPED_ARRAYS
     // TODO: Check - also in non-typedarray case - for functions, and if so add |.__index__|
@@ -303,7 +337,7 @@ function _atoi(s) {
 function _llvm_memcpy_i32(dest, src, num, idunno) {
   for (var i = 0; i < num; i++) {
 #if SAFE_HEAP
-    SAFE_HEAP_STORE(dest + i, HEAP[src + i]);
+    SAFE_HEAP_STORE(dest + i, HEAP[src + i], null);
 #else
     HEAP[dest + i] = HEAP[src + i];
 #if USE_TYPED_ARRAYS
