@@ -385,6 +385,10 @@ var Library = {
     var now = Date.now();
     IHEAP[ptr + indexes[0]] = Math.floor(now/1000); // seconds
     IHEAP[ptr + indexes[1]] = Math.floor((now-1000*Math.floor(now/1000))*1000); // microseconds
+#if SAFE_HEAP
+    SAFE_HEAP_ACCESS(ptr + indexes[0], 'i32', true);
+    SAFE_HEAP_ACCESS(ptr + indexes[1], 'i32', true);
+#endif
     return 0;
   },
 
