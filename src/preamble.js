@@ -14,8 +14,6 @@ var __THREW__ = false; // Used in checking for thrown exceptions.
 var __ATEXIT__ = [];
 
 #if SAFE_HEAP
-var MAX_WARNINGS = 10;
-var WARNINGS = 0;
 
 // Semi-manual memory corruption debugging
 var HEAP_WATCHED = {};
@@ -270,22 +268,21 @@ function __formatString() {
   var ret = [];
   var curr = -1;
   while (curr) { // Note: should be curr != 0, technically. But this helps catch bugs with undefineds
-#if USE_TYPED_ARRAYS
     curr = IHEAP[textIndex];
     next = IHEAP[textIndex+1];
-#else
-    curr = HEAP[textIndex];
-    next = HEAP[textIndex+1];
-#endif
     if (curr == '%'.charCodeAt(0) && ['d', 'u', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
       var argText = String(+arguments[argIndex]); // +: boolean=>int
       // Handle very very simply formatting, namely only %.Xf
       if (next == '.'.charCodeAt(0)) {
-#if USE_TYPED_ARRAYS
-        var limit = parseInt(String.fromCharCode(IHEAP[textIndex+2]));
-#else
-        var limit = parseInt(String.fromCharCode(HEAP[textIndex+2]));
-#endif
+        var limit = 0;
+        while(1) {
+          var limitChr = IHEAP[textIndex+2];
+          if (!(limitChr >= '0'.charCodeAt(0) && limitChr <= '9'.charCodeAt(0))) break;
+          limit *= 10;
+          limit += limitChr - '0'.charCodeAt(0);
+          textIndex++;
+        }
+        textIndex--;
         var dotIndex = argText.indexOf('.');
         if (dotIndex == -1) {
           dotIndex = argText.length;
@@ -342,21 +339,14 @@ function _atoi(s) {
 }
 
 function _llvm_memcpy_i32(dest, src, num, idunno) {
+  var curr;
   for (var i = 0; i < num; i++) {
+    curr = HEAP[src + i] || 0; // memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
 #if SAFE_HEAP
-    var curr = HEAP[src + i];
-    if (!curr && curr !== 0 && curr !== false) {
-      curr = 0; // memcpy can sometimes copy invalid areas, like copying an entire struct with some uninitialized parts
-      WARNINGS++;
-      if (WARNINGS < MAX_WARNINGS) {
-        print('WARNING: memcpy copying from ' + (src+i) + ' where there is no valid value; copying 0 instead');
-      } else if (WARNINGS == MAX_WARNINGS) {
-        print('WARNING: Not showing further warnings');
-      }
-    }
     SAFE_HEAP_STORE(dest + i, curr, null);
 #else
-    HEAP[dest + i] = HEAP[src + i];
+    HEAP[dest + i] = curr;
+#endif
 #if USE_TYPED_ARRAYS
     // TODO: optimize somehow - this is slower than without typed arrays
     IHEAP[dest + i] = IHEAP[src + i];

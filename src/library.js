@@ -11,6 +11,12 @@ var Library = {
     __print__(Pointer_stringify(__formatString.apply(null, args)));
   },
 
+  sprintf: function() {
+    var str = arguments[0];
+    var args = Array.prototype.slice.call(arguments, 1);
+    _strcpy(str, __formatString.apply(null, args)); // not terribly efficient
+  },
+
   fflush: function(file) {
     __print__(null);
   },
@@ -94,6 +100,37 @@ var Library = {
 
   getenv: function(name_) {
     return 0; // TODO
+  },
+
+  strtod: function(str, endptr) {
+    // XXX handles only whitespace + |[0-9]+(.[0.9]+)?|, no e+
+    while (_isspace(str)) str++;
+    var chr;
+    var ret = 0;
+    while(1) {
+      chr = IHEAP[str];
+      if (!_isdigit(chr)) break;
+      ret = ret*10 + chr - '0'.charCodeAt(0);
+      str++;
+    }
+    if (IHEAP[str] == '.'.charCodeAt(0)) {
+      str++;
+      var mul=1/10;
+      while(1) {
+        chr = IHEAP[str];
+        if (!_isdigit(chr)) break;
+        ret += mul*(chr - '0'.charCodeAt(0));
+        mul /= 10;
+        str++;
+      }
+    }
+    if (endptr) {
+      IHEAP[endptr] = str;
+#if SAFE_HEAP
+      SAFE_HEAP_ACCESS(endptr, null, true);
+#endif
+    }
+    return ret;
   },
 
   // string.h
