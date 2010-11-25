@@ -14,6 +14,9 @@ var __THREW__ = false; // Used in checking for thrown exceptions.
 var __ATEXIT__ = [];
 
 #if SAFE_HEAP
+var MAX_WARNINGS = 10;
+var WARNINGS = 0;
+
 // Semi-manual memory corruption debugging
 var HEAP_WATCHED = {};
 var HEAP_HISTORY = {};
@@ -47,6 +50,9 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
   }
 }
 function SAFE_HEAP_STORE(dest, value, type) {
+  if (!value && value !== 0 && value !== false) { // false can be the result of a mathop comparator
+    throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
+  }
   SAFE_HEAP_ACCESS(dest, type, true);
   if (dest in HEAP_WATCHED) {
     print((new Error()).stack);
@@ -338,7 +344,17 @@ function _atoi(s) {
 function _llvm_memcpy_i32(dest, src, num, idunno) {
   for (var i = 0; i < num; i++) {
 #if SAFE_HEAP
-    SAFE_HEAP_STORE(dest + i, HEAP[src + i], null);
+    var curr = HEAP[src + i];
+    if (!curr && curr !== 0 && curr !== false) {
+      curr = 0; // memcpy can sometimes copy invalid areas, like copying an entire struct with some uninitialized parts
+      WARNINGS++;
+      if (WARNINGS < MAX_WARNINGS) {
+        print('WARNING: memcpy copying from ' + (src+i) + ' where there is no valid value; copying 0 instead');
+      } else if (WARNINGS == MAX_WARNINGS) {
+        print('WARNING: Not showing further warnings');
+      }
+    }
+    SAFE_HEAP_STORE(dest + i, curr, null);
 #else
     HEAP[dest + i] = HEAP[src + i];
 #if USE_TYPED_ARRAYS

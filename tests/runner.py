@@ -739,6 +739,9 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*5*', output_processor=check_warnings)
 
     def test_sizeof(self):
+        # Has invalid writes between printouts
+        global SAFE_HEAP; SAFE_HEAP = 0
+
         src = '''
           #include <stdio.h>
           #include <string.h>
