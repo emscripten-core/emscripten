@@ -109,51 +109,20 @@ function Pointer_make(slab, pos, allocator) {
   pos = pos ? pos : 0;
   assert(pos === 0); // TODO: remove 'pos'
   if (slab === HEAP) return pos;
-  var size = 0;
+  var size = slab.length;
 
-  // The slab may contain arrays, which we basically need to 'flatten' out
-  // into one long slab. We do that by traversing it, and not by creating
-  // a new slab, to save time and memory
-  var stack = [[slab, 0]], top, curr;
-  while(1) {
-    top = stack[stack.length-1];
-    if (top[1] >= top[0].length) {
-      stack.pop();
-      if (stack.length === 0) break;
-      top = stack[stack.length-1];
-      top[1]++;
-      continue;
-    }
-    var curr = top[0][top[1]];
-    if (curr === undefined)
+  var i;
+  for (i = 0; i < size; i++) {
+    if (slab[i] === undefined) {
       throw 'Invalid element in slab'; // This can be caught, and you can try again to allocate later, see globalFuncs in run()
-    if (curr.length) {
-      stack.push([curr,0]);
-      continue;
     }
-    size++;
-    top[1]++;
   }
 
   // Finalize
   var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
 
-  stack = [[slab, 0]];
-  var i = 0;
-  while(1) {
-    top = stack[stack.length-1];
-    if (top[1] >= top[0].length) {
-      stack.pop();
-      if (stack.length === 0) break;
-      top = stack[stack.length-1];
-      top[1]++;
-      continue;
-    }
-    var curr = top[0][top[1]];
-    if (curr.length) {
-      stack.push([curr,0]);
-      continue;
-    }
+  for (i = 0; i < size; i++) {
+    var curr = slab[i];
 
     if (typeof curr === 'function') {
       curr = Runtime.getFunctionIndex(curr);
@@ -173,9 +142,6 @@ function Pointer_make(slab, pos, allocator) {
     HEAP[ret + i] = curr;
 #endif
 #endif
-
-    top[1]++;
-    i++;
   }
 
   return ret;
