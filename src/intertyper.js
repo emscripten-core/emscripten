@@ -2,6 +2,12 @@
 
 var LLVM_STYLE = null;
 
+var LLVM = {
+  LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
+                'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
+                'weak_odr', 'externally_visible', 'dllimport', 'dllexport'),
+};
+
 //! @param parseFunctions We parse functions only on later passes, since we do not
 //!                       want to parse all of them at once, and have all their
 //!                       lines and data in memory at the same time.
@@ -333,7 +339,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        while (item.tokens[2].text in set('private', 'constant', 'appending', 'global', 'weak_odr', 'internal', 'linkonce', 'linkonce_odr', 'weak', 'hidden'))
+        while (item.tokens[2].text in LLVM.LINKAGES || item.tokens[2].text in set('constant', 'global', 'hidden'))
           item.tokens.splice(2, 1);
         var external = false;
         if (item.tokens[2].text === 'external') {
@@ -377,7 +383,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   funcHeader = substrate.addZyme('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
-        return ['noalias', 'available_externally', 'weak', 'internal', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'linkonce_odr', 'inlinehint', '{', 'fastcc'].indexOf(token.text) == -1;
+        return !(token.text in LLVM.LINKAGES || token.text in set('noalias', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'inlinehint', '{', 'fastcc'));
       });
       var ret = [{
         __result__: true,
