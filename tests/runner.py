@@ -1060,7 +1060,7 @@ if 'benchmark' not in sys.argv:
 
     def test_lua(self):
       self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
-                      'hello lua world!\n17\n*',
+                      'hello lua world!\n\n\n17',
                       args=['-e', '''print("hello lua world!");print(17)'''],
                       f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']),
                       js_engines=[SPIDERMONKEY_ENGINE])
