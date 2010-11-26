@@ -108,6 +108,15 @@ function analyzer(data, givenTypes) {
         fields: range(num).map(function() { return subType }),
         lineNum: '?',
       };
+      // Also add a |[0 x type]| type
+      var zerod = '[0 x ' + subType + ']';
+      if (!data.types[zerod]) {
+        data.types[zerod] = {
+          name_: zerod,
+          fields: [subType],
+          lineNum: '?',
+        };
+      }
       return;
     }
 
