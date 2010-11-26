@@ -138,7 +138,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       } else {
         ret.push(currValue);
         // pad to align, unless it's a structure and already aligned
-        if (currValue[0] != '[') {
+        if (typeof currValue !== 'object') {
           ret = ret.concat(zeros(getNativeFieldSize(currField)-1));
         }
         i += 1;
@@ -148,28 +148,28 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   }
 
   // Gets an entire constant expression
-  function parseConst(value, type) {
+  function makeConst(value, type, ident) {
     //dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (value.intertype) {
-      return makePointer(finalizeLLVMFunctionCall(value), null, 'ALLOC_STATIC', type);
+      return finalizeLLVMFunctionCall(value);
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return makePointer(indexizeFunctions(parseNumerical(toNiceIdent(value.text))), null, 'ALLOC_STATIC', type);
+      return indexizeFunctions(parseNumerical(toNiceIdent(value.text)));
     } else if (value.text == 'zeroinitializer') {
-      return makePointer(JSON.stringify(makeEmptyStruct(type)), null, 'ALLOC_STATIC', type);
+      return makeEmptyStruct(type);
     } else if (value.text && value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
-      return makePointer(JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/', null, 'ALLOC_STATIC', type);
+      return JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/';
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
         //dprint('gconst', '// segggS: ' + JSON.stringify(tokens) + '\n' + '\n')
         // Handle a single segment (after comma separation)
         function handleSegment(segment) {
-          //dprint('gconst', '// seggg: ' + JSON.stringify(segment) + '\n' + '\n')
+          //dprint('// seggg: ' + JSON.stringify(segment) + '\n' + '\n')
           if (segment[1].text == 'null') {
             return '0';
           } else if (segment[1].text == 'zeroinitializer') {
-            return JSON.stringify(makeEmptyStruct(segment[0].text));
+            return makeEmptyStruct(segment[0].text);
           } else if (segment[1].text in searchable('bitcast', 'inttoptr', 'ptrtoint')) { // TODO: Use parse/finalizeLLVMFunctionCall
             var type = segment[2].item.tokens.slice(-1)[0].text; // TODO: Use this?
             return handleSegment(segment[2].item.tokens.slice(0, -2));
@@ -181,35 +181,53 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
           } else if (segment[1].type == '{') {
             // struct
             var type = segment[0].text;
-            return '[' + alignStruct(handleSegments(segment[1].tokens), type).join(', ') + ']';
+            return alignStruct(handleSegments(segment[1].tokens), type);
           } else if (segment[1].type == '[') {
             var type = segment[0].text;
-            return '[' + alignStruct(handleSegments(segment[1].item.tokens), type).join(', ') + ']';
+            return alignStruct(handleSegments(segment[1].item.tokens), type);
           } else if (segment.length == 2) {
-            return parseNumerical(toNiceIdent(segment[1].text));
+            return toNiceIdent(segment[1].text);
           } else if (segment[1].text === 'c') {
             // string
             var text = segment[2].text;
             text = text.substr(1, text.length-2);
-            return JSON.stringify(parseLLVMString(text)) + ' /* ' + text + '*/';
+            return parseLLVMString(text); // + ' /* ' + text + '*/';
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
         };
-        return splitTokenList(tokens).map(handleSegment).map(indexizeFunctions).map(parseNumerical);
+        return splitTokenList(tokens).map(handleSegment).map(indexizeFunctions);
       }
+      var contents;
       if (value.item) {
         // list of items
-        return makePointer('[ ' + alignStruct(handleSegments(value.item.tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
+        contents = value.item.tokens;
       } else if (value.type == '{') {
         // struct
-        return makePointer('[ ' + alignStruct(handleSegments(value.tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
+        contents = value.tokens;
       } else if (value[0]) {
-        return makePointer('[ ' + alignStruct(handleSegments(value[0].tokens), type).join(', ') + ' ]', null, 'ALLOC_STATIC', type);
+        contents = value[0];
       } else {
         throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
       }
+      return alignStruct(handleSegments(contents), type);
     }
+  }
+
+  function parseConst(value, type, ident) {
+    var constant = makeConst(value, type);
+    if (typeof constant === 'object') {
+      function flatten(x) {
+        if (typeof x !== 'object') return x;
+        var ret = [];
+        for (var i = 0; i < x.length; i++) {
+          ret = ret.concat(flatten(x[i]));
+        }
+        return ret;
+      }
+      constant = '[' + flatten(constant).map(function(x) { return parseNumerical(x) }).join(', ') + ']';
+    }
+    return makePointer(constant, null, 'ALLOC_STATIC', type);
   }
 
   // globalVariable
@@ -229,7 +247,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
             item.external ?
               makePointer(JSON.stringify(makeEmptyStruct(item.type)), null, 'ALLOC_STATIC', item.type) + ' /* external value? */'
               :
-              parseConst(item.value, item.type) 
+              parseConst(item.value, item.type, item.ident) 
             ) + ' });',
           __result__: true,
         }];

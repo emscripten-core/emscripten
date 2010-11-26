@@ -380,7 +380,7 @@ function IEEEUnHex(stringy) {
 }
 
 function parseNumerical(value, type) {
-  if ((!type || type == 'double' || type == 'float') && value.substr(0,2) == '0x') {
+  if ((!type || type == 'double' || type == 'float') && (value.substr && value.substr(0,2) == '0x')) {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     value = IEEEUnHex(value);

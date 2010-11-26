@@ -8,19 +8,23 @@ function run(args) {
 
 {{GLOBAL_VARS}}
 
-  var counter = Math.pow(globalFuncs.length,2)+1;
-  while (globalFuncs.length > 0 && counter >= 0) {
-    counter--;
+  var failures = 0;
+  while (globalFuncs.length > 0) {
     var func = globalFuncs.pop();
     try {
       var x = func();
       if (x == undefined) throw 'undefined';
+      failures = 0;
     } catch (e) {
+      failures++;
+      if (failures > 2*globalFuncs.length) {
+        throw 'Failed to generate global values';
+      }
       globalFuncs.unshift(func);
       // We will try again later. The global vars we depend on should be resolved by then
     }
   }
-  assert(counter > 0);
+  assert(globalFuncs.length === 0);
 
   var argc = args.length+1;
   function pad() {
