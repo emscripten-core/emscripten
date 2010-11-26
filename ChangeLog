@@ -1,3 +1,13 @@
+2010-11-25: Version 0.6
+
+  * Web demos: Lua and Bullet/WebGL
+  * SAFE_HEAP checks for invalid reads/writes, nonportable .ll
+  * Basic C++ exceptions support (|catch(...)|)
+  * Optimize compilation of very large projects (memory and speed)
+  * Support for frontend-optimized .ll input, plus tests
+  * Integration (combining scripts with compiled C++) tools and tests
+  * Many bug fixes, additional tests and library implementations
+
 2010-11-02: Version 0.5
 
   * Much faster compilation, in particular of large projects
