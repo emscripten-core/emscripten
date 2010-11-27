@@ -72,6 +72,8 @@ var Library = {
 
   // stdlib.h
 
+  abs: 'Math.abs',
+
   atexit: function(func) {
     __ATEXIT__.push(func);
   },
