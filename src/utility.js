@@ -8,19 +8,8 @@ function safeQuote(x) {
 function dump(item) {
   var CHUNK = 500;
   function lineify(text) {
-    var ret = '';
-    while (text.length > 0) {
-      if (text.length < CHUNK) {
-        ret += text;
-        return ret;
-      }
-      var subText = text.substring(CHUNK-20, CHUNK);
-      var index = CHUNK-19+Math.max(subText.indexOf(','), subText.indexOf(']'), subText.indexOf('}'), 21);
-      ret += text.substr(0,index) + '\n';
-      text = '// ' + text.substr(index);
-    }
+    return text.replace(/.{80}/g, '$&\n');
   }
-
   try {
     return lineify(JSON.stringify(item));
   } catch(e) {
