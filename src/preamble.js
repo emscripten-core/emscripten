@@ -178,26 +178,27 @@ var STATICTOP;
 // Mangled |new| and |free| (various manglings, for int, long params; new and new[], etc.
 var _malloc, _free, __Znwj, __Znaj, __Znam, __Znwm, __ZdlPv, __ZdaPv;
 
+var HAS_TYPED_ARRAYS = false;
+var TOTAL_MEMORY = 50*1024*1024;
+
 function __initializeRuntime__() {
   // If we don't have malloc/free implemented, use a simple implementation.
   Module['_malloc'] = _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
   Module['_free']   = _free = __ZdlPv = __ZdaPv =                   Module['_free']   ? Module['_free']   : function() { };
 
+  // TODO: Remove one of the 3 heaps!
   HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                        // Also this ensures we leave 0 as an invalid address, 'NULL'
 #if USE_TYPED_ARRAYS
-  if (!this['TOTAL_MEMORY']) TOTAL_MEMORY = 50*1024*1024;
-  if (this['Int32Array']) { // check for engine support
+  HAS_TYPED_ARRAYS = this['Int32Array'] && this['Float64Array']; // check for engine support
+  if (HAS_TYPED_ARRAYS) {
     IHEAP = new Int32Array(TOTAL_MEMORY);
     for (var i = 0; i < HEAP.length; i++) {
       IHEAP[i] = HEAP[i];
     }
-  } else {
-    IHEAP = HEAP; // fallback
-  }
-  if (this['Float64Array']) { // check for engine support
     FHEAP = new Float64Array(TOTAL_MEMORY);
   } else {
+    IHEAP = HEAP; // fallback
     FHEAP = HEAP; // fallback
   }
 #else

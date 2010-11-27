@@ -120,7 +120,7 @@ if 'benchmark' not in sys.argv:
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     # No building - just process an existing .ll file
-    def do_ll_test(self, ll_file, output, args=[], f_opt_ll_file=None, js_engines=[V8_ENGINE]):
+    def do_ll_test(self, ll_file, output, args=[], f_opt_ll_file=None, js_engines=None):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
       if F_OPTS:
         return # TODO: enable the lines below
@@ -1083,10 +1083,9 @@ if 'benchmark' not in sys.argv:
 
     def test_lua(self):
       self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
-                      'hello lua world!\n\n\n17',
-                      args=['-e', '''print("hello lua world!");print(17)'''],
-                      f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']),
-                      js_engines=[SPIDERMONKEY_ENGINE])
+                      'hello lua world!\n\n\n17.00000000000\n\n\n1.00000000000\n\n\n2.00000000000\n\n\n3.00000000000\n\n\n4.00000000000',
+                      args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end'''],
+                      f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']))
 
     ### Test cases in separate files
 
