@@ -9,7 +9,11 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
   // Now that analysis has completed, we can get around to handling unparsedFunctions
   (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
-    FUNCTIONS[func.ident] = func;
+    // XXX Save just what we need, to save memory - whether there are varargs, and the # of parameters
+    FUNCTIONS[func.ident] = {
+      hasVarArgs: func.hasVarArgs,
+      numParams: func.params.length,
+   };
   });
 
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
@@ -920,7 +924,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       } else {
         val = toNiceIdent(param.ident);
       }
-      if (!func || !func.hasVarArgs || i < func.params.length-1) { // unrecognized functions (like library ones) cannot have varargs
+      if (!func || !func.hasVarArgs || i < func.numParams-1) { // unrecognized functions (like library ones) cannot have varargs
         args.push(val);
       } else {
         varargs.push(val);
