@@ -152,51 +152,20 @@ var Module = {};
     pos = pos ? pos : 0;
     assert(pos === 0); // TODO: remove 'pos'
     if (slab === HEAP) return pos;
-    var size = 0;
+    var size = slab.length;
   
-    // The slab may contain arrays, which we basically need to 'flatten' out
-    // into one long slab. We do that by traversing it, and not by creating
-    // a new slab, to save time and memory
-    var stack = [[slab, 0]], top, curr;
-    while(1) {
-      top = stack[stack.length-1];
-      if (top[1] >= top[0].length) {
-        stack.pop();
-        if (stack.length === 0) break;
-        top = stack[stack.length-1];
-        top[1]++;
-        continue;
-      }
-      var curr = top[0][top[1]];
-      if (curr === undefined)
+    var i;
+    for (i = 0; i < size; i++) {
+      if (slab[i] === undefined) {
         throw 'Invalid element in slab'; // This can be caught, and you can try again to allocate later, see globalFuncs in run()
-      if (curr.length) {
-        stack.push([curr,0]);
-        continue;
       }
-      size++;
-      top[1]++;
     }
   
     // Finalize
     var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
   
-    stack = [[slab, 0]];
-    var i = 0;
-    while(1) {
-      top = stack[stack.length-1];
-      if (top[1] >= top[0].length) {
-        stack.pop();
-        if (stack.length === 0) break;
-        top = stack[stack.length-1];
-        top[1]++;
-        continue;
-      }
-      var curr = top[0][top[1]];
-      if (curr.length) {
-        stack.push([curr,0]);
-        continue;
-      }
+    for (i = 0; i < size; i++) {
+      var curr = slab[i];
   
       if (typeof curr === 'function') {
         curr = Runtime.getFunctionIndex(curr);
@@ -208,9 +177,6 @@ var Module = {};
       } else {
         HEAP[ret + i] = curr;
       }
-  
-      top[1]++;
-      i++;
     }
   
     return ret;
@@ -294,15 +260,37 @@ var Module = {};
   
   // C-style: we work on ints on the HEAP.
   function __formatString() {
+    var cStyle = false;
     var textIndex = arguments[0];
     var argIndex = 1;
+    if (textIndex < 0) {
+      cStyle = true;
+      textIndex = -textIndex;
+      slab = null;
+      argIndex = arguments[1];
+    } else {
+      var _arguments = arguments;
+    }
+    function getNextArg(type) {
+      var ret;
+      if (!cStyle) {
+        ret = _arguments[argIndex];
+        argIndex++;
+      } else {
+        ret = (type === 'f' ? FHEAP : IHEAP)[argIndex];
+        argIndex += type === 'l'.charCodeAt(0) ? 8 : 4; // XXX hardcoded native sizes
+      }
+      return ret;
+    }
+  
     var ret = [];
-    var curr = -1;
+    var curr = -1, next, currArg;
     while (curr) { // Note: should be curr != 0, technically. But this helps catch bugs with undefineds
       curr = IHEAP[textIndex];
       next = IHEAP[textIndex+1];
       if (curr == '%'.charCodeAt(0) && ['d', 'u', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
-        var argText = String(+arguments[argIndex]); // +: boolean=>int
+        var currArg;
+        var argText;
         // Handle very very simply formatting, namely only %.Xf
         if (next == '.'.charCodeAt(0)) {
           var limit = 0;
@@ -314,6 +302,9 @@ var Module = {};
             textIndex++;
           }
           textIndex--;
+          next = IHEAP[textIndex+1];
+          currArg = getNextArg(next);
+          argText = String(+currArg); // +: boolean=>int
           var dotIndex = argText.indexOf('.');
           if (dotIndex == -1) {
             dotIndex = argText.length;
@@ -323,20 +314,21 @@ var Module = {};
           argText = argText.substr(0, dotIndex+1+limit);
           textIndex += 2;
         } else if (next == 'u'.charCodeAt(0)) {
-          argText = String(unSign(arguments[argIndex], 32));
+          currArg = getNextArg(next);
+          argText = String(unSign(currArg, 32));
+        } else {
+          currArg = getNextArg(next);
+          argText = String(+currArg); // +: boolean=>int
         }
         argText.split('').forEach(function(chr) {
           ret.push(chr.charCodeAt(0));
         });
-        argIndex += 1;
         textIndex += 2;
       } else if (curr == '%'.charCodeAt(0) && next == 's'.charCodeAt(0)) {
-        ret = ret.concat(String_copy(arguments[argIndex]));
-        argIndex += 1;
+        ret = ret.concat(String_copy(getNextArg(next)));
         textIndex += 2;
       } else if (curr == '%'.charCodeAt(0) && next == 'c'.charCodeAt(0)) {
-        ret = ret.concat(arguments[argIndex]);
-        argIndex += 1;
+        ret = ret.concat(getNextArg(next));
         textIndex += 2;
       } else {
         ret.push(curr);
@@ -1246,7 +1238,7 @@ var Module = {};
   
   _fputs = function (p, stream) {
       var str = Pointer_stringify(p); if (str == '\n') return; // XXX manually added for demo, suppress unneeded newlines
-      __print__(str + '\n');
+      __print__(Pointer_stringify(p) + '\n');
     }
   _fflush = function (file) {
       __print__(null);
@@ -1287,7 +1279,7 @@ var Module = {};
   // stub for _llvm_va_end
   // stub for _floor
   // stub for _llvm_pow_f64
-  // stub for _abs
+  _abs = Math.abs
   _strchr = function (ptr, chr) {
       ptr--;
       do {
@@ -2406,7 +2398,7 @@ var Module = {};
             var $34 = $1;
             var $35 = $1;
             var $36 = __Z13lua_tolstringP9lua_StateiPj($35, -1, 0);
-            var $37 = __Z15lua_pushfstringP9lua_StatePKcz($34, __str4, $36);
+            var $37 = __Z15lua_pushfstringP9lua_StatePKcz($34, __str4, Pointer_make([$36,0,0,0], 0, ALLOC_STACK));
             __Z9l_messagePKcS0_($33, $37);
             ;
           }
@@ -2729,7 +2721,7 @@ var Module = {};
           var $48 = $2;
           var $49 = $b;
           var $50 = $49+1;
-          var $51 = __Z15lua_pushfstringP9lua_StatePKcz($48, __str11, $50);
+          var $51 = __Z15lua_pushfstringP9lua_StatePKcz($48, __str11, Pointer_make([$50,0,0,0], 0, ALLOC_STACK));
           __label__ = 6; /* $55 */ break $41$52$9;
         }
         else {
@@ -5289,7 +5281,7 @@ var Module = {};
       ;
     }
     var $17 = $argp;
-    IHEAP[$17] = Pointer_make([Array.prototype.slice.call(arguments, __numArgs__).length].concat(Array.prototype.slice.call(arguments, __numArgs__)), 0);
+    IHEAP[$17] = arguments[__numArgs__];
     var $18 = $1;
     var $19 = $2;
     var $20 = IHEAP[$argp];
@@ -13728,7 +13720,7 @@ var Module = {};
       var $37 = $kind;
       var $38 = IHEAP[$name];
       var $39 = $t;
-      __Z13luaG_runerrorP9lua_StatePKcz($35, __str835, $36, $37, $38, $39);
+      __Z13luaG_runerrorP9lua_StatePKcz($35, __str835, Pointer_make([$36,0,0,0,$37,0,0,0,$38,0,0,0,$39,0,0,0], 0, ALLOC_STACK));
       ;
     }
     else {
@@ -13736,7 +13728,7 @@ var Module = {};
       var $41 = $1;
       var $42 = $3;
       var $43 = $t;
-      __Z13luaG_runerrorP9lua_StatePKcz($41, __str1936, $42, $43);
+      __Z13luaG_runerrorP9lua_StatePKcz($41, __str1936, Pointer_make([$42,0,0,0,$43,0,0,0], 0, ALLOC_STACK));
       ;
     }
     STACKTOP = __stackBase__;
@@ -14040,7 +14032,7 @@ var Module = {};
     $1 = $L;
     $2 = $fmt;
     var $3 = $argp;
-    IHEAP[$3] = Pointer_make([Array.prototype.slice.call(arguments, __numArgs__).length].concat(Array.prototype.slice.call(arguments, __numArgs__)), 0);
+    IHEAP[$3] = arguments[__numArgs__];
     var $4 = $1;
     var $5 = $1;
     var $6 = $2;
@@ -14164,7 +14156,7 @@ var Module = {};
       ;
       var $24 = $1;
       var $25 = $t1;
-      __Z13luaG_runerrorP9lua_StatePKcz($24, __str412, $25);
+      __Z13luaG_runerrorP9lua_StatePKcz($24, __str412, Pointer_make([$25,0,0,0], 0, ALLOC_STACK));
       ;
     }
     else {
@@ -14172,7 +14164,7 @@ var Module = {};
       var $27 = $1;
       var $28 = $t1;
       var $29 = $t2;
-      __Z13luaG_runerrorP9lua_StatePKcz($27, __str537, $28, $29);
+      __Z13luaG_runerrorP9lua_StatePKcz($27, __str537, Pointer_make([$28,0,0,0,$29,0,0,0], 0, ALLOC_STACK));
       ;
     }
     ;
@@ -14359,7 +14351,7 @@ var Module = {};
         var $38 = $buff;
         var $39 = $line;
         var $40 = $2;
-        var $41 = __Z16luaO_pushfstringP9lua_StatePKcz($37, __str638, $38, $39, $40);
+        var $41 = __Z16luaO_pushfstringP9lua_StatePKcz($37, __str638, Pointer_make([$38,0,0,0,$39,0,0,0,$40,0,0,0], 0, ALLOC_STACK));
         ;
       }
     } while(0);
@@ -23222,7 +23214,7 @@ var Module = {};
         var $12 = $11+40;
         var $13 = IHEAP[$12];
         var $14 = $3;
-        var $15 = __Z16luaO_pushfstringP9lua_StatePKcz($13, __str31, $14);
+        var $15 = __Z16luaO_pushfstringP9lua_StatePKcz($13, __str31, Pointer_make([$14,0,0,0], 0, ALLOC_STACK));
         __lastLabel__ = 0; ;
       }
       else {
@@ -23231,7 +23223,7 @@ var Module = {};
         var $18 = $17+40;
         var $19 = IHEAP[$18];
         var $20 = $3;
-        var $21 = __Z16luaO_pushfstringP9lua_StatePKcz($19, __str32, $20);
+        var $21 = __Z16luaO_pushfstringP9lua_StatePKcz($19, __str32, Pointer_make([$20,0,0,0], 0, ALLOC_STACK));
         __lastLabel__ = 2; ;
       }
       var $23 = __lastLabel__ == 0 ? $15 : ($21);
@@ -23279,7 +23271,7 @@ var Module = {};
     var $15 = $14+4;
     var $16 = IHEAP[$15];
     var $17 = $2;
-    var $18 = __Z16luaO_pushfstringP9lua_StatePKcz($12, __str33, $13, $16, $17);
+    var $18 = __Z16luaO_pushfstringP9lua_StatePKcz($12, __str33, Pointer_make([$13,0,0,0,$16,0,0,0,$17,0,0,0], 0, ALLOC_STACK));
     $2 = $18;
     var $19 = $3;
     var $20 = $19 != 0;
@@ -23293,7 +23285,7 @@ var Module = {};
       var $26 = $1;
       var $27 = $3;
       var $28 = __Z8txtTokenP8LexStatei($26, $27);
-      var $29 = __Z16luaO_pushfstringP9lua_StatePKcz($24, __str34, $25, $28);
+      var $29 = __Z16luaO_pushfstringP9lua_StatePKcz($24, __str34, Pointer_make([$25,0,0,0,$28,0,0,0], 0, ALLOC_STACK));
       ;
     }
     var $31 = $1;
@@ -27022,7 +27014,7 @@ var Module = {};
     $1 = $L;
     $2 = $fmt;
     var $3 = $argp;
-    IHEAP[$3] = Pointer_make([Array.prototype.slice.call(arguments, __numArgs__).length].concat(Array.prototype.slice.call(arguments, __numArgs__)), 0);
+    IHEAP[$3] = arguments[__numArgs__];
     var $4 = $1;
     var $5 = $2;
     var $6 = IHEAP[$argp];
@@ -28206,7 +28198,7 @@ var Module = {};
         var $27 = $3;
         var $28 = __Z14luaX_token2strP8LexStatei($26, $27);
         var $29 = $4;
-        var $30 = __Z16luaO_pushfstringP9lua_StatePKcz($22, __str25154, $25, $28, $29);
+        var $30 = __Z16luaO_pushfstringP9lua_StatePKcz($22, __str25154, Pointer_make([$25,0,0,0,$28,0,0,0,$29,0,0,0], 0, ALLOC_STACK));
         __Z16luaX_syntaxerrorP8LexStatePKc($19, $30);
         ;
       }
@@ -29202,7 +29194,7 @@ var Module = {};
       var $13 = IHEAP[$12];
       var $14 = $2;
       var $15 = $3;
-      var $16 = __Z16luaO_pushfstringP9lua_StatePKcz($13, __str10139, $14, $15);
+      var $16 = __Z16luaO_pushfstringP9lua_StatePKcz($13, __str10139, Pointer_make([$14,0,0,0,$15,0,0,0], 0, ALLOC_STACK));
       __lastLabel__ = 0; ;
     }
     else {
@@ -29217,7 +29209,7 @@ var Module = {};
       var $25 = IHEAP[$24];
       var $26 = $2;
       var $27 = $3;
-      var $28 = __Z16luaO_pushfstringP9lua_StatePKcz($20, __str11140, $25, $26, $27);
+      var $28 = __Z16luaO_pushfstringP9lua_StatePKcz($20, __str11140, Pointer_make([$25,0,0,0,$26,0,0,0,$27,0,0,0], 0, ALLOC_STACK));
       __lastLabel__ = 2; ;
     }
     var $30 = __lastLabel__ == 0 ? $16 : ($28);
@@ -32292,7 +32284,7 @@ var Module = {};
     var $7 = $1;
     var $8 = $2;
     var $9 = __Z14luaX_token2strP8LexStatei($7, $8);
-    var $10 = __Z16luaO_pushfstringP9lua_StatePKcz($6, __str26155, $9);
+    var $10 = __Z16luaO_pushfstringP9lua_StatePKcz($6, __str26155, Pointer_make([$9,0,0,0], 0, ALLOC_STACK));
     __Z16luaX_syntaxerrorP8LexStatePKc($3, $10);
     ;
     return;
@@ -36615,7 +36607,7 @@ var Module = {};
     var $7 = $6+12;
     var $8 = IHEAP[$7];
     var $9 = $2;
-    var $10 = __Z16luaO_pushfstringP9lua_StatePKcz($5, __str8216, $8, $9);
+    var $10 = __Z16luaO_pushfstringP9lua_StatePKcz($5, __str8216, Pointer_make([$8,0,0,0,$9,0,0,0], 0, ALLOC_STACK));
     var $11 = $1;
     var $12 = $11;
     var $13 = IHEAP[$12];
@@ -43379,7 +43371,7 @@ var Module = {};
             var $27 = $ar+4;
             var $28 = IHEAP[$27];
             var $29 = $4;
-            var $30 = __Z10luaL_errorP9lua_StatePKcz($26, __str3245, $28, $29);
+            var $30 = __Z10luaL_errorP9lua_StatePKcz($26, __str3245, Pointer_make([$28,0,0,0,$29,0,0,0], 0, ALLOC_STACK));
             $1 = $30;
             __label__ = 1; /* $45 */ break $13$8$2;
           }
@@ -43403,7 +43395,7 @@ var Module = {};
         var $41 = $ar+4;
         var $42 = IHEAP[$41];
         var $43 = $4;
-        var $44 = __Z10luaL_errorP9lua_StatePKcz($39, __str5247, $40, $42, $43);
+        var $44 = __Z10luaL_errorP9lua_StatePKcz($39, __str5247, Pointer_make([$40,0,0,0,$42,0,0,0,$43,0,0,0], 0, ALLOC_STACK));
         $1 = $44;
         ;
       }
@@ -43412,7 +43404,7 @@ var Module = {};
         var $9 = $2;
         var $10 = $3;
         var $11 = $4;
-        var $12 = __Z10luaL_errorP9lua_StatePKcz($9, __str242, $10, $11);
+        var $12 = __Z10luaL_errorP9lua_StatePKcz($9, __str242, Pointer_make([$10,0,0,0,$11,0,0,0], 0, ALLOC_STACK));
         $1 = $12;
         ;
       }
@@ -43434,7 +43426,7 @@ var Module = {};
     $1 = $L;
     $2 = $fmt;
     var $3 = $argp;
-    IHEAP[$3] = Pointer_make([Array.prototype.slice.call(arguments, __numArgs__).length].concat(Array.prototype.slice.call(arguments, __numArgs__)), 0);
+    IHEAP[$3] = arguments[__numArgs__];
     var $4 = $1;
     __Z10luaL_whereP9lua_Statei($4, 1);
     var $5 = $1;
@@ -43470,7 +43462,7 @@ var Module = {};
     var $8 = $2;
     var $9 = __Z8lua_typeP9lua_Statei($7, $8);
     var $10 = __Z12lua_typenameP9lua_Statei($6, $9);
-    var $11 = __Z15lua_pushfstringP9lua_StatePKcz($4, __str6248, $5, $10);
+    var $11 = __Z15lua_pushfstringP9lua_StatePKcz($4, __str6248, Pointer_make([$5,0,0,0,$10,0,0,0], 0, ALLOC_STACK));
     $msg = $11;
     var $12 = $1;
     var $13 = $2;
@@ -43511,7 +43503,7 @@ var Module = {};
           var $16 = $15;
           var $17 = $ar+20;
           var $18 = IHEAP[$17];
-          var $19 = __Z15lua_pushfstringP9lua_StatePKcz($14, __str8250, $16, $18);
+          var $19 = __Z15lua_pushfstringP9lua_StatePKcz($14, __str8250, Pointer_make([$16,0,0,0,$18,0,0,0], 0, ALLOC_STACK));
           __label__ = 0; /* $23 */ break $7$21$2;
         }
         else {
@@ -43597,7 +43589,7 @@ var Module = {};
       var $41 = $3;
       var $42 = $2;
       var $43 = $name;
-      var $44 = __Z15lua_pushfstringP9lua_StatePKcz($42, __str10252, $43);
+      var $44 = __Z15lua_pushfstringP9lua_StatePKcz($42, __str10252, Pointer_make([$43,0,0,0], 0, ALLOC_STACK));
       var $45 = __Z13luaL_argerrorP9lua_StateiPKc($40, $41, $44);
       $1 = $45;
       ;
@@ -43837,7 +43829,7 @@ var Module = {};
       ;
       var $9 = $1;
       var $10 = $3;
-      var $11 = __Z10luaL_errorP9lua_StatePKcz($9, __str11253, $10);
+      var $11 = __Z10luaL_errorP9lua_StatePKcz($9, __str11253, Pointer_make([$10,0,0,0], 0, ALLOC_STACK));
       ;
     }
     ;
@@ -44242,7 +44234,7 @@ var Module = {};
           ;
           var $25 = $1;
           var $26 = $2;
-          var $27 = __Z10luaL_errorP9lua_StatePKcz($25, __str14256, $26);
+          var $27 = __Z10luaL_errorP9lua_StatePKcz($25, __str14256, Pointer_make([$26,0,0,0], 0, ALLOC_STACK));
           ;
         }
         var $29 = $1;
@@ -45067,7 +45059,7 @@ var Module = {};
         ;
         var $15 = $2;
         var $16 = $3;
-        var $17 = __Z15lua_pushfstringP9lua_StatePKcz($15, __str16258, $16);
+        var $17 = __Z15lua_pushfstringP9lua_StatePKcz($15, __str16258, Pointer_make([$16,0,0,0], 0, ALLOC_STACK));
         var $18 = $3;
         var $19 = _fopen($18, __str17259);
         var $20 = $lf+4;
@@ -45277,7 +45269,7 @@ var Module = {};
     var $12 = $2;
     var $13 = $filename;
     var $14 = $serr;
-    var $15 = __Z15lua_pushfstringP9lua_StatePKcz($11, __str25267, $12, $13, $14);
+    var $15 = __Z15lua_pushfstringP9lua_StatePKcz($11, __str25267, Pointer_make([$12,0,0,0,$13,0,0,0,$14,0,0,0], 0, ALLOC_STACK));
     var $16 = $1;
     var $17 = $3;
     __Z10lua_removeP9lua_Statei($16, $17);
@@ -45560,7 +45552,7 @@ var Module = {};
       var $8 = $2;
       var $9 = $2;
       var $10 = __Z15luaL_optlstringP9lua_StateiPKcPj($9, 2, __str78, 0);
-      var $11 = __Z10luaL_errorP9lua_StatePKcz($8, __str77317, $10);
+      var $11 = __Z10luaL_errorP9lua_StatePKcz($8, __str77317, Pointer_make([$10,0,0,0], 0, ALLOC_STACK));
       $1 = $11;
       ;
     }
@@ -46447,7 +46439,7 @@ var Module = {};
         var $33 = __Z12lua_typenameP9lua_Statei($30, $32);
         var $34 = $2;
         var $35 = __Z13lua_topointerP9lua_Statei($34, 1);
-        var $36 = __Z15lua_pushfstringP9lua_StatePKcz($29, __str53, $33, $35);
+        var $36 = __Z15lua_pushfstringP9lua_StatePKcz($29, __str53, Pointer_make([$33,0,0,0,$35,0,0,0], 0, ALLOC_STACK));
         ;
       }
       else if (__label__ == 5) {
@@ -47156,7 +47148,7 @@ var Module = {};
         var $20 = $status;
         var $21 = __ZL9statnames+$20*4;
         var $22 = IHEAP[$21];
-        var $23 = __Z15lua_pushfstringP9lua_StatePKcz($19, __str41309, $22);
+        var $23 = __Z15lua_pushfstringP9lua_StatePKcz($19, __str41309, Pointer_make([$22,0,0,0], 0, ALLOC_STACK));
         $1 = -1;
         ;
       }
@@ -47370,7 +47362,7 @@ var Module = {};
         ;
         var $41 = $1;
         var $42 = $level;
-        var $43 = __Z10luaL_errorP9lua_StatePKcz($41, __str62, $42);
+        var $43 = __Z10luaL_errorP9lua_StatePKcz($41, __str62, Pointer_make([$42,0,0,0], 0, ALLOC_STACK));
         ;
       }
       ;
@@ -47666,7 +47658,7 @@ var Module = {};
           ;
           var $32 = $2;
           var $33 = $options;
-          var $34 = __Z15lua_pushfstringP9lua_StatePKcz($32, __str35353, $33);
+          var $34 = __Z15lua_pushfstringP9lua_StatePKcz($32, __str35353, Pointer_make([$33,0,0,0], 0, ALLOC_STACK));
           var $35 = $2;
           var $36 = __Z13lua_tolstringP9lua_StateiPj($35, -1, 0);
           $options = $36;
@@ -48289,7 +48281,7 @@ var Module = {};
         var $78 = $2;
         var $79 = $ar+36;
         var $80 = $79;
-        var $81 = __Z15lua_pushfstringP9lua_StatePKcz($78, __str20338, $80);
+        var $81 = __Z15lua_pushfstringP9lua_StatePKcz($78, __str20338, Pointer_make([$80,0,0,0], 0, ALLOC_STACK));
         var $82 = $ar+20;
         var $83 = IHEAP[$82];
         var $84 = $83 > 0;
@@ -48299,7 +48291,7 @@ var Module = {};
           var $86 = $2;
           var $87 = $ar+20;
           var $88 = IHEAP[$87];
-          var $89 = __Z15lua_pushfstringP9lua_StatePKcz($86, __str21339, $88);
+          var $89 = __Z15lua_pushfstringP9lua_StatePKcz($86, __str21339, Pointer_make([$88,0,0,0], 0, ALLOC_STACK));
           ;
         }
         var $91 = $ar+8;
@@ -48313,7 +48305,7 @@ var Module = {};
           var $97 = $2;
           var $98 = $ar+4;
           var $99 = IHEAP[$98];
-          var $100 = __Z15lua_pushfstringP9lua_StatePKcz($97, __str22340, $99);
+          var $100 = __Z15lua_pushfstringP9lua_StatePKcz($97, __str22340, Pointer_make([$99,0,0,0], 0, ALLOC_STACK));
           ;
         }
         else {
@@ -48355,7 +48347,7 @@ var Module = {};
                 var $127 = $126;
                 var $128 = $ar+28;
                 var $129 = IHEAP[$128];
-                var $130 = __Z15lua_pushfstringP9lua_StatePKcz($125, __str25343, $127, $129);
+                var $130 = __Z15lua_pushfstringP9lua_StatePKcz($125, __str25343, Pointer_make([$127,0,0,0,$129,0,0,0], 0, ALLOC_STACK));
                 __label__ = 19; /* $131 */ break $122$116$39;
               }
             } while(0);
@@ -49352,7 +49344,7 @@ var Module = {};
       ;
       var $11 = $1;
       var $12 = $f;
-      var $13 = __Z15lua_pushfstringP9lua_StatePKcz($11, __str26397, $12);
+      var $13 = __Z15lua_pushfstringP9lua_StatePKcz($11, __str26397, Pointer_make([$12,0,0,0], 0, ALLOC_STACK));
       ;
     }
     ;
@@ -49584,7 +49576,7 @@ var Module = {};
         var $17 = $4;
         var $18 = $en;
         var $19 = _strerror($18);
-        var $20 = __Z15lua_pushfstringP9lua_StatePKcz($16, __str20391, $17, $19);
+        var $20 = __Z15lua_pushfstringP9lua_StatePKcz($16, __str20391, Pointer_make([$17,0,0,0,$19,0,0,0], 0, ALLOC_STACK));
         ;
       }
       else {
@@ -49592,7 +49584,7 @@ var Module = {};
         var $22 = $2;
         var $23 = $en;
         var $24 = _strerror($23);
-        var $25 = __Z15lua_pushfstringP9lua_StatePKcz($22, __str21392, $24);
+        var $25 = __Z15lua_pushfstringP9lua_StatePKcz($22, __str21392, Pointer_make([$24,0,0,0], 0, ALLOC_STACK));
         ;
       }
       var $27 = $2;
@@ -50274,7 +50266,7 @@ var Module = {};
       var $21 = ___errno_location();
       var $22 = IHEAP[$21];
       var $23 = _strerror($22);
-      var $24 = __Z10luaL_errorP9lua_StatePKcz($20, __str21392, $23);
+      var $24 = __Z10luaL_errorP9lua_StatePKcz($20, __str21392, Pointer_make([$23,0,0,0], 0, ALLOC_STACK));
       $1 = $24;
       ;
     }
@@ -50341,7 +50333,7 @@ var Module = {};
       var $14 = $13 - 1;
       var $15 = __ZL6fnames+$14*4;
       var $16 = IHEAP[$15];
-      var $17 = __Z10luaL_errorP9lua_StatePKcz($12, __str40411, $16);
+      var $17 = __Z10luaL_errorP9lua_StatePKcz($12, __str40411, Pointer_make([$16,0,0,0], 0, ALLOC_STACK));
       ;
     }
     var $19 = $f;
@@ -50433,7 +50425,7 @@ var Module = {};
     var $6 = ___errno_location();
     var $7 = IHEAP[$6];
     var $8 = _strerror($7);
-    var $9 = __Z15lua_pushfstringP9lua_StatePKcz($4, __str20391, $5, $8);
+    var $9 = __Z15lua_pushfstringP9lua_StatePKcz($4, __str20391, Pointer_make([$5,0,0,0,$8,0,0,0], 0, ALLOC_STACK));
     var $10 = $1;
     var $11 = $2;
     var $12 = $1;
@@ -51652,7 +51644,7 @@ var Module = {};
           ;
           var $17 = $2;
           var $18 = $3;
-          var $19 = __Z10luaL_errorP9lua_StatePKcz($17, __str20472, $18);
+          var $19 = __Z10luaL_errorP9lua_StatePKcz($17, __str20472, Pointer_make([$18,0,0,0], 0, ALLOC_STACK));
           $1 = $19;
           __label__ = 1; /* $25 */ break $10$13$2;
         }
@@ -51747,7 +51739,7 @@ var Module = {};
       var $14 = $4;
       var $15 = $en;
       var $16 = _strerror($15);
-      var $17 = __Z15lua_pushfstringP9lua_StatePKcz($13, __str26478, $14, $16);
+      var $17 = __Z15lua_pushfstringP9lua_StatePKcz($13, __str26478, Pointer_make([$14,0,0,0,$16,0,0,0], 0, ALLOC_STACK));
       var $18 = $2;
       var $19 = $en;
       __Z15lua_pushintegerP9lua_Statei($18, $19);
@@ -52639,7 +52631,7 @@ var Module = {};
       var $13 = __Z8lua_typeP9lua_Statei($12, -1);
       var $14 = __Z12lua_typenameP9lua_Statei($11, $13);
       var $15 = $3;
-      var $16 = __Z10luaL_errorP9lua_StatePKcz($10, __str14497, $14, $15);
+      var $16 = __Z10luaL_errorP9lua_StatePKcz($10, __str14497, Pointer_make([$14,0,0,0,$15,0,0,0], 0, ALLOC_STACK));
       ;
     }
     var $18 = $2;
@@ -53149,7 +53141,7 @@ var Module = {};
       var $129 = $128+-1;
       var $130 = IHEAP[$129];
       var $131 = $130;
-      var $132 = __Z10luaL_errorP9lua_StatePKcz($127, __str30528, $131);
+      var $132 = __Z10luaL_errorP9lua_StatePKcz($127, __str30528, Pointer_make([$131,0,0,0], 0, ALLOC_STACK));
       $1 = $132;
       ;
     }
@@ -55809,7 +55801,7 @@ var Module = {};
           var $48 = $L;
           var $49 = __Z8lua_typeP9lua_Statei($48, -1);
           var $50 = __Z12lua_typenameP9lua_Statei($47, $49);
-          var $51 = __Z10luaL_errorP9lua_StatePKcz($46, __str28526, $50);
+          var $51 = __Z10luaL_errorP9lua_StatePKcz($46, __str28526, Pointer_make([$50,0,0,0], 0, ALLOC_STACK));
           ;
         }
         ;
@@ -56661,7 +56653,7 @@ var Module = {};
           ;
           var $22 = $2;
           var $23 = $modname;
-          var $24 = __Z10luaL_errorP9lua_StatePKcz($22, __str43581, $23);
+          var $24 = __Z10luaL_errorP9lua_StatePKcz($22, __str43581, Pointer_make([$23,0,0,0], 0, ALLOC_STACK));
           $1 = $24;
           __label__ = 0; /* $47 */ break $30$15$2;
         }
@@ -56749,7 +56741,7 @@ var Module = {};
         ;
         var $17 = $2;
         var $18 = $name;
-        var $19 = __Z10luaL_errorP9lua_StatePKcz($17, __str40578, $18);
+        var $19 = __Z10luaL_errorP9lua_StatePKcz($17, __str40578, Pointer_make([$18,0,0,0], 0, ALLOC_STACK));
         ;
       }
       $1 = 1;
@@ -56787,7 +56779,7 @@ var Module = {};
           var $39 = $name;
           var $40 = $2;
           var $41 = __Z13lua_tolstringP9lua_StateiPj($40, -2, 0);
-          var $42 = __Z10luaL_errorP9lua_StatePKcz($38, __str42580, $39, $41);
+          var $42 = __Z10luaL_errorP9lua_StatePKcz($38, __str42580, Pointer_make([$39,0,0,0,$41,0,0,0], 0, ALLOC_STACK));
           ;
         }
         var $44 = $2;
@@ -56904,7 +56896,7 @@ var Module = {};
       ;
       var $18 = $1;
       var $19 = $name;
-      var $20 = __Z15lua_pushfstringP9lua_StatePKcz($18, __str39577, $19);
+      var $20 = __Z15lua_pushfstringP9lua_StatePKcz($18, __str39577, Pointer_make([$19,0,0,0], 0, ALLOC_STACK));
       ;
     }
     ;
@@ -57089,7 +57081,7 @@ var Module = {};
           var $41 = $2;
           var $42 = $name;
           var $43 = $filename;
-          var $44 = __Z15lua_pushfstringP9lua_StatePKcz($41, __str22560, $42, $43);
+          var $44 = __Z15lua_pushfstringP9lua_StatePKcz($41, __str22560, Pointer_make([$42,0,0,0,$43,0,0,0], 0, ALLOC_STACK));
           $1 = 1;
           ;
         }
@@ -57297,7 +57289,7 @@ var Module = {};
       ;
       var $15 = $2;
       var $16 = $4;
-      var $17 = __Z10luaL_errorP9lua_StatePKcz($15, __str32570, $16);
+      var $17 = __Z10luaL_errorP9lua_StatePKcz($15, __str32570, Pointer_make([$16,0,0,0], 0, ALLOC_STACK));
       ;
     }
     var $19 = $2;
@@ -57324,7 +57316,7 @@ var Module = {};
       if ($34) { __label__ = 4; /* $35 */ break $20$5; }
       var $38 = $2;
       var $39 = $filename;
-      var $40 = __Z15lua_pushfstringP9lua_StatePKcz($38, __str35573, $39);
+      var $40 = __Z15lua_pushfstringP9lua_StatePKcz($38, __str35573, Pointer_make([$39,0,0,0], 0, ALLOC_STACK));
       var $41 = $2;
       __Z10lua_removeP9lua_Statei($41, -2);
       var $42 = $2;
@@ -57377,7 +57369,7 @@ var Module = {};
     $funcname = $15;
     var $16 = $1;
     var $17 = $funcname;
-    var $18 = __Z15lua_pushfstringP9lua_StatePKcz($16, __str30568, $17);
+    var $18 = __Z15lua_pushfstringP9lua_StatePKcz($16, __str30568, Pointer_make([$17,0,0,0], 0, ALLOC_STACK));
     $funcname = $18;
     var $19 = $1;
     __Z10lua_removeP9lua_Statei($19, -2);
@@ -57471,7 +57463,7 @@ var Module = {};
     var $6 = $2;
     var $7 = $1;
     var $8 = __Z13lua_tolstringP9lua_StateiPj($7, -1, 0);
-    var $9 = __Z10luaL_errorP9lua_StatePKcz($3, __str23561, $5, $6, $8);
+    var $9 = __Z10luaL_errorP9lua_StatePKcz($3, __str23561, Pointer_make([$5,0,0,0,$6,0,0,0,$8,0,0,0], 0, ALLOC_STACK));
     ;
     return;
   }
@@ -57488,7 +57480,7 @@ var Module = {};
     $2 = $path;
     var $3 = $1;
     var $4 = $2;
-    var $5 = __Z15lua_pushfstringP9lua_StatePKcz($3, __str25563, __str26564, $4);
+    var $5 = __Z15lua_pushfstringP9lua_StatePKcz($3, __str25563, Pointer_make([__str26564,0,0,0,$4,0,0,0], 0, ALLOC_STACK));
     var $6 = $1;
     __Z12lua_gettableP9lua_Statei($6, -10000);
     var $7 = $1;
@@ -57511,7 +57503,7 @@ var Module = {};
       var $22 = __Z16lua_setmetatableP9lua_Statei($21, -2);
       var $23 = $1;
       var $24 = $2;
-      var $25 = __Z15lua_pushfstringP9lua_StatePKcz($23, __str25563, __str26564, $24);
+      var $25 = __Z15lua_pushfstringP9lua_StatePKcz($23, __str25563, Pointer_make([__str26564,0,0,0,$24,0,0,0], 0, ALLOC_STACK));
       var $26 = $1;
       __Z13lua_pushvalueP9lua_Statei($26, -2);
       var $27 = $1;
@@ -57909,8 +57901,8 @@ var Module = {};
     globalFuncs.push(function() { return __ZTSP11lua_longjmp = Pointer_make([80,49,49,108,117,97,95,108,111,110,103,106,109,112,0] /* P11lua_longjmp\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __ZTVN10__cxxabiv117__class_type_infoE = Pointer_make([0,0,0,0], 0, ALLOC_STATIC) /* external value? */ });
     globalFuncs.push(function() { return __ZTS11lua_longjmp = Pointer_make([49,49,108,117,97,95,108,111,110,103,106,109,112,0] /* 11lua_longjmp\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZTI11lua_longjmp = Pointer_make([ __ZTVN10__cxxabiv117__class_type_infoE+8, 0, 0, 0, __ZTS11lua_longjmp, 0, 0, 0 ], 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZTIP11lua_longjmp = Pointer_make([ __ZTVN10__cxxabiv119__pointer_type_infoE+8, 0, 0, 0, __ZTSP11lua_longjmp, 0, 0, 0, 0, 0, 0, 0, __ZTI11lua_longjmp, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZTI11lua_longjmp = Pointer_make([__ZTVN10__cxxabiv117__class_type_infoE+8, 0, 0, 0, __ZTS11lua_longjmp, 0, 0, 0], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZTIP11lua_longjmp = Pointer_make([__ZTVN10__cxxabiv119__pointer_type_infoE+8, 0, 0, 0, __ZTSP11lua_longjmp, 0, 0, 0, 0, 0, 0, 0, __ZTI11lua_longjmp, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str223 = Pointer_make([67,32,115,116,97,99,107,32,111,118,101,114,102,108,111,119,0] /* C stack overflow\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str324 = Pointer_make([99,97,110,110,111,116,32,114,101,115,117,109,101,32,110,111,110,45,115,117,115,112,101,110,100,101,100,32,99,111,114,111,117,116,105,110,101,0] /* cannot resume non-suspended coroutine\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str425 = Pointer_make([97,116,116,101,109,112,116,32,116,111,32,121,105,101,108,100,32,97,99,114,111,115,115,32,109,101,116,97,109,101,116,104,111,100,47,67,45,99,97,108,108,32,98,111,117,110,100,97,114,121,0] /* attempt to yield across metamethod/C-call boundary\00*/, 0, ALLOC_STATIC) });
@@ -57949,7 +57941,7 @@ var Module = {};
     globalFuncs.push(function() { return __str2856 = Pointer_make([60,110,97,109,101,62,0] /* <name>\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str29 = Pointer_make([60,115,116,114,105,110,103,62,0] /* <string>\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str30 = Pointer_make([60,101,111,102,62,0] /* <eof>\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return _luaX_tokens = Pointer_make([ __str47, 0, 0, 0, __str148, 0, 0, 0, __str249, 0, 0, 0, __str350, 0, 0, 0, __str451, 0, 0, 0, __str552, 0, 0, 0, __str653, 0, 0, 0, __str754, 0, 0, 0, __str855, 0, 0, 0, __str956, 0, 0, 0, __str1057, 0, 0, 0, __str1158, 0, 0, 0, __str1259, 0, 0, 0, __str1360, 0, 0, 0, __str1461, 0, 0, 0, __str1562, 0, 0, 0, __str1663, 0, 0, 0, __str1764, 0, 0, 0, __str1865, 0, 0, 0, __str1966, 0, 0, 0, __str2067, 0, 0, 0, __str2168, 0, 0, 0, __str2251, 0, 0, 0, __str2352, 0, 0, 0, __str2453, 0, 0, 0, __str2554, 0, 0, 0, __str2669, 0, 0, 0, __str2755, 0, 0, 0, __str2856, 0, 0, 0, __str29, 0, 0, 0, __str30, 0, 0, 0, 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return _luaX_tokens = Pointer_make([__str47, 0, 0, 0, __str148, 0, 0, 0, __str249, 0, 0, 0, __str350, 0, 0, 0, __str451, 0, 0, 0, __str552, 0, 0, 0, __str653, 0, 0, 0, __str754, 0, 0, 0, __str855, 0, 0, 0, __str956, 0, 0, 0, __str1057, 0, 0, 0, __str1158, 0, 0, 0, __str1259, 0, 0, 0, __str1360, 0, 0, 0, __str1461, 0, 0, 0, __str1562, 0, 0, 0, __str1663, 0, 0, 0, __str1764, 0, 0, 0, __str1865, 0, 0, 0, __str1966, 0, 0, 0, __str2067, 0, 0, 0, __str2168, 0, 0, 0, __str2251, 0, 0, 0, __str2352, 0, 0, 0, __str2453, 0, 0, 0, __str2554, 0, 0, 0, __str2669, 0, 0, 0, __str2755, 0, 0, 0, __str2856, 0, 0, 0, __str29, 0, 0, 0, __str30, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str31 = Pointer_make([99,104,97,114,40,37,100,41,0] /* char(%d)\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str32 = Pointer_make([37,99,0] /* %c\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str33 = Pointer_make([37,115,58,37,100,58,32,37,115,0] /* %s:%d: %s\00*/, 0, ALLOC_STATIC) });
@@ -57967,7 +57959,7 @@ var Module = {};
     globalFuncs.push(function() { return __str45 = Pointer_make([110,101,115,116,105,110,103,32,111,102,32,91,91,46,46,46,93,93,32,105,115,32,100,101,112,114,101,99,97,116,101,100,0] /* nesting of [[...]] is deprecated\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str46 = Pointer_make([99,104,117,110,107,32,104,97,115,32,116,111,111,32,109,97,110,121,32,108,105,110,101,115,0] /* chunk has too many lines\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str72 = Pointer_make([109,101,109,111,114,121,32,97,108,108,111,99,97,116,105,111,110,32,101,114,114,111,114,58,32,98,108,111,99,107,32,116,111,111,32,98,105,103,0] /* memory allocation error: block too big\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return _luaO_nilobject_ = Pointer_make([ [0, 0, 0, 0, undef, 0, 0, 0], 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return _luaO_nilobject_ = Pointer_make([0, 0, 0, 0, undef, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __ZZ9luaO_log2jE5log_2 = Pointer_make([0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8] /* \00\01\02\02\03\03\03\03\04\04\04\04\04\04\04\04\05\05\05\05\05\05\05\05\05\05\05\05\05\05\05\05\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\06\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\07\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08\08*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str77 = Pointer_make([0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str178 = Pointer_make([40,110,117,108,108,41,0] /* (null)\00*/, 0, ALLOC_STATIC) });
@@ -58015,11 +58007,11 @@ var Module = {};
     globalFuncs.push(function() { return __str35125 = Pointer_make([67,76,79,83,69,0] /* CLOSE\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str36126 = Pointer_make([67,76,79,83,85,82,69,0] /* CLOSURE\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str37127 = Pointer_make([86,65,82,65,82,71,0] /* VARARG\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return _luaP_opnames = Pointer_make([ __str90, 0, 0, 0, __str191, 0, 0, 0, __str292, 0, 0, 0, __str393, 0, 0, 0, __str494, 0, 0, 0, __str595, 0, 0, 0, __str696, 0, 0, 0, __str797, 0, 0, 0, __str898, 0, 0, 0, __str999, 0, 0, 0, __str10100, 0, 0, 0, __str11101, 0, 0, 0, __str12102, 0, 0, 0, __str13103, 0, 0, 0, __str14104, 0, 0, 0, __str15105, 0, 0, 0, __str16106, 0, 0, 0, __str17107, 0, 0, 0, __str18108, 0, 0, 0, __str19109, 0, 0, 0, __str20110, 0, 0, 0, __str21111, 0, 0, 0, __str22112, 0, 0, 0, __str23113, 0, 0, 0, __str24114, 0, 0, 0, __str25115, 0, 0, 0, __str26116, 0, 0, 0, __str27117, 0, 0, 0, __str28118, 0, 0, 0, __str29119, 0, 0, 0, __str30120, 0, 0, 0, __str31121, 0, 0, 0, __str32122, 0, 0, 0, __str33123, 0, 0, 0, __str34124, 0, 0, 0, __str35125, 0, 0, 0, __str36126, 0, 0, 0, __str37127, 0, 0, 0, 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return _luaP_opnames = Pointer_make([__str90, 0, 0, 0, __str191, 0, 0, 0, __str292, 0, 0, 0, __str393, 0, 0, 0, __str494, 0, 0, 0, __str595, 0, 0, 0, __str696, 0, 0, 0, __str797, 0, 0, 0, __str898, 0, 0, 0, __str999, 0, 0, 0, __str10100, 0, 0, 0, __str11101, 0, 0, 0, __str12102, 0, 0, 0, __str13103, 0, 0, 0, __str14104, 0, 0, 0, __str15105, 0, 0, 0, __str16106, 0, 0, 0, __str17107, 0, 0, 0, __str18108, 0, 0, 0, __str19109, 0, 0, 0, __str20110, 0, 0, 0, __str21111, 0, 0, 0, __str22112, 0, 0, 0, __str23113, 0, 0, 0, __str24114, 0, 0, 0, __str25115, 0, 0, 0, __str26116, 0, 0, 0, __str27117, 0, 0, 0, __str28118, 0, 0, 0, __str29119, 0, 0, 0, __str30120, 0, 0, 0, __str31121, 0, 0, 0, __str32122, 0, 0, 0, __str33123, 0, 0, 0, __str34124, 0, 0, 0, __str35125, 0, 0, 0, __str36126, 0, 0, 0, __str37127, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return _luaP_opmodes = Pointer_make([96,113,84,96,80,113,108,49,16,60,84,108,124,124,124,124,124,124,96,96,96,104,34,188,188,188,228,228,84,84,16,98,98,132,20,0,81,80] /* `qT`Pql1\10<Tl||||||```h\22\BC\BC\BC\E4\E4TT\10bb\84\14\00QP*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str12957 = Pointer_make([115,121,110,116,97,120,32,101,114,114,111,114,0] /* syntax error\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str1130 = Pointer_make([118,97,114,105,97,98,108,101,115,32,105,110,32,97,115,115,105,103,110,109,101,110,116,0] /* variables in assignment\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL8priority = Pointer_make([ [6, 0, 0, 0, 6, 0, 0, 0], [6, 0, 0, 0, 6, 0, 0, 0], [7, 0, 0, 0, 7, 0, 0, 0], [7, 0, 0, 0, 7, 0, 0, 0], [7, 0, 0, 0, 7, 0, 0, 0], [10, 0, 0, 0, 9, 0, 0, 0], [5, 0, 0, 0, 4, 0, 0, 0], [3, 0, 0, 0, 3, 0, 0, 0], [3, 0, 0, 0, 3, 0, 0, 0], [3, 0, 0, 0, 3, 0, 0, 0], [3, 0, 0, 0, 3, 0, 0, 0], [3, 0, 0, 0, 3, 0, 0, 0], [3, 0, 0, 0, 3, 0, 0, 0], [2, 0, 0, 0, 2, 0, 0, 0], [1, 0, 0, 0, 1, 0, 0, 0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL8priority = Pointer_make([6, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0, 10, 0, 0, 0, 9, 0, 0, 0, 5, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str2131 = Pointer_make([99,97,110,110,111,116,32,117,115,101,32,39,46,46,46,39,32,111,117,116,115,105,100,101,32,97,32,118,97,114,97,114,103,32,102,117,110,99,116,105,111,110,0] /* cannot use '...' outside a vararg function\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str3132 = Pointer_make([115,101,108,102,0] /* self\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str4133 = Pointer_make([99,111,110,115,116,97,110,116,32,116,97,98,108,101,32,111,118,101,114,102,108,111,119,0] /* constant table overflow\00*/, 0, ALLOC_STATIC) });
@@ -58047,7 +58039,7 @@ var Module = {};
     globalFuncs.push(function() { return __str26155 = Pointer_make([39,37,115,39,32,101,120,112,101,99,116,101,100,0] /* '%s' expected\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str27156 = Pointer_make([99,104,117,110,107,32,104,97,115,32,116,111,111,32,109,97,110,121,32,115,121,110,116,97,120,32,108,101,118,101,108,115,0] /* chunk has too many syntax levels\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str158 = Pointer_make([110,111,116,32,101,110,111,117,103,104,32,109,101,109,111,114,121,0] /* not enough memory\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL10dummynode_ = Pointer_make([ [[0, 0, 0, 0, undef, 0, 0, 0], 0, 0, 0, 0], [[[0, 0, 0, 0, undef, 0, 0, 0], 0, 0, 0, 0, 0, 0, 0, 0]] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL10dummynode_ = Pointer_make([0, 0, 0, 0, undef, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, undef, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str164 = Pointer_make([116,97,98,108,101,32,105,110,100,101,120,32,105,115,32,110,105,108,0] /* table index is nil\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str1165 = Pointer_make([116,97,98,108,101,32,105,110,100,101,120,32,105,115,32,78,97,78,0] /* table index is NaN\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str2166 = Pointer_make([116,97,98,108,101,32,111,118,101,114,102,108,111,119,0] /* table overflow\00*/, 0, ALLOC_STATIC) });
@@ -58062,8 +58054,8 @@ var Module = {};
     globalFuncs.push(function() { return __str7184 = Pointer_make([116,104,114,101,97,100,0] /* thread\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str8185 = Pointer_make([112,114,111,116,111,0] /* proto\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str9186 = Pointer_make([117,112,118,97,108,0] /* upval\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return _luaT_typenames = Pointer_make([ __str177, 0, 0, 0, __str1178, 0, 0, 0, __str2179, 0, 0, 0, __str3180, 0, 0, 0, __str4181, 0, 0, 0, __str5182, 0, 0, 0, __str6183, 0, 0, 0, __str2179, 0, 0, 0, __str7184, 0, 0, 0, __str8185, 0, 0, 0, __str9186, 0, 0, 0 ], 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ9luaT_initP9lua_StateE14luaT_eventname = Pointer_make([ __str10188, 0, 0, 0, __str11189, 0, 0, 0, __str12190, 0, 0, 0, __str13191, 0, 0, 0, __str14192, 0, 0, 0, __str15193, 0, 0, 0, __str16194, 0, 0, 0, __str17195, 0, 0, 0, __str18196, 0, 0, 0, __str19197, 0, 0, 0, __str20198, 0, 0, 0, __str21199, 0, 0, 0, __str22200, 0, 0, 0, __str23201, 0, 0, 0, __str24202, 0, 0, 0, __str25203, 0, 0, 0, __str26204, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return _luaT_typenames = Pointer_make([__str177, 0, 0, 0, __str1178, 0, 0, 0, __str2179, 0, 0, 0, __str3180, 0, 0, 0, __str4181, 0, 0, 0, __str5182, 0, 0, 0, __str6183, 0, 0, 0, __str2179, 0, 0, 0, __str7184, 0, 0, 0, __str8185, 0, 0, 0, __str9186, 0, 0, 0], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ9luaT_initP9lua_StateE14luaT_eventname = Pointer_make([__str10188, 0, 0, 0, __str11189, 0, 0, 0, __str12190, 0, 0, 0, __str13191, 0, 0, 0, __str14192, 0, 0, 0, __str15193, 0, 0, 0, __str16194, 0, 0, 0, __str17195, 0, 0, 0, __str18196, 0, 0, 0, __str19197, 0, 0, 0, __str20198, 0, 0, 0, __str21199, 0, 0, 0, __str22200, 0, 0, 0, __str23201, 0, 0, 0, __str24202, 0, 0, 0, __str25203, 0, 0, 0, __str26204, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str10188 = Pointer_make([95,95,105,110,100,101,120,0] /* __index\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str11189 = Pointer_make([95,95,110,101,119,105,110,100,101,120,0] /* __newindex\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str12190 = Pointer_make([95,95,103,99,0] /* __gc\00*/, 0, ALLOC_STATIC) });
@@ -58150,14 +58142,14 @@ var Module = {};
     globalFuncs.push(function() { return __str21289 = Pointer_make([116,121,112,101,0] /* type\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str22290 = Pointer_make([117,110,112,97,99,107,0] /* unpack\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str23291 = Pointer_make([120,112,99,97,108,108,0] /* xpcall\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL10base_funcs = Pointer_make([ [__str268, 0, 0, 0, __Z11luaB_assertP9lua_State.__index__, 0, 0, 0], [__str1269, 0, 0, 0, __Z19luaB_collectgarbageP9lua_State.__index__, 0, 0, 0], [__str2270, 0, 0, 0, __Z11luaB_dofileP9lua_State.__index__, 0, 0, 0], [__str3271, 0, 0, 0, __Z10luaB_errorP9lua_State.__index__, 0, 0, 0], [__str4272, 0, 0, 0, __Z11luaB_gcinfoP9lua_State.__index__, 0, 0, 0], [__str5273, 0, 0, 0, __Z12luaB_getfenvP9lua_State.__index__, 0, 0, 0], [__str6274, 0, 0, 0, __Z17luaB_getmetatableP9lua_State.__index__, 0, 0, 0], [__str7275, 0, 0, 0, __Z13luaB_loadfileP9lua_State.__index__, 0, 0, 0], [__str8276, 0, 0, 0, __Z9luaB_loadP9lua_State.__index__, 0, 0, 0], [__str9277, 0, 0, 0, __Z15luaB_loadstringP9lua_State.__index__, 0, 0, 0], [__str10278, 0, 0, 0, __Z9luaB_nextP9lua_State.__index__, 0, 0, 0], [__str11279, 0, 0, 0, __Z10luaB_pcallP9lua_State.__index__, 0, 0, 0], [__str12280, 0, 0, 0, __Z10luaB_printP9lua_State.__index__, 0, 0, 0], [__str13281, 0, 0, 0, __Z13luaB_rawequalP9lua_State.__index__, 0, 0, 0], [__str14282, 0, 0, 0, __Z11luaB_rawgetP9lua_State.__index__, 0, 0, 0], [__str15283, 0, 0, 0, __Z11luaB_rawsetP9lua_State.__index__, 0, 0, 0], [__str16284, 0, 0, 0, __Z11luaB_selectP9lua_State.__index__, 0, 0, 0], [__str17285, 0, 0, 0, __Z12luaB_setfenvP9lua_State.__index__, 0, 0, 0], [__str18286, 0, 0, 0, __Z17luaB_setmetatableP9lua_State.__index__, 0, 0, 0], [__str19287, 0, 0, 0, __Z13luaB_tonumberP9lua_State.__index__, 0, 0, 0], [__str20288, 0, 0, 0, __Z13luaB_tostringP9lua_State.__index__, 0, 0, 0], [__str21289, 0, 0, 0, __Z9luaB_typeP9lua_State.__index__, 0, 0, 0], [__str22290, 0, 0, 0, __Z11luaB_unpackP9lua_State.__index__, 0, 0, 0], [__str23291, 0, 0, 0, __Z11luaB_xpcallP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL10base_funcs = Pointer_make([__str268, 0, 0, 0, __Z11luaB_assertP9lua_State.__index__, 0, 0, 0, __str1269, 0, 0, 0, __Z19luaB_collectgarbageP9lua_State.__index__, 0, 0, 0, __str2270, 0, 0, 0, __Z11luaB_dofileP9lua_State.__index__, 0, 0, 0, __str3271, 0, 0, 0, __Z10luaB_errorP9lua_State.__index__, 0, 0, 0, __str4272, 0, 0, 0, __Z11luaB_gcinfoP9lua_State.__index__, 0, 0, 0, __str5273, 0, 0, 0, __Z12luaB_getfenvP9lua_State.__index__, 0, 0, 0, __str6274, 0, 0, 0, __Z17luaB_getmetatableP9lua_State.__index__, 0, 0, 0, __str7275, 0, 0, 0, __Z13luaB_loadfileP9lua_State.__index__, 0, 0, 0, __str8276, 0, 0, 0, __Z9luaB_loadP9lua_State.__index__, 0, 0, 0, __str9277, 0, 0, 0, __Z15luaB_loadstringP9lua_State.__index__, 0, 0, 0, __str10278, 0, 0, 0, __Z9luaB_nextP9lua_State.__index__, 0, 0, 0, __str11279, 0, 0, 0, __Z10luaB_pcallP9lua_State.__index__, 0, 0, 0, __str12280, 0, 0, 0, __Z10luaB_printP9lua_State.__index__, 0, 0, 0, __str13281, 0, 0, 0, __Z13luaB_rawequalP9lua_State.__index__, 0, 0, 0, __str14282, 0, 0, 0, __Z11luaB_rawgetP9lua_State.__index__, 0, 0, 0, __str15283, 0, 0, 0, __Z11luaB_rawsetP9lua_State.__index__, 0, 0, 0, __str16284, 0, 0, 0, __Z11luaB_selectP9lua_State.__index__, 0, 0, 0, __str17285, 0, 0, 0, __Z12luaB_setfenvP9lua_State.__index__, 0, 0, 0, __str18286, 0, 0, 0, __Z17luaB_setmetatableP9lua_State.__index__, 0, 0, 0, __str19287, 0, 0, 0, __Z13luaB_tonumberP9lua_State.__index__, 0, 0, 0, __str20288, 0, 0, 0, __Z13luaB_tostringP9lua_State.__index__, 0, 0, 0, __str21289, 0, 0, 0, __Z9luaB_typeP9lua_State.__index__, 0, 0, 0, __str22290, 0, 0, 0, __Z11luaB_unpackP9lua_State.__index__, 0, 0, 0, __str23291, 0, 0, 0, __Z11luaB_xpcallP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str24292 = Pointer_make([99,114,101,97,116,101,0] /* create\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str25293 = Pointer_make([114,101,115,117,109,101,0] /* resume\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str26294 = Pointer_make([114,117,110,110,105,110,103,0] /* running\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str27295 = Pointer_make([115,116,97,116,117,115,0] /* status\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str28296 = Pointer_make([119,114,97,112,0] /* wrap\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str29297 = Pointer_make([121,105,101,108,100,0] /* yield\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL8co_funcs = Pointer_make([ [__str24292, 0, 0, 0, __Z13luaB_cocreateP9lua_State.__index__, 0, 0, 0], [__str25293, 0, 0, 0, __Z13luaB_coresumeP9lua_State.__index__, 0, 0, 0], [__str26294, 0, 0, 0, __Z14luaB_corunningP9lua_State.__index__, 0, 0, 0], [__str27295, 0, 0, 0, __Z13luaB_costatusP9lua_State.__index__, 0, 0, 0], [__str28296, 0, 0, 0, __Z11luaB_cowrapP9lua_State.__index__, 0, 0, 0], [__str29297, 0, 0, 0, __Z10luaB_yieldP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL8co_funcs = Pointer_make([__str24292, 0, 0, 0, __Z13luaB_cocreateP9lua_State.__index__, 0, 0, 0, __str25293, 0, 0, 0, __Z13luaB_coresumeP9lua_State.__index__, 0, 0, 0, __str26294, 0, 0, 0, __Z14luaB_corunningP9lua_State.__index__, 0, 0, 0, __str27295, 0, 0, 0, __Z13luaB_costatusP9lua_State.__index__, 0, 0, 0, __str28296, 0, 0, 0, __Z11luaB_cowrapP9lua_State.__index__, 0, 0, 0, __str29297, 0, 0, 0, __Z10luaB_yieldP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str30298 = Pointer_make([99,111,114,111,117,116,105,110,101,0] /* coroutine\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str31299 = Pointer_make([95,71,0] /* _G\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str32300 = Pointer_make([76,117,97,32,53,46,49,0] /* Lua 5.1\00*/, 0, ALLOC_STATIC) });
@@ -58170,7 +58162,7 @@ var Module = {};
     globalFuncs.push(function() { return __str39307 = Pointer_make([98,111,111,108,101,97,110,32,111,114,32,112,114,111,120,121,32,101,120,112,101,99,116,101,100,0] /* boolean or proxy expected\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str40308 = Pointer_make([116,111,111,32,109,97,110,121,32,97,114,103,117,109,101,110,116,115,32,116,111,32,114,101,115,117,109,101,0] /* too many arguments to resume\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str41309 = Pointer_make([99,97,110,110,111,116,32,114,101,115,117,109,101,32,37,115,32,99,111,114,111,117,116,105,110,101,0] /* cannot resume %s coroutine\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL9statnames = Pointer_make([ __str26294, 0, 0, 0, __str43311, 0, 0, 0, __str44312, 0, 0, 0, __str45313, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL9statnames = Pointer_make([__str26294, 0, 0, 0, __str43311, 0, 0, 0, __str44312, 0, 0, 0, __str45313, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str42310 = Pointer_make([116,111,111,32,109,97,110,121,32,114,101,115,117,108,116,115,32,116,111,32,114,101,115,117,109,101,0] /* too many results to resume\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str43311 = Pointer_make([115,117,115,112,101,110,100,101,100,0] /* suspended\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str44312 = Pointer_make([110,111,114,109,97,108,0] /* normal\00*/, 0, ALLOC_STATIC) });
@@ -58199,7 +58191,7 @@ var Module = {};
     globalFuncs.push(function() { return __str67 = Pointer_make([61,40,108,111,97,100,41,0] /* =(load)\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str68 = Pointer_make([116,111,111,32,109,97,110,121,32,110,101,115,116,101,100,32,102,117,110,99,116,105,111,110,115,0] /* too many nested functions\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str69 = Pointer_make([114,101,97,100,101,114,32,102,117,110,99,116,105,111,110,32,109,117,115,116,32,114,101,116,117,114,110,32,97,32,115,116,114,105,110,103,0] /* reader function must return a string\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ19luaB_collectgarbageP9lua_StateE4opts = Pointer_make([ __str70, 0, 0, 0, __str71, 0, 0, 0, __str72316, 0, 0, 0, __str73, 0, 0, 0, __str74, 0, 0, 0, __str75, 0, 0, 0, __str76, 0, 0, 0, 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ19luaB_collectgarbageP9lua_StateE4opts = Pointer_make([__str70, 0, 0, 0, __str71, 0, 0, 0, __str72316, 0, 0, 0, __str73, 0, 0, 0, __str74, 0, 0, 0, __str75, 0, 0, 0, __str76, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str70 = Pointer_make([115,116,111,112,0] /* stop\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str71 = Pointer_make([114,101,115,116,97,114,116,0] /* restart\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str72316 = Pointer_make([99,111,108,108,101,99,116,0] /* collect\00*/, 0, ALLOC_STATIC) });
@@ -58207,7 +58199,7 @@ var Module = {};
     globalFuncs.push(function() { return __str74 = Pointer_make([115,116,101,112,0] /* step\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str75 = Pointer_make([115,101,116,112,97,117,115,101,0] /* setpause\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str76 = Pointer_make([115,101,116,115,116,101,112,109,117,108,0] /* setstepmul\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ19luaB_collectgarbageP9lua_StateE7optsnum = Pointer_make([ 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ19luaB_collectgarbageP9lua_StateE7optsnum = Pointer_make([0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str77317 = Pointer_make([37,115,0] /* %s\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str78 = Pointer_make([97,115,115,101,114,116,105,111,110,32,102,97,105,108,101,100,33,0] /* assertion failed!\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str318 = Pointer_make([100,101,98,117,103,0] /* debug\00*/, 0, ALLOC_STATIC) });
@@ -58224,7 +58216,7 @@ var Module = {};
     globalFuncs.push(function() { return __str11329 = Pointer_make([115,101,116,109,101,116,97,116,97,98,108,101,0] /* setmetatable\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str12330 = Pointer_make([115,101,116,117,112,118,97,108,117,101,0] /* setupvalue\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str13331 = Pointer_make([116,114,97,99,101,98,97,99,107,0] /* traceback\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL5dblib = Pointer_make([ [__str318, 0, 0, 0, __Z8db_debugP9lua_State.__index__, 0, 0, 0], [__str1319, 0, 0, 0, __Z10db_getfenvP9lua_State.__index__, 0, 0, 0], [__str2320, 0, 0, 0, __Z10db_gethookP9lua_State.__index__, 0, 0, 0], [__str3321, 0, 0, 0, __Z10db_getinfoP9lua_State.__index__, 0, 0, 0], [__str4322, 0, 0, 0, __Z11db_getlocalP9lua_State.__index__, 0, 0, 0], [__str5323, 0, 0, 0, __Z14db_getregistryP9lua_State.__index__, 0, 0, 0], [__str6324, 0, 0, 0, __Z15db_getmetatableP9lua_State.__index__, 0, 0, 0], [__str7325, 0, 0, 0, __Z13db_getupvalueP9lua_State.__index__, 0, 0, 0], [__str8326, 0, 0, 0, __Z10db_setfenvP9lua_State.__index__, 0, 0, 0], [__str9327, 0, 0, 0, __Z10db_sethookP9lua_State.__index__, 0, 0, 0], [__str10328, 0, 0, 0, __Z11db_setlocalP9lua_State.__index__, 0, 0, 0], [__str11329, 0, 0, 0, __Z15db_setmetatableP9lua_State.__index__, 0, 0, 0], [__str12330, 0, 0, 0, __Z13db_setupvalueP9lua_State.__index__, 0, 0, 0], [__str13331, 0, 0, 0, __Z10db_errorfbP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL5dblib = Pointer_make([__str318, 0, 0, 0, __Z8db_debugP9lua_State.__index__, 0, 0, 0, __str1319, 0, 0, 0, __Z10db_getfenvP9lua_State.__index__, 0, 0, 0, __str2320, 0, 0, 0, __Z10db_gethookP9lua_State.__index__, 0, 0, 0, __str3321, 0, 0, 0, __Z10db_getinfoP9lua_State.__index__, 0, 0, 0, __str4322, 0, 0, 0, __Z11db_getlocalP9lua_State.__index__, 0, 0, 0, __str5323, 0, 0, 0, __Z14db_getregistryP9lua_State.__index__, 0, 0, 0, __str6324, 0, 0, 0, __Z15db_getmetatableP9lua_State.__index__, 0, 0, 0, __str7325, 0, 0, 0, __Z13db_getupvalueP9lua_State.__index__, 0, 0, 0, __str8326, 0, 0, 0, __Z10db_setfenvP9lua_State.__index__, 0, 0, 0, __str9327, 0, 0, 0, __Z10db_sethookP9lua_State.__index__, 0, 0, 0, __str10328, 0, 0, 0, __Z11db_setlocalP9lua_State.__index__, 0, 0, 0, __str11329, 0, 0, 0, __Z15db_setmetatableP9lua_State.__index__, 0, 0, 0, __str12330, 0, 0, 0, __Z13db_setupvalueP9lua_State.__index__, 0, 0, 0, __str13331, 0, 0, 0, __Z10db_errorfbP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str14332 = Pointer_make([0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str15333 = Pointer_make([10,0] /* \0A\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str16334 = Pointer_make([115,116,97,99,107,32,116,114,97,99,101,98,97,99,107,58,0] /* stack traceback:\00*/, 0, ALLOC_STATIC) });
@@ -58240,7 +58232,7 @@ var Module = {};
     globalFuncs.push(function() { return __str26344 = Pointer_make([110,105,108,32,111,114,32,116,97,98,108,101,32,101,120,112,101,99,116,101,100,0] /* nil or table expected\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str27345 = Pointer_make([108,101,118,101,108,32,111,117,116,32,111,102,32,114,97,110,103,101,0] /* level out of range\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __ZL8KEY_HOOK = Pointer_make([104], 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ5hookfP9lua_StateP9lua_DebugE9hooknames = Pointer_make([ __str28346, 0, 0, 0, __str29347, 0, 0, 0, __str30348, 0, 0, 0, __str31349, 0, 0, 0, __str32350, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ5hookfP9lua_StateP9lua_DebugE9hooknames = Pointer_make([__str28346, 0, 0, 0, __str29347, 0, 0, 0, __str30348, 0, 0, 0, __str31349, 0, 0, 0, __str32350, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str28346 = Pointer_make([99,97,108,108,0] /* call\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str29347 = Pointer_make([114,101,116,117,114,110,0] /* return\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str30348 = Pointer_make([108,105,110,101,0] /* line\00*/, 0, ALLOC_STATIC) });
@@ -58277,12 +58269,12 @@ var Module = {};
     globalFuncs.push(function() { return __str8379 = Pointer_make([116,109,112,102,105,108,101,0] /* tmpfile\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str9380 = Pointer_make([116,121,112,101,0] /* type\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str10381 = Pointer_make([119,114,105,116,101,0] /* write\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL5iolib = Pointer_make([ [__str371, 0, 0, 0, __Z8io_closeP9lua_State.__index__, 0, 0, 0], [__str1372, 0, 0, 0, __Z8io_flushP9lua_State.__index__, 0, 0, 0], [__str2373, 0, 0, 0, __Z8io_inputP9lua_State.__index__, 0, 0, 0], [__str3374, 0, 0, 0, __Z8io_linesP9lua_State.__index__, 0, 0, 0], [__str4375, 0, 0, 0, __Z7io_openP9lua_State.__index__, 0, 0, 0], [__str5376, 0, 0, 0, __Z9io_outputP9lua_State.__index__, 0, 0, 0], [__str6377, 0, 0, 0, __Z8io_popenP9lua_State.__index__, 0, 0, 0], [__str7378, 0, 0, 0, __Z7io_readP9lua_State.__index__, 0, 0, 0], [__str8379, 0, 0, 0, __Z10io_tmpfileP9lua_State.__index__, 0, 0, 0], [__str9380, 0, 0, 0, __Z7io_typeP9lua_State.__index__, 0, 0, 0], [__str10381, 0, 0, 0, __Z8io_writeP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL5iolib = Pointer_make([__str371, 0, 0, 0, __Z8io_closeP9lua_State.__index__, 0, 0, 0, __str1372, 0, 0, 0, __Z8io_flushP9lua_State.__index__, 0, 0, 0, __str2373, 0, 0, 0, __Z8io_inputP9lua_State.__index__, 0, 0, 0, __str3374, 0, 0, 0, __Z8io_linesP9lua_State.__index__, 0, 0, 0, __str4375, 0, 0, 0, __Z7io_openP9lua_State.__index__, 0, 0, 0, __str5376, 0, 0, 0, __Z9io_outputP9lua_State.__index__, 0, 0, 0, __str6377, 0, 0, 0, __Z8io_popenP9lua_State.__index__, 0, 0, 0, __str7378, 0, 0, 0, __Z7io_readP9lua_State.__index__, 0, 0, 0, __str8379, 0, 0, 0, __Z10io_tmpfileP9lua_State.__index__, 0, 0, 0, __str9380, 0, 0, 0, __Z7io_typeP9lua_State.__index__, 0, 0, 0, __str10381, 0, 0, 0, __Z8io_writeP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str11382 = Pointer_make([115,101,101,107,0] /* seek\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str12383 = Pointer_make([115,101,116,118,98,117,102,0] /* setvbuf\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str13384 = Pointer_make([95,95,103,99,0] /* __gc\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str14385 = Pointer_make([95,95,116,111,115,116,114,105,110,103,0] /* __tostring\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL4flib = Pointer_make([ [__str371, 0, 0, 0, __Z8io_closeP9lua_State.__index__, 0, 0, 0], [__str1372, 0, 0, 0, __Z7f_flushP9lua_State.__index__, 0, 0, 0], [__str3374, 0, 0, 0, __Z7f_linesP9lua_State.__index__, 0, 0, 0], [__str7378, 0, 0, 0, __Z6f_readP9lua_State.__index__, 0, 0, 0], [__str11382, 0, 0, 0, __Z6f_seekP9lua_State.__index__, 0, 0, 0], [__str12383, 0, 0, 0, __Z9f_setvbufP9lua_State.__index__, 0, 0, 0], [__str10381, 0, 0, 0, __Z7f_writeP9lua_State.__index__, 0, 0, 0], [__str13384, 0, 0, 0, __Z5io_gcP9lua_State.__index__, 0, 0, 0], [__str14385, 0, 0, 0, __Z11io_tostringP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL4flib = Pointer_make([__str371, 0, 0, 0, __Z8io_closeP9lua_State.__index__, 0, 0, 0, __str1372, 0, 0, 0, __Z7f_flushP9lua_State.__index__, 0, 0, 0, __str3374, 0, 0, 0, __Z7f_linesP9lua_State.__index__, 0, 0, 0, __str7378, 0, 0, 0, __Z6f_readP9lua_State.__index__, 0, 0, 0, __str11382, 0, 0, 0, __Z6f_seekP9lua_State.__index__, 0, 0, 0, __str12383, 0, 0, 0, __Z9f_setvbufP9lua_State.__index__, 0, 0, 0, __str10381, 0, 0, 0, __Z7f_writeP9lua_State.__index__, 0, 0, 0, __str13384, 0, 0, 0, __Z5io_gcP9lua_State.__index__, 0, 0, 0, __str14385, 0, 0, 0, __Z11io_tostringP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str15386 = Pointer_make([105,111,0] /* io\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str16387 = Pointer_make([115,116,100,105,110,0] /* stdin\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str17388 = Pointer_make([115,116,100,111,117,116,0] /* stdout\00*/, 0, ALLOC_STATIC) });
@@ -58297,13 +58289,13 @@ var Module = {};
     globalFuncs.push(function() { return __str26397 = Pointer_make([102,105,108,101,32,40,37,112,41,0] /* file (%p)\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str27398 = Pointer_make([97,116,116,101,109,112,116,32,116,111,32,117,115,101,32,97,32,99,108,111,115,101,100,32,102,105,108,101,0] /* attempt to use a closed file\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str28399 = Pointer_make([37,46,49,52,103,0] /* %.14g\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ9f_setvbufP9lua_StateE4mode = Pointer_make([ 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 ], 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ9f_setvbufP9lua_StateE9modenames = Pointer_make([ __str29400, 0, 0, 0, __str30401, 0, 0, 0, __str31402, 0, 0, 0, 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ9f_setvbufP9lua_StateE4mode = Pointer_make([2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ9f_setvbufP9lua_StateE9modenames = Pointer_make([__str29400, 0, 0, 0, __str30401, 0, 0, 0, __str31402, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str29400 = Pointer_make([110,111,0] /* no\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str30401 = Pointer_make([102,117,108,108,0] /* full\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str31402 = Pointer_make([108,105,110,101,0] /* line\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ6f_seekP9lua_StateE4mode = Pointer_make([ 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0 ], 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ6f_seekP9lua_StateE9modenames = Pointer_make([ __str32403, 0, 0, 0, __str33404, 0, 0, 0, __str34405, 0, 0, 0, 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ6f_seekP9lua_StateE4mode = Pointer_make([0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ6f_seekP9lua_StateE9modenames = Pointer_make([__str32403, 0, 0, 0, __str33404, 0, 0, 0, __str34405, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str32403 = Pointer_make([115,101,116,0] /* set\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str33404 = Pointer_make([99,117,114,0] /* cur\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str34405 = Pointer_make([101,110,100,0] /* end\00*/, 0, ALLOC_STATIC) });
@@ -58313,7 +58305,7 @@ var Module = {};
     globalFuncs.push(function() { return __str38409 = Pointer_make([37,108,102,0] /* %lf\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str39410 = Pointer_make([102,105,108,101,32,105,115,32,97,108,114,101,97,100,121,32,99,108,111,115,101,100,0] /* file is already closed\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str40411 = Pointer_make([115,116,97,110,100,97,114,100,32,37,115,32,102,105,108,101,32,105,115,32,99,108,111,115,101,100,0] /* standard %s file is closed\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL6fnames = Pointer_make([ __str2373, 0, 0, 0, __str5376, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL6fnames = Pointer_make([__str2373, 0, 0, 0, __str5376, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str41412 = Pointer_make([99,108,111,115,101,100,32,102,105,108,101,0] /* closed file\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str42413 = Pointer_make([102,105,108,101,0] /* file\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str43414 = Pointer_make([114,0] /* r\00*/, 0, ALLOC_STATIC) });
@@ -58347,7 +58339,7 @@ var Module = {};
     globalFuncs.push(function() { return __str25442 = Pointer_make([115,113,114,116,0] /* sqrt\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str26443 = Pointer_make([116,97,110,104,0] /* tanh\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str27444 = Pointer_make([116,97,110,0] /* tan\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL7mathlib = Pointer_make([ [__str417, 0, 0, 0, __Z8math_absP9lua_State.__index__, 0, 0, 0], [__str1418, 0, 0, 0, __Z9math_acosP9lua_State.__index__, 0, 0, 0], [__str2419, 0, 0, 0, __Z9math_asinP9lua_State.__index__, 0, 0, 0], [__str3420, 0, 0, 0, __Z10math_atan2P9lua_State.__index__, 0, 0, 0], [__str4421, 0, 0, 0, __Z9math_atanP9lua_State.__index__, 0, 0, 0], [__str5422, 0, 0, 0, __Z9math_ceilP9lua_State.__index__, 0, 0, 0], [__str6423, 0, 0, 0, __Z9math_coshP9lua_State.__index__, 0, 0, 0], [__str7424, 0, 0, 0, __Z8math_cosP9lua_State.__index__, 0, 0, 0], [__str8425, 0, 0, 0, __Z8math_degP9lua_State.__index__, 0, 0, 0], [__str9426, 0, 0, 0, __Z8math_expP9lua_State.__index__, 0, 0, 0], [__str10427, 0, 0, 0, __Z10math_floorP9lua_State.__index__, 0, 0, 0], [__str11428, 0, 0, 0, __Z9math_fmodP9lua_State.__index__, 0, 0, 0], [__str12429, 0, 0, 0, __Z10math_frexpP9lua_State.__index__, 0, 0, 0], [__str13430, 0, 0, 0, __Z10math_ldexpP9lua_State.__index__, 0, 0, 0], [__str14431, 0, 0, 0, __Z10math_log10P9lua_State.__index__, 0, 0, 0], [__str15432, 0, 0, 0, __Z8math_logP9lua_State.__index__, 0, 0, 0], [__str16433, 0, 0, 0, __Z8math_maxP9lua_State.__index__, 0, 0, 0], [__str17434, 0, 0, 0, __Z8math_minP9lua_State.__index__, 0, 0, 0], [__str18435, 0, 0, 0, __Z9math_modfP9lua_State.__index__, 0, 0, 0], [__str19436, 0, 0, 0, __Z8math_powP9lua_State.__index__, 0, 0, 0], [__str20437, 0, 0, 0, __Z8math_radP9lua_State.__index__, 0, 0, 0], [__str21438, 0, 0, 0, __Z11math_randomP9lua_State.__index__, 0, 0, 0], [__str22439, 0, 0, 0, __Z15math_randomseedP9lua_State.__index__, 0, 0, 0], [__str23440, 0, 0, 0, __Z9math_sinhP9lua_State.__index__, 0, 0, 0], [__str24441, 0, 0, 0, __Z8math_sinP9lua_State.__index__, 0, 0, 0], [__str25442, 0, 0, 0, __Z9math_sqrtP9lua_State.__index__, 0, 0, 0], [__str26443, 0, 0, 0, __Z9math_tanhP9lua_State.__index__, 0, 0, 0], [__str27444, 0, 0, 0, __Z8math_tanP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL7mathlib = Pointer_make([__str417, 0, 0, 0, __Z8math_absP9lua_State.__index__, 0, 0, 0, __str1418, 0, 0, 0, __Z9math_acosP9lua_State.__index__, 0, 0, 0, __str2419, 0, 0, 0, __Z9math_asinP9lua_State.__index__, 0, 0, 0, __str3420, 0, 0, 0, __Z10math_atan2P9lua_State.__index__, 0, 0, 0, __str4421, 0, 0, 0, __Z9math_atanP9lua_State.__index__, 0, 0, 0, __str5422, 0, 0, 0, __Z9math_ceilP9lua_State.__index__, 0, 0, 0, __str6423, 0, 0, 0, __Z9math_coshP9lua_State.__index__, 0, 0, 0, __str7424, 0, 0, 0, __Z8math_cosP9lua_State.__index__, 0, 0, 0, __str8425, 0, 0, 0, __Z8math_degP9lua_State.__index__, 0, 0, 0, __str9426, 0, 0, 0, __Z8math_expP9lua_State.__index__, 0, 0, 0, __str10427, 0, 0, 0, __Z10math_floorP9lua_State.__index__, 0, 0, 0, __str11428, 0, 0, 0, __Z9math_fmodP9lua_State.__index__, 0, 0, 0, __str12429, 0, 0, 0, __Z10math_frexpP9lua_State.__index__, 0, 0, 0, __str13430, 0, 0, 0, __Z10math_ldexpP9lua_State.__index__, 0, 0, 0, __str14431, 0, 0, 0, __Z10math_log10P9lua_State.__index__, 0, 0, 0, __str15432, 0, 0, 0, __Z8math_logP9lua_State.__index__, 0, 0, 0, __str16433, 0, 0, 0, __Z8math_maxP9lua_State.__index__, 0, 0, 0, __str17434, 0, 0, 0, __Z8math_minP9lua_State.__index__, 0, 0, 0, __str18435, 0, 0, 0, __Z9math_modfP9lua_State.__index__, 0, 0, 0, __str19436, 0, 0, 0, __Z8math_powP9lua_State.__index__, 0, 0, 0, __str20437, 0, 0, 0, __Z8math_radP9lua_State.__index__, 0, 0, 0, __str21438, 0, 0, 0, __Z11math_randomP9lua_State.__index__, 0, 0, 0, __str22439, 0, 0, 0, __Z15math_randomseedP9lua_State.__index__, 0, 0, 0, __str23440, 0, 0, 0, __Z9math_sinhP9lua_State.__index__, 0, 0, 0, __str24441, 0, 0, 0, __Z8math_sinP9lua_State.__index__, 0, 0, 0, __str25442, 0, 0, 0, __Z9math_sqrtP9lua_State.__index__, 0, 0, 0, __str26443, 0, 0, 0, __Z9math_tanhP9lua_State.__index__, 0, 0, 0, __str27444, 0, 0, 0, __Z8math_tanP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str28445 = Pointer_make([109,97,116,104,0] /* math\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str29446 = Pointer_make([112,105,0] /* pi\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str30447 = Pointer_make([104,117,103,101,0] /* huge\00*/, 0, ALLOC_STATIC) });
@@ -58365,7 +58357,7 @@ var Module = {};
     globalFuncs.push(function() { return __str8460 = Pointer_make([115,101,116,108,111,99,97,108,101,0] /* setlocale\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str9461 = Pointer_make([116,105,109,101,0] /* time\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str10462 = Pointer_make([116,109,112,110,97,109,101,0] /* tmpname\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL6syslib = Pointer_make([ [__str452, 0, 0, 0, __Z8os_clockP9lua_State.__index__, 0, 0, 0], [__str1453, 0, 0, 0, __Z7os_dateP9lua_State.__index__, 0, 0, 0], [__str2454, 0, 0, 0, __Z11os_difftimeP9lua_State.__index__, 0, 0, 0], [__str3455, 0, 0, 0, __Z10os_executeP9lua_State.__index__, 0, 0, 0], [__str4456, 0, 0, 0, __Z7os_exitP9lua_State.__index__, 0, 0, 0], [__str5457, 0, 0, 0, __Z9os_getenvP9lua_State.__index__, 0, 0, 0], [__str6458, 0, 0, 0, __Z9os_removeP9lua_State.__index__, 0, 0, 0], [__str7459, 0, 0, 0, __Z9os_renameP9lua_State.__index__, 0, 0, 0], [__str8460, 0, 0, 0, __Z12os_setlocaleP9lua_State.__index__, 0, 0, 0], [__str9461, 0, 0, 0, __Z7os_timeP9lua_State.__index__, 0, 0, 0], [__str10462, 0, 0, 0, __Z10os_tmpnameP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL6syslib = Pointer_make([__str452, 0, 0, 0, __Z8os_clockP9lua_State.__index__, 0, 0, 0, __str1453, 0, 0, 0, __Z7os_dateP9lua_State.__index__, 0, 0, 0, __str2454, 0, 0, 0, __Z11os_difftimeP9lua_State.__index__, 0, 0, 0, __str3455, 0, 0, 0, __Z10os_executeP9lua_State.__index__, 0, 0, 0, __str4456, 0, 0, 0, __Z7os_exitP9lua_State.__index__, 0, 0, 0, __str5457, 0, 0, 0, __Z9os_getenvP9lua_State.__index__, 0, 0, 0, __str6458, 0, 0, 0, __Z9os_removeP9lua_State.__index__, 0, 0, 0, __str7459, 0, 0, 0, __Z9os_renameP9lua_State.__index__, 0, 0, 0, __str8460, 0, 0, 0, __Z12os_setlocaleP9lua_State.__index__, 0, 0, 0, __str9461, 0, 0, 0, __Z7os_timeP9lua_State.__index__, 0, 0, 0, __str10462, 0, 0, 0, __Z10os_tmpnameP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str11463 = Pointer_make([111,115,0] /* os\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str12464 = Pointer_make([117,110,97,98,108,101,32,116,111,32,103,101,110,101,114,97,116,101,32,97,32,117,110,105,113,117,101,32,102,105,108,101,110,97,109,101,0] /* unable to generate a unique filename\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str13465 = Pointer_make([115,101,99,0] /* sec\00*/, 0, ALLOC_STATIC) });
@@ -58376,8 +58368,8 @@ var Module = {};
     globalFuncs.push(function() { return __str18470 = Pointer_make([121,101,97,114,0] /* year\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str19471 = Pointer_make([105,115,100,115,116,0] /* isdst\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str20472 = Pointer_make([102,105,101,108,100,32,39,37,115,39,32,109,105,115,115,105,110,103,32,105,110,32,100,97,116,101,32,116,97,98,108,101,0] /* field '%s' missing in date table\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ12os_setlocaleP9lua_StateE3cat = Pointer_make([ 6, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0 ], 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZZ12os_setlocaleP9lua_StateE8catnames = Pointer_make([ __str21473, 0, 0, 0, __str22474, 0, 0, 0, __str23475, 0, 0, 0, __str24476, 0, 0, 0, __str25477, 0, 0, 0, __str9461, 0, 0, 0, 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ12os_setlocaleP9lua_StateE3cat = Pointer_make([6, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZZ12os_setlocaleP9lua_StateE8catnames = Pointer_make([__str21473, 0, 0, 0, __str22474, 0, 0, 0, __str23475, 0, 0, 0, __str24476, 0, 0, 0, __str25477, 0, 0, 0, __str9461, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str21473 = Pointer_make([97,108,108,0] /* all\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str22474 = Pointer_make([99,111,108,108,97,116,101,0] /* collate\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str23475 = Pointer_make([99,116,121,112,101,0] /* ctype\00*/, 0, ALLOC_STATIC) });
@@ -58397,7 +58389,7 @@ var Module = {};
     globalFuncs.push(function() { return __str6489 = Pointer_make([114,101,109,111,118,101,0] /* remove\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str7490 = Pointer_make([115,101,116,110,0] /* setn\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str8491 = Pointer_make([115,111,114,116,0] /* sort\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL9tab_funcs = Pointer_make([ [__str483, 0, 0, 0, __Z7tconcatP9lua_State.__index__, 0, 0, 0], [__str1484, 0, 0, 0, __Z7foreachP9lua_State.__index__, 0, 0, 0], [__str2485, 0, 0, 0, __Z8foreachiP9lua_State.__index__, 0, 0, 0], [__str3486, 0, 0, 0, __Z4getnP9lua_State.__index__, 0, 0, 0], [__str4487, 0, 0, 0, __Z4maxnP9lua_State.__index__, 0, 0, 0], [__str5488, 0, 0, 0, __Z7tinsertP9lua_State.__index__, 0, 0, 0], [__str6489, 0, 0, 0, __Z7tremoveP9lua_State.__index__, 0, 0, 0], [__str7490, 0, 0, 0, __Z4setnP9lua_State.__index__, 0, 0, 0], [__str8491, 0, 0, 0, __Z4sortP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL9tab_funcs = Pointer_make([__str483, 0, 0, 0, __Z7tconcatP9lua_State.__index__, 0, 0, 0, __str1484, 0, 0, 0, __Z7foreachP9lua_State.__index__, 0, 0, 0, __str2485, 0, 0, 0, __Z8foreachiP9lua_State.__index__, 0, 0, 0, __str3486, 0, 0, 0, __Z4getnP9lua_State.__index__, 0, 0, 0, __str4487, 0, 0, 0, __Z4maxnP9lua_State.__index__, 0, 0, 0, __str5488, 0, 0, 0, __Z7tinsertP9lua_State.__index__, 0, 0, 0, __str6489, 0, 0, 0, __Z7tremoveP9lua_State.__index__, 0, 0, 0, __str7490, 0, 0, 0, __Z4setnP9lua_State.__index__, 0, 0, 0, __str8491, 0, 0, 0, __Z4sortP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str9492 = Pointer_make([116,97,98,108,101,0] /* table\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str10493 = Pointer_make([0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str11494 = Pointer_make([105,110,118,97,108,105,100,32,111,114,100,101,114,32,102,117,110,99,116,105,111,110,32,102,111,114,32,115,111,114,116,105,110,103,0] /* invalid order function for sorting\00*/, 0, ALLOC_STATIC) });
@@ -58419,7 +58411,7 @@ var Module = {};
     globalFuncs.push(function() { return __str12510 = Pointer_make([114,101,118,101,114,115,101,0] /* reverse\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str13511 = Pointer_make([115,117,98,0] /* sub\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str14512 = Pointer_make([117,112,112,101,114,0] /* upper\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL6strlib = Pointer_make([ [__str498, 0, 0, 0, __Z8str_byteP9lua_State.__index__, 0, 0, 0], [__str1499, 0, 0, 0, __Z8str_charP9lua_State.__index__, 0, 0, 0], [__str2500, 0, 0, 0, __Z8str_dumpP9lua_State.__index__, 0, 0, 0], [__str3501, 0, 0, 0, __Z8str_findP9lua_State.__index__, 0, 0, 0], [__str4502, 0, 0, 0, __Z10str_formatP9lua_State.__index__, 0, 0, 0], [__str5503, 0, 0, 0, __Z11gfind_nodefP9lua_State.__index__, 0, 0, 0], [__str6504, 0, 0, 0, __Z6gmatchP9lua_State.__index__, 0, 0, 0], [__str7505, 0, 0, 0, __Z8str_gsubP9lua_State.__index__, 0, 0, 0], [__str8506, 0, 0, 0, __Z7str_lenP9lua_State.__index__, 0, 0, 0], [__str9507, 0, 0, 0, __Z9str_lowerP9lua_State.__index__, 0, 0, 0], [__str10508, 0, 0, 0, __Z9str_matchP9lua_State.__index__, 0, 0, 0], [__str11509, 0, 0, 0, __Z7str_repP9lua_State.__index__, 0, 0, 0], [__str12510, 0, 0, 0, __Z11str_reverseP9lua_State.__index__, 0, 0, 0], [__str13511, 0, 0, 0, __Z7str_subP9lua_State.__index__, 0, 0, 0], [__str14512, 0, 0, 0, __Z9str_upperP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL6strlib = Pointer_make([__str498, 0, 0, 0, __Z8str_byteP9lua_State.__index__, 0, 0, 0, __str1499, 0, 0, 0, __Z8str_charP9lua_State.__index__, 0, 0, 0, __str2500, 0, 0, 0, __Z8str_dumpP9lua_State.__index__, 0, 0, 0, __str3501, 0, 0, 0, __Z8str_findP9lua_State.__index__, 0, 0, 0, __str4502, 0, 0, 0, __Z10str_formatP9lua_State.__index__, 0, 0, 0, __str5503, 0, 0, 0, __Z11gfind_nodefP9lua_State.__index__, 0, 0, 0, __str6504, 0, 0, 0, __Z6gmatchP9lua_State.__index__, 0, 0, 0, __str7505, 0, 0, 0, __Z8str_gsubP9lua_State.__index__, 0, 0, 0, __str8506, 0, 0, 0, __Z7str_lenP9lua_State.__index__, 0, 0, 0, __str9507, 0, 0, 0, __Z9str_lowerP9lua_State.__index__, 0, 0, 0, __str10508, 0, 0, 0, __Z9str_matchP9lua_State.__index__, 0, 0, 0, __str11509, 0, 0, 0, __Z7str_repP9lua_State.__index__, 0, 0, 0, __str12510, 0, 0, 0, __Z11str_reverseP9lua_State.__index__, 0, 0, 0, __str13511, 0, 0, 0, __Z7str_subP9lua_State.__index__, 0, 0, 0, __str14512, 0, 0, 0, __Z9str_upperP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str15513 = Pointer_make([115,116,114,105,110,103,0] /* string\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str16514 = Pointer_make([0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str17515 = Pointer_make([95,95,105,110,100,101,120,0] /* __index\00*/, 0, ALLOC_STATIC) });
@@ -58447,11 +58439,11 @@ var Module = {};
     globalFuncs.push(function() { return __str39537 = Pointer_make([115,116,114,105,110,103,32,115,108,105,99,101,32,116,111,111,32,108,111,110,103,0] /* string slice too long\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str538 = Pointer_make([108,111,97,100,108,105,98,0] /* loadlib\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str1539 = Pointer_make([115,101,101,97,108,108,0] /* seeall\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL8pk_funcs = Pointer_make([ [__str538, 0, 0, 0, __Z10ll_loadlibP9lua_State.__index__, 0, 0, 0], [__str1539, 0, 0, 0, __Z9ll_seeallP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL8pk_funcs = Pointer_make([__str538, 0, 0, 0, __Z10ll_loadlibP9lua_State.__index__, 0, 0, 0, __str1539, 0, 0, 0, __Z9ll_seeallP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str2540 = Pointer_make([109,111,100,117,108,101,0] /* module\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str3541 = Pointer_make([114,101,113,117,105,114,101,0] /* require\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL8ll_funcs = Pointer_make([ [__str2540, 0, 0, 0, __Z9ll_moduleP9lua_State.__index__, 0, 0, 0], [__str3541, 0, 0, 0, __Z10ll_requireP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL7loaders = Pointer_make([ __Z14loader_preloadP9lua_State.__index__, 0, 0, 0, __Z10loader_LuaP9lua_State.__index__, 0, 0, 0, __Z8loader_CP9lua_State.__index__, 0, 0, 0, __Z12loader_CrootP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0 ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL8ll_funcs = Pointer_make([__str2540, 0, 0, 0, __Z9ll_moduleP9lua_State.__index__, 0, 0, 0, __str3541, 0, 0, 0, __Z10ll_requireP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL7loaders = Pointer_make([__Z14loader_preloadP9lua_State.__index__, 0, 0, 0, __Z10loader_LuaP9lua_State.__index__, 0, 0, 0, __Z8loader_CP9lua_State.__index__, 0, 0, 0, __Z12loader_CrootP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str4542 = Pointer_make([95,76,79,65,68,76,73,66,0] /* _LOADLIB\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str5543 = Pointer_make([95,95,103,99,0] /* __gc\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str6544 = Pointer_make([112,97,99,107,97,103,101,0] /* package\00*/, 0, ALLOC_STATIC) });
@@ -58509,21 +58501,25 @@ var Module = {};
     globalFuncs.push(function() { return __str5595 = Pointer_make([115,116,114,105,110,103,0] /* string\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str6596 = Pointer_make([109,97,116,104,0] /* math\00*/, 0, ALLOC_STATIC) });
     globalFuncs.push(function() { return __str7597 = Pointer_make([100,101,98,117,103,0] /* debug\00*/, 0, ALLOC_STATIC) });
-    globalFuncs.push(function() { return __ZL7lualibs = Pointer_make([ [__str590, 0, 0, 0, __Z12luaopen_baseP9lua_State.__index__, 0, 0, 0], [__str1591, 0, 0, 0, __Z15luaopen_packageP9lua_State.__index__, 0, 0, 0], [__str2592, 0, 0, 0, __Z13luaopen_tableP9lua_State.__index__, 0, 0, 0], [__str3593, 0, 0, 0, __Z10luaopen_ioP9lua_State.__index__, 0, 0, 0], [__str4594, 0, 0, 0, __Z10luaopen_osP9lua_State.__index__, 0, 0, 0], [__str5595, 0, 0, 0, __Z14luaopen_stringP9lua_State.__index__, 0, 0, 0], [__str6596, 0, 0, 0, __Z12luaopen_mathP9lua_State.__index__, 0, 0, 0], [__str7597, 0, 0, 0, __Z13luaopen_debugP9lua_State.__index__, 0, 0, 0], [0,0,0,0,0,0,0,0] ], 0, ALLOC_STATIC) });
+    globalFuncs.push(function() { return __ZL7lualibs = Pointer_make([__str590, 0, 0, 0, __Z12luaopen_baseP9lua_State.__index__, 0, 0, 0, __str1591, 0, 0, 0, __Z15luaopen_packageP9lua_State.__index__, 0, 0, 0, __str2592, 0, 0, 0, __Z13luaopen_tableP9lua_State.__index__, 0, 0, 0, __str3593, 0, 0, 0, __Z10luaopen_ioP9lua_State.__index__, 0, 0, 0, __str4594, 0, 0, 0, __Z10luaopen_osP9lua_State.__index__, 0, 0, 0, __str5595, 0, 0, 0, __Z14luaopen_stringP9lua_State.__index__, 0, 0, 0, __str6596, 0, 0, 0, __Z12luaopen_mathP9lua_State.__index__, 0, 0, 0, __str7597, 0, 0, 0, __Z13luaopen_debugP9lua_State.__index__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, ALLOC_STATIC) });
   
-    var counter = Math.pow(globalFuncs.length,2)+1;
-    while (globalFuncs.length > 0 && counter >= 0) {
-      counter--;
+    var failures = 0;
+    while (globalFuncs.length > 0) {
       var func = globalFuncs.pop();
       try {
         var x = func();
         if (x == undefined) throw 'undefined';
+        failures = 0;
       } catch (e) {
+        failures++;
+        if (failures > 2*globalFuncs.length) {
+          throw 'Failed to generate global values';
+        }
         globalFuncs.unshift(func);
         // We will try again later. The global vars we depend on should be resolved by then
       }
     }
-    assert(counter > 0);
+    assert(globalFuncs.length === 0);
   
     argc = args.length+1; // XXX manually added for demo (unvar)
     function pad() {
