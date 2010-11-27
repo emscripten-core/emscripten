@@ -817,7 +817,7 @@ if 'benchmark' not in sys.argv:
     def test_varargs(self):
         src = '''
           #include <stdio.h>
-          #include "stdarg.h"
+          #include <stdarg.h>
 
           void vary(const char *s, ...)
           {
@@ -840,13 +840,36 @@ if 'benchmark' not in sys.argv:
             va_end(v);
           }
 
+          #define GETMAX(pref, type) \
+            type getMax##pref(int num, ...) \
+            { \
+              va_list vv; \
+              va_start(vv, num); \
+              type maxx = va_arg(vv, type); \
+              for (int i = 1; i < num; i++) \
+              { \
+                type curr = va_arg(vv, type); \
+                maxx = curr > maxx ? curr : maxx; \
+              } \
+              va_end(vv); \
+              return maxx; \
+            }
+          GETMAX(i, int);
+          GETMAX(D, double);
+
           int main() {
             vary("*cheez: %d+%d*", 0, 24); // Also tests that '0' is not special as an array ender
             vary2('Q', "%d*", 85);
+
+            int maxxi = getMaxi(6,        2, 5, 21, 4, -10, 19);
+            printf("maxxi:%d*\\n", maxxi);
+            double maxxD = getMaxD(6,        (double)2.1, (double)5.1, (double)22.1, (double)4.1, (double)-10.1, (double)19.1);
+            printf("maxxD:%.2f*\\n", (float)maxxD);
+
             return 0;
           }
           '''
-        self.do_test(src, '*cheez: 0+24*\nQ85*')
+        self.do_test(src, '*cheez: 0+24*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
 
     def test_stdlibs(self):
         src = '''

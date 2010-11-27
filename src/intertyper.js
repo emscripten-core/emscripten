@@ -65,11 +65,14 @@ function intertyper(data, parseFunctions, baseLineNum) {
         if (!parseFunctions && /^}.*/.test(line)) {
           inFunction = false;
           if (!parseFunctions) {
+            var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0] }, true))[0];
             unparsedFunctions.push({
               __result__: true,
               intertype: 'unparsedFunction',
-              // We need this early, to know all function idents
-              ident: toNiceIdent(funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0] }, true))[0].ident),
+              // We need this early, to know basic function info - ident, params, varargs
+              ident: toNiceIdent(func.ident),
+              params: func.params,
+              hasVarArgs: func.hasVarArgs,
               lineNum: currFunctionLineNum,
               lines: currFunctionLines,
             });
@@ -385,15 +388,23 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.tokens = item.tokens.filter(function(token) {
         return !(token.text in LLVM.LINKAGES || token.text in set('noalias', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'inlinehint', '{', 'fastcc'));
       });
-      var ret = [{
+      var ret = {
         __result__: true,
         intertype: 'function',
         ident: item.tokens[1].text,
         returnType: item.tokens[0],
         params: parseParamTokens(item.tokens[2].item.tokens),
         lineNum: item.lineNum,
-      }];
-      return ret;
+      };
+      ret.hasVarArgs = false;
+      ret.paramIdents = ret.params.map(function(param) {
+        if (param.intertype == 'varargs') {
+          ret.hasVarArgs = true;
+          return null;
+        }
+        return toNiceIdent(param.ident);
+      }).filter(function(param) { return param != null });;
+      return [ret];
     },
   });
   // label

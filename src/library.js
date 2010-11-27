@@ -63,8 +63,7 @@ var Library = {
   },
 
   vsnprintf: function(dst, num, src, ptr) {
-    var args = Array_copy(ptr+1, IHEAP[ptr]); // # of args in in first place
-    var text = __formatString.apply(null, [src].concat(args));
+    var text = __formatString(-src, ptr); // |-|src tells formatstring to use C-style params (typically they are from varargs)
     for (var i = 0; i < num; i++) {
       IHEAP[dst+i] = IHEAP[text+i];
       if (IHEAP[dst+i] == 0) break;

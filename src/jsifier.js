@@ -9,7 +9,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
   // Now that analysis has completed, we can get around to handling unparsedFunctions
   (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
-    FUNCTIONS[func.ident] = true;
+    FUNCTIONS[func.ident] = func;
   });
 
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
@@ -323,16 +323,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
       // We have this function all reconstructed, go and finalize it's JS!
 
-      var hasVarArgs = false;
-      var params = func.params.map(function(param) {
-        if (param.intertype == 'varargs') {
-          hasVarArgs = true;
-          return null;
-        }
-        return toNiceIdent(param.ident);
-      }).filter(function(param) { return param != null });;
-
-      func.JS = '\nfunction ' + func.ident + '(' + params.join(', ') + ') {\n';
+      func.JS = '\nfunction ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
 
       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack) + ';\n';
 
@@ -341,8 +332,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       if (true) { // TODO: optimize away when not needed
         func.JS += '  var __label__;\n';
       }
-      if (hasVarArgs) {
-        func.JS += '  var __numArgs__ = ' + params.length + ';\n';
+      if (func.hasVarArgs) {
+        func.JS += '  var __numArgs__ = ' + func.paramIdents.length + ';\n';
       }
       if (func.hasPhi) {
         func.JS += '  var __lastLabel__ = null;\n';
@@ -892,9 +883,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   function makeFunctionCall(ident, params, funcData) {
     // Special cases
     if (ident == '_llvm_va_start') {
-      // varargs
-      var args = 'Array.prototype.slice.call(arguments, __numArgs__)';
-      var data = 'Pointer_make([' + args + '.length].concat(' + args + '), 0)';
+      // varargs - we received a pointer to the varargs as a final parameter
+      var data = 'arguments[__numArgs__]';
       if (SAFE_HEAP) {
         return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', null)';
       } else {
@@ -904,19 +894,36 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       return ';'
     }
 
-    var params = params.map(function(param) {
+    var func = FUNCTIONS[ident];
+    var args = [];
+    var varargs = [];
+
+    params.forEach(function(param, i) {
+      var val;
       if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
-        return finalizeLLVMFunctionCall(param);
+        val = finalizeLLVMFunctionCall(param);
       } else {
-        return toNiceIdent(param.ident);
+        val = toNiceIdent(param.ident);
       }
-    }).map(indexizeFunctions);
+      if (!func || !func.hasVarArgs || i < func.params.length-1) { // unrecognized functions (like library ones) cannot have varargs
+        args.push(val);
+      } else {
+        varargs.push(val);
+        varargs = varargs.concat(zeros(getNativeFieldSize(param.type)-1));
+      }
+    });
+
+    args = args.map(indexizeFunctions);
+    varargs = varargs.map(indexizeFunctions);
+    if (varargs.length > 0) {
+      varargs = makePointer(varargs, 0, 'ALLOC_STACK');
+    }
 
     if (getVarData(funcData, ident)) {
       ident = 'FUNCTION_TABLE[' + ident + ']';
     }
 
-    return ident + '(' + params.join(', ') + ')';
+    return ident + '(' + args.concat(varargs).join(', ') + ')';
   }
   makeFuncLineZyme('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineZyme('call', function(item) {

@@ -229,15 +229,37 @@ function __shutdownRuntime__() {
 
 // C-style: we work on ints on the HEAP.
 function __formatString() {
+  var cStyle = false;
   var textIndex = arguments[0];
   var argIndex = 1;
+  if (textIndex < 0) {
+    cStyle = true;
+    textIndex = -textIndex;
+    slab = null;
+    argIndex = arguments[1];
+  } else {
+    var _arguments = arguments;
+  }
+  function getNextArg(type) {
+    var ret;
+    if (!cStyle) {
+      ret = _arguments[argIndex];
+      argIndex++;
+    } else {
+      ret = (type === 'f' ? FHEAP : IHEAP)[argIndex];
+      argIndex += type === 'l'.charCodeAt(0) ? 8 : 4; // XXX hardcoded native sizes
+    }
+    return ret;
+  }
+
   var ret = [];
-  var curr = -1;
+  var curr = -1, next, currArg;
   while (curr) { // Note: should be curr != 0, technically. But this helps catch bugs with undefineds
     curr = IHEAP[textIndex];
     next = IHEAP[textIndex+1];
     if (curr == '%'.charCodeAt(0) && ['d', 'u', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
-      var argText = String(+arguments[argIndex]); // +: boolean=>int
+      var currArg;
+      var argText;
       // Handle very very simply formatting, namely only %.Xf
       if (next == '.'.charCodeAt(0)) {
         var limit = 0;
@@ -249,6 +271,9 @@ function __formatString() {
           textIndex++;
         }
         textIndex--;
+        next = IHEAP[textIndex+1];
+        currArg = getNextArg(next);
+        argText = String(+currArg); // +: boolean=>int
         var dotIndex = argText.indexOf('.');
         if (dotIndex == -1) {
           dotIndex = argText.length;
@@ -258,20 +283,21 @@ function __formatString() {
         argText = argText.substr(0, dotIndex+1+limit);
         textIndex += 2;
       } else if (next == 'u'.charCodeAt(0)) {
-        argText = String(unSign(arguments[argIndex], 32));
+        currArg = getNextArg(next);
+        argText = String(unSign(currArg, 32));
+      } else {
+        currArg = getNextArg(next);
+        argText = String(+currArg); // +: boolean=>int
       }
       argText.split('').forEach(function(chr) {
         ret.push(chr.charCodeAt(0));
       });
-      argIndex += 1;
       textIndex += 2;
     } else if (curr == '%'.charCodeAt(0) && next == 's'.charCodeAt(0)) {
-      ret = ret.concat(String_copy(arguments[argIndex]));
-      argIndex += 1;
+      ret = ret.concat(String_copy(getNextArg(next)));
       textIndex += 2;
     } else if (curr == '%'.charCodeAt(0) && next == 'c'.charCodeAt(0)) {
-      ret = ret.concat(arguments[argIndex]);
-      argIndex += 1;
+      ret = ret.concat(getNextArg(next));
       textIndex += 2;
     } else {
       ret.push(curr);
