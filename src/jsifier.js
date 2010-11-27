@@ -151,7 +151,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   function makeConst(value, type, ident) {
     //dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
     if (value.intertype) {
-      return finalizeLLVMFunctionCall(value);
+      return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
       return indexizeFunctions(parseNumerical(toNiceIdent(value.text)));
     } else if (value.text == 'zeroinitializer') {
@@ -225,9 +225,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         }
         return ret;
       }
-      constant = '[' + flatten(constant).map(function(x) { return parseNumerical(x) }).join(', ') + ']';
+      constant = flatten(constant).map(function(x) { return parseNumerical(x) })
     }
-    return makePointer(constant, null, 'ALLOC_STATIC', type);
+    return constant;
   }
 
   // globalVariable
@@ -235,24 +235,39 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     processItem: function(item) {
       item.intertype = 'GlobalVariableStub';
       item.__result__ = true;
+      var ret = [item];
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
                     item.ctors.map(function(ctor) { return '  ' + toNiceIdent(ctor) + '();' }).join('\n') +
                   '\n}\n';
+        return ret;
       } else {
         item.JS = 'var ' + item.ident + ';';
-        return [item, {
+        var constant = item.external ?
+          JSON.stringify(makeEmptyStruct(item.type)) + ' /* external value? */'
+          :
+          parseConst(item.value, item.type, item.ident);
+        if (typeof constant === 'object') {
+          // This is a flattened object. We need to find its idents, so they can be assigned to later
+          constant.forEach(function(value, i) {
+            if (value[0] in set('_', '(')) { // ident, or expression containing an ident
+              ret.push({
+                intertype: 'GlobalVariablePostSet',
+                JS: 'IHEAP[' + item.ident + '+' + i + '] = ' + value + ';',
+                __result__: true,
+              });
+              constant[i] = '0';
+            }
+          });
+          constant = '[' + constant.join(', ') + ']';
+        }
+        constant = makePointer(constant, null, 'ALLOC_STATIC', item.type);
+        return ret.concat({
           intertype: 'GlobalVariable',
-          JS: 'globalFuncs.push(function() { return ' + item.ident + ' = ' + (
-            item.external ?
-              makePointer(JSON.stringify(makeEmptyStruct(item.type)), null, 'ALLOC_STATIC', item.type) + ' /* external value? */'
-              :
-              parseConst(item.value, item.type, item.ident) 
-            ) + ' });',
+          JS: item.ident + ' = ' + constant + ';',
           __result__: true,
-        }];
+        });
       }
-      return [item];
     },
   });
 
@@ -960,16 +975,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     if (functionsOnly) return ret;
 
     var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), CONSTANTS);
-    function reverse_(x) {
-      if (LLVM_STYLE === 'old') {
-        return x.reverse();
-      } else {
-        return x;
-      }
-    }
-    var globalVars = reverse_(items.filter(function(item) { return item.intertype == 'GlobalVariable' }).map(function(item) { return item.JS })).join('\n');
+    var globalVars = items.filter(function(item) { return item.intertype == 'GlobalVariable' }).map(function(item) { return item.JS }).join('\n');
+    var globalVarsPostSets = items.filter(function(item) { return item.intertype == 'GlobalVariablePostSet' }).map(function(item) { return item.JS }).join('\n');
     return read('shell.js').replace('{{BODY}}', indentify(body, 2))
-                           .replace('{{GLOBAL_VARS}}', indentify(globalVars, 4));
+                           .replace('{{GLOBAL_VARS}}', indentify(globalVars+'\n\n\n'+globalVarsPostSets, 4));
   }
 
   // Data

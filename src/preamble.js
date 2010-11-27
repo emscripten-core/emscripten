@@ -114,7 +114,7 @@ function Pointer_make(slab, pos, allocator) {
   var i;
   for (i = 0; i < size; i++) {
     if (slab[i] === undefined) {
-      throw 'Invalid element in slab'; // This can be caught, and you can try again to allocate later, see globalFuncs in run()
+      throw 'Invalid element in slab at ' + new Error().stack; // This can be caught, and you can try again to allocate later, see globalFuncs in run()
     }
   }
 
