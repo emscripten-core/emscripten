@@ -9,7 +9,7 @@ RuntimeGenerator = {
       ret += '; assert(' + size + ' > 0)';
     }
     var initMemory = 'for (var i = 0; i < ' + size + '; i++) HEAP[' + type + 'TOP+i] = 0';
-    if (USE_TYPED_ARRAYS) { // No need for typed arrays - per the spec, initialized to 0 anyhow
+    if (USE_TYPED_ARRAYS) { // No need for typed arrays - per the spec, initialized to 0 anyhow XXX - but reusing memory, don't we need that?
       initMemory = 'if (!HAS_TYPED_ARRAYS) { ' + initMemory + '}';
     }
     ret += '; ' + initMemory;
@@ -39,7 +39,7 @@ RuntimeGenerator = {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
     var initMemory = 'for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0';
-    if (USE_TYPED_ARRAYS) { // No need for typed arrays - per the spec, initialized to 0 anyhow
+    if (USE_TYPED_ARRAYS) { // No need for typed arrays - per the spec, initialized to 0 anyhow XXX - but reusing memory, don't we need that?
       initMemory = 'if (!HAS_TYPED_ARRAYS) { ' + initMemory + '}';
     }
     ret += '; ' + initMemory;
