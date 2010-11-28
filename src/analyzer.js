@@ -113,7 +113,7 @@ function analyzer(data, givenTypes) {
       if (!data.types[zerod]) {
         data.types[zerod] = {
           name_: zerod,
-          fields: [subType],
+          fields: [subType, subType], // Two, so we get the flatFactor right. We care about the flatFactor, not the size here
           lineNum: '?',
         };
       }

@@ -125,28 +125,22 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   }
 
   function alignStruct(values, type) {
-    // XXX Need to add padding at the end of structures, using alignMemory()?
-    dprint('types', 'alignStruct: ' + dump(type));
-    var ret = [];
     var typeData = TYPES[type];
     assertTrue(typeData);
-    var i = 0;
+    var ret = [];
+    var i = 0, soFar = 0;
     while (i < values.length) {
-      var currField = typeData.fields[i];
-      var currValue = values[i];
-      if (isStructType[currField]) {
-        var fieldTypeData = TYPES[currField];
-        assertTrue(fieldTypeData);
-        ret = ret.concat(alignStruct(values.slice(i, fieldTypeData.fields.length), currField));
-        i += fieldTypeData.fields.length;
-      } else {
-        ret.push(currValue);
-        // pad to align, unless it's a structure and already aligned
-        if (typeof currValue !== 'object') {
-          ret = ret.concat(zeros(getNativeFieldSize(currField)-1));
-        }
-        i += 1;
+      // Pad until the right place
+      var padded = typeData.flatFactor ? typeData.flatFactor*i : typeData.flatIndexes[i];
+      while (soFar < padded) {
+        ret.push(0);
+        soFar++;
       }
+      // Add current value(s)
+      var currValue = values[i];
+      ret.push(currValue);
+      i += 1;
+      soFar += typeof currValue === 'object' ? currValue.length : 1;
     }
     return ret;
   }

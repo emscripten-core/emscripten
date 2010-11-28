@@ -70,6 +70,14 @@ var Library = {
     }
   },
 
+  fileno: function(file) {
+    return 1; // XXX
+  },
+
+  isatty: function(file) {
+    return 0; // XXX
+  },
+
   // stdlib.h
 
   abs: 'Math.abs',
@@ -253,6 +261,10 @@ var Library = {
     return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
   },
 
+  iscntrl: function(chr) {
+    return (chr >= 0 && chr <= 0x1f) || chr === 0x7f;
+  },
+
   toupper: function(chr) {
     if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
       return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
@@ -279,6 +291,9 @@ var Library = {
     return _malloc(size); // warning: leaked
   },
   __cxa_throw: function(ptr, data, dunno) {
+#if EXCEPTION_DEBUG
+    print('Compiled code throwing an exception, ' + [ptr,data,dunno] + ', at ' + new Error().stack);
+#endif
     throw ptr;
   },
   llvm_eh_exception: function() {

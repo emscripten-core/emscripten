@@ -387,7 +387,6 @@ if 'benchmark' not in sys.argv:
         src = '''
           #include <stdio.h>
 
-
           char cache[256], *next = cache;
 
           int main()
@@ -636,6 +635,26 @@ if 'benchmark' not in sys.argv:
           }
           '''
         self.do_test(src, '0:-1.00,-0.33 1:0.33,-1.00 2:-0.33,1.00 3:1.00,0.33')
+
+    def test_array2b(self):
+        src = '''
+          #include <stdio.h>
+
+          static const struct {
+            unsigned char left;
+            unsigned char right;
+          } prioritah[] = {
+             {6, 6}, {6, 6}, {7, 95}, {7, 7}
+          };
+
+          int main() {
+            printf("*%d,%d\\n", prioritah[1].left, prioritah[1].right);
+            printf("%d,%d*\\n", prioritah[2].left, prioritah[2].right);
+            return 0;
+          }
+          '''
+        self.do_test(src, '*6,6\n7,95*')
+
 
     def test_constglobalstructs(self):
         src = '''
@@ -1083,8 +1102,8 @@ if 'benchmark' not in sys.argv:
 
     def test_lua(self):
       self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
-                      'hello lua world!\n\n\n17.00000000000\n\n\n1.00000000000\n\n\n2.00000000000\n\n\n3.00000000000\n\n\n4.00000000000',
-                      args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end'''],
+                      'hello lua world!\n\n\n17.00000000000\n\n\n1.00000000000\n\n\n2.00000000000\n\n\n3.00000000000\n\n\n4.00000000000\n\n\n7.00000000000',
+                      args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']))
 
     ### Test cases in separate files

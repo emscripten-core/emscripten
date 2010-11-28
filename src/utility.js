@@ -8,7 +8,12 @@ function safeQuote(x) {
 function dump(item) {
   var CHUNK = 500;
   function lineify(text) {
-    return text.replace(/.{80}/g, '$&\n');
+    var ret = '';
+    while (text.length > 80) {
+      ret += '// ' + text.substr(0,80) + '\n';
+      text = text.substr(80);
+    }
+    return ret + '// ' + text;
   }
   try {
     return lineify(JSON.stringify(item));
