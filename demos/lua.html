@@ -3,30 +3,53 @@
   <title>
     Emscripten: Lua
   </title>
+  <link id="bespin_base" href="skywriter/"/>
+  <script src="skywriter/BespinEmbedded.js"></script>
+  <style type="text/css">
+      .bespin {
+          width: 80%;
+          height: 30%;
+      }
+  </style>
   <script src="lua.js"></script>
   <script>
     // print function which the Lua engine will call
+    var lines = [], printed = false;
+
     function print(text) {
-      document.getElementById('output').innerHTML += text + '<br>';
+      lines.push(text);
       printed = true;
     }
 
     function execute(text) {
+      lines = [];
       printed = false;
 
       raw_argv[8] = Pointer_make(intArrayFromString(text), 0, ALLOC_STATIC); // leak!
       argv = Pointer_make(raw_argv, null);
-
       __Z7runargsP9lua_StatePPci(GLOBAL_L, argv, argc)
 
       if (!printed) {
         print('<small><i>(no output)</i></small>');
       }
+
+      var element = document.getElementById('output');
+      if (!element) return; // perhaps during startup
+      element.innerHTML = lines.join('<br>') + '<hr>' + element.innerHTML;
     }
+
+    var editor;
 
     function doRun() {
       args = ['-e', ''];
       run(args);
+
+      setTimeout(function() { 
+        if (!bespin.useBespin) setTimeout(arguments.callee, 10);
+        bespin.useBespin(document.getElementById('the_input'), { "stealFocus":true, "syntax": "lua" }).then(function(env) {
+          editor = env.editor;
+        });
+      }, 10);
     }
 
   </script>
@@ -44,10 +67,16 @@
   </p>
   <hr>
   <!-- Call Lua's execution function -->
-  <form onsubmit="execute(the_input.value); the_input.value = ''; return false">
+  <form onsubmit="execute(editor.value); return false">
     <b>Enter some Lua</b>:
-    <input type="text" id="the_input">
     <input type="submit" value="execute">
+    <div id="the_input">
+print("Hello world! This is: " .. _VERSION);
+
+for i=1,5 do
+  print("A number: " .. i)
+end
+    </div>
   </form>
   <hr>
   <div id="output" style="font-family: Courier New,Courier,monospace;"></div>

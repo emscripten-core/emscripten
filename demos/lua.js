@@ -11,8 +11,8 @@ var Module = {};
     // === Auto-generated preamble library stuff ===
   
   Runtime = {
-    stackAlloc: function stackAlloc(size) { var ret = STACKTOP; if (!HAS_TYPED_ARRAYS) { for (var i = 0; i < size; i++) HEAP[STACKTOP+i] = 0}; STACKTOP += size;STACKTOP = Math.ceil(STACKTOP/4)*4;; return ret; },
-    staticAlloc: function staticAlloc(size) { var ret = STATICTOP; if (!HAS_TYPED_ARRAYS) { for (var i = 0; i < size; i++) HEAP[STATICTOP+i] = 0}; STATICTOP += size;STATICTOP = Math.ceil(STATICTOP/4)*4;; return ret; },
+    stackAlloc: function stackAlloc(size) { var ret = STACKTOP; for (var i = 0; i < size; i++) IHEAP[STACKTOP+i] = FHEAP[STACKTOP+i] = 0; STACKTOP += size;STACKTOP = Math.ceil(STACKTOP/4)*4;; return ret; },
+    staticAlloc: function staticAlloc(size) { var ret = STATICTOP; for (var i = 0; i < size; i++) IHEAP[STATICTOP+i] = FHEAP[STATICTOP+i] = 0; STATICTOP += size;STATICTOP = Math.ceil(STATICTOP/4)*4;; return ret; },
     alignMemory: function alignMemory(size,quantum) { var ret = size = Math.ceil(size/(quantum ? quantum : 4))*(quantum ? quantum : 4);; return ret; },
     getFunctionIndex: function getFunctionIndex(func, ident) {
       var key = FUNCTION_TABLE.length;
@@ -230,6 +230,7 @@ var Module = {};
       for (var i = 0; i < HEAP.length; i++) {
         IHEAP[i] = HEAP[i];
       }
+      HEAP = IHEAP;
       FHEAP = new Float64Array(TOTAL_MEMORY);
     } else {
       IHEAP = HEAP; // fallback
@@ -1506,7 +1507,7 @@ var Module = {};
   
   
   function _main($argc, $argv) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -1604,7 +1605,7 @@ var Module = {};
   
   
   function __Z5pmainP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -2648,7 +2649,7 @@ var Module = {};
   
   
   function __Z8pushlineP9lua_Statei($L, $firstline) {
-    var __stackBase__  = STACKTOP; STACKTOP += 512; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 512; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -2748,7 +2749,7 @@ var Module = {};
   
   
   function __Z10incompleteP9lua_Statei($L, $status) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -4137,7 +4138,7 @@ var Module = {};
   
   
   function __Z12lua_isnumberP9lua_Statei($L, $idx) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -4415,7 +4416,7 @@ var Module = {};
   
   
   function __Z12lua_tonumberP9lua_Statei($L, $idx) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -4464,7 +4465,7 @@ var Module = {};
   
   
   function __Z13lua_tointegerP9lua_Statei($L, $idx) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -5256,7 +5257,7 @@ var Module = {};
   
   
   function __Z15lua_pushfstringP9lua_StatePKcz($L, $fmt) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __numArgs__ = 2;
     var $1;
@@ -5598,7 +5599,7 @@ var Module = {};
   
   
   function __Z12lua_getfieldP9lua_StateiPKc($L, $idx, $k) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -6080,7 +6081,7 @@ var Module = {};
   
   
   function __Z12lua_setfieldP9lua_StateiPKc($L, $idx, $k) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -6797,7 +6798,7 @@ var Module = {};
   
   
   function __Z9lua_pcallP9lua_Stateiii($L, $nargs, $nresults, $errfunc) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -6924,7 +6925,7 @@ var Module = {};
   
   
   function __Z10lua_cpcallP9lua_StatePFiS0_EPv($L, $func, $ud) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -7040,7 +7041,7 @@ var Module = {};
   
   
   function __Z8lua_loadP9lua_StatePFPKcS0_PvPjES3_S2_($L, $reader, $data, $chunkname) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -7613,7 +7614,7 @@ var Module = {};
   
   
   function __Z14lua_getupvalueP9lua_Stateii($L, $funcindex, $n) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -7797,7 +7798,7 @@ var Module = {};
   
   
   function __Z14lua_setupvalueP9lua_Stateii($L, $funcindex, $n) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -8096,7 +8097,7 @@ var Module = {};
   
   
   function __Z9luaK_jumpP9FuncState($fs) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $jpc;
@@ -8539,7 +8540,7 @@ var Module = {};
   
   
   function __Z12luaK_stringKP9FuncStateP7TString($fs, $s) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -8758,7 +8759,7 @@ var Module = {};
   
   
   function __Z12luaK_numberKP9FuncStated($fs, $r) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -9644,7 +9645,7 @@ var Module = {};
   
   
   function __Z4nilKP9FuncState($fs) {
-    var __stackBase__  = STACKTOP; STACKTOP += 24; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 24; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $k = __stackBase__;
@@ -9675,7 +9676,7 @@ var Module = {};
   
   
   function __Z5boolKP9FuncStatei($fs, $b) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -10099,7 +10100,7 @@ var Module = {};
   
   
   function __Z11luaK_prefixP9FuncState5UnOprP7expdesc($fs, $op, $e) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -13664,7 +13665,7 @@ var Module = {};
   
   
   function __Z14luaG_typeerrorP9lua_StatePK10lua_TValuePKc($L, $o, $op) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -14026,7 +14027,7 @@ var Module = {};
   
   
   function __Z13luaG_runerrorP9lua_StatePKcz($L, $fmt) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __numArgs__ = 2;
     var $1;
@@ -14094,7 +14095,7 @@ var Module = {};
   
   
   function __Z15luaG_aritherrorP9lua_StatePK10lua_TValueS3_($L, $p1, $p2) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -14301,7 +14302,7 @@ var Module = {};
   
   
   function __Z7addinfoP9lua_StatePKc($L, $msg) {
-    var __stackBase__  = STACKTOP; STACKTOP += 60; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 60; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -15395,7 +15396,7 @@ var Module = {};
   
   
   function __Z20luaD_rawrunprotectedP9lua_StatePFvS0_PvES1_($L, $f, $ud) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -15791,7 +15792,7 @@ var Module = {};
   
   
   function __Z13luaD_callhookP9lua_Stateii($L, $event, $line) {
-    var __stackBase__  = STACKTOP; STACKTOP += 100; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 100; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -17602,7 +17603,7 @@ var Module = {};
   
   
   function __Z20luaD_protectedparserP9lua_StateP3ZioPKc($L, $z, $name) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -17826,7 +17827,7 @@ var Module = {};
   
   
   function __Z9luaU_dumpP9lua_StatePK5ProtoPFiS0_PKvjPvES6_i($L, $f, $w, $data, $strip) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -17865,7 +17866,7 @@ var Module = {};
   
   
   function __Z10DumpHeaderP9DumpState($D) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $h = __stackBase__;
@@ -17976,7 +17977,7 @@ var Module = {};
   
   
   function __Z10DumpStringPK7TStringP9DumpState($s, $D) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -18030,7 +18031,7 @@ var Module = {};
   
   
   function __Z7DumpIntiP9DumpState($x, $D) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1 = __stackBase__;
     var $2;
@@ -18046,7 +18047,7 @@ var Module = {};
   
   
   function __Z8DumpChariP9DumpState($y, $D) {
-    var __stackBase__  = STACKTOP; STACKTOP += 1; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 1; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -18369,7 +18370,7 @@ var Module = {};
   
   
   function __Z10DumpNumberdP9DumpState($x, $D) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1 = __stackBase__;
     var $2;
@@ -23250,7 +23251,7 @@ var Module = {};
   
   
   function __Z13luaX_lexerrorP8LexStatePKci($ls, $msg, $token) {
-    var __stackBase__  = STACKTOP; STACKTOP += 80; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 80; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -26528,7 +26529,7 @@ var Module = {};
   
   
   function __Z10luaO_str2dPKcPd($s, $result) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -26627,7 +26628,7 @@ var Module = {};
   
   
   function __Z17luaO_pushvfstringP9lua_StatePKcPc($L, $fmt, $argp) {
-    var __stackBase__  = STACKTOP; STACKTOP += 29; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 29; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -27007,7 +27008,7 @@ var Module = {};
   
   
   function __Z16luaO_pushfstringP9lua_StatePKcz($L, $fmt) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __numArgs__ = 2;
     var $1;
@@ -27160,7 +27161,7 @@ var Module = {};
   
   
   function __Z11luaY_parserP9lua_StateP3ZioP7MbufferPKc($L, $z, $buff, $name) {
-    var __stackBase__  = STACKTOP; STACKTOP += 632; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 632; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -28009,7 +28010,7 @@ var Module = {};
   
   
   function __Z6ifstatP8LexStatei($ls, $line) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -28087,7 +28088,7 @@ var Module = {};
   
   
   function __Z9whilestatP8LexStatei($ls, $line) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -28135,7 +28136,7 @@ var Module = {};
   
   
   function __Z5blockP8LexState($ls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $fs;
@@ -28214,7 +28215,7 @@ var Module = {};
   
   
   function __Z7forstatP8LexStatei($ls, $line) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -28281,7 +28282,7 @@ var Module = {};
   
   
   function __Z10repeatstatP8LexStatei($ls, $line) {
-    var __stackBase__  = STACKTOP; STACKTOP += 24; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 24; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -28358,7 +28359,7 @@ var Module = {};
   
   
   function __Z8funcstatP8LexStatei($ls, $line) {
-    var __stackBase__  = STACKTOP; STACKTOP += 40; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 40; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -28392,7 +28393,7 @@ var Module = {};
   
   
   function __Z9localfuncP8LexState($ls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 40; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 40; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $v = __stackBase__;
@@ -28450,7 +28451,7 @@ var Module = {};
   
   
   function __Z9localstatP8LexState($ls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $nvars;
@@ -28505,7 +28506,7 @@ var Module = {};
   
   
   function __Z7retstatP8LexState($ls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $fs;
@@ -28730,7 +28731,7 @@ var Module = {};
   
   
   function __Z8exprstatP8LexState($ls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 24; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 24; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $fs;
@@ -28793,7 +28794,7 @@ var Module = {};
   
   
   function __Z10primaryexpP8LexStateP7expdesc($ls, $v) {
-    var __stackBase__  = STACKTOP; STACKTOP += 40; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 40; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -28885,7 +28886,7 @@ var Module = {};
   
   
   function __Z10assignmentP8LexStateP10LHS_assigni($ls, $lh, $nvars) {
-    var __stackBase__  = STACKTOP; STACKTOP += 44; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 44; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -29438,7 +29439,7 @@ var Module = {};
   
   
   function __Z7subexprP8LexStateP7expdescj($ls, $v, $limit) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -29895,7 +29896,7 @@ var Module = {};
   
   
   function __Z11constructorP8LexStateP7expdesc($ls, $t) {
-    var __stackBase__  = STACKTOP; STACKTOP += 36; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 36; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -30074,7 +30075,7 @@ var Module = {};
   
   
   function __Z4bodyP8LexStateP7expdescii($ls, $e, $needself, $line) {
-    var __stackBase__  = STACKTOP; STACKTOP += 572; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 572; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -30811,7 +30812,7 @@ var Module = {};
   
   
   function __Z8recfieldP8LexStateP11ConsControl($ls, $cc) {
-    var __stackBase__  = STACKTOP; STACKTOP += 40; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 40; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -31094,7 +31095,7 @@ var Module = {};
   
   
   function __Z5fieldP8LexStateP7expdesc($ls, $v) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -31123,7 +31124,7 @@ var Module = {};
   
   
   function __Z8funcargsP8LexStateP7expdesc($ls, $f) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -31844,7 +31845,7 @@ var Module = {};
   
   
   function __Z4condP8LexState($ls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $v = __stackBase__;
@@ -32057,7 +32058,7 @@ var Module = {};
   
   
   function __Z7forlistP8LexStateP7TString($ls, $indexname) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -32144,7 +32145,7 @@ var Module = {};
   
   
   function __Z7forbodyP8LexStateiiii($ls, $base, $line, $nvars, $isnum) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -32251,7 +32252,7 @@ var Module = {};
   
   
   function __Z4exp1P8LexState($ls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $e = __stackBase__;
@@ -34607,7 +34608,7 @@ var Module = {};
   
   
   function __Z7hashnumPK5Tabled($t, $n) {
-    var __stackBase__  = STACKTOP; STACKTOP += 16; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 16; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -35294,7 +35295,7 @@ var Module = {};
   
   
   function __Z11luaH_setnumP9lua_StateP5Tablei($L, $t, $key) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -35345,7 +35346,7 @@ var Module = {};
   
   
   function __Z11luaH_setstrP9lua_StateP5TableP7TString($L, $t, $key) {
-    var __stackBase__  = STACKTOP; STACKTOP += 12; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 12; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -35648,7 +35649,7 @@ var Module = {};
   
   
   function __Z6rehashP9lua_StateP5TablePK10lua_TValue($L, $t, $ek) {
-    var __stackBase__  = STACKTOP; STACKTOP += 112; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 112; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -36265,7 +36266,7 @@ var Module = {};
   
   
   function __Z11luaU_undumpP9lua_StateP3ZioP7MbufferPKc($L, $Z, $buff, $name) {
-    var __stackBase__  = STACKTOP; STACKTOP += 16; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 16; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -36342,7 +36343,7 @@ var Module = {};
   
   
   function __Z10LoadHeaderP9LoadState($S) {
-    var __stackBase__  = STACKTOP; STACKTOP += 24; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 24; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $h = __stackBase__;
@@ -36545,7 +36546,7 @@ var Module = {};
   
   
   function __Z11luaU_headerPc($h) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $x = __stackBase__;
@@ -36622,7 +36623,7 @@ var Module = {};
   
   
   function __Z10LoadStringP9LoadState($S) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -36673,7 +36674,7 @@ var Module = {};
   
   
   function __Z7LoadIntP9LoadState($S) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $x = __stackBase__;
@@ -36698,7 +36699,7 @@ var Module = {};
   
   
   function __Z8LoadCharP9LoadState($S) {
-    var __stackBase__  = STACKTOP; STACKTOP += 1; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 1; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $x = __stackBase__;
@@ -37278,7 +37279,7 @@ var Module = {};
   
   
   function __Z10LoadNumberP9LoadState($S) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $x = __stackBase__;
@@ -37294,7 +37295,7 @@ var Module = {};
   
   
   function __Z13luaV_tonumberPK10lua_TValuePS_($obj, $n) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -37364,7 +37365,7 @@ var Module = {};
   
   
   function __Z13luaV_tostringP9lua_StateP10lua_TValue($L, $obj) {
-    var __stackBase__  = STACKTOP; STACKTOP += 32; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 32; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -39227,7 +39228,7 @@ var Module = {};
   
   
   function __Z12luaV_executeP9lua_Statei($L, $nexeccalls) {
-    var __stackBase__  = STACKTOP; STACKTOP += 24; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 24; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -42668,7 +42669,7 @@ var Module = {};
   
   
   function __Z5ArithP9lua_StateP10lua_TValuePKS1_S4_3TMS($L, $ra, $rb, $rc, $op) {
-    var __stackBase__  = STACKTOP; STACKTOP += 24; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 24; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -43022,7 +43023,7 @@ var Module = {};
   
   
   function __Z9luaZ_fillP3Zio($z) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -43336,7 +43337,7 @@ var Module = {};
   
   
   function __Z13luaL_argerrorP9lua_StateiPKc($L, $narg, $extramsg) {
-    var __stackBase__  = STACKTOP; STACKTOP += 100; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 100; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -43420,7 +43421,7 @@ var Module = {};
   
   
   function __Z10luaL_errorP9lua_StatePKcz($L, $fmt) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __numArgs__ = 2;
     var $1;
@@ -43478,7 +43479,7 @@ var Module = {};
   
   
   function __Z10luaL_whereP9lua_Statei($L, $level) {
-    var __stackBase__  = STACKTOP; STACKTOP += 100; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 100; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -44453,7 +44454,7 @@ var Module = {};
   
   
   function __Z9luaL_gsubP9lua_StatePKcS2_S2_($L, $s, $p, $r) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8204; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8204; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -44794,7 +44795,7 @@ var Module = {};
   
   
   function __Z13luaL_addvalueP11luaL_Buffer($B) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $L;
@@ -45026,7 +45027,7 @@ var Module = {};
   
   
   function __Z13luaL_loadfileP9lua_StatePKc($L, $filename) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8200; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8200; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -45364,7 +45365,7 @@ var Module = {};
   
   
   function __Z15luaL_loadbufferP9lua_StatePKcjS2_($L, $buff, $size, $name) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -45839,7 +45840,7 @@ var Module = {};
   
   
   function __Z15luaB_loadstringP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $l = __stackBase__;
@@ -46273,7 +46274,7 @@ var Module = {};
   
   
   function __Z13luaB_tonumberP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -47216,7 +47217,7 @@ var Module = {};
   
   
   function __Z8costatusP9lua_StateS0_($L, $co) {
-    var __stackBase__  = STACKTOP; STACKTOP += 100; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 100; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -47292,7 +47293,7 @@ var Module = {};
   
   
   function __Z7getfuncP9lua_Statei($L, $opt) {
-    var __stackBase__  = STACKTOP; STACKTOP += 100; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 100; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -47469,7 +47470,7 @@ var Module = {};
   
   
   function __Z8db_debugP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 250; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 250; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $buffer = __stackBase__;
@@ -47539,7 +47540,7 @@ var Module = {};
   
   
   function __Z10db_gethookP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 9; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 9; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $arg = __stackBase__;
@@ -47603,7 +47604,7 @@ var Module = {};
   
   
   function __Z10db_getinfoP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 104; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 104; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -47807,7 +47808,7 @@ var Module = {};
   
   
   function __Z11db_getlocalP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 104; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 104; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -47951,7 +47952,7 @@ var Module = {};
   
   
   function __Z10db_sethookP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $arg = __stackBase__;
@@ -48030,7 +48031,7 @@ var Module = {};
   
   
   function __Z11db_setlocalP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 104; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 104; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -48146,7 +48147,7 @@ var Module = {};
   
   
   function __Z10db_errorfbP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 104; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 104; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -49646,7 +49647,7 @@ var Module = {};
   
   
   function __Z7g_writeP9lua_StateP8_IO_FILEi($L, $f, $arg) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -49995,7 +49996,7 @@ var Module = {};
   
   
   function __Z9read_lineP9lua_StateP8_IO_FILE($L, $f) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8204; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8204; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -50094,7 +50095,7 @@ var Module = {};
   
   
   function __Z10read_charsP9lua_StateP8_IO_FILEj($L, $f, $n) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8204; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8204; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -50178,7 +50179,7 @@ var Module = {};
   
   
   function __Z11read_numberP9lua_StateP8_IO_FILE($L, $f) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -50637,7 +50638,7 @@ var Module = {};
   
   
   function __Z10math_frexpP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $e = __stackBase__;
@@ -50809,7 +50810,7 @@ var Module = {};
   
   
   function __Z9math_modfP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $ip = __stackBase__;
@@ -51122,7 +51123,7 @@ var Module = {};
   
   
   function __Z7os_dateP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8411; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8411; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -51482,7 +51483,7 @@ var Module = {};
   
   
   function __Z7os_timeP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 44; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 44; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $t;
@@ -51562,7 +51563,7 @@ var Module = {};
   
   
   function __Z10os_tmpnameP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 20; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 20; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -51810,7 +51811,7 @@ var Module = {};
   
   
   function __Z7tconcatP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8208; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8208; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -52646,7 +52647,7 @@ var Module = {};
   
   
   function __Z8str_byteP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -52755,7 +52756,7 @@ var Module = {};
   
   
   function __Z8str_charP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8204; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8204; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -52836,7 +52837,7 @@ var Module = {};
   
   
   function __Z8str_dumpP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8204; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8204; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $b = __stackBase__;
@@ -52879,7 +52880,7 @@ var Module = {};
   
   
   function __Z10str_formatP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8742; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8742; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -53190,7 +53191,7 @@ var Module = {};
   
   
   function __Z8str_gsubP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8480; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8480; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -53384,7 +53385,7 @@ var Module = {};
   
   
   function __Z7str_lenP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $l = __stackBase__;
@@ -53401,7 +53402,7 @@ var Module = {};
   
   
   function __Z9str_lowerP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8208; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8208; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -53478,7 +53479,7 @@ var Module = {};
   
   
   function __Z7str_repP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8208; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8208; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $l = __stackBase__;
@@ -53514,7 +53515,7 @@ var Module = {};
   
   
   function __Z11str_reverseP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8208; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8208; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -53570,7 +53571,7 @@ var Module = {};
   
   
   function __Z7str_subP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $l = __stackBase__;
@@ -53640,7 +53641,7 @@ var Module = {};
   
   
   function __Z9str_upperP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 8208; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 8208; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -53779,7 +53780,7 @@ var Module = {};
   
   
   function __Z12str_find_auxP9lua_Statei($L, $find) {
-    var __stackBase__  = STACKTOP; STACKTOP += 280; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 280; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -55834,7 +55835,7 @@ var Module = {};
   
   
   function __Z5add_sP10MatchStateP11luaL_BufferPKcS4_($ms, $b, $s, $e) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -56002,7 +56003,7 @@ var Module = {};
   
   
   function __Z10gmatch_auxP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 276; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 276; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $2;
@@ -56297,7 +56298,7 @@ var Module = {};
   
   
   function __Z9addquotedP9lua_StateP11luaL_Bufferi($L, $b, $arg) {
-    var __stackBase__  = STACKTOP; STACKTOP += 4; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 4; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var __lastLabel__ = null;
     var $1;
@@ -57716,7 +57717,7 @@ var Module = {};
   
   
   function __Z7setfenvP9lua_State($L) {
-    var __stackBase__  = STACKTOP; STACKTOP += 100; if (!HAS_TYPED_ARRAYS) { for (var i = __stackBase__; i < STACKTOP; i++) HEAP[i] = 0};
+    var __stackBase__  = STACKTOP; STACKTOP += 100; for (var i = __stackBase__; i < STACKTOP; i++) IHEAP[i] = FHEAP[i] = 0;
     var __label__;
     var $1;
     var $ar = __stackBase__;

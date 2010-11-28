@@ -196,6 +196,7 @@ function __initializeRuntime__() {
     for (var i = 0; i < HEAP.length; i++) {
       IHEAP[i] = HEAP[i];
     }
+    HEAP = IHEAP;
     FHEAP = new Float64Array(TOTAL_MEMORY);
   } else {
     IHEAP = HEAP; // fallback
