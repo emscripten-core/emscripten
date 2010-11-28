@@ -1,0 +1,268 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+.bespin {
+    .container {
+        font-family: @container_font;
+        font-size: @container_font_size;
+
+        color: @container_color;
+        background: @container_bg;
+        line-height: @container_line_height;
+
+        display: -moz-box;
+        -moz-box-orient: vertical;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+    }
+
+    .container .north {
+        -moz-box-ordinal-group: 1;
+        -webkit-box-ordinal-group: 1;
+    }
+
+    .container .center-container {
+        display: -moz-box;
+        -moz-box-orient: horizontal;
+        -moz-box-ordinal-group: 2;
+        -moz-box-flex: 1;
+        display: -webkit-box;
+        -webkit-box-orient: horizontal;
+        -webkit-box-ordinal-group: 2;
+        -webkit-box-flex: 1;
+    }
+
+    .container .south {
+        -moz-box-ordinal-group: 3;
+        -webkit-box-ordinal-group: 3;
+    }
+
+    .container .center-container .west {
+        -moz-box-ordinal-group: 1;
+        -webkit-box-ordinal-group: 1;
+    }
+
+    .container .center-container .center {
+        -moz-box-flex: 1;
+        -moz-box-ordinal-group: 2;
+        -webkit-box-flex: 1;
+        -webkit-box-ordinal-group: 2;
+    }
+
+    .container .center-container .east {
+        -moz-box-ordinal-group: 3;
+        -webkit-box-ordinal-group: 3;
+    }
+
+    input, textarea {
+        display: block;
+        border: 0px;
+        width: 200px;
+        padding: 4px;
+        color: @control_color;
+        background: @control_bg;
+        border: @control_border;
+        font-size: 8pt;
+        -moz-border-radius: @control_border_radius;
+        -webkit-border-radius: @control_border_radius;
+        box-shadow:
+            rgba(255,255,255,0.3) 0px 0px 2px,
+            inset rgba(0,0,0,0.3) 0px 0px 4px;
+        -moz-box-shadow:
+            rgba(255,255,255,0.3) 0px 0px 2px,
+            inset rgba(0,0,0,0.3) 0px 0px 4px;
+        -webkit-box-shadow:
+            rgba(255,255,255,0.3) 0px 0px 2px,
+            inset rgba(0,0,0,0.3) 0px 0px 4px;
+    }
+
+    input:focus, textarea:focus {
+        color: @control_active_color;
+        border: @control_active_border;
+        background: @control_active_bg;
+        outline: none;
+        box-shadow: opacity(@control_active_inset_color, 0.6) 0px 0px 2px,
+            inset opacity(@control_active_inset_color, 0.3) 0px 0px 6px;
+        -moz-box-shadow: opacity(@control_active_inset_color, 0.6) 0px 0px 2px,
+            inset opacity(@control_active_inset_color, 0.3) 0px 0px 6px;
+        -webkit-box-shadow: opacity(@control_active_inset_color, 0.6) 0px 0px 2px,
+            inset opacity(@control_active_inset_color, 0.3) 0px 0px 6px;
+    }
+
+    input[type=submit], input[type=button] {
+        font-family: @button_font;
+        font-size: @button_font_size;
+        text-shadow: 1px 1px rgba(0, 0, 0, 0.4);
+
+        padding: 8px 12px;
+        margin-left: 8px;
+        color: @button_color;
+        background: transparent -moz-linear-gradient(top, @button_bg, @button_bg2);
+        background: transparent -webkit-gradient(linear, 50% 0%, 50% 100%, from(@button_bg), to(@button_bg2));
+
+        border: 1px solid @button_border;
+        -moz-border-radius: @control_border_radius;
+        -webkit-border-radius: @control_border_radius;
+        -moz-box-shadow:
+            inset rgba(255, 255, 255, 0.2) 0 1px 0px,
+            inset rgba(0, 0, 0, 0.2) 0 -1px 0px,
+            rgba(0, 0, 0, 0.1) 0px 1px 2px;
+        -webkit-box-shadow:
+            inset rgba(255, 255, 255, 0.2) 0 1px 0px,
+            inset rgba(0, 0, 0, 0.2) 0 -1px 0px,
+            rgba(0, 0, 0, 0.1) 0px 1px 2px;
+        box-shadow:
+            inset rgba(255, 255, 255, 0.2) 0 1px 0px,
+            inset rgba(0, 0, 0, 0.2) 0 -1px 0px,
+            rgba(0, 0, 0, 0.1) 0px 1px 2px;
+    }
+
+    .pane {
+        font-size: @pane_font_size;
+        font-family: @pane_font;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        border-left: 1px solid rgba(0, 0, 0, 0.1);
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+        border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+        background-color: @pane_bg;
+        overflow: visible;
+        padding: 15px;
+
+        color:  @pane_color;
+        line-height: @pane_line_height;
+
+        margin-bottom: 6px;
+        margin-top: 6px;
+        text-shadow: @pane_text_shadow;
+
+        -moz-border-radius: @pane_border_radius;
+        -webkit-border-radius: @pane_border_radius;
+        -moz-box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 2px;
+        -webkit-box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 2px;
+
+        a {
+            color: @pane_a_color;
+        }
+
+        h1 {
+            font-family: @pane_h1_font;
+            font-size: @pane_h1_font_size;
+            color: @pane_h1_color;
+
+            letter-spacing: -1.25px;
+            line-height: 1.0;
+            margin-top: 0px;
+            margin-left: 10px;
+            margin-bottom: 25px;
+            margin-top: 10px;
+            text-shadow: @pane_text_shadow;
+        }
+
+        p {
+            margin-left: 10px;
+        }
+    }
+
+
+    .form {
+        font-family: @form_font;
+        font-size: @form_font_size;
+        line-height: @form_line_height;
+        color: @form_color;
+        text-shadow: @form_text_shadow;
+
+        fieldset, p {
+            color: @form_color;
+            margin-bottom: 6px;
+            margin-top: 6px;
+            text-shadow: form_text_shadow;
+        }
+    }
+
+    /*
+     * The state classes are a little bit complex, because of the doubble class bug in IE6
+     * The state class looks like this:
+     *
+     * .ui-radio-state[-checked][-disabled][-hover] or .ui-checkbox-state[-checked][-disabled][-hover]
+     *
+     * Examples:
+     *
+     * .ui-radio-state-checked (simply checked)
+     * .ui-radio-state-checked-hover (checked and hovered/focused)
+     * .ui-radio-state-hover (unchecked and hovered/focused)
+     *
+     * If you don´t have to deal with the doubble class bug of IE6 you can also use the simple ui-checkbox-checked, ui-checkbox-disabled, ui-checkbox-hover state-classnames (or: ui-radio-checked...)
+     * and the ui-radio/ui-checkbox role-classnames.
+     *
+     */
+
+    span.ui-checkbox,
+    span.ui-radio {
+        display: block;
+        float: left;
+        width: 24px;
+        height: 24px;
+        background: url(images/radio-unselected.png) no-repeat;
+    }
+
+    span.ui-checkbox {
+        background: url(images/check-unselected.png) no-repeat;
+    }
+
+    span.ui-helper-hidden {
+        display: none;
+    }
+
+    span.ui-checkbox-state-checked,
+    span.ui-checkbox-state-checked-hover {
+        background: url(images/check-selected.png) no-repeat;
+    }
+
+    span.ui-radio-state-checked,
+    span.ui-radio-state-checked-hover {
+        background: url(images/radio-selected.png) no-repeat;
+    }
+
+    .ui-helper-hidden-accessible {
+        position: absolute;
+        left: -999em;
+    }
+}
+
