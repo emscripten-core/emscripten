@@ -29,6 +29,8 @@ mergeInto(Library, {
 
   SDL_SetVideoMode: function(width, height, depth, flags, canvas) {
   //                                                      ^^^^^^ a 'canvas' parameter is added here; supply a canvas from JS there
+  //                                                             or, define __CANVAS__.
+    canvas = canvas || __CANVAS__;
     var surf = _malloc(14*QUANTUM_SIZE); // SDL_Surface has 14 fields of quantum size
     SDL_SURFACES[surf] = {
       width: width,
@@ -81,6 +83,19 @@ mergeInto(Library, {
 
   SDL_Delay: function(delay) {
     // No can do... unless you were a generator...
+  },
+
+  SDL_WM_SetCaption: function(title, icon) {
+    title = Pointer_stringify(title);
+    icon = Pointer_stringify(icon);
+  },
+
+  SDL_EnableKeyRepeat: function(delay, interval) {
+    // TODO
+  },
+
+  SDL_ShowCursor: function(toggle) {
+    // TODO
   },
 });
 
