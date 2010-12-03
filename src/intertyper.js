@@ -524,11 +524,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       item.type = item.tokens[1].text;
       item.functionType = '';
-      while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1) {
+      while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS)) {
         item.functionType += item.tokens[2].text;
         item.tokens.splice(2, 1);
       }
-      item.ident = item.tokens[2].text;
+      var tokensLeft = item.tokens.slice(2);
+      item.ident = eatLLVMIdent(tokensLeft);
       if (item.ident.substr(-2) == '()') {
         // See comment in isStructType()
         item.ident = item.ident.substr(0, item.ident.length-2);
@@ -538,7 +539,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         }
         item.params = [];
       } else {
-        item.params = parseParamTokens(item.tokens[3].item.tokens);
+        item.params = parseParamTokens(tokensLeft[0].item.tokens);
       }
       if (item.indent == 2) {
         // standalone call - not in assign

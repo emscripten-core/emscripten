@@ -341,6 +341,24 @@ function parseLLVMFunctionCall(segment) {
   return ret;
 }
 
+// Gets an array of tokens, we parse out the first
+// 'ident' - either a simple ident of one token, or
+// an LLVM internal function that generates an ident.
+// We shift out of the array list the tokens that
+// we ate.
+function eatLLVMIdent(tokens) {
+  var ret;
+  if (tokens[0].text in PARSABLE_LLVM_FUNCTIONS) {
+    ret = parseLLVMFunctionCall([{text: 'i0'}].concat(tokens.slice(0,2))).ident; // TODO: Handle more cases, return a full object, process it later
+    tokens.shift();
+    tokens.shift();
+  } else {
+    ret = tokens[0].text;
+    tokens.shift();
+  }
+  return ret;
+}
+
 function cleanOutTokens(filterOut, tokens, index) {
   while (filterOut.indexOf(tokens[index].text) != -1) {
     tokens.splice(index, 1);

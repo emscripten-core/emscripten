@@ -1110,6 +1110,7 @@ if 'benchmark' not in sys.argv:
 
     def test_cases(self):
       for name in os.listdir(path_from_root(['tests', 'cases'])):
+        print "Testing case '%s'..." % name.replace('.ll', '')
         self.do_ll_test(path_from_root(['tests', 'cases', name]), 'hello, world!')
 
     ### Integration tests
