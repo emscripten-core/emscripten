@@ -294,6 +294,20 @@ var Library = {
 
   // LLVM specifics
 
+  llvm_va_copy: function(ppdest, ppsrc) {
+    IHEAP[ppdest] = IHEAP[ppsrc];
+#if SAFE_HEAP
+    SAFE_HEAP_ACCESS(ppdest, null, true);
+#endif
+    /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
+    var psrc = IHEAP[ppsrc]-1;
+    var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values
+    var pdest = _malloc(num+1);
+    _memcpy(pdest, psrc, num+1);
+    IHEAP[ppdest] = pdest+1;
+    */
+  },
+
   __assert_fail: function(condition, file, line) {
     ABORT = true;
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;

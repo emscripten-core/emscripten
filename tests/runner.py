@@ -845,6 +845,13 @@ if 'benchmark' not in sys.argv:
             char d[20];
             vsnprintf(d, 20, s, v);
             puts(d);
+
+            // Try it with copying
+            va_list tempva;
+            __va_copy(tempva, v);
+            vsnprintf(d, 20, s, tempva);
+            puts(d);
+
             va_end(v);
           }
 
@@ -888,7 +895,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
           '''
-        self.do_test(src, '*cheez: 0+24*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
+        self.do_test(src, '*cheez: 0+24*\n*cheez: 0+24*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
 
     def test_stdlibs(self):
         src = '''
