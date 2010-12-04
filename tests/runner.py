@@ -901,15 +901,29 @@ if 'benchmark' not in sys.argv:
             printf("*cleaned*\\n");
           }
 
+          int comparer(const void *a, const void *b) {
+            int aa = *((int*)a);
+            int bb = *((int*)b);
+            return aa - bb;
+          }
+
           int main() {
+            // timeofday
             timeval t;
             gettimeofday(&t, NULL);
-            printf("*%d,%d\\n", int(t.tv_sec), int(t.tv_usec));
+            printf("*%d,%d\\n", int(t.tv_sec), int(t.tv_usec)); // should not crash
+
+            // atexit
             atexit(clean);
+
+            // qsort
+            int values[6] = { 3, 2, 5, 1, 5, 6 };
+            qsort(values, 5, sizeof(int), comparer);
+            printf("*%d,%d,%d,%d,%d,%d*\\n", values[0], values[1], values[2], values[3], values[4], values[5]);
             return 0;
           }
           '''
-        self.do_test(src, '*cleaned*')
+        self.do_test(src, '*1,2,3,5,5,6*\n*cleaned*')
 
     def test_statics(self):
         src = '''

@@ -142,6 +142,26 @@ var Library = {
     return ret;
   },
 
+  qsort: function(base, num, size, comparator) {
+    // forward calls to the JavaScript sort method
+    // first, sort the items logically
+    comparator = FUNCTION_TABLE[comparator];
+    var keys = [];
+    for (var i = 0; i < num; i++) keys.push(i);
+    keys.sort(function(a, b) {
+      return comparator(base+a*size, base+b*size);
+    });
+    print("KEYS:" + keys)
+    // apply the sort
+    var temp = _malloc(num*size);
+    _memcpy(temp, base, num*size);
+    for (var i = 0; i < num; i++) {
+      if (keys[i] == i) continue; // already in place
+      _memcpy(base+i*size, temp+keys[i]*size, size);
+    }
+    _free(temp);
+  },
+
   // string.h
 
   strspn: function(pstr, pset) {
