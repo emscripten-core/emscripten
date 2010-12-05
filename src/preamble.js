@@ -358,6 +358,9 @@ function llvm_memset_i32(ptr, value, num) {
 #else
     HEAP[ptr+i] = value;
 #endif
+#if SAFE_HEAP
+    SAFE_HEAP_ACCESS(ptr+i, null, true);
+#endif
   }
 }
 _llvm_memset_p0i8_i64 = _llvm_memset_p0i8_i32 = llvm_memset_i32;

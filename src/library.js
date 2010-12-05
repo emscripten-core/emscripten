@@ -151,7 +151,6 @@ var Library = {
     keys.sort(function(a, b) {
       return comparator(base+a*size, base+b*size);
     });
-    print("KEYS:" + keys)
     // apply the sort
     var temp = _malloc(num*size);
     _memcpy(temp, base, num*size);

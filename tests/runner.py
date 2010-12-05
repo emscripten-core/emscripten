@@ -171,10 +171,21 @@ if 'benchmark' not in sys.argv:
             int p = h;
             p &= 0;
             printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", x, y, z, w, k, i, j, h, p);
+
+            long hash = -1;
+            size_t perturb;
+            int ii = 0;
+            for (perturb = hash; ; perturb >>= 5) {
+              printf("%d:%d", ii, perturb);
+              ii++;
+              if (ii == 9) break;
+              printf(",");
+            }
+            printf("*\\n");
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,121,1,37,1,0*')
+        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*')
 
     def test_unsigned(self):
         src = '''

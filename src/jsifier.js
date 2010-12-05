@@ -717,8 +717,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       case 'or': return ident1 + ' | ' + ident2;
       case 'and': return ident1 + ' & ' + ident2;
       case 'xor': return ident1 + ' ^ ' + ident2;
-      case 'shl': case 'ashl': case 'lshl': return ident1 + ' << ' + ident2;
-      case 'shr': case 'ashr': case 'lshr': return ident1 + ' >> ' + ident2;
+      case 'shl': return ident1 + ' << ' + ident2;
+      case 'ashr': return ident1 + ' >> ' + ident2;
+      case 'lshr': return ident1 + ' >>> ' + ident2;
       case 'fadd': return ident1 + ' + ' + ident2;
       case 'fsub': return ident1 + ' - ' + ident2;
       case 'fdiv': return ident1 + ' / ' + ident2;
