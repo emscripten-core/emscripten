@@ -54,6 +54,11 @@ var Library = {
     return 0;
   },
 
+  fwrite: function(ptr, size, count, stream) {
+    print('[fwrite] ' + Pointer_stringify(ptr).slice(0,count));
+    return count; // or 0?
+  },
+
   fclose: function(stream) {
     return 0;
   },
@@ -64,10 +69,12 @@ var Library = {
 
   vsnprintf: function(dst, num, src, ptr) {
     var text = __formatString(-src, ptr); // |-|src tells formatstring to use C-style params (typically they are from varargs)
-    for (var i = 0; i < num; i++) {
+    var i;
+    for (i = 0; i < num; i++) {
       IHEAP[dst+i] = IHEAP[text+i];
       if (IHEAP[dst+i] == 0) break;
     }
+    return i; // Actually, should return how many *would* have been written, if the |num| had not stopped us.
   },
 
   fileno: function(file) {
@@ -210,6 +217,21 @@ var Library = {
       IHEAP[pdest+len+i] = IHEAP[psrc+i];
       i ++;
     } while (IHEAP[psrc+i-1] != 0);
+    return pdest;
+  },
+
+  strncat: function(pdest, psrc, num) {
+    var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
+    var i = 0;
+    while(1) {
+      if ((IHEAP[pdest+len+i] = IHEAP[psrc+i]) == 0) break;
+      i ++;
+      if (i == num) {
+        IHEAP[pdest+len+i] = 0;
+        break;
+      }
+    }
+    return pdest;
   },
 
   strtol: function(ptr) {
@@ -232,6 +254,24 @@ var Library = {
         return x > y ? 1 : -1;
       }
     }
+  },
+
+  strncmp: function(px, py, n) {
+    var i = 0;
+    while (i < n) {
+      var x = IHEAP[px+i];
+      var y = IHEAP[py+i];
+      if (x == y && x == 0) return 0;
+      if (x == 0) return -1;
+      if (y == 0) return 1;
+      if (x == y) {
+        i ++;
+        continue;
+      } else {
+        return x > y ? 1 : -1;
+      }
+    }
+    return 0;
   },
 
   memcmp: function(p1, p2, num) {
@@ -375,6 +415,10 @@ var Library = {
     throw 'Pure virtual function called!';
   },
 
+  llvm_flt_rounds: function() {
+    return -1; // 'indeterminable' for FLT_ROUNDS
+  },
+
   // iostream
 
   _ZNSt8ios_base4InitC1Ev: function() {
@@ -455,6 +499,10 @@ var Library = {
     return ret; // previous break location
   },
 
+  readlink: function(path, buf, bufsiz) {
+    return -1;
+  },
+
   // time.h
 
   time: function(ptr) {
@@ -501,8 +549,8 @@ var Library = {
 
   // stat.h
 
+  __01stat64_: function() { return -1 },
   __01fstat64_: function() { return -1 },
-
 };
 
 load('library_sdl.js');

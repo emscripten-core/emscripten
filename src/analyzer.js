@@ -244,7 +244,7 @@ function analyzer(data, givenTypes) {
             func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
-              origin: item.value.intertype,
+              origin: item.value.intertype, // XXX should say something in the case of fastgetelementptrload
               lineNum: item.lineNum,
               uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1]),
             };
