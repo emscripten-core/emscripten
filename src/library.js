@@ -498,6 +498,11 @@ var Library = {
     // TODO
     return 0;
   },
+
+  // stat.h
+
+  __01fstat64_: function() { return -1 },
+
 };
 
 load('library_sdl.js');

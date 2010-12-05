@@ -239,8 +239,8 @@ function analyzer(data, givenTypes) {
         });
 
         // Normal variables
-        walkJSON(func.lines, function(item) {
-          if (item && item.intertype == 'assign') {
+        func.lines.forEach(function(item) {
+          if (item.intertype in set('assign', 'fastgetelementptrload')) {
             func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
