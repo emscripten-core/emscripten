@@ -21,6 +21,8 @@ var HEAP_HISTORY = {};
 function SAFE_HEAP_CLEAR(dest) {
   HEAP_HISTORY[dest] = [];
 }
+var SAFE_HEAP_ERRORS = 0;
+var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 function SAFE_HEAP_ACCESS(dest, type, store) {
   if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
@@ -33,7 +35,7 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
     }
     var history = HEAP_HISTORY[dest];
     if (history === null) return;
-    assert(history);
+    assert(history, 'Must have a history for a safe heap load!');
 //    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
 //    if (history[0].type !== type) {
     if (history !== type) {
@@ -43,7 +45,8 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
       print('\n');
       print('LOAD: ' + type + ', ' + new Error().stack);
       print('\n');
-      assert(0, 'Load-store consistency assumption failure!');
+      SAFE_HEAP_ERRORS++;
+      assert(SAFE_HEAP_ERRORS <= ACCEPTABLE_SAFE_HEAP_ERRORS, 'Load-store consistency assumption failure!');
     }
   }
 }
