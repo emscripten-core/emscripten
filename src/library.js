@@ -215,6 +215,9 @@ var Library = {
     var i = 0;
     do {
       IHEAP[pdest+len+i] = IHEAP[psrc+i];
+#if SAFE_HEAP
+      SAFE_HEAP_ACCESS(pdest+len+i, 'i8', true);
+#endif
       i ++;
     } while (IHEAP[psrc+i-1] != 0);
     return pdest;
@@ -224,7 +227,11 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     while(1) {
-      if ((IHEAP[pdest+len+i] = IHEAP[psrc+i]) == 0) break;
+      IHEAP[pdest+len+i] = IHEAP[psrc+i];
+#if SAFE_HEAP
+      SAFE_HEAP_ACCESS(pdest+len+i, 'i8', true);
+#endif
+      if (IHEAP[pdest+len+i] == 0) break;
       i ++;
       if (i == num) {
         IHEAP[pdest+len+i] = 0;

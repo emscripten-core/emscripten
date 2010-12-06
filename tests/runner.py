@@ -606,10 +606,15 @@ if 'benchmark' not in sys.argv:
             void *vp2 = (void*)fp2;
             fp_t fpb2 = (fp_t)vp2;
             printf("*%d,%d,%d,%d,%d,%d*\\n", fp(), fpb(), fp2(), fpb2(), globally1(), globally2());
+
+            fp_t t = calc1;
+            printf("*%d,%d", t == calc1, t == calc2);
+            t = calc2;
+            printf(",%d,%d*\\n", t == calc1, t == calc2);
             return 0;
           }
         '''
-        self.do_test(src, '*26,26,90,90,26,90*')
+        self.do_test(src, '*26,26,90,90,26,90*\n*1,0,0,1*')
 
     def test_emptyclass(self):
         src = '''

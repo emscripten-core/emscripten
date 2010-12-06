@@ -699,7 +699,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   makeFuncLineZyme('mathop', function(item) { with(item) {
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
-        item['ident'+i] = finalizeLLVMParameter(item['param'+i]);
+        item['ident'+i] = indexizeFunctions(finalizeLLVMParameter(item['param'+i]));
       }
     }
     if (GUARD_SIGNS) {
