@@ -300,6 +300,19 @@ var Library = {
     return 0;
   },
 
+  strrchr: function(ptr, chr) {
+    var ptr2 = ptr + Pointer_stringify(ptr).length; // TODO: use strlen, but need dependencies system
+    do {
+      if (IHEAP[ptr2] == chr) return ptr2;
+      ptr2--;
+    } while (ptr2 >= ptr);
+    return 0;
+  },
+
+  strdup: function(ptr) {
+    return Pointer_make(String_copy(ptr, true), 0, ALLOC_NORMAL);
+  },
+
   // ctype.h
 
   isdigit: function(chr) {
@@ -334,6 +347,13 @@ var Library = {
   toupper: function(chr) {
     if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
       return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
+    }
+    return chr;
+  },
+
+  tolower: function(chr) {
+    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
+      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
     }
     return chr;
   },
@@ -586,10 +606,33 @@ var Library = {
     return 0;
   },
 
+  __libc_current_sigrtmin: function() {
+    return 0;
+  },
+  __libc_current_sigrtmax: function() {
+    return 0;
+  },
+
   // stat.h
 
   __01stat64_: function() { return -1 },
   __01fstat64_: function() { return -1 },
+
+  // locale.h
+
+  setlocale: function(category, locale) {
+    return 0;
+  },
+
+  // langinfo.h
+
+  nl_langinfo: function(item) {
+    var me = arguments.callee;
+    if (!me.ret) {
+      me.ret = Pointer_make(intArrayFromString("eh?"), null); 
+    }
+    return me.ret;
+  },
 };
 
 load('library_sdl.js');
