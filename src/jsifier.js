@@ -137,10 +137,14 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         soFar++;
       }
       // Add current value(s)
-      var currValue = values[i];
+      var currValue = flatten(values[i]);
       ret.push(currValue);
       i += 1;
       soFar += typeof currValue === 'object' ? currValue.length : 1;
+    }
+    while (soFar < typeData.flatSize) {
+      ret.push(0);
+      soFar++;
     }
     return ret;
   }
@@ -215,14 +219,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   function parseConst(value, type, ident) {
     var constant = makeConst(value, type);
     if (typeof constant === 'object') {
-      function flatten(x) {
-        if (typeof x !== 'object') return x;
-        var ret = [];
-        for (var i = 0; i < x.length; i++) {
-          ret = ret.concat(flatten(x[i]));
-        }
-        return ret;
-      }
       constant = flatten(constant).map(function(x) { return parseNumerical(x) })
     }
     return constant;
@@ -863,12 +859,12 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
   function finalizeLLVMFunctionCall(item) {
     switch(item.intertype) {
-      case 'getelementptr':
+      case 'getelementptr': // XXX finalizeLLVMParameter on the ident and the indexes?
         return makePointer(makeGetSlab(item.ident, item.type), getGetElementPtrIndexes(item), null, item.type);
       case 'bitcast':
       case 'inttoptr':
       case 'ptrtoint':
-        return item.ident;
+        return finalizeLLVMParameter(item.params[0]);
       default:
         throw 'Invalid function to finalize: ' + dump(item);
     }

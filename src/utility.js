@@ -227,3 +227,12 @@ function isNumber(x) {
   return x == parseFloat(x);
 }
 
+function flatten(x) {
+  if (typeof x !== 'object') return x;
+  var ret = [];
+  for (var i = 0; i < x.length; i++) {
+    ret = ret.concat(flatten(x[i]));
+  }
+  return ret;
+}
+
