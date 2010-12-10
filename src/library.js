@@ -642,6 +642,16 @@ var Library = {
     }
     return me.ret;
   },
+
+  // errno.h
+
+  __errno_location: function() { 
+    var me = arguments.callee;
+    if (!me.ret) {
+      me.ret = Pointer_make([0], 0, ALLOC_STATIC);
+    }
+    return me.ret;
+  },
 };
 
 load('library_sdl.js');
