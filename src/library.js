@@ -290,6 +290,15 @@ var Library = {
     return 0;
   },
 
+  memchr: function(ptr, chr, num) {
+    chr = unSign(chr);
+    for (var i = 0; i < num; i++) {
+      if (IHEAP[ptr] == chr) return ptr;
+      ptr++;
+    }
+    return 0;
+  },
+
   strchr: function(ptr, chr) {
     ptr--;
     do {
