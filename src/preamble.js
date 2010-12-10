@@ -35,7 +35,8 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
     }
     var history = HEAP_HISTORY[dest];
     if (history === null) return;
-    assert(history, 'Must have a history for a safe heap load!');
+    assert(history, 'Must have a history for a safe heap load!'); // Warning - bit fields in C structs cause loads+stores for each store, so
+                                                                  //           they will show up here...
 //    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
 //    if (history[0].type !== type) {
     if (history !== type) {

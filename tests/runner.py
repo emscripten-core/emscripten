@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob
 
 # Params
 
@@ -199,6 +199,33 @@ if 'benchmark' not in sys.argv:
           }
         '''
         self.do_test(src, '*4294967295,0,4294967219*')
+
+    def test_bitfields(self):
+        global SAFE_HEAP; SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
+        src = '''
+          #include <stdio.h>
+          struct bitty {
+            unsigned x : 1;
+            unsigned y : 1;
+            unsigned z : 1;
+          };
+          int main()
+          {
+            bitty b;
+            printf("*");
+            for (int i = 0; i <= 1; i++)
+              for (int j = 0; j <= 1; j++)
+                for (int k = 0; k <= 1; k++) {
+                  b.x = i;
+                  b.y = j;
+                  b.z = k;
+                  printf("%d,%d,%d,", b.x, b.y, b.z);
+                }
+            printf("*\\n");
+            return 0;
+          }
+        '''
+        self.do_test(src, '*0,0,0,0,0,1,0,1,0,0,1,1,1,0,0,1,0,1,1,1,0,1,1,1,*')
 
     def test_floatvars(self):
         src = '''
@@ -1211,9 +1238,15 @@ if 'benchmark' not in sys.argv:
     ### Test cases in separate files
 
     def test_cases(self):
-      for name in os.listdir(path_from_root(['tests', 'cases'])):
-        print "Testing case '%s'..." % name.replace('.ll', '')
-        self.do_ll_test(path_from_root(['tests', 'cases', name]), 'hello, world!')
+      for name in glob.glob(path_from_root(['tests', 'cases', '*.ll'])):
+        shortname = name.replace('.ll', '')
+        print "Testing case '%s'..." % shortname
+        output_file = path_from_root(['tests', 'cases', shortname + '.txt'])
+        if os.path.exists(output_file):
+          output = open(output_file, 'r').read()
+        else:
+          output = 'hello, world!'
+        self.do_ll_test(path_from_root(['tests', 'cases', name]), output)
 
     ### Integration tests
 

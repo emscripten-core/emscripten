@@ -749,7 +749,15 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
           default: throw 'Unknown fcmp variant: ' + variant
         }
       }
-      case 'zext': case 'fpext': case 'trunc': case 'sext': case 'fptrunc': return ident1;
+      case 'zext': case 'fpext': case 'sext': case 'fptrunc': return ident1;
+      case 'trunc': {
+        // Unlike extending, which we just 'do' (by doing nothing),
+        // truncating can change the number, e.g. by truncating to an i1
+        // in order to get the first bit
+        assert(ident2[0] == 'i');
+        var bitsLeft = ident2.substr(1);
+        return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
+      }
       case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
       case 'ptrtoint': {
         //if (type != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
