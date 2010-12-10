@@ -35,7 +35,7 @@ function preprocess(text, constants) {
 function addPointing(type) { return type + '*' }
 function removePointing(type, num) {
   if (num === 0) return type;
-  return type.substr(0, type.length-(num ? num : 1))
+  return type.substr(0, type.length-(num ? num : 1));
 }
 
 function pointingLevels(type) {
@@ -124,7 +124,7 @@ function combineTokens(tokens) {
   var ret = {
     lineNum: tokens[0].lineNum,
     text: '',
-    tokens: [],
+    tokens: []
   };
   tokens.forEach(function(token) {
     ret.text += token.text;
@@ -191,7 +191,7 @@ function splitItem(parent, childSlot, copySlots) {
   copySlots.forEach(function(slot) { child[slot] = parent[slot] });
   return {
     parent: parent,
-    child: child,
+    child: child
   };
 }
 
@@ -246,7 +246,7 @@ function parseParamTokens(params) {
     if (segment.length == 1) {
       if (segment[0].text == '...') {
         ret.push({
-          intertype: 'varargs',
+          intertype: 'varargs'
         });
       } else {
         // Clang sometimes has a parameter with just a type,
@@ -255,7 +255,7 @@ function parseParamTokens(params) {
           intertype: 'value',
           type: segment[0].text,
           value: null,
-          ident: toNiceIdent('%') + absIndex,
+          ident: toNiceIdent('%') + absIndex
         });
       }
     } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
@@ -272,7 +272,7 @@ function parseParamTokens(params) {
         intertype: 'value',
         type: segment[0].text,
         value: segment[1],
-        ident: parseNumerical(segment[1].text),
+        ident: parseNumerical(segment[1].text)
       });
       //          } else {
       //            throw "what is this params token? " + JSON.stringify(segment);
@@ -288,13 +288,13 @@ function parseLLVMSegment(segment) {
     return {
       intertype: 'value',
       ident: segment[0].text,
-      type: isType(segment[0].text) ? segment[0].text : '?',
+      type: isType(segment[0].text) ? segment[0].text : '?'
     };
   } else if (segment[1].type == '{') {
     return {
       intertype: 'structvalue',
       values: splitTokenList(segment[1].tokens).map(parseLLVMSegment),
-      type: segment[0].text,
+      type: segment[0].text
     };
   } else if (segment[0].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall([{text: '?'}].concat(segment));
@@ -304,7 +304,7 @@ function parseLLVMSegment(segment) {
     return {
       intertype: 'value',
       ident: segment[1].text,
-      type: segment[0].text,
+      type: segment[0].text
     };
   }
 }
@@ -335,7 +335,7 @@ function parseLLVMFunctionCall(segment) {
   var ret = {
     intertype: segment[1].text,
     type: segment[0].text,
-    params: parseParamTokens(segment[2].item.tokens),
+    params: parseParamTokens(segment[2].item.tokens)
   };
   ret.ident = toNiceIdent(ret.params[0].ident);
   return ret;

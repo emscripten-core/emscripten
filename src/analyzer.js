@@ -19,7 +19,7 @@ function analyzer(data, givenTypes) {
     processItem: function(item) {
       item.items.sort(function (a, b) { return a.lineNum - b.lineNum });
       this.forwardItem(item, 'Gatherer');
-    },
+    }
   });
 
   // Gatherer
@@ -36,7 +36,7 @@ function analyzer(data, givenTypes) {
         item.items = temp.leftIn;
       });
       // Functions & labels
-      item.functions = []
+      item.functions = [];
       for (var i = 0; i < item.items.length; i++) {
         var subItem = item.items[i];
         if (subItem.intertype == 'function') {
@@ -50,7 +50,7 @@ function analyzer(data, givenTypes) {
             item.items.splice(i+1, 0, {
               intertype: 'label',
               ident: '%entry',
-              lineNum: subItem.lineNum + '.5',
+              lineNum: subItem.lineNum + '.5'
             });
           }
         } else if (subItem.intertype == 'functionEnd') {
@@ -68,7 +68,7 @@ function analyzer(data, givenTypes) {
       }
       delete item.items;
       this.forwardItem(item, 'Identinicer');
-    },
+    }
   });
 
   // IdentiNicer
@@ -106,7 +106,7 @@ function analyzer(data, givenTypes) {
       data.types[nonPointing] = {
         name_: nonPointing,
         fields: range(num).map(function() { return subType }),
-        lineNum: '?',
+        lineNum: '?'
       };
       // Also add a |[0 x type]| type
       var zerod = '[0 x ' + subType + ']';
@@ -114,7 +114,7 @@ function analyzer(data, givenTypes) {
         data.types[zerod] = {
           name_: zerod,
           fields: [subType, subType], // Two, so we get the flatFactor right. We care about the flatFactor, not the size here
-          lineNum: '?',
+          lineNum: '?'
         };
       }
       return;
@@ -126,7 +126,7 @@ function analyzer(data, givenTypes) {
       name_: type,
       fields: [ 'i32' ], // XXX
       flatSize: 1,
-      lineNum: '?',
+      lineNum: '?'
     };
   }
 
@@ -211,7 +211,7 @@ function analyzer(data, givenTypes) {
       }
 
       this.forwardItem(item, 'VariableAnalyzer');
-    },
+    }
   });
   
   // Variable analyzer
@@ -233,7 +233,7 @@ function analyzer(data, givenTypes) {
               type: param.type,
               origin: 'funcparam',
               lineNum: func.lineNum,
-              uses: null,
+              uses: null
             };
           }
         });
@@ -246,7 +246,7 @@ function analyzer(data, givenTypes) {
               type: item.value.type,
               origin: item.value.intertype, // XXX should say something in the case of fastgetelementptrload
               lineNum: item.lineNum,
-              uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1]),
+              uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1])
             };
           }
         });
@@ -312,7 +312,7 @@ function analyzer(data, givenTypes) {
         }
       });
       this.forwardItem(item, 'LabelAnalyzer');
-    },
+    }
   });
 
   // Label analyzer
@@ -345,7 +345,7 @@ function analyzer(data, givenTypes) {
         });
       });
       this.forwardItem(item, 'StackAnalyzer');
-    },
+    }
   });
 
   // Stack analyzer - calculate the base stack usage
@@ -374,7 +374,7 @@ function analyzer(data, givenTypes) {
         }
       });
       this.forwardItem(data, 'Relooper');
-    },
+    }
   });
 
   var BRANCH_INVOKE = searchable('branch', 'invoke');
@@ -564,7 +564,7 @@ function analyzer(data, givenTypes) {
           type: 'emulated',
           id: blockId,
           labels: labels,
-          entries: entries.slice(0),
+          entries: entries.slice(0)
         };
         if (!RELOOP) return emulated;
 
@@ -612,7 +612,7 @@ function analyzer(data, givenTypes) {
             id: blockId,
             labels: [entryLabel],
             entries: entries,
-            next: makeBlock(others, keys(entryLabel.outLabels), labelsDict),
+            next: makeBlock(others, keys(entryLabel.outLabels), labelsDict)
           };
         }
 
@@ -623,12 +623,12 @@ function analyzer(data, givenTypes) {
             type: 'reloop',
             id: blockId,
             entries: entries,
-            labels: labels,
+            labels: labels
           };
 
           // Find internal and external labels
           var split_ = splitter(labels, function(label) {
-            return !(label.ident in s_entries) && values(setIntersect(s_entries, label.allOutLabels)).length == 0
+            return !(label.ident in s_entries) && values(setIntersect(s_entries, label.allOutLabels)).length == 0;
           });
           var externals = split_.splitOut;
           var internals = split_.leftIn;
@@ -752,7 +752,7 @@ function analyzer(data, givenTypes) {
           entries: actualEntries,
           entryLabels: actualEntryLabels,
           labels: handlingNow,
-          next: makeBlock(labels.filter(function(label) { return handlingNow.indexOf(label) == -1 }), keys(postEntryLabels), labelsDict),
+          next: makeBlock(labels.filter(function(label) { return handlingNow.indexOf(label) == -1 }), keys(postEntryLabels), labelsDict)
         };
       }
 
@@ -763,7 +763,7 @@ function analyzer(data, givenTypes) {
       });
 
       return finish();
-    },
+    }
   });
 
   // LoopOptimizer. The Relooper generates native loop structures, that are
@@ -862,11 +862,11 @@ function analyzer(data, givenTypes) {
         optimizeBlock(func.block);
       });
       return finish();
-    },
+    }
   });
 
   substrate.addItem({
-    items: data,
+    items: data
   }, 'Sorter');
 
   return substrate.solve();

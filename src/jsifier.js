@@ -12,7 +12,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     // XXX Save just what we need, to save memory - whether there are varargs, and the # of parameters
     FUNCTIONS[func.ident] = {
       hasVarArgs: func.hasVarArgs,
-      numParams: func.params.length,
+      numParams: func.params.length
    };
   });
 
@@ -27,7 +27,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   substrate.addZyme('Type', {
     processItem: function(item) {
       var type = TYPES[item.name_];
-      var niceName = toNiceIdent(item.name_)
+      var niceName = toNiceIdent(item.name_);
       // We might export all of TYPES, cleaner that way, but do not want slowdowns in accessing flatteners
       item.JS = 'var ' + niceName + '___SIZE = ' + TYPES[item.name_].flatSize + '; // ' + item.name_ + '\n';
       if (type.needsFlattening && !type.flatFactor) {
@@ -35,7 +35,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       }
       item.__result__ = true;
       return [item];
-    },
+    }
   });
 
   function makePointer(slab, pos, allocator, type) { // type is FFU
@@ -248,7 +248,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
               ret.push({
                 intertype: 'GlobalVariablePostSet',
                 JS: 'IHEAP[' + item.ident + '+' + i + '] = ' + value + ';',
-                __result__: true,
+                __result__: true
               });
               constant[i] = '0';
             }
@@ -259,10 +259,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         return ret.concat({
           intertype: 'GlobalVariable',
           JS: item.ident + ' = ' + constant + ';',
-          __result__: true,
+          __result__: true
         });
       }
-    },
+    }
   });
 
   // functionStub
@@ -282,7 +282,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       }
       item.__result__ = true;
       return [item];
-    },
+    }
   });
 
   // function splitter
@@ -301,7 +301,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       });
 
       this.forwardItems(ret, 'FuncLineTriager');
-    },
+    }
   });
 
   // function reconstructor & post-JS optimizer
@@ -439,7 +439,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       func.JS += func.ident + '.__index__ = Runtime.getFunctionIndex(' + func.ident + ', "' + func.ident + '");\n';
       func.__result__ = true;
       return func;
-    },
+    }
   });
 
   function getVarData(funcData, ident) { // XXX - need to check globals as well!
@@ -468,7 +468,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       } else {
         this.forwardItem(item, 'Intertype:' + item.intertype);
       }
-    },
+    }
   });
 
   // assignment
@@ -477,7 +477,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       var pair = splitItem(item, 'value', ['funcData']);
       this.forwardItem(pair.parent, 'AssignReintegrator');
       this.forwardItem(pair.child, 'FuncLineTriager');
-    },
+    }
   });
   substrate.addZyme('AssignReintegrator', makeReintegrator(function(item, child) {
     // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
@@ -515,7 +515,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         item.JS = func(item);
         if (!item.JS) throw "XXX - no JS generated for " + dump(item);
         this.forwardItem(item, 'FuncLineTriager');
-      },
+      }
     });
   }
   makeFuncLineZyme('store', function(item) {
@@ -730,7 +730,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
           case 'ult': case 'slt': return ident1 + ' < ' + ident2;
           case 'ne': case 'une': return ident1 + ' != ' + ident2;
           case 'eq': return ident1 + ' == ' + ident2;
-          default: throw 'Unknown icmp variant: ' + variant
+          default: throw 'Unknown icmp variant: ' + variant;
         }
       }
       case 'fcmp': {
@@ -746,7 +746,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
           case 'ord': return '!isNaN(' + ident1 + ') && !isNaN(' + ident2 + ')';
           case 'uno': return 'isNaN(' + ident1 + ') || isNaN(' + ident2 + ')';
           case 'true': return '1';
-          default: throw 'Unknown fcmp variant: ' + variant
+          default: throw 'Unknown fcmp variant: ' + variant;
         }
       }
       case 'zext': case 'fpext': case 'sext': case 'fptrunc': return ident1;
@@ -767,7 +767,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         //print('// XXX Warning: inttoptr operation on line ' + lineNum);
         return ident1;
       }
-      default: throw 'Unknown mathcmp op: ' + item.op
+      default: throw 'Unknown mathcmp op: ' + item.op;
     }
   } });
 /*
@@ -909,7 +909,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         return 'IHEAP[' + params[0].ident + '] = ' + data;
       }
     } else if (ident == '_llvm_va_end') {
-      return ';'
+      return ';';
     }
 
     var func = FUNCTIONS[ident];

@@ -651,7 +651,7 @@ var Library = {
       me.ret = Pointer_make([0], 0, ALLOC_STATIC);
     }
     return me.ret;
-  },
+  }
 };
 
 load('library_sdl.js');

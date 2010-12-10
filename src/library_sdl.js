@@ -2,7 +2,7 @@ mergeInto(Library, {
   SDL_Init: function(what) {
     SDL_INFO = {
       width: 320,
-      height: 240,
+      height: 240
     };
     SDL_SURFACES = {};
     return 1;
@@ -96,6 +96,6 @@ mergeInto(Library, {
 
   SDL_ShowCursor: function(toggle) {
     // TODO
-  },
+  }
 });
 

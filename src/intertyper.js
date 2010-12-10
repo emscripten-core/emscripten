@@ -5,7 +5,7 @@ var LLVM_STYLE = null;
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
-                'weak_odr', 'externally_visible', 'dllimport', 'dllexport'),
+                'weak_odr', 'externally_visible', 'dllimport', 'dllexport')
 };
 
 //! @param parseFunctions We parse functions only on later passes, since we do not
@@ -52,7 +52,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           } else {
             ret.push({
               lineText: line,
-              lineNum: i + 1 + baseLineNum,
+              lineNum: i + 1 + baseLineNum
             });
             if (new RegExp(/^\ +switch\ .*/g).test(line)) {
               // beginning of llvm switch
@@ -74,7 +74,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
               params: func.params,
               hasVarArgs: func.hasVarArgs,
               lineNum: currFunctionLineNum,
-              lines: currFunctionLines,
+              lines: currFunctionLines
             });
             currFunctionLines = [];
           }
@@ -82,14 +82,14 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       this.forwardItems(ret.filter(function(item) { return item.lineText; }), 'Tokenizer');
       return unparsedFunctions;
-    },
+    }
   });
 
   var ENCLOSER_STARTERS = set('[', '(', '<');
   var ENCLOSER_ENDERS = {
     '[': ']',
     '(': ')',
-    '<': '>',
+    '<': '>'
   };
 
   // Line tokenizer
@@ -108,7 +108,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         '(': 0,
         ')': '(',
         '<': 0,
-        '>': '<',
+        '>': '<'
       };
       var totalEnclosing = 0;
       var that = this;
@@ -122,7 +122,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         }
 
         var token = {
-          text: text,
+          text: text
         };
         if (text[0] in enclosers) {
           token.item = that.processItem({
@@ -225,14 +225,14 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var item = {
         tokens: tokens,
         indent: lineText.search(/[^ ]/),
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       };
       if (inner) {
         return item;
       } else {
         this.forwardItem(item, 'Triager');
       }
-    },
+    }
   });
 
   MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
@@ -303,7 +303,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         throw 'Invalid token, cannot triage: ' + dump(item);
       }
       this.forwardItem(item, triage(item));
-    },
+    }
   });
 
   // Line parsers to intermediate form
@@ -337,8 +337,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
           intertype: 'type',
           name_: item.tokens[0].text,
           fields: fields,
-          lineNum: item.lineNum,
-        }]
+          lineNum: item.lineNum
+        }];
       } else {
         // variable
         var ident = item.tokens[0].text;
@@ -355,7 +355,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           ident: ident,
           type: item.tokens[2].text,
           external: external,
-          lineNum: item.lineNum,
+          lineNum: item.lineNum
         };
         if (ident == '@llvm.global_ctors') {
           ret.ctors = [];
@@ -380,7 +380,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         }
         return [ret];
       }
-    },
+    }
   });
   // function header
   funcHeader = substrate.addZyme('FuncHeader', {
@@ -394,7 +394,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         ident: item.tokens[1].text,
         returnType: item.tokens[0],
         params: parseParamTokens(item.tokens[2].item.tokens),
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       };
       ret.hasVarArgs = false;
       ret.paramIdents = ret.params.map(function(param) {
@@ -405,7 +405,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         return toNiceIdent(param.ident);
       }).filter(function(param) { return param != null });;
       return [ret];
-    },
+    }
   });
   // label
   substrate.addZyme('Label', {
@@ -416,9 +416,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
         ident: item.tokens[0].text.substr(-1) == ':' ?
                                '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
                                '%' + item.tokens[2].text.substr(1),
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       }];
-    },
+    }
   });
 
   // assignment
@@ -428,14 +428,14 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var pair = splitItem({
         intertype: 'assign',
         ident: combineTokens(item.tokens.slice(0, opIndex)).text,
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       }, 'value');
       this.forwardItem(pair.parent, 'Reintegrator');
       this.forwardItem(mergeInto(pair.child, { // Additional token, to be triaged and later re-integrated
         indent: -1,
-        tokens: item.tokens.slice(opIndex+1),
+        tokens: item.tokens.slice(opIndex+1)
       }), 'Triager');
-    },
+    }
   });
 
   substrate.addZyme('Reintegrator', makeReintegrator(function(parent, child) {
@@ -471,7 +471,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       item.ident = item.pointer;
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // 'extractvalue'
   substrate.addZyme('ExtractValue', {
@@ -482,7 +482,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.ident = item.tokens[2].text;
       item.indexes = splitTokenList(item.tokens.slice(4, last));
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // 'bitcast'
   substrate.addZyme('Bitcast', {
@@ -492,7 +492,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.ident = item.tokens[2].text;
       item.type2 = item.tokens[4].text;
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // 'getelementptr'
   substrate.addZyme('GEP', {
@@ -509,7 +509,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.params = data.params;
       item.ident = data.ident;
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // 'call'
   substrate.addZyme('Call', {
@@ -548,7 +548,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         return [item];
       }
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // 'invoke'
   substrate.addZyme('Invoke', {
@@ -573,7 +573,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         return [item];
       }
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
 
   // 'alloca'
@@ -585,7 +585,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.type = addPointing(item.tokens[1].text); // type of pointer we will get
       item.type2 = item.tokens[1].text; // value we will create, and get a pointer to
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // 'phi'
   substrate.addZyme('Phi', {
@@ -597,11 +597,11 @@ function intertyper(data, parseFunctions, baseLineNum) {
         var subSegments = splitTokenList(segment[0].item.tokens);
         return {
           label: toNiceIdent(subSegments[1][0].text),
-          value: parseLLVMSegment(subSegments[0]),
+          value: parseLLVMSegment(subSegments[0])
         };
       });
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // mathops
   substrate.addZyme('Mathops', {
@@ -630,7 +630,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.type = item.param1.type;
       }
       this.forwardItem(item, 'Reintegrator');
-    },
+    }
   });
   // 'store'
   substrate.addZyme('Store', {
@@ -643,12 +643,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
         valueType: item.tokens[1].text,
         value: parseLLVMSegment(segments[0]), // TODO: Make everything use this method, with finalizeLLVMParameter too
         pointer: parseLLVMSegment(segments[1]),
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       };
       ret.ident = ret.pointer.ident;
       ret.pointerType = ret.pointer.type;
       return [ret];
-    },
+    }
   });
   // 'br'
   substrate.addZyme('Branch', {
@@ -658,7 +658,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           __result__: true,
           intertype: 'branch',
           label: toNiceIdent(item.tokens[2].text),
-          lineNum: item.lineNum,
+          lineNum: item.lineNum
         }];
       } else {
         return [{
@@ -667,10 +667,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
           ident: item.tokens[2].text,
           labelTrue: toNiceIdent(item.tokens[5].text),
           labelFalse: toNiceIdent(item.tokens[8].text),
-          lineNum: item.lineNum,
+          lineNum: item.lineNum
         }];
       }
-    },
+    }
   });
   // 'ret'
   substrate.addZyme('Return', {
@@ -680,9 +680,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
         intertype: 'return',
         type: item.tokens[1].text,
         value: item.tokens[2] ? parseLLVMSegment(item.tokens.slice(2)) : null,
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       }];
-    },
+    }
   });
   // 'switch'
   substrate.addZyme('Switch', {
@@ -693,7 +693,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         while (tokens.length > 0) {
           ret.push({
             value: tokens[1].text,
-            label: toNiceIdent(tokens[4].text),
+            label: toNiceIdent(tokens[4].text)
           });
           tokens = tokens.slice(5);
         }
@@ -706,9 +706,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
         ident: item.tokens[2].text,
         defaultLabel: toNiceIdent(item.tokens[5].text),
         switchLabels: parseSwitchLabels(item.tokens[6]),
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       }];
-    },
+    }
   });
   // function end
   substrate.addZyme('FuncEnd', {
@@ -716,9 +716,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
       return [{
         __result__: true,
         intertype: 'functionEnd',
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       }];
-    },
+    }
   });
   // external function stub
   substrate.addZyme('External', {
@@ -732,9 +732,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
         ident: item.tokens[2].text,
         returnType: item.tokens[1],
         params: item.tokens[3],
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       }];
-    },
+    }
   });
   // 'unreachable'
   substrate.addZyme('Unreachable', {
@@ -742,15 +742,15 @@ function intertyper(data, parseFunctions, baseLineNum) {
       return [{
         __result__: true,
         intertype: 'unreachable',
-        lineNum: item.lineNum,
+        lineNum: item.lineNum
       }];
-    },
+    }
   });
 
   // Input
 
   substrate.addItem({
-    llvmLines: data,
+    llvmLines: data
   }, 'LineSplitter');
 
   return substrate.solve();

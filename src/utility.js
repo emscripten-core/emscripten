@@ -128,7 +128,7 @@ function values(x) {
 function bind(self, func) {
   return function() {
     func.apply(self, arguments);
-  }
+  };
 }
 
 function sum(x) {

@@ -67,7 +67,7 @@ RuntimeGenerator = {
       quantum = '(quantum ? quantum : QUANTUM_SIZE)';
     }
     return target + ' = Math.ceil(' + target + '/' + quantum + ')*' + quantum + ';';
-  },
+  }
 };
 
 function unInline(name_, params) {

@@ -2,10 +2,10 @@
 
 // Prep - allow this to run in both SpiderMonkey and V8
 if (!this['load']) {
-  load = function(f) { eval(snarf(f)) }
+  load = function(f) { eval(snarf(f)) };
 }
 if (!this['read']) {
-  read = function(f) { snarf(f) }
+  read = function(f) { snarf(f) };
 }
 
 load('settings.js');

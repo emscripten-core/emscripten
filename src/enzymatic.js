@@ -128,7 +128,7 @@ Substrate.prototype = {
       }
       midComment();
     }
-  },
+  }
 };
 
 Zyme = function() { };
@@ -160,6 +160,6 @@ Zyme.prototype = {
       }
     }
     return ret;
-  },
+  }
 };
 
