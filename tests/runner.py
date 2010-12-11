@@ -80,7 +80,8 @@ class RunnerCore(unittest.TestCase):
     output = open(filename + '.o.js').read()
     if output_processor is not None:
         output_processor(output)
-    if output is not None and 'Traceback' in output: print output; assert 0
+    # Detect compilation crashes and errors
+    if output is not None and 'Traceback' in output and 'in test_' in output: print output; assert 0
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
     return timeout_run(Popen(engine + [filename] + ([] if engine == SPIDERMONKEY_ENGINE else ['--']) + args,
@@ -182,10 +183,11 @@ if 'benchmark' not in sys.argv:
               printf(",");
             }
             printf("*\\n");
+            printf("*%ld*\\n", (long)21);
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*')
+        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*21*')
 
     def test_unsigned(self):
         src = '''
@@ -1237,6 +1239,14 @@ if 'benchmark' not in sys.argv:
                       'hello lua world!\n\n\n17.00000000000\n\n\n1.00000000000\n\n\n2.00000000000\n\n\n3.00000000000\n\n\n4.00000000000\n\n\n7.00000000000',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']))
+
+    def test_python(self):
+      global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields etc.
+      self.do_ll_test(path_from_root(['tests', 'python', 'python.ll']),
+                      'hello python world!\n\n[0, 2, 4, 6]\n\n5\n',
+                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t'''],
+                      js_engines=[V8_ENGINE]) # script stack space exceeded in SpiderMonkey, TODO
 
     ### Test cases in separate files
 

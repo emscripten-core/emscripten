@@ -29,6 +29,10 @@ var Library = {
     __print__(Pointer_stringify(p) + '\n');
   },
 
+  fputc: function(chr, stream) {
+    __print__(String.fromCharCode(chr));
+  },
+
   putchar: function(p) {
     __print__(String.fromCharCode(p));
   },
@@ -55,8 +59,8 @@ var Library = {
   },
 
   fwrite: function(ptr, size, count, stream) {
-    print('[fwrite] ' + Pointer_stringify(ptr).slice(0,count));
-    return count; // or 0?
+    __print__(intArrayToString(Array_copy(ptr, count)));
+    return count;
   },
 
   fclose: function(stream) {
@@ -83,6 +87,9 @@ var Library = {
 
   isatty: function(file) {
     return 0; // XXX
+  },
+
+  clearerr: function(stream) {
   },
 
   // stdlib.h
