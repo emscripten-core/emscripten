@@ -1035,10 +1035,13 @@ if 'benchmark' not in sys.argv:
             int values[6] = { 3, 2, 5, 1, 5, 6 };
             qsort(values, 5, sizeof(int), comparer);
             printf("*%d,%d,%d,%d,%d,%d*\\n", values[0], values[1], values[2], values[3], values[4], values[5]);
+
+            printf("*stdin==0:%d*\\n", stdin == 0); // check that external values are at least not NULL
+
             return 0;
           }
           '''
-        self.do_test(src, '*1,2,3,5,5,6*\n*cleaned*')
+        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*cleaned*')
 
     def test_statics(self):
         src = '''

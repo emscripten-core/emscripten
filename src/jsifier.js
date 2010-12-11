@@ -238,7 +238,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       } else {
         item.JS = 'var ' + item.ident + ';';
         var constant = item.external ?
-          JSON.stringify(makeEmptyStruct(item.type)) + ' /* external value? */'
+          makePointer(JSON.stringify(makeEmptyStruct(item.type)) + ' /* external value? */', null, 'ALLOC_STATIC')
           :
           parseConst(item.value, item.type, item.ident);
         if (typeof constant === 'object') {
