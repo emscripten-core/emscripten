@@ -260,44 +260,47 @@ function __formatString() {
     curr = IHEAP[textIndex];
     next = IHEAP[textIndex+1];
     if (curr == '%'.charCodeAt(0)) {
+      // Handle very very simply formatting, namely only %.X[f|d|u|etc.]
+      var limit = -1;
+      if (next == '.'.charCodeAt(0)) {
+        textIndex++;
+        limit = 0;
+        while(1) {
+          var limitChr = IHEAP[textIndex+1];
+          if (!(limitChr >= '0'.charCodeAt(0) && limitChr <= '9'.charCodeAt(0))) break;
+          limit *= 10;
+          limit += limitChr - '0'.charCodeAt(0);
+          textIndex++;
+        }
+        next = IHEAP[textIndex+1];
+      }
       if (next == 'l'.charCodeAt(0)) {
         textIndex++;
         next = IHEAP[textIndex+1];
       }
-      if (['d', 'u', 'p', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
+      if (next == 'e'.charCodeAt(0) || next == 'g'.charCodeAt(0)) {
+        next = 'f'.charCodeAt(0); // no support for 'e'
+      }
+      if (['d', 'u', 'p', 'f'].indexOf(String.fromCharCode(next)) != -1) {
         var currArg;
         var argText;
-        // Handle very very simply formatting, namely only %.Xf
-        if (next == '.'.charCodeAt(0)) {
-          var limit = 0;
-          while(1) {
-            var limitChr = IHEAP[textIndex+2];
-            if (!(limitChr >= '0'.charCodeAt(0) && limitChr <= '9'.charCodeAt(0))) break;
-            limit *= 10;
-            limit += limitChr - '0'.charCodeAt(0);
-            textIndex++;
-          }
-          textIndex--;
-          next = IHEAP[textIndex+1];
-          currArg = getNextArg(next);
+        currArg = getNextArg(next);
+        argText = String(+currArg); // +: boolean=>int
+        if (next == 'u'.charCodeAt(0)) {
+          argText = String(unSign(currArg, 32));
+        } else if (next == 'p'.charCodeAt(0)) {
+          argText = '0x' + currArg.toString(16);
+        } else {
           argText = String(+currArg); // +: boolean=>int
+        }
+        if (limit >= 0) {
           var dotIndex = argText.indexOf('.');
-          if (dotIndex == -1) {
+          if (dotIndex == -1 && next == 'f'.charCodeAt(0)) {
             dotIndex = argText.length;
             argText += '.';
           }
           argText += '00000000000'; // padding
           argText = argText.substr(0, dotIndex+1+limit);
-          textIndex += 2;
-        } else if (next == 'u'.charCodeAt(0)) {
-          currArg = getNextArg(next);
-          argText = String(unSign(currArg, 32));
-        } else if (next == 'p'.charCodeAt(0)) {
-          currArg = getNextArg(next);
-          argText = '0x' + currArg.toString(16);
-        } else {
-          currArg = getNextArg(next);
-          argText = String(+currArg); // +: boolean=>int
         }
         argText.split('').forEach(function(chr) {
           ret.push(chr.charCodeAt(0));
@@ -310,8 +313,8 @@ function __formatString() {
         ret = ret.concat(getNextArg(next));
         textIndex += 2;
       } else {
-        ret.push(curr);
-        textIndex += 1; // not sure what to do with this %, so print it
+        ret.push(next);
+        textIndex += 2; // not sure what to do with this %, so print it
       }
     } else {
       ret.push(curr);
