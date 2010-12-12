@@ -203,7 +203,7 @@ function __initializeRuntime__() {
     FHEAP = HEAP; // fallback
   }
 #else
-  IHEAP = HEAP; // We use that name in our runtime code that processes strings etc., see library.js
+  IHEAP = FHEAP = HEAP;
 #endif
 
   Module['HEAP'] = HEAP;
@@ -281,7 +281,7 @@ function __formatString() {
       if (next == 'e'.charCodeAt(0) || next == 'g'.charCodeAt(0)) {
         next = 'f'.charCodeAt(0); // no support for 'e'
       }
-      if (['d', 'u', 'p', 'f'].indexOf(String.fromCharCode(next)) != -1) {
+      if (['d', 'i', 'u', 'p', 'f'].indexOf(String.fromCharCode(next)) != -1) {
         var currArg;
         var argText;
         currArg = getNextArg(next);

@@ -270,13 +270,21 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     processItem: function(item) {
       var shortident = item.ident.substr(1);
       if (shortident in Library) {
-        var snippet = Library[shortident];
-        if (typeof snippet === 'string') {
-          if (Library[snippet]) {
-            snippet = Library[snippet]; // redirection for aliases
+        function addFromLibrary(ident) {
+          var me = arguments.callee;
+          if (!me.added) me.added = {};
+          if (ident in me.added) return '';
+          me.added[ident] = true;
+          var snippet = Library[ident];
+          if (typeof snippet === 'string') {
+            if (Library[snippet]) {
+              snippet = Library[snippet]; // redirection for aliases
+            }
           }
+          var deps = Library[ident + '__deps'];
+          return '_' + ident + ' = ' + snippet.toString() + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
         }
-        item.JS = item.ident + ' = ' + snippet.toString();
+        item.JS = addFromLibrary(shortident);
       } else {
         item.JS = '// stub for ' + item.ident;
       }

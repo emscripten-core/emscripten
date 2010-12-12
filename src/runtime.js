@@ -107,6 +107,8 @@ Runtime = {
   getNativeFieldSize: getNativeFieldSize,
   dedup: dedup,
 
+  set: set,
+
   // Calculate aligned size, just like C structs should be. TODO: Consider
   // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
   // which would remove much of the complexity here.

@@ -125,6 +125,7 @@ var Library = {
     return 0; // TODO
   },
 
+  strtod__deps: ['isspace', 'isdigit'],
   strtod: function(str, endptr) {
     // XXX handles only whitespace + |[0-9]+(.[0.9]+)?|, no e+
     while (_isspace(str)) str++;
@@ -327,6 +328,15 @@ var Library = {
 
   strdup: function(ptr) {
     return Pointer_make(String_copy(ptr, true), 0, ALLOC_NORMAL);
+  },
+
+  strpbrk: function(ptr1, ptr2) {
+    var searchSet = set.apply(null, String_copy(ptr2));
+    while (IHEAP[ptr1]) {
+      if (IHEAP[ptr1] in searchSet) return ptr1;
+      ptr1++;
+    }
+    return 0;
   },
 
   // ctype.h
@@ -542,6 +552,41 @@ var Library = {
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
 
+  modf: function(x, intpart) {
+    FHEAP[intpart] = Math.floor(x);
+#if SAFE_HEAP
+    SAFE_HEAP_ACCESS(intpart, 'f32', true); // XXX f64?
+#endif
+    return x - FHEAP[intpart];
+  },
+
+  frexp: function(x, exp_addr) {
+    var sig = 0, exp_ = 0;
+    if (x !== 0) {
+      var raw_exp = Math.log(x)/Math.log(2);
+      exp_ = Math.ceil(raw_exp);
+      if (exp_ === raw_exp) exp_ += 1;
+      sig = x/Math.pow(2, exp_);
+    }
+    IHEAP[exp_addr] = exp_;
+#if SAFE_HEAP
+    SAFE_HEAP_ACCESS(exp_addr, 'i32', true);
+#endif
+    return sig;
+  },
+
+  __finite: function(x) {
+    return x !== Infinity && x !== -Infinity;
+  },
+
+  __isinf: function(x) {
+    return x === Infinity || x === -Infinity;
+  },
+
+  __isnan: function(x) {
+    return isNaN(x);
+  },
+
   // unistd.h
 
   sysconf: function(name_) {
@@ -638,6 +683,20 @@ var Library = {
 
   setlocale: function(category, locale) {
     return 0;
+  },
+
+  localeconv: function() {
+    // %struct.timeval = type { char* decimal point, other stuff... }
+    // var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
+    var me = arguments.callee;
+    if (!me.ret) {
+      me.ret = Pointer_make([Pointer_make(intArrayFromString('.'), null)], null); // just decimal point, for now
+#if SAFE_HEAP
+      SAFE_HEAP_ACCESS(me.ret, 'i32', true);
+      SAFE_HEAP_ACCESS(IHEAP[me.ret], 'i32', true);
+#endif
+    }
+    return me.ret;
   },
 
   // langinfo.h

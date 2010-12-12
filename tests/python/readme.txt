@@ -7,6 +7,8 @@ This is Python 2.7.1, compiled to .ll as follows:
   EDIT pyconfig.h (in ./bin), remove
     HAVE_GCC_ASM_FOR_X87
     HAVE_SIG* except SIGNAL_H
+  and *add*
+    #define PY_NO_SHORT_FLOAT_REPR
   make
   ...it will fail, but can continue manually
   cd pylibs

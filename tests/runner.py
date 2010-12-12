@@ -1042,10 +1042,12 @@ if 'benchmark' not in sys.argv:
             printf("*%%*\\n");
             printf("*%.1ld*\\n", 5);
 
+            printf("*%.1f*\\n", strtod("66", NULL)); // checks dependency system, as our strtod needs _isspace etc.
+
             return 0;
           }
           '''
-        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*cleaned*')
+        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*cleaned*')
 
     def test_statics(self):
         src = '''
