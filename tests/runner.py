@@ -183,7 +183,7 @@ if 'benchmark' not in sys.argv:
               printf(",");
             }
             printf("*\\n");
-            printf("*%ld*\\n", (long)21);
+            printf("*%ld*%p\\n", (long)21, &hash); // The %p should not enter an infinite loop!
             return 0;
           }
         '''

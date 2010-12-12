@@ -264,7 +264,7 @@ function __formatString() {
         textIndex++;
         next = IHEAP[textIndex+1];
       }
-      if (['d', 'u', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
+      if (['d', 'u', 'p', 'f', '.'].indexOf(String.fromCharCode(next)) != -1) {
         var currArg;
         var argText;
         // Handle very very simply formatting, namely only %.Xf
@@ -292,6 +292,9 @@ function __formatString() {
         } else if (next == 'u'.charCodeAt(0)) {
           currArg = getNextArg(next);
           argText = String(unSign(currArg, 32));
+        } else if (next == 'p'.charCodeAt(0)) {
+          currArg = getNextArg(next);
+          argText = '0x' + currArg.toString(16);
         } else {
           currArg = getNextArg(next);
           argText = String(+currArg); // +: boolean=>int
@@ -306,6 +309,9 @@ function __formatString() {
       } else if (next == 'c'.charCodeAt(0)) {
         ret = ret.concat(getNextArg(next));
         textIndex += 2;
+      } else {
+        ret.push(curr);
+        textIndex += 1; // not sure what to do with this %, so print it
       }
     } else {
       ret.push(curr);
