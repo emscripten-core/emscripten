@@ -150,6 +150,7 @@ function Pointer_make(slab, pos, allocator) {
 
   return ret;
 }
+Module['Pointer_make'] = Pointer_make;
 
 function Pointer_stringify(ptr) {
   var ret = "";
@@ -428,6 +429,7 @@ function intArrayFromString(stringy) {
   ret.push(0);
   return ret;
 }
+Module['intArrayFromString'] = intArrayFromString;
 
 function intArrayToString(array) {
   var ret = '';

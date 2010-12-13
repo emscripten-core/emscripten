@@ -5,7 +5,7 @@
 //  args = args || [];
 
 // Runs much faster, for some reason
-var Module = {};
+this['Module'] = {};
 var args = arguments;
   {{BODY}}
 
