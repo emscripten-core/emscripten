@@ -41,10 +41,13 @@ var Library = {
   fopen: function(filename, mode) {
     return 1; // XXX
   },
+  __01fopen64_: 'fopen',
 
-  _IO_getc: function(file) {
+  getc: function(file) {
     return -1; // EOF
   },
+  getc_unlocked: 'getc',
+  _IO_getc: 'getc',
 
   ungetc: function(chr, stream) {
     return chr;
@@ -90,6 +93,11 @@ var Library = {
   },
 
   clearerr: function(stream) {
+  },
+
+  flockfile: function(file) {
+  },
+  funlockfile: function(file) {
   },
 
   // stdlib.h
@@ -331,7 +339,7 @@ var Library = {
   },
 
   strpbrk: function(ptr1, ptr2) {
-    var searchSet = set.apply(null, String_copy(ptr2));
+    var searchSet = Runtime.set.apply(null, String_copy(ptr2));
     while (IHEAP[ptr1]) {
       if (IHEAP[ptr1] in searchSet) return ptr1;
       ptr1++;
