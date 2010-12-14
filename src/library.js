@@ -315,6 +315,13 @@ var Library = {
     return 0;
   },
 
+  strstr: function(ptr1, ptr2) {
+    var str1 = Pointer_stringify(ptr1);
+    var str2 = Pointer_stringify(ptr2);
+    var ret = str1.search(str2);
+    return ret >= 0 ? ptr1 + ret : 0;
+  },
+
   strchr: function(ptr, chr) {
     ptr--;
     do {

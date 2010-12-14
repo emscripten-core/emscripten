@@ -1,6 +1,47 @@
 // This is CPython compiled to JavaScript using Emscripten.
 // Python licensing info: http://docs.python.org/license.html
 
+
+// late additions
+  function Pointer_stringify(ptr) {
+    var ret = "";
+    var i2 = 0;
+    var t;
+    while (1) {
+      t = String.fromCharCode(i[ptr + i2]);
+      if (t == "\0") { break; } else {}
+      ret += t;
+      i2 += 1;
+    }
+    return ret;
+  }
+
+  _strstr = function(ptr1, ptr2) {
+    var str1 = Pointer_stringify(ptr1);
+    var str2 = Pointer_stringify(ptr2);
+    var ret = str1.search(str2);
+    return ret >= 0 ? ptr1 + ret : 0;
+  };
+
+  function _llvm_memcpy_i32(dest, src, num, idunno) {
+    for (var k = 0; k < num; k++) {
+      i[dest + k] = i[src + k];
+      j[dest + k] = j[src + k];
+    }
+  }
+  _memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_p0i8_p0i8_i64 = _llvm_memcpy_i32;
+
+  function _llvm_memmove_i32(dest, src, num, idunno) {
+    // not optimized!
+    var tmp = la(num);
+    _memcpy(tmp, src, num);
+    _memcpy(dest, tmp, num);
+    w(tmp);
+  }
+  _memmove = _llvm_memmove_i64 = _llvm_memmove_p0i8_p0i8_i32 = _llvm_memmove_p0i8_p0i8_i64 = _llvm_memmove_i32;
+
+// ==============
+
 function ba(c){throw c;}var ca=true,da=null,ea=false;function fa(){return function(){}}function ga(c){return function(){return c}}this.Module={};
 Runtime={p:function(c){for(var e=a,b=0;b<c;b++)i[a+b]=j[a+b]=0;a+=c;a=Math.ceil(a/4)*4;return e},g:function(c){for(var e=ha,b=0;b<c;b++)i[ha+b]=j[ha+b]=0;ha+=c;ha=Math.ceil(ha/4)*4;return e},d:function(c,e){return Math.ceil(c/(e?e:4))*(e?e:4)},a:function(c,e){var b=n.length;n[b]=c;n[b+1]=da;Module[e]=c;return b},f:function(c){return c in Runtime.i||c in Runtime.h},m:function(c){return pointingLevels(c)>0},n:function(c){if(isPointerType(c))return ea;if(RegExp(/^\[\d+\ x\ (.*)\]/g).test(c))return ca;
 return!Runtime.f(c)&&c[0]=="%"},i:{i1:0,i8:0,i16:0,i32:0,i64:0},h:{"float":0,"double":0},l:function(c,e){var b;(b={i1:e?1:4,i8:e?1:4,i16:e?2:4,i32:4,i64:8,"float":4,"double":8}[c])||(b=4);return b},j:function(c,e){var b={};return e?c.filter(function(d){if(b[d[e]])return ea;return b[d[e]]=ca}):c.filter(function(d){if(b[d])return ea;return b[d]=ca})},o:function(){if(typeof arguments[0]==="object")arguments=arguments[0];for(var c={},e=0;e<arguments.length;e++)c[arguments[e]]=0;return c},r:function(c,

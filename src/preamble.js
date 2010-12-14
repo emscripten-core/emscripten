@@ -367,6 +367,15 @@ function _llvm_memcpy_i32(dest, src, num, idunno) {
 }
 _memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_p0i8_p0i8_i64 = _llvm_memcpy_i32;
 
+function _llvm_memmove_i32(dest, src, num, idunno) {
+  // not optimized!
+  var tmp = _malloc(num);
+  _memcpy(tmp, src, num);
+  _memcpy(dest, tmp, num);
+  _free(tmp);
+}
+_memmove = _llvm_memmove_i64 = _llvm_memmove_p0i8_p0i8_i32 = _llvm_memmove_p0i8_p0i8_i64 = _llvm_memmove_i32;
+
 function llvm_memset_i32(ptr, value, num) {
   for (var i = 0; i < num; i++) {
 #if USE_TYPED_ARRAYS
