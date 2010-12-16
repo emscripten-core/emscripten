@@ -24,7 +24,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   }
 
   // type
-  substrate.addZyme('Type', {
+  substrate.addActor('Type', {
     processItem: function(item) {
       var type = TYPES[item.name_];
       var niceName = toNiceIdent(item.name_);
@@ -225,7 +225,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   }
 
   // globalVariable
-  substrate.addZyme('GlobalVariable', {
+  substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       item.intertype = 'GlobalVariableStub';
       item.__result__ = true;
@@ -266,7 +266,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   });
 
   // functionStub
-  substrate.addZyme('FunctionStub', {
+  substrate.addActor('FunctionStub', {
     processItem: function(item) {
       var shortident = item.ident.substr(1);
       if (shortident in Library) {
@@ -294,7 +294,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   });
 
   // function splitter
-  substrate.addZyme('FunctionSplitter', {
+  substrate.addActor('FunctionSplitter', {
     processItem: function(item) {
       var ret = [item];
       item.splitItems = 0;
@@ -313,7 +313,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   });
 
   // function reconstructor & post-JS optimizer
-  substrate.addZyme('FunctionReconstructor', {
+  substrate.addActor('FunctionReconstructor', {
     funcs: {},
     seen: {},
     processItem: function(item) {
@@ -460,7 +460,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
   }
 
-  substrate.addZyme('FuncLineTriager', {
+  substrate.addActor('FuncLineTriager', {
     processItem: function(item) {
       if (item.intertype == 'function') {
         this.forwardItem(item, 'FunctionReconstructor');
@@ -477,14 +477,14 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   });
 
   // assignment
-  substrate.addZyme('Intertype:assign', {
+  substrate.addActor('Intertype:assign', {
     processItem: function(item) {
       var pair = splitItem(item, 'value', ['funcData']);
       this.forwardItem(pair.parent, 'AssignReintegrator');
       this.forwardItem(pair.child, 'FuncLineTriager');
     }
   });
-  substrate.addZyme('AssignReintegrator', makeReintegrator(function(item, child) {
+  substrate.addActor('AssignReintegrator', makeReintegrator(function(item, child) {
     // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
     item.JS = (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
 
@@ -514,8 +514,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   }));
 
   // Function lines
-  function makeFuncLineZyme(intertype, func) {
-    substrate.addZyme('Intertype:' + intertype, {
+  function makeFuncLineActor(intertype, func) {
+    substrate.addActor('Intertype:' + intertype, {
       processItem: function(item) {
         item.JS = func(item);
         if (!item.JS) throw "XXX - no JS generated for " + dump(item);
@@ -523,7 +523,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       }
     });
   }
-  makeFuncLineZyme('store', function(item) {
+  makeFuncLineActor('store', function(item) {
     var value = indexizeFunctions(finalizeLLVMParameter(item.value));
     if (pointingLevels(item.pointerType) == 1) {
       value = parseNumerical(value, removePointing(item.pointerType));
@@ -548,7 +548,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
   });
 
-  makeFuncLineZyme('deleted', function(item) { return ';' });
+  makeFuncLineActor('deleted', function(item) { return ';' });
 
   var LABEL_IDs = {};
   var LABEL_ID_COUNTER = 0;
@@ -588,7 +588,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
   }
 
-  makeFuncLineZyme('branch', function(item) {
+  makeFuncLineActor('branch', function(item) {
     if (item.stolen) return ';'; // We will appear where we were stolen to
     if (!item.ident) {
       return makeBranch(item.label, item.currLabelId);
@@ -609,7 +609,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       }
     }
   });
-  makeFuncLineZyme('switch', function(item) {
+  makeFuncLineActor('switch', function(item) {
     var ret = '';
     var first = true;
     item.switchLabels.forEach(function(switchLabel) {
@@ -630,7 +630,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
     return ret;
   });
-  makeFuncLineZyme('return', function(item) {
+  makeFuncLineActor('return', function(item) {
     var ret = RuntimeGenerator.stackExit(item.funcData.initialStack) + ';\n';
     if (LABEL_DEBUG) {
       ret += "print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
@@ -642,7 +642,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
     return ret + ';';
   });
-  makeFuncLineZyme('invoke', function(item) {
+  makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
     var ret = '(function() { try { __THREW__ = false; return '
@@ -654,7 +654,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
-  makeFuncLineZyme('load', function(item) {
+  makeFuncLineActor('load', function(item) {
     var ident = toNiceIdent(item.ident);
     var impl = getVarImpl(item.funcData, item.ident);
     switch (impl) {
@@ -665,12 +665,12 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       default: throw "unknown [load] impl: " + impl;
     }
   });
-  makeFuncLineZyme('extractvalue', function(item) {
+  makeFuncLineActor('extractvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
     return item.ident + '.f' + item.indexes[0][0].text;
   });
-  makeFuncLineZyme('alloca', function(item) {
+  makeFuncLineActor('alloca', function(item) {
     if (typeof item.allocatedIndex === 'number') {
       if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
       return getFastValue('__stackBase__', '+', item.allocatedIndex.toString());
@@ -678,7 +678,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType, TYPES), '*', item.allocatedNum));
     }
   });
-  makeFuncLineZyme('phi', function(item) {
+  makeFuncLineActor('phi', function(item) {
     var params = item.params;
     function makeOne(i) {
       if (i === params.length-1) {
@@ -697,7 +697,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
   }
 
-  makeFuncLineZyme('mathop', function(item) { with(item) {
+  makeFuncLineActor('mathop', function(item) { with(item) {
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
         item['ident'+i] = indexizeFunctions(finalizeLLVMParameter(item['param'+i]));
@@ -896,7 +896,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
   }
 
-  makeFuncLineZyme('bitcast', function(item) {
+  makeFuncLineActor('bitcast', function(item) {
     // XXX Don't we need to copy ptr - i.e. create new ones (at least if uses > just the next line)?
     // XXX hardcoded ptr impl - as ptrs are ints, we don't need to copy
     var ident = toNiceIdent(item.ident);
@@ -948,21 +948,21 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
     return ident + '(' + args.concat(varargs).join(', ') + ')';
   }
-  makeFuncLineZyme('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
-  makeFuncLineZyme('call', function(item) {
+  makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
+  makeFuncLineActor('call', function(item) {
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 
   // Optimzed intertypes
 
-  makeFuncLineZyme('fastgetelementptrload', function(item) {
+  makeFuncLineActor('fastgetelementptrload', function(item) {
     return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), true, item.value.valueType) + ';';
   });
-  makeFuncLineZyme('fastgetelementptrstore', function(item) {
+  makeFuncLineActor('fastgetelementptrstore', function(item) {
     return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), true, item.type) + ';';
   });
 
-  makeFuncLineZyme('unreachable', function(item) { return 'throw "Reached an unreachable! Original .ll line: ' + item.lineNum + '";' });
+  makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable! Original .ll line: ' + item.lineNum + '";' });
 
   // Final combiner
 

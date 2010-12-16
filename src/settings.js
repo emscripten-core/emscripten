@@ -38,7 +38,7 @@ EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug 
 // Compiler debugging options
 DEBUG_TAGS_SHOWING = [];
   // Some useful items:
-  //    enzymatic
+  //    framework
   //    gconst
   //    types
   //    vars

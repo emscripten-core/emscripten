@@ -11,7 +11,7 @@ if (!this['read']) {
 load('settings.js');
 
 load('utility.js');
-load('enzymatic.js');
+load('framework.js');
 load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');

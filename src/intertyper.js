@@ -26,7 +26,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate = new Substrate('Intertyper');
 
   // Line splitter.
-  substrate.addZyme('LineSplitter', {
+  substrate.addActor('LineSplitter', {
     processItem: function(item) {
       var lines = item.llvmLines;
       var ret = [];
@@ -93,7 +93,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   };
 
   // Line tokenizer
-  var tokenizer = substrate.addZyme('Tokenizer', {
+  var tokenizer = substrate.addActor('Tokenizer', {
     processItem: function(item, inner) {
       //assert(item.lineNum != 40000);
       //if (item.lineNum) print(item.lineNum);
@@ -237,7 +237,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
 
   MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 
-  substrate.addZyme('Triager', {
+  substrate.addActor('Triager', {
     processItem: function(item) {
       function triage() {
         if (!item.intertype) {
@@ -309,7 +309,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // Line parsers to intermediate form
 
   // globals: type or variable
-  substrate.addZyme('Global', {
+  substrate.addActor('Global', {
     processItem: function(item) {
       if (item.tokens[2].text == 'alias') {
         return; // TODO: handle this. See raytrace.cpp
@@ -383,7 +383,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // function header
-  funcHeader = substrate.addZyme('FuncHeader', {
+  funcHeader = substrate.addActor('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
         return !(token.text in LLVM.LINKAGES || token.text in set('noalias', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'inlinehint', '{', 'fastcc'));
@@ -408,7 +408,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // label
-  substrate.addZyme('Label', {
+  substrate.addActor('Label', {
     processItem: function(item) {
       return [{
         __result__: true,
@@ -422,7 +422,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   });
 
   // assignment
-  substrate.addZyme('Assign', {
+  substrate.addActor('Assign', {
     processItem: function(item) {
       var opIndex = findTokenText(item, '=');
       var pair = splitItem({
@@ -438,7 +438,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
 
-  substrate.addZyme('Reintegrator', makeReintegrator(function(parent, child) {
+  substrate.addActor('Reintegrator', makeReintegrator(function(parent, child) {
     // Special re-integration behaviors
     if (child.intertype == 'fastgetelementptrload') {
       parent.intertype = 'fastgetelementptrload';
@@ -447,7 +447,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   }));
 
   // 'load'
-  substrate.addZyme('Load', {
+  substrate.addActor('Load', {
     processItem: function(item) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       item.pointerType = item.tokens[1].text;
@@ -474,7 +474,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'extractvalue'
-  substrate.addZyme('ExtractValue', {
+  substrate.addActor('ExtractValue', {
     processItem: function(item) {
       var last = getTokenIndexByText(item.tokens, ';');
       item.intertype = 'extractvalue';
@@ -485,7 +485,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'bitcast'
-  substrate.addZyme('Bitcast', {
+  substrate.addActor('Bitcast', {
     processItem: function(item) {
       item.intertype = 'bitcast';
       item.type = item.tokens[1].text;
@@ -495,7 +495,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'getelementptr'
-  substrate.addZyme('GEP', {
+  substrate.addActor('GEP', {
     processItem: function(item) {
       var first = 0;
       while (!isType(item.tokens[first].text)) first++;
@@ -512,7 +512,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'call'
-  substrate.addZyme('Call', {
+  substrate.addActor('Call', {
     processItem: function(item) {
       item.intertype = 'call';
       if (['tail'].indexOf(item.tokens[0].text) != -1) {
@@ -551,7 +551,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'invoke'
-  substrate.addZyme('Invoke', {
+  substrate.addActor('Invoke', {
     processItem: function(item) {
       item.intertype = 'invoke';
       item.functionType = '';
@@ -577,7 +577,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   });
 
   // 'alloca'
-  substrate.addZyme('Alloca', {
+  substrate.addActor('Alloca', {
     processItem: function(item) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1].text;
@@ -588,7 +588,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'phi'
-  substrate.addZyme('Phi', {
+  substrate.addActor('Phi', {
     processItem: function(item) {
       item.intertype = 'phi';
       item.type = item.tokens[1].text;
@@ -604,7 +604,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // mathops
-  substrate.addZyme('Mathops', {
+  substrate.addActor('Mathops', {
     processItem: function(item) {
       item.intertype = 'mathop';
       item.op = item.tokens[0].text;
@@ -633,7 +633,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'store'
-  substrate.addZyme('Store', {
+  substrate.addActor('Store', {
     processItem: function(item) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       var segments = splitTokenList(item.tokens.slice(1));
@@ -651,7 +651,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'br'
-  substrate.addZyme('Branch', {
+  substrate.addActor('Branch', {
     processItem: function(item) {
       if (item.tokens[1].text == 'label') {
         return [{
@@ -673,7 +673,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'ret'
-  substrate.addZyme('Return', {
+  substrate.addActor('Return', {
     processItem: function(item) {
       return [{
         __result__: true,
@@ -685,7 +685,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'switch'
-  substrate.addZyme('Switch', {
+  substrate.addActor('Switch', {
     processItem: function(item) {
       function parseSwitchLabels(item) {
         var ret = [];
@@ -711,7 +711,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // function end
-  substrate.addZyme('FuncEnd', {
+  substrate.addActor('FuncEnd', {
     processItem: function(item) {
       return [{
         __result__: true,
@@ -721,7 +721,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // external function stub
-  substrate.addZyme('External', {
+  substrate.addActor('External', {
     processItem: function(item) {
       if (item.tokens[1].text == 'noalias') {
         item.tokens.splice(1, 1);
@@ -737,7 +737,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'unreachable'
-  substrate.addZyme('Unreachable', {
+  substrate.addActor('Unreachable', {
     processItem: function(item) {
       return [{
         __result__: true,

@@ -1,37 +1,47 @@
-/**
- * An implementation of an 'enzymatic programming' paradigm.
- */
+//
+// A framework to make building Emscripten easier. Lets you write modular
+// code to handle specific issues.
+//
+// Actor - Some code that processes items.
+// Item - Some data that is processed by actors.
+// Substrate - A 'world' with some actors and some items.
+//
+// The idea is to create a substrate, fill it with the proper items
+// and actors, and then run it to completion. Actors will process
+// the items they are given, and forward the results to other actors,
+// until we are finished. Some of the results are then the final
+// output of the entire calculation done in the substrate.
+//
 
-DEBUG = true;
 DEBUG = false;
 
 Substrate = function(name_) {
   this.name_ = name_;
-  this.zymes = {};
+  this.actors = {};
   this.currUid = 1;
 };
 
 Substrate.prototype = {
-  addItem: function(item, targetZyme) {
-    if (targetZyme == '/dev/null') return;
-    if (targetZyme == '/dev/stdout') {
+  addItem: function(item, targetActor) {
+    if (targetActor == '/dev/null') return;
+    if (targetActor == '/dev/stdout') {
       this.results.push(item);
       return;
     }
-    this.zymes[targetZyme].inbox.push(item);
+    this.actors[targetActor].inbox.push(item);
   },
 
-  addItems: function(items, targetZyme) {
-    if (targetZyme == '/dev/null') return;
-    if (targetZyme == '/dev/stdout') {
+  addItems: function(items, targetActor) {
+    if (targetActor == '/dev/null') return;
+    if (targetActor == '/dev/stdout') {
       this.results = this.results.concat(items);
       return;
     }
-    this.zymes[targetZyme].inbox = this.zymes[targetZyme].inbox.concat(items);
+    this.actors[targetActor].inbox = this.actors[targetActor].inbox.concat(items);
   },
 
-  checkInbox: function(zyme) {
-    var items = zyme.inbox;
+  checkInbox: function(actor) {
+    var items = actor.inbox;
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       if (!item.__uid__) {
@@ -39,24 +49,24 @@ Substrate.prototype = {
         this.currUid ++;
       }
     }
-    zyme.inbox = [];
-    zyme.items = zyme.items.concat(items);
+    actor.inbox = [];
+    actor.items = actor.items.concat(items);
   },
 
-  addZyme: function(name_, zyme) {
-    assert(name_ && zyme);
-    zyme.name_ = name_;
-    zyme.items = [];
-    zyme.inbox = [];
-    zyme.forwardItem  = bind(this, this.addItem);
-    zyme.forwardItems = bind(this, this.addItems);
-    this.zymes[name_] = zyme;
-    if (!zyme.process) zyme.process = Zyme.prototype.process;
-    return zyme;
+  addActor: function(name_, actor) {
+    assert(name_ && actor);
+    actor.name_ = name_;
+    actor.items = [];
+    actor.inbox = [];
+    actor.forwardItem  = bind(this, this.addItem);
+    actor.forwardItems = bind(this, this.addItems);
+    this.actors[name_] = actor;
+    if (!actor.process) actor.process = Actor.prototype.process;
+    return actor;
   },
 
   solve: function() {
-    dprint('enzymatic', "// Solving " + this.name_ + "...");
+    dprint('framework', "// Solving " + this.name_ + "...");
 
     var startTime = Date.now();
     var midTime = startTime;
@@ -64,12 +74,12 @@ Substrate.prototype = {
     function midComment(force) {
       var curr = Date.now();
       if (curr - midTime > 1000 || force) {
-        dprint('enzymatic', '// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds.');
+        dprint('framework', '// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds.');
         midTime = curr;
       }
     }
     function finalComment() {
-      dprint('enzymatic', '// Completed ' + that.name_ + ' in ' + ((Date.now() - startTime)/1000).toString().substr(0,10) + ' seconds.');
+      dprint('framework', '// Completed ' + that.name_ + ' in ' + ((Date.now() - startTime)/1000).toString().substr(0,10) + ' seconds.');
     }
 
     var finalResult = null;
@@ -77,22 +87,22 @@ Substrate.prototype = {
     var finished = false;
     var that = this;
     while (!finished) {
-      dprint('enzymatic', "Cycle start, items: ");// + values(this.zymes).map(function(zyme) zyme.items).reduce(function(x,y) x+y, 0));
+      dprint('framework', "Cycle start, items: ");// + values(this.actors).map(function(actor) actor.items).reduce(function(x,y) x+y, 0));
       var hadProcessing = false;
-      values(this.zymes).forEach(function(zyme) {
+      values(this.actors).forEach(function(actor) {
         midComment();
 
-        that.checkInbox(zyme);
-        if (zyme.items.length == 0) return;
+        that.checkInbox(actor);
+        if (actor.items.length == 0) return;
 
-        var inputs = zyme.items.slice(0);
+        var inputs = actor.items.slice(0);
         var outputs;
         var currResultCount = that.results.length;
         try {
-          dprint('enzymatic', 'Processing using ' + zyme.name_ + ': ' + inputs.length);
-          zyme.items = []; // More may be added in process(); we'll get to them next time
-          outputs = zyme.process(inputs);
-          dprint('enzymatic', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
+          dprint('framework', 'Processing using ' + actor.name_ + ': ' + inputs.length);
+          actor.items = []; // More may be added in process(); we'll get to them next time
+          outputs = actor.process(inputs);
+          dprint('framework', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
         } catch (e) {
           //print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
           print("Stack: " + new Error().stack);
@@ -131,8 +141,8 @@ Substrate.prototype = {
   }
 };
 
-Zyme = function() { };
-Zyme.prototype = {
+Actor = function() { };
+Actor.prototype = {
   process: function(items) {
     var ret = [];
     for (var i = 0; i < items.length; i++) {

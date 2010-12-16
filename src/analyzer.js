@@ -15,7 +15,7 @@ function analyzer(data, givenTypes) {
   substrate = new Substrate('Analyzer');
 
   // Sorter
-  substrate.addZyme('Sorter', {
+  substrate.addActor('Sorter', {
     processItem: function(item) {
       item.items.sort(function (a, b) { return a.lineNum - b.lineNum });
       this.forwardItem(item, 'Gatherer');
@@ -23,7 +23,7 @@ function analyzer(data, givenTypes) {
   });
 
   // Gatherer
-  substrate.addZyme('Gatherer', {
+  substrate.addActor('Gatherer', {
     processItem: function(item) {
       // Single-liners
       ['globalVariable', 'functionStub', 'type', 'unparsedFunction'].forEach(function(intertype) {
@@ -72,7 +72,7 @@ function analyzer(data, givenTypes) {
   });
 
   // IdentiNicer
-  substrate.addZyme('Identinicer', {
+  substrate.addActor('Identinicer', {
     processItem: function(output) {
       walkJSON(output, function(item) {
         ['', '2', '3', '4', '5'].forEach(function(ext) {
@@ -131,7 +131,7 @@ function analyzer(data, givenTypes) {
   }
 
   // Typevestigator
-  substrate.addZyme('Typevestigator', {
+  substrate.addActor('Typevestigator', {
     processItem: function(data) {
       // Convert types list to dict
       if (data.types.length !== undefined) {
@@ -161,7 +161,7 @@ function analyzer(data, givenTypes) {
   });
 
   // Type analyzer
-  substrate.addZyme('Typeanalyzer', {
+  substrate.addActor('Typeanalyzer', {
     processItem: function(item) {
       // 'fields' is the raw list of LLVM fields. However, we embed
       // child structures into parent structures, basically like C.
@@ -215,7 +215,7 @@ function analyzer(data, givenTypes) {
   });
   
   // Variable analyzer
-  substrate.addZyme('VariableAnalyzer', {
+  substrate.addActor('VariableAnalyzer', {
     processItem: function(item) {
       item.functions.forEach(function(func) {
         dprint('vars', 'Analyzing variables in ' + func.ident);
@@ -316,7 +316,7 @@ function analyzer(data, givenTypes) {
   });
 
   // Label analyzer
-  substrate.addZyme('LabelAnalyzer', {
+  substrate.addActor('LabelAnalyzer', {
     processItem: function(item) {
       item.functions.forEach(function(func) {
         func.labelsDict = {};
@@ -349,7 +349,7 @@ function analyzer(data, givenTypes) {
   });
 
   // Stack analyzer - calculate the base stack usage
-  substrate.addZyme('StackAnalyzer', {
+  substrate.addActor('StackAnalyzer', {
     processItem: function(data) {
       data.functions.forEach(function(func) {
         var total = 0;
@@ -436,7 +436,7 @@ function analyzer(data, givenTypes) {
   }
 
   // ReLooper - reconstruct nice loops, as much as possible
-  substrate.addZyme('Relooper', {
+  substrate.addActor('Relooper', {
     processItem: function(item) {
       var that = this;
       function finish() {
@@ -770,7 +770,7 @@ function analyzer(data, givenTypes) {
   //       logically correct. The LoopOptimizer works on that, doing further optimizations
   //       like switching to BNOPP when possible, etc.
 
-  substrate.addZyme('LoopOptimizer', {
+  substrate.addActor('LoopOptimizer', {
     processItem: function(item) {
       var that = this;
       function finish() {
