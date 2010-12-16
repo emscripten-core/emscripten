@@ -31,5 +31,7 @@ function run(args) {
   }
 }
 
+#if INVOKE_RUN
 run(args);
+#endif
 

@@ -349,9 +349,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       if (true) { // TODO: optimize away when not needed
         func.JS += '  var __label__;\n';
       }
-      if (func.hasVarArgs) {
-        func.JS += '  var __numArgs__ = ' + func.paramIdents.length + ';\n';
-      }
       if (func.hasPhi) {
         func.JS += '  var __lastLabel__ = null;\n';
       }
@@ -909,8 +906,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   function makeFunctionCall(ident, params, funcData) {
     // Special cases
     if (ident == '_llvm_va_start') {
-      // varargs - we received a pointer to the varargs as a final parameter
-      var data = 'arguments[__numArgs__]';
+      // varargs - we received a pointer to the varargs as a final 'extra' parameter
+      var data = 'arguments[arguments.callee.length]';
       if (SAFE_HEAP) {
         return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', null)';
       } else {

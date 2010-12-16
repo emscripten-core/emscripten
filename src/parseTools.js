@@ -236,7 +236,7 @@ function parseParamTokens(params) {
   if (params[params.length-1].text != ',') {
     params.push({ text: ',' });
   }
-  var absIndex = 0;
+  var anonymousIndex = 0;
   while (params.length > 0) {
     var i = 0;
     while (params[i].text != ',') i++;
@@ -255,8 +255,9 @@ function parseParamTokens(params) {
           intertype: 'value',
           type: segment[0].text,
           value: null,
-          ident: toNiceIdent('%') + absIndex
+          ident: toNiceIdent('%') + anonymousIndex
         });
+        anonymousIndex ++;
       }
     } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
       ret.push(parseLLVMFunctionCall(segment));
@@ -277,7 +278,6 @@ function parseParamTokens(params) {
       //          } else {
       //            throw "what is this params token? " + JSON.stringify(segment);
     }
-    absIndex ++;
   }
   return ret;
 }

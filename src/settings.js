@@ -21,6 +21,8 @@ GUARD_LABELS = 0; // Whether we should throw if we encounter a bad __label__, i.
 GUARD_MEMORY = 1; // Whether we should check that each allocation to the stack does not
                   // exceed it's size, whether all allocations (stack and static) are
                   // of positive size, etc.
+INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
+                // code in your own, and will call run() yourself at the right time
 
 // Code embetterments
 OPTIMIZE = 0; // Optimize llvm operations into js commands
