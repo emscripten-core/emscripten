@@ -53,7 +53,7 @@
     function doRun() {
       args = ['-S', '-c', 'print ""'];
       try {
-        run(args);
+        Module.run(args);
       } catch (e) {
         if (e !== 'halting, since this is the first run') throw e;
       }
