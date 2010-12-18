@@ -27,12 +27,14 @@ COMPILERS = {
 COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
                          # various errors on 64bit compilation
 
+LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
+
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_DIS_OPTS = []
 if '2.8' in LLVM_ROOT:
   LLVM_DIS_OPTS += ['-show-annotations']
 
-SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/tracemonkey/js/src/js'), '-m'] # No |-j| due to Mozilla bug XXX
+SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/tracemonkey/js/src/js'), '-m', '-j', '-p']
 V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
 
 # XXX Warning: Compiling the 'cubescript' test in SpiderMonkey can lead to an extreme amount of memory being

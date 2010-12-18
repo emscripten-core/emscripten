@@ -34,6 +34,55 @@ class RunnerCore(unittest.TestCase):
       os.makedirs(dirname)
     return dirname
 
+  # Similar to LLVM::createStandardModulePasses()
+  def pick_llvm_opts(self, optimization_level, optimize_size):
+    global LLVM_OPT_OPTS
+    LLVM_OPT_OPTS = []
+
+    if optimization_level == 0: return
+
+    # -instcombine is nonportable, so doesn't appear here
+    LLVM_OPT_OPTS.append('-globalopt')
+    LLVM_OPT_OPTS.append('-ipsccp')
+    LLVM_OPT_OPTS.append('-deadargelim')
+    LLVM_OPT_OPTS.append('-simplifycfg')
+    LLVM_OPT_OPTS.append('-prune-eh')
+    LLVM_OPT_OPTS.append('-inline')
+    LLVM_OPT_OPTS.append('-functionattrs')
+    if optimization_level > 2:
+      LLVM_OPT_OPTS.append('-argpromotion')
+    LLVM_OPT_OPTS.append('-scalarrepl')
+    LLVM_OPT_OPTS.append('-simplify-libcalls')
+    LLVM_OPT_OPTS.append('-jump-threading')
+    LLVM_OPT_OPTS.append('-simplifycfg')
+    LLVM_OPT_OPTS.append('-tailcallelim')
+    LLVM_OPT_OPTS.append('-simplifycfg')
+    LLVM_OPT_OPTS.append('-reassociate')
+    LLVM_OPT_OPTS.append('-loop-rotate')
+    LLVM_OPT_OPTS.append('-licm')
+    LLVM_OPT_OPTS.append('-loop-unswitch') # XXX should depend on optimize_size
+    LLVM_OPT_OPTS.append('-indvars')
+    LLVM_OPT_OPTS.append('-loop-deletion')
+    LLVM_OPT_OPTS.append('-loop-unroll')
+    if optimization_level > 1:
+      LLVM_OPT_OPTS.append('-gvn')
+    LLVM_OPT_OPTS.append('-memcpyopt')
+    LLVM_OPT_OPTS.append('-sccp')
+    LLVM_OPT_OPTS.append('-jump-threading')
+    LLVM_OPT_OPTS.append('-correlated-propagation')
+    LLVM_OPT_OPTS.append('-dse')
+    LLVM_OPT_OPTS.append('-adce')
+    LLVM_OPT_OPTS.append('-simplifycfg')
+
+    LLVM_OPT_OPTS.append('-strip-dead-prototypes')
+    LLVM_OPT_OPTS.append('-deadtypeelim')
+
+    if optimization_level > 2:
+      LLVM_OPT_OPTS.append('-globaldce')
+  
+    if optimization_level > 1:
+      LLVM_OPT_OPTS.append('-constmerge')
+
   ## Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None):
     # Copy over necessary files for compiling the source
@@ -59,11 +108,16 @@ class RunnerCore(unittest.TestCase):
       pass
     os.chdir(dirname)
     cwd = os.getcwd()
-    output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + (['-O3'] if F_OPTS else []) + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
     os.chdir(cwd)
     if not os.path.exists(filename + '.o'):
       print "Failed to compile C/C++ source:\n\n", output
       raise Exception("Compilation error");
+
+    # Optional LLVM optimizations
+    if LLVM_OPTS:
+      shutil.move(filename + '.o', filename + '.o.pre')
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
     # LLVM binary ==> LLVM assembly
     output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
@@ -99,7 +153,7 @@ if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None, basename='src.cpp'):
-        print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'frontend-optimizations' if F_OPTS else '', 'reloop&optimize' if RELOOP else '')
+        print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
         if not no_build:
@@ -123,9 +177,9 @@ if 'benchmark' not in sys.argv:
     # No building - just process an existing .ll file
     def do_ll_test(self, ll_file, output, args=[], f_opt_ll_file=None, js_engines=None):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
-      if F_OPTS:
+      if LLVM_OPTS:
         return # TODO: enable the lines below
-        #if f_opt_ll_file is None: return # We use existing .ll, so frontend stuff is unimportant, unless we are given an optimized .ll
+        #if f_opt_ll_file is None: return # We use existing .ll, so llvm opt stuff is unimportant, unless we are given an optimized .ll
         #ll_file = f_opt_ll_file
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
@@ -782,7 +836,7 @@ if 'benchmark' not in sys.argv:
 
     def test_pystruct(self):
         if COMPILER != LLVM_GCC: return # TODO: Clang here
-        if F_OPTS: return # TODO: fix
+        if LLVM_OPTS: return # TODO: fix
         src = '''
           #include <stdio.h>
 
@@ -1119,6 +1173,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*0.00,0.00,0.00*')
 
     def test_nestedstructs(self):
+        if LLVM_OPTS: return # FIXME
         src = '''
           #include <stdio.h>
           #include "emscripten.h"
@@ -1231,8 +1286,17 @@ if 'benchmark' not in sys.argv:
       self.do_test(path_from_root(['tests', 'cubescript']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
-      if F_OPTS: return # See issue #8 - frontend optimizations fail here
       self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
+
+      #### Code snippet that is helpful to search for nonportable optimizations ####
+      #global LLVM_OPT_OPTS
+      #for opt in ['-aa-eval', '-adce', '-always-inline', '-argpromotion', '-basicaa', '-basiccg', '-block-placement', '-break-crit-edges', '-codegenprepare', '-constmerge', '-constprop', '-correlated-propagation', '-count-aa', '-dce', '-deadargelim', '-deadtypeelim', '-debug-aa', '-die', '-domfrontier', '-domtree', '-dse', '-extract-blocks', '-functionattrs', '-globaldce', '-globalopt', '-globalsmodref-aa', '-gvn', '-indvars', '-inline', '-insert-edge-profiling', '-insert-optimal-edge-profiling', '-instcombine', '-instcount', '-instnamer', '-internalize', '-intervals', '-ipconstprop', '-ipsccp', '-iv-users', '-jump-threading', '-lazy-value-info', '-lcssa', '-lda', '-libcall-aa', '-licm', '-lint', '-live-values', '-loop-deletion', '-loop-extract', '-loop-extract-single', '-loop-index-split', '-loop-reduce', '-loop-rotate', '-loop-unroll', '-loop-unswitch', '-loops', '-loopsimplify', '-loweratomic', '-lowerinvoke', '-lowersetjmp', '-lowerswitch', '-mem2reg', '-memcpyopt', '-memdep', '-mergefunc', '-mergereturn', '-module-debuginfo', '-no-aa', '-no-profile', '-partial-inliner', '-partialspecialization', '-pointertracking', '-postdomfrontier', '-postdomtree', '-preverify', '-prune-eh', '-reassociate', '-reg2mem', '-regions', '-scalar-evolution', '-scalarrepl', '-sccp', '-scev-aa', '-simplify-libcalls', '-simplify-libcalls-halfpowr', '-simplifycfg', '-sink', '-split-geps', '-sretpromotion', '-strip', '-strip-dead-debug-info', '-strip-dead-prototypes', '-strip-debug-declare', '-strip-nondebug', '-tailcallelim', '-tailduplicate', '-targetdata', '-tbaa']:
+      #  LLVM_OPT_OPTS = [opt]
+      #  try:
+      #    self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
+      #    print opt, "ok"
+      #  except:
+      #    print opt, "FAIL"
 
     def test_bullet(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Too slow for that
@@ -1304,7 +1368,7 @@ if 'benchmark' not in sys.argv:
 
     def test_safe_heap(self):
       if not SAFE_HEAP: return
-      if F_OPTS: return
+      if LLVM_OPTS: return # LLVM can optimize away the intermediate |x|...
       src = '''
         #include<stdio.h>
         int main() {
@@ -1321,20 +1385,23 @@ if 'benchmark' not in sys.argv:
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
   # Generate tests for all our compilers
-  def make_test(compiler, f_opts, embetter):
+  def make_test(compiler, llvm_opts, embetter):
     class TT(T):
       def setUp(self):
-        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, F_OPTS, SAFE_HEAP
+        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP
         COMPILER = compiler['path']
         QUANTUM_SIZE = compiler['quantum_size']
         RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
         GUARD_MEMORY = SAFE_HEAP = 1-embetter
-        F_OPTS = f_opts
+        LLVM_OPTS = llvm_opts
+        if LLVM_OPTS:
+          self.pick_llvm_opts(3, True)
+
     return TT
   for embetter in [0,1]:
-    for f_opts in [0,1]:
+    for llvm_opts in [0,1]:
       for name in COMPILERS.keys():
-        exec('T_%s_%d_%d = make_test(COMPILERS["%s"],%d,%d)' % (name, f_opts, embetter, name, f_opts, embetter))
+        exec('T_%s_%d_%d = make_test(COMPILERS["%s"],%d,%d)' % (name, llvm_opts, embetter, name, llvm_opts, embetter))
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
 else:
@@ -1351,7 +1418,7 @@ else:
   QUANTUM_SIZE = 4
   RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = 1
   GUARD_MEMORY = SAFE_HEAP = 0
-  F_OPTS = 1
+  LLVM_OPTS = 1
 
   TEST_REPS = 10
   TOTAL_TESTS = 2
@@ -1369,6 +1436,8 @@ else:
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
       print 'Running benchmark:', inspect.stack()[1][3].replace('test_', '')
+
+      self.pick_llvm_opts(3, True)
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')

@@ -39,11 +39,11 @@ RuntimeGenerator = {
     if (GUARD_MEMORY) {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
-    var initMemory = 'for (var i = __stackBase__; i < STACKTOP; i++) ' + (
+    var initMemory = 'for (var i = __stackBase__; i < STACKTOP; i++) {' + (
       USE_TYPED_ARRAYS ?
-        'IHEAP[i] = FHEAP[i] = 0' :
+        'IHEAP[i] = FHEAP[i] = 0' : // XXX Suboptimal due to type differences?
         'HEAP[i] = 0'
-    );
+    ) + (SAFE_HEAP ? '; SAFE_HEAP_ACCESS(i, null, true)' : '') + ' }';
     ret += '; ' + initMemory;
     return ret;
   },
