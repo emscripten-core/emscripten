@@ -230,8 +230,10 @@ function __shutdownRuntime__() {
 
 // stdio.h
 
-// C-style: we work on ints on the HEAP.
 function __formatString() {
+  function isFloatArg(type) {
+    return String.fromCharCode(type) in Runtime.set('f', 'e', 'g');
+  }
   var cStyle = false;
   var textIndex = arguments[0];
   var argIndex = 1;
@@ -249,7 +251,7 @@ function __formatString() {
       ret = _arguments[argIndex];
       argIndex++;
     } else {
-      ret = (type === 'f' ? FHEAP : IHEAP)[argIndex];
+      ret = (isFloatArg(type) ? FHEAP : IHEAP)[argIndex];
       argIndex += type === 'l'.charCodeAt(0) ? 8 : 4; // XXX hardcoded native sizes
     }
     return ret;
@@ -279,7 +281,7 @@ function __formatString() {
         textIndex++;
         next = IHEAP[textIndex+1];
       }
-      if (next == 'e'.charCodeAt(0) || next == 'g'.charCodeAt(0)) {
+      if (isFloatArg(next)) {
         next = 'f'.charCodeAt(0); // no support for 'e'
       }
       if (['d', 'i', 'u', 'p', 'f'].indexOf(String.fromCharCode(next)) != -1) {

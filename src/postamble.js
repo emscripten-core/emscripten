@@ -30,6 +30,7 @@ function run(args) {
     __shutdownRuntime__();
   }
 }
+Module['run'] = run;
 
 #if INVOKE_RUN
 run(args);

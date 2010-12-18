@@ -1248,8 +1248,8 @@ if 'benchmark' not in sys.argv:
       global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields etc.
       self.do_ll_test(path_from_root(['tests', 'python', 'python.ll']),
-                      'hello python world!\n\n[0, 2, 4, 6]\n\n5\n',
-                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t'''],
+                      'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n5.470',
+                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print '%f' % 5.47'''],
                       js_engines=[V8_ENGINE]) # script stack space exceeded in SpiderMonkey, TODO
 
     ### Test cases in separate files
