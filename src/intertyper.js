@@ -609,7 +609,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.intertype = 'mathop';
       item.op = item.tokens[0].text;
       item.variant = null;
-      if (item.tokens[1].text == 'nsw') item.tokens.splice(1, 1);
+      while (item.tokens[1].text in set('nsw', 'nuw')) item.tokens.splice(1, 1);
       if (['icmp', 'fcmp'].indexOf(item.op) != -1) {
         item.variant = item.tokens[1].text;
         item.tokens.splice(1, 1);

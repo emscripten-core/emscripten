@@ -515,7 +515,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
   // Function lines
   function makeFuncLineActor(intertype, func) {
-    substrate.addActor('Intertype:' + intertype, {
+    return substrate.addActor('Intertype:' + intertype, {
       processItem: function(item) {
         item.JS = func(item);
         if (!item.JS) throw "XXX - no JS generated for " + dump(item);
@@ -697,7 +697,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
   }
 
-  makeFuncLineActor('mathop', function(item) { with(item) {
+  var mathop = makeFuncLineActor('mathop', function(item) { with(item) {
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
         item['ident'+i] = indexizeFunctions(finalizeLLVMParameter(item['param'+i]));
@@ -878,14 +878,28 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       case 'inttoptr':
       case 'ptrtoint':
         return finalizeLLVMParameter(item.params[0]);
+      case 'icmp': case 'mul': case 'zext': // TODO: Other mathops
+        var temp = {
+          op: item.intertype,
+          variant: item.variant
+        };
+        for (var i = 1; i <= 4; i++) {
+          if (item.params[i-1]) {
+            temp['param' + i] = finalizeLLVMParameter(item.params[i-1]);
+          }
+        }
+        mathop.processItem(temp);
+        return temp.JS;
       default:
-        throw 'Invalid function to finalize: ' + dump(item);
+        throw 'Invalid function to finalize: ' + dump(item.intertype);
     }
   }
 
   // From parseLLVMSegment
   function finalizeLLVMParameter(param) {
-    if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
+    if (isNumber(param) || typeof param === 'string') {
+      return param;
+    } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return finalizeLLVMFunctionCall(param);
     } else if (param.intertype == 'value') {
       return parseNumerical(param.ident);

@@ -836,7 +836,6 @@ if 'benchmark' not in sys.argv:
 
     def test_pystruct(self):
         if COMPILER != LLVM_GCC: return # TODO: Clang here
-        if LLVM_OPTS: return # TODO: fix
         src = '''
           #include <stdio.h>
 
@@ -1173,7 +1172,6 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*0.00,0.00,0.00*')
 
     def test_nestedstructs(self):
-        if LLVM_OPTS: return # FIXME
         src = '''
           #include <stdio.h>
           #include "emscripten.h"

@@ -317,7 +317,7 @@ function cleanSegment(segment) {
   return segment;
 }
 
-PARSABLE_LLVM_FUNCTIONS = searchable('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint');
+PARSABLE_LLVM_FUNCTIONS = searchable('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext');
 
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)
@@ -327,13 +327,20 @@ function parseLLVMFunctionCall(segment) {
   segment = segment.slice(0);
   segment = cleanSegment(segment);
   // Remove additional modifiers
+  var variant = null;
   if (!segment[2] || !segment[2].item) {
-    segment.splice(2, 1);
+    variant = segment.splice(2, 1)[0];
+    if (variant && variant.text) variant = variant.text; // needed for mathops
   }
   assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
   assert(segment[1].text in PARSABLE_LLVM_FUNCTIONS);
+  while (!segment[2].item) {
+    segment.splice(2, 1); // XXX Remove modifiers - should look into them some day
+    if (!segment[2]) throw 'Invalid segment!';
+  }
   var ret = {
     intertype: segment[1].text,
+    variant: variant,
     type: segment[0].text,
     params: parseParamTokens(segment[2].item.tokens)
   };
