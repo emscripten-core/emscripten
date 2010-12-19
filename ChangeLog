@@ -1,3 +1,10 @@
+2010-12-18: Version 0.7
+
+  * Python web demo
+  * Support for essentially all LLVM optimizations
+  * Proper support for C bitfields
+  * Many bug fixes, additional tests and library implementations
+
 2010-11-25: Version 0.6
 
   * Web demos: Lua and Bullet/WebGL
