@@ -198,25 +198,28 @@ function __initializeRuntime__() {
   Module['_malloc'] = _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
   Module['_free']   = _free = __ZdlPv = __ZdaPv =                   Module['_free']   ? Module['_free']   : function() { };
 
-  // TODO: Remove one of the 3 heaps!
-  HEAP = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
-                                       // Also this ensures we leave 0 as an invalid address, 'NULL'
 #if USE_TYPED_ARRAYS
+  // TODO: Remove one of the 3 heaps!
   HAS_TYPED_ARRAYS = this['Int32Array'] && this['Float64Array']; // check for engine support
   if (HAS_TYPED_ARRAYS) {
-    IHEAP = new Int32Array(TOTAL_MEMORY);
-    for (var i = 0; i < HEAP.length; i++) {
-      IHEAP[i] = HEAP[i];
-    }
-    HEAP = IHEAP;
+    HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
     FHEAP = new Float64Array(TOTAL_MEMORY);
-  } else {
-    IHEAP = HEAP; // fallback
-    FHEAP = HEAP; // fallback
-  }
-#else
-  IHEAP = FHEAP = HEAP;
+  } else
 #endif
+  {
+    // Without this optimization, Chrome is slow. Sadly, the constant here needs to be tweaked depending on the code being run...
+    var FAST_MEMORY = TOTAL_MEMORY/32;
+    IHEAP = FHEAP = HEAP = new Array(FAST_MEMORY);
+    for (var i = 0; i < FAST_MEMORY; i++) {
+      HEAP[i] = 0;
+    }
+  }
+
+  var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
+                                           // Also this ensures we leave 0 as an invalid address, 'NULL'
+  for (var i = 0; i < base.length; i++) {
+    IHEAP[i] = base[i];
+  }
 
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
@@ -392,7 +395,7 @@ _memmove = _llvm_memmove_i64 = _llvm_memmove_p0i8_p0i8_i32 = _llvm_memmove_p0i8_
 function llvm_memset_i32(ptr, value, num) {
   for (var i = 0; i < num; i++) {
 #if USE_TYPED_ARRAYS
-    HEAP[ptr+i] = IHEAP[ptr+i] = FHEAP[ptr+i] = value;
+    IHEAP[ptr+i] = FHEAP[ptr+i] = value;
 #else
     HEAP[ptr+i] = value;
 #endif
@@ -401,7 +404,7 @@ function llvm_memset_i32(ptr, value, num) {
 #endif
   }
 }
-_llvm_memset_p0i8_i64 = _llvm_memset_p0i8_i32 = llvm_memset_i32;
+_memset = _llvm_memset_p0i8_i64 = _llvm_memset_p0i8_i32 = llvm_memset_i32;
 
 function _strlen(ptr) {
   var i = 0;
