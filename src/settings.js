@@ -34,6 +34,14 @@ SAFE_HEAP = 0; // Check each write to the heap against a list of blocked address
 LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code
 EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
+CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
+                     // There is currently not much to do to handle overflows if they occur.
+                     // We can add code to simulate i32/i64 overflows in JS, but that would
+                     // be very slow. It probably makes more sense to avoid overflows in
+                     // C/C++ code. For example, if you have an int that you multiply by
+                     // some factor, in order to get 'random' hash values - by taking
+                     // that |value & hash_table_size| - then multiplying enough times will overflow.
+                     // But instead, you can do |value = value & 30_BITS| in each iteration.
 
 // Compiler debugging options
 DEBUG_TAGS_SHOWING = [];

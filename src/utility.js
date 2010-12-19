@@ -16,7 +16,7 @@ function dump(item) {
     return ret + '// ' + text;
   }
   try {
-    return lineify(JSON.stringify(item));
+    return lineify(JSON.stringify(item).substr(0, 80*25));
   } catch(e) {
     var ret = [];
     for (var i in item) {

@@ -82,7 +82,7 @@ class RunnerCore(unittest.TestCase):
   
     if optimization_level > 1:
       LLVM_OPT_OPTS.append('-constmerge')
-
+ 
   ## Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None):
     # Copy over necessary files for compiling the source
@@ -127,7 +127,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS']:
       exported_settings[setting] = eval(setting)
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
     timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
@@ -1280,6 +1280,7 @@ if 'benchmark' not in sys.argv:
       assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE
 
       global SAFE_HEAP; SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0 # Overflows in hash loop... seems to work though, doesn't overflow too much
 
       self.do_test(path_from_root(['tests', 'cubescript']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
@@ -1301,12 +1302,14 @@ if 'benchmark' not in sys.argv:
       self.do_ll_test(path_from_root(['tests', 'bullet', 'bulletTest.ll']), open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read())
 
     def test_lua(self):
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0 # Overflows in luaS_newlstr hash loop... seems to work though, doesn't overflow too much
       self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
                       'hello lua world!\n\n\n17.00000000000\n\n\n1.00000000000\n\n\n2.00000000000\n\n\n3.00000000000\n\n\n4.00000000000\n\n\n7.00000000000',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']))
 
     def test_python(self):
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0 # Overflows in string_hash... seems to work though, doesn't overflow too much
       global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields etc.
       self.do_ll_test(path_from_root(['tests', 'python', 'python.ll']),
@@ -1382,16 +1385,37 @@ if 'benchmark' not in sys.argv:
       except Exception, e:
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
+    def test_check_overflow(self):
+      if LLVM_OPTS: return # We check for overflows when !LLVM_OPTS
+      src = '''
+          #include<stdio.h>
+          int main() {
+            int t = 77;
+            for (int i = 0; i < 30; i++) {
+              //t = (t << 2) + t + 1; // This would have worked, since << forces into 32-bit int...
+              t = t*5 + 1; // Python lookdict_string has ~the above line, which turns into this one with optimizations...
+              printf("%d,%d\\n", t, t & 127);
+            }
+            return 0;
+          }
+      '''
+      try:
+        self.do_test(src, '*nothingatall*')
+      except Exception, e:
+        assert 'Overflow!' in str(e), str(e)
+
+
   # Generate tests for all our compilers
   def make_test(compiler, llvm_opts, embetter):
     class TT(T):
       def setUp(self):
-        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP
+        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS
         COMPILER = compiler['path']
         QUANTUM_SIZE = compiler['quantum_size']
         RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
         GUARD_MEMORY = SAFE_HEAP = 1-embetter
         LLVM_OPTS = llvm_opts
+        CHECK_OVERFLOWS = 1 - llvm_opts
         if LLVM_OPTS:
           self.pick_llvm_opts(3, True)
 
@@ -1415,7 +1439,7 @@ else:
 
   QUANTUM_SIZE = 4
   RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = 1
-  GUARD_MEMORY = SAFE_HEAP = 0
+  GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = 0
   LLVM_OPTS = 1
 
   TEST_REPS = 10

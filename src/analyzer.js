@@ -241,6 +241,7 @@ function analyzer(data, givenTypes) {
         // Normal variables
         func.lines.forEach(function(item) {
           if (item.intertype in set('assign', 'fastgetelementptrload')) {
+            if (!item.value.tokens.slice(-1)[0].item) throw 'Did you run llvm-dis with -show-annotations?';
             func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,

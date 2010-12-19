@@ -156,7 +156,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
       return indexizeFunctions(parseNumerical(toNiceIdent(value.text)));
-    } else if (value.text == 'zeroinitializer') {
+    } else if (value.text in set('zeroinitializer', 'undef')) { // undef doesn't really need initting, but why not
       return makeEmptyStruct(type);
     } else if (value.text && value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
@@ -709,18 +709,24 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         ident2 = makeUnSign(ident2, type);
       }
     }
+    function checkOverflow(text) {
+      if (!CHECK_OVERFLOWS) return text;
+      if (item.type[0] !== 'i') return text;
+      var bits = item.type.substr(1);
+      return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
+    }
     switch (op) {
-      case 'add': return ident1 + ' + ' + ident2;
-      case 'sub': return ident1 + ' - ' + ident2;
-      case 'sdiv': case 'udiv': return 'Math.floor(' + ident1 + ' / ' + ident2 + ')';
-      case 'mul': return ident1 + ' * ' + ident2;
+      case 'add': return checkOverflow(ident1 + ' + ' + ident2);
+      case 'sub': return checkOverflow(ident1 + ' - ' + ident2);
+      case 'sdiv': case 'udiv': return checkOverflow('Math.floor(' + ident1 + ' / ' + ident2 + ')');
+      case 'mul': return checkOverflow(ident1 + ' * ' + ident2);
       case 'urem': case 'srem': return 'Math.floor(' + ident1 + ' % ' + ident2 + ')';
-      case 'or': return ident1 + ' | ' + ident2;
-      case 'and': return ident1 + ' & ' + ident2;
-      case 'xor': return ident1 + ' ^ ' + ident2;
-      case 'shl': return ident1 + ' << ' + ident2;
-      case 'ashr': return ident1 + ' >> ' + ident2;
-      case 'lshr': return ident1 + ' >>> ' + ident2;
+      case 'or': return ident1 + ' | ' + ident2; // XXX this forces into a 32-bit int - add overflow-style checks?
+      case 'and': return ident1 + ' & ' + ident2; // XXX ^
+      case 'xor': return ident1 + ' ^ ' + ident2; // XXX ^
+      case 'shl': return ident1 + ' << ' + ident2; // XXX ^
+      case 'ashr': return ident1 + ' >> ' + ident2; // XXX ^
+      case 'lshr': return ident1 + ' >>> ' + ident2; // XXX ^
       case 'fadd': return ident1 + ' + ' + ident2;
       case 'fsub': return ident1 + ' - ' + ident2;
       case 'fdiv': return ident1 + ' / ' + ident2;
@@ -775,18 +781,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       default: throw 'Unknown mathcmp op: ' + item.op;
     }
   } });
-/*
-      return [{
-        __result__: true,
-        intertype: 'mathop',
-        op: op,
-        variant: variant,
-        type: item.tokens[1].text,
-        ident: item.tokens[2].text,
-        value: item.tokens[4].text,
-        lineNum: item.lineNum,
-      }];
-*/
 
   // Given two values and an operation, returns the result of that operation.
   // Tries to do as much as possible at compile time.
@@ -881,7 +875,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       case 'icmp': case 'mul': case 'zext': // TODO: Other mathops
         var temp = {
           op: item.intertype,
-          variant: item.variant
+          variant: item.variant,
+          type: item.type
         };
         for (var i = 1; i <= 4; i++) {
           if (item.params[i-1]) {

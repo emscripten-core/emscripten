@@ -75,6 +75,14 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 //==========================================
 #endif
 
+#if CHECK_OVERFLOWS
+function CHECK_OVERFLOW(value, bits) {
+  assert(value !== Infinity && value !== -Infinity, 'Infinity!');
+  assert(Math.abs(value) < Math.pow(2, bits-1), 'Overflow!');
+  return value;
+}
+#endif
+
 #if LABEL_DEBUG
 var INDENT = '';
 #endif
@@ -87,12 +95,15 @@ var ABORT = false;
 
 var undef = 0;
 
+function abort(text) {
+  print(text + ':\n' + (new Error).stack);
+  ABORT = true;
+  throw "Assertion: " + text;
+}
+
 function assert(condition, text) {
   if (!condition) {
-    var text = "Assertion failed: " + text;
-    print(text + ':\n' + (new Error).stack);
-    ABORT = true;
-    throw "Assertion: " + text;
+    abort('Assertion failed: ' + text);
   }
 }
 
