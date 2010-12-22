@@ -1,0 +1,5 @@
+mergeInto(Library, {
+  glGetString: function() {
+  },
+});
+

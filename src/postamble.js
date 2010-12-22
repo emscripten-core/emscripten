@@ -32,6 +32,8 @@ function run(args) {
 }
 Module['run'] = run;
 
+// {{PRE_RUN_ADDITIONS}}
+
 #if INVOKE_RUN
 run(args);
 #endif

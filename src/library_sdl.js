@@ -5,7 +5,7 @@ mergeInto(Library, {
       height: 240
     };
     SDL_SURFACES = {};
-    return 1;
+    return 0; // success
   },
 
   SDL_GetVideoInfo: function() {
@@ -30,7 +30,7 @@ mergeInto(Library, {
   SDL_SetVideoMode: function(width, height, depth, flags, canvas) {
   //                                                      ^^^^^^ a 'canvas' parameter is added here; supply a canvas from JS there
   //                                                             or, define __CANVAS__.
-    canvas = canvas || __CANVAS__;
+    canvas = canvas || Module.__CANVAS__;
     var surf = _malloc(14*QUANTUM_SIZE); // SDL_Surface has 14 fields of quantum size
     SDL_SURFACES[surf] = {
       width: width,
@@ -96,6 +96,10 @@ mergeInto(Library, {
 
   SDL_ShowCursor: function(toggle) {
     // TODO
+  },
+
+  SDL_GetError: function() {
+    return Pointer_make(intArrayFromString("SDL is cool"), null);
   }
 });
 

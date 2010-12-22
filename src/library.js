@@ -736,4 +736,5 @@ var Library = {
 };
 
 load('library_sdl.js');
+load('library_gl.js');
 

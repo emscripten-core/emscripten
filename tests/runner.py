@@ -154,6 +154,7 @@ if 'benchmark' not in sys.argv:
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None, basename='src.cpp'):
         print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
+        if main_file is not None and main_file[-2:] == '.c': basename = 'src.c'
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
         if not no_build:
@@ -1273,6 +1274,22 @@ if 'benchmark' not in sys.argv:
         for i, j in results:
           src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
+
+    def zzztest_gl(self):
+      # Switch to gcc from g++ - we don't compile properly otherwise (why?)
+      global COMPILER
+      if COMPILER != LLVM_GCC: return
+      COMPILER = LLVM_GCC.replace('g++', 'gcc')
+
+      def post(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''Module["__CANVAS__"] = {
+               getContext: function() {},
+             };'''
+        )
+        open(filename, 'w').write(src)
+      self.do_test(path_from_root(['tests', 'gl']), '*?*', main_file='sdl_ogl.c', post_build=post)
 
     def test_cubescript(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
