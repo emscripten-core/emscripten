@@ -1400,6 +1400,7 @@ if 'benchmark' not in sys.argv:
       try:
         self.do_test(src, '*nothingatall*')
       except Exception, e:
+        # This test *should* fail, by throwing this exception
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
     def test_check_overflow(self):
@@ -1419,6 +1420,7 @@ if 'benchmark' not in sys.argv:
       try:
         self.do_test(src, '*nothingatall*')
       except Exception, e:
+        # This test *should* fail, by throwing this exception
         assert 'Overflow!' in str(e), str(e)
 
 
