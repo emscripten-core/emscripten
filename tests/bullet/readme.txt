@@ -25,5 +25,5 @@ To get the build system to generate .ll files, this was added to the CMakeLists.
 
 Afterwards they were combined using llvm-link, and disassembled with
 
-  -show-annotations
+  llvm-dis -show-annotations
 
