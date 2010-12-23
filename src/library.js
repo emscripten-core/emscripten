@@ -602,6 +602,15 @@ var Library = {
     return isNaN(x);
   },
 
+  copysign: function(a, b) {
+      if (a<0 === b<0) return a;
+      return -a;
+  },
+
+  hypot: function(a, b) {
+     return Math.sqrt(a*a + b*b);
+  },
+
   // unistd.h
 
   sysconf: function(name_) {
