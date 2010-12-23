@@ -346,6 +346,7 @@ function __formatString() {
 function Array_copy(ptr, num) {
 #if USE_TYPED_ARRAYS
   return Array.prototype.slice.call(IHEAP.slice(ptr, ptr+num)); // Make a normal array out of the typed one
+                                                                // Consider making a typed array here, for speed?
 #else
   return IHEAP.slice(ptr, ptr+num);
 #endif
