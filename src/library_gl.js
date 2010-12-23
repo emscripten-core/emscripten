@@ -1,5 +1,8 @@
 mergeInto(Library, {
-  glGetString: function() {
-  },
+  glGetString: function() {},
+
+  glGenVertexArrays: function() {},
+
+  glBindVertexArray: function() {},
 });
 

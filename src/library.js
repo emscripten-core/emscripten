@@ -614,8 +614,9 @@ var Library = {
   // unistd.h
 
   sysconf: function(name_) {
+    // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
     switch(name_) {
-      case 30: return PAGE_SIZE; // _SC_PAGE_SIZE
+      case 29: case 30: return PAGE_SIZE;
       default: throw 'unknown sysconf param: ' + name_;
     }
   },
