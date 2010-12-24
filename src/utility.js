@@ -46,13 +46,18 @@ function dumpKeys(item) {
 
 function assertEq(a, b) {
   if (a !== b) {
-    print("Stack: " + new Error().stack);
-    throw "Should have been equal: " + a + " : " + b;
+    print('Stack: ' + new Error().stack);
+    throw 'Should have been equal: ' + a + ' : ' + b;
   }
 }
 
-function assertTrue(a) {
-  assertEq(!!a, true);
+function assertTrue(a, msg) {
+  if (!a) {
+    msg = 'Assertion failed: ' + msg;
+    print(msg);
+    print('Stack: ' + new Error().stack);
+    throw msg;
+  }
 }
 assert = assertTrue;
 

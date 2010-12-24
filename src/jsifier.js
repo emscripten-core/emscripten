@@ -913,6 +913,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   });
 
   function makeFunctionCall(ident, params, funcData) {
+    // We cannot compile assembly. See comment in intertyper.js:'Call'
+    assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
+
     // Special cases
     if (ident == '_llvm_va_start') {
       // varargs - we received a pointer to the varargs as a final 'extra' parameter
