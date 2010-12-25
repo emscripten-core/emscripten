@@ -9,7 +9,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
   // Now that analysis has completed, we can get around to handling unparsedFunctions
   (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
-    // XXX Save just what we need, to save memory - whether there are varargs, and the # of parameters
+    // Save just what we need, to save memory - whether there are varargs, and the # of parameters
     FUNCTIONS[func.ident] = {
       hasVarArgs: func.hasVarArgs,
       numParams: func.params.length
@@ -33,7 +33,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       if (type.needsFlattening && !type.flatFactor) {
         item.JS += 'var ' + niceName + '___FLATTENER = ' + JSON.stringify(TYPES[item.name_].flatIndexes) + ';';
       }
-      item.__result__ = true;
       return [item];
     }
   });
@@ -172,7 +171,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
             return '0';
           } else if (segment[1].text == 'zeroinitializer') {
             return makeEmptyStruct(segment[0].text);
-          } else if (segment[1].text in searchable('bitcast', 'inttoptr', 'ptrtoint')) { // TODO: Use parse/finalizeLLVMFunctionCall
+          } else if (segment[1].text in set('bitcast', 'inttoptr', 'ptrtoint')) { // TODO: Use parse/finalizeLLVMFunctionCall
             var type = segment[2].item.tokens.slice(-1)[0].text; // TODO: Use this?
             return handleSegment(segment[2].item.tokens.slice(0, -2));
           } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
@@ -228,7 +227,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       item.intertype = 'GlobalVariableStub';
-      item.__result__ = true;
       var ret = [item];
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
@@ -248,7 +246,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
               ret.push({
                 intertype: 'GlobalVariablePostSet',
                 JS: 'IHEAP[' + item.ident + '+' + i + '] = ' + value + ';',
-                __result__: true
               });
               constant[i] = '0';
             }
@@ -259,7 +256,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         return ret.concat({
           intertype: 'GlobalVariable',
           JS: item.ident + ' = ' + constant + ';',
-          __result__: true
         });
       }
     }
@@ -288,7 +284,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       } else {
         item.JS = '// stub for ' + item.ident;
       }
-      item.__result__ = true;
       return [item];
     }
   });
@@ -442,7 +437,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
       func.JS += '}\n';
       func.JS += func.ident + '.__index__ = Runtime.getFunctionIndex(' + func.ident + ', "' + func.ident + '");\n';
-      func.__result__ = true;
       return func;
     }
   });
@@ -518,7 +512,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     return substrate.addActor('Intertype:' + intertype, {
       processItem: function(item) {
         item.JS = func(item);
-        if (!item.JS) throw "XXX - no JS generated for " + dump(item);
+        if (!item.JS) throw "No JS generated for " + dump(item);
         this.forwardItem(item, 'FuncLineTriager');
       }
     });
@@ -556,7 +550,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     label = label.substr(1);
     if (label === 'entry') return '-1';
     if (label === parseInt(label)) return label; // clang
-    //return '"' + label + '"'; // XXX debugging
+    //return '"' + label + '"'; // debugging
     label = toNiceIdent(label);
     if (label in LABEL_IDs) return LABEL_IDs[label];
     return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
@@ -721,12 +715,12 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       case 'sdiv': case 'udiv': return checkOverflow('Math.floor(' + ident1 + ' / ' + ident2 + ')');
       case 'mul': return checkOverflow(ident1 + ' * ' + ident2);
       case 'urem': case 'srem': return 'Math.floor(' + ident1 + ' % ' + ident2 + ')';
-      case 'or': return ident1 + ' | ' + ident2; // XXX this forces into a 32-bit int - add overflow-style checks?
-      case 'and': return ident1 + ' & ' + ident2; // XXX ^
-      case 'xor': return ident1 + ' ^ ' + ident2; // XXX ^
-      case 'shl': return ident1 + ' << ' + ident2; // XXX ^
-      case 'ashr': return ident1 + ' >> ' + ident2; // XXX ^
-      case 'lshr': return ident1 + ' >>> ' + ident2; // XXX ^
+      case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
+      case 'and': return ident1 + ' & ' + ident2;
+      case 'xor': return ident1 + ' ^ ' + ident2;
+      case 'shl': return ident1 + ' << ' + ident2;
+      case 'ashr': return ident1 + ' >> ' + ident2;
+      case 'lshr': return ident1 + ' >>> ' + ident2;
       case 'fadd': return ident1 + ' + ' + ident2;
       case 'fsub': return ident1 + ' - ' + ident2;
       case 'fdiv': return ident1 + ' / ' + ident2;
@@ -746,8 +740,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
       }
       case 'fcmp': {
         switch (variant) {
-          // XXX 'o' ones should be 'ordered (no NaN) and',
-          //     'u' ones should be 'unordered or'.
+          // TODO 'o' ones should be 'ordered (no NaN) and',
+          //      'u' ones should be 'unordered or'.
           case 'uge': case 'oge': return ident1 + ' >= ' + ident2;
           case 'ule': case 'ole': return ident1 + ' <= ' + ident2;
           case 'ugt': case 'ogt': return ident1 + ' > ' + ident2;
@@ -770,14 +764,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
       case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
-      case 'ptrtoint': {
-        //if (type != 'i8*') print('// XXX Warning: Risky ptrtoint operation on line ' + lineNum);
-        return ident1;
-      }
-      case 'inttoptr': {
-        //print('// XXX Warning: inttoptr operation on line ' + lineNum);
-        return ident1;
-      }
+      case 'ptrtoint': return ident1;
+      case 'inttoptr': return ident1;
       default: throw 'Unknown mathcmp op: ' + item.op;
     }
   } });
@@ -843,7 +831,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
         }
       } else {
         if (curr != 0) {
-          indexes.push(curr); // XXX QUANTUM_SIZE?
+          indexes.push(curr);
         }
       }
       if (!isNumber(curr) || parseInt(curr) < 0) {
@@ -866,7 +854,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
   function finalizeLLVMFunctionCall(item) {
     switch(item.intertype) {
-      case 'getelementptr': // XXX finalizeLLVMParameter on the ident and the indexes?
+      case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
         return makePointer(makeGetSlab(item.ident, item.type), getGetElementPtrIndexes(item), null, item.type);
       case 'bitcast':
       case 'inttoptr':
@@ -906,8 +894,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   }
 
   makeFuncLineActor('bitcast', function(item) {
-    // XXX Don't we need to copy ptr - i.e. create new ones (at least if uses > just the next line)?
-    // XXX hardcoded ptr impl - as ptrs are ints, we don't need to copy
     var ident = toNiceIdent(item.ident);
     return ident;
   });

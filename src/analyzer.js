@@ -124,7 +124,7 @@ function analyzer(data, givenTypes) {
     if (['['].indexOf(type) != -1) return;
     data.types[type] = {
       name_: type,
-      fields: [ 'i32' ], // XXX
+      fields: [ 'i' + (QUANTUM_SIZE*8) ], // a single quantum size
       flatSize: 1,
       lineNum: '?'
     };
@@ -245,7 +245,7 @@ function analyzer(data, givenTypes) {
             func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
-              origin: item.value.intertype, // XXX should say something in the case of fastgetelementptrload
+              origin: item.intertype === 'assign' ? item.value.intertype : 'fastgetelementptrload',
               lineNum: item.lineNum,
               uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1])
             };
@@ -292,8 +292,8 @@ function analyzer(data, givenTypes) {
           var pointedType = removePointing(variable.type);
           if (variable.origin == 'getelementptr') {
             // Use our implementation that emulates pointers etc.
-            // XXX Can we perhaps nativize some of these? However to do so, we need to discover their
-            //     true types; we have '?' for them now, as they cannot be discovered in the intertyper.
+            // TODO Can we perhaps nativize some of these? However to do so, we need to discover their
+            //      true types; we have '?' for them now, as they cannot be discovered in the intertyper.
             variable.impl = VAR_EMULATED;
           } else if (variable.origin == 'funcparam') {
             variable.impl = VAR_EMULATED;
@@ -378,7 +378,7 @@ function analyzer(data, givenTypes) {
     }
   });
 
-  var BRANCH_INVOKE = searchable('branch', 'invoke');
+  var BRANCH_INVOKE = set('branch', 'invoke');
   function operateOnLabels(line, func) {
     function process(item, id) {
       ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
@@ -513,13 +513,13 @@ function analyzer(data, givenTypes) {
             dprint('//        ' + label.ident + ' :origOut  : ' + JSON.stringify(label.originalOutLabels));
           }
 
-          // Convert to searchables, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
+          // Convert to set, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
           // Also removes duplicates (which we can get in llvm switches)
-          // FIXME TODO XXX do we need all these?
-          label.outLabels = searchable(label.outLabels);
-          label.inLabels = searchable(label.inLabels);
-          label.allOutLabels = searchable(label.allOutLabels);
-          label.allInLabels = searchable(label.allInLabels);
+          // TODO do we need all these?
+          label.outLabels = set(label.outLabels);
+          label.inLabels = set(label.inLabels);
+          label.allOutLabels = set(label.allOutLabels);
+          label.allInLabels = set(label.allInLabels);
         });
       }
 
@@ -571,7 +571,7 @@ function analyzer(data, givenTypes) {
 
         calcLabelBranchingData(labels, labelsDict);
 
-        var s_entries = searchable(entries);
+        var s_entries = set(entries);
         dprint('relooping', 'makeBlock: ' + entries + ',' + labels.length + ' labels');
 
         var entryLabels = entries.map(function(entry) { return labelsDict[entry] });
@@ -600,14 +600,9 @@ function analyzer(data, givenTypes) {
 
           var nextEntries = keys(entryLabel.outLabels);
           dprint('relooping', '   Creating simple emulated, outlabels: ' + nextEntries);
-          //if (nextEntries.length == 1) {
-          //  replaceLabelLabels([entryLabel], set(nextEntries), 'BNOPP|XXX'); // remove unneeded branch XXX - this is dangerous, as we may
-          //                                                               // have 1 next entry, but 1 or more B-labels...
-          //} else {
-            nextEntries.forEach(function(nextEntry) {
-              replaceLabelLabels([entryLabel], set(nextEntry), 'BJSET|' + nextEntry); // Just SET __label__ - no break or continue or whatnot
-            });
-          //}
+          nextEntries.forEach(function(nextEntry) {
+            replaceLabelLabels([entryLabel], set(nextEntry), 'BJSET|' + nextEntry); // Just SET __label__ - no break or continue or whatnot
+          });
           return {
             type: 'emulated',
             id: blockId,
@@ -648,7 +643,7 @@ function analyzer(data, givenTypes) {
 
           // We will be in a loop, |continue| gets us back to the entry
           entries.forEach(function(entry) {
-            replaceLabelLabels(internals, searchable(entries), 'BCONT|' + blockId);
+            replaceLabelLabels(internals, set(entries), 'BCONT|' + blockId);
           });
 
           // To get to any of our (not our parents') exit labels, we will break.

@@ -22,6 +22,7 @@ load('jsifier.js');
 //===============================
 
 // Override settings.js
+
 var settings = JSON.parse(readline());
 for (setting in settings) {
   this[setting] = settings[setting];
@@ -35,6 +36,7 @@ load('runtime.js');
 assert(!(USE_TYPED_ARRAYS && SAFE_HEAP));
 
 // Read llvm
+
 var lines = [];
 var line;
 do {
@@ -44,6 +46,7 @@ do {
 } while(true);
 
 // Do it
+
 eval(preprocess(read('library.js'), CONSTANTS));
 print(JSify(analyzer(intertyper(lines))));
 

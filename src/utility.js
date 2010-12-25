@@ -1,4 +1,5 @@
-// General JS utilities
+// General JS utilities - things that might be useful in any JS project.
+// Nothing specific to Emscripten appears here.
 
 function safeQuote(x) {
   return x.replace(/"/g, '\\"')
@@ -87,15 +88,6 @@ function range(size) {
 function zeros(size) {
   var ret = [];
   for (var i = 0; i < size; i++) ret.push(0);
-  return ret;
-}
-
-function searchable() {
-  if (typeof arguments[0] === 'object') arguments = arguments[0];
-  var ret = {};
-  for (var i = 0; i < arguments.length; i++) {
-    ret[arguments[i]] = 0;
-  }
   return ret;
 }
 
@@ -204,9 +196,30 @@ function mergeInto(obj, other) {
   return obj;
 }
 
+function isNumber(x) {
+  return x == parseFloat(x);
+}
+
+function flatten(x) {
+  if (typeof x !== 'object') return x;
+  var ret = [];
+  for (var i = 0; i < x.length; i++) {
+    ret = ret.concat(flatten(x[i]));
+  }
+  return ret;
+}
+
 // Sets
 
-set = searchable; // Create a 'set'
+function set() {
+  if (typeof arguments[0] === 'object') arguments = arguments[0];
+  var ret = {};
+  for (var i = 0; i < arguments.length; i++) {
+    ret[arguments[i]] = 0;
+  }
+  return ret;
+}
+
 function setSub(x, y) {
   var ret = set(values(x));
   for (yy in y) {
@@ -224,19 +237,6 @@ function setIntersect(x, y) {
     if (xx in y) {
       ret[xx] = true;
     }
-  }
-  return ret;
-}
-
-function isNumber(x) {
-  return x == parseFloat(x);
-}
-
-function flatten(x) {
-  if (typeof x !== 'object') return x;
-  var ret = [];
-  for (var i = 0; i < x.length; i++) {
-    ret = ret.concat(flatten(x[i]));
   }
   return ret;
 }

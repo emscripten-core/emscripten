@@ -163,7 +163,7 @@ function splitTokenList(tokens) {
   if (tokens.slice(-1)[0].text != ',') tokens.push({text:','});
   var ret = [];
   var seg = [];
-  var SPLITTERS = searchable(',', 'to'); // 'to' can separate parameters as well...
+  var SPLITTERS = set(',', 'to'); // 'to' can separate parameters as well...
   for (var i = 0; i < tokens.length; i++) {
     var token = tokens[i];
     if (token.text in SPLITTERS) {
@@ -317,7 +317,7 @@ function cleanSegment(segment) {
   return segment;
 }
 
-PARSABLE_LLVM_FUNCTIONS = searchable('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext');
+PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext');
 
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)

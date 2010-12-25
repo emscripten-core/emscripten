@@ -67,7 +67,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
           if (!parseFunctions) {
             var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0] }, true))[0];
             unparsedFunctions.push({
-              __result__: true,
               intertype: 'unparsedFunction',
               // We need this early, to know basic function info - ident, params, varargs
               ident: toNiceIdent(func.ident),
@@ -276,7 +275,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
             if (tokensLength >= 3 && token0Text == 'phi')
               return 'Phi';
           } else if (item.indent === 0) {
-            if ((tokensLength >= 1 && token0Text.substr(-1) == ':') || // XXX LLVM 2.7 format, or llvm-gcc in 2.8
+            if ((tokensLength >= 1 && token0Text.substr(-1) == ':') || // LLVM 2.7 format, or llvm-gcc in 2.8
                 (tokensLength >= 3 && token1Text == '<label>'))
               return 'Label';
             if (tokensLength >= 4 && token0Text == 'declare')
@@ -291,7 +290,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           }
           if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
             return 'Call';
-          if (token0Text in searchable(';', 'target'))
+          if (token0Text in set(';', 'target'))
             return '/dev/null';
           if (tokensLength >= 3 && token0Text == 'invoke')
             return 'Invoke';
@@ -320,7 +319,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           // Clang sometimes has |= i32| instead of |= { i32 }|
           fields = [item.tokens[3].text];
         } else if (item.tokens[3].text != 'opaque') {
-          if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
+          if (item.tokens[3].type == '<') { // type <{ i8 }> - TODO: check spec
             item.tokens[3] = tokenizer.processItem({ lineText: '{ ' + item.tokens[3].item.tokens[0].text + ' }' }, true).tokens[0];
           }
           var subTokens = item.tokens[3].tokens;
@@ -333,7 +332,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
           }
         }
         return [{
-        __result__: true, // XXX can remove these
           intertype: 'type',
           name_: item.tokens[0].text,
           fields: fields,
@@ -350,7 +348,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
           item.tokens.splice(2, 1);
         }
         var ret = {
-          __result__: true,
           intertype: 'globalVariable',
           ident: ident,
           type: item.tokens[2].text,
@@ -366,7 +363,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
             });
           }
         } else {
-          if (item.tokens[3].type == '<') { // type <{ i8 }> XXX - check spec
+          if (item.tokens[3].type == '<') { // type <{ i8 }> TODO - check spec
             item.tokens[3] = item.tokens[3].item.tokens;
           }
 
@@ -389,7 +386,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
         return !(token.text in LLVM.LINKAGES || token.text in set('noalias', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'inlinehint', '{', 'fastcc'));
       });
       var ret = {
-        __result__: true,
         intertype: 'function',
         ident: item.tokens[1].text,
         returnType: item.tokens[0],
@@ -411,7 +407,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Label', {
     processItem: function(item) {
       return [{
-        __result__: true,
         intertype: 'label',
         ident: item.tokens[0].text.substr(-1) == ':' ?
                                '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
@@ -551,7 +546,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
       if (item.indent == 2) {
         // standalone call - not in assign
         item.standalone = true;
-        item.__result__ = true;
         return [item];
       }
       this.forwardItem(item, 'Reintegrator');
@@ -576,7 +570,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
       if (item.indent == 2) {
         // standalone call - not in assign
         item.standalone = true;
-        item.__result__ = true;
         return [item];
       }
       this.forwardItem(item, 'Reintegrator');
@@ -621,7 +614,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.variant = item.tokens[1].text;
         item.tokens.splice(1, 1);
       }
-      if (item.tokens[1].text == 'exact') item.tokens.splice(1, 1); // XXX - do we need a check at runtime?
+      if (item.tokens[1].text == 'exact') item.tokens.splice(1, 1); // TODO: Implement trap values
       var segments = splitTokenList(item.tokens.slice(1));
       for (var i = 1; i <= 4; i++) {
         if (segments[i-1]) {
@@ -645,7 +638,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       var segments = splitTokenList(item.tokens.slice(1));
       var ret = {
-        __result__: true,
         intertype: 'store',
         valueType: item.tokens[1].text,
         value: parseLLVMSegment(segments[0]), // TODO: Make everything use this method, with finalizeLLVMParameter too
@@ -662,14 +654,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       if (item.tokens[1].text == 'label') {
         return [{
-          __result__: true,
           intertype: 'branch',
           label: toNiceIdent(item.tokens[2].text),
           lineNum: item.lineNum
         }];
       } else {
         return [{
-          __result__: true,
           intertype: 'branch',
           ident: item.tokens[2].text,
           labelTrue: toNiceIdent(item.tokens[5].text),
@@ -683,7 +673,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Return', {
     processItem: function(item) {
       return [{
-        __result__: true,
         intertype: 'return',
         type: item.tokens[1].text,
         value: item.tokens[2] ? parseLLVMSegment(item.tokens.slice(2)) : null,
@@ -707,7 +696,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
         return ret;
       }
       return [{
-        __result__: true,
         intertype: 'switch',
         type: item.tokens[1].text,
         ident: item.tokens[2].text,
@@ -721,7 +709,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('FuncEnd', {
     processItem: function(item) {
       return [{
-        __result__: true,
         intertype: 'functionEnd',
         lineNum: item.lineNum
       }];
@@ -734,7 +721,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.tokens.splice(1, 1);
       }
       return [{
-        __result__: true,
         intertype: 'functionStub',
         ident: item.tokens[2].text,
         returnType: item.tokens[1],
@@ -747,7 +733,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Unreachable', {
     processItem: function(item) {
       return [{
-        __result__: true,
         intertype: 'unreachable',
         lineNum: item.lineNum
       }];

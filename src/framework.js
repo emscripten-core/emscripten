@@ -128,8 +128,7 @@ Substrate.prototype = {
         if (DEBUG) print("Solving complete: no remaining items");
         finalComment();
         this.results.forEach(function(output) {
-          delete output.__result__; // Might recycle these
-          delete output.__uid__;
+          delete output.__uid__; // Might recycle these
         });
         return this.results;
       }
