@@ -31,7 +31,7 @@ RuntimeGenerator = {
   },
 
   stackEnter: function(initial) {
-    if (initial === 0) return ''; // XXX Note that we don't even push the stack! This is faster, but
+    if (initial === 0) return ''; // Note that we don't even push the stack! This is faster, but
                                   // means that we don't clear stack allocations done in this function
                                   // until the parent unwinds its stack. So potentially if we are in
                                   // a loop, we can use a lot of memory.
@@ -41,7 +41,7 @@ RuntimeGenerator = {
     }
     var initMemory = 'for (var i = __stackBase__; i < STACKTOP; i++) {' + (
       USE_TYPED_ARRAYS ?
-        'IHEAP[i] = FHEAP[i] = 0' : // XXX Suboptimal due to type differences?
+        'IHEAP[i] = FHEAP[i] = 0' : // TODO: Benchmark this. Suboptimal due to type differences?
         'HEAP[i] = 0'
     ) + (SAFE_HEAP ? '; SAFE_HEAP_ACCESS(i, null, true)' : '') + ' }';
     ret += '; ' + initMemory;
@@ -49,7 +49,7 @@ RuntimeGenerator = {
   },
 
   stackExit: function(initial) {
-    if (initial === 0) return ''; // XXX See comment in stackEnter
+    if (initial === 0) return ''; // See comment in stackEnter
     var ret = '';
     if (SAFE_HEAP) {
       ret += 'for (var i = __stackBase__; i < STACKTOP; i++) SAFE_HEAP_CLEAR(i);';

@@ -335,7 +335,7 @@ function parseLLVMFunctionCall(segment) {
   assertTrue(['inreg', 'byval'].indexOf(segment[1].text) == -1);
   assert(segment[1].text in PARSABLE_LLVM_FUNCTIONS);
   while (!segment[2].item) {
-    segment.splice(2, 1); // XXX Remove modifiers - should look into them some day
+    segment.splice(2, 1); // Remove modifiers
     if (!segment[2]) throw 'Invalid segment!';
   }
   var ret = {
@@ -452,23 +452,20 @@ function getLabelIds(labels) {
 //! @param alone Whether this is inside a structure (so padding is
 //!              used) or alone (line in char*, where no padding is done).
 function getNativeFieldSize(field, alone) {
-  var size;
-  if (QUANTUM_SIZE > 1) {
-    size = {
-      'i1': alone ? 1 : 4, // inside a struct, aligned to 4,
-      'i8': alone ? 1 : 4, // most likely...? XXX
-      'i16': alone ? 2 : 4, // ditto
-      'i32': 4,
-      'i64': 8,
-      'float': 4,
-      'double':8
-    }[field]; // XXX 32/64 bit stuff
-    if (!size) {
-      size = 4; // Must be a pointer XXX 32/64
-    }
-  } else {
-    size = 1;
+  if (QUANTUM_SIZE == 1) return 1;
+  var size = {
+    'i1': 1,
+    'i8': 1,
+    'i16': 2,
+    'i32': 4,
+    'i64': 8,
+    'float': 4,
+    'double':8
+  }[field];
+  if (!size) {
+    size = QUANTUM_SIZE; // A pointer
   }
+  if (!alone) size = Math.max(size, QUANTUM_SIZE);
   return size;
 }
 

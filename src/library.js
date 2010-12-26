@@ -39,7 +39,7 @@ var Library = {
   _ZNSo3putEc: 'putchar',
 
   fopen: function(filename, mode) {
-    return 1; // XXX
+    return 1; // TODO
   },
   __01fopen64_: 'fopen',
 
@@ -85,11 +85,11 @@ var Library = {
   },
 
   fileno: function(file) {
-    return 1; // XXX
+    return 1; // TODO
   },
 
   isatty: function(file) {
-    return 0; // XXX
+    return 0; // TODO
   },
 
   clearerr: function(stream) {
@@ -135,7 +135,7 @@ var Library = {
 
   strtod__deps: ['isspace', 'isdigit'],
   strtod: function(str, endptr) {
-    // XXX handles only whitespace + |[0-9]+(.[0.9]+)?|, no e+
+    // FIXME handles only whitespace + |[0-9]+(.[0.9]+)?|, no e+
     while (_isspace(str)) str++;
     var chr;
     var ret = 0;
@@ -258,7 +258,7 @@ var Library = {
   },
 
   strtol: function(ptr) {
-    // XXX: We ignore the other two params!
+    assert(!arguments[1] && !arguments[2], "We don't support all strtol params yet");
     return parseInt(Pointer_stringify(ptr));
   },
 
