@@ -1,12 +1,13 @@
 // Convert analyzed data to javascript
 
-function JSify(data, functionsOnly, givenTypes, givenFunctions) {
+function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVariables) {
   substrate = new Substrate('JSifyer');
 
   var TYPES = functionsOnly ? givenTypes : data.types;
 
-  var FUNCTIONS = functionsOnly ? givenFunctions : {};
+  var GLOBAL_VARIABLES = functionsOnly ? givenGlobalVariables : data.globalVariables;
 
+  var FUNCTIONS = functionsOnly ? givenFunctions : {};
   // Now that analysis has completed, we can get around to handling unparsedFunctions
   (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
     // Save just what we need, to save memory - whether there are varargs, and the # of parameters
@@ -19,7 +20,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
     dprint('unparsedFunctions', 'processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
-    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1), TYPES), true, TYPES, FUNCTIONS);
+    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1), TYPES), true, TYPES, FUNCTIONS, GLOBAL_VARIABLES);
     delete func.lines; // clean up memory as much as possible
   }
 
@@ -441,17 +442,14 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
     }
   });
 
-  function getVarData(funcData, ident) { // XXX - need to check globals as well!
-    return funcData.variables[ident];
+  function getVarData(funcData, ident) {
+    return funcData.variables[ident] || GLOBAL_VARIABLES[ident];
   }
 
   function getVarImpl(funcData, ident) {
     var data = getVarData(funcData, ident);
-    if (data) {
-      return data.impl;
-    } else {
-      return 'emulated'; // All global are emulated
-    }
+    assert(data, 'What variable is this? |' + ident + '|');
+    return data.impl;
   }
 
   substrate.addActor('FuncLineTriager', {
@@ -484,7 +482,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
 
     var type = item.value.type;
     var value = parseNumerical(item.value.JS);
-    //print("zz var: " + item.JS);
     var impl = getVarImpl(item.funcData, item.ident);
     switch (impl) {
       case VAR_NATIVE: {
@@ -990,7 +987,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions) {
   // Data
 
   substrate.addItems(values(data.types).filter(function(type) { return type.lineNum != '?' }), 'Type');
-  substrate.addItems(data.globalVariables, 'GlobalVariable');
+  substrate.addItems(values(data.globalVariables), 'GlobalVariable');
   substrate.addItems(data.functions, 'FunctionSplitter');
   substrate.addItems(data.functionStubs, 'FunctionStub');
 

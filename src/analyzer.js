@@ -217,6 +217,17 @@ function analyzer(data, givenTypes) {
   // Variable analyzer
   substrate.addActor('VariableAnalyzer', {
     processItem: function(item) {
+      // Globals
+
+      var old = item.globalVariables;
+      item.globalVariables = {};
+      old.forEach(function(variable) {
+        variable.impl = 'emulated'; // All global variables are emulated, for now. Consider optimizing later if useful
+        item.globalVariables[variable.ident] = variable;
+      });
+
+      // Function locals
+
       item.functions.forEach(function(func) {
         dprint('vars', 'Analyzing variables in ' + func.ident);
 

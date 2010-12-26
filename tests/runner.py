@@ -1264,7 +1264,8 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, output, ['3', '16'])
 
     def test_dlmalloc(self):
-        assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE # See cubescript test
+        # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
+        #              used, see Mozilla bug 593659.
         src = open(path_from_root(['tests', 'dlmalloc.c']), 'r').read()
         self.do_test(src, '*1,0*')
 
@@ -1294,8 +1295,6 @@ if 'benchmark' not in sys.argv:
     def test_cubescript(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
-      assert COMPILER_ENGINE != SPIDERMONKEY_ENGINE
-
       global SAFE_HEAP; SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0 # Overflows in hash loop... seems to work though, doesn't overflow too much
 
