@@ -1,4 +1,6 @@
-// Analyze intertype data
+// Analyze intertype data. Calculates things that are necessary in order
+// to do the final conversion into JavaScript later, for example,
+// properties of variables, loop structures of functions, etc.
 
 VAR_NATIVE = 'native';
 VAR_NATIVIZED = 'nativized';

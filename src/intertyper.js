@@ -1,4 +1,5 @@
-// llvm => internal intermediate representation
+// LLVM assembly => internal intermediate representation, which is ready
+// to be processed by the later stages.
 
 var LLVM_STYLE = null;
 

@@ -1,4 +1,5 @@
-// Convert analyzed data to javascript
+// Convert analyzed data to javascript. Everything has already been calculated
+// before this stage, which just does the final conversion to JavaScript.
 
 function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVariables) {
   substrate = new Substrate('JSifyer');

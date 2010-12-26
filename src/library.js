@@ -1,3 +1,17 @@
+// An implementation of a libc for the web. Basically, implementations of
+// the various standard C libraries, that can be called from compiled code,
+// and work using the actual JavaScript environment.
+//
+// We search the Library object when there is an external function. If the
+// entry in the Library is a function, we insert it. If it is a string, we
+// do another lookup in the library (a simple way to write a function once,
+// if it can be called by different names). We also allow dependencies,
+// using __deps.
+//
+// Note that the full function name will be '_' + the name in the Library
+// object. For convenience, the short name appears here. Note that if you add a
+// new function with an '_', it will not be found.
+
 var Library = {
   // stdio.h
 

@@ -1,7 +1,9 @@
-////////////QUANTUM_SIZE = GUARD_STACK = 1;
-// Generates code that can be placed inline in generated code.
-// This is not the cleanest way to write this kind of code - it is
-// optimized for generating fast inline code.
+// Implementation details for the 'runtime environment' we generate in
+// JavaScript. The Runtime object itself is used both during compilation,
+// and is available at runtime (dynamic compilation). The RuntimeGenerator
+// helps to create the Runtime object (written so that the Runtime object
+// itself is as optimized as possible - no unneeded runtime checks).
+
 RuntimeGenerator = {
   alloc: function(size, type) {
     var ret = type + 'TOP';
@@ -76,10 +78,6 @@ function unInline(name_, params) {
   return eval(src);
 }
 
-// Uses the RuntimeGenerator during compilation, in order to
-//  1. Let the compiler access and run those functions during compilation
-//  2. We expose the entire Runtime object to generated code, so it can
-//     use that functionality in a non-inline manner.
 Runtime = {
   stackAlloc: unInline('stackAlloc', ['size']),
   staticAlloc: unInline('staticAlloc', ['size']),

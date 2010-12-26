@@ -1,4 +1,5 @@
-// Various tools for parsing llvm
+// Various tools for parsing LLVM. Utilities of various sorts, that are
+// specific to Emscripten (and hence not in utility.js).
 
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global. Also replaces some constants

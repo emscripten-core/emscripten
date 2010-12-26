@@ -8,20 +8,9 @@ if (!this['read']) {
   read = function(f) { snarf(f) };
 }
 
+// Load settings, can be overridden by commandline
+
 load('settings.js');
-
-load('utility.js');
-load('framework.js');
-load('parseTools.js');
-load('intertyper.js');
-load('analyzer.js');
-load('jsifier.js');
-
-//===============================
-// Main
-//===============================
-
-// Override settings.js
 
 var settings = JSON.parse(readline());
 for (setting in settings) {
@@ -29,11 +18,24 @@ for (setting in settings) {
 }
 var CONSTANTS = { 'QUANTUM_SIZE': QUANTUM_SIZE };
 
-load('runtime.js');
+// Load compiler code
 
-// Sanity of settings
+load('utility.js');
+load('framework.js');
+load('parseTools.js');
+load('intertyper.js');
+load('analyzer.js');
+load('jsifier.js');
+load('runtime.js');
+eval(preprocess(read('library.js'), CONSTANTS));
+
+// Sanity checks
 
 assert(!(USE_TYPED_ARRAYS && SAFE_HEAP));
+
+//===============================
+// Main
+//===============================
 
 // Read llvm
 
@@ -47,6 +49,5 @@ do {
 
 // Do it
 
-eval(preprocess(read('library.js'), CONSTANTS));
 print(JSify(analyzer(intertyper(lines))));
 
