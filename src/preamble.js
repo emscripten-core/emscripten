@@ -278,15 +278,15 @@ function __formatString() {
     next = IHEAP[textIndex+1];
     if (curr == '%'.charCodeAt(0)) {
       // Handle very very simply formatting, namely only %.X[f|d|u|etc.]
-      var limit = -1;
+      var precision = -1;
       if (next == '.'.charCodeAt(0)) {
         textIndex++;
-        limit = 0;
+        precision = 0;
         while(1) {
-          var limitChr = IHEAP[textIndex+1];
-          if (!(limitChr >= '0'.charCodeAt(0) && limitChr <= '9'.charCodeAt(0))) break;
-          limit *= 10;
-          limit += limitChr - '0'.charCodeAt(0);
+          var precisionChr = IHEAP[textIndex+1];
+          if (!(precisionChr >= '0'.charCodeAt(0) && precisionChr <= '9'.charCodeAt(0))) break;
+          precision *= 10;
+          precision += precisionChr - '0'.charCodeAt(0);
           textIndex++;
         }
         next = IHEAP[textIndex+1];
@@ -310,14 +310,20 @@ function __formatString() {
         } else {
           argText = String(+currArg); // +: boolean=>int
         }
-        if (limit >= 0) {
-          var dotIndex = argText.indexOf('.');
-          if (dotIndex == -1 && next == 'f'.charCodeAt(0)) {
-            dotIndex = argText.length;
-            argText += '.';
+        if (precision >= 0) {
+          if (isFloatArg(next)) {
+            var dotIndex = argText.indexOf('.');
+            if (dotIndex == -1 && next == 'f'.charCodeAt(0)) {
+              dotIndex = argText.length;
+              argText += '.';
+            }
+            argText += '00000000000'; // padding
+            argText = argText.substr(0, dotIndex+1+precision);
+          } else {
+            while (argText.length < precision) {
+              argText = '0' + argText;
+            }
           }
-          argText += '00000000000'; // padding
-          argText = argText.substr(0, dotIndex+1+limit);
         }
         argText.split('').forEach(function(chr) {
           ret.push(chr.charCodeAt(0));
