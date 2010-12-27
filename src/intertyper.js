@@ -6,7 +6,8 @@ var LLVM_STYLE = null;
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
-                'weak_odr', 'externally_visible', 'dllimport', 'dllexport')
+                'weak_odr', 'externally_visible', 'dllimport', 'dllexport'),
+  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10')
 };
 
 //! @param parseFunctions We parse functions only on later passes, since we do not
@@ -66,7 +67,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         if (!parseFunctions && /^}.*/.test(line)) {
           inFunction = false;
           if (!parseFunctions) {
-            var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0] }, true))[0];
+            var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true))[0];
             unparsedFunctions.push({
               intertype: 'unparsedFunction',
               // We need this early, to know basic function info - ident, params, varargs
@@ -384,7 +385,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   funcHeader = substrate.addActor('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
-        return !(token.text in LLVM.LINKAGES || token.text in set('noalias', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'inlinehint', '{', 'fastcc'));
+        return !(token.text in LLVM.LINKAGES || token.text in set('noalias', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'inlinehint', '{') || token.text in LLVM.CALLING_CONVENTIONS);
       });
       var ret = {
         intertype: 'function',
@@ -515,7 +516,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.tokens.splice(0, 1);
       }
       assertEq(item.tokens[0].text, 'call');
-      while (['signext', 'zeroext', 'fastcc', 'noalias'].indexOf(item.tokens[1].text) != -1) {
+      while (['signext', 'zeroext', 'noalias'].indexOf(item.tokens[1].text) != -1 || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
         item.tokens.splice(1, 1);
       }
       item.type = item.tokens[1].text;
@@ -557,7 +558,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       item.intertype = 'invoke';
       item.functionType = '';
-      cleanOutTokens(['fastcc'], item.tokens, 1);
+      cleanOutTokens(keys(LLVM.CALLING_CONVENTIONS), item.tokens, 1);
       while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1) {
         item.functionType += item.tokens[2].text;
         item.tokens.splice(2, 1);
