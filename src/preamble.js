@@ -107,10 +107,6 @@ function assert(condition, text) {
   }
 }
 
-function Pointer_niceify(ptr) {
-  return { slab: IHEAP, pos: ptr };
-}
-
 // Creates a pointer for a certain slab and a certain address in that slab.
 // If just a slab is given, will allocate room for it and copy it there. In
 // other words, do whatever is necessary in order to return a pointer, that
@@ -374,16 +370,16 @@ function _atoi(s) {
 function _llvm_memcpy_i32(dest, src, num, idunno) {
   var curr;
   for (var i = 0; i < num; i++) {
+#if USE_TYPED_ARRAYS
+    // TODO: optimize somehow - this is slower than without typed arrays
+    IHEAP[dest + i] = IHEAP[src + i];
+    FHEAP[dest + i] = FHEAP[src + i];
+#else
     curr = HEAP[src + i] || 0; // memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
 #if SAFE_HEAP
     SAFE_HEAP_STORE(dest + i, curr, null);
 #else
     HEAP[dest + i] = curr;
-#endif
-#if USE_TYPED_ARRAYS
-    // TODO: optimize somehow - this is slower than without typed arrays
-    IHEAP[dest + i] = IHEAP[src + i];
-    FHEAP[dest + i] = FHEAP[src + i];
 #endif
 #endif
   }
