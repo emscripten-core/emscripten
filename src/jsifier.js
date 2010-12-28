@@ -178,9 +178,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
             return handleSegment(segment[2].item.tokens.slice(0, -2));
           } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
             return finalizeLLVMFunctionCall(parseLLVMFunctionCall(segment));
-          } else if (segment[1].text == 'add') {
-            var subSegments = splitTokenList(segment[2].item.tokens);
-            return '(' + handleSegment(subSegments[0]) + ' + ' + handleSegment(subSegments[1]) + ')';
           } else if (segment[1].type == '{') {
             // struct
             var type = segment[0].text;
@@ -244,7 +241,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         if (typeof constant === 'object') {
           // This is a flattened object. We need to find its idents, so they can be assigned to later
           constant.forEach(function(value, i) {
-            if (value[0] in set('_', '(')) { // ident, or expression containing an ident
+            if (value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW') { // ident, or expression containing an ident
               ret.push({
                 intertype: 'GlobalVariablePostSet',
                 JS: 'IHEAP[' + item.ident + '+' + i + '] = ' + value + ';',
@@ -858,7 +855,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       case 'inttoptr':
       case 'ptrtoint':
         return finalizeLLVMParameter(item.params[0]);
-      case 'icmp': case 'mul': case 'zext': // TODO: Other mathops
+      case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div':
         var temp = {
           op: item.intertype,
           variant: item.variant,
@@ -878,8 +875,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   // From parseLLVMSegment
   function finalizeLLVMParameter(param) {
-    if (isNumber(param) || typeof param === 'string') {
+    if (isNumber(param)) {
       return param;
+    } else if (typeof param === 'string') {
+      return toNiceIdentCarefully(param);
     } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return finalizeLLVMFunctionCall(param);
     } else if (param.intertype == 'value') {

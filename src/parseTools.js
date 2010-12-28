@@ -60,6 +60,18 @@ function toNiceIdent(ident) {
   return ident.replace('%', '$').replace(/["\\ \.@:<>,\*\[\]-]/g, '_');
 }
 
+// Kind of a hack. In some cases we have strings that we do not want
+// to |toNiceIdent|, as they are the output of previous processing. We
+// should refactor everything into an object, with an explicit flag
+// saying what has been |toNiceIdent|ed. Until then, this will detect
+// simple idents that are in need of |toNiceIdent|ation. Or, we should
+// ensure that processed strings never start with %,@, e.g. by always
+// enclosing them in ().
+function toNiceIdentCarefully(ident) {
+  if (ident[0] == '%' || ident[0] == '@') ident = toNiceIdent(ident);
+  return ident;
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -161,6 +173,7 @@ function findTokenText(item, text) {
 // Splits a list of tokens separated by commas. For example, a list of arguments in a function call
 function splitTokenList(tokens) {
   if (tokens.length == 0) return [];
+  if (!tokens.slice) tokens = tokens.tokens;
   if (tokens.slice(-1)[0].text != ',') tokens.push({text:','});
   var ret = [];
   var seg = [];
@@ -318,7 +331,7 @@ function cleanSegment(segment) {
   return segment;
 }
 
-PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext');
+PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext', 'sub', 'add', 'div');
 
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)
