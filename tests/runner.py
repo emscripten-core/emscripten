@@ -402,6 +402,17 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*4*wowie*too*76*5*(null)*/* a comment */*// another', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
 
+    def test_mainenv(self):
+        src = '''
+          #include <stdio.h>
+          int main(int argc, char **argv, char **envp)
+          {
+            printf("*%p*\\n", envp);
+            return 0;
+          }
+        '''
+        self.do_test(src, '*0x0*')
+
     def test_funcs(self):
         src = '''
           #include <stdio.h>

@@ -26,7 +26,7 @@ function run(args) {
   __globalConstructor__();
 
   if (Module['_main']) {
-    _main(argc, argv);
+    _main(argc, argv, 0);
     __shutdownRuntime__();
   }
 }
