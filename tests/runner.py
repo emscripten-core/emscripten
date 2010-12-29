@@ -385,6 +385,9 @@ if 'benchmark' not in sys.argv:
 
           int main(int argc, char **argv)
           {
+            int x = 5, y = 9, magic = 7; // fool compiler with magic
+            memmove(&x, &y, magic-7); // 0 should not crash us
+
             printf("*%d\\n", argc);
             puts(argv[1]);
             puts(argv[2]);

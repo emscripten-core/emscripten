@@ -388,6 +388,7 @@ _memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_p0i8_p0i8
 
 function _llvm_memmove_i32(dest, src, num, idunno) {
   // not optimized!
+  if (num === 0) return; // will confuse malloc if 0
   var tmp = _malloc(num);
   _memcpy(tmp, src, num);
   _memcpy(dest, tmp, num);
