@@ -392,10 +392,12 @@ if 'benchmark' not in sys.argv:
             const char *foolingthecompiler = "\\rabcd";
             printf("%d\\n", strlen(foolingthecompiler)); // Tests parsing /0D in llvm - should not be a 0 (end string) then a D!
             printf("%s\\n", NULL); // Should print '(null)', not the string at address 0, which is a real address for us!
+            printf("/* a comment */\\n"); // Should not break the generated code!
+            printf("// another\\n"); // Should not break the generated code!
             return 0;
           }
         '''
-        self.do_test(src, '*4*wowie*too*76*5*(null)*', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
+        self.do_test(src, '*4*wowie*too*76*5*(null)*/* a comment */*// another', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
 
     def test_funcs(self):
         src = '''

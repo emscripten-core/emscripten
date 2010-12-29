@@ -161,7 +161,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       return makeEmptyStruct(type);
     } else if (value.text && value.text[0] == '"') {
       value.text = value.text.substr(1, value.text.length-2);
-      return JSON.stringify(parseLLVMString(value.text)) + ' /* ' + value.text + '*/';
+      return JSON.stringify(parseLLVMString(value.text)) +
+             ' /* ' + value.text.replace(/\*/g, '_') + ' */'; // make string safe for inclusion in comment
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
