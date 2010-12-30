@@ -153,7 +153,7 @@ if 'benchmark' not in sys.argv:
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None, basename='src.cpp'):
-        print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
+        #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         if main_file is not None and main_file[-2:] == '.c': basename = 'src.c'
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
@@ -1441,24 +1441,28 @@ if 'benchmark' not in sys.argv:
 
 
   # Generate tests for all our compilers
-  def make_test(compiler, llvm_opts, embetter):
-    class TT(T):
-      def setUp(self):
-        global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS
-        COMPILER = compiler['path']
-        QUANTUM_SIZE = compiler['quantum_size']
-        RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
-        GUARD_MEMORY = SAFE_HEAP = 1-embetter
-        LLVM_OPTS = llvm_opts
-        CHECK_OVERFLOWS = 1 - llvm_opts
-        if LLVM_OPTS:
-          self.pick_llvm_opts(3, True)
-
+  def make_test(name, compiler, llvm_opts, embetter):
+    exec('''
+class %s(T):
+  def setUp(self):
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS
+    COMPILER = '%s'
+    QUANTUM_SIZE = %d
+    RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = %d
+    GUARD_MEMORY = SAFE_HEAP = 1-%d
+    LLVM_OPTS = %d
+    CHECK_OVERFLOWS = 1 - %d
+    if LLVM_OPTS:
+      self.pick_llvm_opts(3, True)
+TT = %s
+''' % (fullname, compiler['path'], compiler['quantum_size'], embetter, embetter, llvm_opts, llvm_opts, fullname))
     return TT
+
   for embetter in [0,1]:
     for llvm_opts in [0,1]:
       for name in COMPILERS.keys():
-        exec('T_%s_%d_%d = make_test(COMPILERS["%s"],%d,%d)' % (name, llvm_opts, embetter, name, llvm_opts, embetter))
+        fullname = '%s_%d_%d' % (name, llvm_opts, embetter)
+        exec('%s = make_test("%s", COMPILERS["%s"],%d,%d)' % (fullname, fullname, name, llvm_opts, embetter))
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
 else:
@@ -1548,6 +1552,7 @@ else:
       self.do_benchmark(src, ['5', '64'], open(path_from_root(['tests', 'raytrace_5_64.ppm']), 'r').read())
 
 if __name__ == '__main__':
+  sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
   for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
     print "Checking for existence of", cmd
     assert(os.path.exists(cmd))
