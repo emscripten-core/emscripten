@@ -47,17 +47,18 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ')';
   }
 
-  function makeGetSlab(ptr, type) {
+  function makeGetSlabs(ptr, type, allowMultiple) {
     assert(type);
     if (!USE_TYPED_ARRAYS) {
-      return 'HEAP';
+      return ['HEAP'];
     } else {
       if (type in Runtime.FLOAT_TYPES || type === 'int64') {
-        return 'FHEAP';
+        return ['FHEAP'];
       } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
-        return 'IHEAP';
+        return ['IHEAP'];
       } else {
-        return 'HEAP';
+        assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
+        return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
       }
     }
   }
@@ -85,7 +86,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     if (SAFE_HEAP) {
       return 'SAFE_HEAP_LOAD(' + offset + ', "' + safeQuote(type) + '")';
     } else {
-      return makeGetSlab(ptr, type) + '[' + offset + ']';
+      return makeGetSlabs(ptr, type)[0] + '[' + offset + ']';
     }
   }
 
@@ -111,7 +112,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     if (SAFE_HEAP) {
       return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', "' + safeQuote(type) + '")';
     } else {
-      return makeGetSlab(ptr, type) + '[' + offset + '] = ' + value;
+      return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + '] = ' + value }).join('; ');
     }
   }
 
@@ -851,7 +852,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   function finalizeLLVMFunctionCall(item) {
     switch(item.intertype) {
       case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
-        return makePointer(makeGetSlab(item.ident, item.type), getGetElementPtrIndexes(item), null, item.type);
+        return makePointer(makeGetSlabs(item.ident, item.type)[0], getGetElementPtrIndexes(item), null, item.type);
       case 'bitcast':
       case 'inttoptr':
       case 'ptrtoint':

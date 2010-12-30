@@ -502,7 +502,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } } ];
       var data = parseLLVMFunctionCall(segment);
       item.intertype = 'getelementptr';
-      item.type = '?'; // We need type info to determine this
+      item.type = '*'; // We need type info to determine this - all we know is it's a pointer
       item.params = data.params;
       item.ident = data.ident;
       this.forwardItem(item, 'Reintegrator');

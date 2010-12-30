@@ -352,10 +352,17 @@ function parseLLVMFunctionCall(segment) {
     segment.splice(2, 1); // Remove modifiers
     if (!segment[2]) throw 'Invalid segment!';
   }
+  var intertype = segment[1].text;
+  var type = segment[0].text;
+  if (type === '?') {
+    if (intertype === 'getelementptr') {
+      type = '*'; // a pointer, we can easily say, this is
+    }
+  }
   var ret = {
-    intertype: segment[1].text,
+    intertype: intertype,
     variant: variant,
-    type: segment[0].text,
+    type: type,
     params: parseParamTokens(segment[2].item.tokens)
   };
   ret.ident = toNiceIdent(ret.params[0].ident);
