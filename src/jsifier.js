@@ -72,19 +72,21 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     return getFastValue(offset, '+', pos);
   }
 
-  function makeGetValue(ptr, pos, noNeedFirst, type) {
+  // See makeSetValue
+  function makeGetValue(ptr, pos, type, noNeedFirst) {
     if (isStructType(type)) {
       var typeData = TYPES[type];
       var ret = [];
       for (var i = 0; i < typeData.fields.length; i++) {
-        ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], noNeedFirst, typeData.fields[i]));
+        ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst));
       }
       return '{ ' + ret.join(', ') + ' }';
     }
 
     var offset = calcFastOffset(ptr, pos, noNeedFirst);
     if (SAFE_HEAP) {
-      return 'SAFE_HEAP_LOAD(' + offset + ', "' + safeQuote(type) + '")';
+      if (type !== 'null') type = '"' + safeQuote(type) + '"';
+      return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ')';
     } else {
       return makeGetSlabs(ptr, type)[0] + '[' + offset + ']';
     }
@@ -97,12 +99,22 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     return value;
   }
 
-  function makeSetValue(ptr, pos, value, noNeedFirst, type) {
+  //! @param ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
+  //!            is just an integer, then this is almost redundant, but in general the pointer type
+  //!            may in the future include information about which slab as well. So, for now it is
+  //!            possible to put |0| here, but if a pointer is available, that is more future-proof.
+  //! @param pos The position in that slab - the offset. Added to any offset in the pointer itself.
+  //! @param value The value to set.
+  //! @param type A string defining the type. Used to find the slab (IHEAP, FHEAP, etc.).
+  //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
+  //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
+  //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
+  function makeSetValue(ptr, pos, value, type, noNeedFirst) {
     if (isStructType(type)) {
       var typeData = TYPES[type];
       var ret = [];
       for (var i = 0; i < typeData.fields.length; i++) {
-        ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], noNeedFirst, typeData.fields[i]));
+        ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
       }
       return ret.join('; ');
     }
@@ -115,6 +127,13 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     } else {
       return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + '] = ' + value }).join('; ') + ';';
     }
+  }
+
+  function makeCopyValue(dest, destPos, src, srcPos, type, modifier) {
+    var types = (type !== 'null' || !USE_TYPED_ARRAYS) ? [type] : ['i32', 'double'];
+    return types.map(function(currType) {
+      return makeSetValue(dest, destPos, makeGetValue(src, srcPos, currType) + modifier, currType);
+    }).join(' ');
   }
 
   function makeEmptyStruct(type) {
@@ -530,9 +549,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         break;
       case VAR_EMULATED:
         if (item.pointer.intertype == 'value') {
-          return makeSetValue(item.ident, 0, value, null, item.valueType) + ';';
+          return makeSetValue(item.ident, 0, value, item.valueType) + ';';
         } else {
-          return makeSetValue(0, indexizeFunctions(finalizeLLVMParameter(item.pointer)), value, null, item.valueType) + ';';
+          return makeSetValue(0, indexizeFunctions(finalizeLLVMParameter(item.pointer)), value, item.valueType) + ';';
         }
         break;
       default:
@@ -653,7 +672,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       case VAR_NATIVIZED: {
         return ident; // We have the actual value here
       }
-      case VAR_EMULATED: return makeGetValue(ident, null, null, item.type);
+      case VAR_EMULATED: return makeGetValue(ident, null, item.type);
       default: throw "unknown [load] impl: " + impl;
     }
   });
@@ -954,10 +973,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   // Optimzed intertypes
 
   makeFuncLineActor('fastgetelementptrload', function(item) {
-    return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), true, item.value.valueType) + ';';
+    return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), item.value.valueType, true) + ';';
   });
   makeFuncLineActor('fastgetelementptrstore', function(item) {
-    return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), true, item.type) + ';';
+    return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), item.type, true) + ';';
   });
 
   makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable! Original .ll line: ' + item.lineNum + '";' });

@@ -33,6 +33,7 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
     if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false) { // false can be the result of a mathop comparator
       throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
     }
+    if (type === null) return;
     var history = HEAP_HISTORY[dest];
     if (history === null) return;
     assert(history, 'Must have a history for a safe heap load!'); // Warning - bit fields in C structs cause loads+stores for each store, so
@@ -139,7 +140,7 @@ function Pointer_make(slab, pos, allocator) {
       curr = Runtime.getFunctionIndex(curr);
     }
 
-    {{{ makeSetValue(0, 'ret+i', 'curr', null, 'null') }}}
+    {{{ makeSetValue(0, 'ret+i', 'curr', 'null') }}}
   }
 
   return ret;
@@ -151,7 +152,7 @@ function Pointer_stringify(ptr) {
   var i = 0;
   var t;
   while (1) {
-    t = String.fromCharCode(IHEAP[ptr + i]);
+    t = String.fromCharCode({{{ makeGetValue('ptr', 'i', 'i8') }}});
     if (t == "\0") { break; } else {}
     ret += t;
     i += 1;
@@ -195,14 +196,14 @@ function __initializeRuntime__() {
     var FAST_MEMORY = TOTAL_MEMORY/32;
     IHEAP = FHEAP = HEAP = new Array(FAST_MEMORY);
     for (var i = 0; i < FAST_MEMORY; i++) {
-      HEAP[i] = 0;
+      {{{ makeSetValue(0, 'i', 0, 'null') }}}
     }
   }
 
   var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                            // Also this ensures we leave 0 as an invalid address, 'NULL'
   for (var i = 0; i < base.length; i++) {
-    IHEAP[i] = base[i];
+    {{{ makeSetValue(0, 'i', 'base[i]', 'i8') }}}
   }
 
   Module['HEAP'] = HEAP;
@@ -249,7 +250,11 @@ function __formatString() {
       ret = _arguments[argIndex];
       argIndex++;
     } else {
-      ret = (isFloatArg(type) ? FHEAP : IHEAP)[argIndex];
+      if (isFloatArg(type)) {
+        ret = {{{ makeGetValue(0, 'argIndex', 'double') }}};
+      } else {
+        ret = {{{ makeGetValue(0, 'argIndex', 'i32') }}};
+      }
       argIndex += type === 'l'.charCodeAt(0) ? 8 : 4; // XXX hardcoded native sizes
     }
     return ret;
@@ -258,8 +263,8 @@ function __formatString() {
   var ret = [];
   var curr = -1, next, currArg;
   while (curr) { // Note: should be curr != 0, technically. But this helps catch bugs with undefineds
-    curr = IHEAP[textIndex];
-    next = IHEAP[textIndex+1];
+    curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
+    next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
     if (curr == '%'.charCodeAt(0)) {
       // Handle very very simply formatting, namely only %.X[f|d|u|etc.]
       var precision = -1;
@@ -267,17 +272,17 @@ function __formatString() {
         textIndex++;
         precision = 0;
         while(1) {
-          var precisionChr = IHEAP[textIndex+1];
+          var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
           if (!(precisionChr >= '0'.charCodeAt(0) && precisionChr <= '9'.charCodeAt(0))) break;
           precision *= 10;
           precision += precisionChr - '0'.charCodeAt(0);
           textIndex++;
         }
-        next = IHEAP[textIndex+1];
+        next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
       }
       if (next == 'l'.charCodeAt(0)) {
         textIndex++;
-        next = IHEAP[textIndex+1];
+        next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
       }
       if (isFloatArg(next)) {
         next = 'f'.charCodeAt(0); // no support for 'e'
@@ -334,6 +339,7 @@ function __formatString() {
 // Copies a list of num items on the HEAP into a
 // a normal JavaScript array of numbers
 function Array_copy(ptr, num) {
+  // TODO: In the SAFE_HEAP case, do some reading here, for debugging purposes - currently this is an 'unnoticed read'.
 #if USE_TYPED_ARRAYS
   return Array.prototype.slice.call(IHEAP.slice(ptr, ptr+num)); // Make a normal array out of the typed one
                                                                 // Consider making a typed array here, for speed?
@@ -358,18 +364,9 @@ function _atoi(s) {
 function _llvm_memcpy_i32(dest, src, num, idunno) {
   var curr;
   for (var i = 0; i < num; i++) {
-#if USE_TYPED_ARRAYS
-    // TODO: optimize somehow - this is slower than without typed arrays
-    IHEAP[dest + i] = IHEAP[src + i];
-    FHEAP[dest + i] = FHEAP[src + i];
-#else
-    curr = HEAP[src + i] || 0; // memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
-#if SAFE_HEAP
-    SAFE_HEAP_STORE(dest + i, curr, null);
-#else
-    HEAP[dest + i] = curr;
-#endif
-#endif
+    // TODO: optimize for the typed arrays case
+    // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
+    {{{ makeCopyValue('dest', 'i', 'src', 'i', 'null', ' || 0') }}};
   }
 }
 _memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_p0i8_p0i8_i64 = _llvm_memcpy_i32;
@@ -386,21 +383,14 @@ _memmove = _llvm_memmove_i64 = _llvm_memmove_p0i8_p0i8_i32 = _llvm_memmove_p0i8_
 
 function llvm_memset_i32(ptr, value, num) {
   for (var i = 0; i < num; i++) {
-#if USE_TYPED_ARRAYS
-    IHEAP[ptr+i] = FHEAP[ptr+i] = value;
-#else
-    HEAP[ptr+i] = value;
-#endif
-#if SAFE_HEAP
-    SAFE_HEAP_ACCESS(ptr+i, null, true);
-#endif
+    {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
   }
 }
 _memset = _llvm_memset_p0i8_i64 = _llvm_memset_p0i8_i32 = llvm_memset_i32;
 
 function _strlen(ptr) {
   var i = 0;
-  while (IHEAP[ptr+i]) i++; // Note: should be IHEAP[ptr+i] != 0, technically. But this helps catch bugs with undefineds
+  while ({{{ makeGetValue('ptr', 'i', 'i8') }}}) i++; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
   return i;
 }
 
