@@ -2,7 +2,7 @@
 // specific to Emscripten (and hence not in utility.js).
 
 // Simple #if/else/endif preprocessing for a file. Checks if the
-// ident checked is true in our global. Also replaces some constants
+// ident checked is true in our global. Also replaces some constants.
 function preprocess(text, constants) {
   for (constant in constants) {
     text = text.replace(eval('/' + constant + '/g'), constants[constant]);

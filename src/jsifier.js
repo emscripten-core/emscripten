@@ -110,9 +110,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     value = indexizeFunctions(value);
     var offset = calcFastOffset(ptr, pos, noNeedFirst);
     if (SAFE_HEAP) {
-      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', "' + safeQuote(type) + '")';
+      if (type !== 'null') type = '"' + safeQuote(type) + '"';
+      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ');';
     } else {
-      return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + '] = ' + value }).join('; ');
+      return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + '] = ' + value }).join('; ') + ';';
     }
   }
 
@@ -964,6 +965,15 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   // Final combiner
 
   function finalCombiner(items) {
+    // Does simple 'macro' substitution, using Django-like syntax,
+    // {{{ code }}} will be replaced with |eval(code)|.
+    function processMacros(text) {
+      return text.replace(/{{{[^}]+}}}/g, function(str) {
+        str = str.substr(3, str.length-6);
+        return eval(str).toString();
+      });
+    }
+
     var ret = [];
     if (!functionsOnly) {
       ret = ret.concat(items.filter(function(item) { return item.intertype == 'type' }));
@@ -982,8 +992,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), CONSTANTS);
     var globalVars = items.filter(function(item) { return item.intertype == 'GlobalVariable' }).map(function(item) { return item.JS }).join('\n');
     var globalVarsPostSets = items.filter(function(item) { return item.intertype == 'GlobalVariablePostSet' }).map(function(item) { return item.JS }).join('\n');
-    return read('shell.js').replace('{{BODY}}', indentify(body, 2))
-                           .replace('{{GLOBAL_VARS}}', indentify(globalVars+'\n\n\n'+globalVarsPostSets, 4));
+    return processMacros(
+      read('shell.js').replace('{{BODY}}', indentify(body, 2))
+                      .replace('{{GLOBAL_VARS}}', indentify(globalVars+'\n\n\n'+globalVarsPostSets, 4))
+    );
   }
 
   // Data

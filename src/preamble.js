@@ -138,21 +138,8 @@ function Pointer_make(slab, pos, allocator) {
     if (typeof curr === 'function') {
       curr = Runtime.getFunctionIndex(curr);
     }
-#if SAFE_HEAP
-    SAFE_HEAP_STORE(ret + i, curr, null);
-#else
-#if USE_TYPED_ARRAYS
-    // TODO: Check - also in non-typedarray case - for functions, and if so add |.__index__|
-    if (typeof curr === 'number' || typeof curr === 'boolean') {
-      IHEAP[ret + i] = curr; // TODO: optimize. Can easily detect floats, but 1.0 might look like an int...
-      FHEAP[ret + i] = curr;
-    } else {
-      HEAP[ret + i] = curr;
-    }
-#else
-    HEAP[ret + i] = curr;
-#endif
-#endif
+
+    {{{ makeSetValue(0, 'ret+i', 'curr', null, 'null') }}}
   }
 
   return ret;
