@@ -184,7 +184,7 @@ var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
 
 // Mangled |new| and |free| (various manglings, for int, long params; new and new[], etc.
-var _malloc, _free, __Znwj, __Znaj, __Znam, __Znwm, __ZdlPv, __ZdaPv;
+var _malloc, _calloc, _free, __Znwj, __Znaj, __Znam, __Znwm, __ZdlPv, __ZdaPv;
 
 var HAS_TYPED_ARRAYS = false;
 var TOTAL_MEMORY = 50*1024*1024;
@@ -192,7 +192,8 @@ var TOTAL_MEMORY = 50*1024*1024;
 function __initializeRuntime__() {
   // If we don't have malloc/free implemented, use a simple implementation.
   Module['_malloc'] = _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
-  Module['_free']   = _free = __ZdlPv = __ZdaPv =                   Module['_free']   ? Module['_free']   : function() { };
+  Module['_calloc'] = _calloc                                     = Module['_calloc'] ? Module['_calloc'] : function(n, s) { return _malloc(n*s) };
+  Module['_free']   = _free = __ZdlPv = __ZdaPv                   = Module['_free']   ? Module['_free']   : function() { };
 
 #if USE_TYPED_ARRAYS
   // TODO: Remove one of the 3 heaps!
