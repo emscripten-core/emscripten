@@ -27,7 +27,6 @@ load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
 load('runtime.js');
-eval(preprocess(read('library.js'), CONSTANTS));
 
 // Sanity checks
 

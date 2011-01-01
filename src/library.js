@@ -92,8 +92,8 @@ var Library = {
     var text = __formatString(-src, ptr); // |-|src tells formatstring to use C-style params (typically they are from varargs)
     var i;
     for (i = 0; i < num; i++) {
-      IHEAP[dst+i] = IHEAP[text+i];
-      if (IHEAP[dst+i] == 0) break;
+      {{{ makeCopyValue('dst', 'i', 'text', 'i', 'i8') }}}
+      if ({{{ makeGetValue('dst', 'i', 'i8') }}} == 0) break;
     }
     return i; // Actually, should return how many *would* have been written, if the |num| had not stopped us.
   },
@@ -154,16 +154,16 @@ var Library = {
     var chr;
     var ret = 0;
     while(1) {
-      chr = IHEAP[str];
+      chr = {{{ makeGetValue('str', 0, 'i8') }}};
       if (!_isdigit(chr)) break;
       ret = ret*10 + chr - '0'.charCodeAt(0);
       str++;
     }
-    if (IHEAP[str] == '.'.charCodeAt(0)) {
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
       str++;
       var mul=1/10;
       while(1) {
-        chr = IHEAP[str];
+        chr = {{{ makeGetValue('str', 0, 'i8') }}};
         if (!_isdigit(chr)) break;
         ret += mul*(chr - '0'.charCodeAt(0));
         mul /= 10;
@@ -171,10 +171,7 @@ var Library = {
       }
     }
     if (endptr) {
-      IHEAP[endptr] = str;
-#if SAFE_HEAP
-      SAFE_HEAP_ACCESS(endptr, null, true);
-#endif
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
     }
     return ret;
   },
@@ -219,24 +216,17 @@ var Library = {
   strcpy: function(pdest, psrc) {
     var i = 0;
     do {
-#if SAFE_HEAP
-      SAFE_HEAP_STORE(pdest+i, IHEAP[psrc+i], null);
-#else
-      IHEAP[pdest+i] = IHEAP[psrc+i];
-#endif
+      {{{ makeCopyValue('pdest', 'i', 'psrc', 'i', 'i8') }}}
       i ++;
-    } while (IHEAP[psrc+i-1] != 0);
+    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
   },
 
   strncpy: function(pdest, psrc, num) {
-    var padding = false;
+    var padding = false, curr;
     for (var i = 0; i < num; i++) {
-#if SAFE_HEAP
-      SAFE_HEAP_STORE(pdest+i, padding ? 0 : IHEAP[psrc+i], null);
-#else
-      IHEAP[pdest+i] = padding ? 0 : IHEAP[psrc+i];
-#endif
-      padding = padding || IHEAP[psrc+i] == 0;
+      curr = padding ? 0 : {{{ makeGetValue('psrc', 'i', 'i8') }}};
+      {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
+      padding = padding || {{{ makeGetValue('psrc', 'i', 'i8') }}} == 0;
     }
   },
 
@@ -244,12 +234,9 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     do {
-      IHEAP[pdest+len+i] = IHEAP[psrc+i];
-#if SAFE_HEAP
-      SAFE_HEAP_ACCESS(pdest+len+i, 'i8', true);
-#endif
+      {{{ makeCopyValue('pdest', 'len+i', 'psrc', 'i', 'i8') }}}
       i ++;
-    } while (IHEAP[psrc+i-1] != 0);
+    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
     return pdest;
   },
 
@@ -257,14 +244,11 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     while(1) {
-      IHEAP[pdest+len+i] = IHEAP[psrc+i];
-#if SAFE_HEAP
-      SAFE_HEAP_ACCESS(pdest+len+i, 'i8', true);
-#endif
-      if (IHEAP[pdest+len+i] == 0) break;
+      {{{ makeCopyValue('pdest', 'len+i', 'psrc', 'i', 'i8') }}}
+      if ({{{ makeGetValue('pdest', 'len+i', 'i8') }}} == 0) break;
       i ++;
       if (i == num) {
-        IHEAP[pdest+len+i] = 0;
+        {{{ makeSetValue('pdest', 'len+i', 0, 'i8') }}}
         break;
       }
     }
@@ -279,8 +263,8 @@ var Library = {
   strcmp: function(px, py) {
     var i = 0;
     while (true) {
-      var x = IHEAP[px+i];
-      var y = IHEAP[py+i];
+      var x = {{{ makeGetValue('px', 'i', 'i8') }}};
+      var y = {{{ makeGetValue('py', 'i', 'i8') }}};
       if (x == y && x == 0) return 0;
       if (x == 0) return -1;
       if (y == 0) return 1;
@@ -296,8 +280,8 @@ var Library = {
   strncmp: function(px, py, n) {
     var i = 0;
     while (i < n) {
-      var x = IHEAP[px+i];
-      var y = IHEAP[py+i];
+      var x = {{{ makeGetValue('px', 'i', 'i8') }}};
+      var y = {{{ makeGetValue('py', 'i', 'i8') }}};
       if (x == y && x == 0) return 0;
       if (x == 0) return -1;
       if (y == 0) return 1;
@@ -313,8 +297,8 @@ var Library = {
 
   memcmp: function(p1, p2, num) {
     for (var i = 0; i < num; i++) {
-      var v1 = IHEAP[p1+i];
-      var v2 = IHEAP[p2+i];
+      var v1 = {{{ makeGetValue('p1', 'i', 'i8') }}};
+      var v2 = {{{ makeGetValue('p2', 'i', 'i8') }}};
       if (v1 != v2) return v1 > v2 ? 1 : -1;
     }
     return 0;
@@ -323,7 +307,7 @@ var Library = {
   memchr: function(ptr, chr, num) {
     chr = unSign(chr);
     for (var i = 0; i < num; i++) {
-      if (IHEAP[ptr] == chr) return ptr;
+      if ({{{ makeGetValue('ptr', 0, 'i8') }}} == chr) return ptr;
       ptr++;
     }
     return 0;
@@ -340,7 +324,7 @@ var Library = {
     ptr--;
     do {
       ptr++;
-      var val = IHEAP[ptr];
+      var val = {{{ makeGetValue('ptr', 0, 'i8') }}};
       if (val == chr) return ptr;
     } while (val);
     return 0;
@@ -349,7 +333,7 @@ var Library = {
   strrchr: function(ptr, chr) {
     var ptr2 = ptr + Pointer_stringify(ptr).length; // TODO: use strlen, but need dependencies system
     do {
-      if (IHEAP[ptr2] == chr) return ptr2;
+      if ({{{ makeGetValue('ptr2', 0, 'i8') }}} == chr) return ptr2;
       ptr2--;
     } while (ptr2 >= ptr);
     return 0;
@@ -361,8 +345,8 @@ var Library = {
 
   strpbrk: function(ptr1, ptr2) {
     var searchSet = Runtime.set.apply(null, String_copy(ptr2));
-    while (IHEAP[ptr1]) {
-      if (IHEAP[ptr1] in searchSet) return ptr1;
+    while ({{{ makeGetValue('ptr1', 0, 'i8') }}}) {
+      if ({{{ makeGetValue('ptr1', 0, 'i8') }}} in searchSet) return ptr1;
       ptr1++;
     }
     return 0;
@@ -448,10 +432,7 @@ var Library = {
   // LLVM specifics
 
   llvm_va_copy: function(ppdest, ppsrc) {
-    IHEAP[ppdest] = IHEAP[ppsrc];
-#if SAFE_HEAP
-    SAFE_HEAP_ACCESS(ppdest, null, true);
-#endif
+    {{{ makeCopyValue('ppdest', 0, 'ppsrc', 0, 'null') }}}
     /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
     var psrc = IHEAP[ppsrc]-1;
     var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values
@@ -582,11 +563,8 @@ var Library = {
   llvm_pow_f32: 'Math.pow',
 
   modf: function(x, intpart) {
-    FHEAP[intpart] = Math.floor(x);
-#if SAFE_HEAP
-    SAFE_HEAP_ACCESS(intpart, 'f32', true); // XXX f64?
-#endif
-    return x - FHEAP[intpart];
+    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}}
+    return x - {{{ makeGetValue('intpart', 0, 'double') }}};
   },
 
   frexp: function(x, exp_addr) {
@@ -597,10 +575,7 @@ var Library = {
       if (exp_ === raw_exp) exp_ += 1;
       sig = x/Math.pow(2, exp_);
     }
-    IHEAP[exp_addr] = exp_;
-#if SAFE_HEAP
-    SAFE_HEAP_ACCESS(exp_addr, 'i32', true);
-#endif
+    {{{ makeSetValue('exp_addr', 0, 'exp_', 'i32') }}}
     return sig;
   },
 
@@ -667,7 +642,7 @@ var Library = {
   time: function(ptr) {
     var ret = Math.floor(Date.now()/1000);
     if (ptr) {
-      IHEAP[ptr] = ret;
+      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}}
     }
     return ret;
   },
@@ -676,12 +651,8 @@ var Library = {
     // %struct.timeval = type { i32, i32 }
     var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
     var now = Date.now();
-    IHEAP[ptr + indexes[0]] = Math.floor(now/1000); // seconds
-    IHEAP[ptr + indexes[1]] = Math.floor((now-1000*Math.floor(now/1000))*1000); // microseconds
-#if SAFE_HEAP
-    SAFE_HEAP_ACCESS(ptr + indexes[0], 'i32', true);
-    SAFE_HEAP_ACCESS(ptr + indexes[1], 'i32', true);
-#endif
+    {{{ makeSetValue('ptr', 'indexes[0]', 'Math.floor(now/1000)', 'i32') }}} // seconds
+    {{{ makeSetValue('ptr', 'indexes[1]', 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}} // microseconds
     return 0;
   },
 
@@ -730,10 +701,6 @@ var Library = {
     var me = arguments.callee;
     if (!me.ret) {
       me.ret = Pointer_make([Pointer_make(intArrayFromString('.'), null)], null); // just decimal point, for now
-#if SAFE_HEAP
-      SAFE_HEAP_ACCESS(me.ret, 'i32', true);
-      SAFE_HEAP_ACCESS(IHEAP[me.ret], 'i32', true);
-#endif
     }
     return me.ret;
   },
@@ -758,7 +725,4 @@ var Library = {
     return me.ret;
   }
 };
-
-load('library_sdl.js');
-load('library_gl.js');
 

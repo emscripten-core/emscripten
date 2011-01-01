@@ -1,7 +1,17 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
+// Main function
 function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVariables) {
+  // Does simple 'macro' substitution, using Django-like syntax,
+  // {{{ code }}} will be replaced with |eval(code)|.
+  function processMacros(text) {
+    return text.replace(/{{{[^}]+}}}/g, function(str) {
+      str = str.substr(3, str.length-6);
+      return eval(str).toString();
+    });
+  }
+
   substrate = new Substrate('JSifyer');
 
   var TYPES = functionsOnly ? givenTypes : data.types;
@@ -24,6 +34,14 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1), TYPES), true, TYPES, FUNCTIONS, GLOBAL_VARIABLES);
     delete func.lines; // clean up memory as much as possible
   }
+
+  // Load library
+
+  for (suffix in set('', '_sdl', '_gl')) {
+    eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
+  }
+
+  // Actors
 
   // type
   substrate.addActor('Type', {
@@ -132,7 +150,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   function makeCopyValue(dest, destPos, src, srcPos, type, modifier) {
     var types = (type !== 'null' || !USE_TYPED_ARRAYS) ? [type] : ['i32', 'double'];
     return types.map(function(currType) {
-      return makeSetValue(dest, destPos, makeGetValue(src, srcPos, currType) + modifier, currType);
+      return makeSetValue(dest, destPos, makeGetValue(src, srcPos, currType) + (modifier || ''), currType);
     }).join(' ');
   }
 
@@ -984,15 +1002,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   // Final combiner
 
   function finalCombiner(items) {
-    // Does simple 'macro' substitution, using Django-like syntax,
-    // {{{ code }}} will be replaced with |eval(code)|.
-    function processMacros(text) {
-      return text.replace(/{{{[^}]+}}}/g, function(str) {
-        str = str.substr(3, str.length-6);
-        return eval(str).toString();
-      });
-    }
-
     var ret = [];
     if (!functionsOnly) {
       ret = ret.concat(items.filter(function(item) { return item.intertype == 'type' }));
