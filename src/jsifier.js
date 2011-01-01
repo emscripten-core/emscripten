@@ -37,6 +37,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   // Load library
 
+  // TODO: optimize this so it isn't done over and over for each unparsedFunction
   for (suffix in set('', '_sdl', '_gl')) {
     eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
   }
