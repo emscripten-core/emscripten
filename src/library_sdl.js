@@ -11,6 +11,7 @@ mergeInto(Library, {
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
     var ret = _malloc(5*QUANTUM_SIZE);
+    // TODO: Use macros like in library.js
     IHEAP[ret] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE*2] = 0; // TODO
@@ -53,11 +54,13 @@ mergeInto(Library, {
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
+      // TODO: Use macros like in library.js
       IHEAP[surfData.buffer+i] = surfData.image.data[i];
     }
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
+    // TODO: Use macros like in library.js
     IHEAP[surf + 5*QUANTUM_SIZE] = surfData.buffer;
   },
 
@@ -66,6 +69,7 @@ mergeInto(Library, {
     // Copy pixel data to image
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
+      // TODO: Use macros like in library.js
       surfData.image.data[i] = IHEAP[surfData.buffer+i];
     }
     for (var i = 0; i < num/4; i++) {
