@@ -28,10 +28,6 @@ load('analyzer.js');
 load('jsifier.js');
 load('runtime.js');
 
-// Sanity checks
-
-assert(!(USE_TYPED_ARRAYS && SAFE_HEAP));
-
 //===============================
 // Main
 //===============================

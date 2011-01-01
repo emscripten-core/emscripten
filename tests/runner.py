@@ -1448,14 +1448,17 @@ class %s(T):
     global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS
     COMPILER = '%s'
     QUANTUM_SIZE = %d
-    RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = %d
-    GUARD_MEMORY = SAFE_HEAP = 1-%d
-    LLVM_OPTS = %d
-    CHECK_OVERFLOWS = 1 - %d
+    llvm_opts = %d
+    embetter = %d
+    RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
+    GUARD_MEMORY = 1-embetter
+    SAFE_HEAP = 1 - (embetter and llvm_opts)
+    LLVM_OPTS = llvm_opts
+    CHECK_OVERFLOWS = 1-llvm_opts
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
 TT = %s
-''' % (fullname, compiler['path'], compiler['quantum_size'], embetter, embetter, llvm_opts, llvm_opts, fullname))
+''' % (fullname, compiler['path'], compiler['quantum_size'], llvm_opts, embetter, fullname))
     return TT
 
   for embetter in [0,1]:

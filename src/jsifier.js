@@ -149,10 +149,13 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   }
 
   function makeCopyValue(dest, destPos, src, srcPos, type, modifier) {
-    var types = (type !== 'null' || !USE_TYPED_ARRAYS) ? [type] : ['i32', 'double'];
-    return types.map(function(currType) {
-      return makeSetValue(dest, destPos, makeGetValue(src, srcPos, currType) + (modifier || ''), currType);
-    }).join(' ');
+    if (type !== 'null') {
+      return makeSetValue(dest, destPos, makeGetValue(src, srcPos, type) + (modifier || ''), type);
+    }
+    // Null is special-cased: We copy over all heaps
+    return 'IHEAP[' + dest + '+' + destPos + '] = IHEAP[' + src + '+' + srcPos + ']; ' +
+           'FHEAP[' + dest + '+' + destPos + '] = FHEAP[' + src + '+' + srcPos + ']; ' +
+           (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + dest + ' + ' + destPos + ', null, true)' : '');
   }
 
   function makeEmptyStruct(type) {

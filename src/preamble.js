@@ -24,6 +24,9 @@ function SAFE_HEAP_CLEAR(dest) {
 var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 function SAFE_HEAP_ACCESS(dest, type, store) {
+#if SAFE_HEAP_LOG
+  //if (dest === A_NUMBER) print (new Error().stack); // Something like this may be useful, in debugging
+#endif
   if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
   // You cannot, however, do the nonportable act of store X and load Y!
@@ -36,8 +39,8 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
     if (type === null) return;
     var history = HEAP_HISTORY[dest];
     if (history === null) return;
-    assert(history, 'Must have a history for a safe heap load!'); // Warning - bit fields in C structs cause loads+stores for each store, so
-                                                                  //           they will show up here...
+    assert(history, 'Must have a history for a safe heap load! ' + dest + ':' + type); // Warning - bit fields in C structs cause loads+stores for each store, so
+                                                                                       //           they will show up here...
 //    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
 //    if (history[0].type !== type) {
     if (history !== type) {
@@ -53,6 +56,9 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
   }
 }
 function SAFE_HEAP_STORE(dest, value, type) {
+#if SAFE_HEAP_LOG
+  print('store: ' + dest + ' [' + type + '] |' + value + '|');
+#endif
   if (!value && value !== 0 && value !== false) { // false can be the result of a mathop comparator
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
@@ -61,11 +67,25 @@ function SAFE_HEAP_STORE(dest, value, type) {
     print((new Error()).stack);
     throw "Bad store!" + dest;
   }
-  HEAP[dest] = value;
+  if (type === null) {
+    IHEAP[dest] = value;
+    FHEAP[dest] = value;
+  } else if (type in Runtime.FLOAT_TYPES) {
+    FHEAP[dest] = value;
+  } else {
+    IHEAP[dest] = value;
+  }
 }
 function SAFE_HEAP_LOAD(dest, type) {
+#if SAFE_HEAP_LOG
+  print('load : ' + dest + ' [' + type + '] |' + JSON.stringify([IHEAP[dest],FHEAP[dest]]) + '|');
+#endif
   SAFE_HEAP_ACCESS(dest, type);
-  return HEAP[dest];
+  if (type in Runtime.FLOAT_TYPES) {
+    return FHEAP[dest];
+  } else {
+    return IHEAP[dest];
+  }
 }
 function __Z16PROTECT_HEAPADDRPv(dest) {
   HEAP_WATCHED[dest] = true;
@@ -196,12 +216,12 @@ function __initializeRuntime__() {
     var FAST_MEMORY = TOTAL_MEMORY/32;
     IHEAP = FHEAP = HEAP = new Array(FAST_MEMORY);
     for (var i = 0; i < FAST_MEMORY; i++) {
-      {{{ makeSetValue(0, 'i', 0, 'null') }}}
+      IHEAP[i] = FHEAP[i] = 0; // We do *not* use {{{ makeSetValue(0, 'i', 0, 'null') }}} here, since this is done just to optimize runtime speed
     }
   }
 
-  var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
-                                           // Also this ensures we leave 0 as an invalid address, 'NULL'
+  var base = intArrayFromString('(null)').concat(0); // So printing %s of NULL gives '(null)'
+                                                     // Also this ensures we leave 0 as an invalid address, 'NULL'
   for (var i = 0; i < base.length; i++) {
     {{{ makeSetValue(0, 'i', 'base[i]', 'i8') }}}
   }
@@ -261,9 +281,10 @@ function __formatString() {
   }
 
   var ret = [];
-  var curr = -1, next, currArg;
-  while (curr) { // Note: should be curr != 0, technically. But this helps catch bugs with undefineds
+  var curr, next, currArg;
+  while(1) {
     curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
+    if (curr === 0) break;
     next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
     if (curr == '%'.charCodeAt(0)) {
       // Handle very very simply formatting, namely only %.X[f|d|u|etc.]
@@ -333,7 +354,7 @@ function __formatString() {
       textIndex += 1;
     }
   }
-  return Pointer_make(ret, 0, ALLOC_STACK); // NB: Stored on the stack
+  return Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
 }
 
 // Copies a list of num items on the HEAP into a

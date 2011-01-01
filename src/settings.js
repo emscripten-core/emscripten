@@ -31,8 +31,9 @@ USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses
+SAFE_HEAP_LOG = 0; // Print out every single heap read and write (LOTS of output)
 LABEL_DEBUG = 0; // Print out labels and functions as we enter them
-EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code
+EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
                      // There is currently not much to do to handle overflows if they occur.
