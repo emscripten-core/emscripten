@@ -742,36 +742,46 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         ident2 = makeUnSign(ident2, type);
       }
     }
-    function checkOverflow(text) {
+    var bits = null;
+    if (item.type[0] === 'i') {
+      bits = parseInt(item.type.substr(1));
+    }
+    function handleOverflow(text) {
+      if (!bits) return text;
+      if (CORRECT_OVERFLOWS && bits <= 32) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
       if (!CHECK_OVERFLOWS) return text;
-      if (item.type[0] !== 'i') return text;
-      var bits = item.type.substr(1);
       return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
     }
     switch (op) {
-      case 'add': return checkOverflow(ident1 + ' + ' + ident2);
-      case 'sub': return checkOverflow(ident1 + ' - ' + ident2);
-      case 'sdiv': case 'udiv': return checkOverflow('Math.floor(' + ident1 + ' / ' + ident2 + ')');
-      case 'mul': return checkOverflow(ident1 + ' * ' + ident2);
+      // basic integer ops
+      case 'add': return handleOverflow(ident1 + ' + ' + ident2);
+      case 'sub': return handleOverflow(ident1 + ' - ' + ident2);
+      case 'sdiv': case 'udiv': return 'Math.floor(' + ident1 + ' / ' + ident2 + ')';
+      case 'mul': return handleOverflow(ident1 + ' * ' + ident2);
       case 'urem': case 'srem': return 'Math.floor(' + ident1 + ' % ' + ident2 + ')';
       case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
       case 'and': return ident1 + ' & ' + ident2;
       case 'xor': return ident1 + ' ^ ' + ident2;
-      case 'shl': return ident1 + ' << ' + ident2;
+      case 'shl': return handleOverflow(ident1 + ' << ' + ident2);
       case 'ashr': return ident1 + ' >> ' + ident2;
       case 'lshr': return ident1 + ' >>> ' + ident2;
+      // basic float ops
       case 'fadd': return ident1 + ' + ' + ident2;
       case 'fsub': return ident1 + ' - ' + ident2;
       case 'fdiv': return ident1 + ' / ' + ident2;
       case 'fmul': return ident1 + ' * ' + ident2;
       case 'uitofp': case 'sitofp': return ident1;
       case 'fptoui': case 'fptosi': return 'Math.floor(' + ident1 + ')';
+
+      // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
+      //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
       case 'icmp': {
         switch (variant) {
           case 'uge': case 'sge': return ident1 + ' >= ' + ident2;
           case 'ule': case 'sle': return ident1 + ' <= ' + ident2;
           case 'ugt': case 'sgt': return ident1 + ' > ' + ident2;
           case 'ult': case 'slt': return ident1 + ' < ' + ident2;
+          // We use loose comparisons, which allows false == 0 to be true, etc. Ditto in fcmp
           case 'ne': case 'une': return ident1 + ' != ' + ident2;
           case 'eq': return ident1 + ' == ' + ident2;
           default: throw 'Unknown icmp variant: ' + variant;

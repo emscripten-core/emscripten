@@ -127,7 +127,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS']:
       exported_settings[setting] = eval(setting)
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
     timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
@@ -1313,7 +1313,9 @@ if 'benchmark' not in sys.argv:
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
       global SAFE_HEAP; SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0 # Overflows in hash loop... seems to work though, doesn't overflow too much
+
+      # Overflows happen in hash loop
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
 
       self.do_test(path_from_root(['tests', 'cubescript']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
@@ -1335,19 +1337,23 @@ if 'benchmark' not in sys.argv:
       self.do_ll_test(path_from_root(['tests', 'bullet', 'bulletTest.ll']), open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read())
 
     def test_lua(self):
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0 # Overflows in luaS_newlstr hash loop... seems to work though, doesn't overflow too much
+      # Overflows in luaS_newlstr hash loop
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+
       self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
                       'hello lua world!\n\n\n17.00000000000\n\n\n1.00000000000\n\n\n2.00000000000\n\n\n3.00000000000\n\n\n4.00000000000\n\n\n7.00000000000',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']))
 
     def test_python(self):
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0 # Overflows in string_hash... seems to work though, doesn't overflow too much
+      # Overflows in string_hash
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+
       global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
-      global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields etc.
+      global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       self.do_ll_test(path_from_root(['tests', 'python', 'python.ll']),
-                      'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n5.470',
-                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print '%f' % 5.47'''],
+                      'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n22\n\n5.470',
+                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
                       js_engines=[V8_ENGINE]) # script stack space exceeded in SpiderMonkey, TODO
 
     ### Test cases in separate files
@@ -1420,7 +1426,9 @@ if 'benchmark' not in sys.argv:
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
     def test_check_overflow(self):
-      if LLVM_OPTS: return # We check for overflows when !LLVM_OPTS
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0
+
       src = '''
           #include<stdio.h>
           int main() {
@@ -1445,16 +1453,17 @@ if 'benchmark' not in sys.argv:
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS
     COMPILER = '%s'
     QUANTUM_SIZE = %d
     llvm_opts = %d
     embetter = %d
     RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
     GUARD_MEMORY = 1-embetter
-    SAFE_HEAP = 1 - (embetter and llvm_opts)
+    SAFE_HEAP = 1-(embetter and llvm_opts)
     LLVM_OPTS = llvm_opts
-    CHECK_OVERFLOWS = 1-llvm_opts
+    CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
+    CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
 TT = %s

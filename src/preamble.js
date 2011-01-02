@@ -25,7 +25,7 @@ var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 function SAFE_HEAP_ACCESS(dest, type, store) {
 #if SAFE_HEAP_LOG
-  //if (dest === A_NUMBER) print (new Error().stack); // Something like this may be useful, in debugging
+  //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
 #endif
   if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
@@ -77,13 +77,16 @@ function SAFE_HEAP_STORE(dest, value, type) {
   }
 }
 function SAFE_HEAP_LOAD(dest, type) {
-#if SAFE_HEAP_LOG
-  print('load : ' + dest + ' [' + type + '] |' + JSON.stringify([IHEAP[dest],FHEAP[dest]]) + '|');
-#endif
   SAFE_HEAP_ACCESS(dest, type);
   if (type in Runtime.FLOAT_TYPES) {
+#if SAFE_HEAP_LOG
+  print('load : ' + dest + ' [' + type + '] |' + FHEAP[dest] + '|');
+#endif
     return FHEAP[dest];
   } else {
+#if SAFE_HEAP_LOG
+  print('load : ' + dest + ' [' + type + '] |' + IHEAP[dest] + '|');
+#endif
     return IHEAP[dest];
   }
 }
@@ -99,7 +102,7 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 #if CHECK_OVERFLOWS
 function CHECK_OVERFLOW(value, bits) {
   assert(value !== Infinity && value !== -Infinity, 'Infinity!');
-  assert(Math.abs(value) < Math.pow(2, bits-1), 'Overflow!');
+  assert(Math.abs(value) < Math.pow(2, bits), 'Overflow!');
   return value;
 }
 #endif
