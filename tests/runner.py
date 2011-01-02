@@ -149,7 +149,13 @@ class RunnerCore(unittest.TestCase):
     if value in string:
       raise Exception("Expected to NOT find '%s' in '%s'" % (value, string))
 
+###################################################################################################
+
 if 'benchmark' not in sys.argv:
+  # Tests
+
+  print "Running Emscripten tests..."
+
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None, basename='src.cpp'):
@@ -1480,6 +1486,8 @@ TT = %s
 else:
   # Benchmarks
 
+  print "Running Emscripten benchmarks..."
+
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
 
   assert(os.path.exists(CLOSURE_COMPILER))
@@ -1491,7 +1499,7 @@ else:
   QUANTUM_SIZE = 4
   RELOOP = OPTIMIZE = 1
   USE_TYPED_ARRAYS = 0
-  GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = 0
+  GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = 0
   LLVM_OPTS = 1
 
   TEST_REPS = 10
@@ -1509,8 +1517,6 @@ else:
       print '   mean: %.3f (+-%.3f) seconds          (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
-      print 'Running benchmark:', inspect.stack()[1][3].replace('test_', '')
-
       self.pick_llvm_opts(3, True)
 
       dirname = self.get_dir()
@@ -1568,7 +1574,5 @@ if __name__ == '__main__':
   for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
     print "Checking for existence of", cmd
     assert(os.path.exists(cmd))
-  print "Running Emscripten tests..."
-  print '', # indent so when next lines have '.', they all align
   unittest.main()
 
