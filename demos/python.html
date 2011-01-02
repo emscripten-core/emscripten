@@ -12,8 +12,18 @@
       }
   </style>
 
-  <!-- Changes from automatically generated code: arguments and run(), and in _PyRun_SimpleStringFlags, add
-       if(!this.RAN_ALREADY){this.RAN_ALREADY=true;throw "halting, since this is the first run" }           -->
+  <!--
+       Changes from automatically generated code:
+
+          * At the beginning, add |arguments=[]| before |var args=arguments|;
+
+          * In |_PyRun_SimpleStringFlags|, add
+
+              if(!this.RAN_ALREADY){this.RAN_ALREADY=true;throw "halting, since this is the first run" }           
+
+          * At the end, comment out |run(args)|.
+  -->
+
   <script src="python.js"></script>
 
   <script>
