@@ -1502,8 +1502,8 @@ else:
   GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = 0
   LLVM_OPTS = 1
 
-  TEST_REPS = 10
-  TOTAL_TESTS = 2
+  TEST_REPS = 3
+  TOTAL_TESTS = 3
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TEST_REPS))
@@ -1560,6 +1560,31 @@ else:
         print
         print 'Total stats:'
         self.print_stats(total_times)
+
+    def test_primes(self):
+      src = '''
+        #include<stdio.h>
+        #include<math.h>
+        int main() {
+          int primes = 0, curri = 2;
+          while (primes < 30000) {
+            int ok = true;
+            for (int j = 2; j < sqrtf(curri); j++) {
+              if (curri % j == 0) {
+                ok = false;
+                break;
+              }
+            }
+            if (ok) {
+              primes++;
+            }
+            curri++;
+          }
+          printf("lastprime: %d.\\n", curri-1);
+          return 1;
+        }
+      '''
+      self.do_benchmark(src, [], 'lastprime: 348949.')
 
     def test_fannkuch(self):
       src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()

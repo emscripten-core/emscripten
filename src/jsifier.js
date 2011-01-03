@@ -758,7 +758,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       case 'sub': return handleOverflow(ident1 + ' - ' + ident2);
       case 'sdiv': case 'udiv': return 'Math.floor(' + ident1 + ' / ' + ident2 + ')';
       case 'mul': return handleOverflow(ident1 + ' * ' + ident2);
-      case 'urem': case 'srem': return 'Math.floor(' + ident1 + ' % ' + ident2 + ')';
+      case 'urem': case 'srem': return ident1 + ' % ' + ident2;
       case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
       case 'and': return ident1 + ' & ' + ident2;
       case 'xor': return ident1 + ' ^ ' + ident2;
