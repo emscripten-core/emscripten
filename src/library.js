@@ -25,6 +25,7 @@ var Library = {
     __print__(Pointer_stringify(__formatString.apply(null, args)));
   },
 
+  sprintf__deps: ['strcpy'],
   sprintf: function() {
     var str = arguments[0];
     var args = Array.prototype.slice.call(arguments, 1);

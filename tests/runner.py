@@ -51,7 +51,9 @@ class RunnerCore(unittest.TestCase):
     LLVM_OPT_OPTS.append('-functionattrs')
     if optimization_level > 2:
       LLVM_OPT_OPTS.append('-argpromotion')
-    LLVM_OPT_OPTS.append('-scalarrepl')
+    #LLVM_OPT_OPTS.append('-scalarrepl') # XXX Danger: Can turn a memcpy into something that violates the load-store
+    #                                    #             consistency hypothesis. See hashnum() in lua.
+    #                                    #             Note: this opt is of great importance for raytrace...
     LLVM_OPT_OPTS.append('-simplify-libcalls')
     LLVM_OPT_OPTS.append('-jump-threading')
     LLVM_OPT_OPTS.append('-simplifycfg')
@@ -64,9 +66,10 @@ class RunnerCore(unittest.TestCase):
     LLVM_OPT_OPTS.append('-indvars')
     LLVM_OPT_OPTS.append('-loop-deletion')
     LLVM_OPT_OPTS.append('-loop-unroll')
-    if optimization_level > 1:
-      LLVM_OPT_OPTS.append('-gvn')
-    LLVM_OPT_OPTS.append('-memcpyopt')
+    #if optimization_level > 1:
+    #  LLVM_OPT_OPTS.append('-gvn') # XXX Danger: Messes up Lua output for unknown reasons
+    #                               #             Note: this opt is of minor importance for raytrace...
+    LLVM_OPT_OPTS.append('-memcpyopt') # Danger?
     LLVM_OPT_OPTS.append('-sccp')
     LLVM_OPT_OPTS.append('-jump-threading')
     LLVM_OPT_OPTS.append('-correlated-propagation')
@@ -82,8 +85,14 @@ class RunnerCore(unittest.TestCase):
   
     if optimization_level > 1:
       LLVM_OPT_OPTS.append('-constmerge')
+
+  # Optional LLVM optimizations
+  def do_llvm_opts(self, filename):
+    if LLVM_OPTS:
+      shutil.move(filename + '.o', filename + '.o.pre')
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
  
-  ## Build JavaScript code from source code
+  # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None):
     # Copy over necessary files for compiling the source
     if main_file is None:
@@ -114,10 +123,7 @@ class RunnerCore(unittest.TestCase):
       print "Failed to compile C/C++ source:\n\n", output
       raise Exception("Compilation error");
 
-    # Optional LLVM optimizations
-    if LLVM_OPTS:
-      shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    self.do_llvm_opts(filename)
 
     # LLVM binary ==> LLVM assembly
     output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
@@ -182,21 +188,25 @@ if 'benchmark' not in sys.argv:
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     # No building - just process an existing .ll file
-    def do_ll_test(self, ll_file, output, args=[], f_opt_ll_file=None, js_engines=None):
+    def do_ll_test(self, ll_file, output, args=[], js_engines=None, output_nicerizer=None):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
-      if LLVM_OPTS:
-        return # TODO: enable the lines below
-        #if f_opt_ll_file is None: return # We use existing .ll, so llvm opt stuff is unimportant, unless we are given an optimized .ll
-        #ll_file = f_opt_ll_file
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
-      shutil.copy(ll_file, filename + '.o.ll')
+      if LLVM_OPTS:
+        shutil.copy(ll_file, filename + '.o.ll.pre')
+        Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        self.do_llvm_opts(filename)
+        Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      else:
+        shutil.copy(ll_file, filename + '.o.ll')
+
       self.do_emscripten(filename)
       self.do_test(None,
                    output,
                    args,
                    no_build=True,
-                   js_engines=js_engines)
+                   js_engines=js_engines,
+                   output_nicerizer=output_nicerizer)
 
     def test_hello_world(self):
         src = '''
@@ -1347,9 +1357,9 @@ if 'benchmark' not in sys.argv:
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
 
       self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
-                      'hello lua world!\n\n\n17.00000000000\n\n\n1.00000000000\n\n\n2.00000000000\n\n\n3.00000000000\n\n\n4.00000000000\n\n\n7.00000000000',
+                      'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                      f_opt_ll_file=path_from_root(['tests', 'lua', 'lua.Os.ll']))
+                      output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
     def test_python(self):
       # Overflows in string_hash
@@ -1365,6 +1375,7 @@ if 'benchmark' not in sys.argv:
     ### Test cases in separate files
 
     def test_cases(self):
+      if LLVM_OPTS: return # Our code is not exactly 'normal' llvm assembly
       for name in glob.glob(path_from_root(['tests', 'cases', '*.ll'])):
         shortname = name.replace('.ll', '')
         print "Testing case '%s'..." % shortname

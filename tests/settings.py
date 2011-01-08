@@ -29,6 +29,7 @@ COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
 
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 
+LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_DIS_OPTS = []
 if '2.8' in LLVM_ROOT:

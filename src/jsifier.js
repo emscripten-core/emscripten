@@ -489,6 +489,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   }
 
   function getVarImpl(funcData, ident) {
+    if (ident === 'null') return VAR_NATIVIZED; // like nativized, in that we have the actual value right here
     var data = getVarData(funcData, ident);
     assert(data, 'What variable is this? |' + ident + '|');
     return data.impl;
@@ -682,7 +683,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
             + makeFunctionCall(item.ident, item.params, item.funcData) + ' '
             + '} catch(e) { '
             + 'if (ABORT) throw e; __THREW__ = true; '
-            + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + (new Error().stack)); ' : '')
+            + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + e.stack + ", currently at: " + (new Error().stack)); ' : '')
             + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
@@ -715,9 +716,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     var params = item.params;
     function makeOne(i) {
       if (i === params.length-1) {
-        return finalizeLLVMParameter(params[i].value);
+        return indexizeFunctions(finalizeLLVMParameter(params[i].value));
       }
-      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
+      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
+                                   indexizeFunctions(finalizeLLVMParameter(params[i].value)) + ' : (' + makeOne(i+1) + ')';
     }
     return makeOne(0);
   });
