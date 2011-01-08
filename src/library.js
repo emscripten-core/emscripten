@@ -15,17 +15,127 @@
 var Library = {
   // stdio.h
 
+  _formatString: function() {
+    function isFloatArg(type) {
+      return String.fromCharCode(type) in Runtime.set('f', 'e', 'g');
+    }
+    var cStyle = false;
+    var textIndex = arguments[0];
+    var argIndex = 1;
+    if (textIndex < 0) {
+      cStyle = true;
+      textIndex = -textIndex;
+      slab = null;
+      argIndex = arguments[1];
+    } else {
+      var _arguments = arguments;
+    }
+    function getNextArg(type) {
+      var ret;
+      if (!cStyle) {
+        ret = _arguments[argIndex];
+        argIndex++;
+      } else {
+        if (isFloatArg(type)) {
+          ret = {{{ makeGetValue(0, 'argIndex', 'double') }}};
+        } else {
+          ret = {{{ makeGetValue(0, 'argIndex', 'i32') }}};
+        }
+        argIndex += type === 'l'.charCodeAt(0) ? 8 : 4; // XXX hardcoded native sizes
+      }
+      return ret;
+    }
+
+    var ret = [];
+    var curr, next, currArg;
+    while(1) {
+      curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
+      if (curr === 0) break;
+      next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+      if (curr == '%'.charCodeAt(0)) {
+        // Handle very very simply formatting, namely only %.X[f|d|u|etc.]
+        var precision = -1;
+        if (next == '.'.charCodeAt(0)) {
+          textIndex++;
+          precision = 0;
+          while(1) {
+            var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+            if (!(precisionChr >= '0'.charCodeAt(0) && precisionChr <= '9'.charCodeAt(0))) break;
+            precision *= 10;
+            precision += precisionChr - '0'.charCodeAt(0);
+            textIndex++;
+          }
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        }
+        if (next == 'l'.charCodeAt(0)) {
+          textIndex++;
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        }
+        if (isFloatArg(next)) {
+          next = 'f'.charCodeAt(0); // no support for 'e'
+        }
+        if (['d', 'i', 'u', 'p', 'f'].indexOf(String.fromCharCode(next)) != -1) {
+          var currArg;
+          var argText;
+          currArg = getNextArg(next);
+          argText = String(+currArg); // +: boolean=>int
+          if (next == 'u'.charCodeAt(0)) {
+            argText = String(unSign(currArg, 32));
+          } else if (next == 'p'.charCodeAt(0)) {
+            argText = '0x' + currArg.toString(16);
+          } else {
+            argText = String(+currArg); // +: boolean=>int
+          }
+          if (precision >= 0) {
+            if (isFloatArg(next)) {
+              var dotIndex = argText.indexOf('.');
+              if (dotIndex == -1 && next == 'f'.charCodeAt(0)) {
+                dotIndex = argText.length;
+                argText += '.';
+              }
+              argText += '00000000000'; // padding
+              argText = argText.substr(0, dotIndex+1+precision);
+            } else {
+              while (argText.length < precision) {
+                argText = '0' + argText;
+              }
+            }
+          }
+          argText.split('').forEach(function(chr) {
+            ret.push(chr.charCodeAt(0));
+          });
+          textIndex += 2;
+        } else if (next == 's'.charCodeAt(0)) {
+          ret = ret.concat(String_copy(getNextArg(next)));
+          textIndex += 2;
+        } else if (next == 'c'.charCodeAt(0)) {
+          ret = ret.concat(getNextArg(next));
+          textIndex += 2;
+        } else {
+          ret.push(next);
+          textIndex += 2; // not sure what to do with this %, so print it
+        }
+      } else {
+        ret.push(curr);
+        textIndex += 1;
+      }
+    }
+    return Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
+  },
+
+  printf__deps: ['_formatString'],
   printf: function() {
     __print__(Pointer_stringify(__formatString.apply(null, arguments)));
   },
 
+  fprintf__deps: ['_formatString'],
   fprintf: function() {
     var file = arguments[0]; // TODO: something clever with this
     var args = Array.prototype.slice.call(arguments, 1);
     __print__(Pointer_stringify(__formatString.apply(null, args)));
   },
 
-  sprintf__deps: ['strcpy'],
+  sprintf__deps: ['strcpy', '_formatString'],
   sprintf: function() {
     var str = arguments[0];
     var args = Array.prototype.slice.call(arguments, 1);
@@ -89,6 +199,7 @@ var Library = {
     __print__('\n');
   },
 
+  vsnprintf__deps: ['_formatString'],
   vsnprintf: function(dst, num, src, ptr) {
     var text = __formatString(-src, ptr); // |-|src tells formatstring to use C-style params (typically they are from varargs)
     var i;
@@ -119,6 +230,10 @@ var Library = {
 
   abs: 'Math.abs',
 
+  atoi: function(s) {
+    return Math.floor(Number(Pointer_stringify(s)));
+  },
+
   atexit: function(func) {
     __ATEXIT__.push(func);
   },
@@ -129,6 +244,7 @@ var Library = {
     throw 'ABORT: ' + code + ', at ' + (new Error().stack);
   },
 
+  realloc__deps: ['memcpy'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use
     // a real realloc with it
@@ -177,6 +293,7 @@ var Library = {
     return ret;
   },
 
+  qsort__deps: ['memcpy'],
   qsort: function(base, num, size, comparator) {
     // forward calls to the JavaScript sort method
     // first, sort the items logically
@@ -197,6 +314,45 @@ var Library = {
   },
 
   // string.h
+
+  memcpy: function (dest, src, num, idunno) {
+    var curr;
+    for (var i = 0; i < num; i++) {
+      // TODO: optimize for the typed arrays case
+      // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
+      {{{ makeCopyValue('dest', 'i', 'src', 'i', 'null', ' || 0') }}};
+    }
+  },
+  llvm_memcpy_i32: 'memcpy',
+  llvm_memcpy_i64: 'memcpy',
+  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
+  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
+
+  memmove: function(dest, src, num, idunno) {
+    // not optimized!
+    if (num === 0) return; // will confuse malloc if 0
+    var tmp = _malloc(num);
+    _memcpy(tmp, src, num);
+    _memcpy(dest, tmp, num);
+    _free(tmp);
+  },
+  llvm_memmove_i32: 'memmove',
+  llvm_memmove_i64: 'memmove',
+  llvm_memmove_p0i8_p0i8_i32: 'memmove',
+  llvm_memmove_p0i8_p0i8_i64: 'memmove',
+
+  memset: function(ptr, value, num) {
+    for (var i = 0; i < num; i++) {
+      {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
+    }
+  },
+  llvm_memset_i32: 'memset',
+  llvm_memset_p0i8_i32: 'memset',
+  llvm_memset_p0i8_i64: 'memset',
+
+  strlen: function(ptr) {
+    return String_len(ptr);
+  },
 
   strspn: function(pstr, pset) {
     var str = String_copy(pstr, true);

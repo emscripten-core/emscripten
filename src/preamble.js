@@ -1,21 +1,15 @@
 // === Auto-generated preamble library stuff ===
 
+//========================================
+// Runtime code shared with compiler
+//========================================
+
 {{RUNTIME}}
 
-function __globalConstructor__() {
-}
-
-// Maps ints ==> functions. This lets us pass around ints, which are
-// actually pointers to functions, and we convert at call()time
-var FUNCTION_TABLE = [];
-
-var __THREW__ = false; // Used in checking for thrown exceptions.
-
-var __ATEXIT__ = [];
-
 #if SAFE_HEAP
-
-// Semi-manual memory corruption debugging
+//========================================
+// Debugging tools - Heap
+//========================================
 var HEAP_WATCHED = {};
 var HEAP_HISTORY = {};
 function SAFE_HEAP_CLEAR(dest) {
@@ -100,6 +94,9 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 #endif
 
 #if CHECK_OVERFLOWS
+//========================================
+// Debugging tools - Mathop overflows
+//========================================
 function CHECK_OVERFLOW(value, bits) {
   assert(value !== Infinity && value !== -Infinity, 'Infinity!');
   assert(Math.abs(value) < Math.pow(2, bits), 'Overflow!');
@@ -108,12 +105,33 @@ function CHECK_OVERFLOW(value, bits) {
 #endif
 
 #if LABEL_DEBUG
+//========================================
+// Debugging tools - Code flow progress
+//========================================
 var INDENT = '';
 #endif
 
 #if EXECUTION_TIMEOUT
+//========================================
+// Debugging tools - Execution timeout
+//========================================
 var START_TIME = Date.now();
 #endif
+
+//========================================
+// Runtime essentials
+//========================================
+
+function __globalConstructor__() {
+}
+
+// Maps ints ==> functions. This lets us pass around ints, which are
+// actually pointers to functions, and we convert at call()time
+var FUNCTION_TABLE = [];
+
+var __THREW__ = false; // Used in checking for thrown exceptions.
+
+var __ATEXIT__ = [];
 
 var ABORT = false;
 
@@ -252,113 +270,6 @@ function __shutdownRuntime__() {
 
 // stdio.h
 
-function __formatString() {
-  function isFloatArg(type) {
-    return String.fromCharCode(type) in Runtime.set('f', 'e', 'g');
-  }
-  var cStyle = false;
-  var textIndex = arguments[0];
-  var argIndex = 1;
-  if (textIndex < 0) {
-    cStyle = true;
-    textIndex = -textIndex;
-    slab = null;
-    argIndex = arguments[1];
-  } else {
-    var _arguments = arguments;
-  }
-  function getNextArg(type) {
-    var ret;
-    if (!cStyle) {
-      ret = _arguments[argIndex];
-      argIndex++;
-    } else {
-      if (isFloatArg(type)) {
-        ret = {{{ makeGetValue(0, 'argIndex', 'double') }}};
-      } else {
-        ret = {{{ makeGetValue(0, 'argIndex', 'i32') }}};
-      }
-      argIndex += type === 'l'.charCodeAt(0) ? 8 : 4; // XXX hardcoded native sizes
-    }
-    return ret;
-  }
-
-  var ret = [];
-  var curr, next, currArg;
-  while(1) {
-    curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
-    if (curr === 0) break;
-    next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-    if (curr == '%'.charCodeAt(0)) {
-      // Handle very very simply formatting, namely only %.X[f|d|u|etc.]
-      var precision = -1;
-      if (next == '.'.charCodeAt(0)) {
-        textIndex++;
-        precision = 0;
-        while(1) {
-          var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-          if (!(precisionChr >= '0'.charCodeAt(0) && precisionChr <= '9'.charCodeAt(0))) break;
-          precision *= 10;
-          precision += precisionChr - '0'.charCodeAt(0);
-          textIndex++;
-        }
-        next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-      }
-      if (next == 'l'.charCodeAt(0)) {
-        textIndex++;
-        next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-      }
-      if (isFloatArg(next)) {
-        next = 'f'.charCodeAt(0); // no support for 'e'
-      }
-      if (['d', 'i', 'u', 'p', 'f'].indexOf(String.fromCharCode(next)) != -1) {
-        var currArg;
-        var argText;
-        currArg = getNextArg(next);
-        argText = String(+currArg); // +: boolean=>int
-        if (next == 'u'.charCodeAt(0)) {
-          argText = String(unSign(currArg, 32));
-        } else if (next == 'p'.charCodeAt(0)) {
-          argText = '0x' + currArg.toString(16);
-        } else {
-          argText = String(+currArg); // +: boolean=>int
-        }
-        if (precision >= 0) {
-          if (isFloatArg(next)) {
-            var dotIndex = argText.indexOf('.');
-            if (dotIndex == -1 && next == 'f'.charCodeAt(0)) {
-              dotIndex = argText.length;
-              argText += '.';
-            }
-            argText += '00000000000'; // padding
-            argText = argText.substr(0, dotIndex+1+precision);
-          } else {
-            while (argText.length < precision) {
-              argText = '0' + argText;
-            }
-          }
-        }
-        argText.split('').forEach(function(chr) {
-          ret.push(chr.charCodeAt(0));
-        });
-        textIndex += 2;
-      } else if (next == 's'.charCodeAt(0)) {
-        ret = ret.concat(String_copy(getNextArg(next)));
-        textIndex += 2;
-      } else if (next == 'c'.charCodeAt(0)) {
-        ret = ret.concat(getNextArg(next));
-        textIndex += 2;
-      } else {
-        ret.push(next);
-        textIndex += 2; // not sure what to do with this %, so print it
-      }
-    } else {
-      ret.push(curr);
-      textIndex += 1;
-    }
-  }
-  return Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
-}
 
 // Copies a list of num items on the HEAP into a
 // a normal JavaScript array of numbers
@@ -372,50 +283,16 @@ function Array_copy(ptr, num) {
 #endif
 }
 
-// Copies a C-style string, terminated by a zero, from the HEAP into
-// a normal JavaScript array of numbers
-function String_copy(ptr, addZero) {
-  return Array_copy(ptr, _strlen(ptr)).concat(addZero ? [0] : []);
-}
-
-// stdlib.h
-
-// Get a pointer, return int value of the string it points to
-function _atoi(s) {
-  return Math.floor(Number(Pointer_stringify(s)));
-}
-
-function _llvm_memcpy_i32(dest, src, num, idunno) {
-  var curr;
-  for (var i = 0; i < num; i++) {
-    // TODO: optimize for the typed arrays case
-    // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
-    {{{ makeCopyValue('dest', 'i', 'src', 'i', 'null', ' || 0') }}};
-  }
-}
-_memcpy = _llvm_memcpy_i64 = _llvm_memcpy_p0i8_p0i8_i32 = _llvm_memcpy_p0i8_p0i8_i64 = _llvm_memcpy_i32;
-
-function _llvm_memmove_i32(dest, src, num, idunno) {
-  // not optimized!
-  if (num === 0) return; // will confuse malloc if 0
-  var tmp = _malloc(num);
-  _memcpy(tmp, src, num);
-  _memcpy(dest, tmp, num);
-  _free(tmp);
-}
-_memmove = _llvm_memmove_i64 = _llvm_memmove_p0i8_p0i8_i32 = _llvm_memmove_p0i8_p0i8_i64 = _llvm_memmove_i32;
-
-function llvm_memset_i32(ptr, value, num) {
-  for (var i = 0; i < num; i++) {
-    {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
-  }
-}
-_memset = _llvm_memset_p0i8_i64 = _llvm_memset_p0i8_i32 = llvm_memset_i32;
-
-function _strlen(ptr) {
+function String_len(ptr) {
   var i = 0;
   while ({{{ makeGetValue('ptr', 'i', 'i8') }}}) i++; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
   return i;
+}
+
+// Copies a C-style string, terminated by a zero, from the HEAP into
+// a normal JavaScript array of numbers
+function String_copy(ptr, addZero) {
+  return Array_copy(ptr, String_len(ptr)).concat(addZero ? [0] : []);
 }
 
 // Tools
