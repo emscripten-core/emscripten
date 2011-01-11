@@ -716,6 +716,8 @@ var Library = {
   sqrtf: 'Math.sqrt',
   fabs: 'Math.abs',
   fabsf: 'Math.abs',
+  ceil: 'Math.ceil',
+  floor: 'Math.floor',
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
 
