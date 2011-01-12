@@ -23,6 +23,8 @@ GUARD_MEMORY = 1; // Whether we should check that each allocation to the stack d
                   // of positive size, etc.
 INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
                 // code in your own, and will call run() yourself at the right time
+INIT_STACK = 1; // Whether to initialize memory on the stack to 0.
+INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 
 // Code embetterments
 OPTIMIZE = 0; // Optimize llvm operations into js commands

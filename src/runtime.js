@@ -5,17 +5,19 @@
 // itself is as optimized as possible - no unneeded runtime checks).
 
 RuntimeGenerator = {
-  alloc: function(size, type) {
+  alloc: function(size, type, init) {
     var ret = type + 'TOP';
     if (GUARD_MEMORY) {
       ret += '; assert(' + size + ' > 0)';
     }
-    var initMemory = 'for (var i = 0; i < ' + size + '; i++) ' + (
-      USE_TYPED_ARRAYS ?
-        'IHEAP[' + type + 'TOP+i] = FHEAP[' + type + 'TOP+i] = 0' :
-        'HEAP[' + type + 'TOP+i] = 0'
-    );
-    ret += '; ' + initMemory;
+    if (init) {
+      var initMemory = 'for (var i = 0; i < ' + size + '; i++) ' + (
+        USE_TYPED_ARRAYS ?
+          'IHEAP[' + type + 'TOP+i] = FHEAP[' + type + 'TOP+i] = 0' :
+          'HEAP[' + type + 'TOP+i] = 0'
+      );
+      ret += '; ' + initMemory;
+    }
     ret += '; ' + type + 'TOP += ' + size;
     if (QUANTUM_SIZE > 1) {
       ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP', QUANTUM_SIZE);
@@ -25,7 +27,7 @@ RuntimeGenerator = {
 
   // An allocation that lives as long as the current function call
   stackAlloc: function(size) {
-    var ret = RuntimeGenerator.alloc(size, 'STACK');
+    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK);
     if (GUARD_MEMORY) {
       ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX)';
     }
@@ -41,11 +43,13 @@ RuntimeGenerator = {
     if (GUARD_MEMORY) {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
-    var initMemory = 'for (var i = __stackBase__; i < STACKTOP; i++) {' + (
-      USE_TYPED_ARRAYS ?
-        'IHEAP[i] = FHEAP[i] = 0' : // TODO: Benchmark this. Suboptimal due to type differences?
-        'HEAP[i] = 0'
-    ) + (SAFE_HEAP ? '; SAFE_HEAP_ACCESS(i, null, true)' : '') + ' }';
+    if (INIT_STACK) {
+      var initMemory = 'for (var i = __stackBase__; i < STACKTOP; i++) {' + (
+        USE_TYPED_ARRAYS ?
+          'IHEAP[i] = FHEAP[i] = 0' : // TODO: Benchmark this. Suboptimal due to type differences?
+          'HEAP[i] = 0'
+      ) + (SAFE_HEAP ? '; SAFE_HEAP_ACCESS(i, null, true)' : '') + ' }';
+    }
     ret += '; ' + initMemory;
     return ret;
   },
@@ -61,7 +65,7 @@ RuntimeGenerator = {
 
   // An allocation that cannot be free'd
   staticAlloc: function(size) {
-    return RuntimeGenerator.alloc(size, 'STATIC');
+    return RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
   },
 
   alignMemory: function(target, quantum) {
