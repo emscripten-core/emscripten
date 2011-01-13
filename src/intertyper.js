@@ -270,7 +270,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
               return 'Bitcast';
             if (tokensLength >= 3 && token0Text == 'getelementptr')
               return 'GEP';
-            if (tokensLength >= 3 && token0Text == 'alloca')
+            if (tokensLength >= 2 && token0Text == 'alloca')
               return 'Alloca';
             if (tokensLength >= 3 && token0Text == 'extractvalue')
               return 'ExtractValue';
@@ -583,7 +583,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1].text;
-      item.allocatedNum = Runtime.isNumberType(item.tokens[3].text) ? toNiceIdent(item.tokens[4].text) : 1;
+      item.allocatedNum = (item.tokens.length > 3 && Runtime.isNumberType(item.tokens[3].text)) ? toNiceIdent(item.tokens[4].text) : 1;
       item.type = addPointing(item.tokens[1].text); // type of pointer we will get
       item.type2 = item.tokens[1].text; // value we will create, and get a pointer to
       this.forwardItem(item, 'Reintegrator');
