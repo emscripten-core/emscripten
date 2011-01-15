@@ -2,12 +2,14 @@
 
 import os, sys, subprocess
 
-COMPILER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'src', 'compiler.js')
-CONFIG_FILE = os.path.expanduser('~/.emscripten')
 JS_ENGINE = None
 
-if os.path.exists(CONFIG_FILE):
-  exec(open(CONFIG_FILE, 'r').read())
+abspath = os.path.abspath(os.path.dirname(__file__))
+def path_from_root(*pathelems):
+  return os.path.join(os.path.sep, *(abspath.split(os.sep) + list(pathelems)))
+exec(open(path_from_root('tools', 'shared.py'), 'r').read())
+
+COMPILER = path_from_root('src', 'compiler.js')
 
 def emscripten(filename, settings):
   data = open(filename, 'r').read()

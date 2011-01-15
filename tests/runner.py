@@ -7,25 +7,25 @@ See settings.py file for options&params. Edit as needed.
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob
 
-# Params
+# Setup
 
 abspath = os.path.abspath(os.path.dirname(__file__))
-def path_from_root(pathelems):
-    return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + pathelems))
+def path_from_root(*pathelems):
+  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
-EMSCRIPTEN = path_from_root(['emscripten.py'])
+# Sanity check for config
 
-exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'settings.py'), 'r').read())
+try:
+  assert COMPILERS != None
+except:
+  raise Exception('Cannot find "COMPILERS" definition. Is ~/.emscripten set up properly? You may need to copy the template at ~/tests/settings.py into it.')
 
-def timeout_run(proc, timeout, note):
-  start = time.time()
-  if timeout is not None:
-    while time.time() - start < timeout and proc.poll() is None:
-      time.sleep(0.1)
-    if proc.poll() is None:
-      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out: " + note)
-  return proc.communicate()[0]
+# Paths
+
+EMSCRIPTEN = path_from_root('emscripten.py')
+DEMANGLER = path_from_root('third_party', 'demangler.py')
+NAMESPACER = path_from_root('tools', 'namespacer.py')
 
 class RunnerCore(unittest.TestCase):
   def get_dir(self):
@@ -106,7 +106,7 @@ class RunnerCore(unittest.TestCase):
       shutil.move(os.path.join(dirname, main_file), filename)
 
     # Copy Emscripten C++ API
-    shutil.copy(path_from_root(['src', 'include', 'emscripten.h']), dirname)
+    shutil.copy(path_from_root('src', 'include', 'emscripten.h'), dirname)
 
     # C++ => LLVM binary
     try:
@@ -1288,25 +1288,25 @@ if 'benchmark' not in sys.argv:
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:
-          src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
+          src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
           self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
-        src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
-        output = open(path_from_root(['tests', 'raytrace.ppm']), 'r').read()
+        src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
+        output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
         self.do_test(src, output, ['3', '16'])
 
     def test_dlmalloc(self):
         # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
         #              used, see Mozilla bug 593659.
-        src = open(path_from_root(['tests', 'dlmalloc.c']), 'r').read()
+        src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
         self.do_test(src, '*1,0*')
 
     def test_fasta(self):
         results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
 (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''') ]
         for i, j in results:
-          src = open(path_from_root(['tests', 'fasta.cpp']), 'r').read()
+          src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def zzztest_gl(self):
@@ -1323,7 +1323,7 @@ if 'benchmark' not in sys.argv:
              };'''
         )
         open(filename, 'w').write(src)
-      self.do_test(path_from_root(['tests', 'gl']), '*?*', main_file='sdl_ogl.c', post_build=post)
+      self.do_test(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
 
     def test_cubescript(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
@@ -1333,10 +1333,10 @@ if 'benchmark' not in sys.argv:
       # Overflows happen in hash loop
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
 
-      self.do_test(path_from_root(['tests', 'cubescript']), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+      self.do_test(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
-      self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
+      self.do_test(path_from_root('third_party'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
 
       #### Code snippet that is helpful to search for nonportable optimizations ####
       #global LLVM_OPT_OPTS
@@ -1350,13 +1350,13 @@ if 'benchmark' not in sys.argv:
 
     def test_bullet(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Too slow for that
-      self.do_ll_test(path_from_root(['tests', 'bullet', 'bulletTest.ll']), open(path_from_root(['tests', 'bullet', 'output.txt']), 'r').read())
+      self.do_ll_test(path_from_root('tests', 'bullet', 'bulletTest.ll'), open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read())
 
     def test_lua(self):
       # Overflows in luaS_newlstr hash loop
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
 
-      self.do_ll_test(path_from_root(['tests', 'lua', 'lua.ll']),
+      self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
@@ -1367,7 +1367,7 @@ if 'benchmark' not in sys.argv:
 
       global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
-      self.do_ll_test(path_from_root(['tests', 'python', 'python.ll']),
+      self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n22\n\n5.470',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
                       js_engines=[V8_ENGINE]) # script stack space exceeded in SpiderMonkey, TODO
@@ -1376,15 +1376,15 @@ if 'benchmark' not in sys.argv:
 
     def test_cases(self):
       if LLVM_OPTS: return # Our code is not exactly 'normal' llvm assembly
-      for name in glob.glob(path_from_root(['tests', 'cases', '*.ll'])):
+      for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         print "Testing case '%s'..." % shortname
-        output_file = path_from_root(['tests', 'cases', shortname + '.txt'])
+        output_file = path_from_root('tests', 'cases', shortname + '.txt')
         if os.path.exists(output_file):
           output = open(output_file, 'r').read()
         else:
           output = 'hello, world!'
-        self.do_ll_test(path_from_root(['tests', 'cases', name]), output)
+        self.do_ll_test(path_from_root('tests', 'cases', name), output)
 
     ### Integration tests
 
@@ -1417,7 +1417,6 @@ if 'benchmark' not in sys.argv:
             'Module["_"] = ' + open(filename + '.tmp2', 'r').read().rstrip() + ';\n\n' + script_src + '\n\n' +
               '// {{MODULE_ADDITIONS}'
           )
-
           open(filename, 'w').write(src)
         self.do_test(src, '*166*\n*ok*', post_build=post)
 
@@ -1598,12 +1597,12 @@ else:
       self.do_benchmark(src, [], 'lastprime: 348949.')
 
     def test_fannkuch(self):
-      src = open(path_from_root(['tests', 'fannkuch.cpp']), 'r').read()
+      src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
       self.do_benchmark(src, ['9'], 'Pfannkuchen(9) = 30.')
 
     def test_raytrace(self):
-      src = open(path_from_root(['tests', 'raytrace.cpp']), 'r').read()
-      self.do_benchmark(src, ['5', '64'], open(path_from_root(['tests', 'raytrace_5_64.ppm']), 'r').read())
+      src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
+      self.do_benchmark(src, ['5', '64'], open(path_from_root('tests', 'raytrace_5_64.ppm'), 'r').read())
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default

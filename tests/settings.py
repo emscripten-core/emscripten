@@ -1,10 +1,3 @@
-# XXX: Aside from these settings, you should create ~/.emscripten, and fill it with
-#      something like this:
-#
-#            JS_ENGINE=[os.path.expanduser('~/Dev/tracemonkey/js/src/js'), '-m']
-#            JS_ENGINE_PARAMS=[]
-#
-
 TEMP_DIR='/dev/shm'
 
 LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.8/cbuild/Release/bin') # Might not need 'Release'
@@ -43,6 +36,10 @@ V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
 #COMPILER_ENGINE=SPIDERMONKEY_ENGINE
 COMPILER_ENGINE=V8_ENGINE
 
+JS_ENGINE=V8_ENGINE
+JS_ENGINE_PARAMS = ['--'] # For V8
+JS_ENGINE_PARAMS = [] # For SpiderMonkey
+
 OUTPUT_TO_SCREEN = 0 # useful for debugging specific tests, or for subjectively seeing what parts are slow
 
 TIMEOUT = None
@@ -50,6 +47,4 @@ TIMEOUT = None
 # Tools
 
 CLOSURE_COMPILER = os.path.expanduser('~/Dev/closure-compiler/compiler.jar')
-DEMANGLER = path_from_root(['third_party', 'demangler.py'])
-NAMESPACER = path_from_root(['tools', 'namespacer.py'])
 

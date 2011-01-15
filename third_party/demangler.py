@@ -21,8 +21,10 @@ JS_ENGINE_PARAMS=[]
 
 import os, sys, subprocess
 
-CONFIG_FILE = os.path.expanduser('~/.emscripten')
-exec(open(CONFIG_FILE, 'r').read())
+abspath = os.path.abspath(os.path.dirname(__file__))
+def path_from_root(*pathelems):
+  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 data = open(sys.argv[1], 'r').readlines()
 splitter = sys.argv[2]
@@ -35,8 +37,7 @@ for line in data:
   func = line.lstrip().split(splitter)[0]
   if func in SEEN: continue
   SEEN[func] = True
-  args = JS_ENGINE + [os.path.join(os.path.dirname(__file__), 'gcc_demangler.js')] + JS_ENGINE_PARAMS + [func[1:]]
-  cleaned = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
+  cleaned = run_js(JS_ENGINE, path_from_root('third_party', 'gcc_demangler.js'), [func[1:]])
   if cleaned is None: continue
   if 'Fatal exception' in cleaned: continue
   cleaned = cleaned[1:-2]
