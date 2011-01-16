@@ -91,7 +91,11 @@ class RunnerCore(unittest.TestCase):
     if LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
       output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
- 
+
+  def do_llvm_dis(self, filename):
+    # LLVM binary ==> LLVM assembly
+    Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None):
     # Copy over necessary files for compiling the source
@@ -125,8 +129,7 @@ class RunnerCore(unittest.TestCase):
 
     self.do_llvm_opts(filename)
 
-    # LLVM binary ==> LLVM assembly
-    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    self.do_llvm_dis(filename)
 
     self.do_emscripten(filename, output_processor)
 
@@ -187,11 +190,19 @@ if 'benchmark' not in sys.argv:
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
-    # No building - just process an existing .ll file
+    # No building - just process an existing .ll file (or .bc, which we turn into .ll)
     def do_ll_test(self, ll_file, output, args=[], js_engines=None, output_nicerizer=None):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
+
+      if ll_file.endswith('.bc'):
+        shutil.copy(ll_file, filename + '.o')
+        self.do_llvm_dis(filename)
+        shutil.copy(filename + '.o.ll', filename + '.o.ll.in')
+        os.remove(filename + '.o.ll')
+        ll_file = filename + '.o.ll.in'
+
       if LLVM_OPTS:
         shutil.copy(ll_file, filename + '.o.ll.pre')
         Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
@@ -1283,6 +1294,16 @@ if 'benchmark' not in sys.argv:
           # Bloated memory; same layout as C/C++
           self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
+    def test_files(self):
+      def post(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''this._STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]);'''
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'files.cpp'), 'r').read()
+      self.do_test(src, 'size: 7\ndata: 100,200,50,25,10,77,123\ntexto\ntexte\n', post_build=post)
+
     ### 'Big' tests
 
     def test_fannkuch(self):
@@ -1360,6 +1381,14 @@ if 'benchmark' not in sys.argv:
                       'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
+
+    def zzztest_poppler(self):
+      # Has 'Object', which has a big union with a value that can be of any type (like a dynamic value)
+      global SAFE_HEAP; SAFE_HEAP = 0
+
+      self.do_ll_test(path_from_root('tests', 'poppler', 'pdftoppm.bc'),
+                      'halp',
+                      args='-png -l 1 -scale-to 512 ~/Dev/emscripten/docs/paper.pdf filename'.split(' '))
 
     def test_python(self):
       # Overflows in string_hash

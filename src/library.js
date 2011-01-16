@@ -6,7 +6,8 @@
 // entry in the Library is a function, we insert it. If it is a string, we
 // do another lookup in the library (a simple way to write a function once,
 // if it can be called by different names). We also allow dependencies,
-// using __deps.
+// using __deps. Initialization code to be run after allocating all
+// global constants can be defined by __postset.
 //
 // Note that the full function name will be '_' + the name in the Library
 // object. For convenience, the short name appears here. Note that if you add a
@@ -15,6 +16,7 @@
 var Library = {
   // stdio.h
 
+  _formatString__deps: ['STDIO'],
   _formatString: function() {
     function isFloatArg(type) {
       return String.fromCharCode(type) in Runtime.set('f', 'e', 'g');
@@ -142,6 +144,14 @@ var Library = {
     _strcpy(str, __formatString.apply(null, args)); // not terribly efficient
   },
 
+  snprintf__deps: ['strncpy', '_formatString'],
+  snprintf: function() {
+    var str = arguments[0];
+    var num = arguments[1];
+    var args = Array.prototype.slice.call(arguments, 2);
+    _strncpy(str, __formatString.apply(null, args), num); // not terribly efficient
+  },
+
   fflush: function(file) {
     __print__(null);
   },
@@ -163,11 +173,6 @@ var Library = {
   },
   _ZNSo3putEc: 'putchar',
 
-  fopen: function(filename, mode) {
-    return 1; // TODO
-  },
-  __01fopen64_: 'fopen',
-
   getc: function(file) {
     return -1; // EOF
   },
@@ -176,23 +181,6 @@ var Library = {
 
   ungetc: function(chr, stream) {
     return chr;
-  },
-
-  feof: function(stream) {
-    return 1;
-  },
-
-  ferror: function(stream) {
-    return 0;
-  },
-
-  fwrite: function(ptr, size, count, stream) {
-    __print__(intArrayToString(Array_copy(ptr, count)));
-    return count;
-  },
-
-  fclose: function(stream) {
-    return 0;
   },
 
   _ZNSo5flushEv: function() {
@@ -224,6 +212,115 @@ var Library = {
   flockfile: function(file) {
   },
   funlockfile: function(file) {
+  },
+
+  // stdio.h - file functions
+
+  STDIO__postset: 'this._STDIO.init()',
+  STDIO: {
+    streams: {},
+    filenames: {},
+    counter: 1,
+    SEEK_SET: 0, /* Beginning of file.  */
+    SEEK_CUR: 1, /* Current position.   */
+    SEEK_END: 2, /* End of file.        */
+    init: function() {
+      _stdin = Pointer_make([0], null, ALLOC_STATIC);
+      IHEAP[_stdin] = this.prepare('<<stdin>>');
+      _stdout = Pointer_make([0], null, ALLOC_STATIC);
+      IHEAP[_stdout] = this.prepare('<<stdout>>');
+      _stderr = Pointer_make([0], null, ALLOC_STATIC);
+      IHEAP[_stderr] = this.prepare('<<stderr>>');
+    },
+    prepare: function(filename, data) {
+      var stream = this.counter++;
+      this.streams[stream] = {
+        filename: filename,
+        data: data,
+        position: 0,
+        eof: 0,
+        error: 0,
+        print: 1 // true for stdout and stderr - we print when receiving data for them
+      };
+      this.filenames[filename] = stream;
+      return stream;
+    }
+  },
+
+  fopen__deps: ['STDIO'],
+  fopen: function(filename, mode) {
+    var str = Pointer_stringify(filename);
+    //assert(str in this._STDIO.filenames, 'No information for file: ' + str);
+    return this._STDIO.filenames[str];
+  },
+  __01fopen64_: 'fopen',
+
+  rewind__deps: ['STDIO'],
+  rewind: function(stream) {
+    var info = this._STDIO.streams[stream];
+    info.position = 0;
+    info.error = 0;
+  },
+
+  fseek__deps: ['STDIO'],
+  fseek: function(stream, offset, whence) {
+    var info = this._STDIO.streams[stream];
+    if (whence === this._STDIO.SEEK_CUR) {
+      offset += info.position;
+    } else if (whence === this._STDIO.SEEK_END) {
+      offset += info.data.length;
+    }
+    info.position = offset;
+    info.eof = 0;
+    return 0;
+  },
+  __01fseeko64_: 'fseek',
+
+  ftell__deps: ['STDIO'],
+  ftell: function(stream) {
+    return this._STDIO.streams[stream].position;
+  },
+  __01ftello64_: 'ftell',
+
+  fread__deps: ['STDIO'],
+  fread: function(ptr, size, count, stream) {
+    var info = this._STDIO.streams[stream];
+    for (var i = 0; i < count; i++) {
+      if (info.position + size > info.data.length) {
+        info.eof = 1;
+        return i;
+      }
+      for (var j = 0; j < size; j++) {
+        {{{ makeSetValue('ptr', '0', 'info.data[info.position]', 'null') }}}
+        info.position++;
+        ptr++;
+      }
+    }
+    return count;
+  },
+
+  fwrite__deps: ['STDIO'],
+  fwrite: function(ptr, size, count, stream) {
+    var info = this._STDIO.streams[stream];
+    if (info.print) {
+      __print__(intArrayToString(Array_copy(ptr, count*size)));
+    } // XXX
+    return count;
+  },
+
+  fclose__deps: ['STDIO'],
+  fclose: function(stream) {
+    return 0;
+  },
+
+  feof__deps: ['STDIO'],
+  feof: function(stream) {
+    return this._STDIO.streams[stream].eof;
+  },
+
+  ferror__deps: ['STDIO'],
+  ferror: function(stream) {
+    return this._STDIO.streams[stream].error;
   },
 
   // stdlib.h
@@ -796,6 +893,14 @@ var Library = {
     return -1;
   },
 
+  getuid: function() {
+    return 100;
+  },
+
+  getpwuid: function(uid) {
+    return 0; // NULL
+  },
+
   // time.h
 
   time: function(ptr) {
@@ -882,6 +987,19 @@ var Library = {
       me.ret = Pointer_make([0], 0, ALLOC_STATIC);
     }
     return me.ret;
+  },
+
+  // pthread.h (stubs for mutexes only - no thread support yet!)
+
+  pthread_mutex_init: function() {},
+  pthread_mutex_destroy: function() {},
+  pthread_mutex_lock: function() {},
+  pthread_mutex_unlock: function() {},
+
+  // dirent.h
+
+  opendir: function(pname) {
+    return 0;
   }
 };
 

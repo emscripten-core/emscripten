@@ -278,56 +278,83 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         return ret;
       } else {
         item.JS = 'var ' + item.ident + ';';
-        var constant = item.external ?
-          makePointer(JSON.stringify(makeEmptyStruct(item.type)) + ' /* external value? */', null, 'ALLOC_STATIC')
-          :
-          parseConst(item.value, item.type, item.ident);
-        if (typeof constant === 'object') {
-          // This is a flattened object. We need to find its idents, so they can be assigned to later
-          constant.forEach(function(value, i) {
-            if (value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW') { // ident, or expression containing an ident
-              ret.push({
-                intertype: 'GlobalVariablePostSet',
-                JS: 'IHEAP[' + item.ident + '+' + i + '] = ' + value + ';',
-              });
-              constant[i] = '0';
-            }
+        var constant = null;
+        if (item.external) {
+          return ret;
+        } else {
+          constant = parseConst(item.value, item.type, item.ident);
+          if (typeof constant === 'object') {
+            // This is a flattened object. We need to find its idents, so they can be assigned to later
+            constant.forEach(function(value, i) {
+              if (value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW') { // ident, or expression containing an ident
+                ret.push({
+                  intertype: 'GlobalVariablePostSet',
+                  JS: 'IHEAP[' + item.ident + '+' + i + '] = ' + value + ';'
+                });
+                constant[i] = '0';
+              }
+            });
+            constant = '[' + constant.join(', ') + ']';
+          }
+          constant = makePointer(constant, null, 'ALLOC_STATIC', item.type);
+
+          return ret.concat({
+            intertype: 'GlobalVariable',
+            JS: item.ident + ' = ' + constant + ';',
           });
-          constant = '[' + constant.join(', ') + ']';
         }
-        constant = makePointer(constant, null, 'ALLOC_STATIC', item.type);
-        return ret.concat({
-          intertype: 'GlobalVariable',
-          JS: item.ident + ' = ' + constant + ';',
-        });
       }
     }
   });
 
+  var addedLibraryItems = {};
+
   // functionStub
   substrate.addActor('FunctionStub', {
     processItem: function(item) {
+      var ret = [item];
       var shortident = item.ident.substr(1);
       if (shortident in Library) {
         function addFromLibrary(ident) {
           var me = arguments.callee;
-          if (!me.added) me.added = {};
-          if (ident in me.added) return '';
-          me.added[ident] = true;
+          if (ident in addedLibraryItems) return '';
+          addedLibraryItems[ident] = true;
           var snippet = Library[ident];
           if (typeof snippet === 'string') {
             if (Library[snippet]) {
               snippet = Library[snippet]; // redirection for aliases
             }
+          } else if (typeof snippet === 'object') {
+            // JSON.stringify removes functions, so we need to make sure they are added
+            var funcs = [];
+            for (var x in snippet) {
+              if (typeof snippet[x] === 'function') {
+                funcs.push(x + ': ' + snippet[x].toString());
+              }
+            }
+            snippet = JSON.stringify(snippet).replace(/}$/, ', ' + funcs.join(', ') + ' }');
+          } else if (typeof snippet === 'function') {
+            snippet = snippet.toString();
           }
+
+          var postsetId = ident + '__postset';
+          var postset = Library[postsetId];
+          if (postset && !addedLibraryItems[postsetId]) {
+            addedLibraryItems[postsetId] = true;
+            ret.push({
+              intertype: 'GlobalVariablePostSet',
+              JS: postset
+            });
+          }
+
           var deps = Library[ident + '__deps'];
-          return '_' + ident + ' = ' + snippet.toString() + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+          return '_' + ident + ' = ' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
         }
         item.JS = addFromLibrary(shortident);
       } else {
         item.JS = '// stub for ' + item.ident;
       }
-      return [item];
+      return ret;
     }
   });
 

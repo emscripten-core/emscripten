@@ -57,7 +57,7 @@ function toNiceIdent(ident) {
   assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
-  return ident.replace('%', '$').replace(/["\\ \.@:<>,\*\[\]-]/g, '_');
+  return ident.replace('%', '$').replace(/["&\\ \.@:<>,\*\[\]-]/g, '_');
 }
 
 // Kind of a hack. In some cases we have strings that we do not want

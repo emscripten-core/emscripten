@@ -268,8 +268,6 @@ function __shutdownRuntime__() {
   }
 }
 
-// stdio.h
-
 
 // Copies a list of num items on the HEAP into a
 // a normal JavaScript array of numbers
