@@ -228,19 +228,19 @@ var Library = {
       _stdin = Pointer_make([0], null, ALLOC_STATIC);
       IHEAP[_stdin] = this.prepare('<<stdin>>');
       _stdout = Pointer_make([0], null, ALLOC_STATIC);
-      IHEAP[_stdout] = this.prepare('<<stdout>>');
+      IHEAP[_stdout] = this.prepare('<<stdout>>', null, true);
       _stderr = Pointer_make([0], null, ALLOC_STATIC);
-      IHEAP[_stderr] = this.prepare('<<stderr>>');
+      IHEAP[_stderr] = this.prepare('<<stderr>>', null, true);
     },
-    prepare: function(filename, data) {
+    prepare: function(filename, data, print_) {
       var stream = this.counter++;
       this.streams[stream] = {
         filename: filename,
-        data: data,
+        data: data ? data : [],
         position: 0,
         eof: 0,
         error: 0,
-        print: 1 // true for stdout and stderr - we print when receiving data for them
+        print: print_ // true for stdout and stderr - we print when receiving data for them
       };
       this.filenames[filename] = stream;
       return stream;
@@ -249,9 +249,19 @@ var Library = {
 
   fopen__deps: ['STDIO'],
   fopen: function(filename, mode) {
-    var str = Pointer_stringify(filename);
-    //assert(str in this._STDIO.filenames, 'No information for file: ' + str);
-    return this._STDIO.filenames[str];
+    filename = Pointer_stringify(filename);
+    mode = Pointer_stringify(mode);
+    if (mode.indexOf('r') >= 0) {
+      //assert(filename in this._STDIO.filenames, 'No information for file: ' + filename);
+      var stream = this._STDIO.filenames[filename];
+      var info = this._STDIO.streams[stream];
+      info.position = info.error = info.eof = 0;
+      return stream;
+    } else if (mode.indexOf('w') >= 0) {
+      return this._STDIO.prepare(filename);
+    } else {
+      assert(false, 'fopen with odd params: ' + mode);
+    }
   },
   __01fopen64_: 'fopen',
 
@@ -304,7 +314,13 @@ var Library = {
     var info = this._STDIO.streams[stream];
     if (info.print) {
       __print__(intArrayToString(Array_copy(ptr, count*size)));
-    } // XXX
+    } else {
+      for (var i = 0; i < size*count; i++) {
+        info.data[info.position] = HEAP[ptr];
+        info.position++;
+        ptr++;
+      }
+    }
     return count;
   },
 

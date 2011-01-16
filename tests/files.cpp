@@ -2,7 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() {
+int main()
+{
+  // Reading
+
   FILE *file = fopen("somefile.binary", "rb");
   assert(file);
 
@@ -25,8 +28,23 @@ int main() {
   fclose (file);
   free (buffer);
 
+  // Standard streams
+
   fwrite("texto\n", 1, 6, stdout);
   fwrite("texte\n", 1, 6, stderr);
+
+  // Writing
+
+  char data[5] = { 10, 30, 20, 11, 88 };
+  FILE *outf = fopen("go.out", "wb");
+  fwrite(data, 1, 5, outf);
+  fclose(outf);
+
+  char data2[10];
+  FILE *inf = fopen("go.out", "rb");
+  int num = fread(data2, 1, 10, inf);
+  fclose(inf);
+  printf("%d : %d,%d,%d,%d,%d\n", num, data2[0], data2[1], data2[2], data2[3], data2[4]);
 
   return 0;
 }

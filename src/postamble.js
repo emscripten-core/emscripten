@@ -38,3 +38,5 @@ Module['run'] = run;
 run(args);
 #endif
 
+// {{POST_RUN_ADDITIONS}}
+
