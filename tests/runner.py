@@ -191,7 +191,7 @@ if 'benchmark' not in sys.argv:
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-    def do_ll_test(self, ll_file, output, args=[], js_engines=None, output_nicerizer=None):
+    def do_ll_test(self, ll_file, output, args=[], js_engines=None, output_nicerizer=None, post_build=None):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
@@ -217,7 +217,8 @@ if 'benchmark' not in sys.argv:
                    args,
                    no_build=True,
                    js_engines=js_engines,
-                   output_nicerizer=output_nicerizer)
+                   output_nicerizer=output_nicerizer,
+                   post_build=post_build)
 
     def test_hello_world(self):
         src = '''
@@ -415,7 +416,11 @@ if 'benchmark' not in sys.argv:
             int x = 5, y = 9, magic = 7; // fool compiler with magic
             memmove(&x, &y, magic-7); // 0 should not crash us
 
-            printf("*%d\\n", argc);
+            int xx, yy, zz;
+            int cc = sscanf("abc_10.b1_xyz_543", "abc_%d.%2x_xyz_%3d", &xx, &yy, &zz);
+            printf("%d:%d,%d,%d\\n", cc, xx, yy, zz);
+
+            printf("%d\\n", argc);
             puts(argv[1]);
             puts(argv[2]);
             printf("%d\\n", atoi(argv[3])+2);
@@ -427,7 +432,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
         '''
-        self.do_test(src, '*4*wowie*too*76*5*(null)*/* a comment */*// another', ['wowie', 'too', '74'], lambda x: x.replace('\n', '*'))
+        self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another', ['wowie', 'too', '74'])
 
     def test_mainenv(self):
         src = '''
@@ -1346,6 +1351,9 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       self.do_test(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
 
+    def zzztest_newlib(self):
+      self.do_test(path_from_root('tests', 'newlib'), '*waka*', main_file='main.c')
+
     def test_cubescript(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
@@ -1386,9 +1394,19 @@ if 'benchmark' not in sys.argv:
       # Has 'Object', which has a big union with a value that can be of any type (like a dynamic value)
       global SAFE_HEAP; SAFE_HEAP = 0
 
+      def post(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''this._STDIO.prepare('paper.pdf', %s);''' % str(
+            map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())
+          )
+        )
+        open(filename, 'w').write(src)
+
       self.do_ll_test(path_from_root('tests', 'poppler', 'pdftoppm.bc'),
                       'halp',
-                      args='-png -l 1 -scale-to 512 ~/Dev/emscripten/docs/paper.pdf filename'.split(' '))
+                      args='-png -scale-to 512 paper.pdf filename'.split(' '),
+                      post_build=post)
 
     def test_python(self):
       # Overflows in string_hash

@@ -16,6 +16,51 @@
 var Library = {
   // stdio.h
 
+  _scanString: function() {
+    // Supports %x, %4x, %d.%d
+    var str = Pointer_stringify(arguments[0]);
+    var stri = 0;
+    var fmt = Pointer_stringify(arguments[1]);
+    var fmti = 0;
+    var args = Array.prototype.slice.call(arguments, 2);
+    var argsi = 0;
+    var read = 0;
+    while (fmti < fmt.length) {
+      if (fmt[fmti] === '%') {
+        fmti++;
+        var max_ = parseInt(fmt[fmti]);
+        if (!isNaN(max_)) fmti++;
+        var type = fmt[fmti];
+        fmti++;
+        var curr = 0;
+        while ((curr < max_ || isNaN(max_)) && stri+curr < str.length) {
+          if ((type === 'd' && parseInt(str[stri+curr]) >= 0) ||
+              (type === 'x' && parseInt(str[stri+curr].replace(/[a-fA-F]/, 5)) >= 0)) {
+            curr++;
+          } else {
+            break;
+          }
+        }
+        if (curr === 0) { print("FAIL"); break; }
+        var text = str.substr(stri, curr);
+        stri += curr;
+        var value = type === 'd' ? parseInt(text) : eval('0x' + text);
+        {{{ makeSetValue('args[argsi]', '0', 'value', 'i32') }}}
+        argsi++;
+        read++;
+      } else { // not '%'
+        if (fmt[fmti] === str[stri]) {
+          fmti++;
+          stri++;
+        } else {
+          break;
+        }
+      }
+    }
+    return read; // XXX Possibly we should return EOF (-1) sometimes
+  },
+  sscanf: '_scanString',
+
   _formatString__deps: ['STDIO'],
   _formatString: function() {
     function isFloatArg(type) {
@@ -252,8 +297,8 @@ var Library = {
     filename = Pointer_stringify(filename);
     mode = Pointer_stringify(mode);
     if (mode.indexOf('r') >= 0) {
-      //assert(filename in this._STDIO.filenames, 'No information for file: ' + filename);
       var stream = this._STDIO.filenames[filename];
+      if (!stream) return 0; // assert(false, 'No information for file: ' + filename);
       var info = this._STDIO.streams[stream];
       info.position = info.error = info.eof = 0;
       return stream;
@@ -621,6 +666,9 @@ var Library = {
     }
     return 0;
   },
+
+  // Compiled from newlib; for the original source and licensing, see library_strtok_r.c
+  strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=IHEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=IHEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=IHEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=IHEAP[f]=0;else{c=b+-1;a:for(;;){e=IHEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=IHEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else IHEAP[b+-1]=0; IHEAP[f]=b;c=c}else if(a==7){IHEAP[f]=b;IHEAP[b+-1]=0;c=b+-1}}return c},
 
   // ctype.h
 
