@@ -13,10 +13,14 @@ COMPILER = path_from_root('src', 'compiler.js')
 
 def emscripten(filename, settings):
   data = open(filename, 'r').read()
-  cwd = os.getcwd()
+  try:
+    cwd = os.getcwd()
+  except:
+    cwd = None
   os.chdir(os.path.dirname(COMPILER))
   subprocess.Popen(JS_ENGINE + [COMPILER], stdin=subprocess.PIPE).communicate(settings+'\n'+data)[0]
-  os.chdir(cwd)
+  if cwd is not None:
+    os.chdir(cwd)
 
 if __name__ == '__main__':
   if sys.argv.__len__() not in [2,3,4]:

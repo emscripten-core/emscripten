@@ -26,6 +26,7 @@ except:
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
 NAMESPACER = path_from_root('tools', 'namespacer.py')
+LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 
 class RunnerCore(unittest.TestCase):
   def get_dir(self):
@@ -97,36 +98,49 @@ class RunnerCore(unittest.TestCase):
     Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[]):
     # Copy over necessary files for compiling the source
     if main_file is None:
       f = open(filename, 'w')
       f.write(src)
       f.close()
+      assert len(additional_files) == 0
     else:
       # copy whole directory, and use a specific main .cpp file
-      for f in os.listdir(src):
-        shutil.copy(os.path.join(src, f), dirname)
+      shutil.rmtree(dirname)
+      shutil.copytree(src, dirname)
       shutil.move(os.path.join(dirname, main_file), filename)
+      # the additional files were copied; alter additional_files to point to their full paths now
+      additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
 
     # Copy Emscripten C++ API
     shutil.copy(path_from_root('src', 'include', 'emscripten.h'), dirname)
 
     # C++ => LLVM binary
-    try:
-      # Make sure we notice if compilation steps failed
-      os.remove(filename + '.o')
-      os.remove(filename + '.o.ll')
-    except:
-      pass
     os.chdir(dirname)
     cwd = os.getcwd()
-    output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-c', filename, '-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    for f in [filename] + additional_files:
+      try:
+        # Make sure we notice if compilation steps failed
+        os.remove(f + '.o')
+        os.remove(f + '.o.ll')
+      except:
+        pass
+      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-I', dirname, '-I', os.path.join(dirname, 'include'), '-c', f, '-o', f + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      if not os.path.exists(f + '.o'):
+        print "Failed to compile C/C++ source:\n\n", output
+        raise Exception("Compilation error");
     os.chdir(cwd)
-    if not os.path.exists(filename + '.o'):
-      print "Failed to compile C/C++ source:\n\n", output
-      raise Exception("Compilation error");
 
+    # Link all files
+    if len(additional_files) > 0:
+      shutil.move(filename + '.o', filename + '.o.alone')
+      output = Popen([LLVM_LINK, filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + ['-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      if not os.path.exists(filename + '.o'):
+        print "Failed to link LLVM binaries:\n\n", output
+        raise Exception("Linkage error");
+
+    # Finalize
     self.do_llvm_opts(filename)
 
     self.do_llvm_dis(filename)
@@ -167,13 +181,13 @@ if 'benchmark' not in sys.argv:
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, js_engines=None, post_build=None, basename='src.cpp'):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp'):
         #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         if main_file is not None and main_file[-2:] == '.c': basename = 'src.c'
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
         if not no_build:
-          self.build(src, dirname, filename, main_file=main_file)
+          self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files)
 
         if post_build is not None:
           post_build(filename + '.o.js')
@@ -1351,8 +1365,10 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       self.do_test(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
 
-    def zzztest_newlib(self):
-      self.do_test(path_from_root('tests', 'newlib'), '*waka*', main_file='main.c')
+    def test_libcxx(self):
+      self.do_test(path_from_root('tests', 'libcxx'),
+                   'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
+                   main_file='main.cpp', additional_files=['hash.cpp'])
 
     def test_cubescript(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
@@ -1529,6 +1545,8 @@ class %s(T):
     CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
+    shutil.rmtree(self.get_dir())
+    self.get_dir() # make sure it exists
 TT = %s
 ''' % (fullname, compiler['path'], compiler['quantum_size'], llvm_opts, embetter, fullname))
     return TT
