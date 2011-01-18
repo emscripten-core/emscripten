@@ -442,7 +442,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         if (block.type == 'emulated') {
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
-              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; /* ' + block.entries[0] + ' */\n';
+              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + block.entries[0] + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             ret += indent + 'while(1) switch(__label__) {\n';
             ret += block.labels.map(function(label) {
@@ -451,11 +451,11 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
             }).join('\n');
             ret += '\n' + indent + '  default: assert(0, "bad label: " + __label__);\n' + indent + '}';
           } else {
-            ret += getLabelLines(block.labels[0], indent);
+            ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);
           }
           ret += '\n';
         } else if (block.type == 'reloop') {
-          ret += indent + block.id + ': while(1) { // ' + block.entries + '\n';
+          ret += indent + block.id + ': while(1) { ' + (SHOW_LABELS ? ' /* ' + block.entries + + ' */' : '') + '\n';
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
         } else if (block.type == 'multiple') {
@@ -632,7 +632,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       var parts = label.split('|');
       var trueLabel = parts[1];
       var oldLabel = parts[2];
-      var labelSetting = '__label__ = ' + getLabelId(oldLabel) + '; /* ' + cleanLabel(oldLabel) + ' */ '; // TODO: optimize away
+      var labelSetting = '__label__ = ' + getLabelId(oldLabel) + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(oldLabel) + ' */' : ''); // TODO: optimize away
       if (label[1] == 'R') {
         return pre + labelSetting + 'break ' + trueLabel + ';';
       } else if (label[1] == 'C') { // CONT
@@ -645,7 +645,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         throw 'Invalid B-op in branch: ' + trueLabel + ',' + oldLabel;
       }
     } else {
-      return pre + '__label__ = ' + getLabelId(label) + '; /* ' + cleanLabel(label) + ' */ break;';
+      return pre + '__label__ = ' + getLabelId(label) + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(label) + ' */' : '') + ' break;';
     }
   }
 

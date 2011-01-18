@@ -51,6 +51,8 @@ CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS 
                        // not rely on overflows in your C/C++ code, as even if this option works,
                        // it slows things down.
 
+SHOW_LABELS = 0; // Show labels in the generated code
+
 // Compiler debugging options
 DEBUG_TAGS_SHOWING = [];
   // Some useful items:
