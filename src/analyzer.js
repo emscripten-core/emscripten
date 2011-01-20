@@ -443,7 +443,13 @@ function analyzer(data, givenTypes) {
         ret.push(item[id]);
         dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId);
         if (toLabelId) {
-          item[id] = toLabelId + '|' + item[id];
+          // replace wildcards in new value with old parts
+          var oldParts = item[id].split('|');
+          var newParts = toLabelId.split('|');
+          for (var i = 1; i < 3; i++) {
+            if (newParts[i] === '*') newParts[i] = oldParts[i];
+          }
+          item[id] = newParts.join('|') + '|' + item[id];
         }
       }
     });
@@ -640,6 +646,7 @@ function analyzer(data, givenTypes) {
           var ret = {
             type: 'reloop',
             id: blockId,
+            needBlockId: true,
             entries: entries,
             labels: labels
           };
@@ -767,6 +774,7 @@ function analyzer(data, givenTypes) {
         return {
           type: 'multiple',
           id: blockId,
+          needBlockId: true,
           entries: actualEntries,
           entryLabels: actualEntryLabels,
           labels: handlingNow,
@@ -798,7 +806,7 @@ function analyzer(data, givenTypes) {
       if (!RELOOP) return finish();
 
       // Find where each block will 'naturally' get to, just by the flow of code
-      function exploreBlock(block, endOfTheWorld) { // endoftheworld - where we will get, if we have nothing else to get to - 'fall off the face of the earth'
+      function exploreBlockEndings(block, endOfTheWorld) { // endoftheworld - where we will get, if we have nothing else to get to - 'fall off the face of the earth'
         if (!block) return;
 
         function singular(block) {
@@ -814,9 +822,9 @@ function analyzer(data, givenTypes) {
         dprint('relooping', "//    exploring block: " + block.type + ' : ' + block.entries);
 
         if (block.type == 'reloop') {
-          exploreBlock(block.inner, singular(block.inner));
+          exploreBlockEndings(block.inner, singular(block.inner));
         } else if (block.type == 'multiple') {
-          block.entryLabels.forEach(function(entryLabel) { exploreBlock(entryLabel.block, singular(block.next)) });
+          block.entryLabels.forEach(function(entryLabel) { exploreBlockEndings(entryLabel.block, singular(block.next)) });
         } else if (block.type === 'emulated' && block.next && block.next.type === 'multiple') {
           assert(block.labels.length == 1);
           var lastLine = block.labels[0].lines.slice(-1)[0];
@@ -828,7 +836,7 @@ function analyzer(data, givenTypes) {
           }
         }
 
-        exploreBlock(block.next, endOfTheWorld);
+        exploreBlockEndings(block.next, endOfTheWorld);
 
         if (block.next) {
           block.willGetTo = singular(block.next);
@@ -840,12 +848,12 @@ function analyzer(data, givenTypes) {
       }
 
       // Remove unneeded label settings, if we set it to where we will get anyhow
-      function optimizeBlock(block) {
+      function optimizeBlockEndings(block) {
         if (!block) return;
 
         dprint('relooping', "//    optimizing block: " + block.type + ' : ' + block.entries);
 
-        recurseBlock(block, optimizeBlock);
+        recurseBlock(block, optimizeBlockEndings);
 
         if (block.type === 'emulated' && block.willGetTo) {
           dprint('relooping', '//         removing (trying): ' + block.willGetTo);
@@ -873,11 +881,37 @@ function analyzer(data, givenTypes) {
         }
       }
 
+      // Checks whether we actually need labels. We return whether we have a loop nested inside us.
+      function optimizeOutUnneededLabels(block) {
+        if (!block) return false;
+
+        dprint('relooping', "//    optimizing (2) block: " + block.type + ' : ' + block.entries);
+
+        var containLoop = sum(recurseBlock(block, optimizeOutUnneededLabels)) > 0;
+
+        if (block.type === 'emulated') {
+          return containLoop;
+        } else if (block.type === 'multiple') {
+          // TODO: Apply the same optimization below for 'reloop', to looped multiples
+          return containLoop || !block.loopless;
+        } else if (block.type === 'reloop') {
+          if (!containLoop) {
+            block.needBlockId = false;
+
+            replaceLabelLabels(block.labels, set('BCONT|' + block.id + '|*'), 'BCONT||*');
+            replaceLabelLabels(block.labels, set('BREAK|' + block.id + '|*'), 'BREAK||*');
+          }
+          return true;
+        }
+        assert(false);
+      }
+
       // TODO: Parallelize
       item.functions.forEach(function(func) {
         dprint('relooping', "// loopOptimizing function: " + func.ident);
-        exploreBlock(func.block);
-        optimizeBlock(func.block);
+        exploreBlockEndings(func.block);
+        optimizeBlockEndings(func.block);
+        optimizeOutUnneededLabels(func.block);
       });
       return finish();
     }

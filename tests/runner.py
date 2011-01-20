@@ -1577,6 +1577,8 @@ else:
   GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = 0
   LLVM_OPTS = 1
 
+  USE_CLOSURE_COMPILER = 1
+
   TEST_REPS = 3
   TOTAL_TESTS = 3
 
@@ -1598,28 +1600,33 @@ else:
       filename = os.path.join(dirname, 'src.cpp')
       self.build(src, dirname, filename, main_file=main_file)
 
-      # Optimize using closure compiler
-      try:
-        os.remove(filename + '.cc.js')
-      except:
-        pass
-      # Something like this:
-      #   java -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --formatting PRETTY_PRINT --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+      final_filename = filename + '.o.js'
 
-      cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
-                         '--compilation_level', 'SIMPLE_OPTIMIZATIONS', # XXX - ADVANCED clashes with our _STDIO object
-                         '--formatting', 'PRETTY_PRINT',
-                         '--variable_map_output_file', filename + '.vars',
-                         '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-      if 'ERROR' in cc_output:
-        raise Exception('Error in cc output: ' + cc_output)
+      if USE_CLOSURE_COMPILER:
+        # Optimize using closure compiler
+        try:
+          os.remove(filename + '.cc.js')
+        except:
+          pass
+        # Something like this:
+        #   java -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --formatting PRETTY_PRINT --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+
+        cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
+                           '--compilation_level', 'SIMPLE_OPTIMIZATIONS', # XXX - ADVANCED clashes with our _STDIO object
+                           '--formatting', 'PRETTY_PRINT',
+                           '--variable_map_output_file', filename + '.vars',
+                           '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        if 'ERROR' in cc_output:
+          raise Exception('Error in cc output: ' + cc_output)
+
+        final_filename = filename + '.cc.js'
 
       # Run
       global total_times
       times = []
       for i in range(TEST_REPS):
         start = time.time()
-        js_output = self.run_generated_code(JS_ENGINE, filename + '.cc.js', args, check_timeout=False)
+        js_output = self.run_generated_code(JS_ENGINE, final_filename, args, check_timeout=False)
         curr = time.time()-start
         times.append(curr)
         total_times[i] += curr

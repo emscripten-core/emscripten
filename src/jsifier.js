@@ -455,14 +455,14 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
           }
           ret += '\n';
         } else if (block.type == 'reloop') {
-          ret += indent + block.id + ': while(1) { ' + (SHOW_LABELS ? ' /* ' + block.entries + + ' */' : '') + '\n';
+          ret += indent + (block.needBlockId ? block.id + ': ' : '') + 'while(1) { ' + (SHOW_LABELS ? ' /* ' + block.entries + + ' */' : '') + '\n';
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
         } else if (block.type == 'multiple') {
           var first = true;
           var multipleIdent = '';
           if (!block.loopless) {
-            ret += indent + block.id + ':' + ' do { \n';
+            ret += indent + (block.needBlockId ? block.id + ': ' : '') + 'do { \n';
             multipleIdent = '  ';
           }
           var stolen = block.stolenCondition;
@@ -630,9 +630,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     }
     if (label[0] == 'B') {
       var parts = label.split('|');
-      var trueLabel = parts[1];
-      var oldLabel = parts[2];
-      var labelSetting = '__label__ = ' + getLabelId(oldLabel) + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(oldLabel) + ' */' : ''); // TODO: optimize away
+      var trueLabel = parts[1] || '';
+      var oldLabel = parts[2] || '';
+      var labelSetting = oldLabel ? '__label__ = ' + getLabelId(oldLabel) + ';' +
+                         (SHOW_LABELS ? ' /* to: ' + cleanLabel(oldLabel) + ' */' : '') : ''; // TODO: optimize away the setting
       if (label[1] == 'R') {
         return pre + labelSetting + 'break ' + trueLabel + ';';
       } else if (label[1] == 'C') { // CONT
@@ -640,7 +641,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       } else if (label[1] == 'N') { // NOPP
         return pre + ';'; // Returning no text might confuse this parser
       } else if (label[1] == 'J') { // JSET
-        return pre + labelSetting;
+        return pre + labelSetting + ';';
       } else {
         throw 'Invalid B-op in branch: ' + trueLabel + ',' + oldLabel;
       }

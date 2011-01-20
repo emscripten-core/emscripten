@@ -512,13 +512,14 @@ function calcAllocatedSize(type, TYPES) {
 // Flow blocks
 
 function recurseBlock(block, func) {
+  var ret = [];
   if (block.type == 'reloop') {
-    func(block.inner);
+    ret.push(func(block.inner));
   } else if (block.type == 'multiple') {
-    block.entryLabels.forEach(function(entryLabel) { func(entryLabel.block) });
+    block.entryLabels.forEach(function(entryLabel) { ret.push(func(entryLabel.block)) });
   }
-
-  func(block.next);
+  ret.push(func(block.next));
+  return ret;
 }
 
 function getActualLabelId(labelId) {
