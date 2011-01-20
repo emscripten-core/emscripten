@@ -261,8 +261,8 @@ var Library = {
 
   // stdio.h - file functions
 
-  STDIO__postset: 'this._STDIO.init()',
-  STDIO: {
+  STDIO__postset: '_STDIO.init()',
+  STDIO: { // TODO: Rewrite this so it works with closure compiler, allowing us to use ADVANCED optimizations there
     streams: {},
     filenames: {},
     counter: 1,
@@ -297,13 +297,13 @@ var Library = {
     filename = Pointer_stringify(filename);
     mode = Pointer_stringify(mode);
     if (mode.indexOf('r') >= 0) {
-      var stream = this._STDIO.filenames[filename];
+      var stream = _STDIO.filenames[filename];
       if (!stream) return 0; // assert(false, 'No information for file: ' + filename);
-      var info = this._STDIO.streams[stream];
+      var info = _STDIO.streams[stream];
       info.position = info.error = info.eof = 0;
       return stream;
     } else if (mode.indexOf('w') >= 0) {
-      return this._STDIO.prepare(filename);
+      return _STDIO.prepare(filename);
     } else {
       assert(false, 'fopen with odd params: ' + mode);
     }
@@ -312,17 +312,17 @@ var Library = {
 
   rewind__deps: ['STDIO'],
   rewind: function(stream) {
-    var info = this._STDIO.streams[stream];
+    var info = _STDIO.streams[stream];
     info.position = 0;
     info.error = 0;
   },
 
   fseek__deps: ['STDIO'],
   fseek: function(stream, offset, whence) {
-    var info = this._STDIO.streams[stream];
-    if (whence === this._STDIO.SEEK_CUR) {
+    var info = _STDIO.streams[stream];
+    if (whence === _STDIO.SEEK_CUR) {
       offset += info.position;
-    } else if (whence === this._STDIO.SEEK_END) {
+    } else if (whence === _STDIO.SEEK_END) {
       offset += info.data.length;
     }
     info.position = offset;
@@ -333,13 +333,13 @@ var Library = {
 
   ftell__deps: ['STDIO'],
   ftell: function(stream) {
-    return this._STDIO.streams[stream].position;
+    return _STDIO.streams[stream].position;
   },
   __01ftello64_: 'ftell',
 
   fread__deps: ['STDIO'],
   fread: function(ptr, size, count, stream) {
-    var info = this._STDIO.streams[stream];
+    var info = _STDIO.streams[stream];
     for (var i = 0; i < count; i++) {
       if (info.position + size > info.data.length) {
         info.eof = 1;
@@ -356,7 +356,7 @@ var Library = {
 
   fwrite__deps: ['STDIO'],
   fwrite: function(ptr, size, count, stream) {
-    var info = this._STDIO.streams[stream];
+    var info = _STDIO.streams[stream];
     if (info.print) {
       __print__(intArrayToString(Array_copy(ptr, count*size)));
     } else {
@@ -376,12 +376,12 @@ var Library = {
 
   feof__deps: ['STDIO'],
   feof: function(stream) {
-    return this._STDIO.streams[stream].eof;
+    return _STDIO.streams[stream].eof;
   },
 
   ferror__deps: ['STDIO'],
   ferror: function(stream) {
-    return this._STDIO.streams[stream].error;
+    return _STDIO.streams[stream].error;
   },
 
   // stdlib.h

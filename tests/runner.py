@@ -1607,7 +1607,7 @@ else:
       #   java -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --formatting PRETTY_PRINT --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
 
       cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
-                         '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+                         '--compilation_level', 'SIMPLE_OPTIMIZATIONS', # XXX - ADVANCED clashes with our _STDIO object
                          '--formatting', 'PRETTY_PRINT',
                          '--variable_map_output_file', filename + '.vars',
                          '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
