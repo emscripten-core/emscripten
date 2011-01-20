@@ -879,8 +879,10 @@ var Library = {
   fabsf: 'Math.abs',
   ceil: 'Math.ceil',
   floor: 'Math.floor',
+  llvm_sqrt_f32: 'Math.sqrt',
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
+  llvm_pow_f64: 'Math.pow',
 
   modf: function(x, intpart) {
     {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}}
