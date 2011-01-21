@@ -24,9 +24,7 @@ LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
-LLVM_DIS_OPTS = []
-if '2.8' in LLVM_ROOT:
-  LLVM_DIS_OPTS += ['-show-annotations']
+LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to do just    []
 
 SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/tracemonkey/js/src/js'), '-m', '-j', '-p']
 V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
