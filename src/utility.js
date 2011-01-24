@@ -204,7 +204,11 @@ function flatten(x) {
   if (typeof x !== 'object') return x;
   var ret = [];
   for (var i = 0; i < x.length; i++) {
-    ret = ret.concat(flatten(x[i]));
+    if (typeof x[i] === 'number') {
+      ret.push(x[i]);
+    } else {
+      ret = ret.concat(flatten(x[i]));
+    }
   }
   return ret;
 }

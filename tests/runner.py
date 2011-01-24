@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile
 
 # Setup
 
@@ -26,6 +26,7 @@ except:
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
 NAMESPACER = path_from_root('tools', 'namespacer.py')
+EMMAKEN = path_from_root('tools', 'emmaken.py')
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 
 class RunnerCore(unittest.TestCase):
@@ -98,7 +99,7 @@ class RunnerCore(unittest.TestCase):
     Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[]):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[]):
     # Copy over necessary files for compiling the source
     if main_file is None:
       f = open(filename, 'w')
@@ -126,16 +127,23 @@ class RunnerCore(unittest.TestCase):
         os.remove(f + '.o.ll')
       except:
         pass
-      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + ['-I', dirname, '-I', os.path.join(dirname, 'include'), '-c', f, '-o', f + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS +
+                     ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
+                     map(lambda include: '-I' + include, includes) + 
+                     ['-c', f, '-o', f + '.o'],
+                     stdout=PIPE, stderr=STDOUT).communicate()[0]
       if not os.path.exists(f + '.o'):
         print "Failed to compile C/C++ source:\n\n", output
         raise Exception("Compilation error");
     os.chdir(cwd)
 
     # Link all files
-    if len(additional_files) > 0:
+    if len(additional_files) + len(libraries) > 0:
       shutil.move(filename + '.o', filename + '.o.alone')
-      output = Popen([LLVM_LINK, filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + ['-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen([LLVM_LINK, filename + '.o.alone'] +
+                     map(lambda f: f + '.o', additional_files) +
+                     libraries +
+                     ['-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
       if not os.path.exists(filename + '.o'):
         print "Failed to link LLVM binaries:\n\n", output
         raise Exception("Linkage error");
@@ -181,13 +189,13 @@ if 'benchmark' not in sys.argv:
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp'):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[]):
         #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         if main_file is not None and main_file[-2:] == '.c': basename = 'src.c'
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
         if not no_build:
-          self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files)
+          self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes)
 
         if post_build is not None:
           post_build(filename + '.o.js')
@@ -204,12 +212,7 @@ if 'benchmark' not in sys.argv:
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
-    # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-    def do_ll_test(self, ll_file, output, args=[], js_engines=None, output_nicerizer=None, post_build=None):
-      if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
-
-      filename = os.path.join(self.get_dir(), 'src.cpp')
-
+    def prep_ll_test(self, filename, ll_file):
       if ll_file.endswith('.bc'):
         shutil.copy(ll_file, filename + '.o')
         self.do_llvm_dis(filename)
@@ -225,6 +228,13 @@ if 'benchmark' not in sys.argv:
       else:
         shutil.copy(ll_file, filename + '.o.ll')
 
+    # No building - just process an existing .ll file (or .bc, which we turn into .ll)
+    def do_ll_test(self, ll_file, output, args=[], js_engines=None, output_nicerizer=None, post_build=None):
+      if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
+
+      filename = os.path.join(self.get_dir(), 'src.cpp')
+
+      self.prep_ll_test(filename, ll_file)
       self.do_emscripten(filename)
       self.do_test(None,
                    output,
@@ -1405,6 +1415,36 @@ if 'benchmark' not in sys.argv:
                       'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
+
+    def zzztest_freetype(self):
+      if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant # TODO: Build in both clang and llvm-gcc. emmaken currently does just one.
+      cwd = os.getcwd()
+      temp_dir = os.path.join(self.get_dir(), 'building')
+      try:
+        # Libfreetype
+        '''print "Temp_dir:", temp_dir
+        ft_dir = os.path.join(temp_dir, 'freetype')
+        shutil.copytree(path_from_root('tests', 'freetype'), ft_dir)
+        os.chdir(ft_dir)
+        env = os.environ.copy()
+        env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
+        output = Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+        self.assertContained('configure: creating ./config.status', output)
+        output = Popen(['make'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        print output
+        #self.assertContained('configure: creating ./config.status', output)
+        bc_file = os.path.join(ft_dir, 'objs', '.libs', 'libfreetype')
+        shutil.copyfile(bc_file + '.so', bc_file + '.bc')
+        bc_file += '.bc' '''
+        bc_file = path_from_root('tests', 'freetype', 'libfreetype.bc')
+
+        # Main
+        self.do_test(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(), 'hello, world!',
+                     libraries=[bc_file], includes=[path_from_root('tests', 'freetype', 'include')])
+
+      finally:
+        os.chdir(cwd)
+        #shutil.rmtree(temp_dir)
 
     def zzztest_poppler(self):
       # Has 'Object', which has a big union with a value that can be of any type (like a dynamic value)

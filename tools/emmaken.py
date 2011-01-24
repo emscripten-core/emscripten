@@ -134,7 +134,7 @@ try:
       newargs = [ arg for arg in sys.argv[1:] if arg not in CC_ARG_SKIP ] + CC_ADDITIONAL_ARGS
       if 'conftest.c' not in files:
           newargs.append('-emit-llvm')
-          if CC=='llvm-gcc':
+          if 'llvm-g' in CC:
               newargs.append('-c') 
 
   print >> sys.stderr, "Running:", call, ' '.join(newargs)
