@@ -883,6 +883,9 @@ var Library = {
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
   llvm_pow_f64: 'Math.pow',
+  ldexp: function(x, exp_) {
+    return x*Math.pow(2, exp_);
+  },
 
   modf: function(x, intpart) {
     {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}}

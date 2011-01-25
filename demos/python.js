@@ -1,6 +1,13 @@
 // This is CPython compiled to JavaScript using Emscripten.
 // Python licensing info: http://docs.python.org/license.html
 
+// fixes for issue 30
+var _llvm_pow_f64 = Math.pow;
+var _ldexp = function(x, exp_) {
+  return x*Math.pow(2, exp_);
+};
+
+// Generated code
 function aa(c){throw c;}var ca=true,da=null,ea=false;function fa(){return function(){}}function ga(c){return function(){return c}}this.Module={};
 Runtime={q:function(c){for(var e=a,b=0;b<c;b++)i[a+b]=j[a+b]=0;a+=c;a=Math.ceil(a/4)*4;return e},h:function(c){for(var e=ha,b=0;b<c;b++)i[ha+b]=j[ha+b]=0;ha+=c;ha=Math.ceil(ha/4)*4;return e},d:function(c,e){return Math.ceil(c/(e?e:4))*(e?e:4)},a:function(c,e){var b=n.length;n[b]=c;n[b+1]=da;Module[e]=c;return b},f:function(c){return c in Runtime.j||c in Runtime.i},o:function(c){return pointingLevels(c)>0},p:function(c){if(isPointerType(c))return ea;if(RegExp(/^\[\d+\ x\ (.*)\]/g).test(c))return ca;
 return!Runtime.f(c)&&c[0]=="%"},j:{i1:0,i8:0,i16:0,i32:0,i64:0},i:{"float":0,"double":0},n:function(c,e){var b={i1:1,i8:1,i16:2,i32:4,i64:8,"float":4,"double":8}[c];b||(b=4);e||(b=Math.max(b,4));return b},l:function(c,e){var b={};return e?c.filter(function(d){if(b[d[e]])return ea;return b[d[e]]=ca}):c.filter(function(d){if(b[d])return ea;return b[d]=ca})},g:function(){if(typeof arguments[0]==="object")arguments=arguments[0];for(var c={},e=0;e<arguments.length;e++)c[arguments[e]]=0;return c},s:function(c,
