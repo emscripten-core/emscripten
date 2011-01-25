@@ -6,6 +6,7 @@ var _llvm_pow_f64 = Math.pow;
 var _ldexp = function(x, exp_) {
   return x*Math.pow(2, exp_);
 };
+var _llvm_log_f32 = _llvm_log_f64 = Math.log;
 
 // Generated code
 function aa(c){throw c;}var ca=true,da=null,ea=false;function fa(){return function(){}}function ga(c){return function(){return c}}this.Module={};

@@ -883,6 +883,8 @@ var Library = {
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
   llvm_pow_f64: 'Math.pow',
+  llvm_log_f32: 'Math.log',
+  llvm_log_f64: 'Math.log',
   ldexp: function(x, exp_) {
     return x*Math.pow(2, exp_);
   },
