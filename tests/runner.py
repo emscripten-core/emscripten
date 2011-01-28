@@ -300,15 +300,21 @@ if 'benchmark' not in sys.argv:
     def test_unsigned(self):
         src = '''
           #include <stdio.h>
+          const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
           int main()
           {
             int varey = 100;
             unsigned int MAXEY = -1, MAXEY2 = -77;
             printf("*%u,%d,%u*\\n", MAXEY, varey >= MAXEY, MAXEY2); // 100 >= -1? not in unsigned!
+
+            int y = cvals[0];
+            printf("*%d,%d,%d,%d*\\n", cvals[0], cvals[0] < 0, y, y < 0);
+            y = cvals[1];
+            printf("*%d,%d,%d,%d*\\n", cvals[1], cvals[1] < 0, y, y < 0);
             return 0;
           }
         '''
-        self.do_test(src, '*4294967295,0,4294967219*')
+        self.do_test(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*')
 
     def test_bitfields(self):
         global SAFE_HEAP; SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
@@ -1327,11 +1333,11 @@ if 'benchmark' not in sys.argv:
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]);'''
+          '''this._STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]);''' # 200 becomes -56, since signed chars are used in memory
         )
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'files.cpp'), 'r').read()
-      self.do_test(src, 'size: 7\ndata: 100,200,50,25,10,77,123\ntexto\ntexte\n5 : 10,30,20,11,88\n', post_build=post)
+      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ntexto\ntexte\n5 : 10,30,20,11,88\n', post_build=post)
 
     ### 'Big' tests
 

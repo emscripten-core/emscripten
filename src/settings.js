@@ -16,6 +16,11 @@ QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 w
 GUARD_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                  // Decreases performance with additional runtime checks. Might not be
                  // needed in some kinds of code.
+CHECK_SIGNS = 0; // Runtime warning for signing issues that need correcting. Note:
+                 // *requires* GUARD_SIGNS to work. It is recommended to use this in
+                 // order to find if your code needs GUARD_SIGNS. If you can get your
+                 // code to run without GUARD_SIGNS, it will run much faster
+
 GUARD_LABELS = 0; // Whether we should throw if we encounter a bad __label__, i.e.,
                   // if code flow runs into a fault
 GUARD_MEMORY = 1; // Whether we should check that each allocation to the stack does not

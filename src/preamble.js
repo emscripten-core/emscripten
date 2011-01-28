@@ -349,7 +349,27 @@ function intArrayToString(array) {
 // example, -1 in int32 would be a very large number as unsigned.
 function unSign(value, bits) {
   if (value >= 0) return value;
-  return 2*Math.abs(1 << (bits-1)) + value;
+#if CHECK_SIGNS
+  print('WARNING: unSign needed, ' + [value, bits] + ' at ' + new Error().stack);
+#endif
+  return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
+                    : Math.pow(2, bits)         + value;
+  // TODO: clean up previous line
+}
+
+// Converts a value we have as unsigned, into a signed value. For
+// example, 200 in a uint8 would be a negative number.
+function reSign(value, bits) {
+  if (value <= 0) return value;
+  var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
+                        : Math.pow(2, bits-1);
+  if (value >= half) {
+#if CHECK_SIGNS
+  print('WARNING: reSign needed, ' + [value, bits] + ' at ' + new Error().stack);
+#endif
+    value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
+  }
+  return value;
 }
 
 // === Body ===

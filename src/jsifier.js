@@ -752,9 +752,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     return makeOne(0);
   });
 
-  function makeUnSign(value, type) {
+  function makeSignOp(value, type, op) {
     if (type in Runtime.INT_TYPES) {
-      return 'unSign(' + value + ', ' + type.substr(1) + ')';
+      var bits = parseInt(type.substr(1));
+      return op + 'Sign(' + value + ', ' + type.substr(1) + ')';
     } else {
       return value;
     }
@@ -768,8 +769,11 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     }
     if (GUARD_SIGNS) {
       if (op[0] == 'u' || (variant && variant[0] == 'u')) {
-        ident1 = makeUnSign(ident1, type);
-        ident2 = makeUnSign(ident2, type);
+        ident1 = makeSignOp(ident1, type, 'un');
+        ident2 = makeSignOp(ident2, type, 'un');
+      } else if (op[0] == 's' || (variant && variant[0] == 's')) {
+        ident1 = makeSignOp(ident1, type, 're');
+        ident2 = makeSignOp(ident2, type, 're');
       }
     }
     var bits = null;
