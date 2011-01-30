@@ -1477,7 +1477,7 @@ if 'benchmark' not in sys.argv:
 
     def test_freetype(self):
       if COMPILER != LLVM_GCC: return # TODO: Build in both clang and llvm-gcc. emmaken currently only does llvm-gcc
-      if RELOOP: return # XXX buggy
+      if LLVM_OPTS: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
       def get_bc():
         # We build the .bc file once and cache it for all our tests. (We cache in
