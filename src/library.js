@@ -289,7 +289,28 @@ var Library = {
       };
       this.filenames[filename] = stream;
       return stream;
-    }
+    },
+    open: function(filename) {
+      var stream = _STDIO.filenames[filename];
+      if (!stream) return -1; // assert(false, 'No information for file: ' + filename);
+      var info = _STDIO.streams[stream];
+      info.position = info.error = info.eof = 0;
+      return stream;
+    },
+    read: function(stream, ptr, size) {
+      var info = _STDIO.streams[stream];
+      if (!info) return -1;
+      for (var i = 0; i < size; i++) {
+        if (info.position >= info.data.length) {
+          info.eof = 1;
+          return 0; // EOF
+        }
+        {{{ makeSetValue('ptr', '0', 'info.data[info.position]', 'i8') }}}
+        info.position++;
+        ptr++;
+      }
+      return size;
+    },
   },
 
   fopen__deps: ['STDIO'],
@@ -297,11 +318,7 @@ var Library = {
     filename = Pointer_stringify(filename);
     mode = Pointer_stringify(mode);
     if (mode.indexOf('r') >= 0) {
-      var stream = _STDIO.filenames[filename];
-      if (!stream) return 0; // assert(false, 'No information for file: ' + filename);
-      var info = _STDIO.streams[stream];
-      info.position = info.error = info.eof = 0;
-      return stream;
+      return _STDIO.open(filename);
     } else if (mode.indexOf('w') >= 0) {
       return _STDIO.prepare(filename);
     } else {
@@ -345,11 +362,8 @@ var Library = {
         info.eof = 1;
         return i;
       }
-      for (var j = 0; j < size; j++) {
-        {{{ makeSetValue('ptr', '0', 'info.data[info.position]', 'null') }}}
-        info.position++;
-        ptr++;
-      }
+      _STDIO.read(stream, ptr, size);
+      ptr += size;
     }
     return count;
   },
@@ -384,12 +398,60 @@ var Library = {
     return _STDIO.streams[stream].error;
   },
 
+  // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html
+
+  open: function(filename, flags, mode) {
+    filename = Pointer_stringify(filename);
+    if (flags === 0) { // RDONLY
+      return _STDIO.open(filename);
+    } else if (flags === 1) { // WRONLY
+      return _STDIO.prepare(filename);
+    } else {
+      assert(false, 'open with odd params: ' + [flags, mode]);
+    }
+  },
+
+  close: function(stream) {
+    return 0;
+  },
+
+  read: function(stream, ptr, numbytes) {
+    return _STDIO.read(stream, ptr, numbytes);
+  },
+
+  fcntl: function() { }, // TODO...
+
+  fstat: function(stream, ptr) {
+    var info = _STDIO.streams[stream];
+    if (!info) return -1;
+    {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size. XXX: hardcoded index 9 into the structure.
+    // TODO: other fields
+    return 0;
+  },
+
+  mmap: function(start, num, prot, flags, stream, offset) {
+    // Leaky and non-shared... FIXME
+    var info = _STDIO.streams[stream];
+    if (!info) return -1;
+    return Pointer_make(info.data.slice(offset, offset+num), null, ALLOC_NORMAL);
+  },
+
+  munmap: function(start, num) {
+    _free(start); // FIXME: not really correct at all
+  },
+
   // stdlib.h
 
   abs: 'Math.abs',
 
   atoi: function(s) {
     return Math.floor(Number(Pointer_stringify(s)));
+  },
+
+  exit: function(status) {
+    __shutdownRuntime__();
+    ABORT = true;
+    throw 'exit(' + status + ') called.';
   },
 
   atexit: function(func) {
@@ -994,9 +1056,7 @@ var Library = {
   // setjmp.h
 
   _setjmp: function(env) {
-    // not really working...
-    assert(!arguments.callee.called);
-    arguments.callee.called = true;
+    print('WARNING: setjmp() not really implemented, will fail if longjmp() is actually called');
     return 0;
   },
 

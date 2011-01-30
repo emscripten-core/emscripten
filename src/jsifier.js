@@ -755,7 +755,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   function makeSignOp(value, type, op) {
     if (type in Runtime.INT_TYPES) {
       var bits = parseInt(type.substr(1));
-      return op + 'Sign(' + value + ', ' + type.substr(1) + ')';
+      return op + 'Sign(' + value + ', ' + bits + ')';
     } else {
       return value;
     }

@@ -29,6 +29,12 @@ NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 
+# Global cache for tests (we have multiple TestCase instances; this object lets them share data)
+
+class GlobalCache: pass
+
+# Core test runner class, shared between normal tests and benchmarks
+
 class RunnerCore(unittest.TestCase):
   def get_dir(self):
     dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
@@ -1469,13 +1475,21 @@ if 'benchmark' not in sys.argv:
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
-    def zzztest_freetype(self):
-      if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant # TODO: Build in both clang and llvm-gcc. emmaken currently does just one.
-      cwd = os.getcwd()
-      temp_dir = os.path.join(self.get_dir(), 'building')
-      try:
-        # Libfreetype
-        '''print "Temp_dir:", temp_dir
+    def test_freetype(self):
+      if COMPILER != LLVM_GCC: return # TODO: Build in both clang and llvm-gcc. emmaken currently only does llvm-gcc
+      if RELOOP: return # XXX buggy
+
+      def get_bc():
+        # We build the .bc file once and cache it for all our tests. (We cache in
+        # memory since the test directory is destroyed and recreated for each test.)
+        if hasattr(GlobalCache, 'cached_libfreetype'):
+          bc_file = os.path.join(self.get_dir(), 'libfreetype.bc')
+          f = open(bc_file, 'wb')
+          f.write(GlobalCache.cached_libfreetype)
+          f.close()
+          return bc_file
+
+        temp_dir = os.path.join(self.get_dir(), 'building')
         ft_dir = os.path.join(temp_dir, 'freetype')
         shutil.copytree(path_from_root('tests', 'freetype'), ft_dir)
         os.chdir(ft_dir)
@@ -1483,21 +1497,29 @@ if 'benchmark' not in sys.argv:
         env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
         output = Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
         self.assertContained('configure: creating ./config.status', output)
-        output = Popen(['make'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-        print output
-        #self.assertContained('configure: creating ./config.status', output)
+        Popen(['make', '-j', '2'], stdout=PIPE, stderr=STDOUT).communicate()[0]
         bc_file = os.path.join(ft_dir, 'objs', '.libs', 'libfreetype')
         shutil.copyfile(bc_file + '.so', bc_file + '.bc')
-        bc_file += '.bc' '''
-        bc_file = path_from_root('tests', 'freetype', 'libfreetype.bc')
+        bc_file += '.bc'
+        GlobalCache.cached_libfreetype = open(bc_file, 'rb').read()
+        return bc_file
 
-        # Main
-        self.do_test(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(), 'hello, world!',
-                     libraries=[bc_file], includes=[path_from_root('tests', 'freetype', 'include')])
+      def post(filename):
+        # Embed the font into the document
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''this._STDIO.prepare('font.ttf', %s);''' % str(
+            map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
+          )
+        )
+        open(filename, 'w').write(src)
 
-      finally:
-        os.chdir(cwd)
-        #shutil.rmtree(temp_dir)
+      # Main
+      self.do_test(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
+                   open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
+                   ['font.ttf', 'test!'],
+                   libraries=[get_bc()], includes=[path_from_root('tests', 'freetype', 'include')],
+                   post_build=post)
 
     def zzztest_poppler(self):
       # Has 'Object', which has a big union with a value that can be of any type (like a dynamic value)
