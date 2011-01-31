@@ -55,7 +55,8 @@ exec(open(CONFIG_FILE, 'r').read())
 try:
   print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
 
-  CC='/home/alon/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-g++'
+  CC='/home/alon/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-gcc'
+  CXX='/home/alon/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-g++'
   CC_ARG_SKIP = ['-g', '-O1', '-O2', '-O3']
   CC_ADDITIONAL_ARGS = ['-m32', '-U__i386__', '-U__x86_64__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
 
@@ -67,6 +68,7 @@ try:
   LLVM_DIS = '/home/alon/Dev/llvm-2.8/cbuild/Release/bin/llvm-dis'
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
                        '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]  
+  DISALLOWED_LINK_ARGS = []#['rc']
   #LINK_ARG_SKIP = ['-pthread', '-DNDEBUG', '-g', '-O3', '-Wall', '-Wstrict-prototypes',
   #                 '-lpthread', '-ldl', '-lutil', '-Xlinker', '-export-dynamic', '-lm', '-shared']
 
@@ -80,8 +82,8 @@ try:
     # noop ar
     sys.exit(0)
 
+  use_cxx = True
   use_linker = True
-  #use_linker = False
 
   opts = []
   files = []
@@ -90,13 +92,15 @@ try:
           opts.append(arg)
       else:
           files.append(arg)
+          if arg.endswith('.c'):
+              use_cxx = False
           if arg.endswith(('.c', '.cc', '.cpp')):
               use_linker = False
               
   if '--version' in opts:
       use_linker = False
 
-  if sys.argv[1] == 'cru': # ar
+  if sys.argv[1] in ['cru', 'rc']: # ar
     sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
     assert use_linker, 'Linker should be used in this case'
 
@@ -105,14 +109,6 @@ try:
       newargs = []
       found_o = False
       for arg in sys.argv[1:]:
-          if os.path.basename(sys.argv[0])=='arproxy.py':
-              if arg.endswith('.a'):
-                  newargs.append('-o=%s' % arg)
-              elif arg.endswith('.o'):
-                  newargs.append(arg)
-              else:
-                  pass
-              continue
           if found_o:
               newargs.append('-o=%s' % arg)
               found_o = False
@@ -128,13 +124,14 @@ try:
               continue # .so's do not exist yet, in many cases
           else:
               # not option, so just append
-              newargs.append(arg)
+              if arg not in DISALLOWED_LINK_ARGS:
+                  newargs.append(arg)
   else:
-      call = CC
+      call = CXX if use_cxx else CC
       newargs = [ arg for arg in sys.argv[1:] if arg not in CC_ARG_SKIP ] + CC_ADDITIONAL_ARGS
       if 'conftest.c' not in files:
           newargs.append('-emit-llvm')
-          if 'llvm-g' in CC:
+          if not use_linker:
               newargs.append('-c') 
 
   print >> sys.stderr, "Running:", call, ' '.join(newargs)

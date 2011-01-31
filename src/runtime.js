@@ -8,15 +8,10 @@ RuntimeGenerator = {
   alloc: function(size, type, init) {
     var ret = type + 'TOP';
     if (GUARD_MEMORY) {
-      ret += '; assert(' + size + ' > 0)';
+      ret += '; assert(' + size + ' > 0, "Trying to allocate 0")';
     }
     if (init) {
-      var initMemory = 'for (var i = 0; i < ' + size + '; i++) ' + (
-        USE_TYPED_ARRAYS ?
-          'IHEAP[' + type + 'TOP+i] = FHEAP[' + type + 'TOP+i] = 0' :
-          'HEAP[' + type + 'TOP+i] = 0'
-      );
-      ret += '; ' + initMemory;
+      ret += '; Runtime.memset(' + type + 'TOP, 0, ' + size + ')';
     }
     ret += '; ' + type + 'TOP += ' + size;
     if (QUANTUM_SIZE > 1) {
@@ -29,7 +24,7 @@ RuntimeGenerator = {
   stackAlloc: function(size) {
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK);
     if (GUARD_MEMORY) {
-      ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX)';
+      ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
     }
     return ret;
   },
@@ -44,13 +39,8 @@ RuntimeGenerator = {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
     if (INIT_STACK) {
-      var initMemory = 'for (var i = __stackBase__; i < STACKTOP; i++) {' + (
-        USE_TYPED_ARRAYS ?
-          'IHEAP[i] = FHEAP[i] = 0' : // TODO: Benchmark this. Suboptimal due to type differences?
-          'HEAP[i] = 0'
-      ) + (SAFE_HEAP ? '; SAFE_HEAP_ACCESS(i, null, true)' : '') + ' }';
+      ret += '; Runtime.memset(__stackBase__, 0, ' + initial + ')';
     }
-    ret += '; ' + initMemory;
     return ret;
   },
 
@@ -86,6 +76,12 @@ Runtime = {
   stackAlloc: unInline('stackAlloc', ['size']),
   staticAlloc: unInline('staticAlloc', ['size']),
   alignMemory: unInline('alignMemory', ['size', 'quantum']),
+
+  memset: function(ptr, value, num) {
+    for (var i = 0; i < num; i++) {
+      {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
+    }
+  },
 
   getFunctionIndex: function getFunctionIndex(func, ident) {
     var key = FUNCTION_TABLE.length;

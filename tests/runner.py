@@ -195,9 +195,13 @@ if 'benchmark' not in sys.argv:
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[]):
+    def do_test(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False):
         #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
-        if main_file is not None and main_file[-2:] == '.c': basename = 'src.c'
+        if force_c or (main_file is not None and main_file[-2:]) == '.c':
+          basename = 'src.c'
+          global COMPILER
+          COMPILER = COMPILER.replace('clang++', 'clang').replace('g++', 'gcc')
+
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
         if not no_build:
@@ -1475,34 +1479,33 @@ if 'benchmark' not in sys.argv:
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
+    # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
+    # memory since the test directory is destroyed and recreated for each test.)
+    def get_library(self, name, generated_lib, make_args=[]):
+      if hasattr(GlobalCache, 'cached_lib' + name):
+        bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
+        f = open(bc_file, 'wb')
+        f.write(getattr(GlobalCache, 'cached_lib' + name))
+        f.close()
+        return bc_file
+
+      temp_dir = os.path.join(self.get_dir(), 'building')
+      ft_dir = os.path.join(temp_dir, name)
+      shutil.copytree(path_from_root('tests', name), ft_dir)
+      os.chdir(ft_dir)
+      env = os.environ.copy()
+      env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
+      output = Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      Popen(['make', '-j', '2'] + make_args, stdout=PIPE, stderr=STDOUT).communicate()[0]
+      bc_file = os.path.join(ft_dir, generated_lib)
+      shutil.copyfile(bc_file, bc_file + '.bc')
+      bc_file += '.bc'
+      setattr(GlobalCache, 'cached_lib' + name, open(bc_file, 'rb').read())
+      return bc_file
+
     def test_freetype(self):
       if COMPILER != LLVM_GCC: return # TODO: Build in both clang and llvm-gcc. emmaken currently only does llvm-gcc
       if LLVM_OPTS: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
-
-      def get_bc():
-        # We build the .bc file once and cache it for all our tests. (We cache in
-        # memory since the test directory is destroyed and recreated for each test.)
-        if hasattr(GlobalCache, 'cached_libfreetype'):
-          bc_file = os.path.join(self.get_dir(), 'libfreetype.bc')
-          f = open(bc_file, 'wb')
-          f.write(GlobalCache.cached_libfreetype)
-          f.close()
-          return bc_file
-
-        temp_dir = os.path.join(self.get_dir(), 'building')
-        ft_dir = os.path.join(temp_dir, 'freetype')
-        shutil.copytree(path_from_root('tests', 'freetype'), ft_dir)
-        os.chdir(ft_dir)
-        env = os.environ.copy()
-        env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
-        output = Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
-        self.assertContained('configure: creating ./config.status', output)
-        Popen(['make', '-j', '2'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-        bc_file = os.path.join(ft_dir, 'objs', '.libs', 'libfreetype')
-        shutil.copyfile(bc_file + '.so', bc_file + '.bc')
-        bc_file += '.bc'
-        GlobalCache.cached_libfreetype = open(bc_file, 'rb').read()
-        return bc_file
 
       def post(filename):
         # Embed the font into the document
@@ -1518,8 +1521,18 @@ if 'benchmark' not in sys.argv:
       self.do_test(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                    ['font.ttf', 'test!'],
-                   libraries=[get_bc()], includes=[path_from_root('tests', 'freetype', 'include')],
+                   libraries=[self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))],
+                   includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
+
+    def zzztest_zlib(self):
+      if COMPILER != LLVM_GCC: return # TODO: Build in both clang and llvm-gcc. emmaken currently only does llvm-gcc
+
+      self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
+                   open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
+                   libraries=[self.get_library('zlib', os.path.join('libz.a'), ['libz.a'])],
+                   includes=[path_from_root('tests', 'zlib')],
+                   force_c=True)
 
     def zzztest_poppler(self):
       # Has 'Object', which has a big union with a value that can be of any type (like a dynamic value)

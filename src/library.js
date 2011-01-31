@@ -561,14 +561,9 @@ var Library = {
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
-  memset: function(ptr, value, num) {
-    for (var i = 0; i < num; i++) {
-      {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
-    }
-  },
-  llvm_memset_i32: 'memset',
-  llvm_memset_p0i8_i32: 'memset',
-  llvm_memset_p0i8_i64: 'memset',
+  llvm_memset_i32: 'Runtime.memset',
+  llvm_memset_p0i8_i32: 'Runtime.memset',
+  llvm_memset_p0i8_i64: 'Runtime.memset',
 
   strlen: function(ptr) {
     return String_len(ptr);
@@ -820,6 +815,21 @@ var Library = {
     _memcpy(pdest, psrc, num+1);
     IHEAP[ppdest] = pdest+1;
     */
+  },
+
+  llvm_bswap_i32: function(x) {
+    x = unSign(x, 32);
+    var bytes = [];
+    for (var i = 0; i < 4; i++) {
+      bytes[i] = x & 255;
+      x >>= 8;
+    }
+    var ret = 0;
+    for (i = 0; i < 4; i++) {
+      ret <<= 8;
+      ret += bytes[i];
+    }
+    return ret;
   },
 
   __assert_fail: function(condition, file, line) {

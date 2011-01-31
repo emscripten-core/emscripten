@@ -221,7 +221,11 @@ var TOTAL_MEMORY = 50*1024*1024;
 function __initializeRuntime__() {
   // If we don't have malloc/free implemented, use a simple implementation.
   Module['_malloc'] = _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
-  Module['_calloc'] = _calloc                                     = Module['_calloc'] ? Module['_calloc'] : function(n, s) { return _malloc(n*s) };
+  Module['_calloc'] = _calloc                                     = Module['_calloc'] ? Module['_calloc'] : function(n, s) {
+    var ret = _malloc(n*s);
+    Runtime.memset(ret, 0, n*s);
+    return ret;
+  };
   Module['_free']   = _free = __ZdlPv = __ZdaPv                   = Module['_free']   ? Module['_free']   : function() { };
 
 #if USE_TYPED_ARRAYS
@@ -252,7 +256,7 @@ function __initializeRuntime__() {
   Module['FHEAP'] = FHEAP;
 
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
-  if (!this['TOTAL_STACK']) TOTAL_STACK = 1024*1024; // Reserved room for stack
+  if (!this['TOTAL_STACK']) TOTAL_STACK = 1024*1024; // Reserved room for stack XXX: Changing this value can lead to bad perf on v8!
   STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
   STATICTOP = alignMemoryPage(STACK_MAX);
