@@ -761,6 +761,13 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     }
   }
 
+  function handleOverflow(text, bits) {
+    if (!bits) return text;
+    if (CORRECT_OVERFLOWS && bits <= 32) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
+    if (!CHECK_OVERFLOWS) return text;
+    return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
+  }
+
   var mathop = makeFuncLineActor('mathop', function(item) { with(item) {
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
@@ -780,23 +787,17 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     if (item.type[0] === 'i') {
       bits = parseInt(item.type.substr(1));
     }
-    function handleOverflow(text) {
-      if (!bits) return text;
-      if (CORRECT_OVERFLOWS && bits <= 32) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
-      if (!CHECK_OVERFLOWS) return text;
-      return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
-    }
     switch (op) {
       // basic integer ops
-      case 'add': return handleOverflow(ident1 + ' + ' + ident2);
-      case 'sub': return handleOverflow(ident1 + ' - ' + ident2);
+      case 'add': return handleOverflow(ident1 + ' + ' + ident2, bits);
+      case 'sub': return handleOverflow(ident1 + ' - ' + ident2, bits);
       case 'sdiv': case 'udiv': return 'Math.floor(' + ident1 + ' / ' + ident2 + ')';
-      case 'mul': return handleOverflow(ident1 + ' * ' + ident2);
+      case 'mul': return handleOverflow(ident1 + ' * ' + ident2, bits);
       case 'urem': case 'srem': return ident1 + ' % ' + ident2;
       case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
       case 'and': return ident1 + ' & ' + ident2;
       case 'xor': return ident1 + ' ^ ' + ident2;
-      case 'shl': return handleOverflow(ident1 + ' << ' + ident2);
+      case 'shl': return handleOverflow(ident1 + ' << ' + ident2, bits);
       case 'ashr': return ident1 + ' >> ' + ident2;
       case 'lshr': return ident1 + ' >>> ' + ident2;
       // basic float ops
@@ -932,6 +933,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     for (var i = 1; i < indexes.length; i++) {
       ret = getFastValue(ret, '+', indexes[i]);
     }
+
+    ret = handleOverflow(ret, 32); // XXX - we assume a 32-bit arch here. If you fail on this, change to 64
+
     return ret;
   }
 
