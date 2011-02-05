@@ -753,6 +753,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   });
 
   function makeSignOp(value, type, op) {
+    if (!value) return value;
+    if (!GUARD_SIGNS) return value;
     if (type in Runtime.INT_TYPES) {
       var bits = parseInt(type.substr(1));
       return op + 'Sign(' + value + ', ' + bits + ')';
@@ -772,16 +774,16 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
         item['ident'+i] = indexizeFunctions(finalizeLLVMParameter(item['param'+i]));
+      } else {
+        item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
       }
     }
-    if (GUARD_SIGNS) {
-      if (op[0] == 'u' || (variant && variant[0] == 'u')) {
-        ident1 = makeSignOp(ident1, type, 'un');
-        ident2 = makeSignOp(ident2, type, 'un');
-      } else if (op[0] == 's' || (variant && variant[0] == 's')) {
-        ident1 = makeSignOp(ident1, type, 're');
-        ident2 = makeSignOp(ident2, type, 're');
-      }
+    if (op[0] == 'u' || op[0] == 'z' || (variant && variant[0] == 'u')) { // z for zext, see below
+      ident1 = makeSignOp(ident1, type, 'un');
+      ident2 = makeSignOp(ident2, type, 'un');
+    } else if (op[0] == 's' || (variant && variant[0] == 's')) {
+      ident1 = makeSignOp(ident1, type, 're');
+      ident2 = makeSignOp(ident2, type, 're');
     }
     var bits = null;
     if (item.type[0] === 'i') {
@@ -838,13 +840,17 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
           default: throw 'Unknown fcmp variant: ' + variant;
         }
       }
-      case 'zext': case 'fpext': case 'sext': case 'fptrunc': return ident1;
+      // Note that zext has sign checking, see above. We must guard against -33 in i8 turning into -33 in i32
+      // then unsigning that i32... which would give something huge.
+      case 'zext': case 'fpext': case 'sext': return ident1;
+      case 'fptrunc': return ident1;
       case 'trunc': {
         // Unlike extending, which we just 'do' (by doing nothing),
         // truncating can change the number, e.g. by truncating to an i1
         // in order to get the first bit
         assert(ident2[0] == 'i');
         var bitsLeft = ident2.substr(1);
+        assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
         return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
       case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;

@@ -168,6 +168,12 @@ var Library = {
       }
     }
     return Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
+    //var len = ret.length+1;
+    //var ret = Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
+    //STACKTOP -= len; // XXX horrible hack. we rewind the stack, to 'undo' the alloc we just did.
+    //                 // the point is that this works if nothing else allocs on the stack before
+    //                 // the string is read, which should be true - it is very transient, see the *printf* functions below.
+    //return ret;
   },
 
   printf__deps: ['_formatString'],
@@ -451,7 +457,7 @@ var Library = {
   exit: function(status) {
     __shutdownRuntime__();
     ABORT = true;
-    throw 'exit(' + status + ') called.';
+    throw 'exit(' + status + ') called, at ' + new Error().stack;
   },
 
   atexit: function(func) {
@@ -541,6 +547,7 @@ var Library = {
       // TODO: optimize for the typed arrays case
       // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
       {{{ makeCopyValue('dest', 'i', 'src', 'i', 'null', ' || 0') }}};
+      // XXX Try copying the safe-heap type info, instead of using null
     }
   },
   llvm_memcpy_i32: 'memcpy',

@@ -301,11 +301,19 @@ if 'benchmark' not in sys.argv:
             }
             printf("*\\n");
             printf("*%.1d,%.2d*\\n", 56, 9);
+
+            // zext issue - see mathop in jsifier
+            unsigned char x8 = -10;
+            unsigned long hold = 0;
+            hold += x8;
+            int y32 = hold+50;
+            printf("*%u,%u*\\n", hold, y32);
+
             printf("*%ld*%p\\n", (long)21, &hash); // The %p should not enter an infinite loop!
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\n*21*')
+        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\n*246,296*\n*21*')
 
     def test_unsigned(self):
         src = '''
