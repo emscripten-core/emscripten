@@ -1563,8 +1563,9 @@ if 'benchmark' not in sys.argv:
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
 
-    def zzztest_zlib(self):
+    def test_zlib(self):
       if COMPILER != LLVM_GCC: return # TODO: Build in both clang and llvm-gcc. emmaken currently only does llvm-gcc
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1 # Overflows in inflate_table() getelementptr (in phi)
 
       self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
