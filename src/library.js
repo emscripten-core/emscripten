@@ -547,7 +547,6 @@ var Library = {
       // TODO: optimize for the typed arrays case
       // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
       {{{ makeCopyValue('dest', 'i', 'src', 'i', 'null', ' || 0') }}};
-      // XXX Try copying the safe-heap type info, instead of using null
     }
   },
   llvm_memcpy_i32: 'memcpy',

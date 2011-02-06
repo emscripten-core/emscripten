@@ -17,6 +17,14 @@ function SAFE_HEAP_CLEAR(dest) {
 }
 var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
+
+function SAFE_HEAP_COPY_HISTORY(dest, src) {
+  HEAP_HISTORY[dest] = HEAP_HISTORY[src];
+#if SAFE_HEAP_LOG
+  print('copy history: ' + dest + ' [' + HEAP_HISTORY[dest] + '] from ' + src);
+#endif
+}
+
 function SAFE_HEAP_ACCESS(dest, type, store) {
 #if SAFE_HEAP_LOG
   //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging

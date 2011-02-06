@@ -1510,6 +1510,7 @@ if 'benchmark' not in sys.argv:
 
     def test_lua(self):
       # Overflows in luaS_newlstr hash loop
+      global SAFE_HEAP; SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
 
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),

@@ -155,7 +155,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     // Null is special-cased: We copy over all heaps
     return 'IHEAP[' + dest + '+' + destPos + '] = IHEAP[' + src + '+' + srcPos + ']; ' +
            'FHEAP[' + dest + '+' + destPos + '] = FHEAP[' + src + '+' + srcPos + ']; ' +
-           (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + dest + ' + ' + destPos + ', null, true)' : '');
+           (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + ' + ' + destPos + ', ' + src + ' + ' + srcPos + ')' : '');
   }
 
   function makeEmptyStruct(type) {
