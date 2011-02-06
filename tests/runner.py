@@ -315,6 +315,36 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\n*246,296*\n*21*')
 
+    def test_sintvars(self):
+        src = '''
+          #include <stdio.h>
+          struct S {
+            char *match_start;
+            char *strstart;
+          };
+          int main()
+          {
+            struct S _s;
+            struct S *s = &_s;
+            unsigned short int sh;
+
+            s->match_start = (char*)32522;
+            s->strstart = (char*)(32780);
+            printf("*%d,%d,%d*\\n", (int)s->strstart, (int)s->match_start, (int)(s->strstart - s->match_start));
+            sh = s->strstart - s->match_start;
+            printf("*%d,%d*\\n", sh, sh>>7);
+
+            s->match_start = (char*)32999;
+            s->strstart = (char*)(32780);
+            printf("*%d,%d,%d*\\n", (int)s->strstart, (int)s->match_start, (int)(s->strstart - s->match_start));
+            sh = s->strstart - s->match_start;
+            printf("*%d,%d*\\n", sh, sh>>7);
+          }
+        '''
+        output = '*32780,32522,258*\n*258,2*\n*32780,32999,-219*\n*65317,510*'
+        global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
+        self.do_test(src, output, force_c=True)
+
     def test_unsigned(self):
         src = '''
           #include <stdio.h>

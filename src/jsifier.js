@@ -752,7 +752,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     return makeOne(0);
   });
 
-  function makeSignOp(value, type, op) {
+  function makeSignOp(value, type, op) { // TODO: If value isNumber, do this at compile time
     if (!value) return value;
     if (!GUARD_SIGNS) return value;
     if (type in Runtime.INT_TYPES) {
@@ -778,10 +778,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
       }
     }
-    if (op[0] == 'u' || op[0] == 'z' || (variant && variant[0] == 'u')) { // z for zext, see below
+    if (op in set('udiv', 'urem', 'uitofp', 'zext', 'lshr') || (variant && variant[0] == 'u')) {
       ident1 = makeSignOp(ident1, type, 'un');
       ident2 = makeSignOp(ident2, type, 'un');
-    } else if (op[0] == 's' || (variant && variant[0] == 's')) {
+    } else if (op in set('sdiv', 'srem', 'sitofp', 'sext', 'ashr') || (variant && variant[0] == 's')) {
       ident1 = makeSignOp(ident1, type, 're');
       ident2 = makeSignOp(ident2, type, 're');
     }
