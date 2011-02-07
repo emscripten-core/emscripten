@@ -1,3 +1,12 @@
+2011-02-06: Version 0.8
+
+  * Freetype and zlib tests (including the entire build procedure)
+  * File emulation
+  * CHECK_OVERFLOWS & CORRECT_OVERFLOWS options to handle numerical size issues
+  * CHECK_SIGNS option to find whether GUARD_SIGNS is necessary
+  * Improvements to usage of llvm optimizations, and testing
+  * Many bug fixes, additional tests and library implementations
+
 2010-12-18: Version 0.7
 
   * Python web demo
