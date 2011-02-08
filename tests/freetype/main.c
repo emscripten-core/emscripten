@@ -7,17 +7,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
 
-#define WIDTH   150
-#define HEIGHT  120
-
+int WIDTH = 0;
+int HEIGHT = 0;
 
 /* origin is the upper left corner */
-unsigned char image[HEIGHT][WIDTH];
+unsigned char *image;
 
 
 /* Replace this function with something useful. */
@@ -40,7 +40,7 @@ draw_bitmap( FT_Bitmap*  bitmap,
            i >= WIDTH || j >= HEIGHT )
         continue;
 
-      image[j][i] |= bitmap->buffer[q * bitmap->width + p];
+      image[j*WIDTH + i] |= bitmap->buffer[q * bitmap->width + p];
     }
   }
 }
@@ -55,10 +55,10 @@ show_image( void )
   for ( i = 0; i < HEIGHT; i++ )
   {
     for ( j = 0; j < WIDTH; j++ ) {
-      if (image[i][j]) count++;
-      putchar( image[i][j] == 0 ? ' '
-                                : image[i][j] < 128 ? '+'
-                                                    : '*' );
+      if (image[i*WIDTH + j]) count++;
+      putchar( image[i*WIDTH + j] == 0 ? ' '
+                                : image[i*WIDTH + j] < 128 ? '+'
+                                                           : '*' );
     }
     putchar( '\n' );
   }
@@ -85,29 +85,35 @@ main( int     argc,
   int           target_height;
   int           n, num_chars;
 
-
-  if ( argc != 3 )
+  if ( argc != 6 )
   {
-    fprintf ( stderr, "usage: %s font sample-text\n", argv[0] );
+    fprintf ( stderr, "usage: %s font sample-text width height angle\n", argv[0] );
     exit( 1 );
   }
 
   filename      = argv[1];                           /* first argument     */
   text          = argv[2];                           /* second argument    */
   num_chars     = strlen( text );
-  angle         = ( 25.0 / 360 ) * 3.14159 * 2;      /* use 25 degrees     */
+  WIDTH         = atoi(argv[3]);
+  HEIGHT        = atoi(argv[4]);
+  angle         = ( ((float)atoi(argv[5])) / 360 ) * 3.14159 * 2;      /* use 25 degrees     */
   target_height = HEIGHT;
 
+  image = (unsigned char*)malloc(WIDTH*HEIGHT);
+  for (int x = 0; x < WIDTH; x++)
+    for (int y = 0; y < HEIGHT; y++)
+      image[y*WIDTH + x] = 0;
+
   error = FT_Init_FreeType( &library );              /* initialize library */
-  if (error) printf("Error! %d\n", error);
+  if (error) printf("Init Error! %d\n", error);
 
   error = FT_New_Face( library, argv[1], 0, &face ); /* create face object */
-  if (error) printf("Error! %d\n", error);
+  if (error) printf("New_Face Error! %d\n", error);
 
   /* use 50pt at 100dpi */
   error = FT_Set_Char_Size( face, 50 * 64, 0,
                             100, 0 );                /* set character size */
-  if (error) printf("Error! %d\n", error);
+  if (error) printf("Set_Char_Size Error! %d\n", error);
 
   slot = face->glyph;
 

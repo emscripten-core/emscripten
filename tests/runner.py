@@ -1566,7 +1566,7 @@ if 'benchmark' not in sys.argv:
       # Main
       self.do_test(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
-                   ['font.ttf', 'test!'],
+                   ['font.ttf', 'test!', '150', '120', '25'],
                    libraries=[self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))],
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
