@@ -1,0 +1,68 @@
+<html>
+<head>
+  <title>
+    Emscripten: FreeType Demo
+  </title>
+  <script type="text/javascript">
+    arguments = [];
+    NO_RUN = 1;
+  </script>
+  <script src="freetype.cc.js"></script>
+  <script type="text/javascript">
+    // print function which the runtime will call
+    function print(text) {
+      //document.getElementById('output').innerHTML += text + '<br>';
+    }
+
+    // Override the _show_image in freetype.js.
+    __Z10show_imagev = function() {
+      var canvas = document.getElementById('canvas');
+      var ctx = canvas.getContext('2d');
+      var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      var ptr = IHEAP[_image];
+      for (var y = 0; y < canvas.height; y++) {
+        for (var x = 0; x < canvas.width; x++) {
+          var value = IHEAP[ptr + y*canvas.width + x];
+          var base = (y*canvas.width + x)*4;
+          image.data[base + 0] = value;
+          image.data[base + 1] = value;
+          image.data[base + 2] = value;
+          image.data[base + 3] = 255;
+        }
+      }
+      ctx.putImageData(image, 0, 0);
+    };
+
+    function render(angle, text) {
+      var canvas = document.getElementById('canvas');
+      canvas.width = 600;
+      canvas.height = 200;
+
+      run(['font.ttf', text, canvas.width.toString(), canvas.height.toString(), angle.toString()]); // will call _show_image, above
+    }
+  </script>
+</head>
+<body onload="render(10, 'Hello world!')">
+  <h1>TrueType Fonts in JavaScript</h1>
+  <p>This is a demo of <a href="http://www.freetype.org/">FreeType</a>, an open source font engine written in C++,
+  compiled to JavaScript using <a href="http://emscripten.org">Emscripten</a>. A <a href="http://en.wikipedia.org/wiki/TrueType">TrueType</a> font
+  (<a href="https://fedorahosted.org/liberation-fonts/">Liberation Sans Bold</a>) is loaded in FreeType and used to render text, all entirely in JavaScript.
+  </p>
+  <p>(Note: The demo is a proof of concept and <b>not</b> optimized for speed. For example, the font file is
+  loaded and parsed every time text is rendered. Also, the code is a debug build with runtime checks for
+  validity.)</p>
+  <p>Why was this demo done? Just to show it's possible, and definitely not to suggest people should do things this way.
+     If you want nice fonts on the web, use <a href="http://en.wikipedia.org/wiki/Web_Open_Font_Format">WOFF</a>.</p>
+  <hr>
+  <canvas id='canvas' width=1 height=1></canvas>
+  <hr>
+  <form onsubmit="render(parseInt(angle.value), texty.value); return false">
+    Text: <input type="text" name="texty" value="Hello world!"><br>
+    Angle (in degrees): <input type="text" name="angle" value="10"><br>
+    <input type="submit" value="Go!">
+  </form>
+  <div id="output" style="font-family: Courier New,Courier,monospace;"></div>
+</body>
+</html>
+
