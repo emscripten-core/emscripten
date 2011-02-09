@@ -238,7 +238,11 @@ function __initializeRuntime__() {
 
 #if USE_TYPED_ARRAYS
   // TODO: Remove one of the 3 heaps!
-  HAS_TYPED_ARRAYS = this['Int32Array'] && this['Float64Array']; // check for engine support
+  HAS_TYPED_ARRAYS = false;
+  try {
+    HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array().subarray); // check for full engine support
+  } catch(e) {}
+
   if (HAS_TYPED_ARRAYS) {
     HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
     FHEAP = new Float64Array(TOTAL_MEMORY);
@@ -264,7 +268,11 @@ function __initializeRuntime__() {
   Module['FHEAP'] = FHEAP;
 
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
-  if (!this['TOTAL_STACK']) TOTAL_STACK = 1024*1024; // Reserved room for stack XXX: Changing this value can lead to bad perf on v8!
+  try {
+    var x = TOTAL_STACK;
+  } catch(e) {
+    TOTAL_STACK = 1024*1024; // Reserved room for stack XXX: Changing this value can lead to bad perf on v8!
+  }
   STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
   STATICTOP = alignMemoryPage(STACK_MAX);
@@ -286,11 +294,14 @@ function __shutdownRuntime__() {
 function Array_copy(ptr, num) {
   // TODO: In the SAFE_HEAP case, do some reading here, for debugging purposes - currently this is an 'unnoticed read'.
 #if USE_TYPED_ARRAYS
-  return Array.prototype.slice.call(IHEAP.slice(ptr, ptr+num)); // Make a normal array out of the typed one
-                                                                // Consider making a typed array here, for speed?
-#else
-  return IHEAP.slice(ptr, ptr+num);
+  if (HAS_TYPED_ARRAYS) {
+    return Array.prototype.slice.call(IHEAP.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
+                                                                     // Consider making a typed array here, for speed?
+  } else
 #endif
+  {
+    return IHEAP.slice(ptr, ptr+num);
+  }
 }
 
 function String_len(ptr) {
