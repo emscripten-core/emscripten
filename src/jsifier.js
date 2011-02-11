@@ -60,9 +60,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   function makePointer(slab, pos, allocator, type) { // type is FFU
     if (slab in set('HEAP', 'IHEAP', 'FHEAP')) return pos;
-    if (slab[0] != '[') {
-      slab = '[' + slab + ']';
-    }
     return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ')';
   }
 
@@ -282,14 +279,21 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         if (item.external) {
           return ret;
         } else {
+          function needsPostSet(value) {
+            return value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW';
+          }
+
           constant = parseConst(item.value, item.type, item.ident);
+          if (typeof constant === 'string' && constant[0] != '[') {
+            constant = [constant]; // A single item. We may need a postset for it.
+          }
           if (typeof constant === 'object') {
             // This is a flattened object. We need to find its idents, so they can be assigned to later
             constant.forEach(function(value, i) {
-              if (value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW') { // ident, or expression containing an ident
+              if (needsPostSet(value)) { // ident, or expression containing an ident
                 ret.push({
                   intertype: 'GlobalVariablePostSet',
-                  JS: 'IHEAP[' + item.ident + '+' + i + '] = ' + value + ';'
+                  JS: 'IHEAP[' + getFastValue(item.ident, '+', i) + '] = ' + value + ';'
                 });
                 constant[i] = '0';
               }
@@ -1032,7 +1036,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     args = args.map(indexizeFunctions);
     varargs = varargs.map(indexizeFunctions);
     if (varargs.length > 0) {
-      varargs = makePointer(varargs, 0, 'ALLOC_STACK');
+      varargs = makePointer('[' + varargs + ']', 0, 'ALLOC_STACK');
     }
 
     if (getVarData(funcData, ident)) {
