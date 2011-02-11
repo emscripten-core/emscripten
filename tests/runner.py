@@ -27,11 +27,10 @@ EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
 NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
-LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 
 # Global cache for tests (we have multiple TestCase instances; this object lets them share data)
 
-class GlobalCache: pass
+GlobalCache = {}
 
 # Core test runner class, shared between normal tests and benchmarks
 
@@ -200,7 +199,7 @@ if 'benchmark' not in sys.argv:
         if force_c or (main_file is not None and main_file[-2:]) == '.c':
           basename = 'src.c'
           global COMPILER
-          COMPILER = COMPILER.replace('clang++', 'clang').replace('g++', 'gcc')
+          COMPILER = to_cc(COMPILER)
 
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
@@ -1525,12 +1524,14 @@ if 'benchmark' not in sys.argv:
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
     # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
-    # memory since the test directory is destroyed and recreated for each test.)
+    # memory since the test directory is destroyed and recreated for each test. Note that we cache separately
+    # for different compilers)
     def get_library(self, name, generated_lib, make_args=[]):
-      if hasattr(GlobalCache, 'cached_lib' + name):
+      cache_name = name + '|' + COMPILER
+      if GlobalCache.get(cache_name):
         bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
         f = open(bc_file, 'wb')
-        f.write(getattr(GlobalCache, 'cached_lib' + name))
+        f.write(GlobalCache[cache_name])
         f.close()
         return bc_file
 
@@ -1540,16 +1541,16 @@ if 'benchmark' not in sys.argv:
       os.chdir(ft_dir)
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
+      env['EMMAKEN_COMPILER'] = COMPILER
       output = Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
-      Popen(['make', '-j', '2'] + make_args, stdout=PIPE, stderr=STDOUT).communicate()[0]
+      Popen(['make', '-j', '2'] + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(ft_dir, generated_lib)
       shutil.copyfile(bc_file, bc_file + '.bc')
       bc_file += '.bc'
-      setattr(GlobalCache, 'cached_lib' + name, open(bc_file, 'rb').read())
+      GlobalCache[cache_name] = open(bc_file, 'rb').read()
       return bc_file
 
     def test_freetype(self):
-      if COMPILER != LLVM_GCC: return # TODO: Build in both clang and llvm-gcc. emmaken currently only does llvm-gcc
       if LLVM_OPTS: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global GUARD_SIGNS; GUARD_SIGNS = 1 # Not sure why, but needed
 
@@ -1572,7 +1573,6 @@ if 'benchmark' not in sys.argv:
                    post_build=post)
 
     def test_zlib(self):
-      if COMPILER != LLVM_GCC: return # TODO: Build in both clang and llvm-gcc. emmaken currently only does llvm-gcc
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1 # Overflows in inflate_table() getelementptr (in phi)
       global GUARD_SIGNS; GUARD_SIGNS = 1
 

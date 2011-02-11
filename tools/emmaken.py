@@ -48,29 +48,17 @@ def path_from_root(*pathelems):
   return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
-CONFIG_FILE = os.path.expanduser('~/.emscripten')
-assert os.path.exists(CONFIG_FILE)
-exec(open(CONFIG_FILE, 'r').read())
-
 try:
   print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
 
-  CC='/home/alon/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-gcc'
-  CXX='/home/alon/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-g++'
+  CXX = os.environ.get('EMMAKEN_COMPILER') or LLVM_GCC
+  CC = to_cc(CXX)
+
   CC_ARG_SKIP = ['-g', '-O1', '-O2', '-O3']
   CC_ADDITIONAL_ARGS = ['-m32', '-U__i386__', '-U__x86_64__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
-
-  #CC='llvm-gcc'
-  #CC_ARG_SKIP = ['-g', '-O1', '-O2', '-O3']
-  #CC_ADDITIONAL_ARGS = ['-U__i386__', '-U__x86_64__']
-
-  LLVM_LINK = '/home/alon/Dev/llvm-2.8/cbuild/Release/bin/llvm-link'
-  LLVM_DIS = '/home/alon/Dev/llvm-2.8/cbuild/Release/bin/llvm-dis'
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
                        '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]  
   DISALLOWED_LINK_ARGS = []#['rc']
-  #LINK_ARG_SKIP = ['-pthread', '-DNDEBUG', '-g', '-O3', '-Wall', '-Wstrict-prototypes',
-  #                 '-lpthread', '-ldl', '-lutil', '-Xlinker', '-export-dynamic', '-lm', '-shared']
 
   # ----------------  End configs -------------
 
