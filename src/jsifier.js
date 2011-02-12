@@ -778,6 +778,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
         item['ident'+i] = indexizeFunctions(finalizeLLVMParameter(item['param'+i]));
+        if (!isNumber(item['ident'+i])) {
+          item['ident'+i] = '(' + item['ident'+i] + ')'; // we may have nested expressions. So enforce the order of operations we want
+        }
       } else {
         item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
       }
@@ -852,8 +855,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         // Unlike extending, which we just 'do' (by doing nothing),
         // truncating can change the number, e.g. by truncating to an i1
         // in order to get the first bit
-        assert(ident2[0] == 'i');
-        var bitsLeft = ident2.substr(1);
+        assert(ident2[1] == 'i');
+        var bitsLeft = ident2.substr(2, ident2.length-3); // remove (i and ), to leave number
         assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
         return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }

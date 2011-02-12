@@ -1012,7 +1012,6 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*4096,4096,8192,69632*')
 
     def test_pystruct(self):
-        if COMPILER != LLVM_GCC: return # TODO: Clang here
         src = '''
           #include <stdio.h>
 
@@ -1070,10 +1069,10 @@ if 'benchmark' not in sys.argv:
               PyGC_Head *list = GEN_HEAD(i);
               printf("%d:%d,%d\\n", i, (int)list == (int)(list->gc.gc_prev), (int)list ==(int)(list->gc.gc_next));
             }
-            printf("*%d*\\n", int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
+            printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
           }
         '''
-        self.do_test(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*20*')
+        self.do_test(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
     def test_ptrtoint(self):
         src = '''
