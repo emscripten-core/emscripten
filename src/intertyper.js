@@ -10,6 +10,45 @@ var LLVM = {
   CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10')
 };
 
+var Debugging = {
+  processMetadata: function(lines) {
+    var llvmLineToMetadata = {};
+    var metadataToSourceLine = {};
+    var form1 = new RegExp(/^  .*, !dbg !(\d+)$/);
+    var form2 = new RegExp(/^  .*, !dbg !(\d+) +; \[#uses=\d+\]$/);
+    var form3 = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
+    var form4 = new RegExp(/^!llvm.dbg.\w+ = .*$/);
+    var form5 = new RegExp(/^!(\d+) = metadata !{null.*$/);
+    var form6 = new RegExp(/^  call void \@llvm.dbg.declare\(metadata .*$/);
+
+    var ret = lines.map(function(line, i) {
+      if (form6.exec(line)) return null;
+
+      var calc = form1.exec(line) || form2.exec(line);
+      if (calc) {
+        llvmLineToMetadata[i+1] = calc[1];
+        return line.replace(', !dbg !' + calc[1], '');
+      }
+      calc = form3.exec(line);
+      if (calc) {
+        metadataToSourceLine[calc[1]] = calc[2];
+        return ';'; // return an empty line, to keep line numbers of subsequent lines the same
+      }
+      calc = form4.exec(line) || form5.exec(line);
+      if (calc) return ';';
+      return line;
+    }, this);
+
+    this.llvmLineToSourceLine = {};
+    for (var l in llvmLineToMetadata) {
+      this.llvmLineToSourceLine[l] = metadataToSourceLine[llvmLineToMetadata[l]];
+    }
+    this.on = true;
+
+    return ret;
+  },
+};
+
 //! @param parseFunctions We parse functions only on later passes, since we do not
 //!                       want to parse all of them at once, and have all their
 //!                       lines and data in memory at the same time.
@@ -23,6 +62,13 @@ function intertyper(data, parseFunctions, baseLineNum) {
     // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
     LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new';
     dprint('LLVM_STYLE: ' + LLVM_STYLE);
+  }
+
+  // If the source contains debug info as LLVM metadata, process that out (and save the debugging info for later)
+  if (/!\d+ = metadata .*/.exec(data[data.length-1])) { // Fast test to see if we have metadata. If this fails when it shouldn't, we should generalize
+    data = Debugging.processMetadata(data);
+    //print(data.join('\n'));
+    //dprint(JSON.stringify(Debugging));
   }
 
   substrate = new Substrate('Intertyper');

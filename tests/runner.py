@@ -132,7 +132,7 @@ class RunnerCore(unittest.TestCase):
         os.remove(f + '.o.ll')
       except:
         pass
-      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS +
+      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + COMPILER_TEST_OPTS +
                      ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
                      map(lambda include: '-I' + include, includes) + 
                      ['-c', f, '-o', f + '.o'],
@@ -1713,13 +1713,41 @@ if 'benchmark' not in sys.argv:
         # This test *should* fail, by throwing this exception
         assert 'Overflow!' in str(e), str(e)
 
+    def test_debug(self):
+      global COMPILER_TEST_OPTS
+      COMPILER_TEST_OPTS = ['-g']
+      src = '''
+        #include <stdio.h>
+        #include <assert.h>
+
+        void checker(int x) {
+          x += 20;
+          assert(x < 15); // this is line 7!
+        }
+
+        int main() {
+          checker(10);
+          return 0;
+        }
+      '''
+      try:
+        def post(filename):
+          lines = open(filename, 'r').readlines()
+          line = filter(lambda line: '___assert_fail(' in line, lines)[0]
+          assert '//@line 7\n' in line, 'Must have debug info with the line number'
+        self.do_test(src, '*nothingatall*', post_build=post)
+      except Exception, e:
+        # This test *should* fail
+        assert 'Assertion failed' in str(e), str(e)
+
 
   # Generate tests for all our compilers
   def make_test(name, compiler, llvm_opts, embetter):
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, GUARD_SIGNS
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, GUARD_SIGNS, COMPILER_TEST_OPTS
+
     COMPILER = '%s'
     QUANTUM_SIZE = %d
     llvm_opts = %d
@@ -1733,6 +1761,7 @@ class %s(T):
     GUARD_SIGNS = 0
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
+    COMPILER_TEST_OPTS = []
     shutil.rmtree(self.get_dir())
     self.get_dir() # make sure it exists
 TT = %s
