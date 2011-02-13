@@ -231,7 +231,7 @@ function __initializeRuntime__() {
   Module['_malloc'] = _malloc = __Znwj = __Znaj = __Znam = __Znwm = Module['_malloc'] ? Module['_malloc'] : Runtime.staticAlloc;
   Module['_calloc'] = _calloc                                     = Module['_calloc'] ? Module['_calloc'] : function(n, s) {
     var ret = _malloc(n*s);
-    Runtime.memset(ret, 0, n*s);
+    _memset(ret, 0, n*s);
     return ret;
   };
   Module['_free']   = _free = __ZdlPv = __ZdaPv                   = Module['_free']   ? Module['_free']   : function() { };

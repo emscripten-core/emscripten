@@ -11,7 +11,7 @@ RuntimeGenerator = {
       ret += '; assert(' + size + ' > 0, "Trying to allocate 0")';
     }
     if (init) {
-      ret += '; Runtime.memset(' + type + 'TOP, 0, ' + size + ')';
+      ret += '; _memset(' + type + 'TOP, 0, ' + size + ')';
     }
     ret += '; ' + type + 'TOP += ' + size;
     if (QUANTUM_SIZE > 1) {
@@ -39,7 +39,7 @@ RuntimeGenerator = {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
     if (INIT_STACK) {
-      ret += '; Runtime.memset(__stackBase__, 0, ' + initial + ')';
+      ret += '; _memset(__stackBase__, 0, ' + initial + ')';
     }
     return ret;
   },
@@ -76,12 +76,6 @@ Runtime = {
   stackAlloc: unInline('stackAlloc', ['size']),
   staticAlloc: unInline('staticAlloc', ['size']),
   alignMemory: unInline('alignMemory', ['size', 'quantum']),
-
-  memset: function(ptr, value, num) {
-    for (var i = 0; i < num; i++) {
-      {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
-    }
-  },
 
   getFunctionIndex: function getFunctionIndex(func, ident) {
     var key = FUNCTION_TABLE.length;

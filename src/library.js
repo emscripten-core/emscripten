@@ -567,9 +567,14 @@ var Library = {
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
-  llvm_memset_i32: 'Runtime.memset',
-  llvm_memset_p0i8_i32: 'Runtime.memset',
-  llvm_memset_p0i8_i64: 'Runtime.memset',
+  memset: function(ptr, value, num) {
+    for (var i = 0; i < num; i++) {
+      {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
+    }
+  },
+  llvm_memset_i32: 'memset',
+  llvm_memset_p0i8_i32: 'memset',
+  llvm_memset_p0i8_i64: 'memset',
 
   strlen: function(ptr) {
     return String_len(ptr);

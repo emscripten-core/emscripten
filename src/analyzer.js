@@ -14,6 +14,7 @@ function cleanFunc(func) {
 }
 
 function analyzer(data, givenTypes) {
+  // Substrate
   substrate = new Substrate('Analyzer');
 
   // Sorter
@@ -917,10 +918,19 @@ function analyzer(data, givenTypes) {
     }
   });
 
+  // Data
   substrate.addItem({
     items: data
   }, 'Sorter');
 
-  return substrate.solve();
+  // Solve it
+  var ret = substrate.solve();
+
+  // Add additional necessary items
+  ret.functionStubs.push({
+    intertype: 'functionStub',
+    ident: '@memset' // we need memset as a fundamental runtime tool, so always include that from the library
+  });
+  return ret;
 }
 
