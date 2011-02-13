@@ -1131,6 +1131,18 @@ if 'benchmark' not in sys.argv:
           '''
         self.do_test(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
+    def test_emscripten_api(self):
+        src = '''
+          #include <stdio.h>
+          #include "emscripten.h"
+
+          int main() {
+            emscripten_run_script("print('hello world' + '!')");
+            return 0;
+          }
+          '''
+        self.do_test(src, 'hello world!')
+
     def test_tinyfuncstr(self):
         src = '''
           #include <stdio.h>

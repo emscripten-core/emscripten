@@ -9,6 +9,10 @@
 
 // ES_SIZEOF
 //
+// NOTE: As of now, ES_SIZEOF is not needed when using QUANTUM_SIZE
+//       of 4. We will use the same offsets as C/C++ does in that case.
+//       ES_SIZEOF is useful if QUANTUM_SIZE is 1.
+//
 // A 'safe' sizeof operator. Sadly llvm-gcc calculates sizeof's
 // and stores them hardcoded as raw values, unlike say offsets
 // within a structure which it nicely details using getelementptr.
@@ -39,4 +43,8 @@
 #else
   #define ES_SIZEOF(T) sizeof(T)
 #endif
+
+// Interface to the underlying JS engine. This function will
+// eval() the given script.
+extern void emscripten_run_script(const char *script);
 

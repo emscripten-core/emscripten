@@ -1147,6 +1147,11 @@ var Library = {
 
   opendir: function(pname) {
     return 0;
+  },
+
+  // ** emscripten.h **
+  _Z21emscripten_run_scriptPKc: function(ptr) {
+    eval(Pointer_stringify(ptr));
   }
 };
 
