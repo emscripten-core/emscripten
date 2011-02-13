@@ -1550,7 +1550,7 @@ if 'benchmark' not in sys.argv:
       return bc_file
 
     def test_freetype(self):
-      if LLVM_OPTS: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global GUARD_SIGNS; GUARD_SIGNS = 1 # Not sure why, but needed
 
       def post(filename):
