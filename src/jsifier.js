@@ -436,7 +436,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
             ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
           }
           // for special labels we care about (for phi), mark that we visited them
-          return ret + label.lines.map(function(line) { return line.JS + (Debugging.on ? ' //@line ' + Debugging.llvmLineToSourceLine[line.lineNum] : '') })
+          return ret + label.lines.map(function(line) { return line.JS + (Debugging.on ? Debugging.getComment(line.lineNum) : '') })
                                   .join('\n')
                                   .split('\n') // some lines include line breaks
                                   .map(function(line) { return indent + line })

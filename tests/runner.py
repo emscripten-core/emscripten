@@ -1552,8 +1552,9 @@ if 'benchmark' not in sys.argv:
       os.chdir(ft_dir)
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
+      env['CFLAGS'] = '%s' % ' '.join(COMPILER_OPTS)
       env['EMMAKEN_COMPILER'] = COMPILER
-      output = Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       Popen(['make', '-j', '2'] + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(ft_dir, generated_lib)
       shutil.copyfile(bc_file, bc_file + '.bc')

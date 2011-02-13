@@ -54,7 +54,7 @@ try:
   CXX = os.environ.get('EMMAKEN_COMPILER') or LLVM_GCC
   CC = to_cc(CXX)
 
-  CC_ARG_SKIP = ['-g', '-O1', '-O2', '-O3']
+  CC_ARG_SKIP = ['-O1', '-O2', '-O3']
   CC_ADDITIONAL_ARGS = ['-m32', '-U__i386__', '-U__x86_64__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
                        '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]  

@@ -47,6 +47,10 @@ var Debugging = {
 
     return ret;
   },
+
+  getComment: function(lineNum) {
+    return lineNum in this.llvmLineToSourceLine ? ' //@line ' + this.llvmLineToSourceLine[lineNum] : '';
+  }
 };
 
 //! @param parseFunctions We parse functions only on later passes, since we do not
