@@ -13,13 +13,13 @@ QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 w
                   // TODO: Cleverly analyze malloc, memset, memcpy etc. operations in
                   //       llvm, and replace with the proper values for us
 
-GUARD_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
-                 // Decreases performance with additional runtime checks. Might not be
-                 // needed in some kinds of code.
-CHECK_SIGNS = 0; // Runtime warning for signing issues that need correcting. Note:
-                 // *requires* GUARD_SIGNS to work. It is recommended to use this in
-                 // order to find if your code needs GUARD_SIGNS. If you can get your
-                 // code to run without GUARD_SIGNS, it will run much faster
+CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
+                   // Decreases performance with additional runtime checks. Might not be
+                   // needed in some kinds of code.
+CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
+                 // It is recommended to use this in
+                 // order to find if your code needs CORRECT_SIGNS. If you can get your
+                 // code to run without CORRECT_SIGNS, it will run much faster
 
 GUARD_LABELS = 0; // Whether we should throw if we encounter a bad __label__, i.e.,
                   // if code flow runs into a fault
@@ -55,6 +55,10 @@ CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS 
                        // Note that as mentioned above in CHECK_OVERFLOWS, the best thing is to
                        // not rely on overflows in your C/C++ code, as even if this option works,
                        // it slows things down.
+                       //
+                       // NOTE: You can introduce signing issues by using this option. If you
+                       //       take a large enough 32-bit value, and correct it for overflows,
+                       //       you may get a negative number, as JS & operations are signed.
 
 SHOW_LABELS = 0; // Show labels in the generated code
 

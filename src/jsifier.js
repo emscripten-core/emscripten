@@ -758,9 +758,17 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   function makeSignOp(value, type, op) { // TODO: If value isNumber, do this at compile time
     if (!value) return value;
-    if (!GUARD_SIGNS) return value;
+    if (!CORRECT_SIGNS && !CHECK_SIGNS) return value;
     if (type in Runtime.INT_TYPES) {
       var bits = parseInt(type.substr(1));
+      // shortcuts for 32-bit case
+      if (bits === 32 && !CHECK_SIGNS) {
+        if (op === 're') {
+          return '((' + value + ')|0)';
+        } else {
+          // TODO: figure out something here along the lines of return '(' + Math.pow(2, 32) + '+((' + value + ')|0))';
+        }
+      }
       return op + 'Sign(' + value + ', ' + bits + ')';
     } else {
       return value;
@@ -806,7 +814,20 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
       case 'and': return ident1 + ' & ' + ident2;
       case 'xor': return ident1 + ' ^ ' + ident2;
-      case 'shl': return handleOverflow(ident1 + ' << ' + ident2, bits);
+      case 'shl': {
+        // Note: Increases in size may reach the 32-bit limit... where our sign can flip. But this may be expected by the code...
+        /*
+        if (bits >= 32) {
+          if (CHECK_SIGNS && !CORRECT_SIGNS) return 'shlSignCheck(' + ident1 + ', ' + ident2 + ')';
+          if (CORRECT_SIGNS) {
+            var mul = 'Math.pow(2, ' + ident2 + ')';
+            if (isNumber(ident2)) mul = eval(mul);
+            return ident1 + ' * ' + mul;
+          }
+        }
+        */
+        return ident1 + ' << ' + ident2;
+      }
       case 'ashr': return ident1 + ' >> ' + ident2;
       case 'lshr': return ident1 + ' >>> ' + ident2;
       // basic float ops

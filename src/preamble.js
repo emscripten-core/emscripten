@@ -373,7 +373,7 @@ function intArrayToString(array) {
 function unSign(value, bits) {
   if (value >= 0) return value;
 #if CHECK_SIGNS
-  print('WARNING: unSign needed, ' + [value, bits] + ' at ' + new Error().stack);
+  abort('unSign needed, data: ' + [value, bits]);
 #endif
   return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
                     : Math.pow(2, bits)         + value;
@@ -388,7 +388,7 @@ function reSign(value, bits) {
                         : Math.pow(2, bits-1);
   if (value >= half) {
 #if CHECK_SIGNS
-  print('WARNING: reSign needed, ' + [value, bits] + ' at ' + new Error().stack);
+  abort('reSign needed, data: ' + [value, bits]);
 #endif
     value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
   }

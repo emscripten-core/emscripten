@@ -163,7 +163,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'GUARD_SIGNS']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS']:
       exported_settings[setting] = eval(setting)
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
     timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
@@ -308,7 +308,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\n*21*')
 
     def test_sintvars(self):
-        global GUARD_SIGNS; GUARD_SIGNS = 1 # Relevant to this test
+        global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Relevant to this test
         src = '''
           #include <stdio.h>
           struct S {
@@ -339,7 +339,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, output, force_c=True)
 
     def test_unsigned(self):
-        global GUARD_SIGNS; GUARD_SIGNS = 1 # We test for exactly this sort of thing here
+        global CORRECT_SIGNS; CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
         src = '''
           #include <stdio.h>
           const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
@@ -1438,7 +1438,7 @@ if 'benchmark' not in sys.argv:
           self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
     def test_files(self):
-      global GUARD_SIGNS; GUARD_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -1464,7 +1464,7 @@ if 'benchmark' not in sys.argv:
     def test_dlmalloc(self):
         # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
         #              used, see Mozilla bug 593659.
-        global GUARD_SIGNS; GUARD_SIGNS = 1 # Not sure why, but needed
+        global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
         src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
         self.do_test(src, '*1,0*')
 
@@ -1527,7 +1527,7 @@ if 'benchmark' not in sys.argv:
       # Overflows in luaS_newlstr hash loop
       global SAFE_HEAP; SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
-      global GUARD_SIGNS; GUARD_SIGNS = 1 # Not sure why, but needed
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
 
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
@@ -1552,7 +1552,7 @@ if 'benchmark' not in sys.argv:
       os.chdir(ft_dir)
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
-      env['CFLAGS'] = '%s' % ' '.join(COMPILER_OPTS)
+      env['CFLAGS'] = '%s' % ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS)
       env['EMMAKEN_COMPILER'] = COMPILER
       Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       Popen(['make', '-j', '2'] + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
@@ -1564,7 +1564,7 @@ if 'benchmark' not in sys.argv:
 
     def test_freetype(self):
       if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
-      global GUARD_SIGNS; GUARD_SIGNS = 1 # Not sure why, but needed
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
 
       def post(filename):
         # Embed the font into the document
@@ -1586,7 +1586,13 @@ if 'benchmark' not in sys.argv:
 
     def test_zlib(self):
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1 # Overflows in inflate_table() getelementptr (in phi)
-      global GUARD_SIGNS; GUARD_SIGNS = 1
+      #global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
+
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      #global CHECK_SIGNS; CHECK_SIGNS = 0
+
+      #global COMPILER_TEST_OPTS
+      #COMPILER_TEST_OPTS += ['-DEMSCRIPTEN_OPTS']
 
       self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
@@ -1617,7 +1623,7 @@ if 'benchmark' not in sys.argv:
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
       global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
-      global GUARD_SIGNS; GUARD_SIGNS = 1 # Not sure why, but needed
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n22\n\n5.470',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
@@ -1747,7 +1753,7 @@ if 'benchmark' not in sys.argv:
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, GUARD_SIGNS, COMPILER_TEST_OPTS
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_SIGNS, CHECK_SIGNS, COMPILER_TEST_OPTS
 
     COMPILER = '%s'
     QUANTUM_SIZE = %d
@@ -1759,7 +1765,8 @@ class %s(T):
     LLVM_OPTS = llvm_opts
     CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
-    GUARD_SIGNS = 0
+    CORRECT_SIGNS = 0
+    CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = []
@@ -1793,7 +1800,7 @@ else:
   RELOOP = OPTIMIZE = 1
   USE_TYPED_ARRAYS = 0
   GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = 0
-  GUARD_SIGNS = 0
+  CORRECT_SIGNS = 0
   LLVM_OPTS = 1
 
   USE_CLOSURE_COMPILER = 1
