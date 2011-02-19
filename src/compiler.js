@@ -8,6 +8,10 @@ if (!this['read']) {
   read = function(f) { snarf(f) };
 }
 
+// Basic utilities
+
+load('utility.js');
+
 // Load settings, can be overridden by commandline
 
 load('settings.js');
@@ -18,9 +22,16 @@ for (setting in settings) {
 }
 var CONSTANTS = { 'QUANTUM_SIZE': QUANTUM_SIZE };
 
+if (CORRECT_SIGNS === 2) {
+  CORRECT_SIGNS_LINES = set(CORRECT_SIGNS_LINES); // for fast checking
+}
+
+if (CORRECT_OVERFLOWS === 2) {
+  CORRECT_OVERFLOWS_LINES = set(CORRECT_OVERFLOWS_LINES); // for fast checking
+}
+
 // Load compiler code
 
-load('utility.js');
 load('framework.js');
 load('parseTools.js');
 load('intertyper.js');

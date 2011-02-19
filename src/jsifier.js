@@ -758,7 +758,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   function makeSignOp(value, type, op) { // TODO: If value isNumber, do this at compile time
     if (!value) return value;
-    if (!CORRECT_SIGNS && !CHECK_SIGNS) return value;
+    if (!correctSigns() && !CHECK_SIGNS) return value;
     if (type in Runtime.INT_TYPES) {
       var bits = parseInt(type.substr(1));
       // shortcuts for 32-bit case
@@ -777,7 +777,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   function handleOverflow(text, bits) {
     if (!bits) return text;
-    if (CORRECT_OVERFLOWS && bits <= 32) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
+    if (bits <= 32 && correctOverflows()) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
     if (!CHECK_OVERFLOWS) return text;
     return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
   }

@@ -537,3 +537,13 @@ function indentify(text, indent) {
   return text.split('\n').map(function(line) { return indent + line }).join('\n');
 }
 
+// Correction tools
+
+function correctSigns() {
+  return CORRECT_SIGNS === 1 || (CORRECT_SIGNS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES);
+}
+
+function correctOverflows() {
+  return CORRECT_OVERFLOWS === 1 || (CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES);
+}
+

@@ -140,6 +140,12 @@ Substrate.prototype = {
   }
 };
 
+// Global access to the currently-being processed item.
+// Note that if you overload process in Actor, this will need to be set if you rely on it.
+var Framework = {
+  currItem: null
+};
+
 Actor = function() { };
 Actor.prototype = {
   process: function(items) {
@@ -147,24 +153,14 @@ Actor.prototype = {
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       try {
+        Framework.currItem = item;
         var outputs = this.processItem(item);
+        Framework.currItem = null; // Do not keep an unneeded reference. Note that we don't care about this if an exception is thrown
         if (outputs) {
           ret = ret.concat(outputs);
         }
       } catch (e) {
         print("Exception in process(), current item is: " + dump(item));
-        throw e;
-      }
-    }
-    return ret;
-  },
-  processPairs: function(items, func) {
-    var ret = [];
-    for (var i = 0; i < items.length; i += 2) {
-      try {
-        ret = ret.concat(func(items[i], items[i+1]));
-      } catch (e) {
-        print("Exception in processPairs(), current items are: " + dump(items[i]) + ' :::: ' + dump(items[i+1]));
         throw e;
       }
     }

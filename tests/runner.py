@@ -163,8 +163,12 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS']:
-      exported_settings[setting] = eval(setting)
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES']:
+      value = eval(setting)
+      if type(value) == str:
+        if value == '': continue
+        value = eval(value)
+      exported_settings[setting] = value
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
     timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
     output = open(filename + '.o.js').read()
@@ -1748,13 +1752,87 @@ if 'benchmark' not in sys.argv:
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
 
+    def test_linebyline_corrections(self):
+      global COMPILER_TEST_OPTS
+      COMPILER_TEST_OPTS = ['-g']
+
+      global CHECK_SIGNS; CHECK_SIGNS = 0
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
+      global CORRECT_SIGNS, CORRECT_OVERFLOWS, CORRECT_SIGNS_LINES, CORRECT_OVERFLOWS_LINES
+
+      src = '''
+        #include <stdio.h>
+        #include <assert.h>
+
+        int main()
+        {
+          int varey = 100;
+          unsigned int MAXEY = -1;
+          printf("*%d*\\n", varey >= MAXEY); // 100 >= -1? not in unsigned!
+        }
+      '''
+
+      CORRECT_SIGNS = 0
+      self.do_test(src, '*1*') # This is a fail - we expect 0
+
+      CORRECT_SIGNS = 1
+      self.do_test(src, '*0*') # Now it will work properly
+
+      # And now let's fix just that one line
+      CORRECT_SIGNS = 2
+      CORRECT_SIGNS_LINES = '["src.cpp:9"]'
+      self.do_test(src, '*0*')
+
+      # Fixing the wrong line should not work
+      CORRECT_SIGNS = 2
+      CORRECT_SIGNS_LINES = '["src.cpp:3"]'
+      self.do_test(src, '*1*')
+
+      src = '''
+        #include<stdio.h>
+        int main() {
+          int t = 77;
+          for (int i = 0; i < 30; i++) {
+            t = t*5 + 1;
+          }
+          printf("*%d,%d*\\n", t, t & 127);
+          return 0;
+        }
+      '''
+
+      correct = '*186854335,63*'
+      CORRECT_OVERFLOWS = 0
+      try:
+        self.do_test(src, correct)
+        raise Exception('UNEXPECTED-PASS')
+      except Exception, e:
+        assert 'UNEXPECTED' not in str(e), str(e)
+        assert 'Expected to find' in str(e), str(e)
+
+      CORRECT_OVERFLOWS = 1
+      self.do_test(src, correct) # Now it will work properly
+
+      # And now let's fix just that one line
+      CORRECT_OVERFLOWS = 2
+      CORRECT_OVERFLOWS_LINES = '["src.cpp:6"]'
+      self.do_test(src, correct)
+
+      # Fixing the wrong line should not work
+      CORRECT_OVERFLOWS = 2
+      CORRECT_OVERFLOWS_LINES = '["src.cpp:3"]'
+      try:
+        self.do_test(src, correct)
+        raise Exception('UNEXPECTED-PASS')
+      except Exception, e:
+        assert 'UNEXPECTED' not in str(e), str(e)
+        assert 'Expected to find' in str(e), str(e)
 
   # Generate tests for all our compilers
   def make_test(name, compiler, llvm_opts, embetter):
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_SIGNS, CHECK_SIGNS, COMPILER_TEST_OPTS
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS
 
     COMPILER = '%s'
     QUANTUM_SIZE = %d
@@ -1767,6 +1845,7 @@ class %s(T):
     CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     CORRECT_SIGNS = 0
+    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = ''
     CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
@@ -1802,6 +1881,7 @@ else:
   USE_TYPED_ARRAYS = 0
   GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = 0
   CORRECT_SIGNS = 0
+  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = ''
   LLVM_OPTS = 1
 
   USE_CLOSURE_COMPILER = 1

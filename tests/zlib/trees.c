@@ -722,11 +722,7 @@ local void scan_tree (s, tree, max_code)
     int min_count = 4;         /* min repeat count */
 
     if (nextlen == 0) max_count = 138, min_count = 3;
-#ifndef EMSCRIPTEN_OPTS
     tree[max_code+1].Len = (ush)0xffff; /* guard */
-#else
-    tree[max_code+1].Len = (ush)0x7fff; /* guard. Emscripten: Prevents llvm_gcc from creating '-1' which needs unsigning later */
-#endif
 
     for (n = 0; n <= max_code; n++) {
         curlen = nextlen; nextlen = tree[n+1].Len;

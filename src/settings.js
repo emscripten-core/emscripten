@@ -16,6 +16,8 @@ QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 w
 CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                    // Decreases performance with additional runtime checks. Might not be
                    // needed in some kinds of code.
+                   // If equal to 2, done on a line-by-line basis according to
+                   // CORRECT_SIGNS_LINES
 CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
                  // It is recommended to use this in
                  // order to find if your code needs CORRECT_SIGNS. If you can get your
@@ -55,6 +57,9 @@ CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS 
                        // Note that as mentioned above in CHECK_OVERFLOWS, the best thing is to
                        // not rely on overflows in your C/C++ code, as even if this option works,
                        // it slows things down.
+                       //
+                       // If equal to 2, done on a line-by-line basis according to
+                       // CORRECT_OVERFLOWS_LINES
                        //
                        // NOTE: You can introduce signing issues by using this option. If you
                        //       take a large enough 32-bit value, and correct it for overflows,
