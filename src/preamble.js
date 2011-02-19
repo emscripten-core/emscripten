@@ -313,7 +313,11 @@ function String_len(ptr) {
 // Copies a C-style string, terminated by a zero, from the HEAP into
 // a normal JavaScript array of numbers
 function String_copy(ptr, addZero) {
-  return Array_copy(ptr, String_len(ptr)).concat(addZero ? [0] : []);
+  var len = String_len(ptr);
+  if (addZero) len++;
+  var ret = Array_copy(ptr, len);
+  if (addZero) ret[len-1] = 0;
+  return ret;
 }
 
 // Tools
