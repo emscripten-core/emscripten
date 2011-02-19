@@ -1741,7 +1741,8 @@ if 'benchmark' not in sys.argv:
         def post(filename):
           lines = open(filename, 'r').readlines()
           line = filter(lambda line: '___assert_fail(' in line, lines)[0]
-          assert '//@line 7\n' in line, 'Must have debug info with the line number'
+          assert '//@line 7 "' in line, 'Must have debug info with the line number'
+          assert 'src.cpp"\n' in line, 'Must have debug info with the filename'
         self.do_test(src, '*nothingatall*', post_build=post)
       except Exception, e:
         # This test *should* fail
