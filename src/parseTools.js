@@ -539,11 +539,17 @@ function indentify(text, indent) {
 
 // Correction tools
 
+function correctSpecificSign() {
+  return CORRECT_SIGNS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES;
+}
 function correctSigns() {
-  return CORRECT_SIGNS === 1 || (CORRECT_SIGNS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES);
+  return CORRECT_SIGNS === 1 || correctSpecificSign();
 }
 
+function correctSpecificOverflow() {
+  return CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES;
+}
 function correctOverflows() {
-  return CORRECT_OVERFLOWS === 1 || (CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES);
+  return CORRECT_OVERFLOWS === 1 || correctSpecificOverflow();
 }
 

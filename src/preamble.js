@@ -101,13 +101,31 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 //==========================================
 #endif
 
+var CorrectionsMonitor = {
+  MAX_ALLOWED: 0, // Infinity,
+  corrections: 0,
+  sigs: {},
+
+  note: function(type) {
+    var sig = type + '|' + new Error().stack;
+    if (!this.sigs[sig]) {
+      print('Correction: ' + sig);
+      this.sigs[sig] = 0;
+    }
+    this.sigs[sig]++;
+    this.corrections++;
+    if (this.corrections >= this.MAX_ALLOWED) abort('\n\nToo many corrections!');
+  }
+};
+
 #if CHECK_OVERFLOWS
 //========================================
 // Debugging tools - Mathop overflows
 //========================================
 function CHECK_OVERFLOW(value, bits) {
-  assert(value !== Infinity && value !== -Infinity, 'Infinity!');
-  assert(Math.abs(value) < Math.pow(2, bits), 'Overflow!');
+  if (value === Infinity || value === -Infinity || Math.abs(value) >= Math.pow(2, bits)) {
+    CorrectionsMonitor.note('Overflow');
+  }
   return value;
 }
 #endif
@@ -374,10 +392,10 @@ function intArrayToString(array) {
 
 // Converts a value we have as signed, into an unsigned value. For
 // example, -1 in int32 would be a very large number as unsigned.
-function unSign(value, bits) {
+function unSign(value, bits, ignore) {
   if (value >= 0) return value;
 #if CHECK_SIGNS
-  abort('unSign needed, data: ' + [value, bits]);
+  if (!ignore) CorrectionsMonitor.note('UnSign');
 #endif
   return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
                     : Math.pow(2, bits)         + value;
@@ -386,13 +404,13 @@ function unSign(value, bits) {
 
 // Converts a value we have as unsigned, into a signed value. For
 // example, 200 in a uint8 would be a negative number.
-function reSign(value, bits) {
+function reSign(value, bits, ignore) {
   if (value <= 0) return value;
   var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
                         : Math.pow(2, bits-1);
   if (value >= half) {
 #if CHECK_SIGNS
-  abort('reSign needed, data: ' + [value, bits]);
+  if (!ignore) CorrectionsMonitor.note('ReSign');
 #endif
     value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
   }

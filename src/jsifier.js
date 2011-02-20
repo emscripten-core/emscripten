@@ -769,7 +769,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
           // TODO: figure out something here along the lines of return '(' + Math.pow(2, 32) + '+((' + value + ')|0))';
         }
       }
-      return op + 'Sign(' + value + ', ' + bits + ')';
+      return op + 'Sign(' + value + ', ' + bits + ', ' + correctSpecificSign() + ')'; // If we are correcting a specific sign here, do not check for it
     } else {
       return value;
     }
@@ -778,7 +778,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   function handleOverflow(text, bits) {
     if (!bits) return text;
     if (bits <= 32 && correctOverflows()) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
-    if (!CHECK_OVERFLOWS) return text;
+    if (!CHECK_OVERFLOWS || correctSpecificOverflow()) return text; // If we are correcting a specific overflow here, do not check for it
     return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
   }
 

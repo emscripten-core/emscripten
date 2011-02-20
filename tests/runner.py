@@ -165,9 +165,6 @@ class RunnerCore(unittest.TestCase):
     exported_settings = {}
     for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES']:
       value = eval(setting)
-      if type(value) == str:
-        if value == '': continue
-        value = eval(value)
       exported_settings[setting] = value
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
     timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
@@ -1589,14 +1586,17 @@ if 'benchmark' not in sys.argv:
                    post_build=post)
 
     def test_zlib(self):
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1 # Overflows in inflate_table() getelementptr (in phi)
-      #global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
+      global CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES
 
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1
-      #global CHECK_SIGNS; CHECK_SIGNS = 0
-
-      #global COMPILER_TEST_OPTS
-      #COMPILER_TEST_OPTS += ['-DEMSCRIPTEN_OPTS']
+      if COMPILER == LLVM_GCC:
+        # Test for line-specific corrections in gcc, and in clang do the opposite
+        CORRECT_SIGNS = 2
+        CORRECT_SIGNS_LINES = [
+          "trees.c:728", "inflate.c:1169", "deflate.c:1566", "trees.c:773", "trees.c:1089", "adler32.c:69", "trees.c:1233",
+          "deflate.c:1685", "inflate.c:850", "inflate.c:851", "trees.c:1148", "inflate.c:1333"
+        ]
+      else:
+        CORRECT_SIGNS = 1
 
       self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
@@ -1722,7 +1722,8 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*nothingatall*')
       except Exception, e:
         # This test *should* fail, by throwing this exception
-        assert 'Overflow!' in str(e), str(e)
+        assert 'Too many corrections' in str(e), str(e)
+        assert 'CHECK_OVERFLOW' in str(e), str(e)
 
     def test_debug(self):
       global COMPILER_TEST_OPTS
@@ -1780,12 +1781,12 @@ if 'benchmark' not in sys.argv:
 
       # And now let's fix just that one line
       CORRECT_SIGNS = 2
-      CORRECT_SIGNS_LINES = '["src.cpp:9"]'
+      CORRECT_SIGNS_LINES = ["src.cpp:9"]
       self.do_test(src, '*0*')
 
       # Fixing the wrong line should not work
       CORRECT_SIGNS = 2
-      CORRECT_SIGNS_LINES = '["src.cpp:3"]'
+      CORRECT_SIGNS_LINES = ["src.cpp:3"]
       self.do_test(src, '*1*')
 
       src = '''
@@ -1814,12 +1815,12 @@ if 'benchmark' not in sys.argv:
 
       # And now let's fix just that one line
       CORRECT_OVERFLOWS = 2
-      CORRECT_OVERFLOWS_LINES = '["src.cpp:6"]'
+      CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
       self.do_test(src, correct)
 
       # Fixing the wrong line should not work
       CORRECT_OVERFLOWS = 2
-      CORRECT_OVERFLOWS_LINES = '["src.cpp:3"]'
+      CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
       try:
         self.do_test(src, correct)
         raise Exception('UNEXPECTED-PASS')
@@ -1845,7 +1846,7 @@ class %s(T):
     CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     CORRECT_SIGNS = 0
-    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = ''
+    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = []
     CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
@@ -1881,7 +1882,7 @@ else:
   USE_TYPED_ARRAYS = 0
   GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = 0
   CORRECT_SIGNS = 0
-  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = ''
+  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = []
   LLVM_OPTS = 1
 
   USE_CLOSURE_COMPILER = 1
