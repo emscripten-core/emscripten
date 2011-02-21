@@ -216,10 +216,10 @@ function flatten(x) {
 // Sets
 
 function set() {
-  if (typeof arguments[0] === 'object') arguments = arguments[0];
+  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
   var ret = {};
-  for (var i = 0; i < arguments.length; i++) {
-    ret[arguments[i]] = 0;
+  for (var i = 0; i < args.length; i++) {
+    ret[args[i]] = 0;
   }
   return ret;
 }
