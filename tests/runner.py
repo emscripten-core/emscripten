@@ -175,8 +175,9 @@ class RunnerCore(unittest.TestCase):
     if output is not None and 'Traceback' in output and 'in test_' in output: print output; assert 0
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
-    return timeout_run(Popen(engine + [filename] + ([] if engine == SPIDERMONKEY_ENGINE else ['--']) + args,
-                       stdout=PIPE, stderr=STDOUT), 120 if check_timeout else None, 'Execution')
+    ret = run_js(engine, filename, args, check_timeout)
+    assert 'strict warning:' not in ret, 'We should pass all strict mode checks'
+    return ret
 
   def assertContained(self, value, string):
     if value not in string:
@@ -212,7 +213,7 @@ if 'benchmark' not in sys.argv:
 
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         if js_engines is None:
-          js_engines = [V8_ENGINE] if not OPTIMIZE else [V8_ENGINE, SPIDERMONKEY_ENGINE]
+          js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE]
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
@@ -1667,7 +1668,7 @@ if 'benchmark' not in sys.argv:
           var sme = Module._.ScriptMe.__new__(83);          // malloc(sizeof(ScriptMe)), ScriptMe::ScriptMe(sme, 83) / new ScriptMe(83) (at addr sme)
           Module._.ScriptMe.mulVal(sme, 2);                 // ScriptMe::mulVal(sme, 2)       sme.mulVal(2)
           print('*' + Module._.ScriptMe.getVal(sme) + '*'); 
-          Module._free(sme);
+          _free(sme);
           print('*ok*');
         '''
         def post(filename):

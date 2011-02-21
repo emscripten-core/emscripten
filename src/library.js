@@ -72,7 +72,6 @@ var Library = {
     if (textIndex < 0) {
       cStyle = true;
       textIndex = -textIndex;
-      slab = null;
       argIndex = arguments[1];
     } else {
       var _arguments = arguments;
@@ -276,12 +275,18 @@ var Library = {
     SEEK_CUR: 1, /* Current position.   */
     SEEK_END: 2, /* End of file.        */
     init: function() {
-      _stdin = Pointer_make([0], null, ALLOC_STATIC);
-      IHEAP[_stdin] = this.prepare('<<stdin>>');
-      _stdout = Pointer_make([0], null, ALLOC_STATIC);
-      IHEAP[_stdout] = this.prepare('<<stdout>>', null, true);
-      _stderr = Pointer_make([0], null, ALLOC_STATIC);
-      IHEAP[_stderr] = this.prepare('<<stderr>>', null, true);
+      try {
+        _stdin = Pointer_make([0], null, ALLOC_STATIC);
+        IHEAP[_stdin] = this.prepare('<<stdin>>');
+      } catch(e){} // stdin/out/err may not exist if not needed
+      try {
+        _stdout = Pointer_make([0], null, ALLOC_STATIC);
+        IHEAP[_stdout] = this.prepare('<<stdout>>', null, true);
+      } catch(e){}
+      try {
+        _stderr = Pointer_make([0], null, ALLOC_STATIC);
+        IHEAP[_stderr] = this.prepare('<<stderr>>', null, true);
+      } catch(e){}
     },
     prepare: function(filename, data, print_) {
       var stream = this.counter++;
@@ -328,7 +333,7 @@ var Library = {
     } else if (mode.indexOf('w') >= 0) {
       return _STDIO.prepare(filename);
     } else {
-      assert(false, 'fopen with odd params: ' + mode);
+      return assert(false, 'fopen with odd params: ' + mode);
     }
   },
   __01fopen64_: 'fopen',
@@ -413,7 +418,7 @@ var Library = {
     } else if (flags === 1) { // WRONLY
       return _STDIO.prepare(filename);
     } else {
-      assert(false, 'open with odd params: ' + [flags, mode]);
+      return assert(false, 'open with odd params: ' + [flags, mode]);
     }
   },
 
@@ -447,6 +452,23 @@ var Library = {
   },
 
   // stdlib.h
+
+  malloc: Runtime.staticAlloc,
+  _Znwj: 'malloc',
+  _Znaj: 'malloc',
+  _Znam: 'malloc',
+  _Znwm: 'malloc',
+
+  free: function(){},
+  _ZdlPv: 'free',
+  _ZdaPv: 'free',
+
+  calloc__deps: ['malloc'],
+  calloc: function(n, s) {
+    var ret = _malloc(n*s);
+    _memset(ret, 0, n*s);
+    return ret;
+  },
 
   abs: 'Math.abs',
 
@@ -786,7 +808,7 @@ var Library = {
   // ctype.h Linux specifics
 
   __ctype_b_loc: function() { // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
-    var me = arguments.callee;
+    var me = ___ctype_b_loc;
     if (!me.ret) {
       var values = [
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -919,8 +941,8 @@ var Library = {
 
   _ZNSt8ios_base4InitC1Ev: function() {
     // need valid 'file descriptors'
-    __ZSt4cout = 1;
-    __ZSt4cerr = 2;
+    //__ZSt4cout = 1;
+    //__ZSt4cerr = 2;
   },
   _ZNSt8ios_base4InitD1Ev: '_ZNSt8ios_base4InitC1Ev',
   _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_: 0, // endl
@@ -1030,7 +1052,7 @@ var Library = {
     // unfreeable allocations - the HEAP is ours, from STATICTOP up.
     // TODO: We could in theory slice off the top of the HEAP when
     // sbrk gets a negative increment in |bytes|...
-    var self = arguments.callee;
+    var self = _sbrk;
     if (!self.STATICTOP) {
       STATICTOP = alignMemoryPage(STATICTOP);
       self.STATICTOP = STATICTOP;
@@ -1114,7 +1136,7 @@ var Library = {
   localeconv: function() {
     // %struct.timeval = type { char* decimal point, other stuff... }
     // var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
-    var me = arguments.callee;
+    var me = _localeconv;
     if (!me.ret) {
       me.ret = Pointer_make([Pointer_make(intArrayFromString('.'), null)], null); // just decimal point, for now
     }
@@ -1124,7 +1146,7 @@ var Library = {
   // langinfo.h
 
   nl_langinfo: function(item) {
-    var me = arguments.callee;
+    var me = _nl_langinfo;
     if (!me.ret) {
       me.ret = Pointer_make(intArrayFromString("eh?"), null); 
     }
@@ -1134,7 +1156,7 @@ var Library = {
   // errno.h
 
   __errno_location: function() { 
-    var me = arguments.callee;
+    var me = ___errno_location;
     if (!me.ret) {
       me.ret = Pointer_make([0], 0, ALLOC_STATIC);
     }

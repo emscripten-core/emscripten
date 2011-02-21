@@ -1,3 +1,4 @@
+"use strict";
 
 // Capture the output of this into a variable, if you want
 //(function(Module, args) {

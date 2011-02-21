@@ -311,6 +311,8 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     }
   });
 
+  var moduleFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
+
   var addedLibraryItems = {};
 
   // functionStub
@@ -322,6 +324,10 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
         function addFromLibrary(ident) {
           var me = arguments.callee;
           if (ident in addedLibraryItems) return '';
+          // Don't replace implemented functions with library ones (which can happen when we add dependencies).
+          // Note: We don't return the dependencies here. Be careful not to end up where this matters
+          if (('_' + ident) in moduleFunctions) return '';
+
           addedLibraryItems[ident] = true;
           var snippet = Library[ident];
           if (typeof snippet === 'string') {
@@ -339,6 +345,9 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
             snippet = JSON.stringify(snippet).replace(/}$/, ', ' + funcs.join(', ') + ' }');
           } else if (typeof snippet === 'function') {
             snippet = snippet.toString();
+            if (/function ?\(/.exec(snippet)) { // name the function, if not already named
+              snippet = snippet.replace('function', 'function _' + ident);
+            }
           }
 
           var postsetId = ident + '__postset';
@@ -352,7 +361,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
           }
 
           var deps = Library[ident + '__deps'];
-          return '_' + ident + ' = ' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+          return 'var _' + ident + ' = ' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
         }
         item.JS = addFromLibrary(shortident);
       } else {
@@ -509,6 +518,11 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       func.JS += walkBlock(func.block, '  ');
       // Finalize function
       if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
+      // Add an unneeded return, needed for strict mode to not throw warnings in some cases.
+      // If we are not relooping, then switches make it unimportant to have this (and, we lack hasReturn anyhow)
+      if (RELOOP && func.lines.length > 0 && func.labels.filter(function(label) { return label.hasReturn }).length > 0) {
+        func.JS += '  return' + (func.returnType !== 'void' ? ' null' : '') + ';\n';
+      }
       func.JS += '}\n';
       func.JS += func.ident + '.__index__ = Runtime.getFunctionIndex(' + func.ident + ', "' + func.ident + '");\n';
       return func;
@@ -716,7 +730,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
             + '} catch(e) { '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + e.stack + ", currently at: " + (new Error().stack)); ' : '')
-            + '} })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
+            + 'return null } })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
@@ -1028,7 +1042,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     // Special cases
     if (ident == '_llvm_va_start') {
       // varargs - we received a pointer to the varargs as a final 'extra' parameter
-      var data = 'arguments[arguments.callee.length]';
+      var data = 'arguments[' + Framework.currItem.funcData.ident + '.length]';
       if (SAFE_HEAP) {
         return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', null)';
       } else {

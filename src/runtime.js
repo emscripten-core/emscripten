@@ -143,7 +143,7 @@ Runtime = {
 };
 
 function getRuntime() {
-  var ret = 'Runtime = {\n';
+  var ret = 'var Runtime = {\n';
   for (i in Runtime) {
     var item = Runtime[i];
     ret += '  ' + i + ': ';

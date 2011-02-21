@@ -107,7 +107,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   if (LLVM_STYLE === null) {
     // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
     LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new';
-    dprint('LLVM_STYLE: ' + LLVM_STYLE);
+    //dprint('LLVM_STYLE: ' + LLVM_STYLE);
   }
 
   // If the source contains debug info as LLVM metadata, process that out (and save the debugging info for later)
@@ -482,7 +482,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var ret = {
         intertype: 'function',
         ident: item.tokens[1].text,
-        returnType: item.tokens[0],
+        returnType: item.tokens[0].text,
         params: parseParamTokens(item.tokens[2].item.tokens),
         lineNum: item.lineNum
       };

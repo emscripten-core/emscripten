@@ -15,6 +15,11 @@ LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to do just    []
 
+# Engine tweaks
+
+if '-s' not in SPIDERMONKEY_ENGINE:
+  SPIDERMONKEY_ENGINE += ['-s'] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
+
 # Utilities
 
 def timeout_run(proc, timeout, note):

@@ -927,9 +927,11 @@ function analyzer(data, givenTypes) {
   var ret = substrate.solve();
 
   // Add additional necessary items
-  ret.functionStubs.push({
-    intertype: 'functionStub',
-    ident: '@memset' // we need memset as a fundamental runtime tool, so always include that from the library
+  ['memset', 'malloc', 'free'].forEach(function(ident) {
+    ret.functionStubs.push({
+      intertype: 'functionStub',
+      ident: '@' + ident
+    });
   });
   return ret;
 }
