@@ -287,7 +287,7 @@ function parseParamTokens(params) {
         intertype: 'value',
         type: segment[0].text,
         value: segment[1],
-        ident: parseNumerical(segment[1].text)
+        ident: toNiceIdent(parseNumerical(segment[1].text))
       });
       //          } else {
       //            throw "what is this params token? " + JSON.stringify(segment);
@@ -301,7 +301,7 @@ function parseLLVMSegment(segment) {
   if (segment.length == 1) {
     return {
       intertype: 'value',
-      ident: segment[0].text,
+      ident: toNiceIdent(segment[0].text),
       type: isType(segment[0].text) ? segment[0].text : '?'
     };
   } else if (segment[1].type == '{') {
@@ -317,7 +317,7 @@ function parseLLVMSegment(segment) {
   } else {
     return {
       intertype: 'value',
-      ident: segment[1].text,
+      ident: toNiceIdent(segment[1].text),
       type: segment[0].text
     };
   }

@@ -30,8 +30,11 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
-    dprint('unparsedFunctions', 'processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
+    dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
+    //var t = Date.now();
     func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1), TYPES), true, TYPES, FUNCTIONS, GLOBAL_VARIABLES);
+    //t = (Date.now()-t)/1000;
+    //dprint('unparsedFunctions', 'unparsedFunction took ' + t + ' seconds.');
     delete func.lines; // clean up memory as much as possible
   }
 

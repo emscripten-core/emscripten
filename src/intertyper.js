@@ -443,7 +443,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         }
         var ret = {
           intertype: 'globalVariable',
-          ident: ident,
+          ident: toNiceIdent(ident),
           type: item.tokens[2].text,
           external: external,
           lineNum: item.lineNum
@@ -481,7 +481,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       });
       var ret = {
         intertype: 'function',
-        ident: item.tokens[1].text,
+        ident: toNiceIdent(item.tokens[1].text),
         returnType: item.tokens[0].text,
         params: parseParamTokens(item.tokens[2].item.tokens),
         lineNum: item.lineNum
@@ -502,9 +502,11 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       return [{
         intertype: 'label',
-        ident: item.tokens[0].text.substr(-1) == ':' ?
-                               '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
-                               '%' + item.tokens[2].text.substr(1),
+        ident: toNiceIdent(
+          item.tokens[0].text.substr(-1) == ':' ?
+            '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
+            '%' + item.tokens[2].text.substr(1)
+        ),
         lineNum: item.lineNum
       }];
     }
@@ -516,7 +518,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var opIndex = findTokenText(item, '=');
       var pair = splitItem({
         intertype: 'assign',
-        ident: combineTokens(item.tokens.slice(0, opIndex)).text,
+        ident: toNiceIdent(combineTokens(item.tokens.slice(0, opIndex)).text),
         lineNum: item.lineNum
       }, 'value');
       this.forwardItem(pair.parent, 'Reintegrator');
@@ -558,7 +560,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           item.pointer = item.tokens[2].text;
         }
       }
-      item.ident = item.pointer;
+      item.ident = toNiceIdent(item.pointer);
       this.forwardItem(item, 'Reintegrator');
     }
   });
@@ -568,7 +570,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var last = getTokenIndexByText(item.tokens, ';');
       item.intertype = 'extractvalue';
       item.type = item.tokens[1].text; // Of the origin aggregate - not what we extract from it. For that, can only infer it later
-      item.ident = item.tokens[2].text;
+      item.ident = toNiceIdent(item.tokens[2].text);
       item.indexes = splitTokenList(item.tokens.slice(4, last));
       this.forwardItem(item, 'Reintegrator');
     }
@@ -578,7 +580,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       item.intertype = 'bitcast';
       item.type = item.tokens[1].text;
-      item.ident = item.tokens[2].text;
+      item.ident = toNiceIdent(item.tokens[2].text);
       item.type2 = item.tokens[4].text;
       this.forwardItem(item, 'Reintegrator');
     }
@@ -637,6 +639,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } else {
         item.params = parseParamTokens(tokensLeft[0].item.tokens);
       }
+      item.ident = toNiceIdent(item.ident);
       if (item.indent == 2) {
         // standalone call - not in assign
         item.standalone = true;
@@ -657,7 +660,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
       item.type = item.tokens[1].text;
-      item.ident = item.tokens[2].text;
+      item.ident = toNiceIdent(item.tokens[2].text);
       item.params = parseParamTokens(item.tokens[3].item.tokens);
       item.toLabel = toNiceIdent(item.tokens[6].text);
       item.unwindLabel = toNiceIdent(item.tokens[9].text);
@@ -738,7 +741,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         pointer: parseLLVMSegment(segments[1]),
         lineNum: item.lineNum
       };
-      ret.ident = ret.pointer.ident;
+      ret.ident = toNiceIdent(ret.pointer.ident);
       ret.pointerType = ret.pointer.type;
       return [ret];
     }
@@ -755,7 +758,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } else {
         return [{
           intertype: 'branch',
-          ident: item.tokens[2].text,
+          ident: toNiceIdent(item.tokens[2].text),
           labelTrue: toNiceIdent(item.tokens[5].text),
           labelFalse: toNiceIdent(item.tokens[8].text),
           lineNum: item.lineNum
@@ -792,7 +795,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       return [{
         intertype: 'switch',
         type: item.tokens[1].text,
-        ident: item.tokens[2].text,
+        ident: toNiceIdent(item.tokens[2].text),
         defaultLabel: toNiceIdent(item.tokens[5].text),
         switchLabels: parseSwitchLabels(item.tokens[6]),
         lineNum: item.lineNum
@@ -816,7 +819,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       return [{
         intertype: 'functionStub',
-        ident: item.tokens[2].text,
+        ident: toNiceIdent(item.tokens[2].text),
         returnType: item.tokens[1],
         params: item.tokens[3],
         lineNum: item.lineNum

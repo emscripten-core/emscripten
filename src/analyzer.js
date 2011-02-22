@@ -53,7 +53,7 @@ function analyzer(data, givenTypes) {
           if (LLVM_STYLE == 'new' && item.items[i+1].intertype !== 'label') {
             item.items.splice(i+1, 0, {
               intertype: 'label',
-              ident: '%entry',
+              ident: '_entry',
               lineNum: subItem.lineNum + '.5'
             });
           }
@@ -79,20 +79,7 @@ function analyzer(data, givenTypes) {
         }
       }
       delete item.items;
-      this.forwardItem(item, 'Identinicer');
-    }
-  });
-
-  // IdentiNicer
-  substrate.addActor('Identinicer', {
-    processItem: function(output) {
-      walkJSON(output, function(item) {
-        ['', '2', '3', '4', '5'].forEach(function(ext) {
-          if (item && item['ident' + ext])
-          item['ident' + ext] = toNiceIdent(item['ident' + ext]);
-        });
-      });
-      this.forwardItem(output, 'Typevestigator');
+      this.forwardItem(item, 'Typevestigator');
     }
   });
 
@@ -930,7 +917,7 @@ function analyzer(data, givenTypes) {
   ['memset', 'malloc', 'free'].forEach(function(ident) {
     ret.functionStubs.push({
       intertype: 'functionStub',
-      ident: '@' + ident
+      ident: '_' + ident
     });
   });
   return ret;
