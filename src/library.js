@@ -248,6 +248,11 @@ var Library = {
     return i; // Actually, should return how many *would* have been written, if the |num| had not stopped us.
   },
 
+  vfprintf__deps: ['_formatString'],
+  vfprintf: function(stream, format, args) {
+    __print__(Pointer_stringify(__formatString(-format, args)));
+  },
+
   fileno: function(file) {
     return 1; // TODO
   },
