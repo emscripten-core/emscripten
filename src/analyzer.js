@@ -134,22 +134,10 @@ function analyzer(data) {
   // Typevestigator
   substrate.addActor('Typevestigator', {
     processItem: function(data) {
-      // Find additional types
-      walkJSON(data, function(item) {
-        if (!item) return;
-        if (item.type) {
-          addType(item.type, data);
-        }
-        if (item.type2) {
-          addType(item.type2, data);
-        }
-        if (item.pointerType) {
-          addType(item.pointerType, data);
-        }
-        if (item.valueType) {
-          addType(item.valueType, data);
-        }
-      });
+      for (type in Types.needAnalysis) {
+        if (type) addType(type, data);
+      }
+      Types.needAnalysis = [];
       this.forwardItem(data, 'Typeanalyzer');
     }
   });
@@ -180,7 +168,6 @@ function analyzer(data) {
           if (type.flatIndexes) return;
           var ready = true;
           type.fields.forEach(function(field) {
-            //print('// zz getT: ' + type.name_ + ' : ' + field);
             if (isStructType(field)) {
               if (!Types.types[field]) {
                 addType(field, item);

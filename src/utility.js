@@ -91,25 +91,6 @@ function zeros(size) {
   return ret;
 }
 
-function walkJSON(item, func) {
-  if (item.length) {
-    for (var x = 0; x < item.length; x++) {
-      var y = item[x];
-      if (y && typeof y === 'object') {
-        walkJSON(y, func);
-      }
-    }
-  } else {
-    func(item);
-    for (x in item) {
-      var y = item[x];
-      if (y && typeof y === 'object') {
-        walkJSON(y, func);
-      }
-    }
-  }
-}
-
 function keys(x) {
   var ret = [];
   for (a in x) ret.push(a);

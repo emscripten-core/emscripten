@@ -8,6 +8,7 @@ var LLVM = {
                 'weak_odr', 'externally_visible', 'dllimport', 'dllexport'),
   CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10')
 };
+LLVM.GLOBAL_MODIFIERS = set(keys(LLVM.LINKAGES).concat(['constant', 'global', 'hidden']));
 
 var Debugging = {
   processMetadata: function(lines) {
@@ -96,5 +97,6 @@ var Debugging = {
 
 var Types = {
   types: {},
+  needAnalysis: {} // Types noticed during parsing, that need analysis
 };
 

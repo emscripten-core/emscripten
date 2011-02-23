@@ -340,8 +340,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        while (item.tokens[2].text in LLVM.LINKAGES || item.tokens[2].text in set('constant', 'global', 'hidden'))
-          item.tokens.splice(2, 1);
+        cleanOutTokensSet(LLVM.GLOBAL_MODIFIERS, item.tokens, 3);
+        cleanOutTokensSet(LLVM.GLOBAL_MODIFIERS, item.tokens, 2);
         var external = false;
         if (item.tokens[2].text === 'external') {
           external = true;
@@ -354,6 +354,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           external: external,
           lineNum: item.lineNum
         };
+        Types.needAnalysis[ret.type] = 0;
         if (ident == '@llvm.global_ctors') {
           ret.ctors = [];
           if (item.tokens[3].item) {
@@ -449,6 +450,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       item.pointerType = item.tokens[1].text;
       item.valueType = item.type = removePointing(item.pointerType);
+      Types.needAnalysis[item.type] = 0;
       if (item.tokens[2].text == 'getelementptr') {
         var last = getTokenIndexByText(item.tokens, ';');
         var data = parseLLVMFunctionCall(item.tokens.slice(1, last));
@@ -476,6 +478,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var last = getTokenIndexByText(item.tokens, ';');
       item.intertype = 'extractvalue';
       item.type = item.tokens[1].text; // Of the origin aggregate - not what we extract from it. For that, can only infer it later
+      Types.needAnalysis[item.type] = 0;
       item.ident = toNiceIdent(item.tokens[2].text);
       item.indexes = splitTokenList(item.tokens.slice(4, last));
       this.forwardItem(item, 'Reintegrator');
@@ -486,8 +489,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       item.intertype = 'bitcast';
       item.type = item.tokens[1].text;
+      Types.needAnalysis[item.type] = 0;
       item.ident = toNiceIdent(item.tokens[2].text);
       item.type2 = item.tokens[4].text;
+      Types.needAnalysis[item.type2] = 0;
       this.forwardItem(item, 'Reintegrator');
     }
   });
@@ -520,6 +525,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.tokens.splice(1, 1);
       }
       item.type = item.tokens[1].text;
+      Types.needAnalysis[item.type] = 0;
       item.functionType = '';
       while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS)) {
         // We cannot compile assembly. If you hit this, perhaps tell the compiler not
@@ -566,6 +572,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
       item.type = item.tokens[1].text;
+      Types.needAnalysis[item.type] = 0;
       item.ident = toNiceIdent(item.tokens[2].text);
       item.params = parseParamTokens(item.tokens[3].item.tokens);
       item.toLabel = toNiceIdent(item.tokens[6].text);
@@ -586,7 +593,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.allocatedType = item.tokens[1].text;
       item.allocatedNum = (item.tokens.length > 3 && Runtime.isNumberType(item.tokens[3].text)) ? toNiceIdent(item.tokens[4].text) : 1;
       item.type = addPointing(item.tokens[1].text); // type of pointer we will get
+      Types.needAnalysis[item.type] = 0;
       item.type2 = item.tokens[1].text; // value we will create, and get a pointer to
+      Types.needAnalysis[item.type2] = 0;
       this.forwardItem(item, 'Reintegrator');
     }
   });
@@ -595,6 +604,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       item.intertype = 'phi';
       item.type = item.tokens[1].text;
+      Types.needAnalysis[item.type] = 0;
       var last = getTokenIndexByText(item.tokens, ';');
       item.params = splitTokenList(item.tokens.slice(2, last)).map(function(segment) {
         var subSegments = splitTokenList(segment[0].item.tokens);
@@ -632,6 +642,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } else {
         item.type = item.param1.type;
       }
+      Types.needAnalysis[item.type] = 0;
       this.forwardItem(item, 'Reintegrator');
     }
   });
@@ -647,8 +658,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
         pointer: parseLLVMSegment(segments[1]),
         lineNum: item.lineNum
       };
+      Types.needAnalysis[ret.valueType] = 0;
       ret.ident = toNiceIdent(ret.pointer.ident);
       ret.pointerType = ret.pointer.type;
+      Types.needAnalysis[ret.pointerType] = 0;
       return [ret];
     }
   });
@@ -675,9 +688,11 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // 'ret'
   substrate.addActor('Return', {
     processItem: function(item) {
+      var type = item.tokens[1].text;
+      Types.needAnalysis[type] = 0;
       return [{
         intertype: 'return',
-        type: item.tokens[1].text,
+        type: type,
         value: item.tokens[2] ? parseLLVMSegment(item.tokens.slice(2)) : null,
         lineNum: item.lineNum
       }];
@@ -698,9 +713,11 @@ function intertyper(data, parseFunctions, baseLineNum) {
         }
         return ret;
       }
+      var type = item.tokens[1].text;
+      Types.needAnalysis[type] = 0;
       return [{
         intertype: 'switch',
-        type: item.tokens[1].text,
+        type: type,
         ident: toNiceIdent(item.tokens[2].text),
         defaultLabel: toNiceIdent(item.tokens[5].text),
         switchLabels: parseSwitchLabels(item.tokens[6]),

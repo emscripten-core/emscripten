@@ -271,6 +271,7 @@ function parseParamTokens(params) {
           value: null,
           ident: toNiceIdent('%') + anonymousIndex
         });
+        Types.needAnalysis[ret.type] = 0;
         anonymousIndex ++;
       }
     } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
@@ -289,6 +290,7 @@ function parseParamTokens(params) {
         value: segment[1],
         ident: toNiceIdent(parseNumerical(segment[1].text))
       });
+      Types.needAnalysis[ret.type] = 0;
       //          } else {
       //            throw "what is this params token? " + JSON.stringify(segment);
     }
@@ -298,23 +300,30 @@ function parseParamTokens(params) {
 
 // Segment ==> Parameter
 function parseLLVMSegment(segment) {
+  var type;
   if (segment.length == 1) {
+    type = isType(segment[0].text) ? segment[0].text : '?';
+    Types.needAnalysis[type] = 0;
     return {
       intertype: 'value',
       ident: toNiceIdent(segment[0].text),
-      type: isType(segment[0].text) ? segment[0].text : '?'
+      type: type
     };
   } else if (segment[1].type == '{') {
+    type = segment[0].text;
+    Types.needAnalysis[type] = 0;
     return {
       intertype: 'structvalue',
       values: splitTokenList(segment[1].tokens).map(parseLLVMSegment),
-      type: segment[0].text
+      type: type
     };
   } else if (segment[0].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall([{text: '?'}].concat(segment));
   } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall(segment);
   } else {
+    type = segment[0].text;
+    Types.needAnalysis[type] = 0;
     return {
       intertype: 'value',
       ident: toNiceIdent(segment[1].text),
@@ -365,6 +374,7 @@ function parseLLVMFunctionCall(segment) {
     type: type,
     params: parseParamTokens(segment[2].item.tokens)
   };
+  Types.needAnalysis[ret.type] = 0;
   ret.ident = toNiceIdent(ret.params[0].ident);
   return ret;
 }
@@ -389,6 +399,12 @@ function eatLLVMIdent(tokens) {
 
 function cleanOutTokens(filterOut, tokens, index) {
   while (filterOut.indexOf(tokens[index].text) != -1) {
+    tokens.splice(index, 1);
+  }
+}
+
+function cleanOutTokensSet(filterOut, tokens, index) {
+  while (tokens[index].text in filterOut) {
     tokens.splice(index, 1);
   }
 }

@@ -155,16 +155,12 @@ Actor.prototype = {
     var ret = [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      try {
-        Framework.currItem = item;
-        var outputs = this.processItem(item);
-        Framework.currItem = null; // Do not keep an unneeded reference. Note that we don't care about this if an exception is thrown
-        if (outputs) {
-          ret = ret.concat(outputs);
-        }
-      } catch (e) {
-        print("Exception in process(), current item is: " + dump(item));
-        throw e;
+      dprint('frameworkLines', 'Processing item for llvm line ' + item.lineNum);
+      Framework.currItem = item;
+      var outputs = this.processItem(item);
+      Framework.currItem = null;
+      if (outputs) {
+        ret = ret.concat(outputs);
       }
     }
     return ret;
