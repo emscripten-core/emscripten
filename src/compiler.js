@@ -33,6 +33,7 @@ if (CORRECT_OVERFLOWS === 2) {
 // Load compiler code
 
 load('framework.js');
+load('modules.js');
 load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');

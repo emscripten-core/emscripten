@@ -104,7 +104,7 @@ Runtime = {
   // Calculate aligned size, just like C structs should be. TODO: Consider
   // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
   // which would remove much of the complexity here.
-  calculateStructAlignment: function calculateStructAlignment(type, otherTypes) {
+  calculateStructAlignment: function calculateStructAlignment(type) {
     type.flatSize = 0;
     type.alignSize = 0;
     var diffs = [];
@@ -115,8 +115,8 @@ Runtime = {
         size = Runtime.getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
         alignSize = size;
       } else if (Runtime.isStructType(field)) {
-        size = otherTypes[field].flatSize;
-        alignSize = otherTypes[field].alignSize;
+        size = Types.types[field].flatSize;
+        alignSize = Types.types[field].alignSize;
       } else {
         dprint('Unclear type in struct: ' + field + ', in ' + type.name_);
         assert(0);

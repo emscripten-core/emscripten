@@ -13,7 +13,7 @@ function cleanFunc(func) {
   });
 }
 
-function analyzer(data, givenTypes) {
+function analyzer(data) {
   // Substrate
   substrate = new Substrate('Analyzer');
 
@@ -29,15 +29,17 @@ function analyzer(data, givenTypes) {
   substrate.addActor('Gatherer', {
     processItem: function(item) {
       // Single-liners
-      ['globalVariable', 'functionStub', 'type', 'unparsedFunction'].forEach(function(intertype) {
-        if (intertype === 'type' && givenTypes) {
-          item.types = givenTypes;
-          return;
-        }
+      ['globalVariable', 'functionStub', 'unparsedFunction'].forEach(function(intertype) {
         var temp = splitter(item.items, function(item) { return item.intertype == intertype });
-        item[intertype + 's'] = temp.splitOut;
         item.items = temp.leftIn;
+        item[intertype + 's'] = temp.splitOut;
       });
+      var temp = splitter(item.items, function(item) { return item.intertype == 'type' });
+      item.items = temp.leftIn;
+      temp.splitOut.forEach(function(type) {
+        Types.types[type.name_] = type;
+      });
+
       // Functions & labels
       item.functions = [];
       var currLabelFinished; // Sometimes LLVM puts a branch in the middle of a label. We need to ignore all lines after that.
@@ -85,7 +87,7 @@ function analyzer(data, givenTypes) {
 
   function addType(type, data) {
     if (type.length == 1) return;
-    if (data.types[type]) return;
+    if (Types.types[type]) return;
     if (['internal', 'hidden', 'inbounds', 'void'].indexOf(type) != -1) return;
     if (Runtime.isNumberType(type)) return;
 
@@ -94,7 +96,7 @@ function analyzer(data, givenTypes) {
     // anywhere else.
     var nonPointing = removeAllPointing(type);
     var check = new RegExp(/^\[(\d+)\ x\ (.*)\]$/g).exec(nonPointing);
-    if (check && !data.types[nonPointing]) {
+    if (check && !Types.types[nonPointing]) {
       var num = parseInt(check[1]);
       num = Math.max(num, 1); // [0 x something] is used not for allocations and such of course, but
                               // for indexing - for an |array of unknown length|, basically. So we
@@ -102,15 +104,15 @@ function analyzer(data, givenTypes) {
                               // check that we never allocate with this (either as a child structure
                               // in the analyzer, or in calcSize in alloca).
       var subType = check[2];
-      data.types[nonPointing] = {
+      Types.types[nonPointing] = {
         name_: nonPointing,
         fields: range(num).map(function() { return subType }),
         lineNum: '?'
       };
       // Also add a |[0 x type]| type
       var zerod = '[0 x ' + subType + ']';
-      if (!data.types[zerod]) {
-        data.types[zerod] = {
+      if (!Types.types[zerod]) {
+        Types.types[zerod] = {
           name_: zerod,
           fields: [subType, subType], // Two, so we get the flatFactor right. We care about the flatFactor, not the size here
           lineNum: '?'
@@ -121,7 +123,7 @@ function analyzer(data, givenTypes) {
 
     if (isPointerType(type)) return;
     if (['['].indexOf(type) != -1) return;
-    data.types[type] = {
+    Types.types[type] = {
       name_: type,
       fields: [ 'i' + (QUANTUM_SIZE*8) ], // a single quantum size
       flatSize: 1,
@@ -132,13 +134,6 @@ function analyzer(data, givenTypes) {
   // Typevestigator
   substrate.addActor('Typevestigator', {
     processItem: function(data) {
-      // Convert types list to dict
-      if (data.types.length !== undefined) {
-        var old = data.types;
-        data.types = {};
-        old.forEach(function(type) { data.types[type.name_] = type });
-      }
-
       // Find additional types
       walkJSON(data, function(item) {
         if (!item) return;
@@ -181,17 +176,17 @@ function analyzer(data, givenTypes) {
       var more = true;
       while (more) {
         more = false;
-        values(item.types).forEach(function(type) {
+        values(Types.types).forEach(function(type) {
           if (type.flatIndexes) return;
           var ready = true;
           type.fields.forEach(function(field) {
             //print('// zz getT: ' + type.name_ + ' : ' + field);
             if (isStructType(field)) {
-              if (!item.types[field]) {
+              if (!Types.types[field]) {
                 addType(field, item);
                 ready = false;
               } else {
-                if (!item.types[field].flatIndexes) {
+                if (!Types.types[field].flatIndexes) {
                   ready = false;
                 }
               }
@@ -202,7 +197,7 @@ function analyzer(data, givenTypes) {
             return;
           }
 
-          Runtime.calculateStructAlignment(type, item.types);
+          Runtime.calculateStructAlignment(type);
 
           dprint('types', 'type: ' + type.name_ + ' : ' + JSON.stringify(type.fields));
           dprint('types', '                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
@@ -371,7 +366,7 @@ function analyzer(data, givenTypes) {
           if (!item || item.intertype != 'alloca') break;
           assert(isNumber(item.allocatedNum));
           item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
-            calcAllocatedSize(item.allocatedType, data.types)*item.allocatedNum: 0;
+            calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
           total += item.allocatedSize;
         }
         func.initialStack = total;

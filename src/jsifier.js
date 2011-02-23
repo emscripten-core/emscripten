@@ -2,7 +2,7 @@
 // before this stage, which just does the final conversion to JavaScript.
 
 // Main function
-function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVariables) {
+function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   // Does simple 'macro' substitution, using Django-like syntax,
   // {{{ code }}} will be replaced with |eval(code)|.
   function processMacros(text) {
@@ -13,8 +13,6 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   }
 
   substrate = new Substrate('JSifyer');
-
-  var TYPES = functionsOnly ? givenTypes : data.types;
 
   var GLOBAL_VARIABLES = functionsOnly ? givenGlobalVariables : data.globalVariables;
 
@@ -32,7 +30,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     var func = data.unparsedFunctions[i];
     dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
     //var t = Date.now();
-    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1), TYPES), true, TYPES, FUNCTIONS, GLOBAL_VARIABLES);
+    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, FUNCTIONS, GLOBAL_VARIABLES);
     //t = (Date.now()-t)/1000;
     //dprint('unparsedFunctions', 'unparsedFunction took ' + t + ' seconds.');
     delete func.lines; // clean up memory as much as possible
@@ -50,12 +48,12 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   // type
   substrate.addActor('Type', {
     processItem: function(item) {
-      var type = TYPES[item.name_];
+      var type = Types.types[item.name_];
       var niceName = toNiceIdent(item.name_);
-      // We might export all of TYPES, cleaner that way, but do not want slowdowns in accessing flatteners
-      item.JS = 'var ' + niceName + '___SIZE = ' + TYPES[item.name_].flatSize + '; // ' + item.name_ + '\n';
+      // We might export all of Types.types, cleaner that way, but do not want slowdowns in accessing flatteners
+      item.JS = 'var ' + niceName + '___SIZE = ' + Types.types[item.name_].flatSize + '; // ' + item.name_ + '\n';
       if (type.needsFlattening && !type.flatFactor) {
-        item.JS += 'var ' + niceName + '___FLATTENER = ' + JSON.stringify(TYPES[item.name_].flatIndexes) + ';';
+        item.JS += 'var ' + niceName + '___FLATTENER = ' + JSON.stringify(Types.types[item.name_].flatIndexes) + ';';
       }
       return [item];
     }
@@ -94,7 +92,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   // See makeSetValue
   function makeGetValue(ptr, pos, type, noNeedFirst) {
     if (isStructType(type)) {
-      var typeData = TYPES[type];
+      var typeData = Types.types[type];
       var ret = [];
       for (var i = 0; i < typeData.fields.length; i++) {
         ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst));
@@ -130,7 +128,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
   function makeSetValue(ptr, pos, value, type, noNeedFirst) {
     if (isStructType(type)) {
-      var typeData = TYPES[type];
+      var typeData = Types.types[type];
       var ret = [];
       for (var i = 0; i < typeData.fields.length; i++) {
         ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
@@ -160,7 +158,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   function makeEmptyStruct(type) {
     var ret = [];
-    var typeData = TYPES[type];
+    var typeData = Types.types[type];
     assertTrue(typeData);
     for (var i = 0; i < typeData.flatSize; i++) {
       ret.push(0);
@@ -169,7 +167,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
   }
 
   function alignStruct(values, type) {
-    var typeData = TYPES[type];
+    var typeData = Types.types[type];
     assertTrue(typeData);
     var ret = [];
     var i = 0, soFar = 0;
@@ -758,7 +756,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
       return getFastValue('__stackBase__', '+', item.allocatedIndex.toString());
     } else {
-      return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType, TYPES), '*', item.allocatedNum));
+      return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.allocatedNum));
     }
   });
   makeFuncLineActor('phi', function(item) {
@@ -944,7 +942,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     var offset = toNiceIdent(item.params[1].ident);
     if (offset != 0) {
       if (isStructType(type)) {
-        indexes.push(getFastValue(TYPES[type].flatSize, '*', offset));
+        indexes.push(getFastValue(Types.types[type].flatSize, '*', offset));
       } else {
         indexes.push(getFastValue(getNativeFieldSize(type, true), '*', offset));
       }
@@ -953,7 +951,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
       dprint('types', 'GEP type: ' + type);
       var curr = toNiceIdent(arg.ident);
       // TODO: If index is constant, optimize
-      var typeData = TYPES[type];
+      var typeData = Types.types[type];
       if (isStructType(type) && typeData.needsFlattening) {
         if (typeData.flatFactor) {
           indexes.push(getFastValue(curr, '*', typeData.flatFactor));
@@ -1091,7 +1089,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 
-  // Optimzed intertypes
+  // Optimized intertypes
 
   makeFuncLineActor('fastgetelementptrload', function(item) {
     return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), item.value.valueType, true) + ';';
@@ -1131,7 +1129,7 @@ function JSify(data, functionsOnly, givenTypes, givenFunctions, givenGlobalVaria
 
   // Data
 
-  substrate.addItems(values(data.types).filter(function(type) { return type.lineNum != '?' }), 'Type');
+  substrate.addItems(values(Types.types).filter(function(type) { return type.lineNum != '?' }), 'Type');
   substrate.addItems(values(data.globalVariables), 'GlobalVariable');
   substrate.addItems(data.functions, 'FunctionSplitter');
   substrate.addItems(data.functionStubs, 'FunctionStub');
