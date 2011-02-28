@@ -1591,6 +1591,7 @@ if 'benchmark' not in sys.argv:
 
       if COMPILER == LLVM_GCC:
         # Test for line-specific corrections in gcc, and in clang do the opposite
+        global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
         CORRECT_SIGNS = 2
         CORRECT_SIGNS_LINES = [
           "trees.c:728", "inflate.c:1169", "deflate.c:1566", "trees.c:773", "trees.c:1089", "adler32.c:69", "trees.c:1233",
