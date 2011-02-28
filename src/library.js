@@ -180,13 +180,6 @@ var Library = {
     __print__(Pointer_stringify(__formatString.apply(null, arguments)));
   },
 
-  fprintf__deps: ['_formatString'],
-  fprintf: function() {
-    var file = arguments[0]; // TODO: something clever with this
-    var args = Array.prototype.slice.call(arguments, 1);
-    __print__(Pointer_stringify(__formatString.apply(null, args)));
-  },
-
   sprintf__deps: ['strcpy', '_formatString'],
   sprintf: function() {
     var str = arguments[0];
@@ -202,20 +195,8 @@ var Library = {
     _strncpy(str, __formatString.apply(null, args), num); // not terribly efficient
   },
 
-  fflush: function(file) {
-    __print__(null);
-  },
-
   puts: function(p) {
     __print__(Pointer_stringify(p) + '\n');
-  },
-
-  fputs: function(p, stream) {
-    __print__(Pointer_stringify(p) + '\n');
-  },
-
-  fputc: function(chr, stream) {
-    __print__(String.fromCharCode(chr));
   },
 
   putchar: function(p) {
@@ -237,6 +218,11 @@ var Library = {
     __print__('\n');
   },
 
+  vsprintf__deps: ['strcpy', '_formatString'],
+  vsprintf: function(dst, src, ptr) {
+    _strcpy(dst, __formatString(-src, ptr));
+  },
+
   vsnprintf__deps: ['_formatString'],
   vsnprintf: function(dst, num, src, ptr) {
     var text = __formatString(-src, ptr); // |-|src tells formatstring to use C-style params (typically they are from varargs)
@@ -246,11 +232,6 @@ var Library = {
       if ({{{ makeGetValue('dst', 'i', 'i8') }}} == 0) break;
     }
     return i; // Actually, should return how many *would* have been written, if the |num| had not stopped us.
-  },
-
-  vfprintf__deps: ['_formatString'],
-  vfprintf: function(stream, format, args) {
-    __print__(Pointer_stringify(__formatString(-format, args)));
   },
 
   fileno: function(file) {
@@ -327,6 +308,20 @@ var Library = {
       }
       return size;
     },
+    write: function(stream, ptr, size) {
+      var info = _STDIO.streams[stream];
+      if (!info) return -1;
+      if (info.print) {
+        __print__(intArrayToString(Array_copy(ptr, size)));
+      } else {
+        for (var i = 0; i < size; i++) {
+          info.data[info.position] = {{{ makeGetValue('ptr', '0', 'i8') }}};
+          info.position++;
+          ptr++;
+        }
+      }
+      return size;
+    }
   },
 
   fopen__deps: ['STDIO'],
@@ -386,16 +381,7 @@ var Library = {
 
   fwrite__deps: ['STDIO'],
   fwrite: function(ptr, size, count, stream) {
-    var info = _STDIO.streams[stream];
-    if (info.print) {
-      __print__(intArrayToString(Array_copy(ptr, count*size)));
-    } else {
-      for (var i = 0; i < size*count; i++) {
-        info.data[info.position] = HEAP[ptr];
-        info.position++;
-        ptr++;
-      }
-    }
+    _STDIO.write(stream, ptr, size*count);
     return count;
   },
 
@@ -412,6 +398,42 @@ var Library = {
   ferror__deps: ['STDIO'],
   ferror: function(stream) {
     return _STDIO.streams[stream].error;
+  },
+
+  fprintf__deps: ['_formatString', 'STDIO'],
+  fprintf: function() {
+    var stream = arguments[0];
+    var args = Array.prototype.slice.call(arguments, 1);
+    var ptr = __formatString.apply(null, args);
+    _STDIO.write(stream, ptr, String_len(ptr));
+  },
+
+  vfprintf__deps: ['STDIO'],
+  vfprintf__deps: ['_formatString'],
+  vfprintf: function(stream, format, args) {
+    var ptr = __formatString(-format, args);
+    _STDIO.write(stream, ptr, String_len(ptr));
+  },
+
+  fflush__deps: ['STDIO'],
+  fflush: function(stream) {
+    var info = _STDIO.streams[stream];
+    if (info && info.print) {
+      __print__(null);
+    }
+  },
+
+  fputs__deps: ['STDIO', 'fputc'],
+  fputs: function(p, stream) {
+    _STDIO.write(stream, p, String_len(p));
+    _fputc('\n'.charCodeAt(0), stream);
+  },
+
+  fputc__deps: ['STDIO'],
+  fputc: function(chr, stream) {
+    if (!_fputc.ptr) _fputc.ptr = _malloc(1);
+    {{{ makeSetValue('_fputc.ptr', '0', 'chr', 'i8') }}}
+    _STDIO.write(stream, _fputc.ptr, 1);
   },
 
   // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html
@@ -670,9 +692,19 @@ var Library = {
     return parseInt(Pointer_stringify(ptr));
   },
 
+  strcmp__deps: ['strncmp'],
   strcmp: function(px, py) {
+    return _strncmp(px, py, TOTAL_MEMORY);
+  },
+
+  strcasecmp__deps: ['strncasecmp'],
+  strcasecmp: function(px, py) {
+    return _strncasecmp(px, py, TOTAL_MEMORY);
+  },
+
+  strncmp: function(px, py, n) {
     var i = 0;
-    while (true) {
+    while (i < n) {
       var x = {{{ makeGetValue('px', 'i', 'i8') }}};
       var y = {{{ makeGetValue('py', 'i', 'i8') }}};
       if (x == y && x == 0) return 0;
@@ -685,13 +717,15 @@ var Library = {
         return x > y ? 1 : -1;
       }
     }
+    return 0;
   },
 
-  strncmp: function(px, py, n) {
+  strncasecmp__deps: ['tolower'],
+  strncasecmp: function(px, py, n) {
     var i = 0;
     while (i < n) {
-      var x = {{{ makeGetValue('px', 'i', 'i8') }}};
-      var y = {{{ makeGetValue('py', 'i', 'i8') }}};
+      var x = _tolower({{{ makeGetValue('px', 'i', 'i8') }}});
+      var y = _tolower({{{ makeGetValue('py', 'i', 'i8') }}});
       if (x == y && x == 0) return 0;
       if (x == 0) return -1;
       if (y == 0) return 1;
@@ -1174,6 +1208,14 @@ var Library = {
   pthread_mutex_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
+
+  // malloc.h
+
+  memalign: function(boundary, size) {
+    // leaks, and even returns an invalid pointer. Horrible hack... but then, this is a deprecated function...
+    var ret = Runtime.staticAlloc(size + boundary);
+    return ret + boundary - (ret % boundary);
+  },
 
   // dirent.h
 
