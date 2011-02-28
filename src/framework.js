@@ -98,19 +98,13 @@ Substrate.prototype = {
         var inputs = actor.items.slice(0);
         var outputs;
         var currResultCount = that.results.length;
-        try {
-          dprint('framework', 'Processing using ' + actor.name_ + ': ' + inputs.length);
-          actor.items = []; // More may be added in process(); we'll get to them next time
-          //var t = Date.now();
-          outputs = actor.process(inputs);
-          //t = (Date.now()-t)/1000;
-          //dprint('framework', 'Took ' + t + ' seconds.');
-          dprint('framework', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
-        } catch (e) {
-          //print("Exception, current selected are: " + inputs.map(dump).join('\n\n'));
-          print("Stack: " + new Error().stack);
-          throw e;
-        }
+        dprint('framework', 'Processing using ' + actor.name_ + ': ' + inputs.length);
+        actor.items = []; // More may be added in process(); we'll get to them next time
+        //var t = Date.now();
+        outputs = actor.process(inputs);
+        //t = (Date.now()-t)/1000;
+        //dprint('framework', 'Took ' + t + ' seconds.');
+        dprint('framework', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
         hadProcessing = true;
 
         if (outputs) {
