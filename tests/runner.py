@@ -407,11 +407,20 @@ if 'benchmark' not in sys.argv:
             float x = 1.234, y = 3.5;
             y *= 3;
             int z = x < y;
-            printf("*%d,%d,%f,%d,%f\\n", z, int(y), y, (int)x, x);
+            printf("*%d,%d,%.1f,%d,%.4f*\\n", z, int(y), y, (int)x, x);
+
+            /*
+            // Rounding behavior
+            float fs[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
+            double ds[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
+            for (int i = 0; i < 6; i++)
+              printf("*int(%.2f)=%d,%d*\\n", fs[i], int(fs[i]), int(ds[i]));
+            */
+
             return 0;
           }
         '''
-        self.do_test(src, '*1,10,10.5,1,1.2339')
+        self.do_test(src, '*1,10,10.5,1,1.2339*')
 
     def test_math(self):
         src = '''
@@ -1672,9 +1681,9 @@ if 'benchmark' not in sys.argv:
         diff_mean = diff_total/float(num)
 
         image_mean = 83
+        #print js_mean, image_mean, lli_mean, diff_mean, num
         assert abs(js_mean - image_mean) < 1
         assert abs(lli_mean - image_mean) < 1
-        #print js_mean, image_mean, lli_mean, diff_mean, num
         assert diff_mean < 1.1 # 1+epsilon out of 255 values, means basically 1 - a rounding error
 
         return output

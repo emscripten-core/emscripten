@@ -851,7 +851,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       case 'fdiv': return ident1 + ' / ' + ident2;
       case 'fmul': return ident1 + ' * ' + ident2;
       case 'uitofp': case 'sitofp': return ident1;
-      case 'fptoui': case 'fptosi': return 'Math.floor(' + ident1 + ')';
+      case 'fptoui': case 'fptosi': return 'Math.floor(' + ident1 + ')'; // Note that this is different than C/C++ style rounding - they
+                                                                         // round -2.75 to -2 and +2.75 to +2, in other words, they
+                                                                         // floor the absolute value then restore the sign. JS doesn't
+                                                                         // have a fast operator to do that
 
       // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
       //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
