@@ -16,6 +16,7 @@ var Debugging = {
     var metadataToSourceLine = {};
     var metadataToParentMetadata = {};
     var metadataToFilename = {};
+
     var form1 = new RegExp(/^  .*, !dbg !(\d+)$/);
     var form2 = new RegExp(/^  .*, !dbg !(\d+) +; \[#uses=\d+\]$/);
     var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), i32 \d+, metadata !(\d+), .*}$/);
@@ -24,12 +25,12 @@ var Debugging = {
     var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, metadata !"[^"]+", metadata !(\d+)[^\[]* ; \[ DW_TAG_structure_type \]$/);
     var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]+)", metadata !\d+} ; \[ DW_TAG_file_type \]$/);
     var form3c = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
-    var form4 = new RegExp(/^!llvm.dbg.\w+ = .*$/);
-    var form5 = new RegExp(/^!(\d+) = metadata !{null.*$/);
-    var form6 = new RegExp(/^  call void \@llvm.dbg.declare\(metadata .*$/);
+    var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
+    var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
+    var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
 
     var ret = lines.map(function(line, i) {
-      if (form6.exec(line)) return null;
+      if (form6.exec(line)) return ';';
 
       var calc = form1.exec(line) || form2.exec(line);
       if (calc) {
@@ -84,11 +85,13 @@ var Debugging = {
   },
 
   getComment: function(lineNum) {
+    if (!this.on) return null;
     return lineNum in this.llvmLineToSourceLine ? ' //@line ' + this.llvmLineToSourceLine[lineNum] + ' "' +
                                                                 this.llvmLineToSourceFile[lineNum] + '"' : '';
   },
 
   getIdentifier: function(lineNum) {
+    if (!this.on) return null;
     var sourceFile = this.llvmLineToSourceFile[lineNum];
     if (!sourceFile) return null;
     return sourceFile.split('/').slice(-1)[0] + ':' + this.llvmLineToSourceLine[lineNum];

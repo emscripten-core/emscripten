@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re
 
 # Setup
 
@@ -103,6 +103,9 @@ class RunnerCore(unittest.TestCase):
     # LLVM binary ==> LLVM assembly
     Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
+  def do_link(self, files, target):
+    Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[]):
     # Copy over necessary files for compiling the source
@@ -145,10 +148,8 @@ class RunnerCore(unittest.TestCase):
     # Link all files
     if len(additional_files) + len(libraries) > 0:
       shutil.move(filename + '.o', filename + '.o.alone')
-      output = Popen([LLVM_LINK, filename + '.o.alone'] +
-                     map(lambda f: f + '.o', additional_files) +
-                     libraries +
-                     ['-o', filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      self.do_link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
+                   filename + '.o')
       if not os.path.exists(filename + '.o'):
         print "Failed to link LLVM binaries:\n\n", output
         raise Exception("Linkage error");
@@ -175,8 +176,11 @@ class RunnerCore(unittest.TestCase):
     if output is not None and 'Traceback' in output and 'in test_' in output: print output; assert 0
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
-    ret = run_js(engine, filename, args, check_timeout)
-    assert 'strict warning:' not in ret, 'We should pass all strict mode checks'
+    stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
+    stderr = os.path.join(self.get_dir(), 'stderr')
+    run_js(engine, filename, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'))
+    ret = open(stdout, 'r').read() + open(stderr, 'r').read()
+    assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     return ret
 
   def assertContained(self, value, string):
@@ -224,7 +228,7 @@ if 'benchmark' not in sys.argv:
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     def prep_ll_test(self, filename, ll_file):
-      if ll_file.endswith('.bc'):
+      if ll_file.endswith(('.bc', '.o')):
         shutil.copy(ll_file, filename + '.o')
         self.do_llvm_dis(filename)
         shutil.copy(filename + '.o.ll', filename + '.o.ll.in')
@@ -1536,10 +1540,15 @@ if 'benchmark' not in sys.argv:
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
+    def get_building_dir(self):
+      return os.path.join(self.get_dir(), 'building')
+
     # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
     # memory since the test directory is destroyed and recreated for each test. Note that we cache separately
     # for different compilers)
-    def get_library(self, name, generated_lib, make_args=[]):
+    def get_library(self, name, generated_libs, configure_args=[], make_args=['-j', '2']):
+      if type(generated_libs) is not list: generated_libs = [generated_libs]
+
       cache_name = name + '|' + COMPILER
       if GlobalCache.get(cache_name):
         bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
@@ -1548,19 +1557,18 @@ if 'benchmark' not in sys.argv:
         f.close()
         return bc_file
 
-      temp_dir = os.path.join(self.get_dir(), 'building')
-      ft_dir = os.path.join(temp_dir, name)
-      shutil.copytree(path_from_root('tests', name), ft_dir)
-      os.chdir(ft_dir)
+      temp_dir = self.get_building_dir()
+      project_dir = os.path.join(temp_dir, name)
+      shutil.copytree(path_from_root('tests', name), project_dir)
+      os.chdir(project_dir)
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
-      env['CFLAGS'] = '%s' % ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS)
       env['EMMAKEN_COMPILER'] = COMPILER
-      Popen(['./configure'], stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
-      Popen(['make', '-j', '2'] + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
-      bc_file = os.path.join(ft_dir, generated_lib)
-      shutil.copyfile(bc_file, bc_file + '.bc')
-      bc_file += '.bc'
+      env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+      Popen(['./configure'] + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      Popen(['make'] + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      bc_file = os.path.join(project_dir, 'bc.bc')
+      self.do_link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
       GlobalCache[cache_name] = open(bc_file, 'rb').read()
       return bc_file
 
@@ -1602,9 +1610,81 @@ if 'benchmark' not in sys.argv:
 
       self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   libraries=[self.get_library('zlib', os.path.join('libz.a'), ['libz.a'])],
+                   libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
+
+    def zzztest_openjpeg(self):
+      if COMPILER == LLVM_GCC: return # Not sure why, but fails in gcc - generally correct, but noisy output
+
+      original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby.j2k')
+
+      def post(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''this._STDIO.prepare('image.j2k', %s);''' % str(
+            map(ord, open(original_j2k, 'rb').read())
+          )
+        ).replace(
+          '// {{POST_RUN_ADDITIONS}}',
+          '''print("Data: " + JSON.stringify(this._STDIO.streams[this._STDIO.filenames['image.raw']].data));'''
+        )
+        open(filename, 'w').write(src)
+
+      lib = self.get_library('openjpeg',
+                             [os.path.join('bin', 'libopenjpeg.a'),
+                              os.path.join('codec', 'index.o'),
+                              os.path.join('codec', 'convert.o'),
+                              os.path.join('codec', 'color.o'),
+                              os.path.join('codec', 'getopt.o')],
+                             configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
+                             make_args=[]) # no -j 2, since parallel builds can fail
+
+      # We use doubles in JS, so we get slightly different values than native code. So we
+      # check our output by comparing the average pixel difference
+      def image_compare(output):
+        # Get the image generated by JS, from the JSON.stringify'd array
+        m = re.search('\[[\d, ]*\]', output)
+        js_data = eval(m.group(0))
+
+        # Generate the native code output using lli
+        lli_file = os.path.join(self.get_dir(), 'lli.raw')
+        stdout = Popen([LLVM_INTERPRETER, os.path.join(self.get_dir(), 'src.c.o'), '-i', original_j2k, '-o', lli_file],
+              stdout=PIPE, stderr=STDOUT).communicate()[0]
+        assert 'Successfully generated' in stdout, 'Error in lli run: ' + stdout
+        lli_data = open(lli_file, 'rb').read()
+
+        # Compare them
+        assert(len(js_data) == len(lli_data))
+        num = len(js_data)
+        diff_total = js_total = lli_total = 0
+        for i in range(num):
+          js_total += js_data[i]
+          lli_total += ord(lli_data[i])
+          diff_total += abs(js_data[i] - ord(lli_data[i]))
+        js_mean = js_total/float(num)
+        lli_mean = lli_total/float(num)
+        diff_mean = diff_total/float(num)
+
+        image_mean = 83
+        assert abs(js_mean - image_mean) < 1
+        assert abs(lli_mean - image_mean) < 1
+        #print js_mean, image_mean, lli_mean, diff_mean, num
+        assert diff_mean < 1.1 # 1+epsilon out of 255 values, means basically 1 - a rounding error
+
+        return output
+
+      self.do_test(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
+                   'Successfully generated', # The real test for valid output is in image_compare
+                   ['-i', 'image.j2k', '-o', 'image.raw'],
+                   libraries=[lib],
+                   includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
+                             path_from_root('tests', 'openjpeg', 'codec'),
+                             path_from_root('tests', 'openjpeg', 'common'),
+                             os.path.join(self.get_building_dir(), 'openjpeg')],
+                   force_c=True,
+                   post_build=post,
+                   output_nicerizer=image_compare)
 
     def zzztest_poppler(self):
       # Has 'Object', which has a big union with a value that can be of any type (like a dynamic value)
@@ -1728,8 +1808,7 @@ if 'benchmark' not in sys.argv:
         assert 'CHECK_OVERFLOW' in str(e), str(e)
 
     def test_debug(self):
-      global COMPILER_TEST_OPTS
-      COMPILER_TEST_OPTS = ['-g']
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       src = '''
         #include <stdio.h>
         #include <assert.h>
@@ -1755,9 +1834,8 @@ if 'benchmark' not in sys.argv:
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
 
-    def test_linebyline_corrections(self):
-      global COMPILER_TEST_OPTS
-      COMPILER_TEST_OPTS = ['-g']
+    def test_linespecific(self):
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
 
       global CHECK_SIGNS; CHECK_SIGNS = 0
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0

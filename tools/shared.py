@@ -14,6 +14,7 @@ LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to do just    []
+LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 
 # Engine tweaks
 
@@ -32,9 +33,9 @@ def timeout_run(proc, timeout, note):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
-def run_js(engine, filename, args, check_timeout=False):
+def run_js(engine, filename, args, check_timeout=False, stdout=PIPE, stderr=STDOUT):
   return timeout_run(Popen(engine + [filename] + (['--'] if 'v8' in engine[0] else []) + args,
-                     stdout=PIPE, stderr=STDOUT), 120 if check_timeout else None, 'Execution')
+                     stdout=stdout, stderr=stderr), 120 if check_timeout else None, 'Execution')
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version

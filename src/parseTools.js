@@ -556,6 +556,7 @@ function indentify(text, indent) {
 // Correction tools
 
 function correctSpecificSign() {
+  assert(!(CORRECT_SIGNS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
   return CORRECT_SIGNS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES;
 }
 function correctSigns() {
@@ -563,6 +564,7 @@ function correctSigns() {
 }
 
 function correctSpecificOverflow() {
+  assert(!(CORRECT_SIGNS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
   return CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES;
 }
 function correctOverflows() {
