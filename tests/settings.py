@@ -1,7 +1,7 @@
 TEMP_DIR='/dev/shm'
 
 LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.8/cbuild/Release/bin') # Might not need 'Release'
-#LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.7/cbuild/bin') # Might not need 'Release'
+#LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.7/cbuild/bin')
 
 CLANG=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-g++')
@@ -19,6 +19,7 @@ COMPILERS = {
 
 COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
                          # various errors on 64bit compilation
+                         # WARNING: '-g' here will generate llvm bitcode that lli will crash on!
 
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 

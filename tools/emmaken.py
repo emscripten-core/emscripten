@@ -48,8 +48,18 @@ def path_from_root(*pathelems):
   return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
+# If this is a CMake config, just do that
+CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
+if CMAKE_CONFIG:
+  exit(os.execvp('gcc', ['gcc'] + sys.argv[1:]))
+
 try:
+  print 'emmaken.py: ', ' '.join(sys.argv)
   print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
+
+  #f=open('/dev/shm/tmp/waka.txt', 'a')
+  #f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
+  #f.close()
 
   CXX = os.environ.get('EMMAKEN_COMPILER') or LLVM_GCC
   CC = to_cc(CXX)
@@ -124,6 +134,10 @@ try:
           newargs.append('-emit-llvm')
           if not use_linker:
               newargs.append('-c') 
+
+  #f=open('/dev/shm/tmp/waka.txt', 'a')
+  #f.write('Calling: ' + ' '.join(newargs) + '\n\n')
+  #f.close()
 
   print >> sys.stderr, "Running:", call, ' '.join(newargs)
 

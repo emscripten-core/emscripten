@@ -71,6 +71,7 @@ SHOW_LABELS = 0; // Show labels in the generated code
 DEBUG_TAGS_SHOWING = [];
   // Some useful items:
   //    framework
+  //    frameworkLines
   //    gconst
   //    types
   //    vars

@@ -1,0 +1,22 @@
+/* create config.h for CMake */
+#define PACKAGE_VERSION "@PACKAGE_VERSION@"
+#
+#cmakedefine HAVE_INTTYPES_H @HAS_INTTYPES_H@
+#cmakedefine HAVE_MEMORY_H @HAS_MEMORY_H@
+#cmakedefine HAVE_STDINT_H @HAS_STDINT_H@
+#cmakedefine HAVE_STDLIB_H @HAS_STDLIB_H@
+#cmakedefine HAVE_STRINGS_H @HAS_STRINGS_H@
+#cmakedefine HAVE_STRING_H @HAS_STRING_H@
+#cmakedefine HAVE_SYS_STAT_H @HAS_SYS_STAT_H@
+#cmakedefine HAVE_SYS_TYPES_H @HAS_SYS_TYPES_H@
+#cmakedefine HAVE_UNISTD_H @HAS_UNISTD_H@
+#cmakedefine HAVE_LIBPNG @HAVE_LIBPNG@
+#cmakedefine HAVE_PNG_H  @HAVE_PNG_H@
+#cmakedefine HAVE_LIBTIFF @HAVE_LIBTIFF@
+#cmakedefine HAVE_TIFF_H @HAVE_TIFF_H@
+#
+#cmakedefine HAVE_LIBLCMS1 @HAVE_LCMS1_LIB@
+#cmakedefine HAVE_LIBLCMS2 @HAVE_LCMS2_LIB@
+#cmakedefine HAVE_LCMS1_H @HAVE_LCMS1_H@
+#cmakedefine HAVE_LCMS2_H @HAVE_LCMS2_H@
+#

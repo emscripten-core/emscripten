@@ -104,7 +104,8 @@ class RunnerCore(unittest.TestCase):
     Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
   def do_link(self, files, target):
-    Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert 'Could not open input file' not in output, 'Linking error: ' + output
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[]):
@@ -140,9 +141,8 @@ class RunnerCore(unittest.TestCase):
                      map(lambda include: '-I' + include, includes) + 
                      ['-c', f, '-o', f + '.o'],
                      stdout=PIPE, stderr=STDOUT).communicate()[0]
-      if not os.path.exists(f + '.o'):
-        print "Failed to compile C/C++ source:\n\n", output
-        raise Exception("Compilation error");
+      assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
+
     os.chdir(cwd)
 
     # Link all files
@@ -1546,11 +1546,11 @@ if 'benchmark' not in sys.argv:
     # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
     # memory since the test directory is destroyed and recreated for each test. Note that we cache separately
     # for different compilers)
-    def get_library(self, name, generated_libs, configure_args=[], make_args=['-j', '2']):
+    def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
       if type(generated_libs) is not list: generated_libs = [generated_libs]
 
       cache_name = name + '|' + COMPILER
-      if GlobalCache.get(cache_name):
+      if cache and GlobalCache.get(cache_name):
         bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
         f = open(bc_file, 'wb')
         f.write(GlobalCache[cache_name])
@@ -1562,14 +1562,15 @@ if 'benchmark' not in sys.argv:
       shutil.copytree(path_from_root('tests', name), project_dir)
       os.chdir(project_dir)
       env = os.environ.copy()
-      env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = EMMAKEN
+      env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
       env['EMMAKEN_COMPILER'] = COMPILER
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
-      Popen(['./configure'] + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
-      Popen(['make'] + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      Popen(configure + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
       self.do_link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
-      GlobalCache[cache_name] = open(bc_file, 'rb').read()
+      if cache:
+        GlobalCache[cache_name] = open(bc_file, 'rb').read()
       return bc_file
 
     def test_freetype(self):
@@ -1614,8 +1615,10 @@ if 'benchmark' not in sys.argv:
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
-    def zzztest_openjpeg(self):
+    def test_openjpeg(self):
       if COMPILER == LLVM_GCC: return # Not sure why, but fails in gcc - generally correct, but noisy output
+
+      global SAFE_HEAP; SAFE_HEAP = 0 # Very slow
 
       original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby.j2k')
 
@@ -1632,13 +1635,15 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
 
       lib = self.get_library('openjpeg',
-                             [os.path.join('bin', 'libopenjpeg.a'),
-                              os.path.join('codec', 'index.o'),
-                              os.path.join('codec', 'convert.o'),
-                              os.path.join('codec', 'color.o'),
-                              os.path.join('codec', 'getopt.o')],
-                             configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
-                             make_args=[]) # no -j 2, since parallel builds can fail
+                             [os.path.join('bin', 'libopenjpeg.so'),
+                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
+                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
+                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
+                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'.split('/'))],
+                             configure=['cmake', '.'],
+                             #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
+                             make_args=[], # no -j 2, since parallel builds can fail
+                             cache=False) # We need opj_config.h and other generated files, so cannot cache just the .bc
 
       # We use doubles in JS, so we get slightly different values than native code. So we
       # check our output by comparing the average pixel difference

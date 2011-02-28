@@ -35,7 +35,7 @@ def timeout_run(proc, timeout, note):
 
 def run_js(engine, filename, args, check_timeout=False, stdout=PIPE, stderr=STDOUT):
   return timeout_run(Popen(engine + [filename] + (['--'] if 'v8' in engine[0] else []) + args,
-                     stdout=stdout, stderr=stderr), 120 if check_timeout else None, 'Execution')
+                     stdout=stdout, stderr=stderr), 15*60 if check_timeout else None, 'Execution')
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
