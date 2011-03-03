@@ -69,7 +69,7 @@ function analyzer(data) {
           // Internal line
           if (!currLabelFinished) {
             item.functions.slice(-1)[0].lines.push(subItem);
-            item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem);
+            item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem); // If this line fails, perhaps missing a label? LLVM_STYLE related?
             if (subItem.intertype === 'branch') {
               currLabelFinished = true;
             }
