@@ -384,7 +384,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   funcHeader = substrate.addActor('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
-        return !(token.text in LLVM.LINKAGES || token.text in set('noalias', 'hidden', 'signext', 'zeroext', 'nounwind', 'define', 'inlinehint', '{') || token.text in LLVM.CALLING_CONVENTIONS);
+        return !(token.text in LLVM.LINKAGES || token.text in LLVM.PARAM_ATTR || token.text in set('hidden', 'nounwind', 'define', 'inlinehint', '{') || token.text in LLVM.CALLING_CONVENTIONS);
       });
       var ret = {
         intertype: 'function',
@@ -521,7 +521,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.tokens.splice(0, 1);
       }
       assertEq(item.tokens[0].text, 'call');
-      while (['signext', 'zeroext', 'noalias'].indexOf(item.tokens[1].text) != -1 || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
+      while (item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
         item.tokens.splice(1, 1);
       }
       item.type = item.tokens[1].text;
@@ -737,7 +737,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // external function stub
   substrate.addActor('External', {
     processItem: function(item) {
-      if (item.tokens[1].text == 'noalias') {
+      if (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR) {
         item.tokens.splice(1, 1);
       }
       return [{
