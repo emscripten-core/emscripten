@@ -564,10 +564,18 @@ function correctSigns() {
 }
 
 function correctSpecificOverflow() {
-  assert(!(CORRECT_SIGNS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
+  assert(!(CORRECT_OVERFLOWS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
   return CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES;
 }
 function correctOverflows() {
   return CORRECT_OVERFLOWS === 1 || correctSpecificOverflow();
+}
+
+function correctSpecificRounding() {
+  assert(!(CORRECT_ROUNDINGS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
+  return CORRECT_ROUNDINGS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES;
+}
+function correctRoundings() {
+  return CORRECT_ROUNDINGS === 1 || correctSpecificRounding();
 }
 

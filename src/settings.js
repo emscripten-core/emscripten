@@ -64,6 +64,9 @@ CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS 
                        // NOTE: You can introduce signing issues by using this option. If you
                        //       take a large enough 32-bit value, and correct it for overflows,
                        //       you may get a negative number, as JS & operations are signed.
+CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that:
+                       // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
+                       // we will do slow but correct C rounding operations.
 
 SHOW_LABELS = 0; // Show labels in the generated code
 

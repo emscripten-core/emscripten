@@ -797,6 +797,16 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
   }
 
+  function makeRounding(value, bits, signed) {
+    // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
+    // With 32 bits and less, and a signed value, |0 will round it like C does.
+    if (bits && bits <= 32 && signed) return '('+value+'|0)';
+    // If the value may be negative, and we care about proper rounding, then use a slow but correct function
+    if (signed && correctRoundings()) return 'cRound(' + value + ')';
+    // Either this must be positive, so Math.Floor is correct, or we don't care
+    return 'Math.floor(' + value + ')';
+  }
+
   var mathop = makeFuncLineActor('mathop', function(item) { with(item) {
     for (var i = 1; i <= 4; i++) {
       if (item['param'+i]) {
@@ -819,11 +829,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     if (item.type[0] === 'i') {
       bits = parseInt(item.type.substr(1));
     }
+    var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
+
     switch (op) {
       // basic integer ops
       case 'add': return handleOverflow(ident1 + ' + ' + ident2, bits);
       case 'sub': return handleOverflow(ident1 + ' - ' + ident2, bits);
-      case 'sdiv': case 'udiv': return 'Math.floor(' + ident1 + ' / ' + ident2 + ')';
+      case 'sdiv': case 'udiv': return makeRounding(ident1 + '/' + ident2, bits, op[0] === 's');
       case 'mul': return handleOverflow(ident1 + ' * ' + ident2, bits);
       case 'urem': case 'srem': return ident1 + ' % ' + ident2;
       case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
@@ -851,10 +863,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       case 'fdiv': return ident1 + ' / ' + ident2;
       case 'fmul': return ident1 + ' * ' + ident2;
       case 'uitofp': case 'sitofp': return ident1;
-      case 'fptoui': case 'fptosi': return 'Math.floor(' + ident1 + ')'; // Note that this is different than C/C++ style rounding - they
-                                                                         // round -2.75 to -2 and +2.75 to +2, in other words, they
-                                                                         // floor the absolute value then restore the sign. JS doesn't
-                                                                         // have a fast operator to do that
+      case 'fptoui': case 'fptosi': return makeRounding(ident1, bitsLeft, op === 'fptosi');
 
       // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
       //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
@@ -895,7 +904,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         // truncating can change the number, e.g. by truncating to an i1
         // in order to get the first bit
         assert(ident2[1] == 'i');
-        var bitsLeft = ident2.substr(2, ident2.length-3); // remove (i and ), to leave number
         assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
         return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }

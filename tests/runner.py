@@ -168,7 +168,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES']:
       value = eval(setting)
       exported_settings[setting] = value
     out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
@@ -1906,7 +1906,9 @@ if 'benchmark' not in sys.argv:
 
       global CHECK_SIGNS; CHECK_SIGNS = 0
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
-      global CORRECT_SIGNS, CORRECT_OVERFLOWS, CORRECT_SIGNS_LINES, CORRECT_OVERFLOWS_LINES
+      global CORRECT_SIGNS, CORRECT_OVERFLOWS, CORRECT_ROUNDINGS, CORRECT_SIGNS_LINES, CORRECT_OVERFLOWS_LINES, CORRECT_ROUNDINGS_LINES
+
+      # Signs
 
       src = '''
         #include <stdio.h>
@@ -1948,6 +1950,8 @@ if 'benchmark' not in sys.argv:
         }
       '''
 
+      # Overflows
+
       correct = '*186854335,63*'
       CORRECT_OVERFLOWS = 0
       try:
@@ -1975,12 +1979,50 @@ if 'benchmark' not in sys.argv:
         assert 'UNEXPECTED' not in str(e), str(e)
         assert 'Expected to find' in str(e), str(e)
 
+      # Roundings
+
+      src = '''
+        #include <stdio.h>
+        #include <assert.h>
+
+        int main()
+        {
+          TYPE x = -5;
+          printf("*%d*", x/2);
+          x = 5;
+          printf("*%d*", x/2);
+
+          float y = -5.33;
+          x = y;
+          printf("*%d*", x);
+          y = 5.33;
+          x = y;
+          printf("*%d*", x);
+
+          printf("\\n");
+        }
+      '''
+
+      CORRECT_ROUNDINGS = 0
+      self.do_test(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
+      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
+
+      CORRECT_ROUNDINGS = 1
+      self.do_test(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
+      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
+
+      CORRECT_ROUNDINGS = 2
+      CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
+      self.do_test(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
+      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
+
+
   # Generate tests for all our compilers
   def make_test(name, compiler, llvm_opts, embetter):
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES
 
     COMPILER = '%s'
     QUANTUM_SIZE = %d
@@ -1993,7 +2035,8 @@ class %s(T):
     CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     CORRECT_SIGNS = 0
-    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = []
+    CORRECT_ROUNDINGS = 0
+    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = []
     CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
@@ -2031,7 +2074,8 @@ else:
   USE_TYPED_ARRAYS = 0
   GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = 0
   CORRECT_SIGNS = 0
-  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = []
+  CORRECT_ROUNDINGS = 0
+  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = []
   LLVM_OPTS = 1
 
   USE_CLOSURE_COMPILER = 1

@@ -118,6 +118,12 @@ var CorrectionsMonitor = {
   }
 };
 
+#if CORRECT_ROUNDINGS
+function cRound(x) {
+  return x >= 0 ? Math.floor(x) : Math.ceil(x);
+}
+#endif
+
 #if CHECK_OVERFLOWS
 //========================================
 // Debugging tools - Mathop overflows

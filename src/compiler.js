@@ -25,9 +25,11 @@ var CONSTANTS = { 'QUANTUM_SIZE': QUANTUM_SIZE };
 if (CORRECT_SIGNS === 2) {
   CORRECT_SIGNS_LINES = set(CORRECT_SIGNS_LINES); // for fast checking
 }
-
 if (CORRECT_OVERFLOWS === 2) {
   CORRECT_OVERFLOWS_LINES = set(CORRECT_OVERFLOWS_LINES); // for fast checking
+}
+if (CORRECT_ROUNDINGS === 2) {
+  CORRECT_ROUNDINGS_LINES = set(CORRECT_ROUNDINGS_LINES); // for fast checking
 }
 
 // Load compiler code
