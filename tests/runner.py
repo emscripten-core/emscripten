@@ -1645,7 +1645,13 @@ if 'benchmark' not in sys.argv:
 
     def test_openjpeg(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Very slow
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Needed for some comparisons, at least in gcc
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+      global CORRECT_SIGNS; CORRECT_SIGNS = 2
+      global CORRECT_SIGNS_LINES
+      if COMPILER == CLANG:
+        CORRECT_SIGNS_LINES = ["mqc.c:566"]
+      else:
+        CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
 
       original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
 
@@ -1685,28 +1691,25 @@ if 'benchmark' not in sys.argv:
 
         js_data = map(lambda x: x if x >= 0 else 256+x, js_data) # Our output may be signed, so unsign it
 
-        # Generate the native code output using lli
-        lli_file = os.path.join(self.get_dir(), 'lli.raw')
-        stdout = self.run_llvm_interpreter([os.path.join(self.get_dir(), 'src.c.o'), '-i', original_j2k, '-o', lli_file])
-        assert 'Successfully generated' in stdout, 'Error in lli run: ' + stdout
-        lli_data = open(lli_file, 'rb').read()
+        # Get the correct output
+        true_data = open(path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.raw'), 'rb').read()
 
         # Compare them
-        assert(len(js_data) == len(lli_data))
+        assert(len(js_data) == len(true_data))
         num = len(js_data)
-        diff_total = js_total = lli_total = 0
+        diff_total = js_total = true_total = 0
         for i in range(num):
           js_total += js_data[i]
-          lli_total += ord(lli_data[i])
-          diff_total += abs(js_data[i] - ord(lli_data[i]))
+          true_total += ord(true_data[i])
+          diff_total += abs(js_data[i] - ord(true_data[i]))
         js_mean = js_total/float(num)
-        lli_mean = lli_total/float(num)
+        true_mean = true_total/float(num)
         diff_mean = diff_total/float(num)
 
         image_mean = 83
-        #print '[image stats:', js_mean, image_mean, lli_mean, diff_mean, num, ']'
+        #print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
         assert abs(js_mean - image_mean) < 2
-        assert abs(lli_mean - image_mean) < 2
+        assert abs(true_mean - image_mean) < 2
         assert diff_mean < 2 # XXX All of these are not quite right...
 
         return output
