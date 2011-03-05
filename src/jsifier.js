@@ -874,8 +874,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           case 'ugt': case 'sgt': return ident1 + ' > ' + ident2;
           case 'ult': case 'slt': return ident1 + ' < ' + ident2;
           // We use loose comparisons, which allows false == 0 to be true, etc. Ditto in fcmp
-          case 'ne': case 'une': return ident1 + ' != ' + ident2;
-          case 'eq': return ident1 + ' == ' + ident2;
+          case 'ne': case 'eq': {
+            // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
+            // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
+            ident1 = makeSignOp(ident1, type, 're');
+            ident2 = makeSignOp(ident2, type, 're');
+            return ident1 + (variant === 'eq' ? '==' : '!=') + ident2;
+          }
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
