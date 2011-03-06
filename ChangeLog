@@ -1,5 +1,16 @@
+2011-03-05: Version 0.9
+
+  * OpenJPEG test and web demo
+  * Line number debugging info and autodebugger tool
+  * CORRECT_ROUNDINGS option
+  * Line-specific CORRECT_* options
+  * 20% faster compilation
+  * Generate strict mode JavaScript
+  * Many bug fixes, additional tests and library implementations
+
 2011-02-06: Version 0.8
 
+  * Freetype web demo (2011-02-08, right after 0.8)
   * Freetype and zlib tests (including the entire build procedure)
   * File emulation
   * CHECK_OVERFLOWS & CORRECT_OVERFLOWS options to handle numerical size issues
