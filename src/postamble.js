@@ -1,7 +1,7 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-function callMain(args) {
+Module.callMain = function callMain(args) {
   var argc = args.length+1;
   function pad() {
     for (var i = 0; i < QUANTUM_SIZE-1; i++) {
@@ -17,9 +17,8 @@ function callMain(args) {
   argv.push(0);
   argv = Pointer_make(argv, null);
 
-  Module._main(argc, argv, 0);
+  _main(argc, argv, 0);
 }
-Module['callMain'] = callMain;
 
 function run(args) {
   __initializeRuntime__();
