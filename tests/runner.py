@@ -1658,9 +1658,9 @@ if 'benchmark' not in sys.argv:
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('image.j2k', %s);''' % str(
+          '''this._STDIO.prepare('image.j2k', %s);''' % line_splitter(str(
             map(ord, open(original_j2k, 'rb').read())
-          )
+          ))
         ).replace(
           '// {{POST_RUN_ADDITIONS}}',
           '''print("Data: " + JSON.stringify(this._STDIO.streams[this._STDIO.filenames['image.raw']].data));'''
@@ -1706,11 +1706,11 @@ if 'benchmark' not in sys.argv:
         true_mean = true_total/float(num)
         diff_mean = diff_total/float(num)
 
-        image_mean = 83
+        image_mean = 83.265
         #print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
-        assert abs(js_mean - image_mean) < 2
-        assert abs(true_mean - image_mean) < 2
-        assert diff_mean < 2 # XXX All of these are not quite right...
+        assert abs(js_mean - image_mean) < 0.01
+        assert abs(true_mean - image_mean) < 0.01
+        assert diff_mean < 0.01
 
         return output
 

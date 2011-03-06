@@ -41,3 +41,21 @@ def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
   return cxx.replace('clang++', 'clang').replace('g++', 'gcc')
 
+def line_splitter(data):
+  '''
+  Silly little tool to split JSON arrays over many lines.
+  '''
+
+  out = ''
+  counter = 0
+
+  for i in range(len(data)):
+    out += data[i]
+    if data[i] == ' ' and counter > 60:
+      out += '\n'
+      counter = 0
+    else:
+      counter += 1
+
+  return out
+
