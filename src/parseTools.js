@@ -550,7 +550,7 @@ function indentify(text, indent) {
     indent = '';
     for (var i = 0; i < len; i++) indent += ' ';
   }
-  return text.split('\n').map(function(line) { return indent + line }).join('\n');
+  return text.replace(/\n/g, '\n' + indent);
 }
 
 // Correction tools

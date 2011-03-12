@@ -36,6 +36,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     delete func.lines; // clean up memory as much as possible
   }
 
+  if (data.unparsedFunctions.length > 0) {
+    // We are now doing the final JS generation
+    dprint('unparsedFunctions', '== Completed unparsedFunctions ==\n');
+    Debugging.clear(); // Save some memory, before the final heavy lifting
+  }
+
   // Load library
 
   // TODO: optimize this so it isn't done over and over for each unparsedFunction
@@ -268,6 +274,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       item.intertype = 'GlobalVariableStub';
+      delete item.lines; // Save some memory
       var ret = [item];
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
@@ -1119,28 +1126,35 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   // Final combiner
 
   function finalCombiner(items) {
+    dprint('unparsedFunctions', 'Starting finalCombiner');
+    var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
+    items.forEach(function(item) {
+      item.lines = null;
+      var small = { intertype: item.intertype, JS: item.JS }; // Release memory
+      itemsDict[small.intertype].push(small);
+    });
+    items = null;
+
     var ret = [];
     if (!functionsOnly) {
-      ret = ret.concat(items.filter(function(item) { return item.intertype == 'type' }));
-      ret = ret.concat(items.filter(function(item) { return item.intertype == 'GlobalVariableStub' }));
-      ret.push('\n');
-      ret = ret.concat(items.filter(function(item) { return item.intertype == 'functionStub' }));
-      ret.push('\n');
+      ret = ret.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
     }
-    ret = ret.concat(items.filter(function(item) { return item.intertype == 'function' }));
-    ret = ret.concat(data.unparsedFunctions);
+    ret = ret.concat(itemsDict.function).concat(data.unparsedFunctions);
 
     ret = ret.map(function(item) { return item.JS }).join('\n');
 
     if (functionsOnly) return ret;
 
     var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), CONSTANTS);
-    var globalVars = items.filter(function(item) { return item.intertype == 'GlobalVariable' }).map(function(item) { return item.JS }).join('\n');
-    var globalVarsPostSets = items.filter(function(item) { return item.intertype == 'GlobalVariablePostSet' }).map(function(item) { return item.JS }).join('\n');
-    return processMacros(
-      read('shell.js').replace('{{BODY}}', indentify(body, 2))
-                      .replace('{{GLOBAL_VARS}}', indentify(globalVars+'\n\n\n'+globalVarsPostSets, 4))
-    );
+    var globalVars = itemsDict.GlobalVariable.map(function(item) { return item.JS }).join('\n');
+    var globalVarsPostSets = itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n');
+    body = indentify(body, 2);
+    // body may be a very large string at this point - we may not be able to allocate two of it. So must be careful in these last steps
+    var shellParts = read('shell.js').split('{{BODY}}');
+    body = shellParts[0] + body + shellParts[1];
+    globalVars = indentify(globalVars+'\n\n\n'+globalVarsPostSets, 4);
+    body = body.replace('{{GLOBAL_VARS}}', globalVars);
+    return processMacros(body);
   }
 
   // Data

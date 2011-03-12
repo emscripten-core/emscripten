@@ -85,6 +85,12 @@ var Debugging = {
     return ret;
   },
 
+  clear: function() {
+    this.llvmLineToSourceLine = {};
+    this.llvmLineToSourceFile = {};
+    this.on = false;
+  },
+
   getComment: function(lineNum) {
     if (!this.on) return null;
     return lineNum in this.llvmLineToSourceLine ? ' //@line ' + this.llvmLineToSourceLine[lineNum] + ' "' +
