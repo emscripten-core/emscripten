@@ -23,7 +23,7 @@ var Debugging = {
     var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), i32 \d+, metadata !(\d+), .*}$/);
     var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, i32 \d+, i32 \d+, metadata !(\d+), i32 \d+} ; \[ DW_TAG_lexical_block \]$/);
     var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, i32 \d+, metadata !(\d+), .*$/);
-    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, metadata !"[^"]+", metadata !(\d+)[^\[]* ; \[ DW_TAG_structure_type \]$/);
+    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, metadata !"[^"]+", metadata !(\d+)[^\[]* ; \[ DW_TAG_.*$/);
     var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]+)", metadata !\d+} ; \[ DW_TAG_file_type \]$/);
     var form3c = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);

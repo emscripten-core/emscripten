@@ -240,30 +240,29 @@ if 'benchmark' not in sys.argv:
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
-    def prep_ll_test(self, filename, ll_file, force_recompile=False):
+    def prep_ll_test(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
       if ll_file.endswith(('.bc', '.o')):
         shutil.copy(ll_file, filename + '.o')
         self.do_llvm_dis(filename)
-        shutil.copy(filename + '.o.ll', filename + '.o.ll.in')
-        os.remove(filename + '.o.ll')
-        ll_file = filename + '.o.ll.in'
+      else:
+        shutil.copy(ll_file, filename + '.o.ll')
 
-      if LLVM_OPTS or force_recompile:
-        shutil.copy(ll_file, filename + '.o.ll.pre')
+      if LLVM_OPTS or force_recompile or build_ll_hook:
+        if build_ll_hook:
+          build_ll_hook(filename)
+        shutil.move(filename + '.o.ll', filename + '.o.ll.pre')
         output = Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
         assert 'error:' not in output, 'Error in llvm-as: ' + output
         self.do_llvm_opts(filename)
         Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-      else:
-        shutil.copy(ll_file, filename + '.o.ll')
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-    def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False):
+    def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None):
       if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
-      self.prep_ll_test(filename, ll_file, force_recompile)
+      self.prep_ll_test(filename, ll_file, force_recompile, build_ll_hook)
       self.do_emscripten(filename)
       self.do_test(None,
                    expected_output,
@@ -1592,8 +1591,10 @@ if 'benchmark' not in sys.argv:
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
       env['EMMAKEN_COMPILER'] = COMPILER
+      env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
-      Popen(configure + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      if configure:
+        Popen(configure + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
       self.do_link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
@@ -1642,6 +1643,27 @@ if 'benchmark' not in sys.argv:
                    libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
+
+    def zzztest_poppler(self):
+      global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
+
+      def post(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''this._STDIO.prepare('paper.pdf', %s);''' % str(
+            map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())
+          )
+        )
+        open(filename, 'w').write(src)
+
+      poppler = self.get_library('poppler',
+                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
+                                  os.path.join('utils', 'pdftoppm.o')])
+      #freetype = ... link it
+      self.do_ll_test(poppler,
+                      'halp',#open(path_from_root('tests', 'poppler', 'ref.txt'), 'r').read(),
+                      args='-png -scale-to 512 paper.pdf filename'.split(' '),
+                      post_build=post)
 
     def test_openjpeg(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Very slow
@@ -1725,24 +1747,6 @@ if 'benchmark' not in sys.argv:
                    force_c=True,
                    post_build=post,
                    output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
-
-    def zzztest_poppler(self):
-      # Has 'Object', which has a big union with a value that can be of any type (like a dynamic value)
-      global SAFE_HEAP; SAFE_HEAP = 0
-
-      def post(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('paper.pdf', %s);''' % str(
-            map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())
-          )
-        )
-        open(filename, 'w').write(src)
-
-      self.do_ll_test(path_from_root('tests', 'poppler', 'pdftoppm.bc'),
-                      'halp',
-                      args='-png -scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post)
 
     def test_python(self):
       # Overflows in string_hash
