@@ -2,7 +2,7 @@
 
 import os, sys, subprocess
 
-JS_ENGINE = None
+COMPILER_ENGINE = None
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -18,7 +18,7 @@ def emscripten(filename, settings):
   except:
     cwd = None
   os.chdir(os.path.dirname(COMPILER))
-  subprocess.Popen(JS_ENGINE + [COMPILER], stdin=subprocess.PIPE).communicate(settings+'\n'+data)[0]
+  subprocess.Popen(COMPILER_ENGINE + [COMPILER], stdin=subprocess.PIPE).communicate(settings+'\n'+data)[0]
   if cwd is not None:
     os.chdir(cwd)
 
@@ -33,11 +33,11 @@ Emscripten usage:    emscripten.py INFILE [PATH-TO-JS-ENGINE] [SETTINGS]
       run the compiler (which is in JavaScript itself). You can later use
       the same engine to run the code, or another one, that is a separate
       issue. If you do not provide this parameter, you should define
-      JS_ENGINE = ... in a file at ~/.emscripten.
+      COMPILER_ENGINE = ... in a file at ~/.emscripten.
   SETTINGS is an optional set of compiler settings, overriding the defaults.
 '''
   else:
     if len(sys.argv) >= 3:
-      JS_ENGINE = [sys.argv[2]]
+      COMPILER_ENGINE = [sys.argv[2]]
     emscripten(sys.argv[1], sys.argv[3] if len(sys.argv) == 4 else "{}")
 
