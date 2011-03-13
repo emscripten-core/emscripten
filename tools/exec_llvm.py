@@ -12,7 +12,7 @@ symbols will crash it due to
 
   http://llvm.org/bugs/show_bug.cgi?id=6981
 
-So instead we compile the bitcode into native code.
+So we must get around that.
 
 To use this, change the Makefile so that instead of
 running
@@ -32,8 +32,12 @@ def path_from_root(*pathelems):
   return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
-print 'EXEC_LLVM: ', sys.argv
-Popen([LLVM_COMPILER, '-march=c', sys.argv[1]]).communicate()[0]
-Popen(['gcc', sys.argv[1]+'.cbe.c']).communicate()[0]
-Popen(['./a.out'] + sys.argv[2:]).communicate()[0]
+print '// EXEC_LLVM: ', sys.argv
+
+Popen([LLVM_OPT, sys.argv[1], '-strip-debug', '-o=' + sys.argv[1]+'.clean.bc']).communicate()[0]
+Popen([LLVM_INTERPRETER, sys.argv[1]+'.clean.bc'] + sys.argv[2:]).communicate()[0]
+
+#Popen([LLVM_COMPILER, '-march=c', sys.argv[1], '-o=' + sys.argv[1]+'.cbe.c']).communicate()[0]
+#Popen(['gcc', sys.argv[1]+'.cbe.c', '-lstdc++']).communicate()[0]
+#Popen(['./a.out'] + sys.argv[2:]).communicate()[0]
 

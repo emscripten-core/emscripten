@@ -148,7 +148,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (type !== 'null') type = '"' + safeQuote(type) + '"';
       return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ');';
     } else {
-      return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + '] = ' + value }).join('; ') + ';';
+      return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + ']=' + value }).join('; ') + ';';
     }
   }
 
@@ -312,7 +312,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
           return ret.concat({
             intertype: 'GlobalVariable',
-            JS: item.ident + ' = ' + constant + ';',
+            JS: item.ident + '=' + constant + ';',
           });
         }
       }
@@ -369,7 +369,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           }
 
           var deps = Library[ident + '__deps'];
-          return 'var _' + ident + ' = ' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+          return 'var _' + ident + '=' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
         }
         item.JS = addFromLibrary(shortident);
       } else {
@@ -594,7 +594,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       default: throw 'zz unknown impl: ' + impl;
     }
     if (value)
-      item.JS += ' = ' + value;
+      item.JS += '=' + value;
     item.JS += ';';
 
     this.forwardItem(item, 'FunctionReconstructor');
@@ -621,13 +621,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
     switch (impl) {
       case VAR_NATIVIZED:
-        return item.ident + ' = ' + value + ';'; // We have the actual value here
+        return item.ident + '=' + value + ';'; // We have the actual value here
         break;
       case VAR_EMULATED:
         if (item.pointer.intertype == 'value') {
-          return makeSetValue(item.ident, 0, value, item.valueType) + ';';
+          return makeSetValue(item.ident, 0, value, item.valueType);
         } else {
-          return makeSetValue(0, indexizeFunctions(finalizeLLVMParameter(item.pointer)), value, item.valueType) + ';';
+          return makeSetValue(0, indexizeFunctions(finalizeLLVMParameter(item.pointer)), value, item.valueType);
         }
         break;
       default:
@@ -1115,7 +1115,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   // Optimized intertypes
 
   makeFuncLineActor('fastgetelementptrload', function(item) {
-    return 'var ' + item.ident + ' = ' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), item.value.valueType, true) + ';';
+    return 'var ' + item.ident + '=' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), item.value.valueType, true) + ';';
   });
   makeFuncLineActor('fastgetelementptrstore', function(item) {
     return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), item.type, true) + ';';
@@ -1145,16 +1145,18 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     if (functionsOnly) return ret;
 
-    var body = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()) + ret + read('postamble.js'), CONSTANTS);
+    var pre = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS);
+    var post = preprocess(read('postamble.js'), CONSTANTS);
+    ret = pre + ret + post;
     var globalVars = itemsDict.GlobalVariable.map(function(item) { return item.JS }).join('\n');
     var globalVarsPostSets = itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n');
-    body = indentify(body, 2);
-    // body may be a very large string at this point - we may not be able to allocate two of it. So must be careful in these last steps
+    ret = indentify(ret, 2);
+    // ret may be a very large string at this point - we may not be able to allocate two of it. So must be careful in these last steps
     var shellParts = read('shell.js').split('{{BODY}}');
-    body = shellParts[0] + body + shellParts[1];
+    ret = shellParts[0] + ret + shellParts[1];
     globalVars = indentify(globalVars+'\n\n\n'+globalVarsPostSets, 4);
-    body = body.replace('{{GLOBAL_VARS}}', globalVars);
-    return processMacros(body);
+    ret = ret.replace('{{GLOBAL_VARS}}', globalVars);
+    return processMacros(ret);
   }
 
   // Data

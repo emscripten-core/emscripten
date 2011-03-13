@@ -106,7 +106,7 @@ class RunnerCore(unittest.TestCase):
 
   def do_link(self, files, target):
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert 'Could not open input file' not in output, 'Linking error: ' + output
+    assert output is None or 'Could not open input file' not in output, 'Linking error: ' + output
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None):
@@ -1529,6 +1529,20 @@ if 'benchmark' not in sys.argv:
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
                    main_file='main.cpp', additional_files=['hash.cpp'])
 
+      # This will fail without using libcxx, as libstdc++ (gnu c++ lib) will use but not link in 
+      # __ZSt29_Rb_tree_insert_and_rebalancebPSt18_Rb_tree_node_baseS0_RS_
+      # So a way to avoid that problem is to include libcxx, as done here
+      self.do_test('''
+        #include <set>
+        #include <stdio.h>
+        int main() {
+          std::set<int> *fetchOriginatorNums = new std::set<int>();
+          fetchOriginatorNums->insert(171);
+          printf("hello world\\n");
+          return 1;
+        }
+        ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
+
     def test_cubescript(self):
       # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
       #              used, see Mozilla bug 593659.
@@ -1586,14 +1600,14 @@ if 'benchmark' not in sys.argv:
 
       temp_dir = self.get_building_dir()
       project_dir = os.path.join(temp_dir, name)
-      shutil.copytree(path_from_root('tests', name), project_dir)
+      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
       os.chdir(project_dir)
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
       env['EMMAKEN_COMPILER'] = COMPILER
       env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
-      if configure:
+      if configure: # Useful in debugging sometimes to comment this out (and 2 lines below)
         Popen(configure + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
@@ -1646,6 +1660,10 @@ if 'benchmark' not in sys.argv:
 
     def zzztest_poppler(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # isdigit does -ord('0') and then <= 9, assuming unsigned
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-I' + path_from_root('tests', 'libcxx', 'include')] # Avoid libstdc++ linking issue, see libcxx test
 
       def post(filename):
         src = open(filename, 'r').read().replace(
@@ -1656,14 +1674,28 @@ if 'benchmark' not in sys.argv:
         )
         open(filename, 'w').write(src)
 
+      fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')])
+
       poppler = self.get_library('poppler',
                                  [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
-                                  os.path.join('utils', 'pdftoppm.o')])
-      #freetype = ... link it
-      self.do_ll_test(poppler,
+                                  os.path.join('goo', '.libs', 'libgoo.a'),
+                                  os.path.join('fofi', '.libs', 'libfofi.a'),
+                                  os.path.join('splash', '.libs', 'libsplash.a'),
+                                  #os.path.join('poppler', 'SplashOutputDev.o'),
+                                  os.path.join('utils', 'pdftoppm.o'),
+                                  os.path.join('utils', 'parseargs.o')],
+                                 configure_args=['--disable-libjpeg', '--disable-libpng'])
+
+      # Combine libraries
+      # TODO: FreeType XXX DO THIS
+
+      combined = os.path.join(self.get_building_dir(), 'combined.bc')
+      self.do_link([fontconfig, poppler], combined)
+
+      self.do_ll_test(combined,
                       'halp',#open(path_from_root('tests', 'poppler', 'ref.txt'), 'r').read(),
-                      args='-png -scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post)
+                      args='-scale-to 512 paper.pdf filename'.split(' '),
+                      post_build=post, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Very slow
@@ -2055,7 +2087,7 @@ class %s(T):
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = []
-    shutil.rmtree(self.get_dir())
+    shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
     self.get_dir() # make sure it exists
 TT = %s
 ''' % (fullname, compiler['path'], compiler['quantum_size'], llvm_opts, embetter, fullname))

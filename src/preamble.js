@@ -269,8 +269,8 @@ function __initializeRuntime__() {
     }
   }
 
-  var base = intArrayFromString('(null)').concat(0); // So printing %s of NULL gives '(null)'
-                                                     // Also this ensures we leave 0 as an invalid address, 'NULL'
+  var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
+                                           // Also this ensures we leave 0 as an invalid address, 'NULL'
   for (var i = 0; i < base.length; i++) {
     {{{ makeSetValue(0, 'i', 'base[i]', 'i8') }}}
   }
@@ -360,7 +360,7 @@ function jrint(label, obj) { // XXX manual debugging
   print(label + JSON.stringify(obj));
 }
 
-// This processes a 'normal' string into a C-line array of numbers.
+// This processes a JS string into a C-line array of numbers, 0-terminated.
 // For LLVM-originating strings, see parser.js:parseLLVMString function
 function intArrayFromString(stringy) {
   var ret = [];
