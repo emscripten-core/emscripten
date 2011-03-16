@@ -168,21 +168,28 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'GUARD_MEMORY', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN']:
       value = eval(setting)
       exported_settings[setting] = value
-    out = open(filename + '.o.js', 'w') if not OUTPUT_TO_SCREEN else None
-    timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"')], stdout=out, stderr=STDOUT), TIMEOUT, 'Compiling')
-    output = open(filename + '.o.js').read()
-    if output_processor is not None:
-        output_processor(output)
+    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+
     # Detect compilation crashes and errors
-    if output is not None and 'Traceback' in output and 'in test_' in output: print output; assert 0
+    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
+
+    if output_processor is not None:
+      output_processor(open(filename + '.o.js').read())
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')
+    try:
+      cwd = os.getcwd()
+    except:
+      cwd = None
+    os.chdir(self.get_dir())
     run_js(engine, filename, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'))
+    if cwd is not None:
+      os.chdir(cwd)
     ret = open(stdout, 'r').read() + open(stderr, 'r').read()
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     return ret
@@ -508,7 +515,7 @@ if 'benchmark' not in sys.argv:
             if (i > 0) {
               return test(i-1);
             }
-            return int(&x); // both useful for the number, and forces x to not be nativized
+            return int(&x); // both for the number, and forces x to not be nativized
           }
           int main()
           {
@@ -1673,22 +1680,24 @@ if 'benchmark' not in sys.argv:
 
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-I' + path_from_root('tests', 'libcxx', 'include')] # Avoid libstdc++ linking issue, see libcxx test
 
+      global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
+
       # See post(), below
       input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
       input_file.write(str(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())))
       input_file.close()
 
       def post(filename):
-        src = open(filename, 'r').read()
-        # Do not do several replacements of this huge string. Hack around that. This is why we create the input_file, above
-        src = src.replace( # XXX add full path to .pdf.js
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
-             run(args);
-             run = function() {};
-             print("Data: " + JSON.stringify(this._STDIO.streams[this._STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail'''
+        # To avoid loading this large file to memory and altering it, we simply append to the end
+        src = open(filename, 'a')
+        src.write(
+          '''
+            this._STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
+            run(args);
+            print("Data: " + JSON.stringify(this._STDIO.streams[this._STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail
+          '''
         )
-        open(filename, 'w').write(src)
+        src.close()
 
       fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')])
 
@@ -2083,12 +2092,13 @@ if 'benchmark' not in sys.argv:
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN
 
     COMPILER = '%s'
     QUANTUM_SIZE = %d
     llvm_opts = %d
     embetter = %d
+    INVOKE_RUN = 1
     RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
     GUARD_MEMORY = 1-embetter
     SAFE_HEAP = 1-(embetter and llvm_opts)
@@ -2134,6 +2144,7 @@ else:
   RELOOP = OPTIMIZE = 1
   USE_TYPED_ARRAYS = 0
   GUARD_MEMORY = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = 0
+  INVOKE_RUN = 1
   CORRECT_SIGNS = 0
   CORRECT_ROUNDINGS = 0
   CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = []

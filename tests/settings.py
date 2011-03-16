@@ -39,8 +39,6 @@ JS_ENGINE=V8_ENGINE
 JS_ENGINE_PARAMS = ['--'] # For V8
 JS_ENGINE_PARAMS = [] # For SpiderMonkey
 
-OUTPUT_TO_SCREEN = 0 # useful for debugging specific tests, or for subjectively seeing what parts are slow
-
 TIMEOUT = None
 
 # Tools
