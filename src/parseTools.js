@@ -1,6 +1,15 @@
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
 
+// Does simple 'macro' substitution, using Django-like syntax,
+// {{{ code }}} will be replaced with |eval(code)|.
+function processMacros(text) {
+  return text.replace(/{{{[^}]+}}}/g, function(str) {
+    str = str.substr(3, str.length-6);
+    return eval(str).toString();
+  });
+}
+
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global. Also replaces some constants.
 function preprocess(text, constants) {
@@ -545,6 +554,7 @@ function getActualLabelId(labelId) {
 // Misc
 
 function indentify(text, indent) {
+  if (text.length > 1024*1024) return text; // Don't try to indentify huge strings - we may run out of memory
   if (typeof indent === 'number') {
     var len = indent;
     indent = '';

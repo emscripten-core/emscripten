@@ -191,12 +191,16 @@ class RunnerCore(unittest.TestCase):
     return Popen([LLVM_INTERPRETER] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
   def assertContained(self, value, string):
+    if type(value) is not str: value = value() # lazy loading
+    if type(string) is not str: string = string()
     if value not in string:
-      raise Exception("Expected to find '%s' in '%s'" % (value, string))
+      raise Exception("Expected to find '%s' in '%s'" % (limit_size(value), limit_size(string)))
 
   def assertNotContained(self, value, string):
+    if type(value) is not str: value = value() # lazy loading
+    if type(string) is not str: string = string()
     if value in string:
-      raise Exception("Expected to NOT find '%s' in '%s'" % (value, string))
+      raise Exception("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
 
 ###################################################################################################
 
@@ -1590,13 +1594,14 @@ if 'benchmark' not in sys.argv:
     def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
       if type(generated_libs) is not list: generated_libs = [generated_libs]
 
-      cache_name = name + '|' + COMPILER
-      if cache and GlobalCache.get(cache_name):
-        bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
-        f = open(bc_file, 'wb')
-        f.write(GlobalCache[cache_name])
-        f.close()
-        return bc_file
+      if GlobalCache:
+        cache_name = name + '|' + COMPILER
+        if cache and GlobalCache.get(cache_name):
+          bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
+          f = open(bc_file, 'wb')
+          f.write(GlobalCache[cache_name])
+          f.close()
+          return bc_file
 
       temp_dir = self.get_building_dir()
       project_dir = os.path.join(temp_dir, name)
@@ -1612,9 +1617,12 @@ if 'benchmark' not in sys.argv:
       Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
       self.do_link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
-      if cache:
+      if cache and GlobalCache:
         GlobalCache[cache_name] = open(bc_file, 'rb').read()
       return bc_file
+
+    def get_freetype(self):
+      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))
 
     def test_freetype(self):
       if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
@@ -1634,7 +1642,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                    ['font.ttf', 'test!', '150', '120', '25'],
-                   libraries=[self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))],
+                   libraries=[self.get_freetype()],
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
 
@@ -1665,37 +1673,45 @@ if 'benchmark' not in sys.argv:
 
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-I' + path_from_root('tests', 'libcxx', 'include')] # Avoid libstdc++ linking issue, see libcxx test
 
+      # See post(), below
+      input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
+      input_file.write(str(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())))
+      input_file.close()
+
       def post(filename):
-        src = open(filename, 'r').read().replace(
+        src = open(filename, 'r').read()
+        # Do not do several replacements of this huge string. Hack around that. This is why we create the input_file, above
+        src = src.replace( # XXX add full path to .pdf.js
           '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('paper.pdf', %s);''' % str(
-            map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())
-          )
+          '''this._STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
+             run(args);
+             run = function() {};
+             print("Data: " + JSON.stringify(this._STDIO.streams[this._STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail'''
         )
         open(filename, 'w').write(src)
 
       fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')])
+
+      freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
                                  [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
                                   os.path.join('goo', '.libs', 'libgoo.a'),
                                   os.path.join('fofi', '.libs', 'libfofi.a'),
                                   os.path.join('splash', '.libs', 'libsplash.a'),
-                                  #os.path.join('poppler', 'SplashOutputDev.o'),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
                                  configure_args=['--disable-libjpeg', '--disable-libpng'])
 
       # Combine libraries
-      # TODO: FreeType XXX DO THIS
 
       combined = os.path.join(self.get_building_dir(), 'combined.bc')
-      self.do_link([fontconfig, poppler], combined)
+      self.do_link([fontconfig, freetype, poppler], combined)
 
       self.do_ll_test(combined,
-                      'halp',#open(path_from_root('tests', 'poppler', 'ref.txt'), 'r').read(),
+                      lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                       args='-scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post, build_ll_hook=self.do_autodebug)
+                      post_build=post)#, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Very slow
@@ -1788,8 +1804,7 @@ if 'benchmark' not in sys.argv:
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n22\n\n5.470',
-                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
-                      js_engines=[V8_ENGINE]) # script stack space exceeded in SpiderMonkey, TODO
+                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
     ### Test cases in separate files
 

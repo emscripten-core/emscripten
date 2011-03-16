@@ -1138,7 +1138,7 @@ var Library = {
   // setjmp.h
 
   _setjmp: function(env) {
-    print('WARNING: setjmp() not really implemented, will fail if longjmp() is actually called');
+    // XXX print('WARNING: setjmp() not really implemented, will fail if longjmp() is actually called');
     return 0;
   },
 

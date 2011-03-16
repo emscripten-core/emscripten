@@ -1135,28 +1135,39 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     });
     items = null;
 
-    var ret = [];
+    var generated = [];
     if (!functionsOnly) {
-      ret = ret.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
+      generated = generated.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
     }
-    ret = ret.concat(itemsDict.function).concat(data.unparsedFunctions);
+    generated = generated.concat(itemsDict.function).concat(data.unparsedFunctions);
 
-    ret = ret.map(function(item) { return item.JS }).join('\n');
+    if (functionsOnly) return generated.map(function(item) { return item.JS }).join('\n');
 
-    if (functionsOnly) return ret;
+    // We are ready to print out the data, but must do so carefully - we are
+    // dealing with potentially *huge* strings. Convenient replacements and
+    // manipulations may create in-memory copies, and we may OOM.
+    //
+    // Final shape that we now create:
+    //    shell
+    //      (body)
+    //        preamble
+    //          runtime
+    //        generated code
+    //        postamble
+    //          global_vars
 
-    var pre = preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS);
-    var post = preprocess(read('postamble.js'), CONSTANTS);
-    ret = pre + ret + post;
-    var globalVars = itemsDict.GlobalVariable.map(function(item) { return item.JS }).join('\n');
-    var globalVarsPostSets = itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n');
-    ret = indentify(ret, 2);
-    // ret may be a very large string at this point - we may not be able to allocate two of it. So must be careful in these last steps
     var shellParts = read('shell.js').split('{{BODY}}');
-    ret = shellParts[0] + ret + shellParts[1];
-    globalVars = indentify(globalVars+'\n\n\n'+globalVarsPostSets, 4);
-    ret = ret.replace('{{GLOBAL_VARS}}', globalVars);
-    return processMacros(ret);
+    print(shellParts[0]);
+      var pre = processMacros(preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
+      print(pre);
+      generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+
+      var postParts = processMacros(preprocess(read('postamble.js'), CONSTANTS)).split('{{GLOBAL_VARS}}');
+      print(postParts[0]);
+        itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
+        itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });
+      print(postParts[1]);
+    print(shellParts[1]);
   }
 
   // Data

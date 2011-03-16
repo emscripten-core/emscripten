@@ -58,5 +58,5 @@ do {
 
 // Do it
 
-print(JSify(analyzer(intertyper(lines))));
+JSify(analyzer(intertyper(lines)));
 

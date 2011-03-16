@@ -22,6 +22,9 @@ LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
 if '-s' not in SPIDERMONKEY_ENGINE:
   SPIDERMONKEY_ENGINE += ['-s'] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
 
+if 'stackQuote' not in str(SPIDERMONKEY_ENGINE):
+  SPIDERMONKEY_ENGINE += ['-e', 'stackQuota(100000000000)'] # Our very large files need lots of stack space
+
 # Utilities
 
 def timeout_run(proc, timeout, note):
@@ -59,4 +62,8 @@ def line_splitter(data):
       counter += 1
 
   return out
+
+def limit_size(string, MAX=80*20):
+  if len(string) < MAX: return string
+  return string[0:MAX] + '...'
 

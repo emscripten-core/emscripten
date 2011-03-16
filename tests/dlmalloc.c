@@ -5701,7 +5701,7 @@ History:
 // Emscripten tests
 
 int main() {
-  #define NUM 100
+  #define NUM 10
   char* allocations[NUM];
   for (int i = 0; i < NUM; i++) {
     allocations[i] = (char*)malloc(1024*(i+1));
