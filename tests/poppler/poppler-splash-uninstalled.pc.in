@@ -1,0 +1,7 @@
+Name: poppler-splash
+Description: Splash backend for Poppler PDF rendering library - uninstalled
+Version: @VERSION@
+Requires: poppler = @VERSION@
+
+Libs: ${pc_top_builddir}/${pcfiledir}/splash/libsplash.la
+

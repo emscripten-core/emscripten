@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Version and Features Information</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Poppler Reference Manual">
+<link rel="up" href="ch01.html" title="Poppler">
+<link rel="prev" href="PopplerMovie.html" title="PopplerMovie">
+<link rel="next" href="api-index-full.html" title="Index of all symbols">
+<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="2">
+<tr valign="middle">
+<td><a accesskey="p" href="PopplerMovie.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
+<td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
+<th width="100%" align="center">Poppler Reference Manual</th>
+<td><a accesskey="n" href="api-index-full.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
+</tr>
+<tr><td colspan="5" class="shortcuts">
+<a href="#poppler-Version-and-Features-Information.synopsis" class="shortcut">Top</a>
+                   | 
+                  <a href="#poppler-Version-and-Features-Information.description" class="shortcut">Description</a>
+</td></tr>
+</table>
+<div class="refentry">
+<a name="poppler-Version-and-Features-Information"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="poppler-Version-and-Features-Information.top_of_page"></a>Version and Features Information</span></h2>
+<p>Version and Features Information — Variables and functions to check the poppler version and features</p>
+</td>
+<td valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsynopsisdiv">
+<a name="poppler-Version-and-Features-Information.synopsis"></a><h2>Synopsis</h2>
+<pre class="synopsis">
+#include &lt;poppler.h&gt;
+
+#define             <a class="link" href="poppler-Version-and-Features-Information.html#POPPLER-HAS-CAIRO:CAPS" title="POPPLER_HAS_CAIRO">POPPLER_HAS_CAIRO</a>
+#define             <a class="link" href="poppler-Version-and-Features-Information.html#POPPLER-WITH-GDK:CAPS" title="POPPLER_WITH_GDK">POPPLER_WITH_GDK</a>
+#define             <a class="link" href="poppler-Version-and-Features-Information.html#POPPLER-MAJOR-VERSION:CAPS" title="POPPLER_MAJOR_VERSION">POPPLER_MAJOR_VERSION</a>
+#define             <a class="link" href="poppler-Version-and-Features-Information.html#POPPLER-MINOR-VERSION:CAPS" title="POPPLER_MINOR_VERSION">POPPLER_MINOR_VERSION</a>
+#define             <a class="link" href="poppler-Version-and-Features-Information.html#POPPLER-MICRO-VERSION:CAPS" title="POPPLER_MICRO_VERSION">POPPLER_MICRO_VERSION</a>
+#define             <a class="link" href="poppler-Version-and-Features-Information.html#POPPLER-CHECK-VERSION:CAPS" title="POPPLER_CHECK_VERSION()">POPPLER_CHECK_VERSION</a>               (major,
+                                                         minor,
+                                                         micro)
+</pre>
+</div>
+<div class="refsect1">
+<a name="poppler-Version-and-Features-Information.description"></a><h2>Description</h2>
+<p>
+Poppler provides version information, and information about features
+enabled at compile time. This is primarily useful in configure checks
+for builds that have a configure script, or for allowing code to optionally
+depend but not require a specific poppler version.
+</p>
+</div>
+<div class="refsect1">
+<a name="poppler-Version-and-Features-Information.details"></a><h2>Details</h2>
+<div class="refsect2">
+<a name="POPPLER-HAS-CAIRO:CAPS"></a><h3>POPPLER_HAS_CAIRO</h3>
+<pre class="programlisting">#define POPPLER_HAS_CAIRO 1
+</pre>
+<p>
+Defined if poppler was compiled with cairo support.
+</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="POPPLER-WITH-GDK:CAPS"></a><h3>POPPLER_WITH_GDK</h3>
+<pre class="programlisting">#define POPPLER_WITH_GDK 1
+</pre>
+<p>
+Defined if poppler was compiled with GDK support.
+</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="POPPLER-MAJOR-VERSION:CAPS"></a><h3>POPPLER_MAJOR_VERSION</h3>
+<pre class="programlisting">#define POPPLER_MAJOR_VERSION (0)
+</pre>
+<p>
+The major version number of the poppler header files (e.g. in poppler version
+0.1.2 this is 0.)
+</p>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="POPPLER-MINOR-VERSION:CAPS"></a><h3>POPPLER_MINOR_VERSION</h3>
+<pre class="programlisting">#define POPPLER_MINOR_VERSION (16)
+</pre>
+<p>
+The major version number of the poppler header files (e.g. in poppler version
+0.1.2 this is 1.)
+</p>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="POPPLER-MICRO-VERSION:CAPS"></a><h3>POPPLER_MICRO_VERSION</h3>
+<pre class="programlisting">#define POPPLER_MICRO_VERSION (3)
+</pre>
+<p>
+The micro version number of the poppler header files (e.g. in poppler version
+0.1.2 this is 2.)
+</p>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="POPPLER-CHECK-VERSION:CAPS"></a><h3>POPPLER_CHECK_VERSION()</h3>
+<pre class="programlisting">#define             POPPLER_CHECK_VERSION(major,minor,micro)</pre>
+<p>
+Checks the version fo the poppler library
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>major</code></em> :</span></p></td>
+<td>major version (e.g. 0 for version 0.1.2)</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>minor</code></em> :</span></p></td>
+<td>minor version (e.g. 1 for version 0.1.2)</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>micro</code></em> :</span></p></td>
+<td>micro version (e.g. 2 for version 0.1.2)</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code> if the version of the poppler header files is the same
+as or newer than the passed-in version</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>
+          Generated by GTK-Doc V1.17</div>
+</body>
+</html>

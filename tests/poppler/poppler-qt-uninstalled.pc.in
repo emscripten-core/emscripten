@@ -1,0 +1,7 @@
+Name: poppler-qt
+Description: Qt bindings for poppler - uninstalled
+Version: @VERSION@
+Requires: poppler = @VERSION@ 
+
+Libs: ${pc_top_builddir}/${pcfiledir}/qt/libpoppler-qt.la
+Cflags: -I${pc_top_builddir}/${pcfiledir}/qt

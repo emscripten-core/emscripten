@@ -1,0 +1,2182 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>PopplerDocument</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Poppler Reference Manual">
+<link rel="up" href="ch01.html" title="Poppler">
+<link rel="prev" href="poppler-poppler.html" title="poppler">
+<link rel="next" href="PopplerPage.html" title="PopplerPage">
+<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="2">
+<tr valign="middle">
+<td><a accesskey="p" href="poppler-poppler.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
+<td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
+<th width="100%" align="center">Poppler Reference Manual</th>
+<td><a accesskey="n" href="PopplerPage.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
+</tr>
+<tr><td colspan="5" class="shortcuts">
+<a href="#PopplerDocument.synopsis" class="shortcut">Top</a>
+                   | 
+                  <a href="#PopplerDocument.description" class="shortcut">Description</a>
+                   | 
+                  <a href="#PopplerDocument.object-hierarchy" class="shortcut">Object Hierarchy</a>
+                   | 
+                  <a href="#PopplerDocument.properties" class="shortcut">Properties</a>
+</td></tr>
+</table>
+<div class="refentry">
+<a name="PopplerDocument"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="PopplerDocument.top_of_page"></a>PopplerDocument</span></h2>
+<p>PopplerDocument — Information about a document</p>
+</td>
+<td valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsynopsisdiv">
+<a name="PopplerDocument.synopsis"></a><h2>Synopsis</h2>
+<pre class="synopsis">
+#include &lt;poppler.h&gt;
+
+                    <a class="link" href="PopplerDocument.html#PopplerDocument-struct" title="PopplerDocument">PopplerDocument</a>;
+                    <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter">PopplerIndexIter</a>;
+                    <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter">PopplerFontsIter</a>;
+                    <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter">PopplerLayersIter</a>;
+enum                <a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout">PopplerPageLayout</a>;
+enum                <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode">PopplerPageMode</a>;
+                    <a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo">PopplerFontInfo</a>;
+enum                <a class="link" href="PopplerDocument.html#PopplerFontType" title="enum PopplerFontType">PopplerFontType</a>;
+                    <a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile">PopplerPSFile</a>;
+enum                <a class="link" href="PopplerDocument.html#PopplerViewerPreferences" title="enum PopplerViewerPreferences">PopplerViewerPreferences</a>;
+enum                <a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions">PopplerPermissions</a>;
+<a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   <a class="link" href="PopplerDocument.html#poppler-document-new-from-file" title="poppler_document_new_from_file ()">poppler_document_new_from_file</a>      (<em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+<a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   <a class="link" href="PopplerDocument.html#poppler-document-new-from-data" title="poppler_document_new_from_data ()">poppler_document_new_from_data</a>      (<em class="parameter"><code><span class="type">char</span> *data</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> length</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-save" title="poppler_document_save ()">poppler_document_save</a>               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-save-a-copy" title="poppler_document_save_a_copy ()">poppler_document_save_a_copy</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-get-id" title="poppler_document_get_id ()">poppler_document_get_id</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">gchar</span> **permanent_id</code></em>,
+                                                         <em class="parameter"><code><span class="type">gchar</span> **update_id</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version-string" title="poppler_document_get_pdf_version_string ()">poppler_document_get_pdf_version_string</a>
+                                                        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version" title="poppler_document_get_pdf_version ()">poppler_document_get_pdf_version</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">guint</span> *major_version</code></em>,
+                                                         <em class="parameter"><code><span class="type">guint</span> *minor_version</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-title" title="poppler_document_get_title ()">poppler_document_get_title</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-author" title="poppler_document_get_author ()">poppler_document_get_author</a>         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-subject" title="poppler_document_get_subject ()">poppler_document_get_subject</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-keywords" title="poppler_document_get_keywords ()">poppler_document_get_keywords</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-creator" title="poppler_document_get_creator ()">poppler_document_get_creator</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-producer" title="poppler_document_get_producer ()">poppler_document_get_producer</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">time_t</span>              <a class="link" href="PopplerDocument.html#poppler-document-get-creation-date" title="poppler_document_get_creation_date ()">poppler_document_get_creation_date</a>  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">time_t</span>              <a class="link" href="PopplerDocument.html#poppler-document-get-modification-date" title="poppler_document_get_modification_date ()">poppler_document_get_modification_date</a>
+                                                        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout"><span class="returnvalue">PopplerPageLayout</span></a>   <a class="link" href="PopplerDocument.html#poppler-document-get-page-layout" title="poppler_document_get_page_layout ()">poppler_document_get_page_layout</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="returnvalue">PopplerPageMode</span></a>     <a class="link" href="PopplerDocument.html#poppler-document-get-page-mode" title="poppler_document_get_page_mode ()">poppler_document_get_page_mode</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions"><span class="returnvalue">PopplerPermissions</span></a>  <a class="link" href="PopplerDocument.html#poppler-document-get-permissions" title="poppler_document_get_permissions ()">poppler_document_get_permissions</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-metadata" title="poppler_document_get_metadata ()">poppler_document_get_metadata</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-is-linearized" title="poppler_document_is_linearized ()">poppler_document_is_linearized</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">int</span>                 <a class="link" href="PopplerDocument.html#poppler-document-get-n-pages" title="poppler_document_get_n_pages ()">poppler_document_get_n_pages</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a class="link" href="PopplerPage.html" title="PopplerPage"><span class="returnvalue">PopplerPage</span></a> *       <a class="link" href="PopplerDocument.html#poppler-document-get-page" title="poppler_document_get_page ()">poppler_document_get_page</a>           (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> index</code></em>);
+<a class="link" href="PopplerPage.html" title="PopplerPage"><span class="returnvalue">PopplerPage</span></a> *       <a class="link" href="PopplerDocument.html#poppler-document-get-page-by-label" title="poppler_document_get_page_by_label ()">poppler_document_get_page_by_label</a>  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *label</code></em>);
+<a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="returnvalue">PopplerDest</span></a> *       <a class="link" href="PopplerDocument.html#poppler-document-find-dest" title="poppler_document_find_dest ()">poppler_document_find_dest</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">gchar</span> *link_name</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-has-attachments" title="poppler_document_has_attachments ()">poppler_document_has_attachments</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">GList</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-attachments" title="poppler_document_get_attachments ()">poppler_document_get_attachments</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="returnvalue">PopplerFormField</span></a> *  <a class="link" href="PopplerDocument.html#poppler-document-get-form-field" title="poppler_document_get_form_field ()">poppler_document_get_form_field</a>     (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">gint</span> id</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  <a class="link" href="PopplerDocument.html#poppler-index-iter-new" title="poppler_index_iter_new ()">poppler_index_iter_new</a>              (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  <a class="link" href="PopplerDocument.html#poppler-index-iter-copy" title="poppler_index_iter_copy ()">poppler_index_iter_copy</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-index-iter-free" title="poppler_index_iter_free ()">poppler_index_iter_free</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  <a class="link" href="PopplerDocument.html#poppler-index-iter-get-child" title="poppler_index_iter_get_child ()">poppler_index_iter_get_child</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *parent</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-index-iter-is-open" title="poppler_index_iter_is_open ()">poppler_index_iter_is_open</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
+<a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="returnvalue">PopplerAction</span></a> *     <a class="link" href="PopplerDocument.html#poppler-index-iter-get-action" title="poppler_index_iter_get_action ()">poppler_index_iter_get_action</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-index-iter-next" title="poppler_index_iter_next ()">poppler_index_iter_next</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="returnvalue">PopplerFontInfo</span></a> *   <a class="link" href="PopplerDocument.html#poppler-font-info-new" title="poppler_font_info_new ()">poppler_font_info_new</a>               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-font-info-scan" title="poppler_font_info_scan ()">poppler_font_info_scan</a>              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> n_pages</code></em>,
+                                                         <em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> **iter</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-font-info-free" title="poppler_font_info_free ()">poppler_font_info_free</a>              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="returnvalue">PopplerFontsIter</span></a> *  <a class="link" href="PopplerDocument.html#poppler-fonts-iter-copy" title="poppler_fonts_iter_copy ()">poppler_fonts_iter_copy</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-fonts-iter-free" title="poppler_fonts_iter_free ()">poppler_fonts_iter_free</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-name" title="poppler_fonts_iter_get_name ()">poppler_fonts_iter_get_name</a>         (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-full-name" title="poppler_fonts_iter_get_full_name ()">poppler_fonts_iter_get_full_name</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerFontType" title="enum PopplerFontType"><span class="returnvalue">PopplerFontType</span></a>     <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-font-type" title="poppler_fonts_iter_get_font_type ()">poppler_fonts_iter_get_font_type</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-file-name" title="poppler_fonts_iter_get_file_name ()">poppler_fonts_iter_get_file_name</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-is-embedded" title="poppler_fonts_iter_is_embedded ()">poppler_fonts_iter_is_embedded</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-is-subset" title="poppler_fonts_iter_is_subset ()">poppler_fonts_iter_is_subset</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-next" title="poppler_fonts_iter_next ()">poppler_fonts_iter_next</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * <a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="poppler_layers_iter_new ()">poppler_layers_iter_new</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * <a class="link" href="PopplerDocument.html#poppler-layers-iter-copy" title="poppler_layers_iter_copy ()">poppler_layers_iter_copy</a>            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-layers-iter-free" title="poppler_layers_iter_free ()">poppler_layers_iter_free</a>            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * <a class="link" href="PopplerDocument.html#poppler-layers-iter-get-child" title="poppler_layers_iter_get_child ()">poppler_layers_iter_get_child</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *parent</code></em>);
+<a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="returnvalue">PopplerLayer</span></a> *      <a class="link" href="PopplerDocument.html#poppler-layers-iter-get-layer" title="poppler_layers_iter_get_layer ()">poppler_layers_iter_get_layer</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
+<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-layers-iter-get-title" title="poppler_layers_iter_get_title ()">poppler_layers_iter_get_title</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-layers-iter-next" title="poppler_layers_iter_next ()">poppler_layers_iter_next</a>            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
+<a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="returnvalue">PopplerPSFile</span></a> *     <a class="link" href="PopplerDocument.html#poppler-ps-file-new" title="poppler_ps_file_new ()">poppler_ps_file_new</a>                 (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *filename</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> first_page</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> n_pages</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-ps-file-free" title="poppler_ps_file_free ()">poppler_ps_file_free</a>                (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-ps-file-set-paper-size" title="poppler_ps_file_set_paper_size ()">poppler_ps_file_set_paper_size</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>,
+                                                         <em class="parameter"><code><span class="type">double</span> width</code></em>,
+                                                         <em class="parameter"><code><span class="type">double</span> height</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-ps-file-set-duplex" title="poppler_ps_file_set_duplex ()">poppler_ps_file_set_duplex</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>,
+                                                         <em class="parameter"><code><span class="type">gboolean</span> duplex</code></em>);
+</pre>
+</div>
+<div class="refsect1">
+<a name="PopplerDocument.object-hierarchy"></a><h2>Object Hierarchy</h2>
+<pre class="synopsis">
+  GObject
+   +----PopplerDocument
+</pre>
+</div>
+<div class="refsect1">
+<a name="PopplerDocument.properties"></a><h2>Properties</h2>
+<pre class="synopsis">
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--author" title='The "author" property'>author</a>"                   <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--creation-date" title='The "creation-date" property'>creation-date</a>"            <span class="type">gint</span>                  : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--creator" title='The "creator" property'>creator</a>"                  <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--format" title='The "format" property'>format</a>"                   <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--format-major" title='The "format-major" property'>format-major</a>"             <span class="type">guint</span>                 : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--format-minor" title='The "format-minor" property'>format-minor</a>"             <span class="type">guint</span>                 : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--keywords" title='The "keywords" property'>keywords</a>"                 <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--linearized" title='The "linearized" property'>linearized</a>"               <span class="type">gboolean</span>              : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--metadata" title='The "metadata" property'>metadata</a>"                 <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--mod-date" title='The "mod-date" property'>mod-date</a>"                 <span class="type">gint</span>                  : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--page-layout" title='The "page-layout" property'>page-layout</a>"              <a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout"><span class="type">PopplerPageLayout</span></a>     : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--page-mode" title='The "page-mode" property'>page-mode</a>"                <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="type">PopplerPageMode</span></a>       : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--permissions" title='The "permissions" property'>permissions</a>"              <a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions"><span class="type">PopplerPermissions</span></a>    : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--producer" title='The "producer" property'>producer</a>"                 <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--subject" title='The "subject" property'>subject</a>"                  <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--title" title='The "title" property'>title</a>"                    <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--viewer-preferences" title='The "viewer-preferences" property'>viewer-preferences</a>"       <a class="link" href="PopplerDocument.html#PopplerViewerPreferences" title="enum PopplerViewerPreferences"><span class="type">PopplerViewerPreferences</span></a>  : Read
+</pre>
+</div>
+<div class="refsect1">
+<a name="PopplerDocument.description"></a><h2>Description</h2>
+<p>
+The <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> is an object used to refer to a main document.
+</p>
+</div>
+<div class="refsect1">
+<a name="PopplerDocument.details"></a><h2>Details</h2>
+<div class="refsect2">
+<a name="PopplerDocument-struct"></a><h3>PopplerDocument</h3>
+<pre class="programlisting">typedef struct _PopplerDocument PopplerDocument;</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerIndexIter"></a><h3>PopplerIndexIter</h3>
+<pre class="programlisting">typedef struct _PopplerIndexIter PopplerIndexIter;</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerFontsIter"></a><h3>PopplerFontsIter</h3>
+<pre class="programlisting">typedef struct _PopplerFontsIter PopplerFontsIter;</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerLayersIter"></a><h3>PopplerLayersIter</h3>
+<pre class="programlisting">typedef struct _PopplerLayersIter PopplerLayersIter;</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerPageLayout"></a><h3>enum PopplerPageLayout</h3>
+<pre class="programlisting">typedef enum
+{
+  POPPLER_PAGE_LAYOUT_UNSET,
+  POPPLER_PAGE_LAYOUT_SINGLE_PAGE,
+  POPPLER_PAGE_LAYOUT_ONE_COLUMN,
+  POPPLER_PAGE_LAYOUT_TWO_COLUMN_LEFT,
+  POPPLER_PAGE_LAYOUT_TWO_COLUMN_RIGHT,
+  POPPLER_PAGE_LAYOUT_TWO_PAGE_LEFT,
+  POPPLER_PAGE_LAYOUT_TWO_PAGE_RIGHT
+} PopplerPageLayout;
+</pre>
+<p>
+Page layout types
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><a name="POPPLER-PAGE-LAYOUT-UNSET:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_UNSET</code></span></p></td>
+<td>no specific layout set
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-LAYOUT-SINGLE-PAGE:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_SINGLE_PAGE</code></span></p></td>
+<td>one page at a time
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-LAYOUT-ONE-COLUMN:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_ONE_COLUMN</code></span></p></td>
+<td>pages in one column
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-LAYOUT-TWO-COLUMN-LEFT:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_TWO_COLUMN_LEFT</code></span></p></td>
+<td>pages in two columns with odd numbered pages on the left
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-LAYOUT-TWO-COLUMN-RIGHT:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_TWO_COLUMN_RIGHT</code></span></p></td>
+<td>pages in two columns with odd numbered pages on the right
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-LAYOUT-TWO-PAGE-LEFT:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_TWO_PAGE_LEFT</code></span></p></td>
+<td>two pages at a time with odd numbered pages on the left
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-LAYOUT-TWO-PAGE-RIGHT:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_TWO_PAGE_RIGHT</code></span></p></td>
+<td>two pages at a time with odd numbered pages on the right
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerPageMode"></a><h3>enum PopplerPageMode</h3>
+<pre class="programlisting">typedef enum
+{
+  POPPLER_PAGE_MODE_UNSET,
+  POPPLER_PAGE_MODE_NONE,
+  POPPLER_PAGE_MODE_USE_OUTLINES,
+  POPPLER_PAGE_MODE_USE_THUMBS,
+  POPPLER_PAGE_MODE_FULL_SCREEN,
+  POPPLER_PAGE_MODE_USE_OC,
+  POPPLER_PAGE_MODE_USE_ATTACHMENTS
+} PopplerPageMode;
+</pre>
+<p>
+Page modes
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><a name="POPPLER-PAGE-MODE-UNSET:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_UNSET</code></span></p></td>
+<td>no specific mode set
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-MODE-NONE:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_NONE</code></span></p></td>
+<td>neither document outline nor thumbnails visible
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-MODE-USE-OUTLINES:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_USE_OUTLINES</code></span></p></td>
+<td>document outline visible
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-MODE-USE-THUMBS:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_USE_THUMBS</code></span></p></td>
+<td>thumbnails visible
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-MODE-FULL-SCREEN:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_FULL_SCREEN</code></span></p></td>
+<td>full-screen mode
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-MODE-USE-OC:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_USE_OC</code></span></p></td>
+<td>layers panel visible
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PAGE-MODE-USE-ATTACHMENTS:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_USE_ATTACHMENTS</code></span></p></td>
+<td>attachments panel visible
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerFontInfo"></a><h3>PopplerFontInfo</h3>
+<pre class="programlisting">typedef struct {
+} PopplerFontInfo;
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerFontType"></a><h3>enum PopplerFontType</h3>
+<pre class="programlisting">typedef enum
+{
+  POPPLER_FONT_TYPE_UNKNOWN,
+  POPPLER_FONT_TYPE_TYPE1,
+  POPPLER_FONT_TYPE_TYPE1C,
+  POPPLER_FONT_TYPE_TYPE1COT,
+  POPPLER_FONT_TYPE_TYPE3,
+  POPPLER_FONT_TYPE_TRUETYPE,
+  POPPLER_FONT_TYPE_TRUETYPEOT,
+  POPPLER_FONT_TYPE_CID_TYPE0,
+  POPPLER_FONT_TYPE_CID_TYPE0C,
+  POPPLER_FONT_TYPE_CID_TYPE0COT,
+  POPPLER_FONT_TYPE_CID_TYPE2,
+  POPPLER_FONT_TYPE_CID_TYPE2OT
+} PopplerFontType;
+</pre>
+<p>
+Font types
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-UNKNOWN:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_UNKNOWN</code></span></p></td>
+<td>unknown font type
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-TYPE1:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE1</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-TYPE1C:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE1C</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-TYPE1COT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE1COT</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-TYPE3:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE3</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-TRUETYPE:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TRUETYPE</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-TRUETYPEOT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TRUETYPEOT</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-CID-TYPE0:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE0</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-CID-TYPE0C:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE0C</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-CID-TYPE0COT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE0COT</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-CID-TYPE2:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE2</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FONT-TYPE-CID-TYPE2OT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE2OT</code></span></p></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerPSFile"></a><h3>PopplerPSFile</h3>
+<pre class="programlisting">typedef struct {
+} PopplerPSFile;
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerViewerPreferences"></a><h3>enum PopplerViewerPreferences</h3>
+<pre class="programlisting">typedef enum /*&lt; flags &gt;*/
+{
+  POPPLER_VIEWER_PREFERENCES_UNSET = 0,
+  POPPLER_VIEWER_PREFERENCES_HIDE_TOOLBAR = 1 &lt;&lt; 0,
+  POPPLER_VIEWER_PREFERENCES_HIDE_MENUBAR = 1 &lt;&lt; 1,
+  POPPLER_VIEWER_PREFERENCES_HIDE_WINDOWUI = 1 &lt;&lt; 2,
+  POPPLER_VIEWER_PREFERENCES_FIT_WINDOW = 1 &lt;&lt; 3,
+  POPPLER_VIEWER_PREFERENCES_CENTER_WINDOW = 1 &lt;&lt; 4,
+  POPPLER_VIEWER_PREFERENCES_DISPLAY_DOC_TITLE = 1 &lt;&lt; 5,
+  POPPLER_VIEWER_PREFERENCES_DIRECTION_RTL = 1 &lt;&lt; 6
+} PopplerViewerPreferences;
+</pre>
+<p>
+Viewer preferences
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-UNSET:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_UNSET</code></span></p></td>
+<td>no preferences set
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-HIDE-TOOLBAR:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_HIDE_TOOLBAR</code></span></p></td>
+<td>hider toolbars when document is active
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-HIDE-MENUBAR:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_HIDE_MENUBAR</code></span></p></td>
+<td>hide menu bar when document is active
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-HIDE-WINDOWUI:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_HIDE_WINDOWUI</code></span></p></td>
+<td>hide UI elements in document's window
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-FIT-WINDOW:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_FIT_WINDOW</code></span></p></td>
+<td>resize document's window to fit the size of the first displayed page
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-CENTER-WINDOW:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_CENTER_WINDOW</code></span></p></td>
+<td>position the document's window in the center of the screen
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-DISPLAY-DOC-TITLE:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_DISPLAY_DOC_TITLE</code></span></p></td>
+<td>display document title in window's title bar
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-VIEWER-PREFERENCES-DIRECTION-RTL:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_DIRECTION_RTL</code></span></p></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerPermissions"></a><h3>enum PopplerPermissions</h3>
+<pre class="programlisting">typedef enum /*&lt; flags &gt;*/
+{
+  POPPLER_PERMISSIONS_OK_TO_PRINT = 1 &lt;&lt; 0,
+  POPPLER_PERMISSIONS_OK_TO_MODIFY = 1 &lt;&lt; 1,
+  POPPLER_PERMISSIONS_OK_TO_COPY = 1 &lt;&lt; 2,
+  POPPLER_PERMISSIONS_OK_TO_ADD_NOTES = 1 &lt;&lt; 3,
+  POPPLER_PERMISSIONS_OK_TO_FILL_FORM = 1 &lt;&lt; 4,
+  POPPLER_PERMISSIONS_FULL = (POPPLER_PERMISSIONS_OK_TO_PRINT | POPPLER_PERMISSIONS_OK_TO_MODIFY | POPPLER_PERMISSIONS_OK_TO_COPY | POPPLER_PERMISSIONS_OK_TO_ADD_NOTES | POPPLER_PERMISSIONS_OK_TO_FILL_FORM)
+
+} PopplerPermissions;
+</pre>
+<p>
+Permissions
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-PRINT:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_PRINT</code></span></p></td>
+<td>document can be printer
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-MODIFY:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_MODIFY</code></span></p></td>
+<td>document contents can be modified
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-COPY:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_COPY</code></span></p></td>
+<td>document can be copied
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-ADD-NOTES:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_ADD_NOTES</code></span></p></td>
+<td>annotations can added to the document
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-FILL-FORM:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_FILL_FORM</code></span></p></td>
+<td>interactive form fields can be filled in
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-FULL:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_FULL</code></span></p></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-new-from-file"></a><h3>poppler_document_new_from_file ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   poppler_document_new_from_file      (<em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>
+Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>.  If <code class="literal">NULL</code> is returned, then <em class="parameter"><code>error</code></em> will be
+set. Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <span class="type">G_FILE_ERROR</span>
+domains.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>uri</code></em> :</span></p></td>
+<td>uri of the file to load</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>password</code></em> :</span></p></td>
+<td>password to unlock the file with, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>Return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>A newly created <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-new-from-data"></a><h3>poppler_document_new_from_data ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   poppler_document_new_from_data      (<em class="parameter"><code><span class="type">char</span> *data</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> length</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>
+Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>.  If <code class="literal">NULL</code> is returned, then <em class="parameter"><code>error</code></em> will be
+set. Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <span class="type">G_FILE_ERROR</span>
+domains.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>data</code></em> :</span></p></td>
+<td>the pdf data contained in a char array</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>length</code></em> :</span></p></td>
+<td>the length of <span class="type">data</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>password</code></em> :</span></p></td>
+<td>password to unlock the file with, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>Return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>A newly created <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-save"></a><h3>poppler_document_save ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_save               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>
+Saves <em class="parameter"><code>document</code></em>. Any change made in the document such as
+form fields filled, annotations added or modified
+will be saved.
+If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code> will be returned. Possible errors
+include those in the <span class="type">G_FILE_ERROR</span> domain.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>uri</code></em> :</span></p></td>
+<td>uri of file to save</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if the document was successfully saved</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-save-a-copy"></a><h3>poppler_document_save_a_copy ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_save_a_copy        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>
+Saves a copy of the original <em class="parameter"><code>document</code></em>.
+Any change made in the document such as 
+form fields filled by the user will not be saved. 
+If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code> will be returned. Possible errors
+include those in the <span class="type">G_FILE_ERROR</span> domain.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>uri</code></em> :</span></p></td>
+<td>uri of file to save</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if the document was successfully saved</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-id"></a><h3>poppler_document_get_id ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_get_id             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">gchar</span> **permanent_id</code></em>,
+                                                         <em class="parameter"><code><span class="type">gchar</span> **update_id</code></em>);</pre>
+<p>
+Returns the PDF file identifier represented as two byte string arrays of size 32.
+<em class="parameter"><code>permanent_id</code></em> is the permanent identifier that is built based on the file
+contents at the time it was originally created, so that this identifer
+never changes. <em class="parameter"><code>update_id</code></em> is the update identifier that is built based on
+the file contents at the time it was last updated.
+</p>
+<p>
+Note that returned strings are not null-terminated, they have a fixed
+size of 32 bytes.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>permanent_id</code></em> :</span></p></td>
+<td>location to store an allocated string, use <code class="function">g_free()</code> to free the returned string. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>update_id</code></em> :</span></p></td>
+<td>location to store an allocated string, use <code class="function">g_free()</code> to free the returned string. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code> if the <em class="parameter"><code>document</code></em> contains an id, <code class="literal">FALSE</code> otherwise</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-pdf-version-string"></a><h3>poppler_document_get_pdf_version_string ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_pdf_version_string
+                                                        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the PDF version of <em class="parameter"><code>document</code></em> as a string (e.g. PDF-1.6)
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing the PDF version
+of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-pdf-version"></a><h3>poppler_document_get_pdf_version ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_document_get_pdf_version    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">guint</span> *major_version</code></em>,
+                                                         <em class="parameter"><code><span class="type">guint</span> *minor_version</code></em>);</pre>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>major_version</code></em> :</span></p></td>
+<td>return location for the PDF major version number. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>minor_version</code></em> :</span></p></td>
+<td>return location for the PDF minor version number. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the major and minor PDF version numbers.</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-title"></a><h3>poppler_document_get_title ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_title          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the document's title
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing the title
+of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-author"></a><h3>poppler_document_get_author ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_author         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the author of the document
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing the author
+of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-subject"></a><h3>poppler_document_get_subject ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_subject        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the subject of the document
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing the subject
+of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-keywords"></a><h3>poppler_document_get_keywords ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_keywords       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the keywords associated to the document
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing keywords associated
+to <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-creator"></a><h3>poppler_document_get_creator ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_creator        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the creator of the document. If the document was converted
+from another format, the creator is the name of the product
+that created the original document from which it was converted.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing the creator
+of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-producer"></a><h3>poppler_document_get_producer ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_producer       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the producer of the document. If the document was converted
+from another format, the producer is the name of the product
+that converted it to PDF
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing the producer
+of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-creation-date"></a><h3>poppler_document_get_creation_date ()</h3>
+<pre class="programlisting"><span class="returnvalue">time_t</span>              poppler_document_get_creation_date  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the date the document was created as seconds since the Epoch
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the date the document was created, or -1</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-modification-date"></a><h3>poppler_document_get_modification_date ()</h3>
+<pre class="programlisting"><span class="returnvalue">time_t</span>              poppler_document_get_modification_date
+                                                        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the date the document was most recently modified as seconds since the Epoch
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the date the document was most recently modified, or -1</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-page-layout"></a><h3>poppler_document_get_page_layout ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout"><span class="returnvalue">PopplerPageLayout</span></a>   poppler_document_get_page_layout    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the page layout that should be used when the document is opened
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout"><span class="type">PopplerPageLayout</span></a> that should be used when the document is opened</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-page-mode"></a><h3>poppler_document_get_page_mode ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="returnvalue">PopplerPageMode</span></a>     poppler_document_get_page_mode      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns a <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="type">PopplerPageMode</span></a> representing how the document should
+be initially displayed when opened.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="type">PopplerPageMode</span></a> that should be used when document is opened</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-permissions"></a><h3>poppler_document_get_permissions ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions"><span class="returnvalue">PopplerPermissions</span></a>  poppler_document_get_permissions    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the flags specifying which operations are permitted when the document is opened.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a set of falgs from  <a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions"><span class="type">PopplerPermissions</span></a> enumeration</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-metadata"></a><h3>poppler_document_get_metadata ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_metadata       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the XML metadata string of the document
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated string containing the XML
+metadata, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-is-linearized"></a><h3>poppler_document_is_linearized ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_is_linearized      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns whether <em class="parameter"><code>document</code></em> is linearized or not. Linearization of PDF
+enables efficient incremental access of the PDF file in a network environment.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code> if <em class="parameter"><code>document</code></em> is linearized, <code class="literal">FALSE</code> otherwhise</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-n-pages"></a><h3>poppler_document_get_n_pages ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>                 poppler_document_get_n_pages        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the number of pages in a loaded document.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>Number of pages</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-page"></a><h3>poppler_document_get_page ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerPage.html" title="PopplerPage"><span class="returnvalue">PopplerPage</span></a> *       poppler_document_get_page           (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> index</code></em>);</pre>
+<p>
+Returns the <a class="link" href="PopplerPage.html" title="PopplerPage"><span class="type">PopplerPage</span></a> indexed at <em class="parameter"><code>index</code></em>.  This object is owned by the
+caller.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>index</code></em> :</span></p></td>
+<td>a page index</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>(transfer full) : The <a class="link" href="PopplerPage.html" title="PopplerPage"><span class="type">PopplerPage</span></a> at <em class="parameter"><code>index</code></em>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-page-by-label"></a><h3>poppler_document_get_page_by_label ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerPage.html" title="PopplerPage"><span class="returnvalue">PopplerPage</span></a> *       poppler_document_get_page_by_label  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *label</code></em>);</pre>
+<p>
+Returns the <a class="link" href="PopplerPage.html" title="PopplerPage"><span class="type">PopplerPage</span></a> reference by <em class="parameter"><code>label</code></em>.  This object is owned by the
+caller.  <em class="parameter"><code>label</code></em> is a human-readable string representation of the page number,
+and can be document specific.  Typically, it is a value such as "iii" or "3".
+</p>
+<p>
+By default, "1" refers to the first page.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>label</code></em> :</span></p></td>
+<td>a page label</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>(transfer full) :The <a class="link" href="PopplerPage.html" title="PopplerPage"><span class="type">PopplerPage</span></a> referenced by <em class="parameter"><code>label</code></em>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-find-dest"></a><h3>poppler_document_find_dest ()</h3>
+<pre class="programlisting"><a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="returnvalue">PopplerDest</span></a> *       poppler_document_find_dest          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">gchar</span> *link_name</code></em>);</pre>
+<p>
+Finds named destination <em class="parameter"><code>link_name</code></em> in <em class="parameter"><code>document</code></em>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>link_name</code></em> :</span></p></td>
+<td>a named destination</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>The <a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="type">PopplerDest</span></a> destination or <code class="literal">NULL</code> if
+<em class="parameter"><code>link_name</code></em> is not a destination. Returned value must
+be freed with <a class="link" href="poppler-PopplerAction.html#poppler-dest-free" title="poppler_dest_free ()"><span class="type">poppler_dest_free</span></a>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-has-attachments"></a><h3>poppler_document_has_attachments ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_has_attachments    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns <code class="literal">TRUE</code> of <em class="parameter"><code>document</code></em> has any attachments.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if <em class="parameter"><code>document</code></em> has attachments.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-attachments"></a><h3>poppler_document_get_attachments ()</h3>
+<pre class="programlisting"><span class="returnvalue">GList</span> *             poppler_document_get_attachments    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns a <span class="type">GList</span> containing <a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a>s.  These attachments
+are unowned, and must be unreffed, and the list must be freed with
+<code class="function">g_list_free()</code>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a list of available attachments. <span class="annotation">[<acronym title="Generics and defining elements of containers and arrays."><span class="acronym">element-type</span></acronym> PopplerAttachment][<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-get-form-field"></a><h3>poppler_document_get_form_field ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="returnvalue">PopplerFormField</span></a> *  poppler_document_get_form_field     (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><span class="type">gint</span> id</code></em>);</pre>
+<p>
+Returns the <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> for the given <em class="parameter"><code>id</code></em>. It must be freed with
+<code class="function">g_object_unref()</code>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>id</code></em> :</span></p></td>
+<td>an id of a <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> or NULL if not found</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-index-iter-new"></a><h3>poppler_index_iter_new ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  poppler_index_iter_new              (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns the root <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> for <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>.  This must be
+freed with <a class="link" href="PopplerDocument.html#poppler-index-iter-free" title="poppler_index_iter_free ()"><code class="function">poppler_index_iter_free()</code></a>.
+</p>
+<p>
+Certain documents have an index associated with them.  This index can be used
+to help the user navigate the document, and is similar to a table of
+contents.  Each node in the index will contain a <a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="type">PopplerAction</span></a> that can be
+displayed to the user — typically a <a class="link" href="poppler-PopplerAction.html#POPPLER-ACTION-GOTO-DEST:CAPS"><span class="type">POPPLER_ACTION_GOTO_DEST</span></a> or a
+<a class="link" href="poppler-PopplerAction.html#POPPLER-ACTION-URI:CAPS"><span class="type">POPPLER_ACTION_URI</span></a>.
+</p>
+<p>
+Here is a simple example of some code that walks the full index:
+</p>
+<p>
+</p>
+<div class="informalexample"><pre class="programlisting">
+static void
+walk_index (PopplerIndexIter *iter)
+{
+  do
+    {
+      /* Get the the action and do something with it */
+      PopplerIndexIter *child = poppler_index_iter_get_child (iter);
+      if (child)
+        walk_index (child);
+      poppler_index_iter_free (child);
+    }
+  while (poppler_index_iter_next (iter));
+}
+...
+{
+  iter = poppler_index_iter_new (document);
+  walk_index (iter);
+  poppler_index_iter_free (iter);
+}
+</pre></div>
+<p>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-index-iter-copy"></a><h3>poppler_index_iter_copy ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  poppler_index_iter_copy             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
+<p>
+Creates a new <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> as a copy of <em class="parameter"><code>iter</code></em>.  This must be freed with
+<a class="link" href="PopplerDocument.html#poppler-index-iter-free" title="poppler_index_iter_free ()"><code class="function">poppler_index_iter_free()</code></a>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-index-iter-free"></a><h3>poppler_index_iter_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_index_iter_free             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
+<p>
+Frees <em class="parameter"><code>iter</code></em>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr></tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-index-iter-get-child"></a><h3>poppler_index_iter_get_child ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  poppler_index_iter_get_child        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *parent</code></em>);</pre>
+<p>
+Returns a newly created child of <em class="parameter"><code>parent</code></em>, or <code class="literal">NULL</code> if the iter has no child.
+See <a class="link" href="PopplerDocument.html#poppler-index-iter-new" title="poppler_index_iter_new ()"><code class="function">poppler_index_iter_new()</code></a> for more information on this function.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>parent</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-index-iter-is-open"></a><h3>poppler_index_iter_is_open ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_index_iter_is_open          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns whether this node should be expanded by default to the user.  The
+document can provide a hint as to how the document's index should be expanded
+initially.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if the document wants <em class="parameter"><code>iter</code></em> to be expanded</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-index-iter-get-action"></a><h3>poppler_index_iter_get_action ()</h3>
+<pre class="programlisting"><a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="returnvalue">PopplerAction</span></a> *     poppler_index_iter_get_action       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns the <a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="type">PopplerAction</span></a> associated with <em class="parameter"><code>iter</code></em>.  It must be freed with
+<a class="link" href="poppler-PopplerAction.html#poppler-action-free" title="poppler_action_free ()"><code class="function">poppler_action_free()</code></a>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="type">PopplerAction</span></a>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-index-iter-next"></a><h3>poppler_index_iter_next ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_index_iter_next             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
+<p>
+Sets <em class="parameter"><code>iter</code></em> to point to the next action at the current level, if valid.  See
+<a class="link" href="PopplerDocument.html#poppler-index-iter-new" title="poppler_index_iter_new ()"><code class="function">poppler_index_iter_new()</code></a> for more information.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if <em class="parameter"><code>iter</code></em> was set to the next action</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-font-info-new"></a><h3>poppler_font_info_new ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="returnvalue">PopplerFontInfo</span></a> *   poppler_font_info_new               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Creates a new <a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> object
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> instance</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-font-info-scan"></a><h3>poppler_font_info_scan ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_font_info_scan              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> n_pages</code></em>,
+                                                         <em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> **iter</code></em>);</pre>
+<p>
+Scans the document associated with <em class="parameter"><code>font_info</code></em> for fonts. At most
+<em class="parameter"><code>n_pages</code></em> will be scanned starting from the current iterator. <em class="parameter"><code>iter</code></em> will
+point to the first font scanned.
+</p>
+<p>
+Here is a simple example of code to scan fonts in a document
+</p>
+<p>
+</p>
+<div class="informalexample"><pre class="programlisting">
+font_info = poppler_font_info_new (document);
+while (poppler_font_info_scan (font_info, 20, &amp;fonts_iter)) {
+        if (!fonts_iter)
+                continue; /* No fonts found in these 20 pages */
+        do {
+                /* Do something with font iter */
+                g_print ("Font Name: %s\n", poppler_fonts_iter_get_name (fonts_iter));
+        } while (poppler_fonts_iter_next (fonts_iter));
+        poppler_fonts_iter_free (fonts_iter);
+}
+</pre></div>
+<p>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>font_info</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>n_pages</code></em> :</span></p></td>
+<td>number of pages to scan</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>return location for a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if there are more fonts left to scan</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-font-info-free"></a><h3>poppler_font_info_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_font_info_free              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-copy"></a><h3>poppler_fonts_iter_copy ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="returnvalue">PopplerFontsIter</span></a> *  poppler_fonts_iter_copy             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Creates a copy of <em class="parameter"><code>iter</code></em>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> to copy</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated copy of <em class="parameter"><code>iter</code></em>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-free"></a><h3>poppler_fonts_iter_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_fonts_iter_free             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Frees the given <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr></tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-get-name"></a><h3>poppler_fonts_iter_get_name ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_fonts_iter_get_name         (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns the name of the font associated with <em class="parameter"><code>iter</code></em>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the font name</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-get-full-name"></a><h3>poppler_fonts_iter_get_full_name ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_fonts_iter_get_full_name    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns the full name of the font associated with <em class="parameter"><code>iter</code></em>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the font full name</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-get-font-type"></a><h3>poppler_fonts_iter_get_font_type ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerFontType" title="enum PopplerFontType"><span class="returnvalue">PopplerFontType</span></a>     poppler_fonts_iter_get_font_type    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns the type of the font associated with <em class="parameter"><code>iter</code></em>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the font type</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-get-file-name"></a><h3>poppler_fonts_iter_get_file_name ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_fonts_iter_get_file_name    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+The filename of the font associated with <em class="parameter"><code>iter</code></em> or <code class="literal">NULL</code> if
+the font is embedded
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the filename of the font or <code class="literal">NULL</code> y font is emebedded</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-is-embedded"></a><h3>poppler_fonts_iter_is_embedded ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_fonts_iter_is_embedded      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns whether the font associated with <em class="parameter"><code>iter</code></em> is embedded in the document
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code> if font is emebdded, <code class="literal">FALSE</code> otherwise</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-is-subset"></a><h3>poppler_fonts_iter_is_subset ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_fonts_iter_is_subset        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns whether the font associated with <em class="parameter"><code>iter</code></em> is a subset of another font
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code> if font is a subset, <code class="literal">FALSE</code> otherwise</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-next"></a><h3>poppler_fonts_iter_next ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_fonts_iter_next             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Sets <em class="parameter"><code>iter</code></em> to point to the next font
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if <em class="parameter"><code>iter</code></em> was set to the next font</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-layers-iter-new"></a><h3>poppler_layers_iter_new ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * poppler_layers_iter_new             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr></tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-layers-iter-copy"></a><h3>poppler_layers_iter_copy ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * poppler_layers_iter_copy            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
+<p>
+Creates a new <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> as a copy of <em class="parameter"><code>iter</code></em>.  This must be freed with
+<a class="link" href="PopplerDocument.html#poppler-layers-iter-free" title="poppler_layers_iter_free ()"><code class="function">poppler_layers_iter_free()</code></a>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
+Since 0.12</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-layers-iter-free"></a><h3>poppler_layers_iter_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_layers_iter_free            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
+<p>
+Frees <em class="parameter"><code>iter</code></em>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
+</td>
+</tr></tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-layers-iter-get-child"></a><h3>poppler_layers_iter_get_child ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * poppler_layers_iter_get_child       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *parent</code></em>);</pre>
+<p>
+Returns a newly created child of <em class="parameter"><code>parent</code></em>, or <code class="literal">NULL</code> if the iter has no child.
+See <a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="poppler_layers_iter_new ()"><code class="function">poppler_layers_iter_new()</code></a> for more information on this function.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>parent</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>, or <code class="literal">NULL</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-layers-iter-get-layer"></a><h3>poppler_layers_iter_get_layer ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="returnvalue">PopplerLayer</span></a> *      poppler_layers_iter_get_layer       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns the <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="type">PopplerLayer</span></a> associated with <em class="parameter"><code>iter</code></em>.  It must be freed with
+<code class="function">poppler_layer_free()</code>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="type">PopplerLayer</span></a>, or <code class="literal">NULL</code> if there isn't any layer associated with <em class="parameter"><code>iter</code></em>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-layers-iter-get-title"></a><h3>poppler_layers_iter_get_title ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_layers_iter_get_title       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns the title associated with <em class="parameter"><code>iter</code></em>.  It must be freed with
+<code class="function">g_free()</code>.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new string containing the <em class="parameter"><code>iter</code></em>'s title or <code class="literal">NULL</code> if <em class="parameter"><code>iter</code></em> doesn't have a title.
+The returned string should be freed with <code class="function">g_free()</code> when no longer needed.</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-layers-iter-next"></a><h3>poppler_layers_iter_next ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_layers_iter_next            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
+<p>
+Sets <em class="parameter"><code>iter</code></em> to point to the next action at the current level, if valid.  See
+<a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="poppler_layers_iter_new ()"><code class="function">poppler_layers_iter_new()</code></a> for more information.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if <em class="parameter"><code>iter</code></em> was set to the next action</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-ps-file-new"></a><h3>poppler_ps_file_new ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="returnvalue">PopplerPSFile</span></a> *     poppler_ps_file_new                 (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *filename</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> first_page</code></em>,
+                                                         <em class="parameter"><code><span class="type">int</span> n_pages</code></em>);</pre>
+<p>
+Create a new postscript file to render to
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>filename</code></em> :</span></p></td>
+<td>the path of the output filename</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>first_page</code></em> :</span></p></td>
+<td>the first page to print</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>n_pages</code></em> :</span></p></td>
+<td>the number of pages to print</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a PopplerPSFile</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-ps-file-free"></a><h3>poppler_ps_file_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_ps_file_free                (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>);</pre>
+<p>
+Frees <em class="parameter"><code>ps_file</code></em>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><em class="parameter"><code>ps_file</code></em> :</span></p></td>
+<td>a PopplerPSFile</td>
+</tr></tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-ps-file-set-paper-size"></a><h3>poppler_ps_file_set_paper_size ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_ps_file_set_paper_size      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>,
+                                                         <em class="parameter"><code><span class="type">double</span> width</code></em>,
+                                                         <em class="parameter"><code><span class="type">double</span> height</code></em>);</pre>
+<p>
+Set the output paper size. These values will end up in the
+DocumentMedia, the BoundingBox DSC comments and other places in the
+generated PostScript.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>ps_file</code></em> :</span></p></td>
+<td>a PopplerPSFile which was not yet printed to.</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>width</code></em> :</span></p></td>
+<td>the paper width in 1/72 inch</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>height</code></em> :</span></p></td>
+<td>the paper height in 1/72 inch</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-ps-file-set-duplex"></a><h3>poppler_ps_file_set_duplex ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_ps_file_set_duplex          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>,
+                                                         <em class="parameter"><code><span class="type">gboolean</span> duplex</code></em>);</pre>
+<p>
+Enable or disable Duplex printing.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>ps_file</code></em> :</span></p></td>
+<td>a PopplerPSFile which was not yet printed to</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>duplex</code></em> :</span></p></td>
+<td>whether to force duplex printing (on printers which support this)</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<div class="refsect1">
+<a name="PopplerDocument.property-details"></a><h2>Property Details</h2>
+<div class="refsect2">
+<a name="PopplerDocument--author"></a><h3>The <code class="literal">"author"</code> property</h3>
+<pre class="programlisting">  "author"                   <span class="type">gchar</span>*                : Read</pre>
+<p>
+The author of the document
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--creation-date"></a><h3>The <code class="literal">"creation-date"</code> property</h3>
+<pre class="programlisting">  "creation-date"            <span class="type">gint</span>                  : Read</pre>
+<p>
+The date the document was created as seconds since the Epoch, or -1
+</p>
+<p>Allowed values: &gt;= G_MAXULONG</p>
+<p>Default value: -1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--creator"></a><h3>The <code class="literal">"creator"</code> property</h3>
+<pre class="programlisting">  "creator"                  <span class="type">gchar</span>*                : Read</pre>
+<p>
+The creator of the document. See also <a class="link" href="PopplerDocument.html#poppler-document-get-creator" title="poppler_document_get_creator ()"><code class="function">poppler_document_get_creator()</code></a>
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--format"></a><h3>The <code class="literal">"format"</code> property</h3>
+<pre class="programlisting">  "format"                   <span class="type">gchar</span>*                : Read</pre>
+<p>
+The PDF version as string. See also <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version-string" title="poppler_document_get_pdf_version_string ()"><code class="function">poppler_document_get_pdf_version_string()</code></a>
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--format-major"></a><h3>The <code class="literal">"format-major"</code> property</h3>
+<pre class="programlisting">  "format-major"             <span class="type">guint</span>                 : Read</pre>
+<p>
+The PDF major version number. See also <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version" title="poppler_document_get_pdf_version ()"><code class="function">poppler_document_get_pdf_version()</code></a>
+</p>
+<p>Default value: 1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--format-minor"></a><h3>The <code class="literal">"format-minor"</code> property</h3>
+<pre class="programlisting">  "format-minor"             <span class="type">guint</span>                 : Read</pre>
+<p>
+The PDF minor version number. See also <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version" title="poppler_document_get_pdf_version ()"><code class="function">poppler_document_get_pdf_version()</code></a>
+</p>
+<p>Default value: 0</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--keywords"></a><h3>The <code class="literal">"keywords"</code> property</h3>
+<pre class="programlisting">  "keywords"                 <span class="type">gchar</span>*                : Read</pre>
+<p>
+The keywords associated to the document
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--linearized"></a><h3>The <code class="literal">"linearized"</code> property</h3>
+<pre class="programlisting">  "linearized"               <span class="type">gboolean</span>              : Read</pre>
+<p>
+Whether document is linearized. See also <a class="link" href="PopplerDocument.html#poppler-document-is-linearized" title="poppler_document_is_linearized ()"><code class="function">poppler_document_is_linearized()</code></a>
+</p>
+<p>Default value: FALSE</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--metadata"></a><h3>The <code class="literal">"metadata"</code> property</h3>
+<pre class="programlisting">  "metadata"                 <span class="type">gchar</span>*                : Read</pre>
+<p>
+Document metadata in XML format, or <code class="literal">NULL</code>
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--mod-date"></a><h3>The <code class="literal">"mod-date"</code> property</h3>
+<pre class="programlisting">  "mod-date"                 <span class="type">gint</span>                  : Read</pre>
+<p>
+The date the document was most recently modified as seconds since the Epoch, or -1
+</p>
+<p>Allowed values: &gt;= G_MAXULONG</p>
+<p>Default value: -1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--page-layout"></a><h3>The <code class="literal">"page-layout"</code> property</h3>
+<pre class="programlisting">  "page-layout"              <a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout"><span class="type">PopplerPageLayout</span></a>     : Read</pre>
+<p>
+The page layout that should be used when the document is opened
+</p>
+<p>Default value: POPPLER_PAGE_LAYOUT_UNSET</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--page-mode"></a><h3>The <code class="literal">"page-mode"</code> property</h3>
+<pre class="programlisting">  "page-mode"                <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="type">PopplerPageMode</span></a>       : Read</pre>
+<p>
+The mode that should be used when the document is opened
+</p>
+<p>Default value: POPPLER_PAGE_MODE_UNSET</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--permissions"></a><h3>The <code class="literal">"permissions"</code> property</h3>
+<pre class="programlisting">  "permissions"              <a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions"><span class="type">PopplerPermissions</span></a>    : Read</pre>
+<p>
+Flags specifying which operations are permitted when the document is opened
+</p>
+<p>Default value: POPPLER_PERMISSIONS_OK_TO_PRINT|POPPLER_PERMISSIONS_OK_TO_MODIFY|POPPLER_PERMISSIONS_OK_TO_COPY|POPPLER_PERMISSIONS_OK_TO_ADD_NOTES|POPPLER_PERMISSIONS_OK_TO_FILL_FORM</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--producer"></a><h3>The <code class="literal">"producer"</code> property</h3>
+<pre class="programlisting">  "producer"                 <span class="type">gchar</span>*                : Read</pre>
+<p>
+The producer of the document. See also <a class="link" href="PopplerDocument.html#poppler-document-get-producer" title="poppler_document_get_producer ()"><code class="function">poppler_document_get_producer()</code></a>
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--subject"></a><h3>The <code class="literal">"subject"</code> property</h3>
+<pre class="programlisting">  "subject"                  <span class="type">gchar</span>*                : Read</pre>
+<p>
+The subject of the document
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--title"></a><h3>The <code class="literal">"title"</code> property</h3>
+<pre class="programlisting">  "title"                    <span class="type">gchar</span>*                : Read</pre>
+<p>
+The document's title or <code class="literal">NULL</code>
+</p>
+<p>Default value: NULL</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerDocument--viewer-preferences"></a><h3>The <code class="literal">"viewer-preferences"</code> property</h3>
+<pre class="programlisting">  "viewer-preferences"       <a class="link" href="PopplerDocument.html#PopplerViewerPreferences" title="enum PopplerViewerPreferences"><span class="type">PopplerViewerPreferences</span></a>  : Read</pre>
+<p>Viewer Preferences.</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>
+          Generated by GTK-Doc V1.17</div>
+</body>
+</html>

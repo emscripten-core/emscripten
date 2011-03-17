@@ -1,0 +1,37 @@
+This is poppler, a PDF rendering library.
+
+Poppler is a fork of the xpdf PDF viewer developed by Derek Noonburg
+of Glyph and Cog, LLC.  The purpose of forking xpdf is twofold.
+First, we want to provide PDF rendering functionality as a shared
+library, to centralize the maintenance effort.  Today a number of
+applications incorporate the xpdf code base, and whenever a security
+issue is discovered, all these applications exchange patches and put
+out new releases.  In turn, all distributions must package and release
+new version of these xpdf based viewers.  It's safe to say that
+there's a lot of duplicated effort with the current situation.  Even if
+poppler in the short term introduces yet another xpdf derived code
+base to the world, we hope that over time these applications will
+adopt poppler.  After all, we only need one application to use poppler
+to break even.
+
+Second, we would like to move libpoppler forward in a number of areas
+that don't fit within the goals of xpdf.  By design, xpdf depends on
+very few libraries and runs a wide range of X based platforms.  This
+is a strong feature and reasonable design goal.  However, with poppler
+we would like to replace parts of xpdf that are now available as
+standard components of modern Unix desktop environments.  One such
+example is fontconfig, which solves the problem of matching and
+locating fonts on the system, in a standardized and well understood
+way.  Another example is cairo, which provides high quality 2D
+rendering.  See the file TODO for a list of planned changes.
+
+Please note that xpdf, and thus poppler, is licensed under the GPL,
+not the LGPL.  Consequently, any application using poppler must also
+be licensed under the GPL.  If you want to incorporate Xpdf based PDF
+rendering in a closed source product, please contact Glyph & Cog
+(www.glyphandcog.com) for commercial licensing options.
+
+	Kristian Høgsberg, Feb. 27, 2005
+
+
+See the README-XPDF for the original xpdf-3.00 README.

@@ -1,0 +1,40 @@
+* general items:
+	- Investigate better (that is, normal) text selection.
+	- Use PDF font descriptors to create an FcPattern.
+	- Add simle performance benchmark that takes a pdf and renders
+	  every page 100 times or so.  Start keeping track of
+	  performance.
+	- make color space conversion stuff more sane (right now we
+	  hack around some of it in the cairo backend)
+	- move away from getChar to a more read(2) like interface
+
+* core:
+	- use libtiff for ccitt decoding?
+
+* Qt4 frontend:
+	- expose Rendition media through the MovieObject API
+	- use Q_GLOBAL_STATIC for GlobalParams?
+	- use QSettings or another system for loading/saving Document/global settings?
+	- expose API for lcms/color management system
+	- make the ArthurOutputDev optional
+
+* glib frontend:
+        - Sound/Movie actions support
+	- API to create annotations
+
+* new frontends:
+	- Java/JNI-based frontend for Android
+
+* cairo backend:
+  	- Implement linear/radial gradients with cairo gradients
+	- PDF Blend Modes
+	- Make the cairo backend feature complete and optimize the
+	  heck out of it.
+
+Jeff Muizelaar's TODO:
+	Short Term:
+	- factor out some of the color conversion code from CairoOutputDev and ArthurOutputDev.
+	- fix patterned text fills.
+	Long Term:
+	- use cairo glyph cache for type3 fonts.
+	- try to use cairo pattern support.

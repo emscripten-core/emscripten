@@ -1,0 +1,140 @@
+.\" Copyright 2004 Glyph & Cog, LLC
+.TH pdftoppm 1 "22 January 2004"
+.SH NAME
+pdftoppm \- Portable Document Format (PDF) to Portable Pixmap (PPM)
+converter (version 3.00)
+.SH SYNOPSIS
+.B pdftoppm
+[options]
+.I PDF-file PPM-root
+.SH DESCRIPTION
+.B Pdftoppm
+converts Portable Document Format (PDF) files to color image files in
+Portable Pixmap (PPM) format, grayscale image files in Portable
+Graymap (PGM) format, or monochrome image files in Portable Bitmap
+(PBM) format.
+.PP
+Pdftoppm reads the PDF file,
+.IR PDF-file ,
+and writes one PPM file for each page,
+.IR PPM-root - nnnnnn .ppm,
+where
+.I nnnnnn
+is the page number.
+.SH OPTIONS
+.TP
+.BI \-f " number"
+Specifies the first page to convert.
+.TP
+.BI \-l " number"
+Specifies the last page to convert.
+.TP
+.B \-o
+Generates only the odd numbered pages.
+.TP
+.B \-e
+Generates only the even numbered pages.
+.TP
+.BI \-r " number"
+Specifies the X and Y resolution, in DPI.  The default is 150 DPI.
+.TP
+.BI \-rx " number"
+Specifies the X resolution, in DPI.  The default is 150 DPI.
+.TP
+.BI \-ry " number"
+Specifies the Y resolution, in DPI.  The default is 150 DPI.
+.TP
+.BI \-scale-to " number"
+Scales each page to fit in scale-to*scale-to pixel box.
+.TP
+.BI \-scale-to-x " number"
+Scales each page horizontally to fit in scale-to-x pixels.
+.TP
+.BI \-scale-to-y " number"
+Scales each page vertically to fit in scale-to-y pixels.
+.TP
+.BI \-x " number"
+Specifies the x-coordinate of the crop area top left corner
+.TP
+.BI \-y " number"
+Specifies the y-coordinate of the crop area top left corner
+.TP
+.BI \-W " number"
+Specifies the width of crop area in pixels (default is 0)
+.TP
+.BI \-H " number"
+Specifies the height of crop area in pixels (default is 0)
+.TP
+.BI \-sz " number"
+Specifies the size of crop square in pixels (sets W and H)
+.TP
+.B \-cropbox
+Uses the crop box rather than media box when generating the files
+.TP
+.B \-mono
+Generate a monochrome PBM file (instead of a color PPM file).
+.TP
+.B \-gray
+Generate a grayscale PGM file (instead of a color PPM file).
+.TP
+.B \-png
+Generates a PNG file instead a PPM file.
+.TP
+.B \-jpeg
+Generates a JPEG file instead a PPM file.
+.TP
+.BI \-freetype " yes | no"
+Enable or disable FreeType (a TrueType / Type 1 font rasterizer).
+This defaults to "yes".
+.TP
+.BI \-aa " yes | no"
+Enable or disable font anti-aliasing.  This defaults to "yes".
+.TP
+.BI \-aaVector " yes | no"
+Enable or disable vector anti-aliasing.  This defaults to "yes".
+.TP
+.BI \-opw " password"
+Specify the owner password for the PDF file.  Providing this will
+bypass all security restrictions.
+.TP
+.BI \-upw " password"
+Specify the user password for the PDF file.
+.TP
+.B \-q
+Don't print any messages or errors.
+.TP
+.B \-v
+Print copyright and version information.
+.TP
+.B \-h
+Print usage information.
+.RB ( \-help
+and
+.B \-\-help
+are equivalent.)
+.SH EXIT CODES
+The Xpdf tools use the following exit codes:
+.TP
+0
+No error.
+.TP
+1
+Error opening a PDF file.
+.TP
+2
+Error opening an output file.
+.TP
+3
+Error related to PDF permissions.
+.TP
+99
+Other error.
+.SH AUTHOR
+The pdftoppm software and documentation are copyright 1996-2004 Glyph
+& Cog, LLC.
+.SH "SEE ALSO"
+.BR pdftops (1),
+.BR pdftotext (1),
+.BR pdfinfo (1),
+.BR pdffonts (1),
+.BR pdfimages (1),

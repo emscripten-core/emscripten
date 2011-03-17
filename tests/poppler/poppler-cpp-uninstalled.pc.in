@@ -1,0 +1,7 @@
+Name: poppler-cpp
+Description: cpp backend for Poppler PDF rendering library - uninstalled
+Version: @VERSION@
+Requires: poppler = @VERSION@
+
+Libs: ${pc_top_builddir}/${pcfiledir}/cpp/libpoppler-cpp.la
+Cflags: -I${pc_top_builddir}/${pcfiledir}/cpp

@@ -1,0 +1,7 @@
+Name: poppler-qt4
+Description: Qt4 bindings for poppler - uninstalled
+Version: @VERSION@
+Requires: poppler = @VERSION@ 
+
+Libs: ${pc_top_builddir}/${pcfiledir}/qt4/src/libpoppler-qt4.la
+Cflags: -I${pc_top_builddir}/${pcfiledir}/qt4/src

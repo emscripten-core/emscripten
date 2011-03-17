@@ -1,0 +1,328 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>poppler</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Poppler Reference Manual">
+<link rel="up" href="ch01.html" title="Poppler">
+<link rel="prev" href="ch01.html" title="Poppler">
+<link rel="next" href="PopplerDocument.html" title="PopplerDocument">
+<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="2">
+<tr valign="middle">
+<td><a accesskey="p" href="ch01.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
+<td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
+<th width="100%" align="center">Poppler Reference Manual</th>
+<td><a accesskey="n" href="PopplerDocument.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
+</tr>
+<tr><td colspan="5" class="shortcuts">
+<a href="#poppler-poppler.synopsis" class="shortcut">Top</a>
+                   | 
+                  <a href="#poppler-poppler.description" class="shortcut">Description</a>
+</td></tr>
+</table>
+<div class="refentry">
+<a name="poppler-poppler"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="poppler-poppler.top_of_page"></a>poppler</span></h2>
+<p>poppler</p>
+</td>
+<td valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsynopsisdiv">
+<a name="poppler-poppler.synopsis"></a><h2>Synopsis</h2>
+<pre class="synopsis">
+#include &lt;poppler.h&gt;
+
+#define             <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR">POPPLER_ERROR</a>
+enum                <a class="link" href="poppler-poppler.html#PopplerError" title="enum PopplerError">PopplerError</a>;
+enum                <a class="link" href="poppler-poppler.html#PopplerOrientation" title="enum PopplerOrientation">PopplerOrientation</a>;
+enum                <a class="link" href="poppler-poppler.html#PopplerBackend" title="enum PopplerBackend">PopplerBackend</a>;
+                    <a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor">PopplerColor</a>;
+enum                <a class="link" href="poppler-poppler.html#PopplerPrintFlags" title="enum PopplerPrintFlags">PopplerPrintFlags</a>;
+<a class="link" href="poppler-poppler.html#PopplerBackend" title="enum PopplerBackend"><span class="returnvalue">PopplerBackend</span></a>      <a class="link" href="poppler-poppler.html#poppler-get-backend" title="poppler_get_backend ()">poppler_get_backend</a>                 (<em class="parameter"><code><span class="type">void</span></code></em>);
+const <span class="returnvalue">char</span> *        <a class="link" href="poppler-poppler.html#poppler-get-version" title="poppler_get_version ()">poppler_get_version</a>                 (<em class="parameter"><code><span class="type">void</span></code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="poppler-poppler.html#poppler-date-parse" title="poppler_date_parse ()">poppler_date_parse</a>                  (<em class="parameter"><code>const <span class="type">gchar</span> *date</code></em>,
+                                                         <em class="parameter"><code><span class="type">time_t</span> *timet</code></em>);
+<a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="returnvalue">PopplerColor</span></a> *      <a class="link" href="poppler-poppler.html#poppler-color-new" title="poppler_color_new ()">poppler_color_new</a>                   (<em class="parameter"><code><span class="type">void</span></code></em>);
+<a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="returnvalue">PopplerColor</span></a> *      <a class="link" href="poppler-poppler.html#poppler-color-copy" title="poppler_color_copy ()">poppler_color_copy</a>                  (<em class="parameter"><code><a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a> *color</code></em>);
+<span class="returnvalue">void</span>                <a class="link" href="poppler-poppler.html#poppler-color-free" title="poppler_color_free ()">poppler_color_free</a>                  (<em class="parameter"><code><a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a> *color</code></em>);
+</pre>
+</div>
+<div class="refsect1">
+<a name="poppler-poppler.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="poppler-poppler.details"></a><h2>Details</h2>
+<div class="refsect2">
+<a name="POPPLER-ERROR:CAPS"></a><h3>POPPLER_ERROR</h3>
+<pre class="programlisting">#define POPPLER_ERROR poppler_error_quark ()
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerError"></a><h3>enum PopplerError</h3>
+<pre class="programlisting">typedef enum
+{
+  POPPLER_ERROR_INVALID,
+  POPPLER_ERROR_ENCRYPTED,
+  POPPLER_ERROR_OPEN_FILE,
+  POPPLER_ERROR_BAD_CATALOG,
+  POPPLER_ERROR_DAMAGED
+} PopplerError;
+</pre>
+<p>
+Error codes returned by <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><a name="POPPLER-ERROR-INVALID:CAPS"></a><span class="term"><code class="literal">POPPLER_ERROR_INVALID</code></span></p></td>
+<td>Generic error when a document opration fails
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-ERROR-ENCRYPTED:CAPS"></a><span class="term"><code class="literal">POPPLER_ERROR_ENCRYPTED</code></span></p></td>
+<td>Document is encrypted
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-ERROR-OPEN-FILE:CAPS"></a><span class="term"><code class="literal">POPPLER_ERROR_OPEN_FILE</code></span></p></td>
+<td>File could not be opened for writing when saving document
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-ERROR-BAD-CATALOG:CAPS"></a><span class="term"><code class="literal">POPPLER_ERROR_BAD_CATALOG</code></span></p></td>
+<td>Failed to read the document catalog
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-ERROR-DAMAGED:CAPS"></a><span class="term"><code class="literal">POPPLER_ERROR_DAMAGED</code></span></p></td>
+<td>Document is damaged
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerOrientation"></a><h3>enum PopplerOrientation</h3>
+<pre class="programlisting">typedef enum
+{
+  POPPLER_ORIENTATION_PORTRAIT,
+  POPPLER_ORIENTATION_LANDSCAPE,
+  POPPLER_ORIENTATION_UPSIDEDOWN,
+  POPPLER_ORIENTATION_SEASCAPE
+} PopplerOrientation;
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerBackend"></a><h3>enum PopplerBackend</h3>
+<pre class="programlisting">typedef enum
+{
+  POPPLER_BACKEND_UNKNOWN,
+  POPPLER_BACKEND_SPLASH,
+  POPPLER_BACKEND_CAIRO
+} PopplerBackend;
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerColor"></a><h3>PopplerColor</h3>
+<pre class="programlisting">typedef struct {
+  guint16 red;
+  guint16 green;
+  guint16 blue;
+} PopplerColor;
+</pre>
+<p>
+A <a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a> describes a RGB color. Color components
+are values between 0 and 65535
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><span class="type">guint16</span> <em class="structfield"><code><a name="PopplerColor.red"></a>red</code></em>;</span></p></td>
+<td>the red componment of color</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="type">guint16</span> <em class="structfield"><code><a name="PopplerColor.green"></a>green</code></em>;</span></p></td>
+<td>the green component of color</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="type">guint16</span> <em class="structfield"><code><a name="PopplerColor.blue"></a>blue</code></em>;</span></p></td>
+<td>the blue component of color</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerPrintFlags"></a><h3>enum PopplerPrintFlags</h3>
+<pre class="programlisting">typedef enum /*&lt; flags &gt;*/
+{
+  POPPLER_PRINT_DOCUMENT          = 0,
+  POPPLER_PRINT_MARKUP_ANNOTS     = 1 &lt;&lt; 0,
+  POPPLER_PRINT_STAMP_ANNOTS_ONLY = 1 &lt;&lt; 1,
+  POPPLER_PRINT_ALL               = POPPLER_PRINT_MARKUP_ANNOTS
+} PopplerPrintFlags;
+</pre>
+<p>
+Printing flags
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><a name="POPPLER-PRINT-DOCUMENT:CAPS"></a><span class="term"><code class="literal">POPPLER_PRINT_DOCUMENT</code></span></p></td>
+<td>print main document contents
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PRINT-MARKUP-ANNOTS:CAPS"></a><span class="term"><code class="literal">POPPLER_PRINT_MARKUP_ANNOTS</code></span></p></td>
+<td>print document and markup annotations
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PRINT-STAMP-ANNOTS-ONLY:CAPS"></a><span class="term"><code class="literal">POPPLER_PRINT_STAMP_ANNOTS_ONLY</code></span></p></td>
+<td>print doucment and only stamp annotations
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PRINT-ALL:CAPS"></a><span class="term"><code class="literal">POPPLER_PRINT_ALL</code></span></p></td>
+<td>print main document contents and all markup annotations
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.16</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-get-backend"></a><h3>poppler_get_backend ()</h3>
+<pre class="programlisting"><a class="link" href="poppler-poppler.html#PopplerBackend" title="enum PopplerBackend"><span class="returnvalue">PopplerBackend</span></a>      poppler_get_backend                 (<em class="parameter"><code><span class="type">void</span></code></em>);</pre>
+<p>
+Returns the backend compiled into the poppler library.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>The backend used by poppler</td>
+</tr></tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-get-version"></a><h3>poppler_get_version ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_get_version                 (<em class="parameter"><code><span class="type">void</span></code></em>);</pre>
+<p>
+Returns the version of poppler in use.  This result is not to be freed.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the version of poppler.</td>
+</tr></tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-date-parse"></a><h3>poppler_date_parse ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_date_parse                  (<em class="parameter"><code>const <span class="type">gchar</span> *date</code></em>,
+                                                         <em class="parameter"><code><span class="type">time_t</span> *timet</code></em>);</pre>
+<p>
+Parses a PDF format date string and converts it to a <span class="type">time_t</span>. Returns <span class="type">FALSE</span>
+if the parsing fails or the input string is not a valid PDF format date string
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>date</code></em> :</span></p></td>
+<td>string to parse</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>timet</code></em> :</span></p></td>
+<td>an uninitialized <span class="type">time_t</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<span class="type">TRUE</span>, if <em class="parameter"><code>timet</code></em> was set</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.12</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-color-new"></a><h3>poppler_color_new ()</h3>
+<pre class="programlisting"><a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="returnvalue">PopplerColor</span></a> *      poppler_color_new                   (<em class="parameter"><code><span class="type">void</span></code></em>);</pre>
+<p>
+Creates a new <a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a>, use <a class="link" href="poppler-poppler.html#poppler-color-free" title="poppler_color_free ()"><code class="function">poppler_color_free()</code></a> to free it</td>
+</tr></tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-color-copy"></a><h3>poppler_color_copy ()</h3>
+<pre class="programlisting"><a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="returnvalue">PopplerColor</span></a> *      poppler_color_copy                  (<em class="parameter"><code><a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a> *color</code></em>);</pre>
+<p>
+Creates a copy of <em class="parameter"><code>color</code></em>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>color</code></em> :</span></p></td>
+<td>a <a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a> to copy</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new allocated copy of <em class="parameter"><code>color</code></em>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-color-free"></a><h3>poppler_color_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>                poppler_color_free                  (<em class="parameter"><code><a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a> *color</code></em>);</pre>
+<p>
+Frees the given <a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><em class="parameter"><code>color</code></em> :</span></p></td>
+<td>a <a class="link" href="poppler-poppler.html#PopplerColor" title="PopplerColor"><span class="type">PopplerColor</span></a>
+</td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>
+          Generated by GTK-Doc V1.17</div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+#include <poppler.h>
+
+poppler_document_get_type
+poppler_page_get_type
+poppler_attachment_get_type
+poppler_form_field_get_type
+poppler_annot_get_type
+poppler_layer_get_type
+poppler_media_get_type
+poppler_movie_get_type

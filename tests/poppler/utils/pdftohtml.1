@@ -1,0 +1,94 @@
+.TH PDFTOHTML 1
+.\" NAME should be all caps, SECTION should be 1-8, maybe w/ subsection
+.\" other parms are allowed: see man(7), man(1)
+.SH NAME
+pdftohtml \- program to convert pdf files into html, xml and png images
+.SH SYNOPSIS
+.B pdftohtml
+.I "[options] <PDF-file> [<html-file> <xml-file>]"
+.SH "DESCRIPTION"
+This manual page documents briefly the
+.BR pdftohtml 
+command.
+This manual page was written for the Debian GNU/Linux distribution
+because the original program does not have a manual page.
+.PP
+.B pdftohtml
+is a program that converts pdf documents into html. It generates its output in 
+the current working directory.
+.SH OPTIONS
+A summary of options are included below.
+.TP
+.B \-h, \-help
+Show summary of options.
+.TP
+.B \-f <int>
+first page to print
+.TP
+.B \-l <int>
+last page to print
+.TP
+.B \-q
+dont print any messages or errors
+.TP
+.B \-v
+print copyright and version info
+.TP
+.B \-p
+exchange .pdf links with .html
+.TP
+.B \-c
+generate complex output
+.TP
+.B \-s
+generate single html that includes all pages
+.TP
+.B \-i
+ignore images
+.TP
+.B \-noframes
+generate no frames. Not supported in complex output mode.
+.TP
+.B \-stdout
+use standard output
+.TP 
+.B \-zoom <fp>
+zoom the pdf document (default 1.5)
+.TP
+.B \-xml
+output for XML post-processing
+.TP
+.B \-enc <string>
+output text encoding name
+.TP
+.B \-opw <string>
+owner password (for encrypted files)
+.TP
+.B \-upw <string>
+user password (for encrypted files)
+.TP
+.B \-hidden
+force hidden text extraction
+.TP
+.B \-dev 
+output device name for Ghostscript (png16m, jpeg etc).
+Unless this option is specified, Splash will be used
+.TP
+.B \-fmt
+image file format for Splash output (png or jpg).
+If complex is selected, but neither -fmt or -dev are specified,
+-fmt png will be assumed
+.TP
+.B \-nomerge
+do not merge paragraphs
+.TP
+.B \-nodrm
+override document DRM settings
+
+.SH AUTHOR
+
+Pdftohtml was developed by Gueorgui Ovtcharov and Rainer Dorsch. It is
+based and benefits a lot from Derek Noonburg's xpdf package.
+
+This manual page was written by Søren Boll Overgaard <boll@debian.org>,
+for the Debian GNU/Linux system (but may be used by others).

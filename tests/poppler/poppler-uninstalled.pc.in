@@ -1,0 +1,6 @@
+Name: poppler
+Description: PDF rendering library - uninstalled
+Version: @VERSION@
+
+Libs: ${pc_top_builddir}/${pcfiledir}/poppler/libpoppler.la
+Cflags: -I${pc_top_builddir}/${pcfiledir}/poppler

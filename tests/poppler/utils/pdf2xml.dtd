@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!ELEMENT pdf2xml (page+)>
+<!ELEMENT page (fontspec*, text*)>
+<!ATTLIST page
+	number CDATA #REQUIRED
+	position CDATA #REQUIRED
+	top CDATA #REQUIRED
+	left CDATA #REQUIRED
+	height CDATA #REQUIRED
+	width CDATA #REQUIRED
+>
+<!ELEMENT fontspec EMPTY>
+<!ATTLIST fontspec
+	id CDATA #REQUIRED
+	size CDATA #REQUIRED
+	family CDATA #REQUIRED
+	color CDATA #REQUIRED
+>
+<!ELEMENT text (#PCDATA | b | i)*>
+<!ATTLIST text
+	top CDATA #REQUIRED
+	left CDATA #REQUIRED
+	width CDATA #REQUIRED
+	height CDATA #REQUIRED
+	font CDATA #REQUIRED
+>
+<!ELEMENT b (#PCDATA)>
+<!ELEMENT i (#PCDATA)>

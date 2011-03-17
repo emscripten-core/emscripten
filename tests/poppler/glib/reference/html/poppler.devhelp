@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE book PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "">
+<book xmlns="http://www.devhelp.net/book" title="Poppler Reference Manual" link="index.html" author="" name="poppler">
+  <chapters>
+    <sub name="Poppler" link="ch01.html">
+      <sub name="poppler" link="poppler-poppler.html"/>
+      <sub name="PopplerDocument" link="PopplerDocument.html"/>
+      <sub name="PopplerPage" link="PopplerPage.html"/>
+      <sub name="PopplerAction" link="poppler-PopplerAction.html"/>
+      <sub name="PopplerAttachment" link="PopplerAttachment.html"/>
+      <sub name="PoppplerFormField" link="PopplerFormField.html"/>
+      <sub name="PopplerAnnot" link="PopplerAnnot.html"/>
+      <sub name="PopplerLayer" link="PopplerLayer.html"/>
+      <sub name="PopplerMedia" link="PopplerMedia.html"/>
+      <sub name="PopplerMovie" link="PopplerMovie.html"/>
+      <sub name="Version and Features Information" link="poppler-Version-and-Features-Information.html"/>
+    </sub>
+    <sub name="Index of all symbols" link="api-index-full.html"/>
+    <sub name="Index of deprecated symbols" link="api-index-deprecated.html"/>
+    <sub name="Index of new symbols in 0.12" link="api-index-0-12.html"/>
+    <sub name="Index of new symbols in 0.14" link="api-index-0-14.html"/>
+    <sub name="Index of new symbols in 0.16" link="api-index-0-16.html"/>
+    <sub name="Annotation Glossary" link="annotation-glossary.html"/>
+  </chapters>
+  <functions>
+    <function name="POPPLER_ERROR" link="poppler-poppler.html#POPPLER-ERROR:CAPS"/>
+    <function name="enum PopplerError" link="poppler-poppler.html#PopplerError"/>
+    <function name="enum PopplerOrientation" link="poppler-poppler.html#PopplerOrientation"/>
+    <function name="enum PopplerBackend" link="poppler-poppler.html#PopplerBackend"/>
+    <function name="PopplerColor" link="poppler-poppler.html#PopplerColor"/>
+    <function name="enum PopplerPrintFlags" link="poppler-poppler.html#PopplerPrintFlags"/>
+    <function name="poppler_get_backend ()" link="poppler-poppler.html#poppler-get-backend"/>
+    <function name="poppler_get_version ()" link="poppler-poppler.html#poppler-get-version"/>
+    <function name="poppler_date_parse ()" link="poppler-poppler.html#poppler-date-parse"/>
+    <function name="poppler_color_new ()" link="poppler-poppler.html#poppler-color-new"/>
+    <function name="poppler_color_copy ()" link="poppler-poppler.html#poppler-color-copy"/>
+    <function name="poppler_color_free ()" link="poppler-poppler.html#poppler-color-free"/>
+    <function name="PopplerDocument" link="PopplerDocument.html#PopplerDocument-struct"/>
+    <function name="PopplerIndexIter" link="PopplerDocument.html#PopplerIndexIter"/>
+    <function name="PopplerFontsIter" link="PopplerDocument.html#PopplerFontsIter"/>
+    <function name="PopplerLayersIter" link="PopplerDocument.html#PopplerLayersIter"/>
+    <function name="enum PopplerPageLayout" link="PopplerDocument.html#PopplerPageLayout"/>
+    <function name="enum PopplerPageMode" link="PopplerDocument.html#PopplerPageMode"/>
+    <function name="PopplerFontInfo" link="PopplerDocument.html#PopplerFontInfo"/>
+    <function name="enum PopplerFontType" link="PopplerDocument.html#PopplerFontType"/>
+    <function name="PopplerPSFile" link="PopplerDocument.html#PopplerPSFile"/>
+    <function name="enum PopplerViewerPreferences" link="PopplerDocument.html#PopplerViewerPreferences"/>
+    <function name="enum PopplerPermissions" link="PopplerDocument.html#PopplerPermissions"/>
+    <function name="poppler_document_new_from_file ()" link="PopplerDocument.html#poppler-document-new-from-file"/>
+    <function name="poppler_document_new_from_data ()" link="PopplerDocument.html#poppler-document-new-from-data"/>
+    <function name="poppler_document_save ()" link="PopplerDocument.html#poppler-document-save"/>
+    <function name="poppler_document_save_a_copy ()" link="PopplerDocument.html#poppler-document-save-a-copy"/>
+    <function name="poppler_document_get_id ()" link="PopplerDocument.html#poppler-document-get-id"/>
+    <function name="poppler_document_get_pdf_version_string ()" link="PopplerDocument.html#poppler-document-get-pdf-version-string"/>
+    <function name="poppler_document_get_pdf_version ()" link="PopplerDocument.html#poppler-document-get-pdf-version"/>
+    <function name="poppler_document_get_title ()" link="PopplerDocument.html#poppler-document-get-title"/>
+    <function name="poppler_document_get_author ()" link="PopplerDocument.html#poppler-document-get-author"/>
+    <function name="poppler_document_get_subject ()" link="PopplerDocument.html#poppler-document-get-subject"/>
+    <function name="poppler_document_get_keywords ()" link="PopplerDocument.html#poppler-document-get-keywords"/>
+    <function name="poppler_document_get_creator ()" link="PopplerDocument.html#poppler-document-get-creator"/>
+    <function name="poppler_document_get_producer ()" link="PopplerDocument.html#poppler-document-get-producer"/>
+    <function name="poppler_document_get_creation_date ()" link="PopplerDocument.html#poppler-document-get-creation-date"/>
+    <function name="poppler_document_get_modification_date ()" link="PopplerDocument.html#poppler-document-get-modification-date"/>
+    <function name="poppler_document_get_page_layout ()" link="PopplerDocument.html#poppler-document-get-page-layout"/>
+    <function name="poppler_document_get_page_mode ()" link="PopplerDocument.html#poppler-document-get-page-mode"/>
+    <function name="poppler_document_get_permissions ()" link="PopplerDocument.html#poppler-document-get-permissions"/>
+    <function name="poppler_document_get_metadata ()" link="PopplerDocument.html#poppler-document-get-metadata"/>
+    <function name="poppler_document_is_linearized ()" link="PopplerDocument.html#poppler-document-is-linearized"/>
+    <function name="poppler_document_get_n_pages ()" link="PopplerDocument.html#poppler-document-get-n-pages"/>
+    <function name="poppler_document_get_page ()" link="PopplerDocument.html#poppler-document-get-page"/>
+    <function name="poppler_document_get_page_by_label ()" link="PopplerDocument.html#poppler-document-get-page-by-label"/>
+    <function name="poppler_document_find_dest ()" link="PopplerDocument.html#poppler-document-find-dest"/>
+    <function name="poppler_document_has_attachments ()" link="PopplerDocument.html#poppler-document-has-attachments"/>
+    <function name="poppler_document_get_attachments ()" link="PopplerDocument.html#poppler-document-get-attachments"/>
+    <function name="poppler_document_get_form_field ()" link="PopplerDocument.html#poppler-document-get-form-field"/>
+    <function name="poppler_index_iter_new ()" link="PopplerDocument.html#poppler-index-iter-new"/>
+    <function name="poppler_index_iter_copy ()" link="PopplerDocument.html#poppler-index-iter-copy"/>
+    <function name="poppler_index_iter_free ()" link="PopplerDocument.html#poppler-index-iter-free"/>
+    <function name="poppler_index_iter_get_child ()" link="PopplerDocument.html#poppler-index-iter-get-child"/>
+    <function name="poppler_index_iter_is_open ()" link="PopplerDocument.html#poppler-index-iter-is-open"/>
+    <function name="poppler_index_iter_get_action ()" link="PopplerDocument.html#poppler-index-iter-get-action"/>
+    <function name="poppler_index_iter_next ()" link="PopplerDocument.html#poppler-index-iter-next"/>
+    <function name="poppler_font_info_new ()" link="PopplerDocument.html#poppler-font-info-new"/>
+    <function name="poppler_font_info_scan ()" link="PopplerDocument.html#poppler-font-info-scan"/>
+    <function name="poppler_font_info_free ()" link="PopplerDocument.html#poppler-font-info-free"/>
+    <function name="poppler_fonts_iter_copy ()" link="PopplerDocument.html#poppler-fonts-iter-copy"/>
+    <function name="poppler_fonts_iter_free ()" link="PopplerDocument.html#poppler-fonts-iter-free"/>
+    <function name="poppler_fonts_iter_get_name ()" link="PopplerDocument.html#poppler-fonts-iter-get-name"/>
+    <function name="poppler_fonts_iter_get_full_name ()" link="PopplerDocument.html#poppler-fonts-iter-get-full-name"/>
+    <function name="poppler_fonts_iter_get_font_type ()" link="PopplerDocument.html#poppler-fonts-iter-get-font-type"/>
+    <function name="poppler_fonts_iter_get_file_name ()" link="PopplerDocument.html#poppler-fonts-iter-get-file-name"/>
+    <function name="poppler_fonts_iter_is_embedded ()" link="PopplerDocument.html#poppler-fonts-iter-is-embedded"/>
+    <function name="poppler_fonts_iter_is_subset ()" link="PopplerDocument.html#poppler-fonts-iter-is-subset"/>
+    <function name="poppler_fonts_iter_next ()" link="PopplerDocument.html#poppler-fonts-iter-next"/>
+    <function name="poppler_layers_iter_new ()" link="PopplerDocument.html#poppler-layers-iter-new"/>
+    <function name="poppler_layers_iter_copy ()" link="PopplerDocument.html#poppler-layers-iter-copy"/>
+    <function name="poppler_layers_iter_free ()" link="PopplerDocument.html#poppler-layers-iter-free"/>
+    <function name="poppler_layers_iter_get_child ()" link="PopplerDocument.html#poppler-layers-iter-get-child"/>
+    <function name="poppler_layers_iter_get_layer ()" link="PopplerDocument.html#poppler-layers-iter-get-layer"/>
+    <function name="poppler_layers_iter_get_title ()" link="PopplerDocument.html#poppler-layers-iter-get-title"/>
+    <function name="poppler_layers_iter_next ()" link="PopplerDocument.html#poppler-layers-iter-next"/>
+    <function name="poppler_ps_file_new ()" link="PopplerDocument.html#poppler-ps-file-new"/>
+    <function name="poppler_ps_file_free ()" link="PopplerDocument.html#poppler-ps-file-free"/>
+    <function name="poppler_ps_file_set_paper_size ()" link="PopplerDocument.html#poppler-ps-file-set-paper-size"/>
+    <function name="poppler_ps_file_set_duplex ()" link="PopplerDocument.html#poppler-ps-file-set-duplex"/>
+    <function name="The &quot;author&quot; property" link="PopplerDocument.html#PopplerDocument--author"/>
+    <function name="The &quot;creation-date&quot; property" link="PopplerDocument.html#PopplerDocument--creation-date"/>
+    <function name="The &quot;creator&quot; property" link="PopplerDocument.html#PopplerDocument--creator"/>
+    <function name="The &quot;format&quot; property" link="PopplerDocument.html#PopplerDocument--format"/>
+    <function name="The &quot;format-major&quot; property" link="PopplerDocument.html#PopplerDocument--format-major"/>
+    <function name="The &quot;format-minor&quot; property" link="PopplerDocument.html#PopplerDocument--format-minor"/>
+    <function name="The &quot;keywords&quot; property" link="PopplerDocument.html#PopplerDocument--keywords"/>
+    <function name="The &quot;linearized&quot; property" link="PopplerDocument.html#PopplerDocument--linearized"/>
+    <function name="The &quot;metadata&quot; property" link="PopplerDocument.html#PopplerDocument--metadata"/>
+    <function name="The &quot;mod-date&quot; property" link="PopplerDocument.html#PopplerDocument--mod-date"/>
+    <function name="The &quot;page-layout&quot; property" link="PopplerDocument.html#PopplerDocument--page-layout"/>
+    <function name="The &quot;page-mode&quot; property" link="PopplerDocument.html#PopplerDocument--page-mode"/>
+    <function name="The &quot;permissions&quot; property" link="PopplerDocument.html#PopplerDocument--permissions"/>
+    <function name="The &quot;producer&quot; property" link="PopplerDocument.html#PopplerDocument--producer"/>
+    <function name="The &quot;subject&quot; property" link="PopplerDocument.html#PopplerDocument--subject"/>
+    <function name="The &quot;title&quot; property" link="PopplerDocument.html#PopplerDocument--title"/>
+    <function name="The &quot;viewer-preferences&quot; property" link="PopplerDocument.html#PopplerDocument--viewer-preferences"/>
+    <function name="PopplerPage" link="PopplerPage.html#PopplerPage-struct"/>
+    <function name="PopplerRectangle" link="PopplerPage.html#PopplerRectangle"/>
+    <function name="PopplerPageTransition" link="PopplerPage.html#PopplerPageTransition"/>
+    <function name="PopplerLinkMapping" link="PopplerPage.html#PopplerLinkMapping"/>
+    <function name="PopplerImageMapping" link="PopplerPage.html#PopplerImageMapping"/>
+    <function name="PopplerFormFieldMapping" link="PopplerPage.html#PopplerFormFieldMapping"/>
+    <function name="PopplerAnnotMapping" link="PopplerPage.html#PopplerAnnotMapping"/>
+    <function name="enum PopplerPageTransitionType" link="PopplerPage.html#PopplerPageTransitionType"/>
+    <function name="enum PopplerPageTransitionAlignment" link="PopplerPage.html#PopplerPageTransitionAlignment"/>
+    <function name="enum PopplerPageTransitionDirection" link="PopplerPage.html#PopplerPageTransitionDirection"/>
+    <function name="enum PopplerSelectionStyle" link="PopplerPage.html#PopplerSelectionStyle"/>
+    <function name="poppler_page_get_index ()" link="PopplerPage.html#poppler-page-get-index"/>
+    <function name="poppler_page_get_label ()" link="PopplerPage.html#poppler-page-get-label"/>
+    <function name="poppler_page_get_size ()" link="PopplerPage.html#poppler-page-get-size"/>
+    <function name="poppler_page_get_crop_box ()" link="PopplerPage.html#poppler-page-get-crop-box"/>
+    <function name="poppler_page_get_duration ()" link="PopplerPage.html#poppler-page-get-duration"/>
+    <function name="poppler_page_get_transition ()" link="PopplerPage.html#poppler-page-get-transition"/>
+    <function name="poppler_page_get_thumbnail_size ()" link="PopplerPage.html#poppler-page-get-thumbnail-size"/>
+    <function name="poppler_page_get_thumbnail ()" link="PopplerPage.html#poppler-page-get-thumbnail"/>
+    <function name="poppler_page_get_thumbnail_pixbuf ()" link="PopplerPage.html#poppler-page-get-thumbnail-pixbuf"/>
+    <function name="poppler_page_render ()" link="PopplerPage.html#poppler-page-render"/>
+    <function name="poppler_page_render_for_printing ()" link="PopplerPage.html#poppler-page-render-for-printing"/>
+    <function name="poppler_page_render_for_printing_with_options ()" link="PopplerPage.html#poppler-page-render-for-printing-with-options"/>
+    <function name="poppler_page_render_to_pixbuf ()" link="PopplerPage.html#poppler-page-render-to-pixbuf"/>
+    <function name="poppler_page_render_to_pixbuf_for_printing ()" link="PopplerPage.html#poppler-page-render-to-pixbuf-for-printing"/>
+    <function name="poppler_page_render_to_ps ()" link="PopplerPage.html#poppler-page-render-to-ps"/>
+    <function name="poppler_page_render_selection ()" link="PopplerPage.html#poppler-page-render-selection"/>
+    <function name="poppler_page_render_selection_to_pixbuf ()" link="PopplerPage.html#poppler-page-render-selection-to-pixbuf"/>
+    <function name="poppler_page_get_selected_region ()" link="PopplerPage.html#poppler-page-get-selected-region"/>
+    <function name="poppler_page_get_selection_region ()" link="PopplerPage.html#poppler-page-get-selection-region"/>
+    <function name="poppler_page_selection_region_free ()" link="PopplerPage.html#poppler-page-selection-region-free"/>
+    <function name="poppler_page_get_selected_text ()" link="PopplerPage.html#poppler-page-get-selected-text"/>
+    <function name="poppler_page_find_text ()" link="PopplerPage.html#poppler-page-find-text"/>
+    <function name="poppler_page_get_text ()" link="PopplerPage.html#poppler-page-get-text"/>
+    <function name="poppler_page_get_text_layout ()" link="PopplerPage.html#poppler-page-get-text-layout"/>
+    <function name="poppler_page_get_link_mapping ()" link="PopplerPage.html#poppler-page-get-link-mapping"/>
+    <function name="poppler_page_free_link_mapping ()" link="PopplerPage.html#poppler-page-free-link-mapping"/>
+    <function name="poppler_page_get_image_mapping ()" link="PopplerPage.html#poppler-page-get-image-mapping"/>
+    <function name="poppler_page_get_image ()" link="PopplerPage.html#poppler-page-get-image"/>
+    <function name="poppler_page_free_image_mapping ()" link="PopplerPage.html#poppler-page-free-image-mapping"/>
+    <function name="poppler_page_get_form_field_mapping ()" link="PopplerPage.html#poppler-page-get-form-field-mapping"/>
+    <function name="poppler_page_free_form_field_mapping ()" link="PopplerPage.html#poppler-page-free-form-field-mapping"/>
+    <function name="poppler_page_get_annot_mapping ()" link="PopplerPage.html#poppler-page-get-annot-mapping"/>
+    <function name="poppler_page_free_annot_mapping ()" link="PopplerPage.html#poppler-page-free-annot-mapping"/>
+    <function name="poppler_page_add_annot ()" link="PopplerPage.html#poppler-page-add-annot"/>
+    <function name="poppler_rectangle_new ()" link="PopplerPage.html#poppler-rectangle-new"/>
+    <function name="poppler_rectangle_copy ()" link="PopplerPage.html#poppler-rectangle-copy"/>
+    <function name="poppler_rectangle_free ()" link="PopplerPage.html#poppler-rectangle-free"/>
+    <function name="poppler_page_transition_new ()" link="PopplerPage.html#poppler-page-transition-new"/>
+    <function name="poppler_page_transition_copy ()" link="PopplerPage.html#poppler-page-transition-copy"/>
+    <function name="poppler_page_transition_free ()" link="PopplerPage.html#poppler-page-transition-free"/>
+    <function name="poppler_link_mapping_new ()" link="PopplerPage.html#poppler-link-mapping-new"/>
+    <function name="poppler_link_mapping_copy ()" link="PopplerPage.html#poppler-link-mapping-copy"/>
+    <function name="poppler_link_mapping_free ()" link="PopplerPage.html#poppler-link-mapping-free"/>
+    <function name="poppler_image_mapping_new ()" link="PopplerPage.html#poppler-image-mapping-new"/>
+    <function name="poppler_image_mapping_copy ()" link="PopplerPage.html#poppler-image-mapping-copy"/>
+    <function name="poppler_image_mapping_free ()" link="PopplerPage.html#poppler-image-mapping-free"/>
+    <function name="poppler_form_field_mapping_new ()" link="PopplerPage.html#poppler-form-field-mapping-new"/>
+    <function name="poppler_form_field_mapping_copy ()" link="PopplerPage.html#poppler-form-field-mapping-copy"/>
+    <function name="poppler_form_field_mapping_free ()" link="PopplerPage.html#poppler-form-field-mapping-free"/>
+    <function name="poppler_annot_mapping_new ()" link="PopplerPage.html#poppler-annot-mapping-new"/>
+    <function name="poppler_annot_mapping_copy ()" link="PopplerPage.html#poppler-annot-mapping-copy"/>
+    <function name="poppler_annot_mapping_free ()" link="PopplerPage.html#poppler-annot-mapping-free"/>
+    <function name="The &quot;label&quot; property" link="PopplerPage.html#PopplerPage--label"/>
+    <function name="union PopplerAction" link="poppler-PopplerAction.html#PopplerAction"/>
+    <function name="PopplerDest" link="poppler-PopplerAction.html#PopplerDest"/>
+    <function name="struct PopplerActionAny" link="poppler-PopplerAction.html#PopplerActionAny"/>
+    <function name="struct PopplerActionGotoDest" link="poppler-PopplerAction.html#PopplerActionGotoDest"/>
+    <function name="struct PopplerActionGotoRemote" link="poppler-PopplerAction.html#PopplerActionGotoRemote"/>
+    <function name="struct PopplerActionLaunch" link="poppler-PopplerAction.html#PopplerActionLaunch"/>
+    <function name="struct PopplerActionUri" link="poppler-PopplerAction.html#PopplerActionUri"/>
+    <function name="struct PopplerActionNamed" link="poppler-PopplerAction.html#PopplerActionNamed"/>
+    <function name="struct PopplerActionMovie" link="poppler-PopplerAction.html#PopplerActionMovie"/>
+    <function name="struct PopplerActionRendition" link="poppler-PopplerAction.html#PopplerActionRendition"/>
+    <function name="struct PopplerActionOCGState" link="poppler-PopplerAction.html#PopplerActionOCGState"/>
+    <function name="enum PopplerActionType" link="poppler-PopplerAction.html#PopplerActionType"/>
+    <function name="enum PopplerDestType" link="poppler-PopplerAction.html#PopplerDestType"/>
+    <function name="enum PopplerActionMovieOperation" link="poppler-PopplerAction.html#PopplerActionMovieOperation"/>
+    <function name="PopplerActionLayer" link="poppler-PopplerAction.html#PopplerActionLayer"/>
+    <function name="enum PopplerActionLayerAction" link="poppler-PopplerAction.html#PopplerActionLayerAction"/>
+    <function name="poppler_action_copy ()" link="poppler-PopplerAction.html#poppler-action-copy"/>
+    <function name="poppler_action_free ()" link="poppler-PopplerAction.html#poppler-action-free"/>
+    <function name="poppler_dest_copy ()" link="poppler-PopplerAction.html#poppler-dest-copy"/>
+    <function name="poppler_dest_free ()" link="poppler-PopplerAction.html#poppler-dest-free"/>
+    <function name="PopplerAttachment" link="PopplerAttachment.html#PopplerAttachment-struct"/>
+    <function name="PopplerAttachmentSaveFunc ()" link="PopplerAttachment.html#PopplerAttachmentSaveFunc"/>
+    <function name="poppler_attachment_save ()" link="PopplerAttachment.html#poppler-attachment-save"/>
+    <function name="poppler_attachment_save_to_callback ()" link="PopplerAttachment.html#poppler-attachment-save-to-callback"/>
+    <function name="PopplerFormField" link="PopplerFormField.html#PopplerFormField-struct"/>
+    <function name="enum PopplerFormFieldType" link="PopplerFormField.html#PopplerFormFieldType"/>
+    <function name="enum PopplerFormButtonType" link="PopplerFormField.html#PopplerFormButtonType"/>
+    <function name="enum PopplerFormChoiceType" link="PopplerFormField.html#PopplerFormChoiceType"/>
+    <function name="enum PopplerFormTextType" link="PopplerFormField.html#PopplerFormTextType"/>
+    <function name="poppler_form_field_get_field_type ()" link="PopplerFormField.html#poppler-form-field-get-field-type"/>
+    <function name="poppler_form_field_get_id ()" link="PopplerFormField.html#poppler-form-field-get-id"/>
+    <function name="poppler_form_field_is_read_only ()" link="PopplerFormField.html#poppler-form-field-is-read-only"/>
+    <function name="poppler_form_field_get_font_size ()" link="PopplerFormField.html#poppler-form-field-get-font-size"/>
+    <function name="poppler_form_field_get_partial_name ()" link="PopplerFormField.html#poppler-form-field-get-partial-name"/>
+    <function name="poppler_form_field_get_mapping_name ()" link="PopplerFormField.html#poppler-form-field-get-mapping-name"/>
+    <function name="poppler_form_field_get_name ()" link="PopplerFormField.html#poppler-form-field-get-name"/>
+    <function name="poppler_form_field_button_get_button_type ()" link="PopplerFormField.html#poppler-form-field-button-get-button-type"/>
+    <function name="poppler_form_field_button_get_state ()" link="PopplerFormField.html#poppler-form-field-button-get-state"/>
+    <function name="poppler_form_field_button_set_state ()" link="PopplerFormField.html#poppler-form-field-button-set-state"/>
+    <function name="poppler_form_field_choice_get_choice_type ()" link="PopplerFormField.html#poppler-form-field-choice-get-choice-type"/>
+    <function name="poppler_form_field_choice_can_select_multiple ()" link="PopplerFormField.html#poppler-form-field-choice-can-select-multiple"/>
+    <function name="poppler_form_field_choice_commit_on_change ()" link="PopplerFormField.html#poppler-form-field-choice-commit-on-change"/>
+    <function name="poppler_form_field_choice_do_spell_check ()" link="PopplerFormField.html#poppler-form-field-choice-do-spell-check"/>
+    <function name="poppler_form_field_choice_get_item ()" link="PopplerFormField.html#poppler-form-field-choice-get-item"/>
+    <function name="poppler_form_field_choice_get_n_items ()" link="PopplerFormField.html#poppler-form-field-choice-get-n-items"/>
+    <function name="poppler_form_field_choice_get_text ()" link="PopplerFormField.html#poppler-form-field-choice-get-text"/>
+    <function name="poppler_form_field_choice_set_text ()" link="PopplerFormField.html#poppler-form-field-choice-set-text"/>
+    <function name="poppler_form_field_choice_is_editable ()" link="PopplerFormField.html#poppler-form-field-choice-is-editable"/>
+    <function name="poppler_form_field_choice_is_item_selected ()" link="PopplerFormField.html#poppler-form-field-choice-is-item-selected"/>
+    <function name="poppler_form_field_choice_select_item ()" link="PopplerFormField.html#poppler-form-field-choice-select-item"/>
+    <function name="poppler_form_field_choice_toggle_item ()" link="PopplerFormField.html#poppler-form-field-choice-toggle-item"/>
+    <function name="poppler_form_field_choice_unselect_all ()" link="PopplerFormField.html#poppler-form-field-choice-unselect-all"/>
+    <function name="poppler_form_field_text_get_text_type ()" link="PopplerFormField.html#poppler-form-field-text-get-text-type"/>
+    <function name="poppler_form_field_text_get_text ()" link="PopplerFormField.html#poppler-form-field-text-get-text"/>
+    <function name="poppler_form_field_text_set_text ()" link="PopplerFormField.html#poppler-form-field-text-set-text"/>
+    <function name="poppler_form_field_text_get_max_len ()" link="PopplerFormField.html#poppler-form-field-text-get-max-len"/>
+    <function name="poppler_form_field_text_do_scroll ()" link="PopplerFormField.html#poppler-form-field-text-do-scroll"/>
+    <function name="poppler_form_field_text_do_spell_check ()" link="PopplerFormField.html#poppler-form-field-text-do-spell-check"/>
+    <function name="poppler_form_field_text_is_password ()" link="PopplerFormField.html#poppler-form-field-text-is-password"/>
+    <function name="poppler_form_field_text_is_rich_text ()" link="PopplerFormField.html#poppler-form-field-text-is-rich-text"/>
+    <function name="PopplerAnnot" link="PopplerAnnot.html#PopplerAnnot-struct"/>
+    <function name="PopplerAnnotMarkup" link="PopplerAnnot.html#PopplerAnnotMarkup"/>
+    <function name="PopplerAnnotText" link="PopplerAnnot.html#PopplerAnnotText"/>
+    <function name="PopplerAnnotFreeText" link="PopplerAnnot.html#PopplerAnnotFreeText"/>
+    <function name="PopplerAnnotFileAttachment" link="PopplerAnnot.html#PopplerAnnotFileAttachment"/>
+    <function name="PopplerAnnotMovie" link="PopplerAnnot.html#PopplerAnnotMovie"/>
+    <function name="PopplerAnnotScreen" link="PopplerAnnot.html#PopplerAnnotScreen"/>
+    <function name="enum PopplerAnnotType" link="PopplerAnnot.html#PopplerAnnotType"/>
+    <function name="enum PopplerAnnotFlag" link="PopplerAnnot.html#PopplerAnnotFlag"/>
+    <function name="enum PopplerAnnotExternalDataType" link="PopplerAnnot.html#PopplerAnnotExternalDataType"/>
+    <function name="enum PopplerAnnotMarkupReplyType" link="PopplerAnnot.html#PopplerAnnotMarkupReplyType"/>
+    <function name="enum PopplerAnnotTextState" link="PopplerAnnot.html#PopplerAnnotTextState"/>
+    <function name="PopplerAnnotCalloutLine" link="PopplerAnnot.html#PopplerAnnotCalloutLine"/>
+    <function name="enum PopplerAnnotFreeTextQuadding" link="PopplerAnnot.html#PopplerAnnotFreeTextQuadding"/>
+    <function name="poppler_annot_get_annot_type ()" link="PopplerAnnot.html#poppler-annot-get-annot-type"/>
+    <function name="poppler_annot_get_flags ()" link="PopplerAnnot.html#poppler-annot-get-flags"/>
+    <function name="poppler_annot_get_name ()" link="PopplerAnnot.html#poppler-annot-get-name"/>
+    <function name="poppler_annot_get_page_index ()" link="PopplerAnnot.html#poppler-annot-get-page-index"/>
+    <function name="poppler_annot_get_color ()" link="PopplerAnnot.html#poppler-annot-get-color"/>
+    <function name="poppler_annot_set_color ()" link="PopplerAnnot.html#poppler-annot-set-color"/>
+    <function name="poppler_annot_get_contents ()" link="PopplerAnnot.html#poppler-annot-get-contents"/>
+    <function name="poppler_annot_set_contents ()" link="PopplerAnnot.html#poppler-annot-set-contents"/>
+    <function name="poppler_annot_get_modified ()" link="PopplerAnnot.html#poppler-annot-get-modified"/>
+    <function name="poppler_annot_markup_get_label ()" link="PopplerAnnot.html#poppler-annot-markup-get-label"/>
+    <function name="poppler_annot_markup_set_label ()" link="PopplerAnnot.html#poppler-annot-markup-set-label"/>
+    <function name="poppler_annot_markup_get_subject ()" link="PopplerAnnot.html#poppler-annot-markup-get-subject"/>
+    <function name="poppler_annot_markup_get_opacity ()" link="PopplerAnnot.html#poppler-annot-markup-get-opacity"/>
+    <function name="poppler_annot_markup_set_opacity ()" link="PopplerAnnot.html#poppler-annot-markup-set-opacity"/>
+    <function name="poppler_annot_markup_has_popup ()" link="PopplerAnnot.html#poppler-annot-markup-has-popup"/>
+    <function name="poppler_annot_markup_set_popup ()" link="PopplerAnnot.html#poppler-annot-markup-set-popup"/>
+    <function name="poppler_annot_markup_get_popup_is_open ()" link="PopplerAnnot.html#poppler-annot-markup-get-popup-is-open"/>
+    <function name="poppler_annot_markup_set_popup_is_open ()" link="PopplerAnnot.html#poppler-annot-markup-set-popup-is-open"/>
+    <function name="poppler_annot_markup_get_popup_rectangle ()" link="PopplerAnnot.html#poppler-annot-markup-get-popup-rectangle"/>
+    <function name="poppler_annot_markup_get_date ()" link="PopplerAnnot.html#poppler-annot-markup-get-date"/>
+    <function name="poppler_annot_markup_get_external_data ()" link="PopplerAnnot.html#poppler-annot-markup-get-external-data"/>
+    <function name="poppler_annot_markup_get_reply_to ()" link="PopplerAnnot.html#poppler-annot-markup-get-reply-to"/>
+    <function name="poppler_annot_text_new ()" link="PopplerAnnot.html#poppler-annot-text-new"/>
+    <function name="poppler_annot_text_get_icon ()" link="PopplerAnnot.html#poppler-annot-text-get-icon"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_NOTE" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-NOTE:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_COMMENT" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-COMMENT:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_KEY" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-KEY:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_HELP" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-HELP:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_NEW_PARAGRAPH" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-NEW-PARAGRAPH:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_PARAGRAPH" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-PARAGRAPH:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_INSERT" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-INSERT:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_CROSS" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-CROSS:CAPS"/>
+    <function name="POPPLER_ANNOT_TEXT_ICON_CIRCLE" link="PopplerAnnot.html#POPPLER-ANNOT-TEXT-ICON-CIRCLE:CAPS"/>
+    <function name="poppler_annot_text_set_icon ()" link="PopplerAnnot.html#poppler-annot-text-set-icon"/>
+    <function name="poppler_annot_text_get_is_open ()" link="PopplerAnnot.html#poppler-annot-text-get-is-open"/>
+    <function name="poppler_annot_text_set_is_open ()" link="PopplerAnnot.html#poppler-annot-text-set-is-open"/>
+    <function name="poppler_annot_text_get_state ()" link="PopplerAnnot.html#poppler-annot-text-get-state"/>
+    <function name="poppler_annot_free_text_get_callout_line ()" link="PopplerAnnot.html#poppler-annot-free-text-get-callout-line"/>
+    <function name="poppler_annot_free_text_get_quadding ()" link="PopplerAnnot.html#poppler-annot-free-text-get-quadding"/>
+    <function name="poppler_annot_file_attachment_get_attachment ()" link="PopplerAnnot.html#poppler-annot-file-attachment-get-attachment"/>
+    <function name="poppler_annot_file_attachment_get_name ()" link="PopplerAnnot.html#poppler-annot-file-attachment-get-name"/>
+    <function name="poppler_annot_screen_get_action ()" link="PopplerAnnot.html#poppler-annot-screen-get-action"/>
+    <function name="poppler_annot_movie_get_movie ()" link="PopplerAnnot.html#poppler-annot-movie-get-movie"/>
+    <function name="poppler_annot_movie_get_title ()" link="PopplerAnnot.html#poppler-annot-movie-get-title"/>
+    <function name="poppler_annot_callout_line_new ()" link="PopplerAnnot.html#poppler-annot-callout-line-new"/>
+    <function name="poppler_annot_callout_line_copy ()" link="PopplerAnnot.html#poppler-annot-callout-line-copy"/>
+    <function name="poppler_annot_callout_line_free ()" link="PopplerAnnot.html#poppler-annot-callout-line-free"/>
+    <function name="PopplerLayer" link="PopplerLayer.html#PopplerLayer-struct"/>
+    <function name="poppler_layer_get_title ()" link="PopplerLayer.html#poppler-layer-get-title"/>
+    <function name="poppler_layer_is_visible ()" link="PopplerLayer.html#poppler-layer-is-visible"/>
+    <function name="poppler_layer_show ()" link="PopplerLayer.html#poppler-layer-show"/>
+    <function name="poppler_layer_hide ()" link="PopplerLayer.html#poppler-layer-hide"/>
+    <function name="poppler_layer_is_parent ()" link="PopplerLayer.html#poppler-layer-is-parent"/>
+    <function name="poppler_layer_get_radio_button_group_id ()" link="PopplerLayer.html#poppler-layer-get-radio-button-group-id"/>
+    <function name="PopplerMedia" link="PopplerMedia.html#PopplerMedia-struct"/>
+    <function name="PopplerMediaSaveFunc ()" link="PopplerMedia.html#PopplerMediaSaveFunc"/>
+    <function name="poppler_media_get_filename ()" link="PopplerMedia.html#poppler-media-get-filename"/>
+    <function name="poppler_media_get_mime_type ()" link="PopplerMedia.html#poppler-media-get-mime-type"/>
+    <function name="poppler_media_is_embedded ()" link="PopplerMedia.html#poppler-media-is-embedded"/>
+    <function name="poppler_media_save ()" link="PopplerMedia.html#poppler-media-save"/>
+    <function name="poppler_media_save_to_callback ()" link="PopplerMedia.html#poppler-media-save-to-callback"/>
+    <function name="PopplerMovie" link="PopplerMovie.html#PopplerMovie-struct"/>
+    <function name="poppler_movie_get_filename ()" link="PopplerMovie.html#poppler-movie-get-filename"/>
+    <function name="poppler_movie_need_poster ()" link="PopplerMovie.html#poppler-movie-need-poster"/>
+    <function name="poppler_movie_show_controls ()" link="PopplerMovie.html#poppler-movie-show-controls"/>
+    <function name="POPPLER_HAS_CAIRO" link="poppler-Version-and-Features-Information.html#POPPLER-HAS-CAIRO:CAPS"/>
+    <function name="POPPLER_WITH_GDK" link="poppler-Version-and-Features-Information.html#POPPLER-WITH-GDK:CAPS"/>
+    <function name="POPPLER_MAJOR_VERSION" link="poppler-Version-and-Features-Information.html#POPPLER-MAJOR-VERSION:CAPS"/>
+    <function name="POPPLER_MINOR_VERSION" link="poppler-Version-and-Features-Information.html#POPPLER-MINOR-VERSION:CAPS"/>
+    <function name="POPPLER_MICRO_VERSION" link="poppler-Version-and-Features-Information.html#POPPLER-MICRO-VERSION:CAPS"/>
+    <function name="POPPLER_CHECK_VERSION()" link="poppler-Version-and-Features-Information.html#POPPLER-CHECK-VERSION:CAPS"/>
+  </functions>
+</book>

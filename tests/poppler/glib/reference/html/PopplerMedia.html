@@ -1,0 +1,285 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>PopplerMedia</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Poppler Reference Manual">
+<link rel="up" href="ch01.html" title="Poppler">
+<link rel="prev" href="PopplerLayer.html" title="PopplerLayer">
+<link rel="next" href="PopplerMovie.html" title="PopplerMovie">
+<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="2">
+<tr valign="middle">
+<td><a accesskey="p" href="PopplerLayer.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
+<td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
+<th width="100%" align="center">Poppler Reference Manual</th>
+<td><a accesskey="n" href="PopplerMovie.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
+</tr>
+<tr><td colspan="5" class="shortcuts">
+<a href="#PopplerMedia.synopsis" class="shortcut">Top</a>
+                   | 
+                  <a href="#PopplerMedia.description" class="shortcut">Description</a>
+                   | 
+                  <a href="#PopplerMedia.object-hierarchy" class="shortcut">Object Hierarchy</a>
+</td></tr>
+</table>
+<div class="refentry">
+<a name="PopplerMedia"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="PopplerMedia.top_of_page"></a>PopplerMedia</span></h2>
+<p>PopplerMedia — Media</p>
+</td>
+<td valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsynopsisdiv">
+<a name="PopplerMedia.synopsis"></a><h2>Synopsis</h2>
+<pre class="synopsis">
+#include &lt;poppler.h&gt;
+
+                    <a class="link" href="PopplerMedia.html#PopplerMedia-struct" title="PopplerMedia">PopplerMedia</a>;
+<span class="returnvalue">gboolean</span>            (<a class="link" href="PopplerMedia.html#PopplerMediaSaveFunc" title="PopplerMediaSaveFunc ()">*PopplerMediaSaveFunc</a>)             (<em class="parameter"><code>const <span class="type">gchar</span> *buf</code></em>,
+                                                         <em class="parameter"><code><span class="type">gsize</span> count</code></em>,
+                                                         <em class="parameter"><code><span class="type">gpointer</span> data</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+const <span class="returnvalue">gchar</span> *       <a class="link" href="PopplerMedia.html#poppler-media-get-filename" title="poppler_media_get_filename ()">poppler_media_get_filename</a>          (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>);
+const <span class="returnvalue">gchar</span> *       <a class="link" href="PopplerMedia.html#poppler-media-get-mime-type" title="poppler_media_get_mime_type ()">poppler_media_get_mime_type</a>         (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerMedia.html#poppler-media-is-embedded" title="poppler_media_is_embedded ()">poppler_media_is_embedded</a>           (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerMedia.html#poppler-media-save" title="poppler_media_save ()">poppler_media_save</a>                  (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *filename</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerMedia.html#poppler-media-save-to-callback" title="poppler_media_save_to_callback ()">poppler_media_save_to_callback</a>      (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>,
+                                                         <em class="parameter"><code><a class="link" href="PopplerMedia.html#PopplerMediaSaveFunc" title="PopplerMediaSaveFunc ()"><span class="type">PopplerMediaSaveFunc</span></a> save_func</code></em>,
+                                                         <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+</pre>
+</div>
+<div class="refsect1">
+<a name="PopplerMedia.object-hierarchy"></a><h2>Object Hierarchy</h2>
+<pre class="synopsis">
+  GObject
+   +----PopplerMedia
+</pre>
+</div>
+<div class="refsect1">
+<a name="PopplerMedia.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="PopplerMedia.details"></a><h2>Details</h2>
+<div class="refsect2">
+<a name="PopplerMedia-struct"></a><h3>PopplerMedia</h3>
+<pre class="programlisting">typedef struct _PopplerMedia PopplerMedia;</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PopplerMediaSaveFunc"></a><h3>PopplerMediaSaveFunc ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            (*PopplerMediaSaveFunc)             (<em class="parameter"><code>const <span class="type">gchar</span> *buf</code></em>,
+                                                         <em class="parameter"><code><span class="type">gsize</span> count</code></em>,
+                                                         <em class="parameter"><code><span class="type">gpointer</span> data</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>
+Specifies the type of the function passed to
+<a class="link" href="PopplerMedia.html#poppler-media-save-to-callback" title="poppler_media_save_to_callback ()"><code class="function">poppler_media_save_to_callback()</code></a>.  It is called once for each block of
+bytes that is "written" by <a class="link" href="PopplerMedia.html#poppler-media-save-to-callback" title="poppler_media_save_to_callback ()"><code class="function">poppler_media_save_to_callback()</code></a>.  If
+successful it should return <code class="literal">TRUE</code>.  If an error occurs it should set
+<em class="parameter"><code>error</code></em> and return <code class="literal">FALSE</code>, in which case <a class="link" href="PopplerMedia.html#poppler-media-save-to-callback" title="poppler_media_save_to_callback ()"><code class="function">poppler_media_save_to_callback()</code></a>
+will fail with the same error.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>buf</code></em> :</span></p></td>
+<td>buffer containing bytes to be written.</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>count</code></em> :</span></p></td>
+<td>number of bytes in <em class="parameter"><code>buf</code></em>.</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>data</code></em> :</span></p></td>
+<td>user data passed to <a class="link" href="PopplerMedia.html#poppler-media-save-to-callback" title="poppler_media_save_to_callback ()"><code class="function">poppler_media_save_to_callback()</code></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>GError to set on error, or NULL</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code> if successful, <code class="literal">FALSE</code> (with <em class="parameter"><code>error</code></em> set) if failed.</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.14</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-media-get-filename"></a><h3>poppler_media_get_filename ()</h3>
+<pre class="programlisting">const <span class="returnvalue">gchar</span> *       poppler_media_get_filename          (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>);</pre>
+<p>
+Returns the media clip filename, in case of non-embedded media. filename might be
+a local relative or absolute path or a URI
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>poppler_media</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a filename, return value is owned by <a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> and should not be freed</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.14</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-media-get-mime-type"></a><h3>poppler_media_get_mime_type ()</h3>
+<pre class="programlisting">const <span class="returnvalue">gchar</span> *       poppler_media_get_mime_type         (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>);</pre>
+<p>
+Returns the media clip mime-type
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>poppler_media</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the mime-type, return value is owned by <a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> and should not be freed</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.14</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-media-is-embedded"></a><h3>poppler_media_is_embedded ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_media_is_embedded           (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>);</pre>
+<p>
+Whether the media clip is embedded in the PDF. If the result is <code class="literal">TRUE</code>, the embedded stream
+can be saved with <a class="link" href="PopplerMedia.html#poppler-media-save" title="poppler_media_save ()"><code class="function">poppler_media_save()</code></a> or <a class="link" href="PopplerMedia.html#poppler-media-save-to-callback" title="poppler_media_save_to_callback ()"><code class="function">poppler_media_save_to_callback()</code></a> function.
+If the result is <code class="literal">FALSE</code>, the media clip filename can be retrieved with
+<code class="function">poppler_media_get_file_name()</code> function.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>poppler_media</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code> if media clip is embedded, <code class="literal">FALSE</code> otherwise</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.14</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-media-save"></a><h3>poppler_media_save ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_media_save                  (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *filename</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>
+Saves embedded stream of <em class="parameter"><code>poppler_media</code></em> to a file indicated by <em class="parameter"><code>filename</code></em>.
+If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code> will be returned.
+Possible errors include those in the <span class="type">G_FILE_ERROR</span> domain
+and whatever the save function generates.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>poppler_media</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>filename</code></em> :</span></p></td>
+<td>name of file to save</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>return location for error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if the file successfully saved</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.14</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-media-save-to-callback"></a><h3>poppler_media_save_to_callback ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_media_save_to_callback      (<em class="parameter"><code><a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a> *poppler_media</code></em>,
+                                                         <em class="parameter"><code><a class="link" href="PopplerMedia.html#PopplerMediaSaveFunc" title="PopplerMediaSaveFunc ()"><span class="type">PopplerMediaSaveFunc</span></a> save_func</code></em>,
+                                                         <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>,
+                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>
+Saves embedded stream of <em class="parameter"><code>poppler_media</code></em> by feeding the produced data to <em class="parameter"><code>save_func</code></em>. Can be used
+when you want to store the media clip stream to something other than a file, such as
+an in-memory buffer or a socket. If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code> will be
+returned. Possible errors include those in the <span class="type">G_FILE_ERROR</span> domain and
+whatever the save function generates.
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>poppler_media</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerMedia.html" title="PopplerMedia"><span class="type">PopplerMedia</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>save_func</code></em> :</span></p></td>
+<td>a function that is called to save each block of data that the save routine generates. <span class="annotation">[<acronym title="The callback is valid only during the call to the method."><span class="acronym">scope call</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>user_data</code></em> :</span></p></td>
+<td>user data to pass to the save function.</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>return location for error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<code class="literal">TRUE</code>, if the save successfully completed</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.14</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>
+          Generated by GTK-Doc V1.17</div>
+</body>
+</html>

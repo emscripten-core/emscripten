@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" 
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
+<!ENTITY version SYSTEM "version.xml">
+]>
+<book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
+  <bookinfo>
+    <title>Poppler Reference Manual</title>
+    <releaseinfo>
+      for Poppler &version;
+    </releaseinfo>
+  </bookinfo>
+
+  <chapter>
+    <title>Poppler</title>
+    <xi:include href="xml/poppler.xml"/>
+    <xi:include href="xml/poppler-document.xml"/>
+    <xi:include href="xml/poppler-page.xml"/>
+    <xi:include href="xml/poppler-action.xml"/>
+    <xi:include href="xml/poppler-attachment.xml"/>
+    <xi:include href="xml/poppler-form-field.xml"/>
+    <xi:include href="xml/poppler-annot.xml"/>
+    <xi:include href="xml/poppler-layer.xml"/>
+    <xi:include href="xml/poppler-media.xml"/>
+    <xi:include href="xml/poppler-movie.xml"/>
+    <xi:include href="xml/poppler-features.xml"/>
+  </chapter>
+
+  <index id="api-index-full">
+    <title>Index of all symbols</title>
+    <xi:include href="xml/api-index-full.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-deprecated" role="deprecated">
+    <title>Index of deprecated symbols</title>
+    <xi:include href="xml/api-index-deprecated.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-0-12">
+    <title>Index of new symbols in 0.12</title>
+    <xi:include href="xml/api-index-0.12.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-0-14">
+    <title>Index of new symbols in 0.14</title>
+    <xi:include href="xml/api-index-0.14.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-0-16">
+    <title>Index of new symbols in 0.16</title>
+    <xi:include href="xml/api-index-0.16.xml"><xi:fallback /></xi:include>
+  </index>
+
+  <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
+</book>

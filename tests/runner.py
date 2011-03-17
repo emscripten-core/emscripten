@@ -1651,7 +1651,8 @@ if 'benchmark' not in sys.argv:
                    ['font.ttf', 'test!', '150', '120', '25'],
                    libraries=[self.get_freetype()],
                    includes=[path_from_root('tests', 'freetype', 'include')],
-                   post_build=post)
+                   post_build=post,
+                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 bug 1257
 
     def test_zlib(self):
       global CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES
@@ -1673,7 +1674,10 @@ if 'benchmark' not in sys.argv:
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
-    def zzztest_poppler(self):
+    def test_poppler(self):
+      if COMPILER != LLVM_GCC: return # compilation failures on clang, TODO
+      if RELOOP or LLVM_OPTS: return # TODO
+
       global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # isdigit does -ord('0') and then <= 9, assuming unsigned
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
@@ -1699,7 +1703,7 @@ if 'benchmark' not in sys.argv:
         )
         src.close()
 
-      fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')])
+      #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
 
       freetype = self.get_freetype()
 
@@ -1715,12 +1719,14 @@ if 'benchmark' not in sys.argv:
       # Combine libraries
 
       combined = os.path.join(self.get_building_dir(), 'combined.bc')
-      self.do_link([fontconfig, freetype, poppler], combined)
+      self.do_link([freetype, poppler], combined)
 
       self.do_ll_test(combined,
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                       args='-scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post)#, build_ll_hook=self.do_autodebug)
+                      post_build=post,
+                      js_engines=[SPIDERMONKEY_ENGINE]) # V8 bug 1257
+                      #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
       global SAFE_HEAP; SAFE_HEAP = 0 # Very slow

@@ -1,0 +1,211 @@
+.\" Copyright 1996-2004 Glyph & Cog, LLC
+.TH pdftops 1 "31 July 2009"
+.SH NAME
+pdftops \- Portable Document Format (PDF) to PostScript converter
+(version 3.00)
+.SH SYNOPSIS
+.B pdftops
+[options]
+.RI <PDF-file>
+.RI [<PS-file>]
+.SH DESCRIPTION
+.B Pdftops
+converts Portable Document Format (PDF) files to PostScript so they
+can be printed.
+.PP
+Pdftops reads the PDF file,
+.IR PDF-file ,
+and writes a PostScript file,
+.IR PS-file .
+If
+.I PS-file
+is not specified, pdftops converts
+.I file.pdf
+to
+.I file.ps
+(or
+.I file.eps
+with the \-eps option).  If
+.I PS-file
+is \'-', the PostScript is sent to stdout.
+.SH OPTIONS
+.TP
+.BI \-f " number"
+Specifies the first page to print.
+.TP
+.BI \-l " number"
+Specifies the last page to print.
+.TP
+.B \-level1
+Generate Level 1 PostScript.  The resulting PostScript files will be
+significantly larger (if they contain images), but will print on Level
+1 printers.  This also converts all images to black and white.  No
+more than one of the PostScript level options (\-level1, \-level1sep,
+\-level2, \-level2sep, \-level3, \-level3Sep) may be given.
+.TP
+.B \-level1sep
+Generate Level 1 separable PostScript.  All colors are converted to
+CMYK.  Images are written with separate stream data for the four
+components.
+.TP
+.B \-level2
+Generate Level 2 PostScript.  Level 2 supports color images and image
+compression.  This is the default setting.
+.TP
+.B \-level2sep
+Generate Level 2 separable PostScript.  All colors are converted to
+CMYK.  The PostScript separation convention operators are used to
+handle custom (spot) colors.
+.TP
+.B \-level3
+Generate Level 3 PostScript.  This enables all Level 2 features plus
+CID font embedding.
+.TP
+.B \-level3Sep
+Generate Level 3 separable PostScript.  The separation handling is the
+same as for \-level2Sep.
+.TP
+.B \-origpagesizes
+Generate a PostScript file with variable page sizes and orientations,
+taking for each page the size of the original page in the PDF file. 
+The PostScript file contains "<</PageSize [WIDTH HEIGHT]>> setpagedevice"
+lines in each page header, so that the paper input tray gets correctly
+changed on the printer. This option should be used when pdftops is used
+as a print filter. Any specification of the page size via \-paper,
+\-paperw, or \-paperh will get overridden as long as each page of the
+PDF file has a defined paper size.  No more than one of the mode options
+(\-origpagesizes, \-eps, \-form) may be given.
+.TP
+.B \-eps
+Generate an Encapsulated PostScript (EPS) file.  An EPS file contains
+a single image, so if you use this option with a multi-page PDF file,
+you must use \-f and \-l to specify a single page.  No more than one of
+the mode options (\-origpagesizes, \-eps, \-form) may be given.
+.TP
+.B \-form
+Generate a PostScript form which can be imported by software that
+understands forms.  A form contains a single page, so if you use this
+option with a multi-page PDF file, you must use \-f and \-l to specify a
+single page.  The \-level1 option cannot be used with \-form.  No more
+than one of the mode options (\-origpagesizes, \-eps, \-form) may be
+given.
+.TP
+.B \-opi
+Generate OPI comments for all images and forms which have OPI
+information.  (This option is only available if pdftops was compiled
+with OPI support.)
+.TP
+.B \-noembt1
+By default, any Type 1 fonts which are embedded in the PDF file are
+copied into the PostScript file.  This option causes pdftops to
+substitute base fonts instead.  Embedded fonts make PostScript files
+larger, but may be necessary for readable output.
+.TP
+.B \-noembtt
+By default, any TrueType fonts which are embedded in the PDF file are
+copied into the PostScript file.  This option causes pdftops to
+substitute base fonts instead.  Embedded fonts make PostScript files
+larger, but may be necessary for readable output.  Also, some
+PostScript interpreters do not have TrueType rasterizers.
+.TP
+.B \-noembcidps
+By default, any CID PostScript fonts which are embedded in the PDF
+file are copied into the PostScript file.  This option disables that
+embedding.  No attempt is made to substitute for non-embedded CID
+PostScript fonts.
+.TP
+.B \-noembcidtt
+By default, any CID TrueType fonts which are embedded in the PDF file
+are copied into the PostScript file.  This option disables that
+embedding.  No attempt is made to substitute for non-embedded CID
+TrueType fonts.
+.TP
+.B \-passfonts
+By default, references to non-embedded 8-bit fonts in the PDF file are
+substituted with the closest "Helvetica", "Times-Roman", or "Courier" font.
+This option passes references to non-embedded fonts
+through to the PostScript file.
+.TP
+.B \-preload
+preload images and forms
+.TP
+.BI \-paper " size"
+Set the paper size to one of "letter", "legal", "A4", or "A3".  This
+can also be set to "match", which will set the paper size to match the
+size specified in the PDF file. \-origpagesizes overrides this setting
+if the PDF file has defined page sizes.
+.TP
+.BI \-paperw " size"
+Set the paper width, in points. \-origpagesizes overrides this setting
+if the PDF file has defined page sizes.
+.TP
+.BI \-paperh " size"
+Set the paper height, in points. \-origpagesizes overrides this setting
+if the PDF file has defined page sizes.
+.TP
+.B \-nocrop
+By default, output is cropped to the CropBox specified in the PDF
+file.  This option disables cropping.
+.TP
+.B \-expand
+Expand PDF pages smaller than the paper to fill the paper.  By
+default, these pages are not scaled.
+.TP
+.B \-noshrink
+Don't scale PDF pages which are larger than the paper.  By default,
+pages larger than the paper are shrunk to fit.
+.TP
+.B \-nocenter
+By default, PDF pages smaller than the paper (after any scaling) are
+centered on the paper.  This option causes them to be aligned to the
+lower-left corner of the paper instead.
+.TP
+.B \-duplex
+Set the Duplex pagedevice entry in the PostScript file.  This tells
+duplex-capable printers to enable duplexing.
+.TP
+.BI \-opw " password"
+Specify the owner password for the PDF file.  Providing this will
+bypass all security restrictions.
+.TP
+.BI \-upw " password"
+Specify the user password for the PDF file.
+.TP
+.B \-q
+Don't print any messages or errors.
+.TP
+.B \-v
+Print copyright and version information.
+.TP
+.B \-h
+Print usage information.
+.RB ( \-help
+and
+.B \-\-help
+are equivalent.)
+.SH EXIT CODES
+The Xpdf tools use the following exit codes:
+.TP
+0
+No error.
+.TP
+1
+Error opening a PDF file.
+.TP
+2
+Error opening an output file.
+.TP
+3
+Error related to PDF permissions.
+.TP
+99
+Other error.
+.SH AUTHOR
+The pdftops software and documentation are copyright 1996-2004 Glyph &
+Cog, LLC.
+.SH "SEE ALSO"
+.BR pdftotext (1),
+.BR pdfinfo (1),
+.BR pdffonts (1),
+.BR pdftoppm (1),
+.BR pdfimages (1),

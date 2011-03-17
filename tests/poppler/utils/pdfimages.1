@@ -1,0 +1,85 @@
+.\" Copyright 1998-2004 Glyph & Cog, LLC
+.TH pdfimages 1 "22 January 2004"
+.SH NAME
+pdfimages \- Portable Document Format (PDF) image extractor
+(version 3.00)
+.SH SYNOPSIS
+.B pdfimages
+[options]
+.I PDF-file image-root
+.SH DESCRIPTION
+.B Pdfimages
+saves images from a Portable Document Format (PDF) file as Portable
+Pixmap (PPM), Portable Bitmap (PBM), or JPEG files.
+.PP
+Pdfimages reads the PDF file
+.IR PDF-file ,
+scans one or more pages, and writes one PPM, PBM, or JPEG file for each image,
+.IR image-root - nnn . xxx ,
+where
+.I nnn
+is the image number and
+.I xxx
+is the image type (.ppm, .pbm, .jpg).
+.SH OPTIONS
+.TP
+.BI \-f " number"
+Specifies the first page to scan.
+.TP
+.BI \-l " number"
+Specifies the last page to scan.
+.TP
+.B \-j
+Normally, all images are written as PBM (for monochrome images) or PPM
+(for non-monochrome images) files.  With this option, images in DCT
+format are saved as JPEG files.  All non-DCT images are saved in
+PBM/PPM format as usual.
+.TP
+.BI \-opw " password"
+Specify the owner password for the PDF file.  Providing this will
+bypass all security restrictions.
+.TP
+.BI \-upw " password"
+Specify the user password for the PDF file.
+.TP
+.B \-p
+Include page numbers in output file names.
+.TP
+.B \-q
+Don't print any messages or errors.
+.TP
+.B \-v
+Print copyright and version information.
+.TP
+.B \-h
+Print usage information.
+.RB ( \-help
+and
+.B \-\-help
+are equivalent.)
+.SH EXIT CODES
+The Xpdf tools use the following exit codes:
+.TP
+0
+No error.
+.TP
+1
+Error opening a PDF file.
+.TP
+2
+Error opening an output file.
+.TP
+3
+Error related to PDF permissions.
+.TP
+99
+Other error.
+.SH AUTHOR
+The pdfimages software and documentation are copyright 1998-2004 Glyph
+& Cog, LLC.
+.SH "SEE ALSO"
+.BR pdftops (1),
+.BR pdftotext (1),
+.BR pdfinfo (1),
+.BR pdffonts (1),
+.BR pdftoppm (1),
