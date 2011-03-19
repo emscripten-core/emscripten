@@ -5,7 +5,7 @@ var LLVM_STYLE = null;
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
-                'weak_odr', 'externally_visible', 'dllimport', 'dllexport'),
+                'weak_odr', 'externally_visible', 'dllimport', 'dllexport', 'unnamed_addr'),
   PARAM_ATTR: set('noalias', 'signext', 'zeroext', 'inreg', 'byval', 'sret', 'nocapture', 'nest'),
   CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10')
 };
@@ -18,8 +18,8 @@ var Debugging = {
     var metadataToParentMetadata = {};
     var metadataToFilename = {};
 
-    var form1 = new RegExp(/^  .*, !dbg !(\d+)$/);
-    var form2 = new RegExp(/^  .*, !dbg !(\d+) +; \[#uses=\d+\]$/);
+    var form1 = new RegExp(/^  .*, !dbg !(\d+) +$/);
+    var form2 = new RegExp(/^  .*, !dbg !(\d+) +; .*$/);
     var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), i32 \d+, metadata !(\d+), .*}$/);
     var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, i32 \d+, i32 \d+, metadata !(\d+), i32 \d+} ; \[ DW_TAG_lexical_block \]$/);
     var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, i32 \d+, metadata !(\d+), .*$/);
@@ -30,7 +30,11 @@ var Debugging = {
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
 
+    var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
+
     var ret = lines.map(function(line, i) {
+      line = line.replace(debugComment, '');
+
       if (form6.exec(line)) return ';';
 
       var calc = form1.exec(line) || form2.exec(line);
@@ -51,7 +55,7 @@ var Debugging = {
       }
       calc = form3b.exec(line);
       if (calc) {
-        metadataToFilename[calc[1]] = calc[3] + '/' + calc[2];
+        metadataToFilename[calc[1]] = /* LLVM 2.8<= : calc[3] + '/' + */ calc[2];
         return ';';
       }
       calc = form3c.exec(line) || form4.exec(line) || form5.exec(line);

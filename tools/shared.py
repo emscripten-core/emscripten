@@ -9,6 +9,7 @@ exec(open(CONFIG_FILE, 'r').read())
 
 # Tools
 
+CLANG=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))

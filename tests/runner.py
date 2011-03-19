@@ -17,9 +17,9 @@ exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 # Sanity check for config
 
 try:
-  assert COMPILERS != None
+  assert COMPILER_OPTS != None
 except:
-  raise Exception('Cannot find "COMPILERS" definition. Is ~/.emscripten set up properly? You may need to copy the template at ~/tests/settings.py into it.')
+  raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template at ~/tests/settings.py into it.')
 
 # Paths
 
@@ -1675,7 +1675,7 @@ if 'benchmark' not in sys.argv:
                    force_c=True)
 
     def test_poppler(self):
-      if COMPILER != LLVM_GCC: return # compilation failures on clang, TODO
+      if COMPILER != LLVM_GCC: return # llvm-link failure when using clang, LLVM bug 9498
       if RELOOP or LLVM_OPTS: return # TODO
 
       global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
@@ -2101,7 +2101,7 @@ class %s(T):
     global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, GUARD_MEMORY, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN
 
     COMPILER = '%s'
-    QUANTUM_SIZE = %d
+    QUANTUM_SIZE = 4 # See settings.js
     llvm_opts = %d
     embetter = %d
     INVOKE_RUN = 1
@@ -2121,14 +2121,14 @@ class %s(T):
     shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
     self.get_dir() # make sure it exists
 TT = %s
-''' % (fullname, compiler['path'], compiler['quantum_size'], llvm_opts, embetter, fullname))
+''' % (fullname, compiler, llvm_opts, embetter, fullname))
     return TT
 
   for embetter in [0,1]:
     for llvm_opts in [0,1]:
-      for name in COMPILERS.keys():
+      for name, compiler in [('clang', CLANG), ('llvm_gcc', LLVM_GCC)]:
         fullname = '%s_%d_%d' % (name, llvm_opts, embetter)
-        exec('%s = make_test("%s", COMPILERS["%s"],%d,%d)' % (fullname, fullname, name, llvm_opts, embetter))
+        exec('%s = make_test("%s","%s",%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter))
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
 else:
@@ -2257,8 +2257,8 @@ else:
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
-  for cmd in map(lambda compiler: compiler['path'], COMPILERS.values()) + [LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
-    print "Checking for existence of", cmd
-    assert(os.path.exists(cmd))
+  for cmd in [CLANG, LLVM_GCC, LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
+    if not os.path.exists(cmd):
+      print 'WARNING: Cannot find', cmd
   unittest.main()
 

@@ -338,8 +338,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
           addedLibraryItems[ident] = true;
           var snippet = Library[ident];
+          var redirectedIdent = null;
           if (typeof snippet === 'string') {
             if (Library[snippet]) {
+              redirectedIdent = snippet;
               snippet = Library[snippet]; // redirection for aliases
             }
           } else if (typeof snippet === 'object') {
@@ -369,6 +371,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           }
 
           var deps = Library[ident + '__deps'];
+          if (redirectedIdent) {
+            deps = (deps || []).concat(Library[redirectedIdent + '__deps']);
+          }
           return 'var _' + ident + '=' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
         }
         item.JS = addFromLibrary(shortident);

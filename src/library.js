@@ -603,6 +603,7 @@ var Library = {
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
 
+  memmove__deps: ['memcpy'],
   memmove: function(dest, src, num, idunno) {
     // not optimized!
     if (num === 0) return; // will confuse malloc if 0

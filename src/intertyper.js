@@ -693,7 +693,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       return [{
         intertype: 'return',
         type: type,
-        value: item.tokens[2] ? parseLLVMSegment(item.tokens.slice(2)) : null,
+        value: (item.tokens[2] && type !== 'void') ? parseLLVMSegment(item.tokens.slice(2)) : null,
         lineNum: item.lineNum
       }];
     }
