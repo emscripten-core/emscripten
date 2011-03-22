@@ -157,10 +157,6 @@ var START_TIME = Date.now();
 function __globalConstructor__() {
 }
 
-// Maps ints ==> functions. This lets us pass around ints, which are
-// actually pointers to functions, and we convert at call()time
-var FUNCTION_TABLE = [];
-
 var __THREW__ = false; // Used in checking for thrown exceptions.
 
 var __ATEXIT__ = [];

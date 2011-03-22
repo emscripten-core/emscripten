@@ -32,6 +32,8 @@ if (CORRECT_ROUNDINGS === 2) {
   CORRECT_ROUNDINGS_LINES = set(CORRECT_ROUNDINGS_LINES); // for fast checking
 }
 
+EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
+
 // Load compiler code
 
 load('framework.js');

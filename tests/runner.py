@@ -1896,7 +1896,7 @@ if 'benchmark' not in sys.argv:
           print('*ok*');
         '''
         def post(filename):
-          Popen(['python', DEMANGLER, filename, '.'], stdout=open(filename + '.tmp', 'w')).communicate()
+          Popen(['python', DEMANGLER, filename], stdout=open(filename + '.tmp', 'w')).communicate()
           Popen(['python', NAMESPACER, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
           src = open(filename, 'r').read().replace(
             '// {{MODULE_ADDITIONS}',

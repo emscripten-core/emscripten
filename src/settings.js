@@ -68,6 +68,9 @@ CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no
                        // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
                        // we will do slow but correct C rounding operations.
 
+EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
+                                // be accessible outside of the generated code.
+
 SHOW_LABELS = 0; // Show labels in the generated code
 
 // Compiler debugging options

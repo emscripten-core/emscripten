@@ -114,3 +114,23 @@ var Types = {
   needAnalysis: {} // Types noticed during parsing, that need analysis
 };
 
+var Functions = {
+  indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
+
+  // Mark a function as needing indexing, and returns the index
+  getIndex: function(ident) {
+    var key = this.indexedFunctions.indexOf(ident);
+    if (key < 0) {
+      key = this.indexedFunctions.length;
+      this.indexedFunctions[key] = ident;
+      this.indexedFunctions[key+1] = 0; // Need to have keys be even numbers, see |polymorph| test
+    }
+    return key.toString();
+  },
+
+  // Generate code for function indexing
+  generateIndexing: function() {
+    return 'var FUNCTION_TABLE = [' + this.indexedFunctions.toString().replace('"', '') + '];';
+  }
+};
+

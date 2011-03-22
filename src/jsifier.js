@@ -117,7 +117,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   function indexizeFunctions(value) { // TODO: Also check for other functions (externals, library, etc.)
     if (value in FUNCTIONS) {
-      value = value + '.__index__'; // Store integer value
+      value = Functions.getIndex(value); // Store integer value
     }
     return value;
   }
@@ -537,7 +537,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         func.JS += '  return' + (func.returnType !== 'void' ? ' null' : '') + ';\n';
       }
       func.JS += '}\n';
-      func.JS += func.ident + '.__index__ = Runtime.getFunctionIndex(' + func.ident + ', "' + func.ident + '");\n';
+      if (func.ident in EXPORTED_FUNCTIONS) {
+        func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
+      }
+
       return func;
     }
   });
@@ -1170,6 +1173,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var pre = processMacros(preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
       print(pre);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+      print(Functions.generateIndexing());
 
       var postParts = processMacros(preprocess(read('postamble.js'), CONSTANTS)).split('{{GLOBAL_VARS}}');
       print(postParts[0]);

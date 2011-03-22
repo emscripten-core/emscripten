@@ -19,7 +19,7 @@ JS_ENGINE_PARAMS=[]
 
 '''
 
-import os, sys, subprocess
+import os, sys, subprocess, re
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -27,14 +27,15 @@ def path_from_root(*pathelems):
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 data = open(sys.argv[1], 'r').readlines()
-splitter = sys.argv[2]
 
 SEEN = {}
 for line in data:
   if len(line) < 4: continue
   if line[:2] != '  ': continue
-  if line[2] != '_': continue
-  func = line.lstrip().split(splitter)[0]
+  if line[2] != 'f': continue
+  m = re.match('^  function (?P<func>[^(]+)\(.*', line)
+  if not m: continue
+  func = m.groups('func')[0]
   if func in SEEN: continue
   SEEN[func] = True
   cleaned = run_js(JS_ENGINE, path_from_root('third_party', 'gcc_demangler.js'), [func[1:]])
