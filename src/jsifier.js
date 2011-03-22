@@ -788,6 +788,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     if (!correctSigns() && !CHECK_SIGNS) return value;
     if (type in Runtime.INT_TYPES) {
       var bits = parseInt(type.substr(1));
+      if (isNumber(value)) {
+        // Sign/unsign constants at compile time
+        return eval(op + 'Sign(' + value + ', ' + bits + ', 1)').toString();
+      }
       // shortcuts for 32-bit case
       if (bits === 32 && !CHECK_SIGNS) {
         if (op === 're') {
