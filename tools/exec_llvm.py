@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 '''
 Small utility to execute some llvm bitcode.
 
@@ -35,7 +37,9 @@ exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 print '// EXEC_LLVM: ', sys.argv
 
 Popen([LLVM_OPT, sys.argv[1], '-strip-debug', '-o=' + sys.argv[1]+'.clean.bc']).communicate()[0]
-Popen([LLVM_INTERPRETER, sys.argv[1]+'.clean.bc'] + sys.argv[2:]).communicate()[0]
+
+# Execute with empty environment - just like the JS script will have
+Popen([LLVM_INTERPRETER, sys.argv[1]+'.clean.bc'] + sys.argv[2:], env={'HOME': '.'}).communicate()[0]
 
 #Popen([LLVM_COMPILER, '-march=c', sys.argv[1], '-o=' + sys.argv[1]+'.cbe.c']).communicate()[0]
 #Popen(['gcc', sys.argv[1]+'.cbe.c', '-lstdc++']).communicate()[0]

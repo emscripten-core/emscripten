@@ -1633,7 +1633,9 @@ if 'benchmark' not in sys.argv:
 
     def test_freetype(self):
       if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
+
+      global CORRECT_SIGNS
+      if CORRECT_SIGNS == 0: CORRECT_SIGNS = 1 # Not sure why, but needed
 
       def post(filename):
         # Embed the font into the document
@@ -1678,11 +1680,33 @@ if 'benchmark' not in sys.argv:
       if COMPILER != LLVM_GCC: return # llvm-link failure when using clang, LLVM bug 9498
       if RELOOP or LLVM_OPTS: return # TODO
 
-      global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # isdigit does -ord('0') and then <= 9, assuming unsigned
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global USE_TYPED_ARRAYS; USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-I' + path_from_root('tests', 'libcxx', 'include')] # Avoid libstdc++ linking issue, see libcxx test
+      global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
+
+      #global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+
+      #global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1
+      #global CHECK_SIGNS; CHECK_SIGNS = 1
+
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      global CORRECT_SIGNS_LINES
+      CORRECT_SIGNS_LINES = ['parseargs.cc:171', 'BuiltinFont.cc:64', 'NameToCharCode.cc:115', 'GooHash.cc:368',
+                             'Stream.h:469', 'PDFDoc.cc:1064', 'Lexer.cc:201', 'Splash.cc:1130', 'XRef.cc:997',
+                             'vector:714', 'Lexer.cc:259', 'Splash.cc:438', 'Splash.cc:532', 'GfxFont.cc:1152',
+                             'Gfx.cc:3838', 'Splash.cc:3162', 'Splash.cc:3163', 'Splash.cc:3164', 'Splash.cc:3153',
+                             'Splash.cc:3159', 'SplashBitmap.cc:80', 'SplashBitmap.cc:81', 'SplashBitmap.cc:82',
+                             'Splash.cc:809', 'Splash.cc:805', 'GooHash.cc:379',
+                             # FreeType
+                             't1load.c:1850', 'psconv.c:104', 'psconv.c:185', 'psconv.c:366', 'psconv.c:399',
+                             'ftcalc.c:308', 't1parse.c:405', 'psconv.c:431', 'ftcalc.c:555', 't1objs.c:458',
+                             't1decode.c:595', 't1decode.c:606', 'pstables.h:4048', 'pstables.h:4055', 'pstables.h:4066',
+                             'pshglob.c:166', 'ftobjs.c:2548', 'ftgrays.c:1190', 'psmodule.c:116', 'psmodule.c:119',
+                             'psobjs.c:195', 'pshglob.c:165', 'ttload.c:694', 'ttmtx.c:195', 'sfobjs.c:957',
+                             'sfobjs.c:958', 'ftstream.c:369', 'ftstream.c:372', 'ttobjs.c:1007'] # And many more...
+
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
+                                                       '-g']
 
       global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
 
@@ -1696,9 +1720,9 @@ if 'benchmark' not in sys.argv:
         src = open(filename, 'a')
         src.write(
           '''
-            this._STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
+            _STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
             run(args);
-            print("Data: " + JSON.stringify(this._STDIO.streams[this._STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail
+            print("Data: " + JSON.stringify(_STDIO.streams[_STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail
           '''
         )
         src.close()

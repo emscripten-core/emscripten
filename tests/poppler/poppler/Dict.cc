@@ -84,6 +84,7 @@ Dict::Dict(Dict* dictA) {
   entries = (DictEntry *)gmallocn(size, sizeof(DictEntry));
   for (int i=0; i<length; i++) {
     entries[i].key = strdup(dictA->entries[i].key);
+    entries[i].val.zeroUnion(); // XXX Emscripten
     dictA->entries[i].val.copy(&entries[i].val);
   }
 }
@@ -112,6 +113,10 @@ void Dict::add(char *key, Object *val) {
       size *= 2;
     }
     entries = (DictEntry *)greallocn(entries, size, sizeof(DictEntry));
+    // XXX Emscripten: Initialize the entries, to prevent undefined values
+    for (int i=length; i<size; i++) {
+      entries[i].val.zeroUnion();
+    }
   }
   entries[length].key = key;
   entries[length].val = *val;

@@ -1253,10 +1253,18 @@ function reSign(value, bits, ignore) {
                         : Math.pow(2, bits-1);
   if (value >= half) {
 #if CHECK_SIGNS
-  if (!ignore) CorrectionsMonitor.note('ReSign');
+    if (!ignore) CorrectionsMonitor.note('ReSign');
 #endif
     value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
   }
+#if CHECK_SIGNS
+  // If this is a 32-bit value, then it should be corrected at this point. And,
+  // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
+  // would indeed give the exact same result.
+  if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
+    CorrectionsMonitor.note('ReSign');
+  }
+#endif
   return value;
 }
 

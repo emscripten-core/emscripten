@@ -803,7 +803,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           // TODO: figure out something here along the lines of return '(' + Math.pow(2, 32) + '+((' + value + ')|0))';
         }
       }
-      return op + 'Sign(' + value + ', ' + bits + ', ' + correctSpecificSign() + ')'; // If we are correcting a specific sign here, do not check for it
+      return op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign()) + ')'; // If we are correcting a specific sign here, do not check for it
     } else {
       return value;
     }

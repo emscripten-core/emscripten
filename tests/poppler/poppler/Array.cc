@@ -59,6 +59,10 @@ void Array::add(Object *elem) {
       size *= 2;
     }
     elems = (Object *)greallocn(elems, size, sizeof(Object));
+    // XXX Emscripten: Initialize the entries, to prevent undefined values
+    for (int i=length; i<size; i++) {
+      elems[i].zeroUnion();
+    }
   }
   elems[length] = *elem;
   ++length;

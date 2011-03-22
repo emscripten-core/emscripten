@@ -111,7 +111,8 @@ enum ObjType {
 class Object {
 public:
   // clear the anonymous union as best we can -- clear at least a pointer
-  void zeroUnion() { this->name = NULL; }
+  // XXX Emscripten: Also null out ref.gen
+  void zeroUnion() { this->name = NULL; this->ref.gen = 0; }
 
   // Default constructor.
   Object():
