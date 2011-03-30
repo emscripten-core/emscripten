@@ -1738,7 +1738,7 @@ if 'benchmark' not in sys.argv:
                                   os.path.join('splash', '.libs', 'libsplash.a'),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
-                                 configure_args=['--disable-libjpeg', '--disable-libpng'])
+                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4'])
 
       # Combine libraries
 
