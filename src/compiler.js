@@ -1,5 +1,10 @@
 // LLVM => JavaScript compiler, main entry point
 
+try {
+  // On SpiderMonkey, prepare a large amount of GC space
+  gcparam('maxBytes', 1024*1024*1024);
+} catch(e) {}
+
 // Prep - allow this to run in both SpiderMonkey and V8
 if (!this['load']) {
   load = function(f) { eval(snarf(f)) };
