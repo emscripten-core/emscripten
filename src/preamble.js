@@ -276,11 +276,8 @@ function __initializeRuntime__() {
   Module['FHEAP'] = FHEAP;
 
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
-  var totalStack = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!
-  try {
-    totalStack = TOTAL_STACK;
-  } catch(e){}
-  STACK_MAX = STACK_ROOT + totalStack;
+  var TOTAL_STACK = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!
+  STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
   STATICTOP = alignMemoryPage(STACK_MAX);
 }
