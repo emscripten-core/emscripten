@@ -206,6 +206,7 @@ following simple example of a C program, which we want to compile into JavaScrip
 This program calculates the sum of the integers from 1 to 100. When
 compiled by Clang, the generated LLVM
 assembly code includes the following:
+\label{code:examplellvm}
 \begin{verbatim}
 @.str = private constant [14 x i8]
         c"1+...+100=%d\0A\00"
@@ -342,6 +343,11 @@ to take notice of:
       Section~\ref{sssec:realworldcode}.
 \end{itemize}
 
+\subsection{Performance}
+
+In this section we will deal with several topics regarding
+Emscripten's approach to generating high-performance JavaScript code.
+
 \subsection{Load-Store Consistency (LSC)}
 \label{sec:lsc}
 
@@ -365,16 +371,12 @@ compiling has \textbf{Load-Store Consistency} (LSC), which is the requirement th
 loads from and stores to a specific memory address will use the same type. Normal C and C++
 code generally does so: If $x$ is a variable containing a 32-bit floating
 point number, then both loads and stores of $x$ will be of 32-bit floating
-point values, and not 16-bit unsigned integers or anything else. (Note that
-even if we write something like \begin{verbatim}float x = 5\end{verbatim} then the
-compiler will assign a 32-bit float with the value of 5 to $x$, and not
-an integer.)
+point values, and not 16-bit unsigned integers or anything else.
 
 To see why this is important for performance, consider the following
 C code fragment, which does \emph{not} have LSC:
 \begin{verbatim}
   int x = 12345;
-  [...]
   printf("first byte: %d\n", *((char*)&x));
 \end{verbatim}
 Assuming an architecture with more than 8 bits, this code will read
@@ -423,8 +425,7 @@ the far more optimal
 (Note that even this can be optimized even more -- we can store
 \emph{x} in a normal JavaScript variable. For now though we are
 just clarifying why it is useful to assume we are compiling code
-that has LSC -- doing so lets us generate shorter and more natural
-JavaScript.)
+that has LSC.)
 
 In practice the vast majority of C and C++ code does have LSC. Exceptions
 do exist, however, for example:
@@ -448,7 +449,11 @@ do exist, however, for example:
 \end{itemize}
 In practice it may be hard to know if code has LSC or not, and requiring
 a time-consuming code audit is obviously impractical. Emscripten therefore has
-automatic tools to detect violations of LSC, see SAFE\_HEAP in Section~\ref{sssec:realworldcode}.
+a compilation option, SAFE\_HEAP, which generates code that checks that LSC holds, and warns if it
+doesn't. It also warns about other memory-related issues like
+reading from memory before a value was written (somewhat similarly to tools
+like Valgrind). When such problems are detected, possible solutions are to ignore the issue (if it has no actual
+consqeuences), or altering the source code.
 
 Note that it is somewhat wasteful to allocation 4 memory locations for
 a 32-bit integer, and use only one of them. It is possible to change
@@ -459,9 +464,7 @@ called with the normal size each the value would have, and not a single
 memory address each as Emscripten would prefer. We are looking into modifications
 to LLVM itself to remedy that.
 
-\subsection{Performance}
-
-\subsubsection{Running Real-World Code Efficiently}
+\subsubsection{Emulating Code Semantics}
 \label{sssec:realworldcode}
 
 The semantics of LLVM assembly and JavaScript are not identical: The former
@@ -473,16 +476,16 @@ more challenging. For example, if we want to convert
   add i8 %1, %2
 \end{verbatim}
 to JavaScript, then to be completely accurate we must emulate the
-exact same semantics. That means we must handle overflows properly, which would not be the case if we just implement
-this as $\%1 + \%2$ in JavaScript. For example, with inputs of $255,1$, the
+exact same behavior, in particular, we must handle overflows properly, which would not be the case if we just implement
+this as $\%1 + \%2$ in JavaScript. For example, with inputs of $255$ and $1$, the
 correct output is 0, but simple addition in JavaScript will give us 256. We
 can emulate the proper behavior by adding additional code, one way
 (not necessarily the most optimal) would be to check for overflows after
 each addition, and correct them as necessary. This however makes each
 operation take significantly more CPU time that the original code.
 
-Emscripten's approach to this problem is to support both accurate code,
-that is identical in behavior to LLVM assembly, and simple code which is
+Emscripten's approach to this problem is to allow the generation of both accurate code,
+that is identical in behavior to LLVM assembly, and inaccurate code which is
 faster. In practice, most addition operations in LLVM do not overflow,
 and can be translated into $\%1 + \%2$ in JavaScript which is fast. Emscripten
 provides tools that make it straightforward to find which code does require
@@ -500,7 +503,7 @@ In practice, this is done as follows:
 \item Run the compiled code on a representative sample of inputs, and notice which
       lines are warned about by the runtime checks.
 \item Recompile the code, telling Emscripten to add corrections (using CORRECT\_SIGNS, CORRECT\_OVERFLOWS
-      or CORRECT\_ROUNDINGS) only on the specific lines that need it.
+      or CORRECT\_ROUNDINGS) only on the specific lines that actually need it.
 \end{itemize}
 
 This method is not guaranteed to work, as if we do not run on a truly representative
@@ -510,20 +513,9 @@ sure things will work properly (this is the default compilation setting), howeve
 practice the procedure above appears to work quite well, and can result in code that
 runs very significantly faster.
 
-There are additional challenges with real-world code. We already mentioned the
-Load-Store Consistency assumption (LSC) earlier, which is necessary for the
-compiled code to run properly. There is an additional compilation option,
-SAFE\_HEAP, which generates code that checks that LSC holds, and warns if it
-doesn't. It also warns about other memory-related issues like
-reading from memory before a value was written (somewhat similarly to tools
-like Valgrind). When such problems are detected, possible solutions are to ignore the issue (if it has no actual
-consqeuences), or altering the source code. In
-some cases, such nonportable code can be avoided in a simple manner by changing the configuration under
-which the code is built (see the examples in Section X).
+\subsubsection{Code Optimizations}
 
-\subsubsection{Optimizations}
-
-When comparing the example program from page~\ref{code:example},
+When comparing the example program from page~\pageref{code:example},
 the generated code was fairly complicated
 and cumbersome, and unsurprisingly it performs quite poorly. There
 are two main reasons for that: First, that the code is simply
@@ -538,14 +530,15 @@ Emscripten's approach to generating fast-performing code is as
 follows. Emscripten doesn't do any
 optimizations that can be done by other tools:
 LLVM can be used to perform optimizations before Emscripten, and
-the Closure Compiler\cite{closure} can perform optimizations on the generated JavaScript afterwards. Those
+the Closure Compiler~\cite{closure} can perform optimizations on the generated JavaScript afterwards. Those
 tools will perform standard useful optimizations like removing unneeded variables, dead code,
 function inlining, etc.
 That leaves two major optimizations that are left for Emscripten
 to perform:
 \begin{itemize}
 \item \textbf{Variable nativization}: Convert variables
-      that are on the stack into native JavaScript variables. In general,
+      that are on the stack -- which is implemented using addresses in the \emph{HEAP} array
+      as mentioned earlier -- into native JavaScript variables (that is to say, \emph{var x;} and so forth). In general,
       a variable will be nativized unless it is used
       outside that function, e.g., if its address is taken and stored somewhere
       or passed to another function. When optimizing, Emscripten tries to nativize
@@ -566,7 +559,7 @@ function _main() {
   $1 = 0;
   $sum = 0;
   $i = 0;
-  $2$2: while(1) { // $2
+  $2$2: while(1) {
     var $3 = $i;
     var $4 = $3 < 100;
     if (!($4)) { __label__ = 2; break $2$2; }
@@ -607,21 +600,36 @@ to recreate the original high-level structure of the code that
 was compiled into LLVM assembly, despite that structure not being
 explicitly available to Emscripten.
 
+\subsection{Benchmarks}
+
+\begin{tabular}{ l | c | c | c }
+  \textbf{benchmark} & \textbf{JS} & \textbf{gcc} & \textbf{ratio} \\
+  raytrace (5, 64) & 1.553 & 0.033 & 46.45 \\
+  fannkuch (9)     & 0.663 & 0.054 & 12.27 \\
+  fasta (100,000)  & 0.578 & 0.055 & 10.51 \\
+\end{tabular}
+
+\bigskip
+
+LLVM opts, closure
+SM -m
+gcc -O3
+
 \section{Emscripten's Architecture}
 
 In the previous section we saw a general overview of Emscripten's approach
 to compiling LLVM assembly into JavaScript. We will now get into more detail
-into how Emscripten implements that approach and its architecture.
+into how Emscripten itself is implemented.
 
 Emscripten is written in JavaScript. A main reason for that decision
 was to simplify sharing code between the compiler and the runtime, and
-to enable various dynamic compilation techniques. Two simple examples: (1)
-The compiler can create JavaScript objects that represent constants in
-the assembly code, and convert them to a string using JSON.stringify()
-in a convenient manner,
-and (2) The compiler can simplify numerical operations by simply
+to enable various dynamic compilation techniques. Two simple benefits of this approach are that (1)
+the compiler can create JavaScript objects that represent structures from the original
+assembly code, and convert them to a string using JSON.stringify()
+in a trivial manner,
+and (2) the compiler can simplify numerical operations by simply
 eval()ing the code (so ``1+2'' would become ``3'', etc.). In both examples,
-the http://sourceware.org/newlib/development of Emscripten was made simpler by having the exact same environment
+the development of Emscripten was made simpler by having the exact same environment
 during compilation as the executing code will have.
 
 Emscripten's compilation has three main phases:
@@ -646,7 +654,7 @@ direct access to the local filesystem.
 
 Emscripten comes with a partial implementation of a C library,
 mostly written from scratch in JavaScript, which parts compiled from an
-existing C library (newlib\cite{newlib}). Some aspects of the runtime environment, as
+existing C library (newlib~\cite{newlib}). Some aspects of the runtime environment, as
 implemented in that C library, are:
 \begin{itemize}
 \item Files to be read must be `preloaded' in JavaScript. They can
@@ -669,10 +677,11 @@ implemented in that C library, are:
 
 The Relooper is among the most complicated components in Emscripten. It receives
 a `soup of blocks', which is a set of labeled fragments of code, each
-ending with a branch operation (either a simple branch, a conditional branch, or a switch), and the goal is to generate normal
-high-level JavaScript code flow structures such as loops and ifs.
+ending with a branch operation, and the goal is to generate normal
+high-level JavaScript code flow structures such as loops and ifs. As
+we saw before, generating such code structures is essential to generating good-performing code.
 
-For example, the LLVM assembly on page X has the following block
+For example, the LLVM assembly on page~\pageref{code:examplellvm} has the following block
 structure:
 \begin{verbatim}
           /-----------\
@@ -707,11 +716,11 @@ blocks `blocks' in the following.
 
 There are three types of Emscripten blocks:
 \begin{itemize}
-\item \textbf{Simple block}: A block with one internal label and a Next
+\item \textbf{Simple block}: A block with one internal label, and a Next
       block, which the internal label branches to. The block is later
       translated simply into the code for that label, and the Next
       block appears right after it.
-\item \textbf{Loop}: An block that represents a basic loop, comprised of
+\item \textbf{Loop}: A block that represents a basic loop, comprised of
       two internal sub-blocks:
   \begin{itemize}
   \item \textbf{Inner}: A block that will appear inside
@@ -743,49 +752,49 @@ check its value when we enter that block. So, for example, when we
 create a Loop block, its Next block can have multiple entries -- any
 label to which we branch out from the loop. By creating a Multiple
 block after the loop, we can enter the proper label when the loop is
-exited. Having a \emph{\_\_label\_\_} variable does add some overhead,
+exited. (Having a \emph{\_\_label\_\_} variable does add some overhead,
 but it greatly simplifies the problem that the Relooper needs to solve
 and allows us to only need three kinds of blocks as described above.
-(Of course, it is possible to optimize
-away writes and reads to \emph{\_\_label\_\_} in many cases.)
+Of course, it is possible to optimize
+away writes and reads to \emph{\_\_label\_\_} in many or even most cases.)
 
-Emscripten uses the following recursive algorithm for generating
-blocks from the soup of labels. We use the term `entry' here to
+We will use the term `entry' to
 mean a label that can be reached immediately in a block. In other
 words, a block consists of labels $l_1,..,l_n$, and the entries
 are a subset of those labels, specifically the ones that execution
-can directly reach when we reach that block. The algorithm can
-them be written as follows:
+can directly reach when we reach that block. With that
+definition, the Relooper algorithm can
+then be written as follows:
 
 \begin{itemize}
-\item Receive a set of labels and which of them are entry points.
+\item \textbf{Receive a set of labels and which of them are entry points.}
       We wish to create a block comprised of all those labels.
-\item Calculate, for each label, which other labels it \emph{can}
-      reach, i.e., which labels we are able to reach if we start
+\item \textbf{Calculate, for each label, which other labels it \emph{can}
+      reach}, i.e., which labels we are able to reach if we start
       at the current label and follow one of the possible paths
       of execution.
-\item If we have a single entry, and cannot return to it from
-      any other label, then create a Simple block, with the entry
+\item \textbf{If we have a single entry, and cannot return to it (by some other
+      label later on branching to it) then create a Simple block}, with the entry
       as its internal label, and the Next block comprised of all
       the other labels. The entries for the Next block are the entries
       to which the internal label can branch.
-\item If we can return to all of the entries, return a
-      Loop block, whose Inner block is comprised of all labels that
+\item \textbf{If we can return to all of the entries, return a
+      Loop block}, whose Inner block is comprised of all labels that
       can reach one of the entries, and whose Next block is
       comprised of all the others. The entry labels for the current
       block become entry labels for the Inner block (note that
       they must be in the Inner block by definition, as each one can reach
       itself). The Next block's entry labels are all the labels
       in the Next block that can be reached by the Inner block.
-\item If we have more than one entry, try to create a Multiple block: For each entry, find all
+\item \textbf{If we have more than one entry, try to create a Multiple block}: For each entry, find all
       the labels it reaches that cannot be reached by any other
       entry. If at least one entry has such labels, return a
       Multiple block, whose Handled blocks are blocks for those
       labels (and whose entries are those labels), and whose Next block is all the rest.
       Entries for the next block are entries that did not become part of the Handled
       blocks, and also labels that can be reached from the Handled blocks.
-\item If we could not create a Multiple block, then we must be able to return to at least one of the entries (see proof below), so create
-      a Loop block as described above.
+\item \textbf{If we could not create a Multiple block, then create a Loop block as described above}
+      (see proof below of why creating a Loop block is possible, i.e., why the labels contain a loop).
 \end{itemize}
 Note that we first create a Loop only if we must, then try to create a
 Multiple, then create a Loop if we have no other choice. We could have slightly simplified this in
@@ -838,25 +847,25 @@ is empty, then since we built the Multiple block from a set of labels
 with more than one entry, then the Handled blocks are strictly smaller
 than the current one.
 \end{itemize}
-So, whenever we successfully create a block, we simplify the remaining problem
+We have seen that whenever we successfully create a block, we simplify the remaining problem
 as defined above, which means that we must eventually halt successfully (since
 we strictly decrease a nonnegative integer).
 The remaining issue is whether we can reach a situation where we \emph{cannot}
 successfully create a block, which is if we reach the final part of the relooper algorithm, but cannot create a
 Loop block there. For that to occur, we must not be able
 to return to any of the entries (or else we would create a Loop
-block). But since that is so, we can, at minimum, create a Multiple
+block). But if that is so, we can, at minimum, create a Multiple
 block with entries for all the current entries, since the entry
 labels themselves cannot be reached by the others as we have just
 assumed (when we ruled out creating a Loop block here), contradicting the assumption
-that we cannot create a block, and concluding the proof.
+and concluding the proof.
 
-We have not, of course, proven that the shape of the blocks is optimal
+(We have not, of course, proven that the shape of the blocks is optimal
 in any sense. However, even if it is possible to optimize them further, the Relooper
 already gives a very substantial speedup due to the move from the switch-in-a-loop
-construction to more natural JavaScript code flow structures.
+construction to more natural JavaScript code flow structures.)
 
-\section{Example Uses and Benchmarks}
+\section{Example Uses}
 
 Emscripten has been run successfully on several real-world codebases, including
 the following:
