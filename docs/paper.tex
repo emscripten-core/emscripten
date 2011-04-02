@@ -625,10 +625,11 @@ can be found at \url{https://github.com/kripken/emscripten/tree/master/tests}
 embedded inside runner.py in the function test\_primes). The second
 column is of running the compiled code (using all Emscripten and LLVM
 optimizations, as well as the closure compiler) in the SpiderMonkey JavaScript
-engine (specifically, the JaegerMonkey branch, running with \emph{-m -n -a}).
-The third column is the results when compiling the original code with \emph{gcc -O3}.
-The last column is the ratio, that is, how much slower the JavaScript code is
-when compared to gcc.
+engine (specifically, the JaegerMonkey branch, checked out April 2nd, 2011, running with \emph{-m -n -a}).
+The third column is the results when compiling the original code with \emph{gcc -O3},
+using GCC 4.4.4. The last column is the ratio, that is, how much slower the JavaScript code is
+when compared to gcc. All the tests were run on a Lenovo N500 laptop with
+an Intel T6400 Core 2 Duo CPU clocked at 1.2GHz, running on Ubuntu 10.10.
 
 Clearly the results very wildly by the benchmark, from 3.06 to 32.66 times
 slower. It appears that code that does simple numerical operations -- like
@@ -639,8 +640,8 @@ will be much slower. (The main issue with structures is that Emscripten does not
 do so is possible,
 but would take a significant amount of work.)
 
-For code that has a mix of simple numerical operations and memory accesses,
-it tends to run around 10 times slower than the most-optimized C++ code,
+Code that has a mix of simple numerical operations and memory accesses
+tends to run around 10 times slower than the most-optimized C++ code,
 as we can see in the fannkuch and fasta benchmarks. While a factor of 10
 is a significant slowdown, it is still more than fast enough for
 many purposes, and the main point of course is that the code can run
@@ -900,10 +901,11 @@ construction to more natural JavaScript code flow structures.)
 
 \section{Example Uses}
 
-Emscripten has been run successfully on several real-world codebases, including
-the following:
+Emscripten has been run successfully on several real-world codebases. We present
+some examples here to give an idea of the various opportunities made possible
+by Emscripten:
 \begin{itemize}
-\item \textbf{Python}. It is possible to run variants of Python on
+\item \textbf{Python}: It is possible to run variants of Python on
 the web in various ways, including pyjamas, IronPython on SilverLight and
 Jython in Java. However, all of these are slightly nonstandard in the
 the Python code they run, while the latter two also require plugins to be
@@ -911,40 +913,21 @@ installed. With Emscripten, on the other hand, it is possible to compile
 CPython itself -- the standard, reference implementation of Python -- and
 run that on the web, which allows running standard Python code. An online
 demo is available at \url{http://syntensity.com/static/python.html}.
-\item \textbf{Poppler and FreeType}
-\item \textbf{zlib}
-\item \textbf{Bullet}
-\item \textbf{Lua}
+\item \textbf{Poppler and FreeType}: Poppler\footnote{\url{http://poppler.freedesktop.org/}} is an open source PDF
+rendering library. In combination with FreeType\footnote{\url{http://www.freetype.org/}}, an open source font
+engine, it can be used to render PDF files. By compiling it with Emscripten,
+PDF files can be viewed on the web, without the use of plugins or external
+applications. An online demo is available at \url{http://syntensity.com/static/poppler.html}
+\item \textbf{Bullet}: The Bullet Physics library\footnote{\url{http://bulletphysics.org/wordpress/}} is
+an open source physics engine, used in many open source and proprietary applications. An online
+demo is available at \url{http://syntensity.com/static/bullet.html}, showing a physics
+simulation of falling blocks that uses Bullet compiled to JavaScript. Bullet has in the
+past been ported to JavaScript\footnote{\url{http://pl4n3.blogspot.com/2010/07/bulletjs-javascript-physics-engine.html}}, by porting JBullet (a port of Bullet to Java). The main difference in the approaches is that with Emscripten, there is no need for
+time-consuming manual conversion of C++ to Java and then to JavaScript, and consequently,
+the latest Bullet code can be run in JavaScript and not an earlier version (JBullet lags
+several versions behind the latest Bullet release).
+\item \textbf{Lua}: XXX
 \end{itemize}
-
-\subsection{CPython}
-
-Other ways to run Python on web: pyjamas/pyjs, old pypy-js backend, ?? also
-IronPython on Silverlight and Jython in Java. Limitations etc.
-
-CPython is the standard implementation of the Python programming language written
-in C. Compiling it in Emscripten is straightforward, except for needing to
-change some \textbf{\#defines}, without which CPython creates platform-specific assembly code.
-
-Compilation using llvm-gcc generates approximately 27.9MB of LLVM assembly. After
-running Emscripten and the Closure Compiler, the generated JavaScript code is
-approximately 2.76MB in size. For comparison, a native binary version of
-CPython is approxiately 2.28MB in size, so the two differ by only 21\%.
-
-The \textbf{CORRECT\_OVERFLOWS} option in Emscripten is necessary for proper
-operation of the generated code, as Python hash code relies on integer overflows
-to work normally.
-
-The demo can be seen live at \url{http://www.syntensity.com/static/python.html}.
-Potential uses include ... etc.
-
-\subsection{Bullet Physics Engine}
-
-Mention other bullet->js manual port, via Java
-
-\subsection{Lua}
-
-Mention other lua->js compilers
 
 \section{Summary}
 
@@ -956,74 +939,23 @@ things, compile real-world C and C++ code and run that on the web. In
 addition, by compiling the runtimes of languages which are implemented in C and C++,
 we can run them on the web as well, for example Python and Lua.
 
-One of the main tasks for future work in Emscripten is to broaden it's
-standard library. Emscripten currently includes portions of libc and
-other standard C libraries, implemented in JavaScript. Portions of
-existing libc implementations written themselves in C can also be
-compiled into JavaScript using Emscripten, but in general the difficulty
-is in creating a suitable runtime environment on the web. For example,
-there is no filesystem accessible, nor normal system calls and so forth.
-Some of those features can be implemented in JavaScript, in particular
-new HTML features like the File API should help.
+Important future tasks for Emscripten are to broaden its
+standard library and to support additional types of code, such as
+multithreaded code (JavaScript Web Workers do not support shared state,
+so this is not possible directly, but it can be emulated in various ways).
 
-Another important task is to support multithreading. Emscripten
-currently assumes the code being compiled is single-threaded, since
-JavaScript does not have support for multithreading (Web Workers allow
-multiprocessing, but they do not have shared state, so implementing
-threads with them is not trivial). However, it would be possible
-to emulate multithreading in a single thread. One approach could be
-to not generate native JavaScript control flow structures, and instead
-to use a switch-in-a-loop for the entire program. Code can then be
-added in the loop to switch every so often between `threads', while
-maintaining their state and so forth.
+But perhaps the largest future goal of Emscripten is to improve the performance of
+the generated code. As we have seen, speeds of around $1/10$th that of
+GCC are possible, which is already good enough for many purposes, but
+can be improved much more. The code Emscripten generates will become faster
+`for free' as JavaScript engines get
+faster, and also by improvements in the optimizations done by LLVM and the Closure
+Compiler. However there is also a lot of room for additional optimizations in
+Emscripten itself, in particular in how it nativizes variables and structures,
+which can potentially lead to very significant speedups.
 
-A third important task is to improve the speed of generated code. An
-optimal situation would be for code compiled by Emscripten to run at
-or near the speed of native code. In that respect it is worth comparing
-Emscripten to Portable Native Client (PNaCl), a project in development which aims
-to allow an LLVM-like format to be distributed and run securely
-on the web, with speed comparable to native code.
-
-Both Emscripten and PNaCl allow running compiled native code on
-the web, Emscripten by compiling that code into JavaScript, and
-PNaCl by compiling it into an LLVM-like format, which is then
-run in a special PNaCl runtime. The major differences
-are that Emscripten's generated code can run on all web browsers,
-since it is standard JavaScript, while PNaCl's generated code
-requires the PNaCl runtime to be installed; another major
-difference is that JavaScript engines do not yet run code at
-near-native speeds, while PNaCl does. In a broad summary, Emscripten's
-approach allows the code to be run in more places, while PNaCl's
-allows the code to run faster.
-
-However, improvements in JavaScript engines may narrow the speed
-gap. In particular, for purposes of Emscripten we do not need to
-care about \emph{all} JavaScript, but only the kind generated by
-Emscripten. Such code is \textbf{implicitly statically typed}, that is,
-types are not mixed, despite JavaScript in general allowing assigning, e.g., an
-integer to a variable and later a floating point value or even an object to that same variable. Implicitly statically
-typed code can be statically analyzed and converted into
-machine code that has no runtime type checks at all. While such
-static analysis can be time-consuming, there are practical ways for
-achieving similar results quickly, such as tracing and type inference, which
-would help on such code very significantly, and are already in use
-or being worked on in mainstream JavaScript engines (e.g., SpiderMonkey).
-
-The limit of such an approach is to perform static analysis on
-an entire program compiled by Emscripten, generating highly-optimized
-machine code from that. As evidence of the potential in such an
-approach, the PyPy project can compile RPython -- something very close to implicitly
-statically typed Python -- into C, which can then be compiled
-and run at native speed. We may in the future see
-JavaScript engines perform such static compilation, when the code
-they run is implicitly statically typed, which would allow Emscripten's generated
-code to run at native speeds as well. While not trivial, such an
-approach is possible, and if accomplished, would mean that
-the combination of Emscripten and suitable JavaScript engines will
-let people write code in their languages of choice, and run them
-at native speeds on the web.
-
-Finally, we conclude with another another avenue for optimization.
+When we compile a language's entire runtime into JavaScript, as mentioned
+before, there is another way to improve performance.
 Assume that we are compiling a C or C++ runtime of a language
 into JavaScript, and that that runtime uses JIT compilation to generate machine code. Typically
 code generators for JITs are written for the main CPU architectures, today
@@ -1036,6 +968,39 @@ the runtime, and the final conversion to machine code is left to the underlying
 JavaScript engine. This approach can potentially allow languages that 
 greatly benefit from a JIT (such as Java, Lua, etc.) to be run on the web
 efficiently.
+
+Getting back to the issue of high-performing code in general, it is worth comparing
+Emscripten to Portable Native Client (\cite{pnacl},~\cite{nacl}), a project in development which aims
+to allow an LLVM-like format to be distributed and run securely
+on the web, with speed comparable to native code.
+
+Both Emscripten
+and PNaCl aim to allow code written in languages like C and C++ to
+be run on the web, but in very different ways: Emscripten compiles code into JavaScript, and
+PNaCl compiles into an LLVM-like format which is then
+run in a special PNaCl runtime. As a consequence, Emscripten's generated code can run on all web browsers,
+since it is standard JavaScript, while PNaCl's generated code
+requires the PNaCl runtime to be installed; another major
+difference is that JavaScript engines do not yet run code at
+near-native speeds, while PNaCl does. In a broad summary, Emscripten's
+approach allows the code to be run in more places, while PNaCl's
+allows the code to run faster.
+
+However, as mentioned earlier, improvements in JavaScript engines and compiler
+technology may narrow the speed
+gap. Also, when considering the speed of JavaScript engines, for purposes of Emscripten we do not need to
+care about \emph{all} JavaScript, but only the kind generated by
+Emscripten. Such code is \textbf{implicitly statically typed}, that is,
+types are not mixed, despite JavaScript in general allowing assigning, e.g., an
+integer to a variable and later a floating point value or even an object to that same variable. Implicitly statically
+typed code can be statically analyzed and converted into
+machine code that has no runtime type checks at all. While such
+static analysis can be time-consuming, there are practical ways for
+achieving similar results quickly, such as tracing and type inference, which
+would help on such code very significantly, and are already in use
+or being worked on in mainstream JavaScript engines (e.g., SpiderMonkey). As
+a consequence, it may soon be possible to write code in languages such as
+C and C++ and run them on web with near-native speed.
 
 %\appendix
 %\section{Appendix Title}
@@ -1065,6 +1030,11 @@ Google, Inc.\url{http://code.google.com/closure/compiler/}
 \bibitem[newlib]{newlib}
 Red Hat, Inc.\url{http://sourceware.org/newlib/}
 \bibitem[Pyjamas]{pyjamas}\url{http://pyjs.org/}
+\bibitem[Yee et~al.(2009)]{nacl} B. Yee, D. Sehr, G. Dardyk, J. B. Chen, R. Muth, T. Ormandy, S.
+Okasaka, N. Narula, and N. Fullagar. Native Client: A Sandbox for
+Portable, Untrusted x86 Native Code. In IEEE Symposium on
+Security and Privacy, May 2009.
+\bibitem[PNaCl]{pnacl}\url{nativeclient.googlecode.com/svn/data/site/pnacl.pdf}
 \end{thebibliography}
 
 \end{document}
