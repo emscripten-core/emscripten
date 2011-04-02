@@ -2183,7 +2183,7 @@ else:
   USE_CLOSURE_COMPILER = 1
 
   TEST_REPS = 3
-  TOTAL_TESTS = 3
+  TOTAL_TESTS = 4
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TEST_REPS))
@@ -2274,6 +2274,15 @@ else:
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
       self.do_benchmark(src, ['9'], 'Pfannkuchen(9) = 30.')
+
+    def test_fasta(self):
+      src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
+      self.do_benchmark(src, ['100000'], '''atgtgtaagaaaaagtttttaatatcatctaactcggtggaatgcacacttatggccaac
+
+tgaccttgggacgagttaagataccataagaggttgcctgtaagttaagataacaaaggg
+
+atattccatctttgtgtgct
+''')
 
     def test_raytrace(self):
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()

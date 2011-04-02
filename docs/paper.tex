@@ -602,18 +602,51 @@ explicitly available to Emscripten.
 
 \subsection{Benchmarks}
 
+We will now take a look at some performance benchmarks:
+
+\bigskip
+
 \begin{tabular}{ l | c | c | c }
+  \hline
   \textbf{benchmark} & \textbf{JS} & \textbf{gcc} & \textbf{ratio} \\
-  raytrace (5, 64) & 1.553 & 0.033 & 46.45 \\
-  fannkuch (9)     & 0.663 & 0.054 & 12.27 \\
-  fasta (100,000)  & 0.578 & 0.055 & 10.51 \\
+  fannkuch (9)     & 0.577 & 0.054 &  10.68 \\
+  fasta (100,000)  & 0.640 & 0.055 &  11.63 \\
+  primes           & 0.490 & 0.160 &   3.06 \\
+  raytrace (5, 64) & 1.078 & 0.033 &  32.66 \\
+  \hline
 \end{tabular}
 
 \bigskip
 
-LLVM opts, closure
-SM -m
-gcc -O3
+The first column is the name of the benchmark, and in parentheses any
+parameters used in running it. The source code to all the benchmarks
+can be found at \url{https://github.com/kripken/emscripten/tree/master/tests}
+(each in a separate file with its name, except for `primes', which is
+embedded inside runner.py in the function test\_primes). The second
+column is of running the compiled code (using all Emscripten and LLVM
+optimizations, as well as the closure compiler) in the SpiderMonkey JavaScript
+engine (specifically, the JaegerMonkey branch, running with \emph{-m -n -a}).
+The third column is the results when compiling the original code with \emph{gcc -O3}.
+The last column is the ratio, that is, how much slower the JavaScript code is
+when compared to gcc.
+
+Clearly the results very wildly by the benchmark, from 3.06 to 32.66 times
+slower. It appears that code that does simple numerical operations -- like
+the primes test -- can run fairly fast, while code that has a lot of memory
+accesses, for example due to using structures -- like the raytrace test --
+will be much slower. (The main issue with structures is that Emscripten does not
+`nativize' them yet, as it does to simple local variables. Improving Emscripten to
+do so is possible,
+but would take a significant amount of work.)
+
+For code that has a mix of simple numerical operations and memory accesses,
+it tends to run around 10 times slower than the most-optimized C++ code,
+as we can see in the fannkuch and fasta benchmarks. While a factor of 10
+is a significant slowdown, it is still more than fast enough for
+many purposes, and the main point of course is that the code can run
+anywhere the web can be accessed. Further work on Emscripten is expected to
+improve the speed as well, as are improvements to LLVM and the Closure
+Compiler.
 
 \section{Emscripten's Architecture}
 
@@ -870,7 +903,14 @@ construction to more natural JavaScript code flow structures.)
 Emscripten has been run successfully on several real-world codebases, including
 the following:
 \begin{itemize}
-\item \textbf{CPython}
+\item \textbf{Python}. It is possible to run variants of Python on
+the web in various ways, including pyjamas, IronPython on SilverLight and
+Jython in Java. However, all of these are slightly nonstandard in the
+the Python code they run, while the latter two also require plugins to be
+installed. With Emscripten, on the other hand, it is possible to compile
+CPython itself -- the standard, reference implementation of Python -- and
+run that on the web, which allows running standard Python code. An online
+demo is available at \url{http://syntensity.com/static/python.html}.
 \item \textbf{Poppler and FreeType}
 \item \textbf{zlib}
 \item \textbf{Bullet}
