@@ -1,28 +1,31 @@
-\documentclass[11pt]{proc}
-%\documentclass[preprint,10pt]{sigplanconf}
+%\documentclass[11pt]{proc}
+\documentclass[preprint,10pt]{sigplanconf}
 
 \usepackage{amsmath}
 \usepackage{url}
+\usepackage{graphicx}
 
 \begin{document}
 
-%\conferenceinfo{Splash '11}{??-2011, Portland.} 
-%\copyrightyear{2011} 
-%\copyrightdata{[to be supplied]} 
-
-%\titlebanner{}        % These are ignored unless
-%\preprintfooter{(C) 2011 Alon Zakai, Creative Commons BY-SA Licensed}   % 'preprint' option specified.
-
 \title{Emscripten: An LLVM-to-JavaScript Compiler}
-%\subtitle{}
+\conferenceinfo{Splash '11}{??-2011, Portland.} 
+\copyrightyear{2011} 
+\copyrightdata{[to be supplied]} 
+\titlebanner{}        % These are ignored unless
+\preprintfooter{}   % 'preprint' option specified.
+\authorinfo{Alon Zakai}
+           {Mozilla}
+           {azakai@mozilla.com}
 
+\maketitle
+
+%\title{Emscripten: An LLVM-to-JavaScript Compiler}
+%\subtitle{}
 %\authorinfo{Alon Zakai}
 %           {Mozilla}
 %           {azakai@mozilla.com}
-
-\author{Alon Zakai \\ Mozilla \\ \url{azakai@mozilla.com}}
-
-\maketitle
+%\author{Alon Zakai \\ Mozilla \\ \url{azakai@mozilla.com}}
+%\maketitle
 
 \begin{abstract}
 We present Emscripten, an LLVM-to-JavaScript compiler. Emscripten compiles
@@ -54,7 +57,7 @@ Emscripten to deal with those challenges.
 
 \bigskip
 
-\copyright 2011 Alon Zakai. License: Creative Commons Attribution-ShareAlike (CC BY-SA), \url{http://creativecommons.org/licenses/by-sa/3.0/}
+%\copyright 2011 Alon Zakai. License: Creative Commons Attribution-ShareAlike (CC BY-SA), \url{http://creativecommons.org/licenses/by-sa/3.0/}
 
 \section{Introduction}
 
@@ -124,7 +127,7 @@ run on the web, using one of the following methods:
       example, there is currently no frontend for Python, however
       it is possible to compile CPython -- the standard implementation of
       Python, written in C -- into JavaScript, and run Python code on that
-      (see Section~\ref{sec:python}).
+      (see Section~\ref{sec:examples}).
 \end{itemize}
 
 From a technical standpoint, one challenge in designing and implementing
@@ -176,18 +179,17 @@ itself, that to our knowledge were not previously possible:
       on the web.
 \end{itemize}
 
-XXX The remainder of this paper is structured as follows. In Section 2 we
-describe, from a high level, the approach taken to compiling LLVM assembly into JavaScript.
-In Section 3 we describe the workings of Emscripten on a lower, more
-concrete level.
-In Section~\ref{sec:realworldcode} we describe Emscripten's
-approach to achieving good compatibility with existing real-world code, while
-still achieving good performance.
-In Section 4 we give an overview of some uses of
-Emscripten. In Section 5 we summarize and give directions for future
-work on Emscripten and uses of it.
+The remainder of this paper is structured as follows. In Section~\ref{sec:compapp} we
+describe the approach Emscripten takes to compiling LLVM assembly into JavaScript,
+and show some benchmark data.
+In Section~\ref{sec:emarch} we describe Emscripten's internal design and in
+particular elaborate on the Relooper algorithm.
+In Section~\ref{sec:examples} we give several example uses of
+Emscripten. In Section~\ref{sec:summary} we summarize and give directions for future
+work.
 
 \section{Compilation Approach}
+\label{sec:compapp}
 
 Let us begin by considering what the challenge is, when we want to compile LLVM assembly
 into JavaScript. Assume we are given the
@@ -344,6 +346,7 @@ to take notice of:
 \end{itemize}
 
 \subsection{Performance}
+\label{sec:perf}
 
 In this section we will deal with several topics regarding
 Emscripten's approach to generating high-performance JavaScript code.
@@ -513,7 +516,8 @@ sure things will work properly (this is the default compilation setting), howeve
 practice the procedure above appears to work quite well, and can result in code that
 runs very significantly faster.
 
-\subsubsection{Code Optimizations}
+\subsubsection{Emscripten Code Optimizations}
+\label{sec:codeopt}
 
 When comparing the example program from page~\pageref{code:example},
 the generated code was fairly complicated
@@ -601,6 +605,7 @@ was compiled into LLVM assembly, despite that structure not being
 explicitly available to Emscripten.
 
 \subsection{Benchmarks}
+\label{sec:benchmarks}
 
 We will now take a look at some performance benchmarks:
 
@@ -650,6 +655,7 @@ improve the speed as well, as are improvements to LLVM and the Closure
 Compiler.
 
 \section{Emscripten's Architecture}
+\label{sec:emarch}
 
 In the previous section we saw a general overview of Emscripten's approach
 to compiling LLVM assembly into JavaScript. We will now get into more detail
@@ -680,6 +686,7 @@ Emscripten's compilation has three main phases:
 \end{itemize}
 
 \subsection{The Runtime Environment}
+\label{sec:runtime}
 
 Code generated from Emscripten is meant to run in a JavaScript engine,
 typically in a web browser. This has implications for the kind of
@@ -717,15 +724,9 @@ we saw before, generating such code structures is essential to generating good-p
 
 For example, the LLVM assembly on page~\pageref{code:examplellvm} has the following block
 structure:
-\begin{verbatim}
-          /-----------\
-          |           |
-          V           |
-ENTRY --> 2 --> 5 --> 9
-          |
-          V
-         12
-\end{verbatim}
+
+\includegraphics[width=80mm]{graph.png}
+
 In this simple example, it is fairly straightforward to see that a natural way to implement it
 using normal loop structures is
 \begin{verbatim}
@@ -900,6 +901,7 @@ already gives a very substantial speedup due to the move from the switch-in-a-lo
 construction to more natural JavaScript code flow structures.)
 
 \section{Example Uses}
+\label{sec:examples}
 
 Emscripten has been run successfully on several real-world codebases. We present
 some examples here to give an idea of the various opportunities made possible
@@ -913,6 +915,8 @@ installed. With Emscripten, on the other hand, it is possible to compile
 CPython itself -- the standard, reference implementation of Python -- and
 run that on the web, which allows running standard Python code. An online
 demo is available at \url{http://syntensity.com/static/python.html}.
+Another example of a language runtime that Emscripten can convert to run
+on the web is Lua, an online demo is available at \url{http://syntensity.com/static/lua.html}.
 \item \textbf{Poppler and FreeType}: Poppler\footnote{\url{http://poppler.freedesktop.org/}} is an open source PDF
 rendering library. In combination with FreeType\footnote{\url{http://www.freetype.org/}}, an open source font
 engine, it can be used to render PDF files. By compiling it with Emscripten,
@@ -926,10 +930,10 @@ past been ported to JavaScript\footnote{\url{http://pl4n3.blogspot.com/2010/07/b
 time-consuming manual conversion of C++ to Java and then to JavaScript, and consequently,
 the latest Bullet code can be run in JavaScript and not an earlier version (JBullet lags
 several versions behind the latest Bullet release).
-\item \textbf{Lua}: XXX
 \end{itemize}
 
 \section{Summary}
+\label{sec:summary}
 
 We presented Emscripten, an LLVM-to-JavaScript compiler, which opens up
 numerous opportunities for running code written in languages other
@@ -1006,35 +1010,44 @@ C and C++ and run them on web with near-native speed.
 %\section{Appendix Title}
 %This is the text of the appendix, if you need one.
 
-%\acks
+\acks
 
 Thank you to the following people: Brian Crowder (multithreading), Robert O'Callahan (JIT into JS), add people that contributed
 
-%TODO: Acknowledgments
+%TODO: Acknowledgments XXX
 
 \bibliographystyle{abbrvnat}
 
 % The bibliography should be embedded for final submission.
 
 \begin{thebibliography}{}
-%\softraggedright
+\softraggedright
 
 \bibitem[SOME~REF et~al.(2009)Someone, Another]{someone02}
 A. B. Someone, and X. Y. Another. ...reference text...
 
-\bibitem[Ashkenas]{ashkenas}Jeremy Ashkenas' list of languages that compile to JavaScript \url{https://github.com/jashkenas/coffee-script/wiki/List-of-languages-that-compile-to-JS}
+\bibitem{ashkenas}
+Jeremy Ashkenas' list of languages that compile to JavaScript \url{https://github.com/jashkenas/coffee-script/wiki/List-of-languages-that-compile-to-JS}
+
 \bibitem[Closure Compiler]{closure}
 Google, Inc.\url{http://code.google.com/closure/compiler/}
+
 \bibitem[Google Web Toolkit]{gwt}\url{http://code.google.com/webtoolkit/}
+
 \bibitem[Low Level Virtual Machine]{llvm}\url{http://llvm.org/}
+
 \bibitem[newlib]{newlib}
 Red Hat, Inc.\url{http://sourceware.org/newlib/}
+
 \bibitem[Pyjamas]{pyjamas}\url{http://pyjs.org/}
+
 \bibitem[Yee et~al.(2009)]{nacl} B. Yee, D. Sehr, G. Dardyk, J. B. Chen, R. Muth, T. Ormandy, S.
 Okasaka, N. Narula, and N. Fullagar. Native Client: A Sandbox for
 Portable, Untrusted x86 Native Code. In IEEE Symposium on
 Security and Privacy, May 2009.
+
 \bibitem[PNaCl]{pnacl}\url{nativeclient.googlecode.com/svn/data/site/pnacl.pdf}
+
 \end{thebibliography}
 
 \end{document}
