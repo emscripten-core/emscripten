@@ -61,7 +61,7 @@ Emscripten to deal with those challenges.
 
 \section{Introduction}
 
-Since the mid 1990's, JavaScript has been present in most web browsers (sometimes
+Since the mid 1990's, JavaScript~\cite{js} has been present in most web browsers (sometimes
 with minor variations and under slightly different names, e.g., JScript in Internet
 Explorer), and today it is
 well-supported on essentially all web browsers, from desktop browsers like
@@ -87,9 +87,13 @@ As a consequence, there have been work on tools to compile languages
 \textbf{into} JavaScript. Since JavaScript is present in essentially all web
 browsers, by compiling one's language of choice into JavaScript, one
 can still generate content that will run practically everywhere.
-Examples of this approach include the Google Web Toolkit~\cite{gwt}, which compiles
-Java into JavaScript and Pyjamas~\cite{pyjamas}, which compiles Python into JavaScript; for a comphrehensive
-list, see~\cite{ashkenas}.
+Examples of this approach include
+the Google Web Toolkit~\cite{gwt}, which compiles Java into JavaScript;
+Pyjamas\footnote{\url{http://pyjs.org/}}, which compiles Python into JavaScript;
+SCM2JS \cite{hop}, which compiles Scheme to JavaScript,
+Links \cite{links}, which compiles an ML-like language into JavaScript;
+and AFAX \cite{afax}, which compiles F\# to JavaScript~\cite{afax};
+see also \cite{ashkenas} for additional examples.
 Such tools usually only allow a subset of the original language to
 be compiled. For example, multithreaded code (with shared memory) is
 not possible on the web, so compiling code of that sort is subject to
@@ -102,7 +106,7 @@ but in JavaScript and in Pyjamas a floating-point number can be generated).
 
 In this paper we present another project along those lines: \textbf{Emscripten},
 which compiles LLVM assembly code into JavaScript. LLVM (the Low Level Virtual
-Machine, ~\cite{llvm}) is a compiler project primarily focused on C, C++ and
+Machine\footnote{\url{http://llvm.org/}}) is a compiler project primarily focused on C, C++ and
 Objective-C. It compiles those languages through a \emph{frontend} (the
 main ones of which are Clang and LLVM-GCC) into the
 LLVM intermediary representation (which can be machine-readable
@@ -534,7 +538,8 @@ Emscripten's approach to generating fast-performing code is as
 follows. Emscripten doesn't do any
 optimizations that can be done by other tools:
 LLVM can be used to perform optimizations before Emscripten, and
-the Closure Compiler~\cite{closure} can perform optimizations on the generated JavaScript afterwards. Those
+the Closure Compiler\footnote{\url{http://code.google.com/closure/compiler/}}
+can perform optimizations on the generated JavaScript afterwards. Those
 tools will perform standard useful optimizations like removing unneeded variables, dead code,
 function inlining, etc.
 That leaves two major optimizations that are left for Emscripten
@@ -695,7 +700,7 @@ direct access to the local filesystem.
 
 Emscripten comes with a partial implementation of a C library,
 mostly written from scratch in JavaScript, which parts compiled from an
-existing C library (newlib~\cite{newlib}). Some aspects of the runtime environment, as
+existing C library\footnote{newlib, \url{http://sourceware.org/newlib/}}. Some aspects of the runtime environment, as
 implemented in that C library, are:
 \begin{itemize}
 \item Files to be read must be `preloaded' in JavaScript. They can
@@ -1023,30 +1028,33 @@ Thank you to the following people: Brian Crowder (multithreading), Robert O'Call
 \begin{thebibliography}{}
 \softraggedright
 
-\bibitem[SOME~REF et~al.(2009)Someone, Another]{someone02}
-A. B. Someone, and X. Y. Another. ...reference text...
+\bibitem[Ashkenas. (2011)]{ashkenas} J. Ashkenas.
+List of languages that compile into JavaScript. Available at \url{https://github.com/jashkenas/coffee-script/wiki/List-of-languages-that-compile-to-JS}.
+Retrieved April 2011.
 
-\bibitem{ashkenas}
-Jeremy Ashkenas' list of languages that compile to JavaScript \url{https://github.com/jashkenas/coffee-script/wiki/List-of-languages-that-compile-to-JS}
+\bibitem[Cooper et~al. (2006)]{links} E. Cooper, S. Lindley, P. Wadler and J. Yallop.
+Links: Web programming without tiers. In 5th International Symposium on Formal Methods for Components and Objects (FMCO), 2006.
 
-\bibitem[Closure Compiler]{closure}
-Google, Inc.\url{http://code.google.com/closure/compiler/}
+\bibitem[Donovan et~al. (2010)]{pnacl} A. Donovan, R. Muth, B. Chen and D. Sehr.
+PNaCl: Portable Native Client Executables. Available at
+\url{http://nativeclient.googlecode.com/svn/data/site/pnacl.pdf}. Retrieved April 2011.
 
-\bibitem[Google Web Toolkit]{gwt}\url{http://code.google.com/webtoolkit/}
+\bibitem[Flanagan (2006)]{js} D. Flanagan.
+JavaScript: The Definitive Guide. O'Reilly Media, 2006.
 
-\bibitem[Low Level Virtual Machine]{llvm}\url{http://llvm.org/}
+\bibitem[Loitsch et~al. (2007)]{hop} F. Loitsch, M. Serrano and I. S. Antipolis.
+Hop Client-Side Compilation. In Proceedings of the 8th Symposium on Trends on Functional Languages, 2007.
 
-\bibitem[newlib]{newlib}
-Red Hat, Inc.\url{http://sourceware.org/newlib/}
+\bibitem[Petříček et~al (2011)]{afax} T. Petříček and D. Syme.
+AFAX: Rich client/server web applications in F\#. Draft. Available at \url{http://tomasp.net/academic/fswebtools.aspx}. Retrieved April 2011.
 
-\bibitem[Pyjamas]{pyjamas}\url{http://pyjs.org/}
+\bibitem[Prabhakar (2007)]{gwt} C. Prabhakar.
+Google Web Toolkit: GWT Java Ajax Programming. Packt Publishing, 2007.
 
-\bibitem[Yee et~al.(2009)]{nacl} B. Yee, D. Sehr, G. Dardyk, J. B. Chen, R. Muth, T. Ormandy, S.
+\bibitem[Yee et~al. (2009)]{nacl} B. Yee, D. Sehr, G. Dardyk, J. B. Chen, R. Muth, T. Ormandy, S.
 Okasaka, N. Narula, and N. Fullagar. Native Client: A Sandbox for
 Portable, Untrusted x86 Native Code. In IEEE Symposium on
 Security and Privacy, May 2009.
-
-\bibitem[PNaCl]{pnacl}\url{nativeclient.googlecode.com/svn/data/site/pnacl.pdf}
 
 \end{thebibliography}
 
