@@ -30,7 +30,7 @@
 \begin{abstract}
 We present Emscripten, an LLVM-to-JavaScript compiler. Emscripten compiles
 LLVM assembly code into standard JavaScript, which opens up two avenues for running code written
-in languages other than JavaScript on the web: (1) Compile code written in a language directly into LLVM bitcode, and
+in languages other than JavaScript on the web: (1) Compile code directly into LLVM bitcode, and
 then compile that into JavaScript using Emscripten, or (2) Compile
 a language's entire runtime into LLVM and then JavaScript, as in the previous
 approach, and then use the compiled runtime to run code written in that language. For example, the
@@ -43,8 +43,11 @@ As a compiler from LLVM to JavaScript, the challenges in designing
 Emscripten are somewhat the reverse of the norm -- one must go from a low-level
 assembly into a high-level language, and recreate parts of the original
 high-level structure of the code that were lost in the compilation to
-low-level LLVM. We detail the algorithms used in
-Emscripten to deal with those challenges.
+low-level LLVM. We detail the methods used in
+Emscripten to deal with those challenges, and in particular present and prove
+the validity of Emscripten's Relooper
+algorithm, which recreates high-level loop structures from low-level
+branching data.
 \end{abstract}
 
 %\category{CR-number}{subcategory}{third-level}
@@ -81,20 +84,19 @@ There are, however, reasonable motivations for running code from
 other programming languages on the web, for example, if one has a large
 amount of existing code already written in another language, or if one
 simply has a strong preference for another language and perhaps is
-more productive in it.
-
-As a consequence, there have been work on tools to compile languages
+more productive in it. As a consequence, there has been work on tools to compile languages
 \textbf{into} JavaScript. Since JavaScript is present in essentially all web
 browsers, by compiling one's language of choice into JavaScript, one
 can still generate content that will run practically everywhere.
-Examples of this approach include
+
+Examples of the approach of compiling into JavaScript include
 the Google Web Toolkit~\cite{gwt}, which compiles Java into JavaScript;
 Pyjamas\footnote{\url{http://pyjs.org/}}, which compiles Python into JavaScript;
 SCM2JS \cite{hop}, which compiles Scheme to JavaScript,
 Links \cite{links}, which compiles an ML-like language into JavaScript;
-and AFAX \cite{afax}, which compiles F\# to JavaScript~\cite{afax};
+and AFAX \cite{afax}, which compiles F\# to JavaScript;
 see also \cite{ashkenas} for additional examples.
-Such tools usually only allow a subset of the original language to
+While useful, such tools usually only allow a subset of the original language to
 be compiled. For example, multithreaded code (with shared memory) is
 not possible on the web, so compiling code of that sort is subject to
 not directly possible. There are also often limitations of the conversion
@@ -121,7 +123,7 @@ run on the web, using one of the following methods:
       into LLVM, and then compile that
       into JavaScript using Emscripten. Frontends for various languages
       exist, including many of the most popular programming languages such as C and
-      C++, and also various new and emerging languages (e.g., Rust).
+      C++, and also various new and emerging languages (e.g., Rust\footnote{\url{https://github.com/graydon/rust/}}).
 \item Compile the \textbf{runtime} used to parse and execute code in
       a particular language into LLVM, then compile that into JavaScript using
       Emscripten. It is then possible to run code in that runtime on the web.
@@ -141,7 +143,8 @@ situation one is in when building a compiler, and leads to some unique
 difficulties. For example, to get good performance in JavaScript one must
 use natural JavaScript code flow structures, like loops and ifs, but
 those structures do not exist in LLVM assembly (instead, what is present
-there is essentially `flat' code with \emph{goto} commands).
+there is a `soup of code fragments': blocks of code with branching information
+but no high-level structure).
 Emscripten must therefore reconstruct a high-level
 representation from the low-level data it receives.
 
@@ -149,30 +152,29 @@ In theory that issue could have been avoided by compiling a higher-level
 language into JavaScript. For example, if compiling Java into JavaScript
 (as the Google Web Toolkit does), then one can benefit from the fact
 that Java's loops, ifs and so forth generally have a very direct parallel
-in JavaScript. (Of course the downside in that approach is it yields a
-compiler only for Java.) Compiling LLVM into JavaScript is less straightforward,
-but we will see later that it is possible to reconstruct
-a substantial part of the original high-level structure of the original code.
+in JavaScript. But of course the downside in that approach is it yields a
+compiler only for Java. We will also see in Section~\ref{sec:relooper} that it is in fact possible to reconstruct
+a substantial part of the original high-level structure of the original code,
+so that compiling LLVM assembly, while more difficult, can still yield good results.
 
 Another challenge in Emscripten is to achieve good performance. LLVM assembly
 is an abstraction of how modern CPUs are programmmed for, and its basic
 operations are not all directly possible in JavaScript. For example, if in
 LLVM we are to add two unsigned 8-bit numbers $x$ and $y$, with overflowing (e.g., 255
 plus 1 should give 0), then there is no single operation in JavaScript which
-can do this - we cannot just write $x+y$, as that would use the normal JavaScript
+can do this -- we cannot just write $x+y$, as that would use the normal JavaScript
 semantics. It is possible to emulate a CPU in JavaScript, however doing so
-is very slow. Emscripten's approach is to allow such emulation, but try to
+is very slow. Emscripten's approach is to allow such emulation, but to try to
 use it as little as possible, and to provide tools that help one find out
-which parts of the compiled code will need full emulation. We will later see that in practice it is often
-possible to not use full emulation, and thereby achieve far better performance
-than strict emulation would achieve.
+which parts of the compiled code actually need such full emulation.
 
 We conclude this introduction with a list of this paper's main contributions:
 \begin{itemize}
 \item We describe Emscripten itself, during
       which we detail its approach in compiling LLVM into JavaScript.
 \item We give details of Emscripten's `Relooper' algorithm, which generates
-      high-level loop structures from low-level branching data.
+      high-level loop structures from low-level branching data, and prove
+      it's validity.
 \end{itemize}
 In addition, the following are the main contributions of Emscripten
 itself, that to our knowledge were not previously possible:
@@ -197,7 +199,7 @@ work.
 
 Let us begin by considering what the challenge is, when we want to compile LLVM assembly
 into JavaScript. Assume we are given the
-following simple example of a C program, which we want to compile into JavaScript:
+following simple example of a C program:
 \begin{verbatim}
   #include <stdio.h>
   int main()
@@ -280,11 +282,11 @@ Finally, printf is called (call). The challenge, then, is to convert
 this and things like it into JavaScript.
 
 In general, Emscripten's main approach is to translate each line of LLVM
-assembly into JavaScript, 1-to-1, into `normal' JavaScript
+assembly into JavaScript, 1 to 1, into `normal' JavaScript
 as much as possible. So, for example, an \emph{add} operation becomes
 a normal JavaScript addition, a function call becomes a JavaScript
 function call, etc. This 1 to 1 translation generates JavaScript
-that resembles assembly code, for example, the LLVM assembly shown
+that resembles the original assembly code, for example, the LLVM assembly code shown
 before for main() would be compiled into the following:
 \label{code:example}
 \begin{verbatim}
@@ -331,8 +333,8 @@ to take notice of:
 \item A switch-in-a-loop construction is used in order to let the flow
       of execution move between basic blocks of code in an arbitrary manner: We set
       \emph{\_\_label\_\_} to the (numerical representation of the) label of
-      the fragment we want to reach, and do a break, which leads to the proper
-      fragment being reached. Inside each fragment, every line of code corresponds to a line of
+      the basic block we want to reach, and do a break, which leads to the proper
+      basic block being reached. Inside each basic block, every line of code corresponds to a line of
       LLVM assembly, generally in a very straightforward manner. 
 \item Memory is implemented by \emph{HEAP}, a JavaScript array. Reading from
       memory is a read from that array, and writing to memory is a write.
@@ -355,7 +357,7 @@ to take notice of:
 In this section we will deal with several topics regarding
 Emscripten's approach to generating high-performance JavaScript code.
 
-\subsection{Load-Store Consistency (LSC)}
+\subsubsection{Load-Store Consistency (LSC)}
 \label{sec:lsc}
 
 We saw before that Emscripten's memory usage allocates the usual number
@@ -366,7 +368,7 @@ We will now see the reason for that.
 To get there, we must first step back, and note that
 Emscripten does not aim to achieve perfect compatibility with all possible
 LLVM assembly (and correspondingly, with all possible C or C++ code, etc.);
-instead, Emscripten targets a subset of LLVM assembly code, which is portable
+instead, Emscripten targets a large subset of LLVM assembly code, which is portable
 and does not make crucial assumptions about the underlying CPU architecture
 on which the code is meant to run. That subset is meant to encompass the
 vast majority of real-world code that would be compiled into LLVM,
@@ -375,7 +377,10 @@ performant JavaScript.
 
 More specifically, Emscripten assumes that the LLVM assembly code it is
 compiling has \textbf{Load-Store Consistency} (LSC), which is the requirement that
-loads from and stores to a specific memory address will use the same type. Normal C and C++
+after a value with a specific type is written to a memory location, loads from
+that memory location will be of the same type (until a value with a different
+type is written there).
+Normal C and C++
 code generally does so: If $x$ is a variable containing a 32-bit floating
 point number, then both loads and stores of $x$ will be of 32-bit floating
 point values, and not 16-bit unsigned integers or anything else.
@@ -430,7 +435,8 @@ the far more optimal
   printf("first byte: %d\n", HEAP[x_addr]);
 \end{verbatim}
 (Note that even this can be optimized even more -- we can store
-\emph{x} in a normal JavaScript variable. For now though we are
+\emph{x} in a normal JavaScript variable. We will discuss such
+optimizations in Section \ref{sec:codeopt}; for now we are
 just clarifying why it is useful to assume we are compiling code
 that has LSC.)
 
@@ -459,22 +465,20 @@ a time-consuming code audit is obviously impractical. Emscripten therefore has
 a compilation option, SAFE\_HEAP, which generates code that checks that LSC holds, and warns if it
 doesn't. It also warns about other memory-related issues like
 reading from memory before a value was written (somewhat similarly to tools
-like Valgrind). When such problems are detected, possible solutions are to ignore the issue (if it has no actual
-consqeuences), or altering the source code.
+like Valgrind\footnote{\url{http://valgrind.org/}}). When such problems are detected, possible solutions are to ignore the issue (if it has no actual
+consqeuences), or alter the source code.
 
 Note that it is somewhat wasteful to allocation 4 memory locations for
 a 32-bit integer, and use only one of them. It is possible to change
 that behavior with the QUANTUM\_SIZE parameter to Emscripten, however,
 the difficulty is that LLVM assembly has hardcoded values that depend on
-the usual memory sizes being used. For example, \emph{memcpy} can be
-called with the normal size each the value would have, and not a single
-memory address each as Emscripten would prefer. We are looking into modifications
+the usual memory sizes being used. We are looking into modifications
 to LLVM itself to remedy that.
 
 \subsubsection{Emulating Code Semantics}
 \label{sssec:realworldcode}
 
-The semantics of LLVM assembly and JavaScript are not identical: The former
+As mentioned in the introduction, the semantics of LLVM assembly and JavaScript are not identical: The former
 is very close to that of a modern CPU, while the latter is a high-level
 dynamic language. Both are of course Turing-complete, so it is possible to
 precisely emulate each in the other, but doing so with good performance is
@@ -482,23 +486,20 @@ more challenging. For example, if we want to convert
 \begin{verbatim}
   add i8 %1, %2
 \end{verbatim}
-to JavaScript, then to be completely accurate we must emulate the
+(add two 8-bit integers) to JavaScript, then to be completely accurate we must emulate the
 exact same behavior, in particular, we must handle overflows properly, which would not be the case if we just implement
 this as $\%1 + \%2$ in JavaScript. For example, with inputs of $255$ and $1$, the
 correct output is 0, but simple addition in JavaScript will give us 256. We
 can emulate the proper behavior by adding additional code, one way
 (not necessarily the most optimal) would be to check for overflows after
-each addition, and correct them as necessary. This however makes each
-operation take significantly more CPU time that the original code.
+each addition, and correct them as necessary. This however significantly degrades performance.
 
 Emscripten's approach to this problem is to allow the generation of both accurate code,
 that is identical in behavior to LLVM assembly, and inaccurate code which is
 faster. In practice, most addition operations in LLVM do not overflow,
-and can be translated into $\%1 + \%2$ in JavaScript which is fast. Emscripten
+and can simply be translated into $\%1 + \%2$. Emscripten
 provides tools that make it straightforward to find which code does require
-the slower, more accurate code, and to generate that code in those locations.
-In practice, this is done as follows:
-
+the slower, more accurate code, and to generate that code in those locations, as follows:
 \begin{itemize}
 \item Compile the code using Emscripten with special options that generate runtime checking.
       CHECK\_OVERFLOWS adds runtime checks for integer overflows, CHECK\_SIGNS
@@ -517,8 +518,7 @@ This method is not guaranteed to work, as if we do not run on a truly representa
 sample of possible inputs, we may not compile with all necessary corrections. It is
 of course possible to compile with all corrections applied to all the code, to make
 sure things will work properly (this is the default compilation setting), however, in
-practice the procedure above appears to work quite well, and can result in code that
-runs very significantly faster.
+practice the procedure above works quite well, and results in code is significantly faster.
 
 \subsubsection{Emscripten Code Optimizations}
 \label{sec:codeopt}
@@ -540,7 +540,7 @@ optimizations that can be done by other tools:
 LLVM can be used to perform optimizations before Emscripten, and
 the Closure Compiler\footnote{\url{http://code.google.com/closure/compiler/}}
 can perform optimizations on the generated JavaScript afterwards. Those
-tools will perform standard useful optimizations like removing unneeded variables, dead code,
+tools will perform standard useful optimizations like removing unneeded variables, dead code elimination,
 function inlining, etc.
 That leaves two major optimizations that are left for Emscripten
 to perform:
@@ -553,8 +553,8 @@ to perform:
       or passed to another function. When optimizing, Emscripten tries to nativize
       as many variables as possible.
 \item \textbf{Relooping}: Recreate high-level loop and if structures
-      from the low-level labels and branches that appear in LLVM assembly.
-      We detail the algorithm Emscripten uses for this purpose in Section~\ref{sec:relooper}.
+      from the low-level code block data that appears in LLVM assembly.
+      We describe Emscripten's Relooper algorithm in Section~\ref{sec:relooper}.
 \end{itemize}
 
 When run with Emscripten's optimizations, the code on page \pageref{code:example} looks
@@ -606,8 +606,7 @@ which is fairly close to the original C++ (the differences, of
 having the loop's condition inside the loop instead of inside
 the for() expression at the top of the original loop, are not important to performance). Thus, it is possible
 to recreate the original high-level structure of the code that
-was compiled into LLVM assembly, despite that structure not being
-explicitly available to Emscripten.
+was compiled into LLVM assembly.
 
 \subsection{Benchmarks}
 \label{sec:benchmarks}
@@ -633,22 +632,20 @@ parameters used in running it. The source code to all the benchmarks
 can be found at \url{https://github.com/kripken/emscripten/tree/master/tests}
 (each in a separate file with its name, except for `primes', which is
 embedded inside runner.py in the function test\_primes). The second
-column is of running the compiled code (using all Emscripten and LLVM
-optimizations, as well as the closure compiler) in the SpiderMonkey JavaScript
+column is the elapsed time when running the compiled code (generated using all Emscripten and LLVM
+optimizations as well as the Closure Compiler) in the SpiderMonkey JavaScript
 engine (specifically, the JaegerMonkey branch, checked out April 2nd, 2011, running with \emph{-m -n -a}).
-The third column is the results when compiling the original code with \emph{gcc -O3},
+The third column is the elapsed time when running the original code compiled with \emph{gcc -O3},
 using GCC 4.4.4. The last column is the ratio, that is, how much slower the JavaScript code is
 when compared to gcc. All the tests were run on a Lenovo N500 laptop with
 an Intel T6400 Core 2 Duo CPU clocked at 1.2GHz, running on Ubuntu 10.10.
 
-Clearly the results very wildly by the benchmark, from 3.06 to 32.66 times
+Clearly the results greatly vary by the benchmark, with the generated JavaScripting from 3.06 to 32.66 times
 slower. It appears that code that does simple numerical operations -- like
 the primes test -- can run fairly fast, while code that has a lot of memory
 accesses, for example due to using structures -- like the raytrace test --
 will be much slower. (The main issue with structures is that Emscripten does not
-`nativize' them yet, as it does to simple local variables. Improving Emscripten to
-do so is possible,
-but would take a significant amount of work.)
+`nativize' them yet, as it does to simple local variables.)
 
 Code that has a mix of simple numerical operations and memory accesses
 tends to run around 10 times slower than the most-optimized C++ code,
@@ -656,26 +653,27 @@ as we can see in the fannkuch and fasta benchmarks. While a factor of 10
 is a significant slowdown, it is still more than fast enough for
 many purposes, and the main point of course is that the code can run
 anywhere the web can be accessed. Further work on Emscripten is expected to
-improve the speed as well, as are improvements to LLVM and the Closure
-Compiler.
+improve the speed as well, as are improvements to LLVM, the Closure
+Compiler, and JavaScript engines themselves.
 
 \section{Emscripten's Architecture}
 \label{sec:emarch}
 
 In the previous section we saw a general overview of Emscripten's approach
-to compiling LLVM assembly into JavaScript. We will now get into more detail
+to compiling LLVM assembly code into JavaScript. We will now get into more detail
 into how Emscripten itself is implemented.
 
-Emscripten is written in JavaScript. A main reason for that decision
-was to simplify sharing code between the compiler and the runtime, and
-to enable various dynamic compilation techniques. Two simple benefits of this approach are that (1)
-the compiler can create JavaScript objects that represent structures from the original
+Emscripten is written in JavaScript. The primary reason for that decision
+was convenience: Two simple examples of the benefits of that approach are that (1)
+the compiler can create JavaScript objects that represent constant structures from the original
 assembly code, and convert them to a string using JSON.stringify()
 in a trivial manner,
 and (2) the compiler can simplify numerical operations by simply
 eval()ing the code (so ``1+2'' would become ``3'', etc.). In both examples,
 the development of Emscripten was made simpler by having the exact same environment
-during compilation as the executing code will have.
+during compilation as the executing code will have. This also helps in more
+complex ways, for example when the same code needs to be run at compile time
+and at runtime, and makes various dynamic compilation techniques possible in the future.
 
 Emscripten's compilation has three main phases:
 \begin{itemize}
@@ -699,36 +697,34 @@ runtime environment we can generate for it, for example, there is no
 direct access to the local filesystem.
 
 Emscripten comes with a partial implementation of a C library,
-mostly written from scratch in JavaScript, which parts compiled from an
+mostly written from scratch in JavaScript, with parts compiled from an
 existing C library\footnote{newlib, \url{http://sourceware.org/newlib/}}. Some aspects of the runtime environment, as
 implemented in that C library, are:
 \begin{itemize}
-\item Files to be read must be `preloaded' in JavaScript. They can
-      then be accessed using the usual C library methods (fopen, fread, etc.).
-      Files that are written are cached, and can be read by JavaScript
-      later. While limiting, this approach can often be sufficient for
-      many purposes.
+\item An emulated filesystem is available, with files stored in memory.
 \item Emscripten allows writing pixel data to an HTML5 canvas element,
       using a subset of the SDL API. That is, one can write an application in C or C++ using
       SDL, and that same application can be compiled normally and run
       locally, or compiled using Emscripten and run on the web. See, for
       example, Emscripten's raytracing demo at \url{http://syntensity.com/static/raytrace.html}.
-\item \emph{sbrk} is implemented using the \textbf{HEAP} array which
-      was mentioned previously. This allows a normal \emph{malloc}
+\item \emph{sbrk()} is implemented using the \emph{HEAP} array which
+      was mentioned previously. This allows a normal \emph{malloc()}
       implementation written in C to be compiled to JavaScript.
 \end{itemize}
 
 \subsection{The Relooper: Recreating high-level loop structures}
 \label{sec:relooper}
 
-The Relooper is among the most complicated components in Emscripten. It receives
+The Relooper the most complex module in Emscripten. It receives
 a `soup of blocks', which is a set of labeled fragments of code, each
 ending with a branch operation, and the goal is to generate normal
-high-level JavaScript code flow structures such as loops and ifs. As
-we saw before, generating such code structures is essential to generating good-performing code.
+high-level JavaScript code flow structures such as loops and ifs.
+Generating such code structures is essential to producing good-performing code,
+since JavaScript engines are tuned to run such code very quickly (for
+example, a tracing JIT as in SpiderMonkey will only trace normal loops).
 
-For example, the LLVM assembly on page~\pageref{code:examplellvm} has the following block
-structure:
+Returning to the LLVM assembly code on page~\pageref{code:examplellvm}, it
+has has the following structure (where arrows denote potential paths of execution):
 
 \includegraphics[width=80mm]{graph.png}
 
@@ -749,17 +745,21 @@ for example the original C code relied heavily on \emph{goto} instructions.
 In practice, however, almost all real-world C and C++ code tends to
 be amenable to loop recreation.
 
-Emscripten's Relooper takes as input a `soup of LLVM blocks' as described above,
+We now begin to describe the Relooper algorithm. As mentioned before, it takes as input a `soup of labelled LLVM blocks' as described above,
 and generates a structured set of Emscripten code blocks, which are each a set of LLVM blocks
 with some logical structure. For simplicity we call LLVM blocks `labels' and Emscripten
 blocks `blocks' in the following.
 
 There are three types of Emscripten blocks:
 \begin{itemize}
-\item \textbf{Simple block}: A block with one internal label, and a Next
+\item \textbf{Simple block}: A block with
+  \begin{itemize}
+  \item One \textbf{Internal} label, and
+  \item a \textbf{Next}
       block, which the internal label branches to. The block is later
       translated simply into the code for that label, and the Next
       block appears right after it.
+  \end{itemize}
 \item \textbf{Loop}: A block that represents a basic loop, comprised of
       two internal sub-blocks:
   \begin{itemize}
@@ -771,7 +771,7 @@ There are three types of Emscripten blocks:
   \item \textbf{Next}: A block that will appear just outside
         the loop, in other words, that will be reached when the loop is exited.
   \end{itemize}
-\item \textbf{Multiple}: A block that represents an divergence into several
+\item \textbf{Multiple}: A block that represents a divergence into several
       possible branches, that eventually rejoin. A Multiple block can
       implement an `if', an `if-else', a `switch', etc. It is comprised of:
   \begin{itemize}
@@ -785,20 +785,28 @@ There are three types of Emscripten blocks:
         exits the Handled blocks.
   \end{itemize}
 \end{itemize}
-Remember that we have a \emph{\_\_label\_\_} variable that helps control
-the flow of execution: Whenever we enter a block with more than one
-entry, we set \emph{\_\_label\_\_} before we branch into it, and we
-check its value when we enter that block. So, for example, when we
-create a Loop block, its Next block can have multiple entries -- any
-label to which we branch out from the loop. By creating a Multiple
-block after the loop, we can enter the proper label when the loop is
-exited. (Having a \emph{\_\_label\_\_} variable does add some overhead,
-but it greatly simplifies the problem that the Relooper needs to solve
-and allows us to only need three kinds of blocks as described above.
-Of course, it is possible to optimize
-away writes and reads to \emph{\_\_label\_\_} in many or even most cases.)
 
-We will use the term `entry' to
+To clarify these definitions, the example LLVM assembly code we have
+been working with could be represented in a natural way as
+\begin{verbatim}
+Simple
+  entry
+  Loop
+    Simple
+      2
+      Simple
+        5
+        Simple
+          9
+          null
+    Simple
+      12
+      null
+\end{verbatim}
+where the first indented line in a Simple block is the Internal label in that Simple block, 
+the second indented line is its Next block, and so forth.
+
+Continuing to describe the Relooper algorithm, we will use the term `entry' to
 mean a label that can be reached immediately in a block. In other
 words, a block consists of labels $l_1,..,l_n$, and the entries
 are a subset of those labels, specifically the ones that execution
@@ -818,7 +826,7 @@ then be written as follows:
       as its internal label, and the Next block comprised of all
       the other labels. The entries for the Next block are the entries
       to which the internal label can branch.
-\item \textbf{If we can return to all of the entries, return a
+\item \textbf{If we can return to all of the entries, create a
       Loop block}, whose Inner block is comprised of all labels that
       can reach one of the entries, and whose Next block is
       comprised of all the others. The entry labels for the current
@@ -842,17 +850,33 @@ various ways, but the algorithm as presented above has given overall better
 results in practice, in terms of the `niceness' of the shape of the
 generated code, both subjectively and at least in some simple benchmarks.
 
-Additional details of the algorithm include `fixing' branch
+Additional details of the algorithm include
+\begin{itemize}
+\item The technical mechanism by which execution flow is controlled involves
+the \emph{\_\_label\_\_} variable, mentioned earlier. Whenever we enter a block with more than one
+entry, we set \emph{\_\_label\_\_} before we branch into it, and we
+check its value when we enter that block. So, for example, when we
+create a Loop block, its Next block can have multiple entries -- any
+label to which we branch out from the loop. By creating a Multiple
+block after the loop, we can enter the proper label when the loop is
+exited. (Having a \emph{\_\_label\_\_} variable does add some overhead,
+but it greatly simplifies the problem that the Relooper needs to solve
+and allows us to only need three kinds of blocks as described above.
+Of course, it is possible to optimize
+away writes and reads to \emph{\_\_label\_\_} in many or even most cases.)
+\item As the Relooper processes labels, it replaces branch
 instructions accordingly. For example, when we create a Loop
-block, then all branch instructions outside of the loop are
-converted into \emph{break} commands, and all branch
+block, then all branch instructions to the outside of the loop are
+converted into \emph{break} commands (since a break instruction in JavaScript
+will indeed get us to outside of the loop), and all branch
 instructions to the beginning of the loop are converted into
-\emph{continue} commands. Those commands are then
+\emph{continue} commands, etc. Those commands are then
 ignored when called recursively to generate the Inner block (that is,
 the \emph{break} and \emph{continue}
 commands are guaranteed, by the semantics of JavaScript, to get us to
 where we need to go -- they do not need any further work
 for them to work properly).
+\end{itemize}
 
 Emscripten also does an additional pass after running the Relooper algorithm
 which has been described. The Relooper is guaranteed to produce valid output (see below).
@@ -1017,9 +1041,7 @@ C and C++ and run them on web with near-native speed.
 
 \acks
 
-Thank you to the following people: Brian Crowder (multithreading), Robert O'Callahan (JIT into JS), add people that contributed
-
-%TODO: Acknowledgments XXX
+Thank you to the following people: David LaPalomento, Daniël Heres, Brian Crowder, Brian McKenna, dglead and tuba.
 
 \bibliographystyle{abbrvnat}
 
