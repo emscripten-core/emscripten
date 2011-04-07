@@ -98,11 +98,11 @@ and AFAX \cite{afax}, which compiles F\# to JavaScript;
 see also \cite{ashkenas} for additional examples.
 While useful, such tools usually only allow a subset of the original language to
 be compiled. For example, multithreaded code (with shared memory) is
-not possible on the web, so compiling code of that sort is subject to
+not possible on the web, so compiling code of that sort is
 not directly possible. There are also often limitations of the conversion
 process, for example, Pyjamas compiles Python to JavaScript in a nearly
 1-to-1 manner, and as a consequence the underlying semantics are those of JavaScript,
-not Python so for example division of integers can yield unexpected results
+not Python, so for example division of integers can yield unexpected results
 (it should yield an integer in Python 2.x,
 but in JavaScript and in Pyjamas a floating-point number can be generated).
 
@@ -129,7 +129,7 @@ run on the web, using one of the following methods:
       Emscripten. It is then possible to run code in that runtime on the web.
       This is a useful approach if
       a language's runtime is written in a language for which an LLVM
-      frontend exists, but the language iself has no such frontend. For
+      frontend exists, but the language itself has no such frontend. For
       example, there is currently no frontend for Python, however
       it is possible to compile CPython -- the standard implementation of
       Python, written in C -- into JavaScript, and run Python code on that
@@ -158,7 +158,7 @@ a substantial part of the original high-level structure of the original code,
 so that compiling LLVM assembly, while more difficult, can still yield good results.
 
 Another challenge in Emscripten is to achieve good performance. LLVM assembly
-is an abstraction of how modern CPUs are programmmed for, and its basic
+is an abstraction of how modern CPUs are programmed for, and its basic
 operations are not all directly possible in JavaScript. For example, if in
 LLVM we are to add two unsigned 8-bit numbers $x$ and $y$, with overflowing (e.g., 255
 plus 1 should give 0), then there is no single operation in JavaScript which
@@ -174,7 +174,7 @@ We conclude this introduction with a list of this paper's main contributions:
       which we detail its approach in compiling LLVM into JavaScript.
 \item We give details of Emscripten's `Relooper' algorithm, which generates
       high-level loop structures from low-level branching data, and prove
-      it's validity.
+      its validity.
 \end{itemize}
 In addition, the following are the main contributions of Emscripten
 itself, that to our knowledge were not previously possible:
@@ -182,7 +182,7 @@ itself, that to our knowledge were not previously possible:
 \item It allows compiling a very large subset of C and C++ code into
       JavaScript, which can then be run on the web.
 \item By compiling their runtimes, it allows running languages such as Python
-      on the web.
+      on the web (with their normal semantics).
 \end{itemize}
 
 The remainder of this paper is structured as follows. In Section~\ref{sec:compapp} we
@@ -270,7 +270,7 @@ though, the example assembly above can be seen to define a
 function main(), then allocate some values on the stack (alloca),
 then load and store various values (load and store). We do not have
 the high-level code structure as we had in C++ (with a loop), instead
-we have labelled code fragments, called LLVM basic blocks, and code flow moves
+we have labeled code fragments, called LLVM basic blocks, and code flow moves
 from one to another by branch (br) instructions. (Label 2 is the
 condition check in the loop; label 5 is the body, label 9 is the
 increment, and label 12 is the final part of the function, outside
@@ -632,15 +632,15 @@ parameters used in running it. The source code to all the benchmarks
 can be found at \url{https://github.com/kripken/emscripten/tree/master/tests}
 (each in a separate file with its name, except for `primes', which is
 embedded inside runner.py in the function test\_primes). The second
-column is the elapsed time when running the compiled code (generated using all Emscripten and LLVM
+column is the elapsed time (in seconds) when running the compiled code (generated using all Emscripten and LLVM
 optimizations as well as the Closure Compiler) in the SpiderMonkey JavaScript
 engine (specifically, the JaegerMonkey branch, checked out April 2nd, 2011, running with \emph{-m -n -a}).
-The third column is the elapsed time when running the original code compiled with \emph{gcc -O3},
+The third column is the elapsed time (in seconds) when running the original code compiled with \emph{gcc -O3},
 using GCC 4.4.4. The last column is the ratio, that is, how much slower the JavaScript code is
 when compared to gcc. All the tests were run on a Lenovo N500 laptop with
 an Intel T6400 Core 2 Duo CPU clocked at 1.2GHz, running on Ubuntu 10.10.
 
-Clearly the results greatly vary by the benchmark, with the generated JavaScripting from 3.06 to 32.66 times
+Clearly the results greatly vary by the benchmark, with the generated JavaScript running from 3.06 to 32.66 times
 slower. It appears that code that does simple numerical operations -- like
 the primes test -- can run fairly fast, while code that has a lot of memory
 accesses, for example due to using structures -- like the raytrace test --
@@ -654,7 +654,8 @@ is a significant slowdown, it is still more than fast enough for
 many purposes, and the main point of course is that the code can run
 anywhere the web can be accessed. Further work on Emscripten is expected to
 improve the speed as well, as are improvements to LLVM, the Closure
-Compiler, and JavaScript engines themselves.
+Compiler, and JavaScript engines themselves; see further discussion
+in the Summary.
 
 \section{Emscripten's Architecture}
 \label{sec:emarch}
@@ -724,12 +725,13 @@ since JavaScript engines are tuned to run such code very quickly (for
 example, a tracing JIT as in SpiderMonkey will only trace normal loops).
 
 Returning to the LLVM assembly code on page~\pageref{code:examplellvm}, it
-has has the following structure (where arrows denote potential paths of execution):
+has the following structure (where arrows denote potential paths of execution):
 
 \includegraphics[width=80mm]{graph.png}
 
 In this simple example, it is fairly straightforward to see that a natural way to implement it
 using normal loop structures is
+\newpage
 \begin{verbatim}
 ENTRY
 while (true) do
@@ -745,7 +747,7 @@ for example the original C code relied heavily on \emph{goto} instructions.
 In practice, however, almost all real-world C and C++ code tends to
 be amenable to loop recreation.
 
-We now begin to describe the Relooper algorithm. As mentioned before, it takes as input a `soup of labelled LLVM blocks' as described above,
+We now begin to describe the Relooper algorithm. As mentioned before, it takes as input a `soup of labeled LLVM blocks' as described above,
 and generates a structured set of Emscripten code blocks, which are each a set of LLVM blocks
 with some logical structure. For simplicity we call LLVM blocks `labels' and Emscripten
 blocks `blocks' in the following.
@@ -852,7 +854,7 @@ generated code, both subjectively and at least in some simple benchmarks.
 
 Additional details of the algorithm include
 \begin{itemize}
-\item The technical mechanism by which execution flow is controlled involves
+\item The technical mechanism by which execution flow is controlled in the generated code involves
 the \emph{\_\_label\_\_} variable, mentioned earlier. Whenever we enter a block with more than one
 entry, we set \emph{\_\_label\_\_} before we branch into it, and we
 check its value when we enter that block. So, for example, when we
@@ -876,16 +878,13 @@ the \emph{break} and \emph{continue}
 commands are guaranteed, by the semantics of JavaScript, to get us to
 where we need to go -- they do not need any further work
 for them to work properly).
-\end{itemize}
-
-Emscripten also does an additional pass after running the Relooper algorithm
-which has been described. The Relooper is guaranteed to produce valid output (see below).
-The second pass takes that valid output and optimizes it, by
+\item Emscripten also does an additional pass after what has been
+described thus far, which was the first pass. The first pass is guaranteed to produce valid output (see below), while
+the second pass takes that valid output and optimizes it, by
 making minor changes such as removing
 \emph{continue} commands that occur at the very end of loops
-(where they are not needed), etc. In other words, the first pass focuses on
-generating high-level code flow structures that are correct,
-while the second pass simplifies and optimizes that structure.
+(where they are not needed), etc.
+\end{itemize}
 
 We now turn to an analysis of the Relooper algorithm. It is straightforward to see that the output of the algorithm,
 assuming it completes successfully -- that is, that if finishes in finite time, and does
@@ -918,10 +917,10 @@ The remaining issue is whether we can reach a situation where we \emph{cannot}
 successfully create a block, which is if we reach the final part of the relooper algorithm, but cannot create a
 Loop block there. For that to occur, we must not be able
 to return to any of the entries (or else we would create a Loop
-block). But if that is so, we can, at minimum, create a Multiple
-block with entries for all the current entries, since the entry
-labels themselves cannot be reached by the others as we have just
-assumed (when we ruled out creating a Loop block here), contradicting the assumption
+block). Assume that indeed we cannot return to any of the entries. But if that is so, we can create a Multiple
+block with Handled blocks that each include one of the entries (and possibly additional labels as well), since each entry
+label cannot be reached from any other label by our assumption earlier, thus
+contradicting that assumption
 and concluding the proof.
 
 (We have not, of course, proven that the shape of the blocks is optimal
@@ -934,18 +933,18 @@ construction to more natural JavaScript code flow structures.)
 
 Emscripten has been run successfully on several real-world codebases. We present
 some examples here to give an idea of the various opportunities made possible
-by Emscripten:
+by Emscripten.
 \begin{itemize}
 \item \textbf{Python}: It is possible to run variants of Python on
-the web in various ways, including pyjamas, IronPython on SilverLight and
+the web in various ways, including Pyjamas, IronPython on SilverLight and
 Jython in Java. However, all of these are slightly nonstandard in the
-the Python code they run, while the latter two also require plugins to be
+Python code they run, while the latter two also require plugins to be
 installed. With Emscripten, on the other hand, it is possible to compile
 CPython itself -- the standard, reference implementation of Python -- and
 run that on the web, which allows running standard Python code. An online
 demo is available at \url{http://syntensity.com/static/python.html}.
-Another example of a language runtime that Emscripten can convert to run
-on the web is Lua, an online demo is available at \url{http://syntensity.com/static/lua.html}.
+(Another example of a language runtime that Emscripten can convert to run
+on the web is Lua; an online demo is available at \url{http://syntensity.com/static/lua.html}.)
 \item \textbf{Poppler and FreeType}: Poppler\footnote{\url{http://poppler.freedesktop.org/}} is an open source PDF
 rendering library. In combination with FreeType\footnote{\url{http://www.freetype.org/}}, an open source font
 engine, it can be used to render PDF files. By compiling it with Emscripten,
@@ -1032,8 +1031,8 @@ static analysis can be time-consuming, there are practical ways for
 achieving similar results quickly, such as tracing and type inference, which
 would help on such code very significantly, and are already in use
 or being worked on in mainstream JavaScript engines (e.g., SpiderMonkey). As
-a consequence, it may soon be possible to write code in languages such as
-C and C++ and run them on web with near-native speed.
+a consequence, it may soon be possible to run code written in languages such as
+C and C++ on the web with near-native speed.
 
 %\appendix
 %\section{Appendix Title}
@@ -1041,7 +1040,7 @@ C and C++ and run them on web with near-native speed.
 
 \acks
 
-Thank you to the following people: David LaPalomento, Daniël Heres, Brian Crowder, Brian McKenna, dglead and tuba.
+We thank the following people for their contributions to Emscripten: David LaPalomento, Daniel Heres, Brian Crowder, Brian McKenna, dglead and tuba.
 
 \bibliographystyle{abbrvnat}
 
