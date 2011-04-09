@@ -1,10 +1,8 @@
 TEMP_DIR='/dev/shm'
 
-#LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.8/cbuild/Release/bin')
-LLVM_ROOT=os.path.expanduser('~/Dev/llvm-svn/build/Release+Asserts/bin')
+LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.9/cbuild/bin')
 
-#LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-4.2-2.8.source/cbuild/install/bin/llvm-g++')
-LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-svn/cbuild/install/bin/llvm-g++')
+LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-2.9/cbuild/install/bin/llvm-g++')
 
 COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
                          # various errors on 64bit compilation
@@ -19,8 +17,6 @@ V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
 COMPILER_ENGINE=V8_ENGINE
 
 JS_ENGINE=V8_ENGINE
-JS_ENGINE_PARAMS = ['--'] # For V8
-JS_ENGINE_PARAMS = [] # For SpiderMonkey
 
 TIMEOUT = None
 

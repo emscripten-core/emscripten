@@ -18,8 +18,8 @@ var Debugging = {
     var metadataToParentMetadata = {};
     var metadataToFilename = {};
 
-    var form1 = new RegExp(/^  .*, !dbg !(\d+) +$/);
-    var form2 = new RegExp(/^  .*, !dbg !(\d+) +; .*$/);
+    var form1 = new RegExp(/^  .*, !dbg !(\d+) *$/);
+    var form2 = new RegExp(/^  .*, !dbg !(\d+) *; .*$/);
     var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), i32 \d+, metadata !(\d+), .*}$/);
     var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, i32 \d+, i32 \d+, metadata !(\d+), i32 \d+} ; \[ DW_TAG_lexical_block \]$/);
     var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, i32 \d+, metadata !(\d+), .*$/);
