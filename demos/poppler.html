@@ -1,0 +1,126 @@
+<html>
+<head>
+  <title>
+    Emscripten: PDF Demo
+  </title>
+  <script type="text/javascript">
+    arguments = [];
+    NO_RUN = 1;
+  </script>
+  <script src="poppler.yui.js"></script>
+  <script src="paper.pdf.js"></script>
+  <script type="text/javascript">
+    /*
+      Changes to poppler.js from test runner:
+        * remove last 3 lines, of prepare-run-print
+      Fixes after closure compiler:
+        * replace TOTAL_STACK with 1024*1024
+    */
+
+    // Wrapper around Poppler
+    function pdf_to_image(data) {
+      _STDIO.prepare('input.pdf', data);
+      run(['-scale-to', '800', '-f', '1', '-l', '1', 'input.pdf', 'filename']);
+      var ppm = _STDIO.streams[_STDIO.filenames['*s-0*d.']].data;
+
+      // Convert ppm
+      var image = {};
+      var str = intArrayToString(ppm.slice(100));
+      var m = /^P6\n(\d+) (\d+)\n255\n.*/.exec(intArrayToString(ppm));
+      if (!m) {
+        alert('Output does not seem valid: ' + ppm.slice(0,100));
+        throw 'fail';
+      }
+      image.width = m[1];
+      image.height = m[2];
+      var dataIndex = -1;
+      for (var i = 0; i < 3; i++) {
+        dataIndex = ppm.indexOf(10, dataIndex+1);
+      }
+      image.data = ppm.slice(dataIndex+1); // not terribly memory efficient
+
+      return image;
+    }
+
+    // print function which the runtime will call. We figure out the image dimensions from there
+    function print(text) {
+      document.getElementById('output').innerHTML += text + '<br>';
+    }
+
+    function render(url) {
+      // Demo image by default
+      var data = DEMO_FILE;
+
+      // If given a URL, fetch it
+      if (url && url[0] != '(') {
+        try {
+          var xhr = new XMLHttpRequest();
+          xhr.open("GET", url, false);
+          xhr.send(null);
+          var buffer = xhr.mozResponseArrayBuffer;
+          if (buffer) data = new Uint8Array(buffer);
+        } catch(e) {
+          alert('Could not load URL: ' + e);
+          return;
+        }
+      }
+
+      document.getElementById('output').innerHTML = '';
+
+      var image = pdf_to_image(data);
+
+      if (image.data.length != image.height*image.width*3) {
+        alert('Image sizes are not valid: ' + [image.data.length, image.height, image.width*3]);
+        throw 'fail';
+      }
+
+      var canvas = document.getElementById('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+
+      var ctx = canvas.getContext('2d');
+      var canvasImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      for (var y = 0; y < canvas.height; y++) {
+        for (var x = 0; x < canvas.width; x++) {
+          var base = (y*canvas.width + x)*4;
+          var base2 = (y*canvas.width + x)*3;
+          canvasImage.data[base + 0] = image.data[base2 + 0];
+          canvasImage.data[base + 1] = image.data[base2 + 1];
+          canvasImage.data[base + 2] = image.data[base2 + 2];
+          canvasImage.data[base + 3] = 255;
+        }
+      }
+      ctx.putImageData(canvasImage, 0, 0);
+    }
+  </script>
+</head>
+<body>
+  <h1>PDF Rendering on the Web</h1>
+  <p><b>This is a demo of rendering a PDF document entirely in
+     JavaScript, without any plugins</b>. It uses <a href="http://poppler.freedesktop.org/">Poppler</a>, an open source PDF library,
+     which was compiled to JavaScript using <a href="http://emscripten.org">Emscripten</a>. Also used in this
+     demo is <a href="http://www.freetype.org/">FreeType</a> for font rendering.</p>
+  <p>After the PDF is
+     decoded into pixel data, it is rendered using a Canvas element. This demo should therefore work in any web
+     browser that supports the Canvas element.</p>
+  <p><b>Click 'Go!'</b> to render a example PDF file.</p>
+  <p>You can also change the URL to that of a PDF document, which will be
+     downloaded and rendered. In order to process the binary data,
+     <a href="https://developer.mozilla.org/en/using_xmlhttprequest#Receiving_binary_data_using_JavaScript_typed_arrays">mozResponseArrayBuffer</a>
+     is used, which is specific to Firefox 4. Note also that the usual limitations of cross-site XHRs apply, so
+     you may not be able to download PDFs from random servers (as an example, try
+     <a href="http://www.syntensity.com/static/emscripten.pdf">emscripten.pdf</a>, which is a PDF
+     of Emscripten's home page, on this server).</p>
+  <hr>
+  <canvas id='canvas' width=1 height=1></canvas>
+  <hr>
+  <form onsubmit="render(texty.value); return false">
+    PDF 2000 URL: <input type="text" name="texty" size=60 value="(replace this with a URL of a PDF document, or just click 'Go!')" onclick="if (value[0] === '(') value=''"><br>
+    <input type="submit" value="Go!">
+  </form>
+  <hr>
+  <div id="output" style="font-family: Courier New,Courier,monospace;"></div>
+</body>
+</html>
+
