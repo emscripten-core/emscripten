@@ -1,3 +1,12 @@
+2011-04-09: Version 1.0
+
+  * Poppler test and web demo
+  * Optimize compiler memory usage very significantly
+  * Support for LLVM 2.9
+  * Better interaction with closure compiler
+  * Finish docs/paper.pdf
+  * Many bug fixes
+
 2011-03-05: Version 0.9
 
   * OpenJPEG test and web demo
