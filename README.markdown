@@ -4,8 +4,9 @@ Emscripten
 
 Emscripten is an LLVM-to-JavaScript compiler. It takes LLVM bitcode - which can be generated from C/C++, using llvm-gcc or clang, or any other language that can be converted into LLVM - and compiles that into JavaScript, which can be run on the web (or anywhere else JavaScript can run).
 
-Links to **demos**, **FAQ**, etc: https://github.com/kripken/emscripten/wiki
-Main project page: http://emscripten.org
+Links to **demos**, **FAQ**, etc: <https://github.com/kripken/emscripten/wiki>
 
-See LICENSE.txt for copyright, redistribution and warranty info.
+Main project page: <http://emscripten.org>
+
+Emscripten is MIT licensed, see LICENSE.txt.
 
