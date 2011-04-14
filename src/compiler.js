@@ -49,6 +49,12 @@ load('analyzer.js');
 load('jsifier.js');
 load('runtime.js');
 
+// Load library, with preprocessing and macros
+
+for (suffix in set('', '_sdl', '_gl')) {
+  eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
+}
+
 //===============================
 // Main
 //===============================

@@ -16,11 +16,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   var GLOBAL_VARIABLES = functionsOnly ? givenGlobalVariables : data.globalVariables;
 
-  var FUNCTIONS = functionsOnly ? givenFunctions : {};
+  Functions.currFunctions = functionsOnly ? givenFunctions : {};
   // Now that analysis has completed, we can get around to handling unparsedFunctions
   (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
     // Save just what we need, to save memory - whether there are varargs, and the # of parameters
-    FUNCTIONS[func.ident] = {
+    Functions.currFunctions[func.ident] = {
       hasVarArgs: func.hasVarArgs,
       numParams: func.params.length
    };
@@ -30,7 +30,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var func = data.unparsedFunctions[i];
     dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
     //var t = Date.now();
-    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, FUNCTIONS, GLOBAL_VARIABLES);
+    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions.currFunctions, GLOBAL_VARIABLES);
     //t = (Date.now()-t)/1000;
     //dprint('unparsedFunctions', 'unparsedFunction took ' + t + ' seconds.');
     delete func.lines; // clean up memory as much as possible
@@ -40,13 +40,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     // We are now doing the final JS generation
     dprint('unparsedFunctions', '== Completed unparsedFunctions ==\n');
     Debugging.clear(); // Save some memory, before the final heavy lifting
-  }
-
-  // Load library
-
-  // TODO: optimize this so it isn't done over and over for each unparsedFunction
-  for (suffix in set('', '_sdl', '_gl')) {
-    eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
   }
 
   // Actors
@@ -64,103 +57,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       return [item];
     }
   });
-
-  function makePointer(slab, pos, allocator, type) { // type is FFU
-    if (slab in set('HEAP', 'IHEAP', 'FHEAP')) return pos;
-    return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ')';
-  }
-
-  function makeGetSlabs(ptr, type, allowMultiple) {
-    assert(type);
-    if (!USE_TYPED_ARRAYS) {
-      return ['HEAP'];
-    } else {
-      if (type in Runtime.FLOAT_TYPES || type === 'int64') {
-        return ['FHEAP'];
-      } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
-        return ['IHEAP'];
-      } else {
-        assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
-        return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
-      }
-    }
-  }
-
-  function makeGetPos(ptr) {
-    return ptr;
-  }
-
-  function calcFastOffset(ptr, pos, noNeedFirst) {
-    var offset = noNeedFirst ? '0' : makeGetPos(ptr);
-    return getFastValue(offset, '+', pos);
-  }
-
-  // See makeSetValue
-  function makeGetValue(ptr, pos, type, noNeedFirst) {
-    if (isStructType(type)) {
-      var typeData = Types.types[type];
-      var ret = [];
-      for (var i = 0; i < typeData.fields.length; i++) {
-        ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst));
-      }
-      return '{ ' + ret.join(', ') + ' }';
-    }
-
-    var offset = calcFastOffset(ptr, pos, noNeedFirst);
-    if (SAFE_HEAP) {
-      if (type !== 'null') type = '"' + safeQuote(type) + '"';
-      return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ')';
-    } else {
-      return makeGetSlabs(ptr, type)[0] + '[' + offset + ']';
-    }
-  }
-
-  function indexizeFunctions(value) { // TODO: Also check for other functions (externals, library, etc.)
-    if (value in FUNCTIONS) {
-      value = Functions.getIndex(value); // Store integer value
-    }
-    return value;
-  }
-
-  //! @param ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
-  //!            is just an integer, then this is almost redundant, but in general the pointer type
-  //!            may in the future include information about which slab as well. So, for now it is
-  //!            possible to put |0| here, but if a pointer is available, that is more future-proof.
-  //! @param pos The position in that slab - the offset. Added to any offset in the pointer itself.
-  //! @param value The value to set.
-  //! @param type A string defining the type. Used to find the slab (IHEAP, FHEAP, etc.).
-  //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
-  //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
-  //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-  function makeSetValue(ptr, pos, value, type, noNeedFirst) {
-    if (isStructType(type)) {
-      var typeData = Types.types[type];
-      var ret = [];
-      for (var i = 0; i < typeData.fields.length; i++) {
-        ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
-      }
-      return ret.join('; ');
-    }
-
-    value = indexizeFunctions(value);
-    var offset = calcFastOffset(ptr, pos, noNeedFirst);
-    if (SAFE_HEAP) {
-      if (type !== 'null') type = '"' + safeQuote(type) + '"';
-      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ');';
-    } else {
-      return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + ']=' + value }).join('; ') + ';';
-    }
-  }
-
-  function makeCopyValue(dest, destPos, src, srcPos, type, modifier) {
-    if (type !== 'null') {
-      return makeSetValue(dest, destPos, makeGetValue(src, srcPos, type) + (modifier || ''), type);
-    }
-    // Null is special-cased: We copy over all heaps
-    return 'IHEAP[' + dest + '+' + destPos + '] = IHEAP[' + src + '+' + srcPos + ']; ' +
-           'FHEAP[' + dest + '+' + destPos + '] = FHEAP[' + src + '+' + srcPos + ']; ' +
-           (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + ' + ' + destPos + ', ' + src + ' + ' + srcPos + ')' : '');
-  }
 
   function makeEmptyStruct(type) {
     var ret = [];
@@ -938,34 +834,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
   } });
 
-  // Given two values and an operation, returns the result of that operation.
-  // Tries to do as much as possible at compile time.
-  function getFastValue(a, op, b) {
-    if (isNumber(a) && isNumber(b)) {
-      return eval(a + op + b);
-    }
-    if (op == '*') {
-      if (!a) a = 1;
-      if (!b) b = 1;
-      if (a == 0 || b == 0) {
-        return 0;
-      } else if (a == 1) {
-        return b;
-      } else if (b == 1) {
-        return a;
-      }
-    } else if (op in set('+', '-')) {
-      if (!a) a = 0;
-      if (!b) b = 0;
-      if (a == 0) {
-        return b;
-      } else if (b == 0) {
-        return a;
-      }
-    }
-    return a + op + b;
-  }
-
   function getGetElementPtrIndexes(item) {
     var ident = item.ident;
     var type = item.params[0].type; // param 0 == type
@@ -1088,7 +956,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       return ';';
     }
 
-    var func = FUNCTIONS[ident];
+    var func = Functions.currFunctions[ident];
     var args = [];
     var varargs = [];
 

@@ -115,6 +115,9 @@ var Types = {
 };
 
 var Functions = {
+  // The list of function datas which are being processed in the jsifier, currently
+  currFunctions: [],
+
   indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
 
   // Mark a function as needing indexing, and returns the index
