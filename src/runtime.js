@@ -113,7 +113,7 @@ Runtime = {
         dprint('Unclear type in struct: ' + field + ', in ' + type.name_);
         assert(0);
       }
-      alignSize = Math.min(alignSize, QUANTUM_SIZE);
+      alignSize = type.packed ? 1 : Math.min(alignSize, QUANTUM_SIZE);
       type.alignSize = Math.max(type.alignSize, alignSize);
       var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
       type.flatSize = curr + size;

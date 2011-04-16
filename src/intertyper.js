@@ -315,11 +315,13 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       if (item.tokens[2].text == 'type') {
         var fields = [];
+        var packed = false;
         if (Runtime.isNumberType(item.tokens[3].text)) {
           // Clang sometimes has |= i32| instead of |= { i32 }|
           fields = [item.tokens[3].text];
         } else if (item.tokens[3].text != 'opaque') {
-          if (item.tokens[3].type == '<') { // type <{ i8 }> - TODO: check spec
+          if (item.tokens[3].type == '<') {
+            packed = true;
             item.tokens[3] = tokenizer.processItem({ lineText: '{ ' + item.tokens[3].item.tokens[0].text + ' }' }, true).tokens[0];
           }
           var subTokens = item.tokens[3].tokens;
@@ -335,6 +337,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           intertype: 'type',
           name_: item.tokens[0].text,
           fields: fields,
+          packed: packed,
           lineNum: item.lineNum
         }];
       } else {

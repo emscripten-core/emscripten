@@ -1228,6 +1228,37 @@ if 'benchmark' not in sys.argv:
           '''
         self.do_test(src, '*96,97,98,101,101*')
 
+    def test_pack(self):
+        src = '''
+          #include <stdio.h>
+          #include <string.h>
+
+          #pragma pack(push,1)
+          typedef struct header
+          {                           
+              unsigned char  id;
+              unsigned short colour;
+              unsigned char  desc;
+          } header;
+          #pragma pack(pop)
+
+          typedef struct fatheader
+          {                           
+              unsigned char  id;
+              unsigned short colour;
+              unsigned char  desc;
+          } fatheader;
+
+          int main( int argc, const char *argv[] ) {
+            header h, *ph = 0;
+            fatheader fh, *pfh = 0;
+            printf("*%d,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
+            printf("*%d,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
+            return 0;
+          }
+          '''
+        self.do_test(src, '*4,3,4*\n*6,4,6*')
+
     def test_varargs(self):
         src = '''
           #include <stdio.h>
