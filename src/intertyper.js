@@ -310,6 +310,58 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // globals: type or variable
   substrate.addActor('Global', {
     processItem: function(item) {
+      function scanConst(value, type) {
+        //dprint('inter-const: ' + item.lineNum + ' : ' + JSON.stringify(value) + ',' + type + '\n');
+        if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
+          return { value: toNiceIdent(value.text), type: type };
+        } else if (value.text in set('zeroinitializer', 'undef')) { // undef doesn't really need initting, but why not
+          return { intertype: 'emptystruct', type: type };
+        } else if (value.text && value.text[0] == '"') {
+          return { intertype: 'string', text: value.text.substr(1, value.text.length-2) };
+        } else {
+          // Gets an array of constant items, separated by ',' tokens
+          function handleSegments(tokens) {
+            // Handle a single segment (after comma separation)
+            function handleSegment(segment) {
+              if (segment[1].text == 'null') {
+                return { intertype: 'value', value: 0 };
+              } else if (segment[1].text == 'zeroinitializer') {
+                return { intertype: 'emptystruct', type: segment[0].text };
+              } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
+                return parseLLVMFunctionCall(segment);
+              } else if (segment[1].type == '{') {
+                return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].tokens) };
+              } else if (segment[1].type == '[') {
+                return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
+              } else if (segment.length == 2) {
+                return { intertype: 'value', value: toNiceIdent(segment[1].text) };
+              } else if (segment[1].text === 'c') {
+                // string
+                var text = segment[2].text;
+                text = text.substr(1, text.length-2);
+                return { intertype: 'string', text: text };
+              } else {
+                throw 'Invalid segment: ' + dump(segment);
+              }
+            };
+            return splitTokenList(tokens).map(handleSegment);
+          }
+          var contents;
+          if (value.item) {
+            // list of items
+            contents = value.item.tokens;
+          } else if (value.type == '{') {
+            // struct
+            contents = value.tokens;
+          } else if (value[0]) {
+            contents = value[0];
+          } else {
+            throw '// interfailzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
+          }
+          return { intertype: 'segments', contents: handleSegments(contents) };
+        }
+      }
+
       if (item.tokens[2].text == 'alias') {
         return; // TODO: handle this. See raytrace.cpp
       }
@@ -374,9 +426,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
 
-          ret.value = item.tokens[3];
-          if (ret.value.text in PARSABLE_LLVM_FUNCTIONS) {
+          if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
             ret.value = parseLLVMFunctionCall(item.tokens.slice(2));
+          } else if (!external) {
+            ret.value = scanConst(item.tokens[3], ret.type);
           }
         }
         return [ret];

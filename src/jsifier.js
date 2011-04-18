@@ -95,66 +95,38 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   // Gets an entire constant expression
   function makeConst(value, type, ident) {
-    //dprint('gconst', '//yyyyy ' + JSON.stringify(value) + ',' + type + '\n');
-    if (value.intertype) {
+    //dprint('jsifier const: ' + JSON.stringify(value) + ',' + type + '\n');
+    if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return indexizeFunctions(parseNumerical(toNiceIdent(value.text)));
-    } else if (value.text in set('zeroinitializer', 'undef')) { // undef doesn't really need initting, but why not
+      return indexizeFunctions(parseNumerical(value.value));
+    } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
-    } else if (value.text && value.text[0] == '"') {
-      value.text = value.text.substr(1, value.text.length-2);
+    } else if (value.intertype === 'string') {
       return JSON.stringify(parseLLVMString(value.text)) +
              ' /* ' + value.text.substr(0, 20).replace(/\*/g, '_') + ' */'; // make string safe for inclusion in comment
     } else {
       // Gets an array of constant items, separated by ',' tokens
       function handleSegments(tokens) {
-        //dprint('gconst', '// segggS: ' + JSON.stringify(tokens) + '\n' + '\n')
         // Handle a single segment (after comma separation)
         function handleSegment(segment) {
-          //dprint('// seggg: ' + JSON.stringify(segment) + '\n' + '\n')
-          if (segment[1].text == 'null') {
-            return '0';
-          } else if (segment[1].text == 'zeroinitializer') {
-            return makeEmptyStruct(segment[0].text);
-          } else if (segment[1].text in set('bitcast', 'inttoptr', 'ptrtoint')) { // TODO: Use parse/finalizeLLVMFunctionCall
-            var type = segment[2].item.tokens.slice(-1)[0].text; // TODO: Use this?
-            return handleSegment(segment[2].item.tokens.slice(0, -2));
-          } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
-            return finalizeLLVMFunctionCall(parseLLVMFunctionCall(segment));
-          } else if (segment[1].type == '{') {
-            // struct
-            var type = segment[0].text;
-            return alignStruct(handleSegments(segment[1].tokens), type);
-          } else if (segment[1].type == '[') {
-            var type = segment[0].text;
-            return alignStruct(handleSegments(segment[1].item.tokens), type);
-          } else if (segment.length == 2) {
-            return toNiceIdent(segment[1].text);
-          } else if (segment[1].text === 'c') {
-            // string
-            var text = segment[2].text;
-            text = text.substr(1, text.length-2);
-            return parseLLVMString(text); // + ' /* ' + text + '*/';
+          if (segment.intertype === 'value') {
+            return segment.value.toString();
+          } else if (segment.intertype === 'emptystruct') {
+            return makeEmptyStruct(segment.type);
+          } else if (segment.intertype in PARSABLE_LLVM_FUNCTIONS) {
+            return finalizeLLVMFunctionCall(segment);
+          } else if (segment.intertype in set('struct', 'list')) {
+            return alignStruct(handleSegments(segment.contents), segment.type);
+          } else if (segment.intertype === 'string') {
+            return parseLLVMString(segment.text); // + ' /* ' + text + '*/';
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
         };
-        return splitTokenList(tokens).map(handleSegment).map(indexizeFunctions);
+        return tokens.map(handleSegment).map(indexizeFunctions);
       }
-      var contents;
-      if (value.item) {
-        // list of items
-        contents = value.item.tokens;
-      } else if (value.type == '{') {
-        // struct
-        contents = value.tokens;
-      } else if (value[0]) {
-        contents = value[0];
-      } else {
-        throw '// failzzzzzzzzzzzzzz ' + dump(value.item) + ' ::: ' + dump(value);
-      }
-      return alignStruct(handleSegments(contents), type);
+      return alignStruct(handleSegments(value.contents), type);
     }
   }
 
