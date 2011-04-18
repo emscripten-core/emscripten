@@ -463,6 +463,27 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*3.14,-3.14,Infinity*')
 
+    def test_getgep(self):
+        # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
+        src = '''
+          #include <stdio.h>
+          struct {
+            int y[10];
+            int z[10];
+          } commonblock;
+
+          int main()
+          {
+            for (int i = 0; i < 10; ++i) {
+              commonblock.y[i] = 1;
+              commonblock.z[i] = 2;
+            }
+            printf("*%d %d*\\n", commonblock.y[0], commonblock.z[0]);
+            return 0;
+          }
+        '''
+        self.do_test(src, '*1 2*')
+
     def test_if(self):
         src = '''
           #include <stdio.h>

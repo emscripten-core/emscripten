@@ -835,14 +835,16 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   } });
 
   function getGetElementPtrIndexes(item) {
-    var ident = item.ident;
-    var type = item.params[0].type; // param 0 == type
+    var type = item.params[0].type;
+    item.params = item.params.map(finalizeLLVMParameter);
+    var ident = item.params[0];
+
     // struct pointer, struct*, and getting a ptr to an element in that struct. Param 1 is which struct, then we have items in that
     // struct, and possibly further substructures, all embedded
     // can also be to 'blocks': [8 x i32]*, not just structs
     type = removePointing(type);
     var indexes = [makeGetPos(ident)];
-    var offset = toNiceIdent(item.params[1].ident);
+    var offset = item.params[1];
     if (offset != 0) {
       if (isStructType(type)) {
         indexes.push(getFastValue(Types.types[type].flatSize, '*', offset));
@@ -851,8 +853,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }
     }
     item.params.slice(2, item.params.length).forEach(function(arg) {
-      dprint('types', 'GEP type: ' + type);
-      var curr = toNiceIdent(arg.ident);
+      var curr = arg;
       // TODO: If index is constant, optimize
       var typeData = Types.types[type];
       if (isStructType(type) && typeData.needsFlattening) {
@@ -893,7 +894,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   function finalizeLLVMFunctionCall(item) {
     switch(item.intertype) {
-      case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
+      case 'getelementptr':
         return makePointer(makeGetSlabs(item.ident, item.type)[0], getGetElementPtrIndexes(item), null, item.type);
       case 'bitcast':
       case 'inttoptr':
