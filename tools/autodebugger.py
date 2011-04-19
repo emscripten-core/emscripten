@@ -11,9 +11,31 @@ POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [21 x i8] c"line: %d, value: %d\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
+define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
+entry:
+  %0 = sitofp i64 %value to double ; [#uses=1]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
+  br label %return
+
+return:                                           ; preds = %entry
+  ret void
+}
+
+; [#uses=1]
 define void @emscripten_autodebug_i32(i32 %line, i32 %value) {
 entry:
   %0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %value) ; [#uses=0]
+  br label %return
+
+return:                                           ; preds = %entry
+  ret void
+}
+
+; [#uses=1]
+define void @emscripten_autodebug_i16(i32 %line, i16 %value) {
+entry:
+  %0 = zext i16 %value to i32 ; [#uses=1]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %0) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -57,8 +79,22 @@ POSTAMBLE_NEW = '''
 @.emscripten.autodebug.str = private constant [21 x i8] c"line: %d, value: %d\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
+define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
+  %1 = sitofp i64 %value to double
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
+  ret void
+}
+
+; [#uses=1]
 define void @emscripten_autodebug_i32(i32 %line, i32 %value) {
   %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %value) ; [#uses=0]
+  ret void
+}
+
+; [#uses=1]
+define void @emscripten_autodebug_i16(i32 %line, i16 %value) {
+  %1 = zext i16 %value to i32 ; [#uses=1]
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %1) ; [#uses=0]
   ret void
 }
 
@@ -106,7 +142,7 @@ for i in range(len(lines)):
   #  lines[i] += '\n
 
   m = re.match('  store (?P<type>i64|i32|i16|i8) %(?P<var>[\w.]+), .*', lines[i])
-  if m and m.group('type') in ['i8', 'i32', 'float', 'double']:
+  if m and m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
     lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), i+1+lines_added, m.group('type'), m.group('var'))
     lines_added += 1
 
