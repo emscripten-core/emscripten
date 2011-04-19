@@ -62,6 +62,12 @@ function assertTrue(a, msg) {
 }
 assert = assertTrue;
 
+function warn(a, msg) {
+  if (!a) {
+    dprint('Warning: ' + msg);
+  }
+}
+
 function dedup(items, ident) {
   var seen = {};
   if (ident) {
@@ -224,5 +230,9 @@ function setIntersect(x, y) {
     }
   }
   return ret;
+}
+
+function copy(x) {
+  return JSON.parse(JSON.stringify(x));
 }
 

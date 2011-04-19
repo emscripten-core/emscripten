@@ -307,6 +307,16 @@ function parseParamTokens(params) {
   return ret;
 }
 
+function finalizeParam(param) {
+  if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
+    return finalizeLLVMFunctionCall(param);
+  } else if (param.intertype === 'jsvalue') {
+    return param.ident;
+  } else {
+    return toNiceIdent(param.ident);
+  }
+}
+
 // Segment ==> Parameter
 function parseLLVMSegment(segment) {
   var type;
@@ -714,4 +724,256 @@ function makeGetSlabs(ptr, type, allowMultiple) {
     }
   }
 }
+
+function finalizeLLVMFunctionCall(item) {
+  switch(item.intertype) {
+    case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
+      return makePointer(makeGetSlabs(item.ident, item.type)[0], getGetElementPtrIndexes(item), null, item.type);
+    case 'bitcast':
+    case 'inttoptr':
+    case 'ptrtoint':
+      return finalizeLLVMParameter(item.params[0]);
+    case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div':
+      var temp = {
+        op: item.intertype,
+        variant: item.variant,
+        type: item.type
+      };
+      for (var i = 1; i <= 4; i++) {
+        if (item.params[i-1]) {
+          temp['param' + i] = finalizeLLVMParameter(item.params[i-1]);
+        }
+      }
+      return processMathop(temp);
+    default:
+      throw 'Invalid function to finalize: ' + dump(item.intertype);
+  }
+}
+
+function getGetElementPtrIndexes(item) {
+  var type = item.params[0].type;
+  item.params = item.params.map(finalizeLLVMParameter);
+  var ident = item.params[0];
+
+  // struct pointer, struct*, and getting a ptr to an element in that struct. Param 1 is which struct, then we have items in that
+  // struct, and possibly further substructures, all embedded
+  // can also be to 'blocks': [8 x i32]*, not just structs
+  type = removePointing(type);
+  var indexes = [makeGetPos(ident)];
+  var offset = item.params[1];
+  if (offset != 0) {
+    if (isStructType(type)) {
+      indexes.push(getFastValue(Types.types[type].flatSize, '*', offset));
+    } else {
+      indexes.push(getFastValue(getNativeFieldSize(type, true), '*', offset));
+    }
+  }
+  item.params.slice(2, item.params.length).forEach(function(arg) {
+    var curr = arg;
+    // TODO: If index is constant, optimize
+    var typeData = Types.types[type];
+    if (isStructType(type) && typeData.needsFlattening) {
+      if (typeData.flatFactor) {
+        indexes.push(getFastValue(curr, '*', typeData.flatFactor));
+      } else {
+        if (isNumber(curr)) {
+          indexes.push(typeData.flatIndexes[curr]);
+        } else {
+          indexes.push(toNiceIdent(type) + '___FLATTENER[' + curr + ']'); // TODO: If curr is constant, optimize out the flattener struct
+        }
+      }
+    } else {
+      if (curr != 0) {
+        indexes.push(curr);
+      }
+    }
+    if (!isNumber(curr) || parseInt(curr) < 0) {
+      // We have a *variable* to index with, or a negative number. In both
+      // cases, in theory we might need to do something dynamic here. FIXME?
+      // But, most likely all the possible types are the same, so do that case here now...
+      for (var i = 1; i < typeData.fields.length; i++) {
+        assert(typeData.fields[0] === typeData.fields[i]);
+      }
+      curr = 0;
+    }
+    type = typeData ? typeData.fields[curr] : '';
+  });
+  var ret = indexes[0];
+  for (var i = 1; i < indexes.length; i++) {
+    ret = getFastValue(ret, '+', indexes[i]);
+  }
+
+  ret = handleOverflow(ret, 32); // XXX - we assume a 32-bit arch here. If you fail on this, change to 64
+
+  return ret;
+}
+
+function handleOverflow(text, bits) {
+  if (!bits) return text;
+  if (bits <= 32 && correctOverflows()) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
+  if (!CHECK_OVERFLOWS || correctSpecificOverflow()) return text; // If we are correcting a specific overflow here, do not check for it
+  return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
+}
+
+// From parseLLVMSegment
+function finalizeLLVMParameter(param) {
+  if (isNumber(param)) {
+    return param;
+  } else if (typeof param === 'string') {
+    return toNiceIdentCarefully(param);
+  } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
+    return finalizeLLVMFunctionCall(param);
+  } else if (param.intertype == 'value') {
+    return parseNumerical(param.ident);
+  } else if (param.intertype == 'structvalue') {
+    return param.values.map(finalizeLLVMParameter);
+  } else {
+    throw 'invalid llvm parameter: ' + param.intertype;
+  }
+}
+
+function makeSignOp(value, type, op) { // TODO: If value isNumber, do this at compile time
+  if (!value) return value;
+  if (!correctSigns() && !CHECK_SIGNS) return value;
+  if (type in Runtime.INT_TYPES) {
+    var bits = parseInt(type.substr(1));
+    if (isNumber(value)) {
+      // Sign/unsign constants at compile time
+      return eval(op + 'Sign(' + value + ', ' + bits + ', 1)').toString();
+    }
+    // shortcuts for 32-bit case
+    if (bits === 32 && !CHECK_SIGNS) {
+      if (op === 're') {
+        return '((' + value + ')|0)';
+      } else {
+        // TODO: figure out something here along the lines of return '(' + Math.pow(2, 32) + '+((' + value + ')|0))';
+      }
+    }
+    return op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign()) + ')'; // If we are correcting a specific sign here, do not check for it
+  } else {
+    return value;
+  }
+}
+
+function makeRounding(value, bits, signed) {
+  // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
+  // With 32 bits and less, and a signed value, |0 will round it like C does.
+  if (bits && bits <= 32 && signed) return '('+value+'|0)';
+  // If the value may be negative, and we care about proper rounding, then use a slow but correct function
+  if (signed && correctRoundings()) return 'cRound(' + value + ')';
+  // Either this must be positive, so Math.Floor is correct, or we don't care
+  return 'Math.floor(' + value + ')';
+}
+
+function processMathop(item) { with(item) {
+  for (var i = 1; i <= 4; i++) {
+    if (item['param'+i]) {
+      item['ident'+i] = indexizeFunctions(finalizeLLVMParameter(item['param'+i]));
+      if (!isNumber(item['ident'+i])) {
+        item['ident'+i] = '(' + item['ident'+i] + ')'; // we may have nested expressions. So enforce the order of operations we want
+      }
+    } else {
+      item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
+    }
+  }
+  if (op in set('udiv', 'urem', 'uitofp', 'zext', 'lshr') || (variant && variant[0] == 'u')) {
+    ident1 = makeSignOp(ident1, type, 'un');
+    ident2 = makeSignOp(ident2, type, 'un');
+  } else if (op in set('sdiv', 'srem', 'sitofp', 'sext', 'ashr') || (variant && variant[0] == 's')) {
+    ident1 = makeSignOp(ident1, type, 're');
+    ident2 = makeSignOp(ident2, type, 're');
+  }
+  var bits = null;
+  if (item.type[0] === 'i') {
+    bits = parseInt(item.type.substr(1));
+  }
+  var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
+
+  switch (op) {
+    // basic integer ops
+    case 'add': return handleOverflow(ident1 + ' + ' + ident2, bits);
+    case 'sub': return handleOverflow(ident1 + ' - ' + ident2, bits);
+    case 'sdiv': case 'udiv': return makeRounding(ident1 + '/' + ident2, bits, op[0] === 's');
+    case 'mul': return handleOverflow(ident1 + ' * ' + ident2, bits);
+    case 'urem': case 'srem': return ident1 + ' % ' + ident2;
+    case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
+    case 'and': return ident1 + ' & ' + ident2;
+    case 'xor': return ident1 + ' ^ ' + ident2;
+    case 'shl': {
+      // Note: Increases in size may reach the 32-bit limit... where our sign can flip. But this may be expected by the code...
+      /*
+      if (bits >= 32) {
+        if (CHECK_SIGNS && !CORRECT_SIGNS) return 'shlSignCheck(' + ident1 + ', ' + ident2 + ')';
+        if (CORRECT_SIGNS) {
+          var mul = 'Math.pow(2, ' + ident2 + ')';
+          if (isNumber(ident2)) mul = eval(mul);
+          return ident1 + ' * ' + mul;
+        }
+      }
+      */
+      return ident1 + ' << ' + ident2;
+    }
+    case 'ashr': return ident1 + ' >> ' + ident2;
+    case 'lshr': return ident1 + ' >>> ' + ident2;
+    // basic float ops
+    case 'fadd': return ident1 + ' + ' + ident2;
+    case 'fsub': return ident1 + ' - ' + ident2;
+    case 'fdiv': return ident1 + ' / ' + ident2;
+    case 'fmul': return ident1 + ' * ' + ident2;
+    case 'uitofp': case 'sitofp': return ident1;
+    case 'fptoui': case 'fptosi': return makeRounding(ident1, bitsLeft, op === 'fptosi');
+
+    // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
+    //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
+    case 'icmp': {
+      switch (variant) {
+        case 'uge': case 'sge': return ident1 + ' >= ' + ident2;
+        case 'ule': case 'sle': return ident1 + ' <= ' + ident2;
+        case 'ugt': case 'sgt': return ident1 + ' > ' + ident2;
+        case 'ult': case 'slt': return ident1 + ' < ' + ident2;
+        // We use loose comparisons, which allows false == 0 to be true, etc. Ditto in fcmp
+        case 'ne': case 'eq': {
+          // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
+          // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
+          ident1 = makeSignOp(ident1, type, 're');
+          ident2 = makeSignOp(ident2, type, 're');
+          return ident1 + (variant === 'eq' ? '==' : '!=') + ident2;
+        }
+        default: throw 'Unknown icmp variant: ' + variant;
+      }
+    }
+    case 'fcmp': {
+      switch (variant) {
+        // TODO 'o' ones should be 'ordered (no NaN) and',
+        //      'u' ones should be 'unordered or'.
+        case 'uge': case 'oge': return ident1 + ' >= ' + ident2;
+        case 'ule': case 'ole': return ident1 + ' <= ' + ident2;
+        case 'ugt': case 'ogt': return ident1 + ' > ' + ident2;
+        case 'ult': case 'olt': return ident1 + ' < ' + ident2;
+        case 'une': case 'one': return ident1 + ' != ' + ident2;
+        case 'ueq': case 'oeq': return ident1 + ' == ' + ident2;
+        case 'ord': return '!isNaN(' + ident1 + ') && !isNaN(' + ident2 + ')';
+        case 'uno': return 'isNaN(' + ident1 + ') || isNaN(' + ident2 + ')';
+        case 'true': return '1';
+        default: throw 'Unknown fcmp variant: ' + variant;
+      }
+    }
+    // Note that zext has sign checking, see above. We must guard against -33 in i8 turning into -33 in i32
+    // then unsigning that i32... which would give something huge.
+    case 'zext': case 'fpext': case 'sext': return ident1;
+    case 'fptrunc': return ident1;
+    case 'trunc': {
+      // Unlike extending, which we just 'do' (by doing nothing),
+      // truncating can change the number, e.g. by truncating to an i1
+      // in order to get the first bit
+      assert(ident2[1] == 'i');
+      assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
+      return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
+    }
+    case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
+    case 'ptrtoint': return ident1;
+    case 'inttoptr': return ident1;
+    default: throw 'Unknown mathcmp op: ' + item.op;
+  }
+} }
 

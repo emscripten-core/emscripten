@@ -23,11 +23,12 @@ CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
                  // order to find if your code needs CORRECT_SIGNS. If you can get your
                  // code to run without CORRECT_SIGNS, it will run much faster
 
-GUARD_LABELS = 0; // Whether we should throw if we encounter a bad __label__, i.e.,
-                  // if code flow runs into a fault
-GUARD_MEMORY = 1; // Whether we should check that each allocation to the stack does not
-                  // exceed it's size, whether all allocations (stack and static) are
-                  // of positive size, etc.
+ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
+                // check that each allocation to the stack does not
+                // exceed it's size, whether all allocations (stack and static) are
+                // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
+                // if code flow runs into a fault
+
 INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
                 // code in your own, and will call run() yourself at the right time
 INIT_STACK = 1; // Whether to initialize memory on the stack to 0.

@@ -7,7 +7,7 @@
 RuntimeGenerator = {
   alloc: function(size, type, init) {
     var ret = type + 'TOP';
-    if (GUARD_MEMORY) {
+    if (ASSERTIONS) {
       ret += '; assert(' + size + ' > 0, "Trying to allocate 0")';
     }
     if (init) {
@@ -23,7 +23,7 @@ RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size) {
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK);
-    if (GUARD_MEMORY) {
+    if (ASSERTIONS) {
       ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
     }
     return ret;
@@ -35,7 +35,7 @@ RuntimeGenerator = {
                                   // until the parent unwinds its stack. So potentially if we are in
                                   // a loop, we can use a lot of memory.
     var ret = 'var __stackBase__  = STACKTOP; STACKTOP += ' + initial;
-    if (GUARD_MEMORY) {
+    if (ASSERTIONS) {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
     if (INIT_STACK) {
