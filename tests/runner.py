@@ -1985,6 +1985,8 @@ if 'benchmark' not in sys.argv:
     ### Tests for tools
 
     def test_safe_heap(self):
+      global SAFE_HEAP, SAFE_HEAP_LINES
+
       if not SAFE_HEAP: return
       if LLVM_OPTS: return # LLVM can optimize away the intermediate |x|...
       src = '''
@@ -2009,7 +2011,6 @@ if 'benchmark' not in sys.argv:
 
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
 
-      global SAFE_HEAP, SAFE_HEAP_LINES
       SAFE_HEAP = 2
       SAFE_HEAP_LINES = ["src.cpp:7"]
 
