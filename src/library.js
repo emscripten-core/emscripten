@@ -134,6 +134,7 @@ var Library = {
           }
           if (precision >= 0) {
             if (isFloatArg(next)) {
+              argText = (Math.round(currArg*Math.pow(10,precision))/Math.pow(10,precision)).toString();
               var dotIndex = argText.indexOf('.');
               if (dotIndex == -1 && next == 'f'.charCodeAt(0)) {
                 dotIndex = argText.length;

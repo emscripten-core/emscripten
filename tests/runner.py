@@ -433,10 +433,10 @@ if 'benchmark' not in sys.argv:
           #include <stdio.h>
           int main()
           {
-            float x = 1.234, y = 3.5;
+            float x = 1.234, y = 3.5, q = 0.00000001;
             y *= 3;
             int z = x < y;
-            printf("*%d,%d,%.1f,%d,%.4f*\\n", z, int(y), y, (int)x, x);
+            printf("*%d,%d,%.1f,%d,%.4f,%.2f*\\n", z, int(y), y, (int)x, x, q);
 
             /*
             // Rounding behavior
@@ -449,7 +449,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
         '''
-        self.do_test(src, '*1,10,10.5,1,1.2339*')
+        self.do_test(src, '*1,10,10.5,1,1.2340,0.00*')
 
     def test_math(self):
         src = '''
