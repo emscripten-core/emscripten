@@ -39,7 +39,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   if (data.unparsedFunctions.length > 0) {
     // We are now doing the final JS generation
     dprint('unparsedFunctions', '== Completed unparsedFunctions ==\n');
-    Debugging.clear(); // Save some memory, before the final heavy lifting
+    //Debugging.clear(); // Save some memory, before the final heavy lifting
   }
 
   // Actors
@@ -670,7 +670,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       // varargs - we received a pointer to the varargs as a final 'extra' parameter
       var data = 'arguments[' + Framework.currItem.funcData.ident + '.length]';
       if (SAFE_HEAP) {
-        return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', null)';
+        return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', null, ' + !checkSafeHeap() + ')';
       } else {
         return 'IHEAP[' + params[0].ident + '] = ' + data;
       }

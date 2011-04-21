@@ -36,6 +36,9 @@ if (CORRECT_OVERFLOWS === 2) {
 if (CORRECT_ROUNDINGS === 2) {
   CORRECT_ROUNDINGS_LINES = set(CORRECT_ROUNDINGS_LINES); // for fast checking
 }
+if (SAFE_HEAP === 2) {
+  SAFE_HEAP_LINES = set(SAFE_HEAP_LINES); // for fast checking
+}
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 
@@ -48,12 +51,6 @@ load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
 load('runtime.js');
-
-// Load library, with preprocessing and macros
-
-for (suffix in set('', '_sdl', '_gl')) {
-  eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
-}
 
 //===============================
 // Main
@@ -71,5 +68,12 @@ do {
 
 // Do it
 
-JSify(analyzer(intertyper(lines)));
+var inter = intertyper(lines);
+
+// Load library, with preprocessing and macros. Must be done after intertyper, so we know if we have debug info or not
+for (suffix in set('', '_sdl', '_gl')) {
+  eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
+}
+
+JSify(analyzer(inter));
 

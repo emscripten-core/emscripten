@@ -25,7 +25,7 @@ function SAFE_HEAP_COPY_HISTORY(dest, src) {
 #endif
 }
 
-function SAFE_HEAP_ACCESS(dest, type, store) {
+function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 #if SAFE_HEAP_LOG
   //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
 #endif
@@ -41,11 +41,12 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
     if (type === null) return;
     var history = HEAP_HISTORY[dest];
     if (history === null) return;
-    assert(history, 'Must have a history for a safe heap load! ' + dest + ':' + type); // Warning - bit fields in C structs cause loads+stores for each store, so
-                                                                                       //           they will show up here...
+    if (!ignore)
+      assert(history, 'Must have a history for a safe heap load! ' + dest + ':' + type); // Warning - bit fields in C structs cause loads+stores for each store, so
+                                                                                         //           they will show up here...
 //    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
 //    if (history[0].type !== type) {
-    if (history !== type) {
+    if (history !== type && !ignore) {
       print('Load-store consistency assumption failure! ' + dest);
       print('\n');
       print(JSON.stringify(history));
@@ -57,14 +58,14 @@ function SAFE_HEAP_ACCESS(dest, type, store) {
     }
   }
 }
-function SAFE_HEAP_STORE(dest, value, type) {
+function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if SAFE_HEAP_LOG
   print('store: ' + dest + ' [' + type + '] |' + value + '|');
 #endif
   if (!value && value !== 0 && value !== false) { // false can be the result of a mathop comparator
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
-  SAFE_HEAP_ACCESS(dest, type, true);
+  SAFE_HEAP_ACCESS(dest, type, true, ignore);
   if (dest in HEAP_WATCHED) {
     print((new Error()).stack);
     throw "Bad store!" + dest;
@@ -78,8 +79,8 @@ function SAFE_HEAP_STORE(dest, value, type) {
     IHEAP[dest] = value;
   }
 }
-function SAFE_HEAP_LOAD(dest, type) {
-  SAFE_HEAP_ACCESS(dest, type);
+function SAFE_HEAP_LOAD(dest, type, ignore) {
+  SAFE_HEAP_ACCESS(dest, type, ignore);
   if (type in Runtime.FLOAT_TYPES) {
 #if SAFE_HEAP_LOG
   print('load : ' + dest + ' [' + type + '] |' + FHEAP[dest] + '|');

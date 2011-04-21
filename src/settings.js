@@ -41,6 +41,9 @@ USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses
+               // If equal to 2, done on a line-by-line basis according to
+               // SAFE_HEAP_LINES (note that these are the lines to *exclude*
+               // from checking - the opposite of what CORRECT_*_LINES mean)
 SAFE_HEAP_LOG = 0; // Print out every single heap read and write (LOTS of output)
 LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code

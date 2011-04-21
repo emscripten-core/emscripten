@@ -168,7 +168,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES']:
       value = eval(setting)
       exported_settings[setting] = value
     compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
@@ -1994,9 +1994,31 @@ if 'benchmark' not in sys.argv:
           *x = 20;
           float *y = (float*)x;
           printf("%f\\n", *y);
+          printf("*ok*\\n");
           return 0;
         }
       '''
+
+      try:
+        self.do_test(src, '*nothingatall*')
+      except Exception, e:
+        # This test *should* fail, by throwing this exception
+        assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
+
+      # And we should not fail if we disable checking on that line
+
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+
+      global SAFE_HEAP, SAFE_HEAP_LINES
+      SAFE_HEAP = 2
+      SAFE_HEAP_LINES = ["src.cpp:7"]
+
+      self.do_test(src, '*ok*')
+
+      # But if we disable the wrong lines, we still fail
+
+      SAFE_HEAP_LINES = ["src.cpp:99"]
+
       try:
         self.do_test(src, '*nothingatall*')
       except Exception, e:
@@ -2174,7 +2196,7 @@ if 'benchmark' not in sys.argv:
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES
 
     COMPILER = '%s'
     QUANTUM_SIZE = 4 # See settings.js
@@ -2189,7 +2211,7 @@ class %s(T):
     CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     CORRECT_SIGNS = 0
     CORRECT_ROUNDINGS = 0
-    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = []
+    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
     CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
@@ -2229,7 +2251,7 @@ else:
   INVOKE_RUN = 1
   CORRECT_SIGNS = 0
   CORRECT_ROUNDINGS = 0
-  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = []
+  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
   LLVM_OPTS = 1
 
   USE_CLOSURE_COMPILER = 1

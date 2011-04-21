@@ -577,7 +577,7 @@ function indentify(text, indent) {
 
 function correctSpecificSign() {
   assert(!(CORRECT_SIGNS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
-  return CORRECT_SIGNS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES;
+  return CORRECT_SIGNS === 2 && Framework.currItem && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES;
 }
 function correctSigns() {
   return CORRECT_SIGNS === 1 || correctSpecificSign();
@@ -585,7 +585,7 @@ function correctSigns() {
 
 function correctSpecificOverflow() {
   assert(!(CORRECT_OVERFLOWS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
-  return CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES;
+  return CORRECT_OVERFLOWS === 2 && Framework.currItem && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES;
 }
 function correctOverflows() {
   return CORRECT_OVERFLOWS === 1 || correctSpecificOverflow();
@@ -593,10 +593,18 @@ function correctOverflows() {
 
 function correctSpecificRounding() {
   assert(!(CORRECT_ROUNDINGS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
-  return CORRECT_ROUNDINGS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES;
+  return CORRECT_ROUNDINGS === 2 && Framework.currItem && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES;
 }
 function correctRoundings() {
   return CORRECT_ROUNDINGS === 1 || correctSpecificRounding();
+}
+
+function checkSpecificSafeHeap() {
+  assert(!(SAFE_HEAP === 2 && !Debugging.on), 'Need debugging for line-specific checks');
+  return SAFE_HEAP === 2 && Framework.currItem && !(Debugging.getIdentifier(Framework.currItem.lineNum) in SAFE_HEAP_LINES);
+}
+function checkSafeHeap() {
+  return SAFE_HEAP === 1 || checkSpecificSafeHeap();
 }
 
 
@@ -614,7 +622,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst) {
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP) {
     if (type !== 'null') type = '"' + safeQuote(type) + '"';
-    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ')';
+    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + !checkSafeHeap() + ')';
   } else {
     return makeGetSlabs(ptr, type)[0] + '[' + offset + ']';
   }
@@ -651,7 +659,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst) {
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP) {
     if (type !== 'null') type = '"' + safeQuote(type) + '"';
-    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ');';
+    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + !checkSafeHeap() + ');';
   } else {
     return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + ']=' + value }).join('; ') + ';';
   }
