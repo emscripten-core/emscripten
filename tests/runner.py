@@ -651,7 +651,7 @@ if 'benchmark' not in sys.argv:
     '''
 
     def test_mallocstruct(self):
-        self.do_test(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(ES_SIZEOF(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+        self.do_test(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
     def test_newstruct(self):
         self.do_test(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
@@ -779,7 +779,10 @@ if 'benchmark' not in sys.argv:
             return 1;
           }
         '''
-        self.do_test(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
+        if QUANTUM_SIZE == 1:
+          self.do_test(src, 'sizeofs:6,8\n*C___: 0,3,6,9<24*\n*Carr: 0,3,6,9<24*\n*C__w: 0,3,9,12<24*\n*Cp1_: 1,2,5,8<24*\n*Cp2_: 0,2,5,8<24*\n*Cint: 0,3,4,7<24*\n*C4__: 0,3,4,7<24*\n*C4_2: 0,3,5,8<20*\n*C__z: 0,3,5,8<28*')
+        else:
+          self.do_test(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
     def test_assert(self):
         src = '''
@@ -1138,7 +1141,11 @@ if 'benchmark' not in sys.argv:
             printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
           }
         '''
-        self.do_test(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+        if QUANTUM_SIZE == 1:
+          # Compressed memory. Note that sizeof() does give the fat sizes, however!
+          self.do_test(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
+        else:
+          self.do_test(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
     def test_ptrtoint(self):
         src = '''
@@ -1184,12 +1191,12 @@ if 'benchmark' not in sys.argv:
               c[i] = 8;
             printf("*%d,%d,%d,%d,%d*\\n", a[0], a[9], *b, c[0], c[9]);
             // Should overwrite a, but not touch b!
-            memcpy(a, c, 10*ES_SIZEOF(int));
+            memcpy(a, c, 10*sizeof(int));
             printf("*%d,%d,%d,%d,%d*\\n", a[0], a[9], *b, c[0], c[9]);
 
             // Part 2
             A as[3] = { { 5, 12 }, { 6, 990 }, { 7, 2 } };
-            memcpy(&as[0], &as[2], ES_SIZEOF(A));
+            memcpy(&as[0], &as[2], sizeof(A));
 
             printf("*%d,%d,%d,%d,%d,%d*\\n", as[0].x, as[0].y, as[1].x, as[1].y, as[2].x, as[2].y);
             return 0;
@@ -1208,6 +1215,36 @@ if 'benchmark' not in sys.argv:
           }
           '''
         self.do_test(src, 'hello world!')
+
+    def test_ssr(self): # struct self-ref
+        src = '''
+          #include <stdio.h>
+
+          // see related things in openjpeg
+          typedef struct opj_mqc_state {
+	          unsigned int qeval;
+	          int mps;
+	          struct opj_mqc_state *nmps;
+	          struct opj_mqc_state *nlps;
+          } opj_mqc_state_t;
+
+          static opj_mqc_state_t mqc_states[2] = {
+	          {0x5600, 0, &mqc_states[2], &mqc_states[3]},
+	          {0x5602, 1, &mqc_states[3], &mqc_states[2]},
+          };
+
+          int main() {
+            printf("*%d*\\n", (int)(mqc_states+1)-(int)mqc_states);
+            for (int i = 0; i < 2; i++)
+              printf("%d:%d,%d,%d,%d\\n", i, mqc_states[i].qeval, mqc_states[i].mps,
+                     (int)mqc_states[i].nmps-(int)mqc_states, (int)mqc_states[i].nlps-(int)mqc_states);
+            return 0;
+          }
+          '''
+        if QUANTUM_SIZE == 1:
+          self.do_test(src, '''*4*\n0:22016,0,8,12\n1:22018,1,12,8\n''')
+        else:
+          self.do_test(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
 
     def test_tinyfuncstr(self):
         src = '''
@@ -1279,7 +1316,10 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
           '''
-        self.do_test(src, '*4,3,4*\n*6,4,6*')
+        if QUANTUM_SIZE == 1:
+          self.do_test(src, '*4,2,3*\n*6,2,3*')
+        else:
+          self.do_test(src, '*4,3,4*\n*6,4,6*')
 
     def test_varargs(self):
         src = '''
@@ -1434,6 +1474,7 @@ if 'benchmark' not in sys.argv:
         src = '''
           #include <stdio.h>
           #include <math.h>
+          #include <string.h>
 
           struct vec {
             double x,y,z;
@@ -1451,10 +1492,22 @@ if 'benchmark' not in sys.argv:
 
           int main() {
             basis B(vec(1,0,0));
+
+            // Part 2: similar problem with memset and memmove
+            int x = 1, y = 77, z = 2;
+            memset((void*)&x, 0, sizeof(int));
+            memset((void*)&z, 0, sizeof(int));
+            printf("*%d,%d,%d*\\n", x, y, z);
+            memcpy((void*)&x, (void*)&z, sizeof(int));
+            memcpy((void*)&z, (void*)&x, sizeof(int));
+            printf("*%d,%d,%d*\\n", x, y, z);
+            memmove((void*)&x, (void*)&z, sizeof(int));
+            memmove((void*)&z, (void*)&x, sizeof(int));
+            printf("*%d,%d,%d*\\n", x, y, z);
             return 0;
           }
           '''
-        self.do_test(src, '*0.00,0.00,0.00*')
+        self.do_test(src, '*0.00,0.00,0.00*\n*0,77,0*\n*0,77,0*\n*0,77,0*')
 
     def test_nestedstructs(self):
         src = '''
@@ -1488,11 +1541,11 @@ if 'benchmark' not in sys.argv:
               entry *e = NULL;
               chain *c = NULL;
               printf("*%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
-                ES_SIZEOF(base),
+                sizeof(base),
                 int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)), 
-                ES_SIZEOF(hashtableentry),
+                sizeof(hashtableentry),
                 int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)), 
-                ES_SIZEOF(hashset::chain),
+                sizeof(hashset::chain),
                 int(&(c->elem)), int(&(c->next)), int(&(c->elem.key)), int(&(c->elem.data)), int(&(c->elem.data.x)), int(&(c->elem.data.y)), int(&(c->elem.data.a)), int(&(c->elem.data.b)), int(&(c->elem.data.c))
               );
             }
@@ -1518,18 +1571,18 @@ if 'benchmark' not in sys.argv:
             // one is aligned properly. Also handle char; char; etc. properly.
             B *b = NULL;
             printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
-                                                      int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), ES_SIZEOF(B));
+                                                      int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), sizeof(B));
 
             // Part 3 - bitfields, and small structures
             Bits *b2 = NULL;
-            printf("*%d*\\n", ES_SIZEOF(Bits));
+            printf("*%d*\\n", sizeof(Bits));
 
             return 0;
           }
           '''
         if QUANTUM_SIZE == 1:
-          # Compressed memory
-          self.do_test(src, '*4,0,1,2,2,3|5,0,1,1,2,3,3,4|6,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,65*\n*1*')
+          # Compressed memory. Note that sizeof() does give the fat sizes, however!
+          self.do_test(src, '*16,0,1,2,2,3|20,0,1,1,2,3,3,4|24,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,72*\n*2*')
         else:
           # Bloated memory; same layout as C/C++
           self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
@@ -1683,6 +1736,8 @@ if 'benchmark' not in sys.argv:
     def test_freetype(self):
       if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
+      #global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+
       global CORRECT_SIGNS
       if CORRECT_SIGNS == 0: CORRECT_SIGNS = 1 # Not sure why, but needed
 
@@ -1704,6 +1759,7 @@ if 'benchmark' not in sys.argv:
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post,
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 bug 1257
+                   #build_ll_hook=self.do_autodebug)
 
     def test_zlib(self):
       global CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES
@@ -1725,7 +1781,7 @@ if 'benchmark' not in sys.argv:
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
-    def test_bullet(self):
+    def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       global SAFE_HEAP, SAFE_HEAP_LINES, COMPILER_TEST_OPTS
 
       if LLVM_OPTS: SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
@@ -1822,7 +1878,6 @@ if 'benchmark' not in sys.argv:
                       #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
-      global SAFE_HEAP; SAFE_HEAP = 0 # Very slow
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES
@@ -1902,7 +1957,7 @@ if 'benchmark' not in sys.argv:
                              os.path.join(self.get_building_dir(), 'openjpeg')],
                    force_c=True,
                    post_build=post,
-                   output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
+                   output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
 
     def test_python(self):
       # Overflows in string_hash
@@ -2217,7 +2272,7 @@ class %s(T):
     global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES
 
     COMPILER = '%s'
-    QUANTUM_SIZE = 4 # See settings.js
+    QUANTUM_SIZE = 4
     llvm_opts = %d
     embetter = %d
     INVOKE_RUN = 1

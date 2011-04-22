@@ -111,6 +111,13 @@ var Debugging = {
 
 var Types = {
   types: {},
+  fatTypes: {}, // With QUANTUM_SIZE=1, we store the full-size type data here
+  flipTypes: function() {
+    var temp = this.fatTypes;
+    this.fatTypes = this.types;
+    this.types = temp;
+  },
+
   needAnalysis: {} // Types noticed during parsing, that need analysis
 };
 
@@ -134,6 +141,21 @@ var Functions = {
   // Generate code for function indexing
   generateIndexing: function() {
     return 'var FUNCTION_TABLE = [' + this.indexedFunctions.toString().replace('"', '') + '];';
+  }
+};
+
+var LibraryManager = {
+  // Given an ident, see if it is an alias for something, and so forth, returning
+  // the earliest ancestor (the root)
+  getRootIdent: function(ident) {
+    var ret = Library[ident];
+    if (!ret) return null;
+    var last = ident;
+    while (typeof ret === 'string') {
+      last = ret;
+      ret = Library[ret];
+    }
+    return last;
   }
 };
 

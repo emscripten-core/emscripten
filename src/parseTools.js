@@ -520,7 +520,7 @@ function getNativeFieldSize(field, alone) {
     "_float": 4,
     "_double": 8
   }['_'+field]; // add '_' since float&double confuse closure compiler as keys
-  if (!size) {
+  if (!size && field[field.length-1] == '*') {
     size = QUANTUM_SIZE; // A pointer
   }
   if (!alone) size = Math.max(size, QUANTUM_SIZE);

@@ -38,6 +38,9 @@ function analyzer(data) {
       item.items = temp.leftIn;
       temp.splitOut.forEach(function(type) {
         Types.types[type.name_] = type;
+        if (QUANTUM_SIZE === 1) {
+          Types.fatTypes[type.name_] = copy(type);
+        }
       });
 
       // Functions & labels
@@ -85,7 +88,7 @@ function analyzer(data) {
     }
   });
 
-  function addType(type, data) {
+  function addTypeInternal(type, data) {
     if (type.length == 1) return;
     if (Types.types[type]) return;
     if (['internal', 'hidden', 'inbounds', 'void'].indexOf(type) != -1) return;
@@ -131,11 +134,20 @@ function analyzer(data) {
     };
   }
 
+  function addType(type, data) {
+    addTypeInternal(type, data);
+    if (QUANTUM_SIZE === 1) {
+      Types.flipTypes();
+      addTypeInternal(type, data);
+      Types.flipTypes();
+    }
+  }
+
   // Typevestigator
   substrate.addActor('Typevestigator', {
     processItem: function(data) {
       for (type in Types.needAnalysis) {
-        if (type) addType(type, data);
+        if (type) addType(type, data, Types.types);
       }
       Types.needAnalysis = [];
       this.forwardItem(data, 'Typeanalyzer');
@@ -144,7 +156,9 @@ function analyzer(data) {
 
   // Type analyzer
   substrate.addActor('Typeanalyzer', {
-    processItem: function(item) {
+    processItem: function analyzeTypes(item, fatTypes) {
+      var types = Types.types;
+
       // 'fields' is the raw list of LLVM fields. However, we embed
       // child structures into parent structures, basically like C.
       // So { int, { int, int }, int } would be represented as
@@ -164,16 +178,16 @@ function analyzer(data) {
       var more = true;
       while (more) {
         more = false;
-        values(Types.types).forEach(function(type) {
+        values(types).forEach(function(type) {
           if (type.flatIndexes) return;
           var ready = true;
           type.fields.forEach(function(field) {
             if (isStructType(field)) {
-              if (!Types.types[field]) {
-                addType(field, item);
+              if (!types[field]) {
+                addType(field, item, types);
                 ready = false;
               } else {
-                if (!Types.types[field].flatIndexes) {
+                if (!types[field].flatIndexes) {
                   ready = false;
                 }
               }
@@ -186,12 +200,24 @@ function analyzer(data) {
 
           Runtime.calculateStructAlignment(type);
 
-          dprint('types', 'type: ' + type.name_ + ' : ' + JSON.stringify(type.fields));
+          dprint('types', 'type (fat=' + !!fatTypes + '): ' + type.name_ + ' : ' + JSON.stringify(type.fields));
           dprint('types', '                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
         });
       }
 
-      this.forwardItem(item, 'VariableAnalyzer');
+      if (QUANTUM_SIZE === 1 && !fatTypes) {
+        Types.flipTypes();
+        // Fake a quantum size of 4 for fat types. TODO: Might want non-4 for some reason?
+        var trueQuantumSize = QUANTUM_SIZE;
+        QUANTUM_SIZE = 4;
+        analyzeTypes(item, true);
+        QUANTUM_SIZE = trueQuantumSize;
+        Types.flipTypes();
+      }
+
+      if (!fatTypes) {
+        this.forwardItem(item, 'VariableAnalyzer');
+      }
     }
   });
   
@@ -241,6 +267,26 @@ function analyzer(data) {
               lineNum: item.lineNum,
               uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1])
             };
+          }
+        });
+
+        // Second pass over variables - notice when types are crossed by bitcast
+
+        func.lines.forEach(function(item) {
+          if (item.intertype === 'assign' && item.value.intertype === 'bitcast') {
+            // bitcasts are unique in that they convert one pointer to another. We
+            // sometimes need to know the original type of a pointer, so we save that.
+            //
+            // originalType is the type this variable is created from
+            // derivedTypes are the types that this variable is cast into
+            func.variables[item.ident].originalType = item.value.type2;
+
+            if (!isNumber(item.value.ident)) {
+              if (!func.variables[item.value.ident].derivedTypes) {
+                func.variables[item.value.ident].derivedTypes = [];
+              }
+              func.variables[item.value.ident].derivedTypes.push(item.value.type);
+            }
           }
         });
 
@@ -304,7 +350,127 @@ function analyzer(data) {
           dprint('vars', '// var ' + vname + ': ' + JSON.stringify(variable));
         }
       });
+      this.forwardItem(item, 'QuantumFixer');
+    }
+  });
+
+  // Quantum fixer
+  //
+  // See settings.js for the meaning of QUANTUM_SIZE. The issue we fix here is,
+  // to correct the .ll assembly code so that things work with QUANTUM_SIZE=1.
+  //
+  substrate.addActor('QuantumFixer', {
+    processItem: function(item) {
       this.forwardItem(item, 'LabelAnalyzer');
+      if (QUANTUM_SIZE !== 1) return;
+
+      // ptrs: the indexes of parameters that are pointers, whose originalType is what we want
+      // bytes: the index of the 'bytes' parameter
+      // TODO: malloc, realloc?
+      var FIXABLE_CALLS = {
+        'memcpy': { ptrs: [0,1], bytes: 2 },
+        'memmove': { ptrs: [0,1], bytes: 2 },
+        'memset': { ptrs: [0], bytes: 2 },
+        'qsort': { ptrs: [0], bytes: 2 }
+      };
+
+      function getSize(types, type, fat) {
+        if (types[type]) return types[type].flatSize;
+        if (fat) {
+          QUANTUM_SIZE = 4;
+        }
+        var ret = getNativeFieldSize(type, true);
+        if (fat) {
+          QUANTUM_SIZE = 1;
+        }
+        return ret;
+      }
+
+      item.functions.forEach(function(func) {
+        function getOriginalType(param) {
+          function get() {
+            if (param.intertype === 'value' && !isNumber(param.ident)) {
+              if (func.variables[param.ident]) {
+                return func.variables[param.ident].originalType;
+              } else {
+                return item.globalVariables[param.ident].originalType;
+              }
+            } else if (param.intertype === 'bitcast') {
+              return param.params[0].type;
+            } else if (param.intertype === 'getelementptr') {
+              if (param.params[0].type[0] === '[') return param.params[0].type;
+            }
+            return null;
+          }
+          var ret = get();
+          if (ret && ret[0] === '[') {
+            var check = new RegExp(/^\[(\d+)\ x\ (.*)\]\*$/g).exec(ret);
+            assert(check);
+            ret = check[2] + '*';
+          }
+          return ret;
+        }
+
+        func.lines.forEach(function(line) {
+          // Call
+          if (line.intertype === 'call') {
+            var funcIdent = LibraryManager.getRootIdent(line.ident.substr(1));
+            var fixData = FIXABLE_CALLS[funcIdent];
+            if (!fixData) return;
+            var ptrs = fixData.ptrs.map(function(ptr) { return line.params[ptr] });
+            var bytes = line.params[fixData.bytes].ident;
+
+            // Only consider original types. This assumes memcpy always has pointers bitcast to i8*
+            var originalTypes = ptrs.map(getOriginalType);
+            if (!originalTypes[0]) return;
+            originalTypes = originalTypes.map(function(type) { return removePointing(type) });
+            var sizes = originalTypes.map(function(type) { return getSize(Types.types, type) });
+            var fatSizes = originalTypes.map(function(type) { return getSize(Types.fatTypes, type, true) });
+            // The sizes may not be identical, if we copy a descendant class into a parent class. We use
+            // the smaller size in that case. However, this may also be a bug, it is hard to tell, hence a warning
+            warn(dedup(sizes).length === 1, 'All sizes should probably be identical here: ' + dump(originalTypes) + ':' + dump(sizes) + ':' +
+                 line.lineNum);
+            warn(dedup(fatSizes).length === 1, 'All fat sizes should probably be identical here: ' + dump(originalTypes) + ':' + dump(sizes) + ':' +
+                 line.lineNum);
+            var size = Math.min.apply(null, sizes);
+            var fatSize = Math.min.apply(null, fatSizes);
+            if (isNumber(bytes)) {
+              assert(bytes % fatSize === 0,
+                     'The bytes copied must be a multiple of the full size, or else we are wrong about the type! ' +
+                     [bytes, size, fatSize, originalTypes, line.lineNum]);
+              line.params[fixData.bytes].ident = size*(bytes/fatSize);
+            } else {
+              line.params[fixData.bytes].intertype = 'jsvalue';
+              // We have an assertion in library::memcpy() that this is round
+              line.params[fixData.bytes].ident = size + '*(' + bytes + '/' + fatSize + ')';
+            }
+          }
+        });
+      });
+
+      // 2nd part - fix hardcoded constant offsets in global constants
+      values(item.globalVariables).forEach(function(variable) {
+        function recurse(item) {
+          if (item.contents) {
+            item.contents.forEach(recurse);
+          } else if (item.intertype === 'getelementptr' && item.params[0].intertype === 'bitcast' && item.params[0].type === 'i8*') {
+            var originalType = removePointing(item.params[0].params[0].type);
+            var fatSize = getSize(Types.fatTypes, originalType, true);
+            var slimSize = getSize(Types.types, originalType, false);
+            assert(fatSize % slimSize === 0);
+            item.params.slice(1).forEach(function(param) {
+              if (param.intertype === 'value' && isNumber(param.ident)) {
+                var corrected = parseInt(param.ident)/(fatSize/slimSize);
+                assert(corrected % 1 === 0);
+                param.ident = param.value.text = corrected.toString();
+              }
+            });
+          } else if (item.params) {
+            item.params.forEach(recurse);
+          }
+        }
+        if (!variable.external && variable.value) recurse(variable.value);
+      });
     }
   });
 

@@ -3,8 +3,6 @@
 #ifndef _TOOLS_H
 #define _TOOLS_H
 
-#include "emscripten.h" // XXX Emscripten
-
 #ifdef NULL
 #undef NULL
 #endif
@@ -175,7 +173,7 @@ struct databuf
     void put(const T *vals, int numvals)
     {
         if(maxlen-len<numvals) flags |= OVERWROTE;
-        memcpy(&buf[len], vals, min(maxlen-len, numvals)*ES_SIZEOF(T));
+        memcpy(&buf[len], vals, min(maxlen-len, numvals)*sizeof(T));
         len += min(maxlen-len, numvals);
     }
 
@@ -183,7 +181,7 @@ struct databuf
     {
         int read = min(maxlen-len, numvals);
         if(read<numvals) flags |= OVERREAD;
-        memcpy(vals, &buf[len], read*ES_SIZEOF(T));
+        memcpy(vals, &buf[len], read*sizeof(T));
         len += read;
         return read;
     }
@@ -209,7 +207,7 @@ static inline float heapscore(const T &n) { return n; }
 template<class T, class U>
 static inline void quicksort(T *buf, int n, int (__cdecl *func)(U *, U *))
 {
-    qsort(buf, n, ES_SIZEOF(T), (int (__cdecl *)(const void *,const void *))func);
+    qsort(buf, n, sizeof(T), (int (__cdecl *)(const void *,const void *))func);
 }
 
 template <class T> struct vector
@@ -270,7 +268,7 @@ template <class T> struct vector
         else
         {
             growbuf(ulen+v.ulen);
-            if(v.ulen) memcpy(&buf[ulen], v.buf, v.ulen*ES_SIZEOF(T));
+            if(v.ulen) memcpy(&buf[ulen], v.buf, v.ulen*sizeof(T));
             ulen += v.ulen;
             v.ulen = 0;
         }
@@ -311,10 +309,10 @@ template <class T> struct vector
         if(!alen) alen = max(MINSIZE, sz);
         else while(alen < sz) alen *= 2;
         if(alen <= olen) return;
-        uchar *newbuf = new uchar[alen*ES_SIZEOF(T)];
+        uchar *newbuf = new uchar[alen*sizeof(T)];
         if(olen > 0)
         {
-            memcpy(newbuf, buf, olen*ES_SIZEOF(T));
+            memcpy(newbuf, buf, olen*sizeof(T));
             delete[] (uchar *)buf;
         }
         buf = (T *)newbuf;

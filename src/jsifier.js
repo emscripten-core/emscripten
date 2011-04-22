@@ -683,12 +683,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var varargs = [];
 
     params.forEach(function(param, i) {
-      var val;
-      if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
-        val = finalizeLLVMFunctionCall(param);
-      } else {
-        val = toNiceIdent(param.ident);
-      }
+      var val = finalizeParam(param);
       if (!func || !func.hasVarArgs || i < func.numParams-1) { // unrecognized functions (like library ones) cannot have varargs
         args.push(val);
       } else {

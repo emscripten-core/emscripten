@@ -87,7 +87,7 @@ var Library = {
         } else {
           ret = {{{ makeGetValue(0, 'argIndex', 'i32') }}};
         }
-        argIndex += type === 'l'.charCodeAt(0) ? 8 : 4; // XXX hardcoded native sizes
+        argIndex += {{{ QUANTUM_SIZE === 1 ? 1 : "type === 'l'.charCodeAt(0) ? 8 : 4" }}};
       }
       return ret;
     }
@@ -463,7 +463,11 @@ var Library = {
   fstat: function(stream, ptr) {
     var info = _STDIO.streams[stream];
     if (!info) return -1;
-    {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size. XXX: hardcoded index 9 into the structure.
+    try {
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size. XXX: hardcoded index 9 into the structure.
+    } catch(e) {
+      {{{ makeSetValue('ptr', '9', 'info.data.length', 'i32') }}} // no FLATTENER
+    }
     // TODO: other fields
     return 0;
   },
@@ -592,6 +596,9 @@ var Library = {
   // string.h
 
   memcpy: function (dest, src, num, idunno) {
+#if ASSERTIONS
+    assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');
+#endif
     var curr;
     for (var i = 0; i < num; i++) {
       // TODO: optimize for the typed arrays case

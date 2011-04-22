@@ -1,8 +1,6 @@
 // command.cpp: implements the parsing and execution of a tiny script language which
 // is largely backwards compatible with the quake console language.
 
-// XXX Emscripten: changed all sizeof to ES_SIZEOF
-
 // XXX Emscripten
   #define STANDALONE
 
@@ -1314,7 +1312,7 @@ void conline(int type, const char *sf)        // add a line to the console buffe
 void conoutfv(int type, const char *fmt, va_list args)
 {
     static char buf[CONSTRLEN];
-    vformatstring(buf, fmt, args, ES_SIZEOF(char)*CONSTRLEN); // XXX Emscripten
+    vformatstring(buf, fmt, args, sizeof(char)*CONSTRLEN);
     conline(type, buf);
     //filtertext(buf, buf); // XXX Emscripten
     puts(buf);

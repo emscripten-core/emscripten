@@ -544,10 +544,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Bitcast', {
     processItem: function(item) {
       item.intertype = 'bitcast';
-      item.type = item.tokens[1].text;
+      item.type = item.tokens[4].text; // The final type
       Types.needAnalysis[item.type] = 0;
       item.ident = toNiceIdent(item.tokens[2].text);
-      item.type2 = item.tokens[4].text;
+      item.type2 = item.tokens[1].text; // The original type
       Types.needAnalysis[item.type2] = 0;
       this.forwardItem(item, 'Reintegrator');
     }
