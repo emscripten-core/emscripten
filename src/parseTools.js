@@ -352,8 +352,7 @@ function parseLLVMSegment(segment) {
 }
 
 function cleanSegment(segment) {
-  if (segment.length == 1) return segment;
-  while (['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext'].indexOf(segment[1].text) != -1) {
+  while (segment.length >= 2 && ['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext'].indexOf(segment[1].text) != -1) {
     segment.splice(1, 1);
   }
   return segment;

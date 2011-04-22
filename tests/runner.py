@@ -103,6 +103,7 @@ class RunnerCore(unittest.TestCase):
   def do_llvm_dis(self, filename):
     # LLVM binary ==> LLVM assembly
     Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file'
 
   def do_link(self, files, target):
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
@@ -1629,10 +1630,6 @@ if 'benchmark' not in sys.argv:
       #  except:
       #    print opt, "FAIL"
 
-    def test_bullet(self):
-      global SAFE_HEAP; SAFE_HEAP = 0 # Too slow for that
-      self.do_ll_test(path_from_root('tests', 'bullet', 'bulletTest.ll'), open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read())
-
     def test_lua(self):
       # Overflows in luaS_newlstr hash loop
       global SAFE_HEAP; SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
@@ -1727,6 +1724,26 @@ if 'benchmark' not in sys.argv:
                    libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
+
+    def test_bullet(self):
+      global SAFE_HEAP, SAFE_HEAP_LINES, COMPILER_TEST_OPTS
+
+      if LLVM_OPTS: SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+
+      if SAFE_HEAP:
+        # Ignore bitfield warnings
+        SAFE_HEAP = 2
+        SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
+                           'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
+        COMPILER_TEST_OPTS = ['-g']
+
+      self.do_test(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
+                   open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
+                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
+                                                          os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                                          os.path.join('src', '.libs', 'libLinearMath.a')],
+                                               configure_args=['--disable-demos','--disable-dependency-tracking'])],
+                   includes=[path_from_root('tests', 'bullet', 'src')])
 
     def test_poppler(self):
       if COMPILER != LLVM_GCC: return # llvm-link failure when using clang, LLVM bug 9498

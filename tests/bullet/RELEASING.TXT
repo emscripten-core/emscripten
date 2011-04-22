@@ -1,0 +1,34 @@
+This document details the steps necessary to package a release of Bullet.
+
+1) Preparing for release:
+
+update VERSION in several places
+update ChangeLog 
+regenerate MSVC project files
+
+2) Generating the release .zip:
+Do an SVN export on a Windows machine into the directory: bullet-X.YY
+prepare a zip file containing the directory
+
+3) Generating the release .tar.gz:
+Do an SVN export on a Unix machine into the directory: bullet-X.YY
+prepare a .tar.gz file containing the directory
+
+4) Uploading release to google code:
+
+Google Code Bullet downloads URL: http://code.google.com/p/bullet/downloads/list
+
+Title of release should follow this guide line: Bullet <VERSION> Physics SDK <Release Type> (revision)
+
+It is better to upload the .tar.gz before the .zip so that the .zip appears first in the list
+
+If the release is an Alpha/Beta or RC the tags should be: Type-Source, OpSys-ALL
+If the release is a final release the tags should be: Type-Source, OpSys-ALL, Featured
+
+5) Obsoleting old releases
+
+Edit the tags on old releases and add the 'Deprecated' tag
+
+6) Announcing final releases:
+
+Final release announcements are done here: http://bulletphysics.com/Bullet/phpBB3/viewforum.php?f=18

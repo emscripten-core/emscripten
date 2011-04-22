@@ -1,0 +1,779 @@
+Bullet Continuous Collision Detection and Physics Library
+Primary author and maintainer: Erwin Coumans
+
+This ChangeLog is incomplete, for an up-to-date list of all fixed issues see http://bullet.googlecode.com
+using http://tinyurl.com/yabmjjj
+
+2011 April 8
+	- Bullet 2.78 release 2383
+	- Added FractureDemo
+	- Added Separatinx Axis Test and Polyhedral Clipping support (See InternalEdgeDemo)
+	- Added speculative contacts as CCD response method (See CcdPhysicsDemo)
+	- OpenCL and DirectCompute cloth as basic support for capsule collision
+
+2010 September 7
+	- autotools now uses CamelCase naming for libraryes just like cmake:
+	libbulletdynamics -> libBulletDynamics, libbulletmath -> libLinearMath
+
+2010 July 21
+	- Preparing for Bullet 2.77 release, around revision r2135
+	- Added an OpenCL particle demo, running on NVidia, AMD and MiniCL
+	Thanks to NVidia for the original particle demo from their OpenCL SDK
+	- Added GPU deformable object solvers for OpenCL and DirectCompute, and a DirectX 11 cloth demo
+	Thanks to AMD
+	- Create a separate library for MiniCL, 
+	MiniCL is a rudimentary OpenCL wrapper that allows to compile OpenCL kernels for multi-core CPU, using Win32 Threads or Posix
+	- Moved vectormath into Bullet/src, and added a SSE implementation
+	- Added a btParallelConstraintSolver, mainly for PlayStation 3 Cell SPUs (although it runs fine on CPU too)
+
+2010 March 6
+	- Dynamica Maya plugin (and COLLADA support) is moved to http://dynamica.googlecode.com
+
+2010 February
+	- Bullet 2.76 release, revision 2010
+	- support for the .bullet binary file format
+	- btInternalEdgeUtility to adjust unwanted collisions against internal triangle edges
+	- Improved Maya Dynamica plugin with better constraint authoring and .bullet file export
+
+
+2009 September 17
+	- Minor update to Bullet 2.75 release, revision 1776
+	- Support for btConvex2dShape, check out Bullet/Demos/Box2dDemo
+	- Fixes in build systems
+	- Minor fix in btGjkPairDetector
+	- Initialize world transform for btCollisionShape in constructor
+
+
+2009 September 6
+	- Bullet 2.75 release
+	- Added SPH fluid simulation in Extras, not integrated with rigid body / soft body yet
+	Thanks to Rama Hoetzlein to make this contribution available under the ZLib license
+	- add special capsule-capsule collider code in btConvexConvexCollisionAlgorithm, to speed up capsule-ragdolls
+	- soft body improvement: faster building of bending constraints
+	- soft body improvement: allow to disable/enable cluster self-collision
+	- soft body fix: 'exploding' soft bodies when using cluster collision
+	- fix some degenerate cases in continuous convex cast, could impact ray cast/convex cast
+	Thanks to Jacob Langford for the report and reproduction cases, see http://code.google.com/p/bullet/issues/detail?id=250&can=1&start=200
+	- re-enabled split impulse
+	- added btHinge2Constraint, btUniversalConstraint, btGeneric6DofSpringConstraint
+	- demonstrate 2D physics with 2D/3D object interaction
+	
+
+2008 December 2
+	- Fix contact refresh issues with btCompoundShape, introduced with btDbvt acceleration structure in btCompoundCollisionAlgorithm
+	- Made btSequentialImpulseConstraintSolver 100% compatible with ODE quickstep
+	constraints can use 'solveConstraint' method or 'getInfo/getInfo2'
+
+2008 November 30
+	- Add highly optimized SIMD branchless PGS/SI solver innerloop 
+
+2008 November 12
+	- Add compound shape export to BulletColladaConverter
+	Thanks to JamesH for the report: http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=12&t=2840
+	- Fix compiler build for Visual Studio 6
+	Thanks to JoF for the report: http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=2841
+
+2008 November 11
+	- Add CProfileManager::dumpAll() to dump performance statistics to console using printf.
+	- Add support for interaction between btSoftBody and btCollisionObject/btGhostObject
+
+2008 November 8
+	- Fix PosixThreadSupport
+	- Add improved btHeightfieldTerrainShape support and new Demos/TerrainDemo
+	Thanks to tomva, http://code.google.com/p/bullet/issues/detail?id=63&can=1
+	- Moved kinematic character controller from Demos/CharacterDemo into src/BulletDynamics/Character/btKinematicCharacterController.cpp
+
+2008 November 6
+	- reduced default memory pool allocation from 40Mb to 3Mb. This should be more suitable for all platforms, including iPhone
+	- improved CUDA broadphase
+	- IBM Cell SDK 3.x support, fix ibmsdk Makefiles
+	- improved CMake support with 'install' and 'framework option
+	
+2008 November 4
+	- add btAxisSweep::resetPool to avoid non-determinism due to shuffled linked list
+	Thanks to Ole for the contribution, 
+
+2008 October 30
+	- disabled btTriangleMesh duplicate search by default, it is extremely slow
+	- added Extras/IFF binary chunk serialization library as preparation for in-game native platform serialization (planned COLLADA DOM -> IFF converter)
+
+2008 October 20
+	- added SCE Physics Effects box-box collision detection for SPU/BulletMultiThreaded version
+	See Bullet/src/BulletMultiThreaded/SpuNarrowPhaseCollisionTask/boxBoxDistance.cpp
+	Thanks to Sony Computer Entertainment Japan, SCEI for the contribution
+
+2008 October 17
+	- Added btGhostObject support, this helps character controller, explosions, triggers and other local spatial queries
+
+2008 October 10
+	- Moved aabb to btBroadphaseProxy, improves rayTest dramatically. Further raytest improvements using the broadphase acceleration structures are planned
+	- Moved BulletMultiThreaded from Extras to /src/BulletMultiThreaded for better integration
+
+
+2008 October 3
+	- Add support for autoconf automake
+	./autogen.sh and ./configure will create both Makefile and Jamfile. CMake and autogenerated Visual Studio projectfiles remain supported too.
+	- Improved ColladaConverter: plane shape export, and callback for shape construction to allow deletion of memory
+	
+2008 Sept 30
+	- Improved Soft Body support, fixed issues related to soft body colliding against concave triangle meshes
+	- Shared more code between regular version and SPU/BulletMultiThreaded, in particular GJK/EPA
+
+2008 Sept 28
+	- Fixed rotation issues in Dynamic Maya Plugin
+
+2008 Sept 11
+	- Enable CCD motion clamping for btDiscreteDynamicsWorld, to avoid tunneling. A more advanced solution will be implemented in btContinuousDynamicsWorld.
+
+2008 Sept 7
+	- Add btScaledBvhTriangleMeshShape, to allow re-use of btBvhTriangleMeshShape of different sizes, without copying of the BVH data.
+
+2008 Sept 5
+	- Enabled Demos/ForkLiftDemo
+	Thanks Roman Ponomarev.
+
+2008 Sept 4
+	- Added btCudaBroadphase in Extras/CUDA: some research into accelerating Bullet using CUDA.
+	Thanks to the particle demo from the NVidia CUDA SDK.
+	
+2008 Sept 3
+	- Several bug fixes and contributions related to inertia tensor, memory leaks etc.
+	Thanks to Ole K.
+
+2008 Sept 1
+	- Updated CDTestFramework, with latest version of OPCODE Array SAP. See Extras/CDTestFramework
+	Thanks to Pierre Terdiman for the update
+
+2008 August 25
+	- Walt Disney Studios contributes their in-house Maya Plugin for simulating Bullet physics, with options for other engines such as PhysBam or PhysX.
+	Thanks to Nicola Candussi and Arthur Shek
+	
+2008 August 14
+	- Improved performance for btDbvtBroadphase, based on dual dynamic AABB trees (one for static, one for dynamic objects, where objects can move from one to the other tree)
+	Thanks to Nathanael Presson again, for all his work.
+	
+2008 July 31
+	- Added Havok .hkx to COLLADA Physics .dae converter patch+information
+	- Fix btSubsimplexConvexCast
+	Thanks to Nacho, http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=2422)
+	- Fix in rendering, GL_STENCIL
+	- btTriangleIndexVertexArray indices should be unsigned int/unsigned short int,
+	- Made InternalProcessAllTriangles virtual, thanks to
+	Both thank to Fullmetalcoder, http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=2401
+	- clamp impulse for btPoint2PointConstraint
+	Thanks to Martijn Reuvers, http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=2418
+	- Free memory of bvh, pass in scaling factor (optional)
+	Thanks to Roy Eltham, http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=2375
+
+2008 July 27
+
+btDbvtBroadphase:
+	- Fixed a performance issues reported by 'reltham'
+	- Added btDbvtBroadphase::optimize() for people who want good performances right
+away or don't do dynamics.
+	- fixed compilation issues when DBVT_BP_PROFILE was set.
+btSoftBody:
+	- Fixed singular matrix issues related to polar decomposition (flat meshes).
+DemoApplication:
+	- Shadows (enable/disable through 'g' or DemoApplication::setShadows(bool)).
+	- Texture can be enable/disable through 'u'
+CDFramework:
+	- fixed compilation issues.
+	All thanks to Nathanael Presson
+
+2008 July 10
+	- Added btMultimaterialTriangleMeshShape and MultiMaterialDemo
+	Thanks to Alex Silverman for the contribution
+
+2008 June 30
+	- Added initial support for kinematic character controller
+	Thanks to John McCutchan
+
+2008 April 14
+	- Added ray cast support for Soft Bodies
+	Thanks to Nathanael Presson for the contribution
+	
+2008 April 9
+	- Cleanup of Stan Melax ConvexHull, removed Extras/ConvexHull, moved sources into LinearMath/BulletCollision
+
+2008 April 4
+	- Added btSliderConstraint and demo
+	Thanks Roman Ponomarev
+	
+2008 April 3
+	- Fixed btMinkowskiSumShape, and added hitpoint to btSubsimplexConvexCast
+
+2008 April 2
+	- Added Extras/CdTestFrameWork
+	Thanks Pierre Terdiman
+
+2008 April 1
+	- Added posix thread (pthread) support
+	Thanks Enrico
+
+2008 March 30
+	- Added Soft Body, cloth, rope and deformable volumes, including demos and interaction
+	Thanks Nathanael Presson for this great contribution
+	
+	2008 March 17
+	- Improved BulletColladaConverter
+	Thanks John McCutchan
+
+2008 March 15
+	- btMultiSapBroadphase in a working state. Needs more optimizations to be fully useable.
+	- Allow btOptimizedBvh to be used for arbitrary objects, not just triangles
+	- added quicksort to btAlignedObjectArray
+	- removed btTypedUserInfo, added btHashMap
+
+2008 March 30
+	- Moved quickstep solver and boxbox into Bullet/src folder
+	Thanks Russell L. Smith for permission to redistribute Open Dynamics Engine quickstep and box-box under the ZLib license	
+
+2008 Feb 27
+	- Added initial version for Character Control Demo
+	- Applied fixes to IBM Cell SDK 3.0 build makefiles
+	Thanks Jochen and mojo for reporting/providing patch: http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1922
+
+2008 Feb 8
+	- Bugfixes in ConvexCast support against the world.
+	Thanks to Isgmasa for reporting/providing fix: http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1823
+
+2008 Feb 6
+	- Added btCapsuleShapeX and btCapsuleShapeZ for capsules around X and Z axis (default capsule is around Y)
+	
+2008 Feb 3
+	- Added btTypedUserInfo, useful for serialization
+
+2008 Jan 31
+	- Add support for 16 and 32-bit indices for SPU / BulletMultiThreaded version.
+
+2008 Jan 29
+	- Added COLLADA Physics export/serialization/snapshot from any Bullet btDynamicsWorld. Saving the physics world into a text .xml file is useful for debugging etc.
+
+2008 Jan 23
+	- Added Stan Melax Convex Hull utility library in Extras/ConvexHull. This is useful to render non-polyhedral convex objects, and to simplify convex polyhedra.
+	
+2008 Jan 14
+	- Add support for batch raycasting on SPU / BulletMultiThreaded
+	
+2007 Dec 16
+	- Added btRigidBodyConstructionInfo, to make it easier to set individual setting (and leave other untouched) during rigid body construction.
+	Thanks Vangelis Kokkevis for pointing this out.
+	- Fixed memoryleak in the ConstraintDemo and Raytracer demo.
+	- Fixed issue with clearing forces/gravity at the end of the stepSimulation, instead of during internalSingleStepSimulation.
+	Thanks chunky for pointing this out: http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1780
+	- Disabled additional damping in rigid body by default, but enable it in most demos. Set btRigidBodyConstructionInfo m_additionalDamping to true to enable this.
+	- Removed obsolete QUICKPROF BEGIN/END_PROFILE, and enabled BT_PROFILE. Profiling is enabled by default (see Bullet/Demos/OpenGL/DemoApplication.cpp how to use this).
+	User can switch off profiling by enabling define BT_NO_PROFILE in Bullet/src/btQuickprof.h.
+
+2007 Dec 14
+	- Added Hello World and BulletMultiThreaded demos
+	- Add portable version of BulletMultiThreaded, through SequentialThreadSupport (non-parallel but sharing the same code-path)
+	- Add Cmake support for AllBulletDemos
+	
+
+2007 Dec 11
+	- Moved the 'btRigidBody::clearForce' to the end of the stepSimulation, instead of in each substep.
+	See discussion http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1601
+	- Added btConvexPlaneCollisionAlgorithm, makes planes perform better, and prevents tunneling
+	Thanks Andy O'Neil for reporting the performance/functionality issue
+	- Fixes for IBM Cell SDK 3.0
+	Thanks to Jochen Roth for the patch.
+
+2007 Dec 10
+	- Fixes in btHeightfieldTerrainShape
+	Thanks to Jay Lee for the patch.
+
+2007	Dec 9
+	- Only update aabb of active objects
+	Thanks Peter Tchernev for reporting (http://bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1764 )
+	- Added workaround to compile libxml under Visual Studio 2008 Beta 2
+	- Make glui compile under MSVC 9.0 beta (vsnprintf is already defined)
+
+2007 Dec 6
+	- Added DynamicControlDemo, showing dynamic control through constraint motors
+		Thanks to Eddy Boxerman
+	- Add support for generic concave shapes for convex cast.
+	- Added convex cast query to collision world.
+	- Added workaround for OpenGL bug in Mac OS X 10.5.0 (Leopard)
+	- Added concave raycast demo
+		All above thanks to John McCutchan (JMC)
+	- Fixed issues that prevent Linux version to compile. 
+	Thanks to Enrico for reporting and patch, see
+	- Fixed misleading name 'numTriangleIndices' into 'numTriangles'
+	Thanks Sean Tasker for reporting:
+
+2007 Nov 28:
+	- Added raycast against trianglemesh. Will be extended to object cast soon.
+	Thanks John McCutchan (JMC)
+	- make getNumPoints const correct, add const getPoints(). 
+	Thanks Dirk Gregorius
+	- Bugfix: allow btCollisionObjects (non-btRigidBody) to interact properly with btRigidBody for cache-friendly btSequentialImpulseConstraintSolver.
+	Thanks Andy O'Neil for pointing this out.
+	- Bugfix: don't fail if spheres have identical center, use arbitrary separating normal (1,0,0)
+	Thanks Sean Tasker for reporting! http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1681
+
+
+2007, November 20
+	- Added hierarchical profiling
+	- Fixed memory leak in btMultiSapBroadphase,
+	- Fixed hash function (typo, should use 2 proxies)
+	Thanks to Stephen (shatcher) for reporting and fixes! http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1696
+
+2007 Nov 11
+	- Fixed parallel solver (BulletMultiThreaded) friction issue
+	- Terminate Win32 Threads when closing the CcdPhysicsDemo (when USE_PARALLEL_SOLVER/USE_PARALLEL_DISPATCHER is defined)
+
+2007 Nov 6
+	- Added support for 16-bit indices for triangle meshes
+	- Added support for multiple mesh parts using btBvhTriangleMeshShape.
+	Thanks to Tim Johansson
+	
+2007 Oct 22
+	- All memory allocations go through btAlignedAlloc/btAlignedFree. User can override this to verify memory leaks
+	- added a few more demos to AllBulletDemos
+	- fix for one of the constructors of btHingeConstraint
+	Thanks Marcus Hennix
+	
+2007 Oct 20
+	- included glui, a GLUT/OpenGL based toolkit for some graphical user elements
+	Removed dynamic_cast from glui, to allow linkage without rtti
+	- added Box2D framework using glui, allowing all demos to run within one executable
+	Thanks Erin Catto for the FrameWork skeleton (http://www.box2d.org)
+
+2007 Ocy 17
+	- Allow user to pass in their own memory (stack and pool) allocators, through collisionConfiguration. See demos how to use this
+
+2007 Oct 14
+	- Included working version of Cell SPU parallel optimized version for Libspe2 SPU task scheduler.
+	This version compiles and runs on Playstation 3 Linux and IBM CellBlade, see BulletSpuOptimized.pdf for build instructions
+	(Official Playstation 3 developers can request a SPURS version through Sony PS3 Devnet.)
+	Thanks to IBM 'Extreme Blue' project for the contribution
+	http://www-913.ibm.com/employment/us/extremeblue/ 
+	Thanks Minh Cuong Tran, Benjamin Hoeferlin, Frederick Roth and Martina Huellmann
+	for various contributions to get this initial Libspe2 parallel version up and running.
+
+2007 Oct 13
+	- made 'btCollisionShape::calculateLocalInertia' const
+	Thanks to cgripeos, see http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1514
+	- applied a large patch to remove warnings
+	Thanks to Enrico, see http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1568
+	- removed SSE includes, added #incude <string.h> for memset in Extras/quickstep, thanks Eternl Knight
+
+2007 Oct 11
+	- added Hashed Overlapping Pair Cache, recommended by Pierre Terdiman. It works like a charm, thanks Pierre and Erin Catto (code from Box2D)
+	- modified some margins inside btBoxShape, btCylinderShape and btSphereShape
+	- added cone debug rendering (for cones with x, y and z up-axis)
+	- added improvements for optional Extra/quickstep, thanks to Remotion
+	- some performance improvements for Bullet constraint solver
+
+2007 Sept 28
+	- upgraded GIMPACT to version 0.3
+	Thanks to Francisco Leon
+
+2007 Sept 27
+	- added contribution from IBM Extreme Blue project for Libspe2 support. This allow to execute BulletMultiThreaded on Cell SPU under PS3 Linux and Cell Blade. See http://www-913.ibm.com/employment/us/extremeblue
+	Thanks to Minh Cuong Tran, Frederick Roth, Martina Heullmann and Benjamin Hoeferlin.
+
+2007 Sept 13
+	- Improved btGenericD6Constraint. It can be used to create ragdolls (similar to the new btConeTwistConstraint). See GenericJointDemo
+	- Added support for Bullet constraints in the optional Extras/quickstep ODE solver. See CcdPhysicsDemo, enable #COMPARE_WITH_QUICKSTEP and add libquickstep to the dependencies.
+	For both patches/improvements thanks Francisco Leon/projectileman
+		
+2007 Sept 10
+	- removed union from btQuadWordStorage, it caused issues under certain version of gcc/Linux
+
+2007 Sept 10
+	- Reverted constraint solver, due to some issues. Need to review the recent memory allocation changes.
+	- Fixed issue with kinematic objects rotating at low speed: quaternion was de-normalized, passing value > 1 into acosf returns #IND00 invalid values
+	- 16 byte memory alignment for BVH serialization
+	- memory cleanup for btPoolAllocator
+
+2007 Sept 9
+	- Added serialization for BVH/btBvhTriangleMeshShape, including endian swapping. See ConcaveDemo for an example.
+	Thanks to Phil Knight for the contribution.
+	- Fixed issues related to stack allocator/compound collision algorithm
+	Thanks Proctoid, http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=18&t=1460
+	- Increase some default memory pool settings, and added a fallback for the constraints solver to use heap memory
+	- Removed accidential testing code in btScalar.h related to operator new.	
+	- Enable btAxis3Sweep and bt32BitAxis3Sweep to be linked in at the same time, using template
+	
+2007 Sept 7
+	- Replaced several dynamic memory allocations by stack allocation and pool allocations
+	- Added branch-free quantized aabb bounding box overlap check, works better on Playstation 3 and XBox 360
+	Thanks to Phil Knight. Also see www.cellperformance.com for related articles
+	- Collision algorithms and settings for the memory/stack allocator can be done using btDefaultCollisionConfiguration
+	This is an API change. See demos how to modify existing implementations with a one-liner.
+	- Register several collision algorithms by default (sphere-sphere, sphere-box, sphere-triangle)
+	- Use other traveral method for BVH by default, this improves triangle mesh collision performance.
+	
+2007 Aug 31
+	- fixed MSVC 6 build
+	Thanks Proctoid, http://www.continuousphysics.com/Bullet/phpBB2/viewtopic.php?t=1375
+	- fixed double precision build issues
+	Thanks Alex Silverman, http://www.continuousphysics.com/Bullet/phpBB2/viewtopic.php?t=1434
+
+2007 Aug 24
+	- fixed bug in btMatrix3x3::transposeTimes(const btMatrix3x3& m) const. Luckily it wasn't used in core parts of the library (yet).
+	Thanks to Jay Lee
+	
+2007 Aug 15
+	- fixed bug in Extras/GIMPACT 0.2 related to moving triangle meshes
+	Thanks Thomas, http://www.continuousphysics.com/Bullet/phpBB2/viewtopic.php?t=1368
+
+2007 Aug 14
+	- added parallel constraint solver. Works on Playstation 3 Cell SPU and multi core (Win Threads on PC and XBox 360).
+	  See Extras/BulletMultiThreaded for SpuSolverTask subfolder and SpuParallelSolver.cpp
+	  Thanks Marten Svanfeldt (Starbreeze Studios)	
+	- fixed some bugs related to parallel collision detection (Extras/BulletMultiThreaded)
+	  Thanks Marten Svanfeldt (Starbreeze Studios)	
+	
+2007 Aug 2
+	- added compound and concave-convex (swapped) case for BulletMultiThreaded collision detection, thanks to Marten Svanfeldt
+	- refactored broadphase and overlapping pair cache. This allows performance improvement by combining multiple broadphases. This helps add/remove of large batches of objects and large worlds. See also Pierre Terdiman forum topic:
+	http://www.continuousphysics.com/Bullet/phpBB2/viewtopic.php?t=1329
+
+
+2007 July 27
+	- added Ragdoll Demo
+		Thanks to Marten Svanfeldt (Starbreeze Studios)
+
+	- added Vector Math library for SIMD 3D graphics linear algebra (vector, matrix, quaternion)
+		See Bullet/Extras/vectormathlibrary
+		Supports SIMD SSE, PowerPC PPU and Cell SPU (including PS3 Linux and CellBlade), as well as generic portable scalar version
+		Will be used to improve BulletMultiThreaded performance
+		Open Sourced by Sony Computer Entertainment Inc. under the new BSD license
+	- added SIMD math library
+		4-way SIMD for common math functions like atan2f4, cosf4, floorf4, fabsf4, rsqrtf4 etc. Used by Vector Math library under PPU and SPU.
+		Supports PowerPC (PPU) and Cell SPU, including PS3 Linux and CellBlade.
+		See Bullet/Extras/simdmathlibrary
+		Open sourced by Sony Computer Entertainment Inc. under the new BSD license
+
+	
+2007 July 25
+	- added several patches: per-rigidbody sleeping threshold. added Assert to prevent deletion of rigidbody while constraints are still pointing at it
+		Thanks to Marten Svanfeldt (Starbreeze Studios)
+	
+2007 July 13
+	- fixed relative #include paths again. We can't use "../" relative paths: some compilers choke on it (it causes extreme long paths)
+		Within the libraries, we always need to start with "BulletCollision/" or "BulletDynamics/ or "LinearMath/"
+
+2007 July 10
+	- Updated Bullet User Manual
+
+2007 July 5
+	- added btConeTwistConstraint, especially useful for ragdolls. See Demos/RagdollDemo
+		Thanks to Marten Svanfeldt (Starbreeze Studios)
+
+2007 June 29
+	- btHeightfieldTerrainShape: Added heightfield support, with customizations
+	- Upgraded to GIMPACT 0.2, see Extras/GIMPACT and MovingConcaveDemo
+	- Several patches from Marten Svanfeldt (Starbreeze Studios)
+		Improved collision filtering (in broadphase and rigidbody)
+		Improved debug rendering
+		Allow to set collision filter group/mask in addRigidBody
+		
+		
+2007 June 15
+	- Changed btAlignedObjectArray to call copy constructor/replacement new for duplication, rather then assignment operator (operator=).
+
+2007 June 11
+	- Added multi-threading. Originally for Playstation 3 Cell SPU, but the same code can run using Win32 Threads using fake DMA transfers (memcpy)
+		Libspe2 support for Cell Blade / PS3 Linux is upcoming
+		See Extras/BulletMultiThreaded. Usage: replace btCollisionDispatcher by btSpuGatheringCollisionDispatcher
+
+	- Added managed Bullet library, entirely rewritten in C# for Windows and XBox 360 XNA
+		See Extras/BulletX
+		Thanks to KleMiX, aka Vsevolod Klementjev
+
+2007 May 31
+	- sign-bit went wrong in case of 32-bit broadphase, causing quantization problems. 
+		Thanks DevO for reporting.
+
+2007 May 23
+	- Fixed quantization problem for planar triangle meshes in btOptimizedBvh
+		Thanks Phil Knight for reporting and helping to fix this bug.
+		
+2007 May 20
+	- btAxisSweep3: Fixed a bug in btAxisSweep3 (sweep and prune) related to object removal. Only showed up when at least one btStaticPlaneShape was inserted.
+		Thanks tbp for more details on reproducing case.
+	- btAxisSweep3: Fixed issue with full 32bit precision btAxisSweep3 (define BP_USE_FIXEDPOINT_INT_32), it used only 0xffff/65536 for quantization instead of full integer space (0xffffffff)
+	- btRaycastVehicle: Added 'getForwardVector' and getCurrentSpeedKmHour utility functions
+	- Fixed local scaling issues (btConvexTriangleMeshShape, btBvhTriangleMeshShape, removed scaling from btMatrix3x3). 
+		Thanks Volker for reporting!
+	- Added second filename search, so that starting BspDemo and ConvexDecompositionDemo from within Visual Studio (without setting the starting path) still works
+
+2007 April 22
+	- Added braking functionality to btRaycastVehicle
+	- Removed tons of warnings, under MSVC 2005 compilation in -W4
+	
+2007 March 21
+	- Fixed issues: comma at end of enum causes errors for some compilers
+	- Fixed initialization bug in LocalRayResult (	m_localShapeInfo(localShapeInfo) )
+	
+2007 March 20
+	- Added refit tree to quantized stackless tree, and updated ConcaveDemo as example.
+	
+2007 March 17
+	- Added constraint solver optimizations, avoiding cross products during iterations, and gather rigidbody/constraint info in contiguous memory (btSolverBody/btSolverConstraint)
+	- These optimizations don't give large benefit yet, but it has good potential. Turned on by default. Can be switched off using solver->setSolverMode(SOLVER_RANDMIZE_ORDER).
+	- Enabled anti-jitter for rigid bodies. This is experimental, and can be switched off by setting a global (it is experimental so no proper interface) gJitterVelocityDampingFactor = 1.0;
+	- Fixed bug in islandmanifold.heapSort(btPersistentManifoldSortPredicate()); , thanks Noehrgel for reporting this (affected Sun Solaris)
+	
+2007 March 12
+	- Added compile-time toggle between on 16-bit and 32-bit fixed-point SAP broadphase. 
+		This allows the number of bodies to exceed 32767
+	- Enable useQuantizedAabbCompression on btTriangleMesh, see ColladaDemo
+	
+2007 March 8
+	- Fixed bug in constraint/island sorting (caused by replacing STL by dedicated btAlignedObjectArray with heapSort)
+		Thanks Clemens Unterkofler for pointing this out!
+
+2007 March 6
+	- removed STL from the Bullet library: replace std::vector by btAlignedObjectArray. Also removed the std::set for overlapping pair set, and turned it into an overlapping pair array. The SAP only adds objects, never removed. Removal is postponed for during traversal of overlapping pairs (duplicates and non-overlapping pairs are removed during that traversal).
+	- added heap sort and binary search/linear search to btAlignedObjectArray
+	- fixed wrong cast, thanks Hamstray, http://www.continuousphysics.com/Bullet/phpBB2/viewtopic.php?t=1015
+
+
+2007 Feb 25
+	- Improved performance of convex collision shapes, cache local AABB instead of recomputation. This fixes issue with very slow performance in larger .bsp levels
+	
+2007 Feb 24
+	- Added compressed/quantized AABB tree, 16 bytes per node, while supporting 32-bit (triangle) indices. 
+	  Should be faster and smaller then original version (quantized aabb check is done in integer space)
+		Original aabb tree nodes are still supported. They are 44 bytes, with full floating point precision and additional subPart index.
+	- added meter-unit scaling support in ColladaConverter.cpp
+
+2007 Feb 21
+	- Build system: updated bullet.pc.in library names
+	- Updated EPA comparison integration (missing parameter)
+	
+2007 Jan 04
+	- fixed optimized AABB tree building: in some cases the tree building fails due to unbalanced trees, which generated stack overflow
+	
+2006 Dec 15
+	- added contribution to allow double precision collision detection/dynamics. Define BT_USE_DOUBLE_PRECISION in your project and libraries that include Bullet
+
+2006 Dec 14
+	- merged contact and non-contact constraint solving into one loop, will improve stability of jointed bodies during collisions
+	- added first draft for hingeConstraint motor
+	
+2006 Dec 8, Erwin Coumans
+	- preparation for SIMD: added btAlignedAllocator and btAlignedObjectArray, to replace stl std::vector, same interface, but compatible with 16 byte alignment
+	- cleaned up dependencies in autogenerated msvc projectfiles
+	- aligned btVector3 on 16 bytes boundary, under win32. see if developers will come up with problems
+
+2006 Dec 04, Erwin Coumans
+	Added btNearCallback. This is similar to Open Dynamics Engine (ODE) dNearCallback, but important differences:
+	- contact points are persistent (lifetime more then one frame, for warmstarting/incremental contact point management)
+	- continuous collision detection, time of impact
+	Added btRigidBody::isInWorld(), returns true if btRigidBody is inside a btCollisionWorld/btDynamicsWorld derived class
+	Added angularFactor to btRigidbody, this helps some character control (no angular impulse applied)
+
+
+2006 Nov 28
+	Moved StackAlloc from EPA into LinearMath/btStackAlloc
+	renamed internal class ConcaveShape into btConcaveShape
+	added btHeightfieldTerrainShape (not completed yet)
+		
+2006 Nov 15 Nathanael Presson
+	Added EPA penetration depth algorithm, Expanding Polytope Algorithm
+	Added Pierre Terdiman penetration depth comparison/test DEMO
+	Fixed Bullet's Minkowski sampling penetration depth solver
+	Contributed by Nathanael Presson
+	
+2006 Nov 11 Francisco León Nájera
+	Added GIMPACT trimesh collision detection: concave versus concave,
+	Contributed by Francisco León Nájera
+
+2006 Nov 2
+	Minor refactoring: btCollisionObject changes from struct into class, added accessor methods
+	Force use of btMotionState to synchronize graphics transform, disabled old btRigidBody constructor that accepts btTransform
+	Renamed treshold into threshold throughout the code
+	
+2006 Oct 30
+	Enable decoupling of physics and graphics framerate using interpolation and internal fixed timestep, based on btMotionState
+	Enabled raycast vehicle demo (still needs tuning)
+	Refresh contact points, even when they are already persistent.
+	Fixed debugDraw colors (thanks pc0de for reporting)
+	Use Dispatcher in ConcaveConvexCollisionAlgorithm (so it uses the registered collision algorithm, not hardcoded convexconcave)
+	Improved performance of constraint solver by precalculating the cross product/impulse arm
+	Added collision comparison code: ODE box-box, also sphere-triangle
+	Added safety check into GJK, and an assert for AABB's that are very large
+	Fixed kinematic support (deriving velocities for animated objects)
+	Updated comparison/optional quickstep solver in Extras
+	UserCollisionAlgorithm demonstrates btTriangleMesh usage (easier trimesh compared to index array version)
+	Removed scaling from btTransform (we only want to deal with rigid transforms)
+	
+2006 Oct 4
+	Fixed minor leak in btOptimizeBVH
+	Cleanup of btRigidBody construction
+	added getW() in btQuaternion
+	assert when setLinearVelocity is called on btRigidBody
+	renamed projectfile library from collada-dom to colladadom (to make VC6 happy)
+	
+2006 Sept 27
+	Big Refactoring: renamed and moved files, create a replacement for CcdPhysicsEnvironment/CcdPhysicsController.
+	All Bullet classes in LinearMath, BulletCollision and BulletDynamics start with bt, and methods start with lowercase.
+	Moved classes into src folder, which is the only include folder needed.
+	Added 2 headerfiles in src: btBulletCollisionCommon.h and btBulletDynamicsCommon.h
+
+2006 Sept 23
+	Fixed 2 bugs, causing crashes when removing objects. Should do better unit-testing. UnionFind and 3D SAP were involved.
+	
+2006 Sept 19
+	Allow programmable friction and contact solver model. User can register their own functions for several interaction types.
+	Improved performance, and removed hardcoded maximum overlaps (switched from C-array to stl::set)
+	
+2006 Sept 16
+	Added Bullet 2.0  User Manual
+	Allow registration of custom user collision algorithms
+
+2006 Sept 10
+	Started cleaning up demos
+	
+2006 Sept 4
+	Fixed concave collision bug (caused instability/missing collisions in meshes/compounds)
+	Fixed memoryleak in OptimizedBvh, added RayTestSingle to CollisionWorld
+	Prepared for VehicleDemo
+	Increased Performance (island generation for sleeping objects took too much time)
+	Better COLLADA 1.4.1 physics conformance in ColladaDemo
+
+2006 August 11
+	Added Quake BspDemo
+	Improved CCD for compound and non-convex objects
+
+2006 August 10
+	Added per-triangle material (friction/restitution) support for non-convex meshes. See ConcaveDemo for usage.
+
+2006 August 9
+	Added CMake support (see http://cmake.org)
+	This can autogenerate makefiles, projectfiles cross platform (including MacOS X Xcode )
+	Just run cmake . in the root folder and it will autogenerate build files
+	
+2006 July 26 Erwin Coumans
+	Upgraded to COLLADA-DOM 1.4.1, latest SVN version
+	ColladaDemo can export snapshots to .dae
+	
+2006 July 24 Erwin Coumans
+	Added Compound CollisionShape support
+	(this is still low performance -> requires stackless tree-versus-tree traversal for better performance)
+
+2006 July 15 Erwin Coumans
+	Added initial support for Parallel execution (collision detection, constraint solving)
+	See ParallelPhysicsEnvironment in Extras\PhysicsInterface\CcdPhysics
+	
+2006 July 10 Erwin Coumans
+	Added MacOS X support (some build issues mainly)
+		
+2006 July 5 Erwin Coumans
+	Improved COLLADA 1.4 physics import, both COLLADA-DOM and FCollada
+
+2006 June 29 Erwin Coumans
+	Refactoring of the broadphase
+	Moved some optional files to Extras: Algebraic ccd and EPA, quickstep
+	Moved the limits on bodies/overlap to 32k and 65k
+	
+2006 June 25 Erwin Coumans
+	Added basic Collision Filtering, during broadphase
+	Allow adding meshes to the TriangleIndexVertexArray,
+	(input for TriangleMeshShape) 
+	Preparation for CompoundShape
+
+2006 June 19 Erwin Coumans
+	Added support for COLLADA Physics Import.
+	Both jam and Visual Studio can compile ColladaDemo
+
+2006 June 18 Dirk Gregorius <dirk@dirkgregorius.de>
+	Started implementing Generic6DOF joint and setup basic interface
+
+
+2006 June 17 Frank Richter <resqu@gmx.ch>
+	Bumped version in configure.ac to 1.5.6 (assuming that "1.5f" is
+	  the next version released).
+	Updated files in mk/autoconf and mk/jam with copies from CS; fixes a 
+	  GLU detection issue on MinGW.
+	Set msvc/bullet_ico.ico as the default application icon.
+	Disabled exceptions for gcc builds.
+	Applied a patch from Michael D. Adams to fix a warning with gcc.
+2006 jUNE 16 Erwin Coumans
+	Constraints now merge simulation islands.
+
+2006 May 24
+	Improved GJK accuracy, fixed GjkConvexCast issue, thanks to ~MyXa~ for reporting
+	
+2006 May 19
+	Added restitution support
+	Moved out Friction and Dynamics info from ManifoldPoint (removed logical dependency)
+	Added a void* m_userPersistentData in ManifoldPoint.
+	Added a ContactDestroyedCallback, to allow user to handle destruction of m_userPersistentData
+
+2006 May 13
+	Fixed some bugs in friction / jacobian calculations. Reported by Dirk Gregorius. Thanks!
+
+2006 May 9
+	Fixed raycasting filtering
+	Moved repository to SVN at https://svn.sourceforge.net/svnroot/bullet
+		
+2006 April 27
+	Moved raycasting to CollisionWorld, to make it more generic
+	Added basic CCD option in the CcdCollisionDemo
+	Fixed 'noResponse' mode, for triggering rigidbodies (useful for Artificial Intelligence queries)
+	Improved Bullet/ODE sample (in Extras)
+		
+2006 April 10
+	Separating Axis Test (SAT) convex hull collision detector, contribution by Simon Hobbs
+	Added SIMD SSE Math classes (for above SAT)
+	Added Mouse picking in CcdPhysicsDemo
+	Improved penetration depth estimation in MinkowskiPenetrationDepthSolver, both accuracy and performance
+	Added Hinge constraint
+	Added quickprof profiling (see http://sourceforge.net/projects/quickprof )
+		
+2006 March 21 Frank Richter <resqu@gmx.ch>
+	Removed VC manifest files.
+	Removed superfluous "grpplugins" projects.
+
+2006 March 20 Erwin Coumans
+	Clamped the acculumated impulse rather then intermediate impulse (within the iteration)
+	Use the persistent contacts for reusing the impulse
+	Separated friction and normal solving for better stability
+	Decreased the default number of iterations of the constraint solver from 10 to 4
+
+2006 March 19 Frank Richter <resqu@gmx.ch>
+	Removed a couple of CSisms from the VC projects.
+	Fixed VC include & lib paths to go to the Addtional* options
+	  instead the command line arguments.
+	Added pkgconfig support.
+
+2006 March 14 Frank Richter <resqu@gmx.ch>
+	Added support for shipped GLUT on MinGW.
+	Fixed GLUT support on MinGW.
+
+2006 March 13 Frank Richter <resqu@gmx.ch>
+	Bolted on Jam-based build system.
+	Generated VC project files.
+	Fixed GCC warnings.
+	Fixed Linux build issues.
+
+2006 March 13
+Added 3D Sweep and Prune Broadphase Collision Detection, Contribution from Simon Hobbs.
+
+2006 March 2
+	Minor change in license to ZLib/LibPNG
+	This makes it legally a bit easier to deploy on Playstation 3
+	Prepared for more generic constraints, added ConstraintsDemo
+
+2006 Feb 23
+	Rearranged files and dependencies to allow for easier standalone Collision Detection without Bullet Dynamics.
+	See Demos/CollisionInterfaceDemo and Extras/ode/ode/test/test_BulletGjk.cpp for examples how to use.
+
+2005 August 6
+	Bullet 0.2 release with demos, sources, doxygen, draft manual
+
+2005 June 1
+	First public release of Bullet
+	
+
+... todo: add history
+
+2003 Initial version (continuous collision detection)
