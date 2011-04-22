@@ -36,6 +36,9 @@ GlobalCache = {}
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
+  def skip(self):
+    print >> sys.stderr, '<skip> ',
+
   def get_dir(self):
     dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
     if not os.path.exists(dirname):
@@ -270,7 +273,7 @@ if 'benchmark' not in sys.argv:
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
     def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None):
-      if COMPILER != LLVM_GCC: return # We use existing .ll, so which compiler is unimportant
+      if COMPILER != LLVM_GCC: return self.skip() # We use existing .ll, so which compiler is unimportant
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
@@ -1322,6 +1325,8 @@ if 'benchmark' not in sys.argv:
           self.do_test(src, '*4,3,4*\n*6,4,6*')
 
     def test_varargs(self):
+        if QUANTUM_SIZE == 1: return self.skip() # FIXME: Add support for this
+
         src = '''
           #include <stdio.h>
           #include <stdarg.h>
@@ -1628,7 +1633,7 @@ if 'benchmark' not in sys.argv:
     def zzztest_gl(self):
       # Switch to gcc from g++ - we don't compile properly otherwise (why?)
       global COMPILER
-      if COMPILER != LLVM_GCC: return
+      if COMPILER != LLVM_GCC: return self.skip()
       COMPILER = LLVM_GCC.replace('g++', 'gcc')
 
       def post(filename):
@@ -1734,6 +1739,8 @@ if 'benchmark' not in sys.argv:
       return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))
 
     def test_freetype(self):
+      if QUANTUM_SIZE == 1: return self.skip() # TODO: Figure out and try to fix
+
       if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
       #global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
@@ -1802,8 +1809,9 @@ if 'benchmark' not in sys.argv:
                    includes=[path_from_root('tests', 'bullet', 'src')])
 
     def test_poppler(self):
-      if COMPILER != LLVM_GCC: return # llvm-link failure when using clang, LLVM bug 9498
-      if RELOOP or LLVM_OPTS: return # TODO
+      if COMPILER != LLVM_GCC: return self.skip() # llvm-link failure when using clang, LLVM bug 9498
+      if RELOOP or LLVM_OPTS: return self.skip() # TODO
+      if QUANTUM_SIZE == 1: return self.skip() # TODO: Figure out and try to fix
 
       global USE_TYPED_ARRAYS; USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
 
@@ -1972,7 +1980,7 @@ if 'benchmark' not in sys.argv:
     ### Test cases in separate files
 
     def test_cases(self):
-      if LLVM_OPTS: return # Our code is not exactly 'normal' llvm assembly
+      if LLVM_OPTS: return self.skip() # Our code is not exactly 'normal' llvm assembly
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         print "Testing case '%s'..." % shortname
@@ -1990,7 +1998,7 @@ if 'benchmark' not in sys.argv:
       self.prep_ll_test(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc
 
     def test_autodebug(self):
-      if LLVM_OPTS: return # They mess us up
+      if LLVM_OPTS: return self.skip() # They mess us up
 
       # Run a test that should work, generating some code
       self.test_structs()
@@ -2059,8 +2067,8 @@ if 'benchmark' not in sys.argv:
     def test_safe_heap(self):
       global SAFE_HEAP, SAFE_HEAP_LINES
 
-      if not SAFE_HEAP: return
-      if LLVM_OPTS: return # LLVM can optimize away the intermediate |x|...
+      if not SAFE_HEAP: return self.skip()
+      if LLVM_OPTS: return self.skip() # LLVM can optimize away the intermediate |x|...
       src = '''
         #include<stdio.h>
         int main() {
@@ -2265,18 +2273,19 @@ if 'benchmark' not in sys.argv:
 
 
   # Generate tests for all our compilers
-  def make_test(name, compiler, llvm_opts, embetter):
+  def make_test(name, compiler, llvm_opts, embetter, quantum_size):
     exec('''
 class %s(T):
   def setUp(self):
     global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES
 
     COMPILER = '%s'
-    QUANTUM_SIZE = 4
     llvm_opts = %d
     embetter = %d
+    quantum_size = %d
     INVOKE_RUN = 1
     RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
+    QUANTUM_SIZE = quantum_size
     ASSERTIONS = 1-embetter
     SAFE_HEAP = 1-(embetter and llvm_opts)
     LLVM_OPTS = llvm_opts
@@ -2292,14 +2301,15 @@ class %s(T):
     shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
     self.get_dir() # make sure it exists
 TT = %s
-''' % (fullname, compiler, llvm_opts, embetter, fullname))
+''' % (fullname, compiler, llvm_opts, embetter, quantum_size, fullname))
     return TT
 
   for embetter in [0,1]:
     for llvm_opts in [0,1]:
-      for name, compiler in [('clang', CLANG), ('llvm_gcc', LLVM_GCC)]:
-        fullname = '%s_%d_%d' % (name, llvm_opts, embetter)
-        exec('%s = make_test("%s","%s",%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter))
+      for name, compiler, quantum in [('clang', CLANG, 1), ('clang', CLANG, 4), ('llvm_gcc', LLVM_GCC, 4)]:
+        fullname = '%s_%d_%d%s' % (name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum))
+        exec('%s = make_test("%s","%s",%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum))
+
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
 else:
