@@ -1775,8 +1775,7 @@ if 'benchmark' not in sys.argv:
                    ['font.ttf', 'test!', '150', '120', '25'],
                    libraries=[self.get_freetype()],
                    includes=[path_from_root('tests', 'freetype', 'include')],
-                   post_build=post,
-                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 bug 1257
+                   post_build=post)
                    #build_ll_hook=self.do_autodebug)
 
     def test_zlib(self):
