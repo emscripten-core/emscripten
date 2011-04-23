@@ -63,10 +63,10 @@ class RunnerCore(unittest.TestCase):
 
     if optimization_level == 0: return
 
-    # -instcombine is nonportable, so doesn't appear here
     LLVM_OPT_OPTS.append('-globalopt')
     LLVM_OPT_OPTS.append('-ipsccp')
     LLVM_OPT_OPTS.append('-deadargelim')
+    # nonportable LLVM_OPT_OPTS.append('-instcombine')
     LLVM_OPT_OPTS.append('-simplifycfg')
     LLVM_OPT_OPTS.append('-prune-eh')
     LLVM_OPT_OPTS.append('-inline')
@@ -76,23 +76,31 @@ class RunnerCore(unittest.TestCase):
     #LLVM_OPT_OPTS.append('-scalarrepl') # XXX Danger: Can turn a memcpy into something that violates the load-store
     #                                    #             consistency hypothesis. See hashnum() in lua.
     #                                    #             Note: this opt is of great importance for raytrace...
+    ##LLVM_OPT_OPTS.append('-early-cse') # ?
     LLVM_OPT_OPTS.append('-simplify-libcalls')
     LLVM_OPT_OPTS.append('-jump-threading')
+    ##LLVM_OPT_OPTS.append('-correlated-propagation') # ?
     LLVM_OPT_OPTS.append('-simplifycfg')
+    # nonportable LLVM_OPT_OPTS.append('-instcombine')
     LLVM_OPT_OPTS.append('-tailcallelim')
     LLVM_OPT_OPTS.append('-simplifycfg')
     LLVM_OPT_OPTS.append('-reassociate')
     LLVM_OPT_OPTS.append('-loop-rotate')
     LLVM_OPT_OPTS.append('-licm')
     LLVM_OPT_OPTS.append('-loop-unswitch') # XXX should depend on optimize_size
+    # nonportable LLVM_OPT_OPTS.append('-instcombine')
     LLVM_OPT_OPTS.append('-indvars')
+    ##LLVM_OPT_OPTS.append('-loop-idiom') # ?
     LLVM_OPT_OPTS.append('-loop-deletion')
     LLVM_OPT_OPTS.append('-loop-unroll')
+    # nonportable LLVM_OPT_OPTS.append('-instcombine')
     #if optimization_level > 1:
     #  LLVM_OPT_OPTS.append('-gvn') # XXX Danger: Messes up Lua output for unknown reasons
     #                               #             Note: this opt is of minor importance for raytrace...
     LLVM_OPT_OPTS.append('-memcpyopt') # Danger?
     LLVM_OPT_OPTS.append('-sccp')
+
+    # nonportable LLVM_OPT_OPTS.append('-instcombine')
     LLVM_OPT_OPTS.append('-jump-threading')
     LLVM_OPT_OPTS.append('-correlated-propagation')
     LLVM_OPT_OPTS.append('-dse')
