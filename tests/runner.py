@@ -33,9 +33,20 @@ AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 
 GlobalCache = {}
 
+class Dummy: pass
+Settings = Dummy()
+Settings.saveJS = False
+
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
+  def tearDown(self):
+    if Settings.saveJS:
+      for name in os.listdir(self.get_dir()):
+        if name[-3:] == '.js':
+          shutil.copy(os.path.join(self.get_dir(), name),
+                      os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.js'))
+
   def skip(self):
     print >> sys.stderr, '<skip> ',
 
