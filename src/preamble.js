@@ -249,7 +249,7 @@ function __initializeRuntime__() {
   // TODO: Remove one of the 3 heaps!
   HAS_TYPED_ARRAYS = false;
   try {
-    HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array().subarray); // check for full engine support
+    HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array()['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
   } catch(e) {}
 
   if (HAS_TYPED_ARRAYS) {
@@ -262,7 +262,7 @@ function __initializeRuntime__() {
     var FAST_MEMORY = TOTAL_MEMORY/32;
     IHEAP = FHEAP = HEAP = new Array(FAST_MEMORY);
     for (var i = 0; i < FAST_MEMORY; i++) {
-      IHEAP[i] = FHEAP[i] = 0; // We do *not* use {{{ makeSetValue(0, 'i', 0, 'null') }}} here, since this is done just to optimize runtime speed
+      IHEAP[i] = 0; // We do *not* use {{{ makeSetValue(0, 'i', 0, 'null') }}} here, since this is done just to optimize runtime speed
     }
   }
 
