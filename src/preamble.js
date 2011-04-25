@@ -287,11 +287,12 @@ function __initializeRuntime__() {
 
 function __shutdownRuntime__() {
   while( __ATEXIT__.length > 0) {
-    var func = __ATEXIT__.pop();
+    var atexit = __ATEXIT__.pop();
+    var func = atexit.func;
     if (typeof func === 'number') {
       func = FUNCTION_TABLE[func];
     }
-    func();
+    func(atexit.arg);
   }
 }
 

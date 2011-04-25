@@ -514,8 +514,8 @@ var Library = {
     throw 'exit(' + status + ') called, at ' + new Error().stack;
   },
 
-  atexit: function(func) {
-    __ATEXIT__.push(func);
+  atexit: function(func, arg) {
+    __ATEXIT__.push({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
 
