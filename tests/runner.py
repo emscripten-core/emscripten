@@ -1748,9 +1748,10 @@ if 'benchmark' not in sys.argv:
     def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
       if type(generated_libs) is not list: generated_libs = [generated_libs]
 
-      if GlobalCache:
+      if GlobalCache is not None:
         cache_name = name + '|' + COMPILER
         if cache and GlobalCache.get(cache_name):
+          print >> sys.stderr,  '<load build from cache> ',
           bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
           f = open(bc_file, 'wb')
           f.write(GlobalCache[cache_name])
@@ -1771,7 +1772,8 @@ if 'benchmark' not in sys.argv:
       Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
       self.do_link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
-      if cache and GlobalCache:
+      if cache and GlobalCache is not None:
+        print >> sys.stderr, '<save build into cache> ',
         GlobalCache[cache_name] = open(bc_file, 'rb').read()
       return bc_file
 
