@@ -834,7 +834,7 @@ function analyzer(data) {
           return ret;
         }
 
-        if (mustReturn) return makeLoop();
+        if (canReturn) return makeLoop();
 
         // === handle multiple branches from the entry with a 'multiple' ===
         //
@@ -886,12 +886,7 @@ function analyzer(data) {
 
         if (handlingNow.length == 0) {
           // Spaghetti - cannot even find a single label to do before the rest. What a mess.
-          // But if there is looping, perhaps we can use that to simplify matters?
-          if (canReturn) {
-            return makeLoop();
-          } else {
-            throw "Spaghetti encountered in relooping.";
-          }
+          throw "Spaghetti encountered in relooping.";
         }
 
         // This is a 'multiple'
