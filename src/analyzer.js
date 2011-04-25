@@ -147,7 +147,7 @@ function analyzer(data) {
   substrate.addActor('Typevestigator', {
     processItem: function(data) {
       for (type in Types.needAnalysis) {
-        if (type) addType(type, data, Types.types);
+        if (type) addType(type, data);
       }
       Types.needAnalysis = [];
       this.forwardItem(data, 'Typeanalyzer');
@@ -184,7 +184,7 @@ function analyzer(data) {
           type.fields.forEach(function(field) {
             if (isStructType(field)) {
               if (!types[field]) {
-                addType(field, item, types);
+                addType(field, item);
                 ready = false;
               } else {
                 if (!types[field].flatIndexes) {
