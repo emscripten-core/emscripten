@@ -28,6 +28,7 @@ DEMANGLER = path_from_root('third_party', 'demangler.py')
 NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
+DFE = path_from_root('tools', 'dead_function_eliminator.py')
 
 # Global cache for tests (we have multiple TestCase instances; this object lets them share data)
 
@@ -35,7 +36,7 @@ GlobalCache = {}
 
 class Dummy: pass
 Settings = Dummy()
-Settings.saveJS = False
+Settings.saveJS = 0
 
 # Core test runner class, shared between normal tests and benchmarks
 
@@ -43,9 +44,10 @@ class RunnerCore(unittest.TestCase):
   def tearDown(self):
     if Settings.saveJS:
       for name in os.listdir(self.get_dir()):
-        if name[-3:] == '.js':
+        if name.endswith(('.o.js', '.cc.js')):
+          suff = '.'.join(name.split('.')[-2:])
           shutil.copy(os.path.join(self.get_dir(), name),
-                      os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.js'))
+                      os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
 
   def skip(self):
     print >> sys.stderr, '<skip> ',
@@ -116,6 +118,12 @@ class RunnerCore(unittest.TestCase):
     if optimization_level > 1:
       LLVM_OPT_OPTS.append('-constmerge')
 
+  # Emscripten optimizations that we run on the .ll file
+  def do_ll_opts(self, filename):
+    shutil.move(filename + '.o.ll', filename + '.o.ll.orig')
+    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
+
   # Optional LLVM optimizations
   def do_llvm_opts(self, filename):
     if LLVM_OPTS:
@@ -124,12 +132,46 @@ class RunnerCore(unittest.TestCase):
 
   def do_llvm_dis(self, filename):
     # LLVM binary ==> LLVM assembly
+    try:
+      os.remove(filename + '.o.ll')
+    except:
+      pass
     Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
     assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file'
+
+  def do_llvm_as(self, source, target):
+    # LLVM assembly ==> LLVM binary
+    try:
+      os.remove(target)
+    except:
+      pass
+    Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(target), 'Could not create bc file'
 
   def do_link(self, files, target):
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
     assert output is None or 'Could not open input file' not in output, 'Linking error: ' + output
+
+  def prep_ll_test(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
+    if ll_file.endswith(('.bc', '.o')):
+      if ll_file != filename + '.o':
+        shutil.copy(ll_file, filename + '.o')
+      self.do_llvm_dis(filename)
+    else:
+      shutil.copy(ll_file, filename + '.o.ll')
+
+    force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts
+
+    if LLVM_OPTS or force_recompile or build_ll_hook:
+      self.do_ll_opts(filename)
+      if build_ll_hook:
+        build_ll_hook(filename)
+      shutil.move(filename + '.o.ll', filename + '.o.ll.pre')
+      self.do_llvm_as(filename + '.o.ll.pre', filename + '.o')
+      output = Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      assert 'error:' not in output, 'Error in llvm-as: ' + output
+      self.do_llvm_opts(filename)
+      self.do_llvm_dis(filename)
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None):
@@ -179,12 +221,7 @@ class RunnerCore(unittest.TestCase):
         raise Exception("Linkage error");
 
     # Finalize
-    self.do_llvm_opts(filename)
-
-    self.do_llvm_dis(filename)
-
-    if build_ll_hook:
-      build_ll_hook(filename)
+    self.prep_ll_test(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
     self.do_emscripten(filename, output_processor)
 
@@ -273,22 +310,6 @@ if 'benchmark' not in sys.argv:
           self.assertNotContained('ERROR', js_output)
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
-
-    def prep_ll_test(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
-      if ll_file.endswith(('.bc', '.o')):
-        shutil.copy(ll_file, filename + '.o')
-        self.do_llvm_dis(filename)
-      else:
-        shutil.copy(ll_file, filename + '.o.ll')
-
-      if LLVM_OPTS or force_recompile or build_ll_hook:
-        if build_ll_hook:
-          build_ll_hook(filename)
-        shutil.move(filename + '.o.ll', filename + '.o.ll.pre')
-        output = Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-        assert 'error:' not in output, 'Error in llvm-as: ' + output
-        self.do_llvm_opts(filename)
-        Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
     def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None):
@@ -2046,6 +2067,30 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, build_ll_hook=self.do_autodebug)
       self.do_test(src, 'line: ', build_ll_hook=self.do_autodebug)
 
+    def test_dfe(self):
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+
+      def hook(filename):
+        ll = open(filename + '.o.ll').read()
+        assert 'unneeded' not in ll, 'DFE should remove the unneeded function'
+
+      src = '''
+          #include <stdio.h>
+
+          void unneeded()
+          {
+            printf("some totally useless stuff\\n");
+          }
+
+          int main()
+          {
+            printf("*hello slim world*\\n");
+            return 0;
+          }
+        '''
+      # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
+      self.do_test(src, '*hello slim world*', build_ll_hook=hook)
+
     ### Integration tests
 
     def test_scriptaclass(self):
@@ -2391,7 +2436,7 @@ else:
 
         cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
                            '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                           #'--formatting', 'PRETTY_PRINT',
+                           '--formatting', 'PRETTY_PRINT',
                            '--variable_map_output_file', filename + '.vars',
                            '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
         if 'ERROR' in cc_output:
