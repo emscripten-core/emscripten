@@ -194,11 +194,13 @@ function Pointer_make(slab, pos, allocator) {
   var size = slab.length;
 
   var i;
+#if ASSERTIONS
   for (i = 0; i < size; i++) {
     if (slab[i] === undefined) {
       throw 'Invalid element in slab at ' + new Error().stack; // This can be caught, and you can try again to allocate later, see globalFuncs in run()
     }
   }
+#endif
 
   // Finalize
   var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
