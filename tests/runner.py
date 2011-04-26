@@ -2388,7 +2388,7 @@ else:
 
   assert(os.path.exists(CLOSURE_COMPILER))
 
-  COMPILER = LLVM_GCC
+  COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE
   #JS_ENGINE = V8_ENGINE
 
@@ -2406,7 +2406,7 @@ else:
 
   USE_CLOSURE_COMPILER = 1
 
-  TEST_REPS = 3
+  TEST_REPS = 10
   TOTAL_TESTS = 4
 
   tests_done = 0
