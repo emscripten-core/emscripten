@@ -694,7 +694,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     args = args.map(indexizeFunctions);
     varargs = varargs.map(indexizeFunctions);
-    if (varargs.length > 0) {
+    if (func && func.hasVarArgs) {
       varargs = makePointer('[' + varargs + ']', 0, 'ALLOC_STACK');
     }
 

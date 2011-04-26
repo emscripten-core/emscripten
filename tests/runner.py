@@ -1418,6 +1418,7 @@ if 'benchmark' not in sys.argv:
 
           int main() {
             vary("*cheez: %d+%d*", 0, 24); // Also tests that '0' is not special as an array ender
+            vary("*albeit*"); // Should not fail with no var args in vararg function
             vary2('Q', "%d*", 85);
 
             int maxxi = getMaxi(6,        2, 5, 21, 4, -10, 19);
@@ -1428,7 +1429,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
           '''
-        self.do_test(src, '*cheez: 0+24*\n*cheez: 0+24*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
+        self.do_test(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
 
     def test_stdlibs(self):
         src = '''
