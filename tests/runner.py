@@ -1734,6 +1734,7 @@ if 'benchmark' not in sys.argv:
       global SAFE_HEAP; SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
+      global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
@@ -1779,6 +1780,8 @@ if 'benchmark' not in sys.argv:
       return bc_file
 
     def get_freetype(self):
+      global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
+
       return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))
 
     def test_freetype(self):
@@ -1834,6 +1837,8 @@ if 'benchmark' not in sys.argv:
       global SAFE_HEAP, SAFE_HEAP_LINES, COMPILER_TEST_OPTS
 
       if LLVM_OPTS: SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+      if COMPILER == LLVM_GCC:
+        global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       if SAFE_HEAP:
         # Ignore bitfield warnings
@@ -2361,7 +2366,7 @@ class %s(T):
     CORRECT_ROUNDINGS = 0
     CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
     CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
-    INIT_STACK = 1
+    INIT_STACK = 0
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = []
