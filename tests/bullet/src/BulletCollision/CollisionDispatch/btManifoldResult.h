@@ -28,7 +28,8 @@ class btManifoldPoint;
 typedef bool (*ContactAddedCallback)(btManifoldPoint& cp,	const btCollisionObject* colObj0,int partId0,int index0,const btCollisionObject* colObj1,int partId1,int index1);
 extern ContactAddedCallback		gContactAddedCallback;
 
-//#define DEBUG_PART_INDEX 1
+// XXX Emscripten: Uncomment the next line, to prevent SAFE_HEAP warnings
+#define DEBUG_PART_INDEX 1
 
 
 ///btManifoldResult is a helper class to manage  contact results.
