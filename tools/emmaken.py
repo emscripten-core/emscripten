@@ -24,7 +24,7 @@ Example uses:
  * With CMake, do something like
 
     SET(CMAKE_C_COMPILER "PATH/emmaken.py")
-    SET(CMAKE_CXX_COMPILER "PATH/emmaken.py")
+    SET(CMAKE_CXX_COMPILER "PATH/emmakenxx.py")
     SET(CMAKE_LINKER "PATH/emmaken.py")
     SET(CMAKE_CXX_LINKER "PATH/emmaken.py")
     SET(CMAKE_C_LINK_EXECUTABLE "PATH/emmaken.py")
@@ -37,6 +37,15 @@ LLVM instead of the normal output, and end up with .ll files that you can
 give to Emscripten. Note that this tool doesn't run Emscripten itself. Note
 also that you may need to do some manual fiddling later, for example to
 link files that weren't linked, and them llvm-dis them.
+
+Note the appearance of emmakenxx.py instead of emmaken.py
+for the C++ compiler. This is needed for cases where we get
+a C++ file with a C extension, in which case CMake can be told
+to run g++ on it despite the .c extension, see
+
+  https://github.com/kripken/emscripten/issues/6
+
+(If a similar situation occurs with ./configure, you can do the same there too.)
 '''
 
 import sys
@@ -64,6 +73,11 @@ try:
 
   CXX = os.environ.get('EMMAKEN_COMPILER') or LLVM_GCC
   CC = to_cc(CXX)
+
+  # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
+  if sys.argv[-1] == '-EMMAKEN_CXX':
+    CC = CXX
+    sys.argv = sys.argv[:-1]
 
   CC_ARG_SKIP = ['-O1', '-O2', '-O3']
   CC_ADDITIONAL_ARGS = ['-m32', '-U__i386__', '-U__x86_64__', '-U__SSE__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
