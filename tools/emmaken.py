@@ -51,7 +51,8 @@ exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 # If this is a CMake config, just do that
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CMAKE_CONFIG:
-  exit(os.execvp('gcc', ['gcc'] + sys.argv[1:]))
+  compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) else 'gcc'
+  exit(os.execvp(compiler, [compiler] + sys.argv[1:]))
 
 try:
   print 'emmaken.py: ', ' '.join(sys.argv)
