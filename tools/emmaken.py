@@ -116,7 +116,7 @@ try:
   if '--version' in opts:
       use_linker = False
 
-  if sys.argv[1] in ['cru', 'rc']: # ar
+  if set(sys.argv[1]).issubset(set('cru')): # ar
     sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
     assert use_linker, 'Linker should be used in this case'
 
