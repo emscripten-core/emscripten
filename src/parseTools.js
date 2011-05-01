@@ -978,8 +978,20 @@ function processMathop(item) { with(item) {
       return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
     }
     case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
-    case 'ptrtoint': return ident1;
-    case 'inttoptr': return ident1;
+    case 'ptrtoint': case 'inttoptr': {
+      var ret = '';
+      if (QUANTUM_SIZE == 1) {
+        if (!Debugging.shownPtrtointWarning) {
+          dprint('WARNING: .ll contains ptrtoint and/or inttoptr. These may be dangerous in QUANTUM == 1.');
+          dprint('         The safest thing is to investigate every appearance, and modify the source code to avoid this.');
+          dprint('         Emscripten will print a list of the .ll lines, and also annotate the .js.');
+          Debugging.shownPtrtointWarning = true;
+        }
+        dprint('  ' + op + ' on .ll line ' + item.lineNum);
+        ret = ' /* Warning: ' + op + ', .ll line ' + item.lineNum + ' */';
+      }
+      return ident1 + ret;
+    }
     default: throw 'Unknown mathcmp op: ' + item.op;
   }
 } }
