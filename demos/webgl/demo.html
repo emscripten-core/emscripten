@@ -1,0 +1,196 @@
+<html>
+    <head>
+      <title>Bullet/WebGL Demo</title>
+      <script src="CubicVR.js" type="text/javascript"></script>
+      <script type="text/javascript">var arguments = [];</script>
+      <script src="bullet_1_1_q1.ccsimple.js" type="text/javascript"></script>
+      <script src="bullet_glue.js" type="text/javascript"></script>
+      <style type="text/css">
+        body { background-color: #eee; }
+      </style>
+
+      <script type="text/javascript">
+        /**
+          Steps to create the demo:
+
+            * Run the bullet test in the test runner, using HelloWorld.cpp from this directory, get the generated .js file
+              * Preferably use optimizations, etc.
+              * Disable typed arrays, probably.
+              * Prevent the compiled bullet from running main(), we don't need it anymore. For example, put a |return;| at the beginning of callMain().
+            * Fix an inttoptr issue in compiled bullet, if built with QUANTUM == 1 (division by 16 should be 4)
+            * Go to the demos/webgl directory
+            * Run the demangler: python ../../third_party/demangler.py bullet_1_1_q1.js . > bullet.names
+            * Edit bullet_glue to use the right mangled names, with the output from the demangler
+            * Add some randomness to the initial cube positions by editing zz_prepare (search for 2.1 in the source)
+            * Optionally, run through closure compiler
+         */
+        var NUM = 5;
+        var NUMRANGE = [1,2,3,4,5];
+
+        var boxes = [];
+
+        function simulatePhysics(dt) {
+          simulateBulletDemo(dt);
+
+          // Read bullet data into JS objects
+          var pos = [0,0,0];
+          var quat = new CubicVR.Quaternion;
+          for (var i = 0; i < NUM; i++) {
+            readBulletObject(i+1, pos, quat);
+            var renderObject = boxes[i];
+            renderObject.position[0] = pos[0];
+            renderObject.position[1] = pos[1];
+            renderObject.position[2] = pos[2];
+            renderObject.rotation = quat.toEuler();
+          }
+        }
+
+        var dts = 0, num = 0, lastHUD = Date.now();
+
+        function showFPS(dt) {
+          var now = Date.now();
+          dts += dt;
+          num++;
+          if (now - lastHUD > 333) {
+            document.getElementById('out2').innerHTML = '<b>FPS: ' + Math.ceil(1/(dts/num)) + '</b>';
+            lastHUD = now;
+            dts = 0;
+            num = 0;
+          }
+          t = now;
+        }
+
+        function startUp() {
+          var canvas = document.getElementById("canvas");
+          canvas.width = screen.width*0.70;
+          canvas.height = screen.height*0.55;
+
+          gl = CubicVR.GLCore.init(canvas, "CubicVR_Core.vs", "CubicVR_Core.fs");
+
+          if (!gl) {
+            alert("Sorry, no WebGL support :(");
+            return;
+          };
+
+          var scene = new CubicVR.Scene(canvas.width, canvas.height, 70);
+          var light = new CubicVR.Light({
+            type: CubicVR.enums.light.type.POINT,
+            method: CubicVR.enums.light.method.DYNAMIC,
+            diffuse: [1, 1, 1],
+            specular: [0.25, 0.25, 0.25],
+            position: [0, 5, 20],
+            distance: 200
+          });
+          scene.bindLight(light);
+
+          scene.camera.position = [0, 2.4, 17];
+          scene.camera.target = [0, 2.4, 0];
+
+          var boxMaterials = NUMRANGE.map(function(i) {
+            return new CubicVR.Material({
+              textures: {
+                color: new CubicVR.Texture("cube" + i + ".jpg")
+              }
+            });
+          });
+
+          var boxMeshes = boxMaterials.map(function(boxMaterial) {
+            return new CubicVR.primitives.box({
+              size: 2.0,
+              material: boxMaterial,
+              uvmapper: {
+                projectionMode: CubicVR.enums.uv.projection.CUBIC,
+                scale: [2, 2, 2]
+              }
+            }).triangulateQuads().compile().clean();
+          });
+
+          for (var i = 0; i < NUM; i++) {
+            boxes[i] = new CubicVR.SceneObject({ mesh: boxMeshes[i], position: [0, -10000, 0] });
+            scene.bindSceneObject(boxes[i], true);
+          }
+
+
+          var FLOOR_SIZE = 100;
+          var floorMaterial = new CubicVR.Material({
+            textures: {
+              color: new CubicVR.Texture("cube3.jpg")
+            }
+          });
+          var floorMesh = new  CubicVR.primitives.box({
+            size: FLOOR_SIZE,
+            material: floorMaterial,
+            uvmapper: {
+              projectionMode: CubicVR.enums.uv.projection.CUBIC,
+              scale: [FLOOR_SIZE, FLOOR_SIZE, FLOOR_SIZE]
+            }
+          }).triangulateQuads().compile().clean();
+
+          var floor_ = new CubicVR.SceneObject({ mesh: floorMesh, position: [0, -FLOOR_SIZE/2-6, 0] });
+          scene.bindSceneObject(floor_, true);
+
+
+
+
+          var totalTime = 0;
+          var lastCenter = [0,0,0];
+          var timeCenterFixed = 0;
+          function noticeCenter(dt) {
+            totalTime += dt;
+            var currCenter = [0,0,0];
+            for (var i = 0; i < NUM; i++) {
+              currCenter = CubicVR.vec3.add(currCenter, boxes[i].position);
+            }
+            currCenter = CubicVR.vec3.multiply(currCenter, 1/NUM);
+
+            var diff = CubicVR.vec3.length(CubicVR.vec3.subtract(currCenter, lastCenter))/dt;
+            if (diff < 0.01) {
+              timeCenterFixed += dt;
+              if (timeCenterFixed >= 1.0 && totalTime > 5.0 &&
+                  (currCenter[1] < -4.99 || totalTime > 11.0) ) restart();
+            } else {
+              timeCenterFixed = 0;
+            }
+            lastCenter = currCenter;
+          }
+
+          var mvc = new CubicVR.MouseViewController(canvas, scene.camera);
+
+          CubicVR.MainLoop(function(timer, gl) {
+            var dt = timer.getLastUpdateSeconds();
+
+            simulatePhysics(dt);
+            noticeCenter(dt);
+            scene.render();
+            showFPS(dt);
+          });
+        }
+
+        function restart() {
+          totalTime = 0;
+          restartBullet();
+        }
+      </script>
+    </head>
+    <body onload="startUp()">
+      <center>
+        <h2>Bullet/WebGL Demo</h2>
+        <!--form onsubmit="restart(); return false">
+          <input type="submit" value="restart">
+        </form-->
+
+        <canvas id="canvas" width="600" height="500"></canvas>
+        <br><br>
+        <div id="out2">waka</div>
+        <p>
+        This is the <b><a href="http://www.bulletphysics.com">Bullet physics engine</a></b>, compiled from C++ to JavaScript using <b><a href="http://emscripten.org">Emscripten</a></b>, with rendering by <b><a href="https://github.com/cjcliffe/CubicVR.js/">CubicVR.js</a></b> using WebGL.
+        </p><p>
+          <ul>
+            <li>Adjust the view by dragging the mouse over the canvas.</li>
+            <li>Note that the first drop of the cubes may be slow - give the JITs time to warm up.</li>
+          </ul>
+        </p>
+      </center>
+    </body>
+</html>
+
