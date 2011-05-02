@@ -1,3 +1,11 @@
+2011-05-01: Version 1.1
+
+  * Much improved Bullet demo (llvm opts, quantum = 1, CubicVR.js)
+  * QUANTUM == 1 a.k.a memory compression option
+  * Dead function elimination tool
+  * Various performance improvements in generated code
+  * Various bug fixes
+
 2011-04-09: Version 1.0
 
   * Poppler test and web demo
