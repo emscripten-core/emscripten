@@ -331,6 +331,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
                 return parseLLVMFunctionCall(segment);
               } else if (segment[1].type == '{') {
                 return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].tokens) };
+              } else if (segment[1].type == '<') {
+                return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].item.tokens[0].tokens) };
               } else if (segment[1].type == '[') {
                 return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
               } else if (segment.length == 2) {
@@ -345,6 +347,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
               }
             };
             return splitTokenList(tokens).map(handleSegment);
+          }
+          if (value.type == '<') { // <{ i8 }> etc.
+            value = value.item.tokens;
           }
           var contents;
           if (value.item) {
@@ -419,13 +424,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
             });
           }
         } else {
-          if (item.tokens[3].type == '<') { // type <{ i8 }> TODO - check spec
-            item.tokens[3] = item.tokens[3].item.tokens;
-          }
-
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
-
           if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
             ret.value = parseLLVMFunctionCall(item.tokens.slice(2));
           } else if (!external) {
