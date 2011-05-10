@@ -1,3 +1,8 @@
+# This file will be copied to ~/.emscripten if that file doesn't exist.
+# IMPORTANT: Edit it with the right paths!
+
+EMSCRIPTEN_ROOT=os.path.expanduser("~/Dev/emscripten") # TODO: Use this
+
 TEMP_DIR='/dev/shm'
 
 LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.9/cbuild/bin')

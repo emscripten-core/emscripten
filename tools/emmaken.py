@@ -71,7 +71,12 @@ try:
   #f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
   #f.close()
 
-  CXX = os.environ.get('EMMAKEN_COMPILER') or LLVM_GCC
+  # If no provided compiler, use LLVM_GCC from ~/.emscripten.
+  # Or, use the provided one; if it is 'clang', then use CLANG from ~/.emscripten
+  cxx = os.environ.get('EMMAKEN_COMPILER')
+  if cxx and cxx == 'clang':
+    cxx = CLANG
+  CXX = cxx or LLVM_GCC
   CC = to_cc(CXX)
 
   # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
@@ -100,55 +105,62 @@ try:
 
   use_cxx = True
   use_linker = True
+  header = False # pre-compiled headers. We fake that by just copying the file
 
   opts = []
   files = []
   for arg in sys.argv[1:]:
-      if arg.startswith('-'):
-          opts.append(arg)
-      else:
-          files.append(arg)
-          if arg.endswith('.c'):
-              use_cxx = False
-          if arg.endswith(('.c', '.cc', '.cpp')):
-              use_linker = False
-              
+    if arg.startswith('-'):
+      opts.append(arg)
+    else:
+      files.append(arg)
+      if arg.endswith('.c'):
+        use_cxx = False
+      if arg.endswith(('.c', '.cc', '.cpp')):
+        use_linker = False
+      if arg.endswith('.h'):
+        header = True
+        use_linker = False
+
   if '--version' in opts:
-      use_linker = False
+    use_linker = False
 
   if set(sys.argv[1]).issubset(set('cru')): # ar
     sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
     assert use_linker, 'Linker should be used in this case'
 
   if use_linker:
-      call = LLVM_LINK
-      newargs = []
-      found_o = False
-      for arg in sys.argv[1:]:
-          if found_o:
-              newargs.append('-o=%s' % arg)
-              found_o = False
-              continue
-          if arg.startswith('-'):
-              if arg == '-o':
-                  found_o = True
-                  continue
-              prefix = arg.split('=')[0]
-              if prefix in ALLOWED_LINK_ARGS:
-                  newargs.append(arg)
-          elif arg.endswith('.so'):
-              continue # .so's do not exist yet, in many cases
-          else:
-              # not option, so just append
-              if arg not in DISALLOWED_LINK_ARGS:
-                  newargs.append(arg)
+    call = LLVM_LINK
+    newargs = []
+    found_o = False
+    for arg in sys.argv[1:]:
+      if found_o:
+        newargs.append('-o=%s' % arg)
+        found_o = False
+        continue
+      if arg.startswith('-'):
+        if arg == '-o':
+          found_o = True
+          continue
+        prefix = arg.split('=')[0]
+        if prefix in ALLOWED_LINK_ARGS:
+          newargs.append(arg)
+      elif arg.endswith('.so'):
+        continue # .so's do not exist yet, in many cases
+      else:
+        # not option, so just append
+        if arg not in DISALLOWED_LINK_ARGS:
+          newargs.append(arg)
+  elif not header:
+    call = CXX if use_cxx else CC
+    newargs = [ arg for arg in sys.argv[1:] if arg not in CC_ARG_SKIP ] + CC_ADDITIONAL_ARGS
+    if 'conftest.c' not in files:
+      newargs.append('-emit-llvm')
+      if not use_linker:
+        newargs.append('-c') 
   else:
-      call = CXX if use_cxx else CC
-      newargs = [ arg for arg in sys.argv[1:] if arg not in CC_ARG_SKIP ] + CC_ADDITIONAL_ARGS
-      if 'conftest.c' not in files:
-          newargs.append('-emit-llvm')
-          if not use_linker:
-              newargs.append('-c') 
+    shutil.copy(sys.argv[-1], sys.argv[-2])
+    exit(0)
 
   #f=open('/dev/shm/tmp/waka.txt', 'a')
   #f.write('Calling: ' + ' '.join(newargs) + '\n\n')
