@@ -266,6 +266,13 @@ function parseParamTokens(params) {
     var segment = params.slice(0, i);
     params = params.slice(i+1);
     segment = cleanSegment(segment);
+    if (segment[1] && segment[1].text === 'byval') {
+      // handle 'byval' and 'byval align X'
+      segment.splice(1, 1);
+      if (segment[1] && segment[1].text === 'align') {
+        segment.splice(1, 2);
+      }
+    }
     if (segment.length == 1) {
       if (segment[0].text == '...') {
         ret.push({
