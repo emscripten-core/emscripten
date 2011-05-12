@@ -6,8 +6,15 @@
 //  args = args || [];
 
 // Runs much faster, for some reason
-this['Module'] = {};
-var args = arguments;
+if (!this['Module']) {
+  this['Module'] = {};
+}
+try {
+  Module.arguments = arguments;
+} catch(e) {
+  Module.arguments = [];
+}
+
   {{BODY}}
 
   // {{MODULE_ADDITIONS}}

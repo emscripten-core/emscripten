@@ -21,6 +21,8 @@ Module.callMain = function callMain(args) {
 }
 
 function run(args) {
+  args = args || Module.arguments;
+
   __initializeRuntime__();
 
   var globalFuncs = [];
@@ -39,8 +41,13 @@ Module['run'] = run;
 // {{PRE_RUN_ADDITIONS}}
 
 #if INVOKE_RUN
-run(args);
+#else
+Module.noInitialRun = true;
 #endif
+
+if (!Module.noInitialRun) {
+  run();
+}
 
 // {{POST_RUN_ADDITIONS}}
 

@@ -2411,7 +2411,7 @@ else:
 
   USE_CLOSURE_COMPILER = 1
 
-  TEST_REPS = 10
+  TEST_REPS = 3
   TOTAL_TESTS = 4
 
   tests_done = 0
