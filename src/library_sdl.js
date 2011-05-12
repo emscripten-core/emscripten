@@ -1,10 +1,13 @@
 mergeInto(Library, {
+  SDL_INFO: {
+    width: 320,
+    height: 240
+  },
+
+  SDL_SURFACES: {},
+
+  SDL_Init__deps: ['SDL_INFO', 'SDL_SURFACES'],
   SDL_Init: function(what) {
-    SDL_INFO = {
-      width: 320,
-      height: 240
-    };
-    SDL_SURFACES = {};
     return 0; // success
   },
 
@@ -15,8 +18,8 @@ mergeInto(Library, {
     IHEAP[ret] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE*2] = 0; // TODO
-    IHEAP[ret+QUANTUM_SIZE*3] = SDL_INFO.width;
-    IHEAP[ret+QUANTUM_SIZE*4] = SDL_INFO.height;
+    IHEAP[ret+QUANTUM_SIZE*3] = _SDL_INFO.width;
+    IHEAP[ret+QUANTUM_SIZE*4] = _SDL_INFO.height;
     return ret;
   },
 
@@ -33,7 +36,7 @@ mergeInto(Library, {
   //                                                             or, define __CANVAS__.
     canvas = canvas || Module.__CANVAS__;
     var surf = _malloc(14*QUANTUM_SIZE); // SDL_Surface has 14 fields of quantum size
-    SDL_SURFACES[surf] = {
+    _SDL_SURFACES[surf] = {
       width: width,
       height: height,
       canvas: canvas,
@@ -49,7 +52,7 @@ mergeInto(Library, {
   },
 
   SDL_LockSurface: function(surf) {
-    var surfData = SDL_SURFACES[surf];
+    var surfData = _SDL_SURFACES[surf];
     surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
@@ -65,7 +68,7 @@ mergeInto(Library, {
   },
 
   SDL_UnlockSurface: function(surf) {
-    var surfData = SDL_SURFACES[surf];
+    var surfData = _SDL_SURFACES[surf];
     // Copy pixel data to image
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {

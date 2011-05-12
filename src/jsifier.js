@@ -220,7 +220,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
                 funcs.push(x + ': ' + snippet[x].toString());
               }
             }
-            snippet = JSON.stringify(snippet).replace(/}$/, ', ' + funcs.join(', ') + ' }');
+            snippet = JSON.stringify(snippet);
+            if (funcs.length > 0) {
+              snippet = snippet.replace(/}$/, ', ' + funcs.join(', ') + ' }');
+            }
           } else if (typeof snippet === 'function') {
             snippet = snippet.toString();
             if (/function ?\(/.exec(snippet)) { // name the function, if not already named

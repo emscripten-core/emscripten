@@ -483,6 +483,11 @@ var Library = {
     _free(start); // FIXME: not really correct at all
   },
 
+  setvbuf: function(stream, buffer, mode, size) {
+    // just a stub
+    assert(!buffer);
+  },
+
   // stdlib.h
 
   malloc: Runtime.staticAlloc,
