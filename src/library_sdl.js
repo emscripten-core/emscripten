@@ -1,3 +1,6 @@
+// To use emscripten's SDL library here, you need to define
+// Module.canvas and Module.context.
+
 mergeInto(Library, {
   SDL_INFO: {
     width: 320,
@@ -31,16 +34,13 @@ mergeInto(Library, {
     // TODO
   },
 
-  SDL_SetVideoMode: function(width, height, depth, flags, canvas) {
-  //                                                      ^^^^^^ a 'canvas' parameter is added here; supply a canvas from JS there
-  //                                                             or, define __CANVAS__.
-    canvas = canvas || Module.__CANVAS__;
+  SDL_SetVideoMode: function(width, height, depth, flags) {
     var surf = _malloc(14*QUANTUM_SIZE); // SDL_Surface has 14 fields of quantum size
     _SDL_SURFACES[surf] = {
       width: width,
       height: height,
-      canvas: canvas,
-      ctx: canvas.getContext('2d'),
+      canvas: Module.canvas,
+      context: Module.context,
       surf: surf,
       buffer: _malloc(width*height*4)
     };
@@ -53,7 +53,7 @@ mergeInto(Library, {
 
   SDL_LockSurface: function(surf) {
     var surfData = _SDL_SURFACES[surf];
-    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+    surfData.image = surfData.context.getImageData(0, 0, surfData.width, surfData.height);
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
@@ -79,7 +79,7 @@ mergeInto(Library, {
       surfData.image.data[i*4+3] = 255; // opacity, as canvases blend alpha
     }
     // Copy to canvas
-    surfData.ctx.putImageData(surfData.image, 0, 0);
+    surfData.context.putImageData(surfData.image, 0, 0);
     // Cleanup
     surfData.image = null;
   },
