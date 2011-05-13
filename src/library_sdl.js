@@ -1,5 +1,5 @@
 // To use emscripten's SDL library here, you need to define
-// Module.canvas and Module.context.
+// Module.canvas and at least one of Module.context2D, Module.contextGL.
 
 mergeInto(Library, {
   SDL_INFO: {
@@ -40,7 +40,7 @@ mergeInto(Library, {
       width: width,
       height: height,
       canvas: Module.canvas,
-      context: Module.context,
+      context: Module.context2D,
       surf: surf,
       buffer: _malloc(width*height*4)
     };
