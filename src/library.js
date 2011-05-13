@@ -844,6 +844,11 @@ var Library = {
     return (chr >= 0 && chr <= 0x1f) || chr === 0x7f;
   },
 
+  isprint__deps: ['iscntrl'],
+  isprint: function(chr) {
+    return !_iscntrl(chr);
+  },
+
   toupper: function(chr) {
     if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
       return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
