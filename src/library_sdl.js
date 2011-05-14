@@ -2,19 +2,8 @@
 // Module.canvas and at least one of Module.context2D, Module.contextGL.
 
 mergeInto(Library, {
-  _SDL: {
-    // Given binary data for an image, in a format like PNG or JPG, we convert it
-    // to flat pixel data.
-    _decodeImage: function(image) {
-      var img = new Image();
-      var canvas = document.createElement('canvas');
-      img.src = imageToBase64(image);
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(Module.img,0,0);
-      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      return imageData;
-    },
-
+  $SDL__deps: ['$Browser'],
+  $SDL: {
     defaults: {
       width: 320,
       height: 240
@@ -22,21 +11,28 @@ mergeInto(Library, {
 
     surfaces: {},
 
-    makeSurface: function(width, height, depth, flags) {
-      var surf = _malloc(14*QUANTUM_SIZE); // SDL_Surface has 14 fields of quantum size
-      __SDL.surfaces[surf] = {
+    makeSurface: function(width, height, flags) {
+      var surf = _malloc(14*QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
+      var buffer = _malloc(width*height*4);
+      IHEAP[surf+QUANTUM_SIZE*0] = flags;   // SDL_Surface.flags
+      IHEAP[surf+QUANTUM_SIZE*1] = 0;       // SDL_Surface.format TODO
+      IHEAP[surf+QUANTUM_SIZE*2] = width;   // SDL_Surface.w
+      IHEAP[surf+QUANTUM_SIZE*3] = height;  // SDL_Surface.h
+      IHEAP[surf+QUANTUM_SIZE*4] = width*4; // SDL_Surface.pitch, assuming RGBA for now, since that is what ImageData gives us in browsers
+      IHEAP[surf+QUANTUM_SIZE*5] = buffer;  // SDL_Surface.pixels
+      SDL.surfaces[surf] = {
         width: width,
         height: height,
         canvas: Module.canvas,
         context: Module.context2D,
         surf: surf,
-        buffer: _malloc(width*height*4)
+        buffer: buffer
       };
       return surf;
     },
   },
 
-  SDL_Init__deps: ['_SDL'],
+  SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
     return 0; // success
   },
@@ -48,8 +44,8 @@ mergeInto(Library, {
     IHEAP[ret] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE*2] = 0; // TODO
-    IHEAP[ret+QUANTUM_SIZE*3] = __SDL.defaults.width;
-    IHEAP[ret+QUANTUM_SIZE*4] = __SDL.defaults.height;
+    IHEAP[ret+QUANTUM_SIZE*3] = SDL.defaults.width;
+    IHEAP[ret+QUANTUM_SIZE*4] = SDL.defaults.height;
     return ret;
   },
 
@@ -62,7 +58,7 @@ mergeInto(Library, {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    return __SDL.makeSurface(width, height, depth, flags);
+    return SDL.makeSurface(width, height, flags);
   },
 
   SDL_Quit: function() {
@@ -70,7 +66,7 @@ mergeInto(Library, {
   },
 
   SDL_LockSurface: function(surf) {
-    var surfData = __SDL.surfaces[surf];
+    var surfData = SDL.surfaces[surf];
     surfData.image = surfData.context.getImageData(0, 0, surfData.width, surfData.height);
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
@@ -86,7 +82,7 @@ mergeInto(Library, {
   },
 
   SDL_UnlockSurface: function(surf) {
-    var surfData = __SDL.surfaces[surf];
+    var surfData = SDL.surfaces[surf];
     // Copy pixel data to image
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
@@ -125,6 +121,18 @@ mergeInto(Library, {
 
   SDL_GetError: function() {
     return Pointer_make(intArrayFromString("SDL is cool"), null);
+  },
+
+  IMG_Load: function(filename) {
+    var format = filename.split('.').slice(-1)[0];
+    var data = Browser.syncLoad(filename);
+    var raw = Browser.decodeImage(data, format);
+    var surf = SDL.makeSurface(raw.width, raw.height, 0);
+    // XXX Extremely inefficient!
+    for (var i = 0; i < raw.width*raw.height*4; i++) {
+      IHEAP[SDL.surfaces[surf].buffer+i] = raw.data[i];
+    }
+    return surf;
   }
 });
 

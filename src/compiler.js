@@ -71,7 +71,7 @@ do {
 var inter = intertyper(lines);
 
 // Load library, with preprocessing and macros. Must be done after intertyper, so we know if we have debug info or not
-for (suffix in set('', '_sdl', '_gl')) {
+for (suffix in set('', '_sdl', '_gl', '_browser')) {
   eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
 }
 

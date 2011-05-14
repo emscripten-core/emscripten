@@ -215,14 +215,17 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else if (typeof snippet === 'object') {
             // JSON.stringify removes functions, so we need to make sure they are added
             var funcs = [];
+            var hasNonFunc = false;
             for (var x in snippet) {
               if (typeof snippet[x] === 'function') {
                 funcs.push(x + ': ' + snippet[x].toString());
+              } else {
+                hasNonFunc = true;
               }
             }
             snippet = JSON.stringify(snippet);
             if (funcs.length > 0) {
-              snippet = snippet.replace(/}$/, ', ' + funcs.join(', ') + ' }');
+              snippet = snippet.replace(/}$/, (hasNonFunc ? ', ' : '') + funcs.join(', ') + ' }');
             }
           } else if (typeof snippet === 'function') {
             snippet = snippet.toString();
@@ -241,11 +244,17 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             });
           }
 
-          var deps = Library[ident + '__deps'];
+          var deps = Library[ident + '__deps'] || [];
           if (redirectedIdent) {
-            deps = (deps || []).concat(Library[redirectedIdent + '__deps']);
+            deps = deps.concat(Library[redirectedIdent + '__deps'] || []);
           }
-          return 'var _' + ident + '=' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+          // $ident's are special, we do not prefix them with a '_'.
+          if (ident[0] === '$') {
+            ident = ident.substr(1);
+          } else {
+            ident = '_' + ident;
+          }
+          return 'var ' + ident + '=' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
         }
         item.JS = addFromLibrary(shortident);
       } else {
