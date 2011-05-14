@@ -2,14 +2,41 @@
 // Module.canvas and at least one of Module.context2D, Module.contextGL.
 
 mergeInto(Library, {
-  SDL_INFO: {
-    width: 320,
-    height: 240
+  _SDL: {
+    // Given binary data for an image, in a format like PNG or JPG, we convert it
+    // to flat pixel data.
+    _decodeImage: function(image) {
+      var img = new Image();
+      var canvas = document.createElement('canvas');
+      img.src = imageToBase64(image);
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(Module.img,0,0);
+      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return imageData;
+    },
+
+    defaults: {
+      width: 320,
+      height: 240
+    },
+
+    surfaces: {},
+
+    makeSurface: function(width, height, depth, flags) {
+      var surf = _malloc(14*QUANTUM_SIZE); // SDL_Surface has 14 fields of quantum size
+      __SDL.surfaces[surf] = {
+        width: width,
+        height: height,
+        canvas: Module.canvas,
+        context: Module.context2D,
+        surf: surf,
+        buffer: _malloc(width*height*4)
+      };
+      return surf;
+    },
   },
 
-  SDL_SURFACES: {},
-
-  SDL_Init__deps: ['SDL_INFO', 'SDL_SURFACES'],
+  SDL_Init__deps: ['_SDL'],
   SDL_Init: function(what) {
     return 0; // success
   },
@@ -21,8 +48,8 @@ mergeInto(Library, {
     IHEAP[ret] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE] = 0; // TODO
     IHEAP[ret+QUANTUM_SIZE*2] = 0; // TODO
-    IHEAP[ret+QUANTUM_SIZE*3] = _SDL_INFO.width;
-    IHEAP[ret+QUANTUM_SIZE*4] = _SDL_INFO.height;
+    IHEAP[ret+QUANTUM_SIZE*3] = __SDL.defaults.width;
+    IHEAP[ret+QUANTUM_SIZE*4] = __SDL.defaults.height;
     return ret;
   },
 
@@ -35,16 +62,7 @@ mergeInto(Library, {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    var surf = _malloc(14*QUANTUM_SIZE); // SDL_Surface has 14 fields of quantum size
-    _SDL_SURFACES[surf] = {
-      width: width,
-      height: height,
-      canvas: Module.canvas,
-      context: Module.context2D,
-      surf: surf,
-      buffer: _malloc(width*height*4)
-    };
-    return surf;
+    return __SDL.makeSurface(width, height, depth, flags);
   },
 
   SDL_Quit: function() {
@@ -52,7 +70,7 @@ mergeInto(Library, {
   },
 
   SDL_LockSurface: function(surf) {
-    var surfData = _SDL_SURFACES[surf];
+    var surfData = __SDL.surfaces[surf];
     surfData.image = surfData.context.getImageData(0, 0, surfData.width, surfData.height);
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
@@ -68,7 +86,7 @@ mergeInto(Library, {
   },
 
   SDL_UnlockSurface: function(surf) {
-    var surfData = _SDL_SURFACES[surf];
+    var surfData = __SDL.surfaces[surf];
     // Copy pixel data to image
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
