@@ -145,9 +145,16 @@ var Functions = {
 };
 
 var LibraryManager = {
+  ready: false,
+
+  init: function() {
+    this.ready = true;
+  },
+
   // Given an ident, see if it is an alias for something, and so forth, returning
   // the earliest ancestor (the root)
   getRootIdent: function(ident) {
+    if (!this.ready) return null;
     var ret = Library[ident];
     if (!ret) return null;
     var last = ident;

@@ -634,9 +634,15 @@ function makeGetValue(ptr, pos, type, noNeedFirst) {
   }
 }
 
-function indexizeFunctions(value) { // TODO: Also check for other functions (externals, library, etc.)
+function indexizeFunctions(value) { // TODO: Also check for externals
   if (value in Functions.currFunctions) {
-    value = Functions.getIndex(value); // Store integer value
+    return Functions.getIndex(value);
+  }
+  if (value && value[0] == '_') {
+    var rootIdent = LibraryManager.getRootIdent(value.slice(1));
+    if (rootIdent && typeof Library[rootIdent] === 'function') {
+      return Functions.getIndex('_' + rootIdent);
+    }
   }
   return value;
 }

@@ -74,6 +74,7 @@ var inter = intertyper(lines);
 for (suffix in set('', '_sdl', '_gl', '_browser')) {
   eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
 }
+LibraryManager.init();
 
 JSify(analyzer(inter));
 
