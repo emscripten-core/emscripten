@@ -2,18 +2,6 @@
 
 mergeInto(Library, {
   $Browser: {
-    syncLoad: function(url) {
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", url, false);
-      xhr.overrideMimeType('text/plain; charset=x-user-defined');
-      xhr.send(null);
-      var ret = new Uint8Array(xhr.responseText.length);
-      for (var i = 0; i < xhr.responseText.length; i++) {
-        ret[i] = xhr.responseText.charCodeAt(i);
-      }
-      return ret;
-    },
-
     // Given binary data for an image, in a format like PNG or JPG, we convert it
     // to flat pixel data. We do so using the browser's native code.
     decodeImage: function(pixels, format) {

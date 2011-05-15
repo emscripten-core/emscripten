@@ -1650,8 +1650,13 @@ if 'benchmark' not in sys.argv:
           '''this._STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]);''' # 200 becomes -56, since signed chars are used in memory
         )
         open(filename, 'w').write(src)
+
+      other = open(os.path.join(self.get_dir(), 'test.file'), 'w')
+      other.write('some data');
+      other.close()
+
       src = open(path_from_root('tests', 'files.cpp'), 'r').read()
-      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ntexto\ntexte\n5 : 10,30,20,11,88\n', post_build=post)
+      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\n', post_build=post)
 
     ### 'Big' tests
 

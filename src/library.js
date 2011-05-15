@@ -290,7 +290,14 @@ var Library = {
     },
     open: function(filename) {
       var stream = _STDIO.filenames[filename];
-      if (!stream) return -1; // assert(false, 'No information for file: ' + filename);
+      if (!stream) {
+        // Not already cached; try to load it right now
+        try {
+          return _STDIO.prepare(filename, readBinary(filename));
+        } catch(e) {
+          return 0;
+        }
+      }
       var info = _STDIO.streams[stream];
       info.position = info.error = info.eof = 0;
       return stream;

@@ -59,12 +59,17 @@ var LibraryGL = {
     }
     Module.ctxGL.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
+
+  glBindTexture: function(target, texture) {
+    Module.ctxGL.bindTexture(target, GL.textures[texture]);
+  },
 };
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv'],
  [1, 'clearDepth depthFunc enable disable frontFace cullFace'],
  [2, 'pixelStorei'],
+ [3, 'texParameteri texParameterf'],
  [4, 'viewport clearColor']].forEach(function(data) {
   var num = data[0];
   var names = data[1];

@@ -383,5 +383,29 @@ function intArrayToString(array) {
 var unSign = {{{ unSign.toString() }}}
 var reSign = {{{ reSign.toString() }}}
 
+// Use console read if available, otherwise we are in a browser, use an XHR
+try {
+  read;
+} catch(e) {
+  this['read'] = function(url) {
+    // TODO: use mozResponseArrayBuffer/responseStream/etc. if available
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, false);
+    xhr.overrideMimeType('text/plain; charset=x-user-defined'); // ask for binary data
+    xhr.send(null);
+    return xhr.responseText;
+  }
+}
+
+function readBinary(filename) {
+  var stringy = read(filename);
+  var data = new Array(stringy.length+1);
+  for (var i = 0; i < stringy.length; i++) {
+    data[i] = stringy.charCodeAt(i) & 0xff;
+  }
+  data[stringy.length] = 0;
+  return data;
+}
+
 // === Body ===
 

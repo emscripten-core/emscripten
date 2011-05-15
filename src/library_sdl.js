@@ -57,6 +57,8 @@ mergeInto(Library, {
     return 0; // success
   },
 
+  SDL_WasInit: function() { return 0 }, // TODO
+
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
     var ret = _malloc(5*QUANTUM_SIZE);
@@ -176,7 +178,7 @@ mergeInto(Library, {
   IMG_Load: function(filename) {
     filename = Pointer_stringify(filename);
     var format = filename.split('.').slice(-1)[0];
-    var data = Browser.syncLoad(filename);
+    var data = readBinary(filename);
     var raw = Browser.decodeImage(data, format);
     var surf = SDL.makeSurface(raw.width, raw.height, 0);
     // XXX Extremely inefficient!

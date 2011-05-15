@@ -46,6 +46,15 @@ int main()
   fclose(inf);
   printf("%d : %d,%d,%d,%d,%d\n", num, data2[0], data2[1], data2[2], data2[3], data2[4]);
 
+  // Test reading a file that has not been cached
+  
+  FILE *other = fopen("test.file", "r");
+  assert(other);
+  char otherData[1000];
+  fread(otherData, 1, 10, other);
+  fclose(other);
+  printf("other=%s.\n", otherData);
+
   return 0;
 }
 
