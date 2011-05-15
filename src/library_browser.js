@@ -5,9 +5,13 @@ mergeInto(Library, {
     syncLoad: function(url) {
       var xhr = new XMLHttpRequest();
       xhr.open("GET", url, false);
+      xhr.overrideMimeType('text/plain; charset=x-user-defined');
       xhr.send(null);
-      var buffer = xhr.mozResponseArrayBuffer;
-      return new Uint8Array(buffer);
+      var ret = new Uint8Array(xhr.responseText.length);
+      for (var i = 0; i < xhr.responseText.length; i++) {
+        ret[i] = xhr.responseText.charCodeAt(i);
+      }
+      return ret;
     },
 
     // Given binary data for an image, in a format like PNG or JPG, we convert it
@@ -41,7 +45,7 @@ mergeInto(Library, {
       var canvas = document.createElement('canvas');
       img.src = 'data:image/' + format + ';base64,' + encodeBase64(pixels);
       var ctx = canvas.getContext('2d');
-      ctx.drawImage(Module.img, 0, 0);
+      ctx.drawImage(img, 0, 0);
       var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       return imageData;
     },

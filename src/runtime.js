@@ -131,6 +131,24 @@ Runtime = {
     }
     type.needsFlattening = (type.flatFactor != 1);
     return type.flatIndexes;
+  },
+
+  // Given details about a structure, returns its alignment. For example,
+  // generateStructInfo(
+  //    [
+  //      ['i32', 'field1'],
+  //      ['i8', 'field2']
+  //    ]
+  // ) will return
+  //    { field1: 0, field2: 4 } (depending on QUANTUM_SIZE)
+  generateStructInfo: function(struct) {
+    var fields = struct.map(function(item) { return item[0] });
+    var alignment = Runtime.calculateStructAlignment({ fields: fields });
+    var ret = {};
+    struct.forEach(function(item, i) {
+      ret[item[1]] = alignment[i];
+    });
+    return ret;
   }
 };
 

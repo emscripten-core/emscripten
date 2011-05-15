@@ -1,5 +1,5 @@
 // To use emscripten's SDL library here, you need to define
-// Module.canvas and at least one of Module.context2D, Module.contextGL.
+// Module.canvas and at least one of Module.ctx2D, Module.ctxGL.
 
 mergeInto(Library, {
   $SDL__deps: ['$Browser'],
@@ -11,25 +11,45 @@ mergeInto(Library, {
 
     surfaces: {},
 
+    structs: {
+      PixelFormat: Runtime.generateStructInfo([['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel']])
+    },
+
     makeSurface: function(width, height, flags) {
       var surf = _malloc(14*QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
       var buffer = _malloc(width*height*4);
-      IHEAP[surf+QUANTUM_SIZE*0] = flags;   // SDL_Surface.flags
-      IHEAP[surf+QUANTUM_SIZE*1] = 0;       // SDL_Surface.format TODO
-      IHEAP[surf+QUANTUM_SIZE*2] = width;   // SDL_Surface.w
-      IHEAP[surf+QUANTUM_SIZE*3] = height;  // SDL_Surface.h
-      IHEAP[surf+QUANTUM_SIZE*4] = width*4; // SDL_Surface.pitch, assuming RGBA for now, since that is what ImageData gives us in browsers
-      IHEAP[surf+QUANTUM_SIZE*5] = buffer;  // SDL_Surface.pixels
+      var pixelFormat = _malloc(18*QUANTUM_SIZE);
+
+      IHEAP[surf+QUANTUM_SIZE*0] = flags;        // SDL_Surface.flags
+      IHEAP[surf+QUANTUM_SIZE*1] = pixelFormat;  // SDL_Surface.format TODO
+      IHEAP[surf+QUANTUM_SIZE*2] = width;        // SDL_Surface.w
+      IHEAP[surf+QUANTUM_SIZE*3] = height;       // SDL_Surface.h
+      IHEAP[surf+QUANTUM_SIZE*4] = width*4;      // SDL_Surface.pitch, assuming RGBA for now, since that is what ImageData gives us in browsers
+      IHEAP[surf+QUANTUM_SIZE*5] = buffer;       // SDL_Surface.pixels
+
+      IHEAP[pixelFormat + SDL.structs.PixelFormat.palette] = 0; // TODO
+      IHEAP[pixelFormat + SDL.structs.PixelFormat.BitsPerPixel] = 32;
+      IHEAP[pixelFormat + SDL.structs.PixelFormat.BytesPerPixel] = 4;
+
       SDL.surfaces[surf] = {
         width: width,
         height: height,
         canvas: Module.canvas,
-        context: Module.context2D,
+        ctx: Module.ctx2D,
         surf: surf,
-        buffer: buffer
+        buffer: buffer,
+        pixelFormat: pixelFormat,
+        alpha: 255
       };
       return surf;
     },
+
+    freeSurface: function(surf) {
+      _free(SDL.surfaces[surf].buffer);
+      _free(SDL.surfaces[surf].pixelFormat);
+      _free(surf);
+      delete SDL.surfaces[surf];
+    }
   },
 
   SDL_Init__deps: ['$SDL'],
@@ -67,7 +87,7 @@ mergeInto(Library, {
 
   SDL_LockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
-    surfData.image = surfData.context.getImageData(0, 0, surfData.width, surfData.height);
+    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
     // Copy pixel data to somewhere accessible to 'C/C++'
     var num = surfData.image.data.length;
     for (var i = 0; i < num; i++) {
@@ -93,7 +113,7 @@ mergeInto(Library, {
       surfData.image.data[i*4+3] = 255; // opacity, as canvases blend alpha
     }
     // Copy to canvas
-    surfData.context.putImageData(surfData.image, 0, 0);
+    surfData.ctx.putImageData(surfData.image, 0, 0);
     // Cleanup
     surfData.image = null;
   },
@@ -123,7 +143,38 @@ mergeInto(Library, {
     return Pointer_make(intArrayFromString("SDL is cool"), null);
   },
 
+  SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
+    return SDL.makeSurface(width, height, flags);
+  },
+
+  SDL_FreeSurface: function(surf) {
+    SDL.freeSurface(surf);
+  },
+
+  SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
+    assert(!srcrect && !dstrect); // TODO
+    var srcData = SDL.surfaces[src];
+    var dstData = SDL.surfaces[dst];
+    assert(srcData.width === dstData.width && srcData.height === dstData.height);
+    for (var i = 0; i < srcData.width*srcData.height*4; i++) {
+      IHEAP[dstData.buffer + i] = IHEAP[srcData.buffer + i];
+    }
+    return 0;
+  },
+
+  SDL_BlitSurface__deps: ['SDL_UpperBlit'],
+  SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
+    return _SDL_Blit(src, srcrect, dst, dstrect);
+  },
+
+  SDL_SetAlpha: function(surf, flag, alpha) {
+    SDL.surfaces[surf].alpha = alpha;
+  },
+
+  // SDL_Image
+
   IMG_Load: function(filename) {
+    filename = Pointer_stringify(filename);
     var format = filename.split('.').slice(-1)[0];
     var data = Browser.syncLoad(filename);
     var raw = Browser.decodeImage(data, format);
