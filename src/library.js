@@ -416,8 +416,7 @@ var Library = {
     _STDIO.write(stream, ptr, String_len(ptr));
   },
 
-  vfprintf__deps: ['STDIO'],
-  vfprintf__deps: ['_formatString'],
+  vfprintf__deps: ['STDIO', '_formatString'],
   vfprintf: function(stream, format, args) {
     var ptr = __formatString(-format, args);
     _STDIO.write(stream, ptr, String_len(ptr));

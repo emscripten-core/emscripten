@@ -21,17 +21,17 @@ function preprocess(text, constants) {
   var showStack = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
-    if (line[0] != '#') {
+    if (!line[0] || line[0] != '#') {
       if (showStack.indexOf(false) == -1) {
         ret += line + '\n';
       }
     } else {
-      if (line[1] == 'i') { // if
+      if (line[1] && line[1] == 'i') { // if
         var ident = line.substr(4);
         showStack.push(!!this[ident] && this[ident] > 0);
-      } else if (line[2] == 'l') { // else
+      } else if (line[2] && line[2] == 'l') { // else
         showStack.push(!showStack.pop());
-      } else if (line[2] == 'n') { // endif
+      } else if (line[2] && line[2] == 'n') { // endif
         showStack.pop();
       } else {
         throw "Unclear preprocessor command: " + line;
@@ -52,7 +52,7 @@ function pointingLevels(type) {
   if (!type) return 0;
   var ret = 0;
   var len1 = type.length - 1;
-  while (type[len1-ret] === '*') {
+  while (type[len1-ret] && type[len1-ret] === '*') {
     ret ++;
   }
   return ret;
@@ -335,7 +335,7 @@ function parseLLVMSegment(segment) {
       ident: toNiceIdent(segment[0].text),
       type: type
     };
-  } else if (segment[1].type == '{') {
+  } else if (segment[1].type && segment[1].type == '{') {
     type = segment[0].text;
     Types.needAnalysis[type] = 0;
     return {
@@ -638,7 +638,7 @@ function indexizeFunctions(value) { // TODO: Also check for externals
   if (value in Functions.currFunctions) {
     return Functions.getIndex(value);
   }
-  if (value && value[0] == '_') {
+  if (value && value[0] && value[0] == '_') {
     var rootIdent = LibraryManager.getRootIdent(value.slice(1));
     if (rootIdent && typeof Library[rootIdent] === 'function') {
       return Functions.getIndex('_' + rootIdent);

@@ -391,7 +391,7 @@ function analyzer(data) {
           function get() {
             if (param.intertype === 'value' && !isNumber(param.ident)) {
               if (func.variables[param.ident]) {
-                return func.variables[param.ident].originalType;
+                return func.variables[param.ident].originalType || null;
               } else {
                 return item.globalVariables[param.ident].originalType;
               }
@@ -1034,7 +1034,7 @@ function analyzer(data) {
           }
           return true;
         }
-        assert(false);
+        return assert(false);
       }
 
       // TODO: Parallelize

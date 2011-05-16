@@ -134,6 +134,7 @@ Substrate.prototype = {
       }
       midComment();
     }
+    return null;
   }
 };
 

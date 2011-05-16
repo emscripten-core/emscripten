@@ -50,6 +50,7 @@ function assertEq(a, b) {
     print('Stack: ' + new Error().stack);
     throw 'Should have been equal: ' + a + ' : ' + b;
   }
+  return false;
 }
 
 function assertTrue(a, msg) {

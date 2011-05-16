@@ -221,16 +221,17 @@ function intertyper(data, parseFunctions, baseLineNum) {
             }
         }
       }
-      var item = {
+      var newItem = {
         tokens: tokens,
         indent: lineText.search(/[^ ]/),
         lineNum: item.lineNum
       };
       if (inner) {
-        return item;
+        return newItem;
       } else {
-        this.forwardItem(item, 'Triager');
+        this.forwardItem(newItem, 'Triager');
       }
+      return null;
     }
   });
 
@@ -329,11 +330,11 @@ function intertyper(data, parseFunctions, baseLineNum) {
                 return { intertype: 'emptystruct', type: segment[0].text };
               } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
                 return parseLLVMFunctionCall(segment);
-              } else if (segment[1].type == '{') {
+              } else if (segment[1].type && segment[1].type == '{') {
                 return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].tokens) };
-              } else if (segment[1].type == '<') {
+              } else if (segment[1].type && segment[1].type == '<') {
                 return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].item.tokens[0].tokens) };
-              } else if (segment[1].type == '[') {
+              } else if (segment[1].type && segment[1].type == '[') {
                 return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
               } else if (segment.length == 2) {
                 return { intertype: 'value', value: toNiceIdent(segment[1].text) };
@@ -368,7 +369,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
 
       if (item.tokens[2].text == 'alias') {
-        return; // TODO: handle this. See raytrace.cpp
+        return null; // TODO: handle this. See raytrace.cpp
       }
       if (item.tokens[2].text == 'type') {
         var fields = [];
@@ -614,6 +615,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         return [item];
       }
       this.forwardItem(item, 'Reintegrator');
+      return null;
     }
   });
   // 'invoke'
@@ -639,6 +641,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         return [item];
       }
       this.forwardItem(item, 'Reintegrator');
+      return null;
     }
   });
 

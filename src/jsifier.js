@@ -288,16 +288,16 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     funcs: {},
     seen: {},
     processItem: function(item) {
-      if (this.seen[item.__uid__]) return;
+      if (this.seen[item.__uid__]) return null;
       if (item.intertype == 'function') {
         this.funcs[item.ident] = item;
         item.relines = {};
         this.seen[item.__uid__] = true;
-        return;
+        return null;
       }
       var line = item;
       var func = this.funcs[line.func];
-      if (!func) return;
+      if (!func) return null;
 
       // Re-insert our line
       this.seen[item.__uid__] = true;
@@ -307,7 +307,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       });
       func.splitItems --;
       // OLD    delete line.funcData; // clean up
-      if (func.splitItems > 0) return;
+      if (func.splitItems > 0) return null;
 
       // We have this function all reconstructed, go and finalize it's JS!
 
@@ -376,7 +376,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             var intendedTrueLabel = stolen.labelTrue;
             assert(block.entryLabels.length <= 2);
             [stolen.labelTrue, stolen.labelFalse].forEach(function(entry) {
-              var branch = makeBranch(entry, stolen.currLabelId);
+              var branch = makeBranch(entry, stolen.currLabelId || null);
               entryLabel = block.entryLabels.filter(function(possible) { return possible.ident === getActualLabelId(entry) })[0];
               if (branch.length < 5 && !entryLabel) return;
               //ret += indent + multipleIdent + (first ? '' : 'else ') +
@@ -426,7 +426,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
 
   function getVarData(funcData, ident) {
-    return funcData.variables[ident] || GLOBAL_VARIABLES[ident];
+    return funcData.variables[ident] || GLOBAL_VARIABLES[ident] || null;
   }
 
   function getVarImpl(funcData, ident) {
@@ -521,6 +521,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       default:
         throw 'unknown [store] impl: ' + impl;
     }
+    return null;
   });
 
   makeFuncLineActor('deleted', function(item) { return ';' });
@@ -595,7 +596,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         first = false;
       }
       ret += 'if (' + item.ident + ' == ' + switchLabel.value + ') {\n';
-      ret += '  ' + makeBranch(switchLabel.label, item.currLabelId) + '\n';
+      ret += '  ' + makeBranch(switchLabel.label, item.currLabelId || null) + '\n';
       ret += '}\n';
     });
     ret += 'else {\n';
@@ -778,6 +779,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });
       print(postParts[1]);
     print(shellParts[1]);
+    return null;
   }
 
   // Data
