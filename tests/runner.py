@@ -231,7 +231,7 @@ class RunnerCore(unittest.TestCase):
     for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK']:
       value = eval(setting)
       exported_settings[setting] = value
-    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', COMPILER_ENGINE[0], str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0

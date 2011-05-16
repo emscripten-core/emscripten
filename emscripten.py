@@ -2,8 +2,6 @@
 
 import os, sys, subprocess
 
-COMPILER_ENGINE = None
-
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
   return os.path.join(os.path.sep, *(abspath.split(os.sep) + list(pathelems)))
@@ -26,23 +24,20 @@ def emscripten(filename, settings, outfile):
 if __name__ == '__main__':
   if sys.argv.__len__() not in range(2,6):
     print '''
-Emscripten usage:    emscripten.py INFILE [PATH-TO-JS-ENGINE] [SETTINGS] [OUTPUT_FILE]
+Emscripten usage:    emscripten.py INFILE [SETTINGS] [OUTPUT_FILE]
 
   INFILE must be in human-readable LLVM disassembly form (i.e., as text,
       not binary).
-  PATH-TO-JS-ENGINE should be a path to the JavaScript engine used to
-      run the compiler (which is in JavaScript itself). You can later use
-      the same engine to run the code, or another one, that is a separate
-      issue. If you do not provide this parameter, you should define
-      COMPILER_ENGINE = ... in a file at ~/.emscripten.
-  SETTINGS is an optional set of compiler settings, overriding the defaults.
+  SETTINGS is an optional set of compiler settings, overriding the defaults,
+      in JSON format. See src/settings.js.
   OUTPUT_FILE is the file to create with the output. If not given, we write
-      to stdout
+      to stdout.
+
+  You should have an ~/.emscripten file set up, see tests/settings.py, which
+      in particular includes COMPILER_ENGINE.
 '''
   else:
-    if len(sys.argv) >= 3:
-      COMPILER_ENGINE = [sys.argv[2]]
-    settings = sys.argv[3] if len(sys.argv) >= 4 else "{}"
-    outfile = open(sys.argv[4], 'w') if len(sys.argv) >= 5 else None
+    settings = sys.argv[2] if len(sys.argv) >= 3 else "{}"
+    outfile = open(sys.argv[3], 'w') if len(sys.argv) >= 4 else None
     emscripten(sys.argv[1], settings, outfile)
 
