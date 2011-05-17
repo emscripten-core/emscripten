@@ -20,16 +20,17 @@ mergeInto(Library, {
       var buffer = _malloc(width*height*4);
       var pixelFormat = _malloc(18*QUANTUM_SIZE);
 
-      IHEAP[surf+QUANTUM_SIZE*0] = flags;        // SDL_Surface.flags
-      IHEAP[surf+QUANTUM_SIZE*1] = pixelFormat;  // SDL_Surface.format TODO
-      IHEAP[surf+QUANTUM_SIZE*2] = width;        // SDL_Surface.w
-      IHEAP[surf+QUANTUM_SIZE*3] = height;       // SDL_Surface.h
-      IHEAP[surf+QUANTUM_SIZE*4] = width*4;      // SDL_Surface.pitch, assuming RGBA for now, since that is what ImageData gives us in browsers
-      IHEAP[surf+QUANTUM_SIZE*5] = buffer;       // SDL_Surface.pixels
+      {{{ makeSetValue('surf+QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}        // SDL_Surface.flags
+      {{{ makeSetValue('surf+QUANTUM_SIZE*1', '0', 'pixelFormat', 'i32') }}}  // SDL_Surface.format TODO
+      {{{ makeSetValue('surf+QUANTUM_SIZE*2', '0', 'width', 'i32') }}}        // SDL_Surface.w
+      {{{ makeSetValue('surf+QUANTUM_SIZE*3', '0', 'height', 'i32') }}}       // SDL_Surface.h
+      {{{ makeSetValue('surf+QUANTUM_SIZE*4', '0', 'width*4', 'i32') }}}      // SDL_Surface.pitch, assuming RGBA for now,
+                                                                              // since that is what ImageData gives us in browsers
+      {{{ makeSetValue('surf+QUANTUM_SIZE*5', '0', 'buffer', 'i32') }}}       // SDL_Surface.pixels
 
-      IHEAP[pixelFormat + SDL.structs.PixelFormat.palette] = 0; // TODO
-      IHEAP[pixelFormat + SDL.structs.PixelFormat.BitsPerPixel] = 32;
-      IHEAP[pixelFormat + SDL.structs.PixelFormat.BytesPerPixel] = 4;
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i32') }}} // TODO
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i32') }}} // TODO
 
       SDL.surfaces[surf] = {
         width: width,
@@ -62,12 +63,11 @@ mergeInto(Library, {
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
     var ret = _malloc(5*QUANTUM_SIZE);
-    // TODO: Use macros like in library.js
-    IHEAP[ret] = 0; // TODO
-    IHEAP[ret+QUANTUM_SIZE] = 0; // TODO
-    IHEAP[ret+QUANTUM_SIZE*2] = 0; // TODO
-    IHEAP[ret+QUANTUM_SIZE*3] = SDL.defaults.width;
-    IHEAP[ret+QUANTUM_SIZE*4] = SDL.defaults.height;
+    {{{ makeSetValue('ret+QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
+    {{{ makeSetValue('ret+QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
+    {{{ makeSetValue('ret+QUANTUM_SIZE*2', '0', '0', 'void*') }}}
+    {{{ makeSetValue('ret+QUANTUM_SIZE*3', '0', 'SDL.defaults.width', 'i32') }}}
+    {{{ makeSetValue('ret+QUANTUM_SIZE*4', '0', 'SDL.defaults.height', 'i32') }}}
     return ret;
   },
 
@@ -129,8 +129,8 @@ mergeInto(Library, {
   },
 
   SDL_WM_SetCaption: function(title, icon) {
-    title = Pointer_stringify(title);
-    icon = Pointer_stringify(icon);
+    title = title && Pointer_stringify(title);
+    icon = icon && Pointer_stringify(icon);
   },
 
   SDL_EnableKeyRepeat: function(delay, interval) {
@@ -159,7 +159,7 @@ mergeInto(Library, {
     var dstData = SDL.surfaces[dst];
     assert(srcData.width === dstData.width && srcData.height === dstData.height);
     for (var i = 0; i < srcData.width*srcData.height*4; i++) {
-      IHEAP[dstData.buffer + i] = IHEAP[srcData.buffer + i];
+      {{{ makeCopyValue('dstData.buffer', 'i', 'srcData.buffer', 'i', 'i8') }}}
     }
     return 0;
   },
@@ -183,7 +183,7 @@ mergeInto(Library, {
     var surf = SDL.makeSurface(raw.width, raw.height, 0);
     // XXX Extremely inefficient!
     for (var i = 0; i < raw.width*raw.height*4; i++) {
-      IHEAP[SDL.surfaces[surf].buffer+i] = raw.data[i];
+      {{{ makeSetValue('SDL.surfaces[surf].buffer', 'i', 'raw.data[i]', 'i8') }}}
     }
     return surf;
   }
