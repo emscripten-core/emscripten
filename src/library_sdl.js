@@ -12,7 +12,12 @@ mergeInto(Library, {
     surfaces: {},
 
     structs: {
-      PixelFormat: Runtime.generateStructInfo([['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel']])
+      PixelFormat: Runtime.generateStructInfo([
+        ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
+        ['i8', 'Rloss'], ['i8', 'Gloss'], ['i8', 'Bloss'], ['i8', 'Aloss'],
+        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift'],
+        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'] // Docs say i8, ./include/SDL_video.h says i32...
+      ])
     },
 
     makeSurface: function(width, height, flags) {
@@ -20,17 +25,22 @@ mergeInto(Library, {
       var buffer = _malloc(width*height*4);
       var pixelFormat = _malloc(18*QUANTUM_SIZE);
 
-      {{{ makeSetValue('surf+QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}        // SDL_Surface.flags
-      {{{ makeSetValue('surf+QUANTUM_SIZE*1', '0', 'pixelFormat', 'i32') }}}  // SDL_Surface.format TODO
-      {{{ makeSetValue('surf+QUANTUM_SIZE*2', '0', 'width', 'i32') }}}        // SDL_Surface.w
-      {{{ makeSetValue('surf+QUANTUM_SIZE*3', '0', 'height', 'i32') }}}       // SDL_Surface.h
-      {{{ makeSetValue('surf+QUANTUM_SIZE*4', '0', 'width*4', 'i32') }}}      // SDL_Surface.pitch, assuming RGBA for now,
-                                                                              // since that is what ImageData gives us in browsers
-      {{{ makeSetValue('surf+QUANTUM_SIZE*5', '0', 'buffer', 'i32') }}}       // SDL_Surface.pixels
+      {{{ makeSetValue('surf+QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
+      {{{ makeSetValue('surf+QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
+      {{{ makeSetValue('surf+QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
+      {{{ makeSetValue('surf+QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
+      {{{ makeSetValue('surf+QUANTUM_SIZE*4', '0', 'width*4', 'i16') }}}       // SDL_Surface.pitch, assuming RGBA for now,
+                                                                               // since that is what ImageData gives us in browsers
+      {{{ makeSetValue('surf+QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
 
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i32') }}} // TODO
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i32') }}} // TODO
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i8') }}} // TODO
+
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', '0xff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', '0xff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', '0xff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', '0xff', 'i32') }}}
 
       SDL.surfaces[surf] = {
         width: width,

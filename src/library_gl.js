@@ -63,7 +63,14 @@ var LibraryGL = {
   glBindTexture: function(target, texture) {
     Module.ctxGL.bindTexture(target, GL.textures[texture]);
   },
+
 };
+
+// Ignored stubs for fixed-function pipeline. We will need to emulate this
+'begin end matrixMode loadIdentity ortho color3f texCoord2f vertex2f blendFunc pushMatrix popMatrix translatef scalef'.split(' ').forEach(function(name_) {
+  var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
+  LibraryGL[cName] = function(){};
+});
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv'],
