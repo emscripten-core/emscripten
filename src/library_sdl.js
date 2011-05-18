@@ -135,7 +135,7 @@ mergeInto(Library, {
   },
 
   SDL_Delay: function(delay) {
-    // No can do... unless you were a generator...
+    throw 'SDL_Delay called - potential infinite loop';
   },
 
   SDL_WM_SetCaption: function(title, icon) {
@@ -182,6 +182,8 @@ mergeInto(Library, {
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
   },
+
+  SDL_GL_SwapBuffers: function() {},
 
   // SDL_Image
 
