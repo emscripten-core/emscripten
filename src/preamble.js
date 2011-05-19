@@ -10,8 +10,8 @@
 //========================================
 // Debugging tools - Heap
 //========================================
-var HEAP_WATCHED = {};
-var HEAP_HISTORY = {};
+var HEAP_WATCHED = [];
+var HEAP_HISTORY = [];
 function SAFE_HEAP_CLEAR(dest) {
   HEAP_HISTORY[dest] = [];
 }
