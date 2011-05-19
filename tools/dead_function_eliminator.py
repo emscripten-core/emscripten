@@ -47,7 +47,7 @@ for i in range(len(lines)):
 
 for ident in functions.iterkeys():
   func = functions[ident]
-  print ident
+  #print ident
 
 if '@main' not in functions:
   print 'No @main found, not running DFE'
@@ -84,7 +84,7 @@ functions['@main'].callers.add('GLOBAL')
 
 for ident in functions.iterkeys():
   func = functions[ident]
-  print ident, func.uses, func.callers#, 'WARNING!' if func.uses != len(func.callers) else ''
+  #print ident, func.uses, func.callers#, 'WARNING!' if func.uses != len(func.callers) else ''
 
 # Garbage collect
 
@@ -96,7 +96,7 @@ for ident in functions.iterkeys():
   for caller in func.callers:
     if caller == 'GLOBAL':
       func.root = True
-      print 'ROOT:', ident
+      #print 'ROOT:', ident
       break
 
 def mark_and_recurse(func):
@@ -115,7 +115,7 @@ marked = unmarked = 0
 for ident in functions.iterkeys():
   func = functions[ident]
   if func.root: assert func.marked
-  print ident, func.marked
+  #print ident, func.marked
   marked += func.marked
   unmarked += 1-func.marked
 
@@ -157,7 +157,8 @@ for line in lines:
 #########  if metadata.match(line): continue # metadata is not enough to keep things alive
   if line.startswith('!llvm.dbg.sp = '): continue
   if not inside or marked:
-    target.write(line + '\n')
+    if len(line) > 0:
+      target.write(line + '\n')
 
 target.close()
 
