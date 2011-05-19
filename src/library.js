@@ -275,7 +275,11 @@ var Library = {
         IHEAP[_stderr] = this.prepare('<<stderr>>', null, true);
       } catch(e){}
     },
+    cleanFilename: function(filename) {
+      return filename.replace('./', '');
+    },
     prepare: function(filename, data, print_) {
+      filename = this.cleanFilename(filename);
       var stream = this.counter++;
       this.streams[stream] = {
         filename: filename,
@@ -289,6 +293,7 @@ var Library = {
       return stream;
     },
     open: function(filename) {
+      filename = this.cleanFilename(filename);
       var stream = _STDIO.filenames[filename];
       if (!stream) {
         // Not already cached; try to load it right now
@@ -489,9 +494,16 @@ var Library = {
     _free(start); // FIXME: not really correct at all
   },
 
-  setvbuf: function(stream, buffer, mode, size) {
+  setbuf: function(stream, buffer) {
     // just a stub
     assert(!buffer);
+  },
+
+  setvbuf: 'setbuf',
+
+  access: function(filename) {
+    filename = Pointer_stringify(filename);
+    return _STDIO.open(filename) ? 0 : -1;
   },
 
   // stdlib.h
