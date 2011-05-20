@@ -10,6 +10,7 @@ mergeInto(Library, {
     },
 
     surfaces: {},
+    events: [],
 
     structs: {
       PixelFormat: Runtime.generateStructInfo([
@@ -17,6 +18,12 @@ mergeInto(Library, {
         ['i8', 'Rloss'], ['i8', 'Gloss'], ['i8', 'Bloss'], ['i8', 'Aloss'],
         ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift'],
         ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'] // Docs say i8, ./include/SDL_video.h says i32...
+      ]),
+      KeyboardEvent: Runtime.generateStructInfo([
+        ['i8', 'type'],
+        ['i8', 'which'],
+        ['i8', 'state'],
+        ['i32', 'keysym']
       ])
     },
 
@@ -62,12 +69,32 @@ mergeInto(Library, {
       _free(SDL.surfaces[surf].pixelFormat);
       _free(surf);
       delete SDL.surfaces[surf];
+    },
+
+    receiveEvent: function(event) {
+      SDL.events.push(event);
+    },
+    
+    makeCEvent: function(event, ptr) {
+      switch(event.type) {
+        case 'keydown': case 'keyup':
+          var down = event.type === 'keydown';
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 2 : 3', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym', 'event.keyCode', 'i32') }}}
+      default:
+        throw 'Unhandled SDL event: ' + event.type;
+      }
     }
   },
 
   SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
+    ['keydown', 'keyup', 'keypress'].forEach(function(event) {
+      addEventListener(event, SDL.receiveEvent);
+    });
     return 0; // success
   },
 
@@ -137,6 +164,10 @@ mergeInto(Library, {
     // We actually do this in Unlock...
   },
 
+  SDL_UpdateRect: function(surf, x, y, w, h) {
+    // We actually do the whole screen in Unlock...
+  },
+
   SDL_Delay: function(delay) {
     throw 'SDL_Delay called - potential infinite loop';
   },
@@ -190,6 +221,18 @@ mergeInto(Library, {
 
   SDL_GetTicks: function() {
     return Math.floor(Date.now() - SDL.startTime);
+  },
+
+  SDL_PollEvent: function(ptr) {
+    if (SDL.events.length === 0) return 0;
+    if (ptr) {
+      SDL.makeCEvent(SDL.events.shift(), ptr);
+    }
+    return 1;
+  },
+
+  SDL_SetColors: function(surf, colors, firstcolor, ncolors) {
+    return 0; // TODO
   },
 
   // SDL_Image

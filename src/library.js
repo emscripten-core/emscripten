@@ -1261,6 +1261,10 @@ var Library = {
   },
 
   // ** emscripten.h **
+  emscripten_run_script: function(ptr) {
+    eval(Pointer_stringify(ptr));
+  },
+
   _Z21emscripten_run_scriptPKc: function(ptr) {
     eval(Pointer_stringify(ptr));
   }
