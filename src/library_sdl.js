@@ -24,6 +24,7 @@ mergeInto(Library, {
       var surf = _malloc(14*QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
       var buffer = _malloc(width*height*4);
       var pixelFormat = _malloc(18*QUANTUM_SIZE);
+      flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
       {{{ makeSetValue('surf+QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
       {{{ makeSetValue('surf+QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
@@ -32,6 +33,7 @@ mergeInto(Library, {
       {{{ makeSetValue('surf+QUANTUM_SIZE*4', '0', 'width*4', 'i16') }}}       // SDL_Surface.pitch, assuming RGBA for now,
                                                                                // since that is what ImageData gives us in browsers
       {{{ makeSetValue('surf+QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
+      {{{ makeSetValue('surf+QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
 
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
@@ -65,6 +67,7 @@ mergeInto(Library, {
 
   SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
+    SDL.startTime = Date.now();
     return 0; // success
   },
 
@@ -185,6 +188,10 @@ mergeInto(Library, {
 
   SDL_GL_SwapBuffers: function() {},
 
+  SDL_GetTicks: function() {
+    return Math.floor(Date.now() - SDL.startTime);
+  },
+
   // SDL_Image
 
   IMG_Load: function(filename) {
@@ -198,6 +205,12 @@ mergeInto(Library, {
       {{{ makeSetValue('SDL.surfaces[surf].buffer', 'i', 'raw.data[i]', 'i8') }}}
     }
     return surf;
+  },
+
+  // SDL_Audio
+
+  SDL_OpenAudio: function(desired, obtained) {
+    return -1;
   }
 });
 
