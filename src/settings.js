@@ -38,6 +38,11 @@ INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 
 OPTIMIZE = 0; // Optimize llvm operations into js commands
 RELOOP = 0; // Recreate js native loops from llvm data
 USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
+SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
+                         // functions that have no basic stack usage. But, they
+                         // may allocate stack later, and in a loop, this can be
+                         // very bad. In particular, when debugging, printf()ing
+                         // a lot can exhaust the stack very fast, with this option.
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses
