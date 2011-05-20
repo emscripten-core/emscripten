@@ -6,7 +6,8 @@ mergeInto(Library, {
   $SDL: {
     defaults: {
       width: 320,
-      height: 240
+      height: 200,
+      copyScreenOnLock: false
     },
 
     surfaces: {},
@@ -83,6 +84,8 @@ mergeInto(Library, {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym', 'event.keyCode', 'i32') }}}
+          break;
+        case 'keypress': break // TODO
       default:
         throw 'Unhandled SDL event: ' + event.type;
       }
@@ -130,11 +133,12 @@ mergeInto(Library, {
   SDL_LockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
     surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-    // Copy pixel data to somewhere accessible to 'C/C++'
-    var num = surfData.image.data.length;
-    for (var i = 0; i < num; i++) {
-      // TODO: Use macros like in library.js
-      IHEAP[surfData.buffer+i] = surfData.image.data[i];
+    if (SDL.defaults.copyScreenOnLock) {
+      // Copy pixel data to somewhere accessible to 'C/C++'
+      var num = surfData.image.data.length;
+      for (var i = 0; i < num; i++) {
+        IHEAP[surfData.buffer+i] = surfData.image.data[i];
+      }
     }
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
@@ -147,9 +151,26 @@ mergeInto(Library, {
     var surfData = SDL.surfaces[surf];
     // Copy pixel data to image
     var num = surfData.image.data.length;
-    for (var i = 0; i < num; i++) {
-      // TODO: Use macros like in library.js
-      surfData.image.data[i] = IHEAP[surfData.buffer+i];
+    if (!surfData.colors) {
+      for (var i = 0; i < num; i++) {
+        surfData.image.data[i] = IHEAP[surfData.buffer+i];
+      }
+    } else {
+      var width = Module.canvas.width;
+      var height = Module.canvas.height;
+      var s = surfData.buffer;
+      for (var y = 0; y < height; y++) {
+        var base = y*width*4;
+        for (var x = 0; x < width; x++) {
+          var val = IHEAP[s++];
+          var color = surfData.colors[val];
+          surfData.image.data[base+x*4+0] = color[0];
+          surfData.image.data[base+x*4+1] = color[1];
+          surfData.image.data[base+x*4+2] = color[2];
+          //surfData.image.data[base+x*4+3] = color[3];
+        }
+        s += width*3;
+      }
     }
     for (var i = 0; i < num/4; i++) {
       surfData.image.data[i*4+3] = 255; // opacity, as canvases blend alpha
@@ -231,8 +252,14 @@ mergeInto(Library, {
     return 1;
   },
 
-  SDL_SetColors: function(surf, colors, firstcolor, ncolors) {
-    return 0; // TODO
+  SDL_SetColors: function(surf, colors, firstColor, nColors) {
+    print('zz SDL_SetColors: ' + [surf, colors, firstColor, nColors]);
+    var surfData = SDL.surfaces[surf];
+    surfData.colors = [];
+    for (var i = firstColor; i < nColors; i++) {
+      surfData.colors[i] = IHEAP.slice(colors + i*4, colors + i*4 + 4);
+    }
+    return 1;
   },
 
   // SDL_Image
