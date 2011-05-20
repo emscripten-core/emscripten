@@ -878,7 +878,7 @@ function makeSignOp(value, type, op) { // TODO: If value isNumber, do this at co
 function makeRounding(value, bits, signed) {
   // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
   // With 32 bits and less, and a signed value, |0 will round it like C does.
-  if (bits && bits <= 32 && signed) return '('+value+'|0)';
+  if (bits && bits <= 32 && signed) return '(('+value+')|0)';
   // If the value may be negative, and we care about proper rounding, then use a slow but correct function
   if (signed && correctRoundings()) return 'cRound(' + value + ')';
   // Either this must be positive, so Math.Floor is correct, or we don't care
