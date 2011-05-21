@@ -294,6 +294,7 @@ function __shutdownRuntime__() {
     }
     func(atexit.arg);
   }
+  //HEAP = IHEAP = FHEAP = null; // allow browser to GC?
 }
 
 

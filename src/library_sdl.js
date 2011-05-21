@@ -89,6 +89,7 @@ mergeInto(Library, {
     receiveEvent: function(event) {
       switch(event.type) {
         case 'keydown': case 'keyup':
+          //print('zz receive Event: ' + event.keyCode);
           SDL.events.push(event);
       }
     },
@@ -98,6 +99,10 @@ mergeInto(Library, {
         case 'keydown': case 'keyup':
           var down = event.type === 'keydown';
           var key = SDL.keyCodes[event.keyCode] || event.keyCode;
+          if (key >= 65 && key <= 90) {
+            key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
+          }
+          //print('zz passing over Event: ' + key);
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 2 : 3', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
@@ -146,11 +151,18 @@ mergeInto(Library, {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    return SDL.makeSurface(width, height, flags);
+    return SDL.screen = SDL.makeSurface(width, height, flags);
   },
 
   SDL_Quit: function() {
-    return 1;
+    var surfData = SDL.surfaces[SDL.screen];
+    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+    var num = surfData.image.data.length;
+    for (var i = 0; i < num; i++) {
+      surfData.image.data[i] = Math.floor(Math.random()*255);
+    }
+    surfData.ctx.putImageData(surfData.image, 0, 0);
+    throw 'SDL_Quit!';
   },
 
   SDL_LockSurface: function(surf) {
@@ -213,7 +225,7 @@ mergeInto(Library, {
   },
 
   SDL_Delay: function(delay) {
-    throw 'SDL_Delay called - potential infinite loop';
+    print('SDL_Delay called! - potential infinite loop');
   },
 
   SDL_WM_SetCaption: function(title, icon) {
@@ -305,6 +317,7 @@ mergeInto(Library, {
     return -1;
   },
 
+  SDL_CloseAudio: function() {},
   SDL_LockAudio: function() {},
   SDL_UnlockAudio: function() {},
 });
