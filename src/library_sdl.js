@@ -13,6 +13,14 @@ mergeInto(Library, {
     surfaces: {},
     events: [],
 
+    keyCodes: {
+      38: 273, // up arrow
+      40: 274, // down arrow
+      37: 276, // left arrow
+      39: 275, // right arrow
+      17: 305, // control (right, or left)
+    },
+
     structs: {
       PixelFormat: Runtime.generateStructInfo([
         ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
@@ -25,6 +33,12 @@ mergeInto(Library, {
         ['i8', 'which'],
         ['i8', 'state'],
         ['i32', 'keysym']
+      ]),
+      keysym: Runtime.generateStructInfo([
+        ['i8', 'scancode'],
+        ['i32', 'sym'],
+        ['i32', 'mod'],
+        ['i16', 'unicode']
       ])
     },
 
@@ -73,17 +87,26 @@ mergeInto(Library, {
     },
 
     receiveEvent: function(event) {
-      SDL.events.push(event);
+      switch(event.type) {
+        case 'keydown': case 'keyup':
+          SDL.events.push(event);
+      }
     },
     
     makeCEvent: function(event, ptr) {
       switch(event.type) {
         case 'keydown': case 'keyup':
           var down = event.type === 'keydown';
+          var key = SDL.keyCodes[event.keyCode] || event.keyCode;
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 2 : 3', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym', 'event.keyCode', 'i32') }}}
+
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'key', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
+          //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
+
           break;
         case 'keypress': break // TODO
       default:
@@ -253,7 +276,6 @@ mergeInto(Library, {
   },
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
-    print('zz SDL_SetColors: ' + [surf, colors, firstColor, nColors]);
     var surfData = SDL.surfaces[surf];
     surfData.colors = [];
     for (var i = firstColor; i < nColors; i++) {
@@ -281,6 +303,9 @@ mergeInto(Library, {
 
   SDL_OpenAudio: function(desired, obtained) {
     return -1;
-  }
+  },
+
+  SDL_LockAudio: function() {},
+  SDL_UnlockAudio: function() {},
 });
 
