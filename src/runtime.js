@@ -140,8 +140,11 @@ Runtime = {
   //    { field1: 0, field2: 4 } (depending on QUANTUM_SIZE)
   generateStructInfo: function(struct) {
     var fields = struct.map(function(item) { return item[0] });
-    var alignment = Runtime.calculateStructAlignment({ fields: fields });
-    var ret = {};
+    var type = { fields: fields };
+    var alignment = Runtime.calculateStructAlignment(type);
+    var ret = {
+      __size__: type.flatSize
+    };
     struct.forEach(function(item, i) {
       ret[item[1]] = alignment[i];
     });
