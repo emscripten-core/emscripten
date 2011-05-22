@@ -422,7 +422,9 @@ function analyzer(data) {
 
             // Only consider original types. This assumes memcpy always has pointers bitcast to i8*
             var originalTypes = ptrs.map(getOriginalType);
-            if (!originalTypes[0]) return;
+            for (var i = 0; i < originalTypes.length; i++) {
+              if (!originalTypes[i]) return;
+            }
             originalTypes = originalTypes.map(function(type) { return removePointing(type) });
             var sizes = originalTypes.map(function(type) { return getSize(Types.types, type) });
             var fatSizes = originalTypes.map(function(type) { return getSize(Types.fatTypes, type, true) });
