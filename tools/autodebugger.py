@@ -8,13 +8,13 @@ compare that to the output when compiled using emscripten.
 import os, sys, re
 
 POSTAMBLE = '''
-@.emscripten.autodebug.str = private constant [21 x i8] c"line: %d, value: %d\\0A\\00", align 1 ; [#uses=1]
+@.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
 entry:
   %0 = sitofp i64 %value to double ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -24,7 +24,7 @@ return:                                           ; preds = %entry
 ; [#uses=1]
 define void @emscripten_autodebug_i32(i32 %line, i32 %value) {
 entry:
-  %0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %value) ; [#uses=0]
+  %0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %value) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -35,7 +35,7 @@ return:                                           ; preds = %entry
 define void @emscripten_autodebug_i16(i32 %line, i16 %value) {
 entry:
   %0 = zext i16 %value to i32 ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %0) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %0) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -46,7 +46,7 @@ return:                                           ; preds = %entry
 define void @emscripten_autodebug_i8(i32 %line, i8 %value) {
 entry:
   %0 = zext i8 %value to i32 ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %0) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %0) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -57,7 +57,7 @@ return:                                           ; preds = %entry
 define void @emscripten_autodebug_float(i32 %line, float %value) {
 entry:
   %0 = fpext float %value to double ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -67,7 +67,7 @@ return:                                           ; preds = %entry
 ; [#uses=1]
 define void @emscripten_autodebug_double(i32 %line, double %value) {
 entry:
-  %0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
+  %0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -76,45 +76,45 @@ return:                                           ; preds = %entry
 '''
 
 POSTAMBLE_NEW = '''
-@.emscripten.autodebug.str = private constant [21 x i8] c"line: %d, value: %d\\0A\\00", align 1 ; [#uses=1]
+@.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
   %1 = sitofp i64 %value to double
-  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
   ret void
 }
 
 ; [#uses=1]
 define void @emscripten_autodebug_i32(i32 %line, i32 %value) {
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %value) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %value) ; [#uses=0]
   ret void
 }
 
 ; [#uses=1]
 define void @emscripten_autodebug_i16(i32 %line, i16 %value) {
   %1 = zext i16 %value to i32 ; [#uses=1]
-  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %1) ; [#uses=0]
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %1) ; [#uses=0]
   ret void
 }
 
 ; [#uses=1]
 define void @emscripten_autodebug_i8(i32 %line, i8 %value) {
   %1 = zext i8 %value to i32 ; [#uses=1]
-  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %1) ; [#uses=0]
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, i32 %1) ; [#uses=0]
   ret void
 }
 
 ; [#uses=1]
 define void @emscripten_autodebug_float(i32 %line, float %value) {
   %1 = fpext float %value to double ; [#uses=1]
-  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
   ret void
 }
 
 ; [#uses=1]
 define void @emscripten_autodebug_double(i32 %line, double %value) {
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
   ret void
 }
 '''

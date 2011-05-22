@@ -2069,7 +2069,7 @@ if 'benchmark' not in sys.argv:
 
       # Compare to each other, and to expected output
       self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'))
-      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'), 'line: 34, value: 10\nline: 43, value: 7008\nline: 53, value: 7018\n')
+      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'), 'AD:34,10\nAD:43,7008\nAD:53,7018\n')
 
       # Test using build_ll_hook
       src = '''
@@ -2087,7 +2087,7 @@ if 'benchmark' not in sys.argv:
           }
         '''
       self.do_test(src, build_ll_hook=self.do_autodebug)
-      self.do_test(src, 'line: ', build_ll_hook=self.do_autodebug)
+      self.do_test(src, 'AD:', build_ll_hook=self.do_autodebug)
 
     def test_dfe(self):
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
