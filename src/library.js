@@ -1108,6 +1108,12 @@ var Library = {
      return Math.sqrt(a*a + b*b);
   },
 
+  // LLVM internal math
+
+  exp2: function(x) {
+    return Math.pow(2, x);
+  },
+
   // unistd.h
 
   sysconf: function(name_) {
