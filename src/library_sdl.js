@@ -173,11 +173,18 @@ mergeInto(Library, {
 
   SDL_LockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
-    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+    if (!surfData.image) {
+      surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+      var data = surfData.image.data;
+      var num = data.length;
+      for (var i = 0; i < num/4; i++) {
+        data[i*4+3] = 255; // opacity, as canvases blend alpha
+      }
+    }
     if (SDL.defaults.copyScreenOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
-      var num = surfData.image.data.length;
-      for (var i = 0; i < num; i++) {
+      var num2 = surfData.image.data.length;
+      for (var i = 0; i < num2; i++) {
         IHEAP[surfData.buffer+i] = surfData.image.data[i];
       }
     }
@@ -194,28 +201,26 @@ mergeInto(Library, {
     var num = surfData.image.data.length;
     if (!surfData.colors) {
       for (var i = 0; i < num; i++) {
-        surfData.image.data[i] = IHEAP[surfData.buffer+i];
+        surfData.image.data[i] = IHEAP[surfData.buffer+i]; // XXX - make sure alpha values are proper in your input
       }
     } else {
       var width = Module.canvas.width;
       var height = Module.canvas.height;
       var s = surfData.buffer;
+      var data = surfData.image.data;
+      var colors = surfData.colors;
       for (var y = 0; y < height; y++) {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
           var val = IHEAP[s++];
-          //var val = unSign(IHEAP[s++], 8, 1); // XXX Optimize
-          var color = surfData.colors[val];
-          surfData.image.data[base+x*4+0] = color[0];
-          surfData.image.data[base+x*4+1] = color[1];
-          surfData.image.data[base+x*4+2] = color[2];
-          //surfData.image.data[base+x*4+3] = color[3];
+          var color = colors[val] || [Math.floor(Math.random()*255),Math.floor(Math.random()*255),Math.floor(Math.random()*255)]; // XXX
+          var start = base + x*4;
+          data[start]   = color[0];
+          data[start+1] = color[1];
+          data[start+2] = color[2];
         }
         s += width*3;
       }
-    }
-    for (var i = 0; i < num/4; i++) {
-      surfData.image.data[i*4+3] = 255; // opacity, as canvases blend alpha
     }
     // Copy to canvas
     surfData.ctx.putImageData(surfData.image, 0, 0);
