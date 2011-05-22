@@ -61,6 +61,9 @@ CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math opera
                      // some factor, in order to get 'random' hash values - by taking
                      // that |value & hash_table_size| - then multiplying enough times will overflow.
                      // But instead, you can do |value = value & 30_BITS| in each iteration.
+                     // Note: CHECK_OVERFLOWS checks for overflows *after* CORRECT_OVERFLOWS
+                     // has operated (if it has). So you must run *without* CORRECT_OVERFLOWS
+                     // for this option to work. (Sorry for the discrepancy with CHECK_SIGNS - FIXME.)
 CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS overflows in integer
                        // mathops, by doing controlled overflows (sort of parallel to a CPU).
                        // Note that as mentioned above in CHECK_OVERFLOWS, the best thing is to

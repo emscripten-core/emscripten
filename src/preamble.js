@@ -129,7 +129,8 @@ function cRound(x) {
 //========================================
 // Debugging tools - Mathop overflows
 //========================================
-function CHECK_OVERFLOW(value, bits) {
+function CHECK_OVERFLOW(value, bits, ignore) {
+  if (ignore) return value;
   if (value === Infinity || value === -Infinity || Math.abs(value) >= Math.pow(2, bits)) {
     CorrectionsMonitor.note('Overflow');
   }
