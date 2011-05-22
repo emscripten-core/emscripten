@@ -1302,7 +1302,7 @@ function reSign(value, bits, ignore) {
   // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
   // would indeed give the exact same result.
   if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
-    CorrectionsMonitor.note('ReSign');
+    if (!ignore) CorrectionsMonitor.note('ReSign');
   }
 #endif
   return value;

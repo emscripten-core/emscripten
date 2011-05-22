@@ -204,6 +204,7 @@ mergeInto(Library, {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
           var val = IHEAP[s++];
+          //var val = unSign(IHEAP[s++], 8, 1); // XXX Optimize
           var color = surfData.colors[val];
           surfData.image.data[base+x*4+0] = color[0];
           surfData.image.data[base+x*4+1] = color[1];
