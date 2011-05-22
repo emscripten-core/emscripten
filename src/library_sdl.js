@@ -95,6 +95,12 @@ mergeInto(Library, {
     },
     
     makeCEvent: function(event, ptr) {
+      if (typeof event === 'number') {
+        // This is a pointer to a native C event that was SDL_PushEvent'ed
+        _memcpy(ptr, event, SDL.structs.KeyboardEvent.__size__);
+        return;
+      }
+
       switch(event.type) {
         case 'keydown': case 'keyup':
           var down = event.type === 'keydown';
@@ -285,6 +291,12 @@ mergeInto(Library, {
       SDL.makeCEvent(SDL.events.shift(), ptr);
     }
     return 1;
+  },
+
+  SDL_PushEvent: function(ptr) {
+    SDL.events.push(ptr); // XXX Should we copy it? Not clear from API
+
+    return 0;
   },
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
