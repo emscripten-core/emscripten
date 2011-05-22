@@ -64,7 +64,6 @@ if CMAKE_CONFIG:
   exit(os.execvp(compiler, [compiler] + sys.argv[1:]))
 
 try:
-  print 'emmaken.py: ', ' '.join(sys.argv)
   print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
 
   #f=open('/dev/shm/tmp/waka.txt', 'a')
