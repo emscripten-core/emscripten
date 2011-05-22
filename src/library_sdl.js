@@ -309,7 +309,11 @@ mergeInto(Library, {
     var surfData = SDL.surfaces[surf];
     surfData.colors = [];
     for (var i = firstColor; i < nColors; i++) {
+#if USE_TYPED_ARRAYS
+      surfData.colors[i] = Array.prototype.slice.call(IHEAP, colors + i*4, colors + i*4 + 4);
+#else
       surfData.colors[i] = IHEAP.slice(colors + i*4, colors + i*4 + 4);
+#endif
     }
     return 1;
   },
