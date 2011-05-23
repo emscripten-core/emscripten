@@ -162,12 +162,14 @@ mergeInto(Library, {
 
   SDL_Quit: function() {
     var surfData = SDL.surfaces[SDL.screen];
-    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-    var num = surfData.image.data.length;
-    for (var i = 0; i < num; i++) {
-      surfData.image.data[i] = Math.floor(Math.random()*255);
+    if (surfData) {
+      surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+      var num = surfData.image.data.length;
+      for (var i = 0; i < num; i++) {
+        surfData.image.data[i] = Math.floor(Math.random()*255);
+      }
+      surfData.ctx.putImageData(surfData.image, 0, 0);
     }
-    surfData.ctx.putImageData(surfData.image, 0, 0);
     throw 'SDL_Quit!';
   },
 
