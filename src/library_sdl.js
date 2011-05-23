@@ -130,7 +130,7 @@ mergeInto(Library, {
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
     ['keydown', 'keyup', 'keypress'].forEach(function(event) {
-      addEventListener(event, SDL.receiveEvent);
+      addEventListener(event, SDL.receiveEvent, true);
     });
     return 0; // success
   },
