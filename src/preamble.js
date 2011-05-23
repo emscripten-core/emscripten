@@ -395,6 +395,7 @@ try {
     xhr.open("GET", url, false);
     xhr.overrideMimeType('text/plain; charset=x-user-defined'); // ask for binary data
     xhr.send(null);
+    if (xhr.status != 200 && xhr.status != 0) throw 'failed to open: ' + url;
     return xhr.responseText;
   }
 }
