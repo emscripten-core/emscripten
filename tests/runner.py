@@ -375,11 +375,21 @@ if 'benchmark' not in sys.argv:
             printf("*\\n");
             printf("*%.1d,%.2d*\\n", 56, 9);
 
+            // Fixed-point math on 64-bit ints. Tricky to support since we have no 64-bit shifts in JS
+            {
+              struct Fixed {
+                static int Mult(int a, int b) {
+                  return ((long long)a * (long long)b) >> 16;
+                }
+              };
+              printf("fixed:%d\\n", Fixed::Mult(150000, 140000));
+            }
+
             printf("*%ld*%p\\n", (long)21, &hash); // The %p should not enter an infinite loop!
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\n*21*')
+        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\nfixed:320434\n*21*')
 
     def test_sintvars(self):
         global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Relevant to this test

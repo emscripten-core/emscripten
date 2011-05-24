@@ -931,10 +931,17 @@ function processMathop(item) { with(item) {
         }
       }
       */
+      if (bits > 32) return ident1 + '*Math.pow(2,' + ident2 + ')';
       return ident1 + ' << ' + ident2;
     }
-    case 'ashr': return ident1 + ' >> ' + ident2;
-    case 'lshr': return ident1 + ' >>> ' + ident2;
+    case 'ashr': {
+      if (bits > 32) return ident1 + '/Math.pow(2,' + ident2 + ')';
+      return ident1 + ' >> ' + ident2;
+    }
+    case 'lshr': {
+      if (bits > 32) return ident1 + '/Math.pow(2,' + ident2 + ')';
+      return ident1 + ' >>> ' + ident2;
+    }
     // basic float ops
     case 'fadd': return ident1 + ' + ' + ident2;
     case 'fsub': return ident1 + ' - ' + ident2;
