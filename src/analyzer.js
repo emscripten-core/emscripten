@@ -258,12 +258,12 @@ function analyzer(data) {
 
         // Normal variables
         func.lines.forEach(function(item) {
-          if (item.intertype in set('assign', 'fastgetelementptrload')) {
+          if (item.intertype === 'assign') {
             if (!item.value.tokens.slice(-1)[0].item) throw 'Did you run llvm-dis with -show-annotations?';
             func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
-              origin: item.intertype === 'assign' ? item.value.intertype : 'fastgetelementptrload',
+              origin: item.value.intertype,
               lineNum: item.lineNum,
               uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1])
             };
@@ -314,8 +314,7 @@ function analyzer(data) {
               //print(dump(line))
               if (line.intertype == 'store' && line.ident == vname) {
                 variable.stores ++;
-              } else if ((line.intertype == 'assign' && line.value.intertype == 'load' && line.value.ident == vname) ||
-                         (line.intertype == 'fastgetelementptrload' && line.ident == vname)) {
+              } else if (line.intertype == 'assign' && line.value.intertype == 'load' && line.value.ident == vname) {
                 variable.loads ++;
               }
             });

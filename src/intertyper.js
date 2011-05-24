@@ -494,38 +494,20 @@ function intertyper(data, parseFunctions, baseLineNum) {
   });
 
   substrate.addActor('Reintegrator', makeReintegrator(function(parent, child) {
-    // Special re-integration behaviors
-    if (child.intertype == 'fastgetelementptrload') {
-      parent.intertype = 'fastgetelementptrload';
-    }
     this.forwardItem(parent, '/dev/stdout');
   }));
 
   // 'load'
   substrate.addActor('Load', {
     processItem: function(item) {
+      item.intertype = 'load';
       if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
       item.pointerType = item.tokens[1].text;
       item.valueType = item.type = removePointing(item.pointerType);
       Types.needAnalysis[item.type] = 0;
-      if (item.tokens[2].text == 'getelementptr') {
-        var last = getTokenIndexByText(item.tokens, ';');
-        var data = parseLLVMFunctionCall(item.tokens.slice(1, last));
-        item.intertype = 'fastgetelementptrload';
-        item.type = data.type;
-        item.params = data.params;
-        item.pointer = data.ident;
-        item.value = data.value;
-      } else {
-        item.intertype = 'load';
-        if (item.tokens[2].text == 'bitcast') {
-          item.pointer = item.tokens[3].item.tokens[1].text;
-          item.originalType = item.tokens[3].item.tokens[0].text;
-        } else {
-          item.pointer = item.tokens[2].text;
-        }
-      }
-      item.ident = toNiceIdent(item.pointer);
+      var last = getTokenIndexByText(item.tokens, ';');
+      item.pointer = parseLLVMSegment(item.tokens.slice(1, last)); // TODO: Use this everywhere else too
+      item.ident = item.pointer.ident || null;
       this.forwardItem(item, 'Reintegrator');
     }
   });

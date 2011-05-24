@@ -632,13 +632,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     return ret;
   });
   makeFuncLineActor('load', function(item) {
-    var ident = toNiceIdent(item.ident);
-    var impl = getVarImpl(item.funcData, item.ident);
+    var value = finalizeLLVMParameter(item.pointer);
+    var impl = item.ident ? getVarImpl(item.funcData, item.ident) : VAR_EMULATED;
     switch (impl) {
       case VAR_NATIVIZED: {
-        return ident; // We have the actual value here
+        return value; // We have the actual value here
       }
-      case VAR_EMULATED: return makeGetValue(ident, null, item.type);
+      case VAR_EMULATED: return makeGetValue(value, null, item.type);
       default: throw "unknown [load] impl: " + impl;
     }
   });
@@ -720,15 +720,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
-  });
-
-  // Optimized intertypes
-
-  makeFuncLineActor('fastgetelementptrload', function(item) {
-    return 'var ' + item.ident + '=' + makeGetValue(parseNumerical(item.value.ident), getGetElementPtrIndexes(item.value), item.value.valueType, true) + ';';
-  });
-  makeFuncLineActor('fastgetelementptrstore', function(item) {
-    return makeSetValue(item.value.ident, getGetElementPtrIndexes(item.value), parseNumerical(item.ident), item.type, true) + ';';
   });
 
   makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable! Original .ll line: ' + item.lineNum + '";' });
