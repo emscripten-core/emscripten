@@ -17,7 +17,8 @@ CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed 
                    // Decreases performance with additional runtime checks. Might not be
                    // needed in some kinds of code.
                    // If equal to 2, done on a line-by-line basis according to
-                   // CORRECT_SIGNS_LINES
+                   // CORRECT_SIGNS_LINES, correcting only the specified lines.
+                   // If equal to 3, correcting all *but* the specified lines
 CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
                  // It is recommended to use this in
                  // order to find if your code needs CORRECT_SIGNS. If you can get your
@@ -47,8 +48,9 @@ SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses
                // If equal to 2, done on a line-by-line basis according to
-               // SAFE_HEAP_LINES (note that these are the lines to *exclude*
-               // from checking - the opposite of what CORRECT_*_LINES mean)
+               // SAFE_HEAP_LINES, checking only the specified lines.
+               // If equal to 3, checking all *but* the specified lines. Note
+               // that 3 is the option you usually want here.
 SAFE_HEAP_LOG = 0; // Print out every single heap read and write (LOTS of output)
 LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
@@ -71,7 +73,8 @@ CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS 
                        // it slows things down.
                        //
                        // If equal to 2, done on a line-by-line basis according to
-                       // CORRECT_OVERFLOWS_LINES
+                       // CORRECT_OVERFLOWS_LINES, correcting only the specified lines.
+                       // If equal to 3, correcting all *but* the specified lines
                        //
                        // NOTE: You can introduce signing issues by using this option. If you
                        //       take a large enough 32-bit value, and correct it for overflows,

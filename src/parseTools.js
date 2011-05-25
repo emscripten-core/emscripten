@@ -592,32 +592,40 @@ function indentify(text, indent) {
 // Correction tools
 
 function correctSpecificSign() {
-  assert(!(CORRECT_SIGNS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
-  return CORRECT_SIGNS === 2 && Framework.currItem && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES;
+  assert(!(CORRECT_SIGNS >= 2 && !Debugging.on), 'Need debugging for line-specific corrections');
+  if (!Framework.currItem) return false;
+  return (CORRECT_SIGNS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES) ||
+         (CORRECT_SIGNS === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES));
 }
 function correctSigns() {
   return CORRECT_SIGNS === 1 || correctSpecificSign();
 }
 
 function correctSpecificOverflow() {
-  assert(!(CORRECT_OVERFLOWS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
-  return CORRECT_OVERFLOWS === 2 && Framework.currItem && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES;
+  assert(!(CORRECT_OVERFLOWS >= 2 && !Debugging.on), 'Need debugging for line-specific corrections');
+  if (!Framework.currItem) return false;
+  return (CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES) ||
+         (CORRECT_OVERFLOWS === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES));
 }
 function correctOverflows() {
   return CORRECT_OVERFLOWS === 1 || correctSpecificOverflow();
 }
 
 function correctSpecificRounding() {
-  assert(!(CORRECT_ROUNDINGS === 2 && !Debugging.on), 'Need debugging for line-specific corrections');
-  return CORRECT_ROUNDINGS === 2 && Framework.currItem && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES;
+  assert(!(CORRECT_ROUNDINGS >= 2 && !Debugging.on), 'Need debugging for line-specific corrections');
+  if (!Framework.currItem) return false;
+  return (CORRECT_ROUNDINGS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES) ||
+         (CORRECT_ROUNDINGS === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES));
 }
 function correctRoundings() {
   return CORRECT_ROUNDINGS === 1 || correctSpecificRounding();
 }
 
 function checkSpecificSafeHeap() {
-  assert(!(SAFE_HEAP === 2 && !Debugging.on), 'Need debugging for line-specific checks');
-  return SAFE_HEAP === 2 && Framework.currItem && !(Debugging.getIdentifier(Framework.currItem.lineNum) in SAFE_HEAP_LINES);
+  assert(!(SAFE_HEAP >= 2 && !Debugging.on), 'Need debugging for line-specific checks');
+  if (!Framework.currItem) return false;
+  return (SAFE_HEAP === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in SAFE_HEAP_LINES) ||
+         (SAFE_HEAP === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in SAFE_HEAP_LINES));
 }
 function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();

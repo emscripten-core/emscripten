@@ -1879,7 +1879,7 @@ if 'benchmark' not in sys.argv:
 
       if SAFE_HEAP:
         # Ignore bitfield warnings
-        SAFE_HEAP = 2
+        SAFE_HEAP = 3
         SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                            'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
         COMPILER_TEST_OPTS = ['-g']
@@ -2200,7 +2200,7 @@ if 'benchmark' not in sys.argv:
 
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
 
-      SAFE_HEAP = 2
+      SAFE_HEAP = 3
       SAFE_HEAP_LINES = ["src.cpp:7"]
 
       self.do_test(src, '*ok*')
@@ -2208,6 +2208,21 @@ if 'benchmark' not in sys.argv:
       # But if we disable the wrong lines, we still fail
 
       SAFE_HEAP_LINES = ["src.cpp:99"]
+
+      try:
+        self.do_test(src, '*nothingatall*')
+      except Exception, e:
+        # This test *should* fail, by throwing this exception
+        assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
+
+      # And reverse the checks with = 2
+
+      SAFE_HEAP = 2
+      SAFE_HEAP_LINES = ["src.cpp:99"]
+
+      self.do_test(src, '*ok*')
+
+      SAFE_HEAP_LINES = ["src.cpp:7"]
 
       try:
         self.do_test(src, '*nothingatall*')
@@ -2302,6 +2317,14 @@ if 'benchmark' not in sys.argv:
       CORRECT_SIGNS_LINES = ["src.cpp:3"]
       self.do_test(src, '*1*')
 
+      # And reverse the checks with = 2
+      CORRECT_SIGNS = 3
+      CORRECT_SIGNS_LINES = ["src.cpp:3"]
+      self.do_test(src, '*0*')
+      CORRECT_SIGNS = 3
+      CORRECT_SIGNS_LINES = ["src.cpp:9"]
+      self.do_test(src, '*1*')
+
       src = '''
         #include<stdio.h>
         int main() {
@@ -2336,6 +2359,19 @@ if 'benchmark' not in sys.argv:
       # Fixing the wrong line should not work
       CORRECT_OVERFLOWS = 2
       CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
+      try:
+        self.do_test(src, correct)
+        raise Exception('UNEXPECTED-PASS')
+      except Exception, e:
+        assert 'UNEXPECTED' not in str(e), str(e)
+        assert 'Expected to find' in str(e), str(e)
+
+      # And reverse the checks with = 2
+      CORRECT_OVERFLOWS = 3
+      CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
+      self.do_test(src, correct)
+      CORRECT_OVERFLOWS = 3
+      CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
       try:
         self.do_test(src, correct)
         raise Exception('UNEXPECTED-PASS')
@@ -2379,6 +2415,12 @@ if 'benchmark' not in sys.argv:
       CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
       self.do_test(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
       self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
+
+      # And reverse the check with = 2
+      CORRECT_ROUNDINGS = 3
+      CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
+      self.do_test(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
+      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
 
 
   # Generate tests for all our compilers
