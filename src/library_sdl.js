@@ -226,8 +226,7 @@ mergeInto(Library, {
     }
     // Copy to canvas
     surfData.ctx.putImageData(surfData.image, 0, 0);
-    // Cleanup
-    surfData.image = null;
+    // Note that we save the image, so future writes are fast. But, memory is not yet released
   },
 
   SDL_Flip: function(surf) {
