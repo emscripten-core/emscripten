@@ -1890,7 +1890,8 @@ if 'benchmark' not in sys.argv:
                                                           os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking'])],
-                   includes=[path_from_root('tests', 'bullet', 'src')])
+                   includes=[path_from_root('tests', 'bullet', 'src')],
+                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
       if COMPILER != LLVM_GCC: return self.skip() # llvm-link failure when using clang, LLVM bug 9498
