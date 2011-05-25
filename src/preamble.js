@@ -386,9 +386,7 @@ var unSign = {{{ unSign.toString() }}}
 var reSign = {{{ reSign.toString() }}}
 
 // Use console read if available, otherwise we are in a browser, use an XHR
-try {
-  read;
-} catch(e) {
+if (!this['read']) {
   this['read'] = function(url) {
     // TODO: use mozResponseArrayBuffer/responseStream/etc. if available
     var xhr = new XMLHttpRequest();
