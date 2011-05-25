@@ -81,6 +81,16 @@ function toNiceIdentCarefully(ident) {
   return ident;
 }
 
+// Returns true if ident is a niceIdent (see toNiceIdent). If loose
+// is true, then also allow () and spaces.
+function isNiceIdent(ident, loose) {
+  if (loose) {
+    return /^[\w$_ ()]+$/.test(ident);
+  } else {
+    return /^[\w$_]+$/.test(ident);
+  }
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -852,7 +862,7 @@ function finalizeLLVMParameter(param) {
   }
 }
 
-function makeSignOp(value, type, op) { // TODO: If value isNumber, do this at compile time
+function makeSignOp(value, type, op) {
   if (!value) return value;
   if (!correctSigns() && !CHECK_SIGNS) return value;
   if (type in Runtime.INT_TYPES) {
@@ -866,7 +876,11 @@ function makeSignOp(value, type, op) { // TODO: If value isNumber, do this at co
       if (op === 're') {
         return '((' + value + ')|0)';
       } else {
-        // TODO: figure out something here along the lines of return '(' + Math.pow(2, 32) + '+((' + value + ')|0))';
+        // If this is an ident, we can shortcut. If not, our shortcut could
+        // lead to multiple evaluation, so give up
+        if (isNiceIdent(value, true)) {
+          return '(' + value + ' >= 0 ? ' + value + ' : (' + value + '+' + (2*Math.abs(1 << 31)) + '))';
+        }
       }
     }
     return op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign()) + ')'; // If we are correcting a specific sign here, do not check for it
