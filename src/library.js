@@ -113,7 +113,7 @@ var Library = {
           }
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         }
-        if (next == 'l'.charCodeAt(0)) {
+        if (next == 'l'.charCodeAt(0) || next == 'L'.charCodeAt(0)) {
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         }

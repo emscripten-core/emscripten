@@ -85,6 +85,22 @@ Runtime = {
   INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
   FLOAT_TYPES: set('float', 'double'),
 
+  or64: function(x, y) {
+    var l = (x | 0) | (y | 0);
+    var h = (Math.round(x / 4294967296) | Math.round(y / 4294967296)) * 4294967296;
+    return l + h;
+  },
+  and64: function(x, y) {
+    var l = (x | 0) & (y | 0);
+    var h = (Math.round(x / 4294967296) & Math.round(y / 4294967296)) * 4294967296;
+    return l + h;
+  },
+  xor64: function(x, y) {
+    var l = (x | 0) ^ (y | 0);
+    var h = (Math.round(x / 4294967296) ^ Math.round(y / 4294967296)) * 4294967296;
+    return l + h;
+  },
+
   getNativeFieldSize: getNativeFieldSize,
   dedup: dedup,
 

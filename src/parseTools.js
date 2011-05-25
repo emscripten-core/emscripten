@@ -916,9 +916,30 @@ function processMathop(item) { with(item) {
     case 'sdiv': case 'udiv': return makeRounding(ident1 + '/' + ident2, bits, op[0] === 's');
     case 'mul': return handleOverflow(ident1 + ' * ' + ident2, bits);
     case 'urem': case 'srem': return ident1 + ' % ' + ident2;
-    case 'or': return ident1 + ' | ' + ident2; // TODO this forces into a 32-bit int - add overflow-style checks? also other bitops below us
-    case 'and': return ident1 + ' & ' + ident2;
-    case 'xor': return ident1 + ' ^ ' + ident2;
+    case 'or': {
+      if (bits > 32) {
+        assert(bits === 64, 'Too many bits for or: ' + bits);
+        dprint('Warning: 64 bit OR - precision limit may be hit');
+        return 'Runtime.or64(' + ident1 + ', ' + ident2 + ')';
+      }
+      return ident1 + ' | ' + ident2;
+    }
+    case 'and': {
+      if (bits > 32) {
+        assert(bits === 64, 'Too many bits for and: ' + bits);
+        dprint('Warning: 64 bit AND - precision limit may be hit');
+        return 'Runtime.and64(' + ident1 + ', ' + ident2 + ')';
+      }
+      return ident1 + ' & ' + ident2;
+    }
+    case 'xor': {
+      if (bits > 32) {
+        assert(bits === 64, 'Too many bits for xor: ' + bits);
+        dprint('Warning: 64 bit XOR - precision limit may be hit');
+        return 'Runtime.xor64(' + ident1 + ', ' + ident2 + ')';
+      }
+      return ident1 + ' ^ ' + ident2;
+    }
     case 'shl': {
       // Note: Increases in size may reach the 32-bit limit... where our sign can flip. But this may be expected by the code...
       /*

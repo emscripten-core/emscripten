@@ -422,6 +422,19 @@ if 'benchmark' not in sys.argv:
         global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
         self.do_test(src, output, force_c=True)
 
+    def test_bigint(self):
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
+            long long x = 0x0000def123450789ULL; // any bigger than this, and we
+            long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
+            printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
+            return 0;
+          }
+        '''
+        self.do_test(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*')
+
     def test_unsigned(self):
         global CORRECT_SIGNS; CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
         src = '''
