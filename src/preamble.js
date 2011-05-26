@@ -117,7 +117,6 @@ var CorrectionsMonitor = {
       if (this.corrections >= this.MAX_ALLOWED) abort('\n\nToo many corrections!');
     }
 #if AUTO_OPTIMIZE
-    if (succeed) return; // XXX - enable this later on, as a profiling tool
     if (!sig)
       sig = (new Error().stack).toString().split('\n')[2].split(':').slice(-1)[0]; // Spidermonkey-specific FIXME
     sig = type + '|' + sig;
@@ -157,18 +156,18 @@ function cRound(x) {
 //========================================
 // Debugging tools - Mathop overflows
 //========================================
-function CHECK_OVERFLOW(value, bits, ignore) {
+function CHECK_OVERFLOW(value, bits, ignore, sig) {
   if (ignore) return value;
   var twopbits = Math.pow(2, bits);
   var twopbits1 = Math.pow(2, bits-1);
   // For signedness issue here, see settings.js, CHECK_SIGNED_OVERFLOWS
 #if CHECK_SIGNED_OVERFLOWS
   if (value === Infinity || value === -Infinity || value >= twopbits1 || value < -twopbits1) {
-    CorrectionsMonitor.note('SignedOverflow');
+    CorrectionsMonitor.note('SignedOverflow', 0, sig);
     if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) CorrectionsMonitor.note('Overflow');
 #else
   if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) {
-    CorrectionsMonitor.note('Overflow');
+    CorrectionsMonitor.note('Overflow', 0, sig);
 #endif
 #if CORRECT_OVERFLOWS
     // Fail on >32 bits - we warned at compile time
@@ -178,9 +177,9 @@ function CHECK_OVERFLOW(value, bits, ignore) {
 #endif
   } else {
 #if CHECK_SIGNED_OVERFLOWS
-    CorrectionsMonitor.note('SignedOverflow', 1);
+    CorrectionsMonitor.note('SignedOverflow', 1, sig);
 #endif
-    CorrectionsMonitor.note('Overflow', 1);
+    CorrectionsMonitor.note('Overflow', 1, sig);
   }
   return value;
 }

@@ -170,6 +170,7 @@ mergeInto(Library, {
       }
       surfData.ctx.putImageData(surfData.image, 0, 0);
     }
+    __shutdownRuntime__();
     throw 'SDL_Quit!';
   },
 

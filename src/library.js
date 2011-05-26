@@ -1281,10 +1281,15 @@ var Library = {
 
 // Converts a value we have as signed, into an unsigned value. For
 // example, -1 in int32 would be a very large number as unsigned.
-function unSign(value, bits, ignore) {
-  if (value >= 0) return value;
+function unSign(value, bits, ignore, sig) {
+  if (value >= 0) {
 #if CHECK_SIGNS
-  if (!ignore) CorrectionsMonitor.note('UnSign');
+    if (!ignore) CorrectionsMonitor.note('UnSign', 1, sig);
+#endif
+    return value;
+  }
+#if CHECK_SIGNS
+  if (!ignore) CorrectionsMonitor.note('UnSign', 0, sig);
 #endif
   return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
                     : Math.pow(2, bits)         + value;
@@ -1293,8 +1298,13 @@ function unSign(value, bits, ignore) {
 
 // Converts a value we have as unsigned, into a signed value. For
 // example, 200 in a uint8 would be a negative number.
-function reSign(value, bits, ignore) {
-  if (value <= 0) return value;
+function reSign(value, bits, ignore, sig) {
+  if (value <= 0) {
+#if CHECK_SIGNS
+    if (!ignore) CorrectionsMonitor.note('ReSign', 1, sig);
+#endif
+    return value;
+  }
   var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
                         : Math.pow(2, bits-1);
 #if CHECK_SIGNS
@@ -1303,7 +1313,7 @@ function reSign(value, bits, ignore) {
   if (value >= half) {
 #if CHECK_SIGNS
     if (!ignore) {
-      CorrectionsMonitor.note('ReSign');
+      CorrectionsMonitor.note('ReSign', 0, sig);
       noted = true;
     }
 #endif
@@ -1315,11 +1325,11 @@ function reSign(value, bits, ignore) {
   // would indeed give the exact same result.
   if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
     if (!ignore) {
-      CorrectionsMonitor.note('ReSign');
+      CorrectionsMonitor.note('ReSign', 0, sig);
       noted = true;
     }
   }
-  if (!noted) CorrectionsMonitor.note('ReSign', true);
+  if (!noted) CorrectionsMonitor.note('ReSign', 1, sig);
 #endif
   return value;
 }

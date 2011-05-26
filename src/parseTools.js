@@ -850,7 +850,9 @@ function handleOverflow(text, bits) {
   if (!bits) return text;
   var correct = correctOverflows();
   warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
-  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
+  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !AUTO_OPTIMIZE) + (
+    AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier(Framework.currItem.lineNum) + '"' : ''
+  ) + ')';
   if (!correct) return text;
   if (bits <= 32) {
     return '(' + text + ')&' + (Math.pow(2, bits) - 1);
@@ -897,7 +899,9 @@ function makeSignOp(value, type, op) {
         }
       }
     }
-    return op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign()) + ')'; // If we are correcting a specific sign here, do not check for it
+    return op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !AUTO_OPTIMIZE) + (
+      AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier(Framework.currItem.lineNum) + '"' : ''
+    ) + ')'; // If we are correcting a specific sign here, do not check for it
   } else {
     return value;
   }

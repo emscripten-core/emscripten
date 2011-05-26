@@ -2429,11 +2429,10 @@ if 'benchmark' not in sys.argv:
       self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
 
     def test_autooptimize(self):
-      global CHECK_OVERFLOWS, CORRECT_OVERFLOWS, AUTO_OPTIMIZE
+      global CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CHECK_SIGNS, CORRECT_SIGNS, AUTO_OPTIMIZE
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
 
-      AUTO_OPTIMIZE = 1
-      CHECK_OVERFLOWS = 1
-      CORRECT_OVERFLOWS = 1
+      AUTO_OPTIMIZE = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = CORRECT_SIGNS = 1
 
       src = '''
         #include<stdio.h>
@@ -2443,17 +2442,24 @@ if 'benchmark' not in sys.argv:
             t = t*5 + 1;
           }
           printf("*%d,%d*\\n", t, t & 127);
+
+          int varey = 100;
+          unsigned int MAXEY = -1;
+          for (int j = 0; j < 2; j++) {
+            printf("*%d*\\n", varey >= MAXEY); // 100 >= -1? not in unsigned!
+            MAXEY = 1; // So we succeed the second time around
+          }
           return 0;
         }
       '''
 
       def check(output):
         # TODO: check the line #
-        assert 'Overflow' in output, 'no indication of Overflow corrections'
-        assert '12 hits, %100 failures' in output, 'no notice of the amount of hits and failures'
+        assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections'
+        assert 'UnSign|src.cpp:13 : 6 hits, %16 failures' in output, 'no indication of Sign corrections'
         return output
 
-      self.do_test(src, '*186854335,63*', output_nicerizer=check)
+      self.do_test(src, '*186854335,63*\n', output_nicerizer=check)
 
 
   # Generate tests for all our compilers
