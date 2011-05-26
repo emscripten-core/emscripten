@@ -1297,9 +1297,15 @@ function reSign(value, bits, ignore) {
   if (value <= 0) return value;
   var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
                         : Math.pow(2, bits-1);
+#if CHECK_SIGNS
+  var noted = false;
+#endif
   if (value >= half) {
 #if CHECK_SIGNS
-    if (!ignore) CorrectionsMonitor.note('ReSign');
+    if (!ignore) {
+      CorrectionsMonitor.note('ReSign');
+      noted = true;
+    }
 #endif
     value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
   }
@@ -1308,9 +1314,18 @@ function reSign(value, bits, ignore) {
   // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
   // would indeed give the exact same result.
   if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
-    if (!ignore) CorrectionsMonitor.note('ReSign');
+    if (!ignore) {
+      CorrectionsMonitor.note('ReSign');
+      noted = true;
+    }
   }
+  if (!noted) CorrectionsMonitor.note('ReSign', true);
 #endif
   return value;
 }
+
+// Just a stub. We don't care about noting compile-time corrections. But they are called.
+var CorrectionsMonitor = {
+  note: function(){}
+};
 

@@ -63,9 +63,10 @@ CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math opera
                      // some factor, in order to get 'random' hash values - by taking
                      // that |value & hash_table_size| - then multiplying enough times will overflow.
                      // But instead, you can do |value = value & 30_BITS| in each iteration.
-                     // Note: CHECK_OVERFLOWS checks for overflows *after* CORRECT_OVERFLOWS
-                     // has operated (if it has). So you must run *without* CORRECT_OVERFLOWS
-                     // for this option to work. (Sorry for the discrepancy with CHECK_SIGNS - FIXME.)
+CHECK_SIGNED_OVERFLOWS = 0; // Whether to allow *signed* overflows - our correction for overflows generates signed
+                            // values (since we use &). This means that we correct some things are not strictly overflows,
+                            // and we cause them to be signed (which may lead to unnecessary unSign()ing later).
+                            // With this enabled, we check signed overflows for CHECK_OVERFLOWS
 CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS overflows in integer
                        // mathops, by doing controlled overflows (sort of parallel to a CPU).
                        // Note that as mentioned above in CHECK_OVERFLOWS, the best thing is to
@@ -82,6 +83,12 @@ CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS 
 CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that:
                        // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
                        // we will do slow but correct C rounding operations.
+
+AUTO_OPTIMIZE = 0; // When run with the CHECK_* options, will not fail on errors. Instead, will
+                   // keep a record of which checks succeeded and which failed. On shutdown, will
+                   // print out that information. This is useful for knowing which lines need
+                   // checking enabled and which do not, that is, this is a way to automate the
+                   // generation of line data for CORRECT_*_LINES options
 
 EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
                                 // be accessible outside of the generated code.

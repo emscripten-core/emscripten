@@ -848,9 +848,15 @@ function getGetElementPtrIndexes(item) {
 
 function handleOverflow(text, bits) {
   if (!bits) return text;
-  if (bits <= 32 && correctOverflows()) text = '(' + text + ')&' + (Math.pow(2, bits) - 1);
-  if (!CHECK_OVERFLOWS || correctSpecificOverflow()) return text; // If we are correcting a specific overflow here, do not check for it
-  return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
+  var correct = correctOverflows();
+  warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
+  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ')';
+  if (!correct) return text;
+  if (bits <= 32) {
+    return '(' + text + ')&' + (Math.pow(2, bits) - 1);
+  } else {
+    return text; // We warned about this earlier
+  }
 }
 
 // From parseLLVMSegment

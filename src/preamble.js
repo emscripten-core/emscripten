@@ -103,19 +103,47 @@ function __Z18UNPROTECT_HEAPADDRPv(dest) {
 #endif
 
 var CorrectionsMonitor = {
-  MAX_ALLOWED: 0, // Infinity,
+#if AUTO_OPTIMIZE
+  MAX_ALLOWED: Infinity,
+#else
+  MAX_ALLOWED: 0, // XXX
+#endif
   corrections: 0,
   sigs: {},
 
-  note: function(type) {
-    var sig = type + '|' + new Error().stack;
-    if (!this.sigs[sig]) {
-      print('Correction: ' + sig);
-      this.sigs[sig] = 0;
+  note: function(type, succeed, sig) {
+    if (!succeed) {
+      this.corrections++;
+      if (this.corrections >= this.MAX_ALLOWED) abort('\n\nToo many corrections!');
     }
-    this.sigs[sig]++;
-    this.corrections++;
-    if (this.corrections >= this.MAX_ALLOWED) abort('\n\nToo many corrections!');
+#if AUTO_OPTIMIZE
+    if (succeed) return; // XXX - enable this later on, as a profiling tool
+    if (!sig)
+      sig = (new Error().stack).toString().split('\n')[2].split(':').slice(-1)[0]; // Spidermonkey-specific FIXME
+    sig = type + '|' + sig;
+    if (!this.sigs[sig]) {
+      //print('Correction: ' + sig);
+      this.sigs[sig] = [0, 0]; // fail, succeed
+    }
+    this.sigs[sig][succeed ? 1 : 0]++;
+#endif
+  },
+
+  print: function() {
+    var items = [];
+    for (var sig in this.sigs) {
+      items.push({
+        sig: sig,
+        fails: this.sigs[sig][0],
+        succeeds: this.sigs[sig][1],
+        total: this.sigs[sig][0] + this.sigs[sig][1]
+      });
+    }
+    items.sort(function(x, y) { return y.total - x.total; });
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      print(item.sig + ' : ' + item.total + ' hits, %' + (Math.floor(100*item.fails/item.total)) + ' failures');
+    }
   }
 };
 
@@ -131,8 +159,28 @@ function cRound(x) {
 //========================================
 function CHECK_OVERFLOW(value, bits, ignore) {
   if (ignore) return value;
-  if (value === Infinity || value === -Infinity || Math.abs(value) >= Math.pow(2, bits)) {
+  var twopbits = Math.pow(2, bits);
+  var twopbits1 = Math.pow(2, bits-1);
+  // For signedness issue here, see settings.js, CHECK_SIGNED_OVERFLOWS
+#if CHECK_SIGNED_OVERFLOWS
+  if (value === Infinity || value === -Infinity || value >= twopbits1 || value < -twopbits1) {
+    CorrectionsMonitor.note('SignedOverflow');
+    if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) CorrectionsMonitor.note('Overflow');
+#else
+  if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) {
     CorrectionsMonitor.note('Overflow');
+#endif
+#if CORRECT_OVERFLOWS
+    // Fail on >32 bits - we warned at compile time
+    if (bits <= 32) {
+      value = value & (twopbits - 1);
+    }
+#endif
+  } else {
+#if CHECK_SIGNED_OVERFLOWS
+    CorrectionsMonitor.note('SignedOverflow', 1);
+#endif
+    CorrectionsMonitor.note('Overflow', 1);
   }
   return value;
 }
@@ -296,6 +344,9 @@ function __shutdownRuntime__() {
     func(atexit.arg);
   }
   //HEAP = IHEAP = FHEAP = null; // allow browser to GC?
+
+  // Print summary of correction activity
+  CorrectionsMonitor.print();
 }
 
 

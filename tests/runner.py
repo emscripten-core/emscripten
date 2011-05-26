@@ -228,7 +228,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE']:
       value = eval(setting)
       exported_settings[setting] = value
     compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
@@ -437,6 +437,7 @@ if 'benchmark' not in sys.argv:
 
     def test_unsigned(self):
         global CORRECT_SIGNS; CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
+        global CHECK_SIGNS; CHECK_SIGNS = 0
         src = '''
           #include <stdio.h>
           const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
@@ -1750,6 +1751,7 @@ if 'benchmark' not in sys.argv:
 
       # Overflows happen in hash loop
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
 
       self.do_test(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
@@ -1770,6 +1772,7 @@ if 'benchmark' not in sys.argv:
       # Overflows in luaS_newlstr hash loop
       global SAFE_HEAP; SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
       global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
@@ -1903,6 +1906,7 @@ if 'benchmark' not in sys.argv:
       global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
 
       #global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
 
       #global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1
       #global CHECK_SIGNS; CHECK_SIGNS = 1
@@ -2055,6 +2059,7 @@ if 'benchmark' not in sys.argv:
     def test_python(self):
       # Overflows in string_hash
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
       global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
@@ -2065,6 +2070,7 @@ if 'benchmark' not in sys.argv:
     ### Test cases in separate files
 
     def test_cases(self):
+      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
       if LLVM_OPTS: return self.skip() # Our code is not exactly 'normal' llvm assembly
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
@@ -2325,6 +2331,8 @@ if 'benchmark' not in sys.argv:
       CORRECT_SIGNS_LINES = ["src.cpp:9"]
       self.do_test(src, '*1*')
 
+      # Overflows
+
       src = '''
         #include<stdio.h>
         int main() {
@@ -2336,8 +2344,6 @@ if 'benchmark' not in sys.argv:
           return 0;
         }
       '''
-
-      # Overflows
 
       correct = '*186854335,63*'
       CORRECT_OVERFLOWS = 0
@@ -2422,13 +2428,40 @@ if 'benchmark' not in sys.argv:
       self.do_test(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
       self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
 
+    def test_autooptimize(self):
+      global CHECK_OVERFLOWS, CORRECT_OVERFLOWS, AUTO_OPTIMIZE
+
+      AUTO_OPTIMIZE = 1
+      CHECK_OVERFLOWS = 1
+      CORRECT_OVERFLOWS = 1
+
+      src = '''
+        #include<stdio.h>
+        int main() {
+          int t = 77;
+          for (int i = 0; i < 30; i++) {
+            t = t*5 + 1;
+          }
+          printf("*%d,%d*\\n", t, t & 127);
+          return 0;
+        }
+      '''
+
+      def check(output):
+        # TODO: check the line #
+        assert 'Overflow' in output, 'no indication of Overflow corrections'
+        assert '12 hits, %100 failures' in output, 'no notice of the amount of hits and failures'
+        return output
+
+      self.do_test(src, '*186854335,63*', output_nicerizer=check)
+
 
   # Generate tests for all our compilers
   def make_test(name, compiler, llvm_opts, embetter, quantum_size):
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE
 
     COMPILER = '%s'
     llvm_opts = %d
@@ -2440,6 +2473,7 @@ class %s(T):
     ASSERTIONS = 1-embetter
     SAFE_HEAP = 1-(embetter and llvm_opts)
     LLVM_OPTS = llvm_opts
+    AUTO_OPTIMIZE = 0
     CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     CORRECT_SIGNS = 0
@@ -2487,7 +2521,7 @@ else:
   QUANTUM_SIZE = 1
   RELOOP = OPTIMIZE = 1
   USE_TYPED_ARRAYS = 0
-  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = 0
+  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = 0
   INVOKE_RUN = 1
   CORRECT_SIGNS = 0
   CORRECT_ROUNDINGS = 0
