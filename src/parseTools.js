@@ -701,7 +701,7 @@ function makeCopyValue(dest, destPos, src, srcPos, type, modifier) {
   }
   // Null is special-cased: We copy over all heaps
   return 'IHEAP[' + dest + '+' + destPos + '] = IHEAP[' + src + '+' + srcPos + ']; ' +
-         'FHEAP[' + dest + '+' + destPos + '] = FHEAP[' + src + '+' + srcPos + ']; ' +
+         (USE_TYPED_ARRAY_FHEAP ? 'FHEAP[' + dest + '+' + destPos + '] = FHEAP[' + src + '+' + srcPos + ']; ' : '') +
          (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + ' + ' + destPos + ', ' + src + ' + ' + srcPos + ')' : '');
 }
 
@@ -753,8 +753,9 @@ function makeGetSlabs(ptr, type, allowMultiple) {
     return ['HEAP'];
   } else {
     if (type in Runtime.FLOAT_TYPES || type === 'int64') {
+      warn(USE_TYPED_ARRAY_FHEAP, 'Attempt to use FHEAP without USE_TYPED_ARRAY_FHEAP');
       return ['FHEAP'];
-    } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
+    } else if (type in Runtime.INT_TYPES || isPointerType(type) || !USE_TYPED_ARRAY_FHEAP) {
       return ['IHEAP'];
     } else {
       assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);

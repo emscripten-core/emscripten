@@ -63,25 +63,31 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
     print((new Error()).stack);
     throw "Bad store!" + dest;
   }
+#if USE_TYPED_ARRAY_FHEAP
   if (type === null) {
     IHEAP[dest] = value;
     FHEAP[dest] = value;
   } else if (type in Runtime.FLOAT_TYPES) {
     FHEAP[dest] = value;
-  } else {
+  } else
+#endif
+  {
     IHEAP[dest] = value;
   }
 }
 function SAFE_HEAP_LOAD(dest, type, ignore) {
   SAFE_HEAP_ACCESS(dest, type, ignore);
+#if USE_TYPED_ARRAY_FHEAP
   if (type in Runtime.FLOAT_TYPES) {
 #if SAFE_HEAP_LOG
   print('load : ' + dest + ' [' + type + '] |' + FHEAP[dest] + '|');
 #endif
     return FHEAP[dest];
-  } else {
+  } else
+#endif
+  {
 #if SAFE_HEAP_LOG
-  print('load : ' + dest + ' [' + type + '] |' + IHEAP[dest] + '|');
+    print('load : ' + dest + ' [' + type + '] |' + IHEAP[dest] + '|');
 #endif
     return IHEAP[dest];
   }
@@ -299,12 +305,18 @@ function __initializeRuntime__() {
   // TODO: Remove one of the 3 heaps!
   HAS_TYPED_ARRAYS = false;
   try {
+#if USE_TYPED_ARRAY_FHEAP
     HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array()['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+#else
+    HAS_TYPED_ARRAYS = !!Int32Array && !!(new Int32Array()['subarray']); // check for full engine support (use string #endif
+#endif
   } catch(e) {}
 
   if (HAS_TYPED_ARRAYS) {
     HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+#if USE_TYPED_ARRAY_FHEAP
     FHEAP = new Float64Array(TOTAL_MEMORY);
+#endif
   } else
 #endif
   {
@@ -324,7 +336,9 @@ function __initializeRuntime__() {
 
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
+#if USE_TYPED_ARRAY_FHEAP
   Module['FHEAP'] = FHEAP;
+#endif
 
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
   var TOTAL_STACK = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!

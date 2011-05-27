@@ -39,6 +39,9 @@ INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 
 OPTIMIZE = 0; // Optimize llvm operations into js commands
 RELOOP = 0; // Recreate js native loops from llvm data
 USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
+USE_TYPED_ARRAY_FHEAP = 1; // When USE_TYPED_ARRAYS is enabled, enables a separate FHEAP of Float64.
+               // When disabled, assumes FHEAP is not needed, i.e., no float/int64/etc. operations
+               // are stored or loaded
 SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                          // functions that have no basic stack usage. But, they
                          // may allocate stack later, and in a loop, this can be
