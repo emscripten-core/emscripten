@@ -260,13 +260,18 @@ function analyzer(data) {
         func.lines.forEach(function(item) {
           if (item.intertype === 'assign') {
             if (!item.value.tokens.slice(-1)[0].item) throw 'Did you run llvm-dis with -show-annotations?';
-            func.variables[item.ident] = {
+            var commaIndex = getTokenIndexByText(item.value.tokens, ';');
+            var variable = func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
               origin: item.value.intertype,
               lineNum: item.lineNum,
-              uses: parseInt(item.value.tokens.slice(-1)[0].item.tokens[0].text.split('=')[1])
+              uses: parseInt(item.value.tokens[commaIndex+1].item.tokens[0].text.split('=')[1])
             };
+            assert(isNumber(variable.uses), 'Failed to find the # of uses of var: ' + item.ident);
+            if (variable.origin === 'alloca') {
+              variable.allocatedNum = item.value.allocatedNum;
+            }
           }
         });
 
@@ -338,6 +343,7 @@ function analyzer(data) {
             // A simple int value, can be implemented as a native variable
             variable.impl = VAR_NATIVE;
           } else if (OPTIMIZE && variable.origin === 'alloca' && !variable.hasAddrTaken && !variable.hasValueTaken &&
+                     variable.allocatedNum === 1 &&
                      (Runtime.isNumberType(pointedType) || Runtime.isPointerType(pointedType))) {
             // A pointer to a value which is only accessible through this pointer. Basically
             // a local value on the stack, which nothing fancy is done on. So we can

@@ -1039,6 +1039,21 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*zzcheezzz*')
 
+    def test_alloca(self):
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g'] # This can mess up our parsing of [#uses=..]
+
+      src = '''
+        #include <stdio.h>
+
+        int main() {
+          char *pc;
+          pc = (char *)alloca(5);
+          printf("z:%d*%d*\\n", pc > 0, (int)pc);
+          return 0;
+        }
+      '''
+      self.do_test(src, 'z:1*', force_c=True)
+
     def test_array2(self):
         src = '''
           #include <stdio.h>
