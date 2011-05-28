@@ -14,11 +14,14 @@ mergeInto(Library, {
     events: [],
 
     keyCodes: {
-      38: 273, // up arrow
-      40: 274, // down arrow
-      37: 276, // left arrow
-      39: 275, // right arrow
-      17: 305, // control (right, or left)
+      38:  273, // up arrow
+      40:  274, // down arrow
+      37:  276, // left arrow
+      39:  275, // right arrow
+      17:  305, // control (right, or left)
+      18:  308, // alt
+      109: 45, // minus
+      16:  304 // shift
     },
 
     structs: {
@@ -92,6 +95,8 @@ mergeInto(Library, {
           //print('zz receive Event: ' + event.keyCode);
           SDL.events.push(event);
       }
+      //event.preventDefault();
+      return false;
     },
     
     makeCEvent: function(event, ptr) {
