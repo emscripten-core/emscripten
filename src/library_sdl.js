@@ -365,7 +365,7 @@ mergeInto(Library, {
       callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*') }}},
       userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*') }}},
       paused: true,
-      timer: null,
+      timer: null
     };
 
     var totalSamples = SDL.audio.samples*SDL.audio.channels;
