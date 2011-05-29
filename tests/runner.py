@@ -1686,7 +1686,7 @@ if 'benchmark' not in sys.argv:
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]);''' # 200 becomes -56, since signed chars are used in memory
+          '''STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]);''' # 200 becomes -56, since signed chars are used in memory
         )
         open(filename, 'w').write(src)
 
@@ -1853,7 +1853,7 @@ if 'benchmark' not in sys.argv:
         # Embed the font into the document
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('font.ttf', %s);''' % str(
+          '''STDIO.prepare('font.ttf', %s);''' % str(
             map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
           )
         )
@@ -1957,9 +1957,9 @@ if 'benchmark' not in sys.argv:
         src = open(filename, 'a')
         src.write(
           '''
-            _STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
+            STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
             run();
-            print("Data: " + JSON.stringify(_STDIO.streams[_STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail
+            print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail
           '''
         )
         src.close()
@@ -2003,12 +2003,12 @@ if 'benchmark' not in sys.argv:
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''this._STDIO.prepare('image.j2k', %s);''' % line_splitter(str(
+          '''STDIO.prepare('image.j2k', %s);''' % line_splitter(str(
             map(ord, open(original_j2k, 'rb').read())
           ))
         ).replace(
           '// {{POST_RUN_ADDITIONS}}',
-          '''print("Data: " + JSON.stringify(this._STDIO.streams[this._STDIO.filenames['image.raw']].data));'''
+          '''print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['image.raw']].data));'''
         )
         open(filename, 'w').write(src)
 
@@ -2183,10 +2183,10 @@ if 'benchmark' not in sys.argv:
         '''
         def post(filename):
           Popen(['python', DEMANGLER, filename], stdout=open(filename + '.tmp', 'w')).communicate()
-          Popen(['python', NAMESPACER, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
+          Popen(['python', NAMESPACER, filename, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
           src = open(filename, 'r').read().replace(
             '// {{MODULE_ADDITIONS}',
-            'Module["_"] = ' + open(filename + '.tmp2', 'r').read().rstrip() + ';\n\n' + script_src + '\n\n' +
+            'Module["_"] = ' + open(filename + '.tmp2', 'r').read().replace('var ModuleNames = ', '').rstrip() + ';\n\n' + script_src + '\n\n' +
               '// {{MODULE_ADDITIONS}'
           )
           open(filename, 'w').write(src)

@@ -72,8 +72,8 @@ mergeInto(Library, {
       SDL.surfaces[surf] = {
         width: width,
         height: height,
-        canvas: Module.canvas,
-        ctx: Module.ctx2D,
+        canvas: Module['canvas'],
+        ctx: Module['ctx2D'],
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
@@ -212,8 +212,8 @@ mergeInto(Library, {
         surfData.image.data[i] = IHEAP[surfData.buffer+i]; // XXX - make sure alpha values are proper in your input
       }
     } else {
-      var width = Module.canvas.width;
-      var height = Module.canvas.height;
+      var width = Module['canvas'].width;
+      var height = Module['canvas'].height;
       var s = surfData.buffer;
       var data = surfData.image.data;
       var colors = surfData.colors;

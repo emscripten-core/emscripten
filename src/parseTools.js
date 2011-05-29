@@ -753,7 +753,7 @@ function makeGetSlabs(ptr, type, allowMultiple) {
     return ['HEAP'];
   } else {
     if (type in Runtime.FLOAT_TYPES || type === 'int64') {
-      warn(USE_TYPED_ARRAY_FHEAP, 'Attempt to use FHEAP without USE_TYPED_ARRAY_FHEAP');
+      assert(USE_TYPED_ARRAY_FHEAP, 'Attempt to use FHEAP without USE_TYPED_ARRAY_FHEAP');
       return ['FHEAP'];
     } else if (type in Runtime.INT_TYPES || isPointerType(type) || !USE_TYPED_ARRAY_FHEAP) {
       return ['IHEAP'];

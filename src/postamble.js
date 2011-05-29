@@ -21,7 +21,7 @@ Module.callMain = function callMain(args) {
 }
 
 function run(args) {
-  args = args || Module.arguments;
+  args = args || Module['arguments'];
 
   __initializeRuntime__();
 
@@ -42,10 +42,10 @@ Module['run'] = run;
 
 #if INVOKE_RUN
 #else
-Module.noInitialRun = true;
+Module['noInitialRun'] = true;
 #endif
 
-if (!Module.noInitialRun) {
+if (!Module['noInitialRun']) {
   run();
 }
 

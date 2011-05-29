@@ -61,7 +61,7 @@ var Library = {
   },
   sscanf: '_scanString',
 
-  _formatString__deps: ['STDIO'],
+  _formatString__deps: ['$STDIO'],
   _formatString: function() {
     function isFloatArg(type) {
       return String.fromCharCode(type) in Runtime.set('f', 'e', 'g');
@@ -253,8 +253,8 @@ var Library = {
 
   // stdio.h - file functions
 
-  STDIO__postset: '_STDIO.init()',
-  STDIO: { // TODO: Rewrite this so it works with closure compiler, allowing us to use ADVANCED optimizations there
+  $STDIO__postset: 'STDIO.init()',
+  $STDIO: {
     streams: {},
     filenames: {},
     counter: 1,
@@ -264,24 +264,24 @@ var Library = {
     init: function() {
       try {
         _stdin = Pointer_make([0], null, ALLOC_STATIC);
-        IHEAP[_stdin] = this.prepare('<<stdin>>');
+        IHEAP[_stdin] = STDIO.prepare('<<stdin>>');
       } catch(e){} // stdin/out/err may not exist if not needed
       try {
         _stdout = Pointer_make([0], null, ALLOC_STATIC);
-        IHEAP[_stdout] = this.prepare('<<stdout>>', null, true);
+        IHEAP[_stdout] = STDIO.prepare('<<stdout>>', null, true);
       } catch(e){}
       try {
         _stderr = Pointer_make([0], null, ALLOC_STATIC);
-        IHEAP[_stderr] = this.prepare('<<stderr>>', null, true);
+        IHEAP[_stderr] = STDIO.prepare('<<stderr>>', null, true);
       } catch(e){}
     },
     cleanFilename: function(filename) {
       return filename.replace('./', '');
     },
     prepare: function(filename, data, print_) {
-      filename = this.cleanFilename(filename);
-      var stream = this.counter++;
-      this.streams[stream] = {
+      filename = STDIO.cleanFilename(filename);
+      var stream = STDIO.counter++;
+      STDIO.streams[stream] = {
         filename: filename,
         data: data ? data : [],
         position: 0,
@@ -289,26 +289,26 @@ var Library = {
         error: 0,
         print: print_ // true for stdout and stderr - we print when receiving data for them
       };
-      this.filenames[filename] = stream;
+      STDIO.filenames[filename] = stream;
       return stream;
     },
     open: function(filename) {
-      filename = this.cleanFilename(filename);
-      var stream = _STDIO.filenames[filename];
+      filename = STDIO.cleanFilename(filename);
+      var stream = STDIO.filenames[filename];
       if (!stream) {
         // Not already cached; try to load it right now
         try {
-          return _STDIO.prepare(filename, readBinary(filename));
+          return STDIO.prepare(filename, readBinary(filename));
         } catch(e) {
           return 0;
         }
       }
-      var info = _STDIO.streams[stream];
+      var info = STDIO.streams[stream];
       info.position = info.error = info.eof = 0;
       return stream;
     },
     read: function(stream, ptr, size) {
-      var info = _STDIO.streams[stream];
+      var info = STDIO.streams[stream];
       if (!info) return -1;
       for (var i = 0; i < size; i++) {
         if (info.position >= info.data.length) {
@@ -322,7 +322,7 @@ var Library = {
       return size;
     },
     write: function(stream, ptr, size) {
-      var info = _STDIO.streams[stream];
+      var info = STDIO.streams[stream];
       if (!info) return -1;
       if (info.print) {
         __print__(intArrayToString(Array_copy(ptr, size)));
@@ -337,33 +337,33 @@ var Library = {
     }
   },
 
-  fopen__deps: ['STDIO'],
+  fopen__deps: ['$STDIO'],
   fopen: function(filename, mode) {
     filename = Pointer_stringify(filename);
     mode = Pointer_stringify(mode);
     if (mode.indexOf('r') >= 0) {
-      return _STDIO.open(filename);
+      return STDIO.open(filename);
     } else if (mode.indexOf('w') >= 0) {
-      return _STDIO.prepare(filename);
+      return STDIO.prepare(filename);
     } else {
       return assert(false, 'fopen with odd params: ' + mode);
     }
   },
   __01fopen64_: 'fopen',
 
-  rewind__deps: ['STDIO'],
+  rewind__deps: ['$STDIO'],
   rewind: function(stream) {
-    var info = _STDIO.streams[stream];
+    var info = STDIO.streams[stream];
     info.position = 0;
     info.error = 0;
   },
 
-  fseek__deps: ['STDIO'],
+  fseek__deps: ['$STDIO'],
   fseek: function(stream, offset, whence) {
-    var info = _STDIO.streams[stream];
-    if (whence === _STDIO.SEEK_CUR) {
+    var info = STDIO.streams[stream];
+    if (whence === STDIO.SEEK_CUR) {
       offset += info.position;
-    } else if (whence === _STDIO.SEEK_END) {
+    } else if (whence === STDIO.SEEK_END) {
       offset += info.data.length;
     }
     info.position = offset;
@@ -372,80 +372,80 @@ var Library = {
   },
   __01fseeko64_: 'fseek',
 
-  ftell__deps: ['STDIO'],
+  ftell__deps: ['$STDIO'],
   ftell: function(stream) {
-    return _STDIO.streams[stream].position;
+    return STDIO.streams[stream].position;
   },
   __01ftello64_: 'ftell',
 
-  fread__deps: ['STDIO'],
+  fread__deps: ['$STDIO'],
   fread: function(ptr, size, count, stream) {
-    var info = _STDIO.streams[stream];
+    var info = STDIO.streams[stream];
     for (var i = 0; i < count; i++) {
       if (info.position + size > info.data.length) {
         info.eof = 1;
         return i;
       }
-      _STDIO.read(stream, ptr, size);
+      STDIO.read(stream, ptr, size);
       ptr += size;
     }
     return count;
   },
 
-  fwrite__deps: ['STDIO'],
+  fwrite__deps: ['$STDIO'],
   fwrite: function(ptr, size, count, stream) {
-    _STDIO.write(stream, ptr, size*count);
+    STDIO.write(stream, ptr, size*count);
     return count;
   },
 
-  fclose__deps: ['STDIO'],
+  fclose__deps: ['$STDIO'],
   fclose: function(stream) {
     return 0;
   },
 
-  feof__deps: ['STDIO'],
+  feof__deps: ['$STDIO'],
   feof: function(stream) {
-    return _STDIO.streams[stream].eof;
+    return STDIO.streams[stream].eof;
   },
 
-  ferror__deps: ['STDIO'],
+  ferror__deps: ['$STDIO'],
   ferror: function(stream) {
-    return _STDIO.streams[stream].error;
+    return STDIO.streams[stream].error;
   },
 
-  fprintf__deps: ['_formatString', 'STDIO'],
+  fprintf__deps: ['_formatString', '$STDIO'],
   fprintf: function() {
     var stream = arguments[0];
     var args = Array.prototype.slice.call(arguments, 1);
     var ptr = __formatString.apply(null, args);
-    _STDIO.write(stream, ptr, String_len(ptr));
+    STDIO.write(stream, ptr, String_len(ptr));
   },
 
-  vfprintf__deps: ['STDIO', '_formatString'],
+  vfprintf__deps: ['$STDIO', '_formatString'],
   vfprintf: function(stream, format, args) {
     var ptr = __formatString(-format, args);
-    _STDIO.write(stream, ptr, String_len(ptr));
+    STDIO.write(stream, ptr, String_len(ptr));
   },
 
-  fflush__deps: ['STDIO'],
+  fflush__deps: ['$STDIO'],
   fflush: function(stream) {
-    var info = _STDIO.streams[stream];
+    var info = STDIO.streams[stream];
     if (info && info.print) {
       __print__(null);
     }
   },
 
-  fputs__deps: ['STDIO', 'fputc'],
+  fputs__deps: ['$STDIO', 'fputc'],
   fputs: function(p, stream) {
-    _STDIO.write(stream, p, String_len(p));
+    STDIO.write(stream, p, String_len(p));
     _fputc('\n'.charCodeAt(0), stream);
   },
 
-  fputc__deps: ['STDIO'],
+  fputc__deps: ['$STDIO'],
   fputc: function(chr, stream) {
     if (!_fputc.ptr) _fputc.ptr = _malloc(1);
     {{{ makeSetValue('_fputc.ptr', '0', 'chr', 'i8') }}}
-    _STDIO.write(stream, _fputc.ptr, 1);
+    STDIO.write(stream, _fputc.ptr, 1);
   },
 
   // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html
@@ -453,9 +453,9 @@ var Library = {
   open: function(filename, flags, mode) {
     filename = Pointer_stringify(filename);
     if (flags === 0) { // RDONLY
-      return _STDIO.open(filename);
+      return STDIO.open(filename);
     } else if (flags === 1) { // WRONLY
-      return _STDIO.prepare(filename);
+      return STDIO.prepare(filename);
     } else {
       return assert(false, 'open with odd params: ' + [flags, mode]);
     }
@@ -466,13 +466,13 @@ var Library = {
   },
 
   read: function(stream, ptr, numbytes) {
-    return _STDIO.read(stream, ptr, numbytes);
+    return STDIO.read(stream, ptr, numbytes);
   },
 
   fcntl: function() { }, // TODO...
 
   fstat: function(stream, ptr) {
-    var info = _STDIO.streams[stream];
+    var info = STDIO.streams[stream];
     if (!info) return -1;
     try {
       {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size. XXX: hardcoded index 9 into the structure.
@@ -485,7 +485,7 @@ var Library = {
 
   mmap: function(start, num, prot, flags, stream, offset) {
     // Leaky and non-shared... FIXME
-    var info = _STDIO.streams[stream];
+    var info = STDIO.streams[stream];
     if (!info) return -1;
     return Pointer_make(info.data.slice(offset, offset+num), null, ALLOC_NORMAL);
   },
@@ -503,7 +503,7 @@ var Library = {
 
   access: function(filename) {
     filename = Pointer_stringify(filename);
-    return _STDIO.open(filename) ? 0 : -1;
+    return STDIO.open(filename) ? 0 : -1;
   },
 
   // stdlib.h
