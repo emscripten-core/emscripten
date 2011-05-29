@@ -27,7 +27,8 @@ a more OO boilerplate on top of that.
 
 import os, sys, json
 
-data = open(sys.argv[1], 'r').readlines()
+js = open(sys.argv[1], 'r').read()
+data = open(sys.argv[2], 'r').readlines()
 
 space = {}
 
@@ -66,10 +67,18 @@ for line in data:
   currspace[finalname] = realname
   currspace[finalname + '__params'] = params
   if len(funcparts) >= 2 and funcparts[-1] == funcparts[-2]:
-    size = '$struct_%s' % '__'.join(funcparts[:-1])
-    if len(funcparts) > 2:
-      size = '_' + size + '_'
-    size = size + '___SIZE'
+    found = False
+    for what in ['struct', 'class']:
+      size = '$%s_%s' % (what, '__'.join(funcparts[:-1]))
+      if len(funcparts) > 2:
+        size = '_' + size + '_'
+      size = size + '___SIZE'
+      if size in js:
+        found = True
+        break
+    if not found:
+      #print '// Warning: cannot find %s' % ('[_]$[class|struct]' + '__'.join(funcparts[:-1]) + '[_]___SIZE')
+      continue
     currspace['__new__' + ('' if i == 0 else str(i))] = 'function() { var ret = _malloc(%s); Module._.%s.%s.apply(null, [ret].concat(Array.prototype.slice.apply(arguments))); return ret; }' % (
       size, '.'.join(funcparts[:-1]), finalname
     )
@@ -82,5 +91,5 @@ def finalize(line):
   except:
     return line
 
-print '\n'.join(map(finalize, json.dumps(space, sort_keys=True, indent=2).split('\n')))
+print 'var ModuleNames = ' + '\n'.join(map(finalize, json.dumps(space, sort_keys=True, indent=2).split('\n')))
 
