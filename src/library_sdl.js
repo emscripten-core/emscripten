@@ -42,6 +42,16 @@ mergeInto(Library, {
         ['i32', 'sym'],
         ['i32', 'mod'],
         ['i16', 'unicode']
+      ]),
+      AudioSpec: Runtime.generateStructInfo([
+        ['i32', 'freq'],
+        ['i16', 'format'],
+        ['i8', 'channels'],
+        ['i8', 'silence'],
+        ['i16', 'samples'],
+        ['i32', 'size'],
+        ['void*', 'callback'],
+        ['void*', 'userdata']
       ])
     },
 
@@ -175,6 +185,7 @@ mergeInto(Library, {
       }
       surfData.ctx.putImageData(surfData.image, 0, 0);
     }
+    _SDL_CloseAudio(); // make sure we don't leave our audio timer running
     __shutdownRuntime__();
     throw 'SDL_Quit!';
   },
@@ -343,10 +354,61 @@ mergeInto(Library, {
   // SDL_Audio
 
   SDL_OpenAudio: function(desired, obtained) {
-    return -1;
+    // FIXME: Assumes 16-bit audio
+    assert(obtained === 0, 'Cannot return obtained SDL audio params');
+
+    SDL.audio = {
+      freq: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.freq', 'i32') }}},
+      format: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.format', 'i16') }}},
+      channels: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.channels', 'i8') }}},
+      samples: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.samples', 'i16') }}},
+      callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*') }}},
+      userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*') }}},
+      paused: true,
+      timer: null,
+    };
+
+    var totalSamples = SDL.audio.samples*SDL.audio.channels;
+    SDL.audio.bufferSize = totalSamples*2; // hardcoded 16-bit audio
+    SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
+    SDL.audio.caller = function() {
+      FUNCTION_TABLE[SDL.audio.callback](SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
+      SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
+    };
+    // Mozilla Audio API. TODO: Other audio APIs
+    try {
+      SDL.audio.mozOutput = new Audio();
+      SDL.audio.mozOutput.mozSetup(SDL.audio.channels, SDL.audio.freq);
+      SDL.audio.mozBuffer = new Float32Array(totalSamples);
+      SDL.audio.pushAudio = function(ptr, size) {
+        var mozBuffer = SDL.audio.mozBuffer;
+        for (var i = 0; i < totalSamples; i++) {
+          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16') }}} / 65536)-1; // hardcoded 16-bit audio
+        }
+        SDL.audio.mozOutput.mozWriteAudio(mozBuffer);
+      }
+    } catch(e) {
+      SDL.audio = null;
+    }
+    if (!SDL.audio) return -1;
+    return 0;
   },
 
-  SDL_CloseAudio: function() {},
+  SDL_PauseAudio: function(pauseOn) {
+    if (SDL.audio.paused !== pauseOn) {
+      SDL.audio.timer = pauseOn ? SDL.audio.timer && clearInterval(SDL.audio.timer) : setInterval(SDL.audio.caller, 1/35);
+    }
+    SDL.audio.paused = pauseOn;
+  },
+
+  SDL_CloseAudio: function() {
+    if (SDL.audio) {
+      _SDL_PauseAudio(1);
+      _free(SDL.audio.buffer);
+      SDL.audio = null;
+    }
+  },
+
   SDL_LockAudio: function() {},
   SDL_UnlockAudio: function() {},
 });
