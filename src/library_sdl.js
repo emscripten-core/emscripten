@@ -378,14 +378,14 @@ mergeInto(Library, {
     // Mozilla Audio API. TODO: Other audio APIs
     try {
       SDL.audio.mozOutput = new Audio();
-      SDL.audio.mozOutput.mozSetup(SDL.audio.channels, SDL.audio.freq);
+      SDL.audio.mozOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
       SDL.audio.mozBuffer = new Float32Array(totalSamples);
       SDL.audio.pushAudio = function(ptr, size) {
         var mozBuffer = SDL.audio.mozBuffer;
         for (var i = 0; i < totalSamples; i++) {
           mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16') }}} / 65536)-1; // hardcoded 16-bit audio
         }
-        SDL.audio.mozOutput.mozWriteAudio(mozBuffer);
+        SDL.audio.mozOutput['mozWriteAudio'](mozBuffer);
       }
     } catch(e) {
       SDL.audio = null;
