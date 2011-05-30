@@ -1,3 +1,11 @@
+2011-05-29: Version 1.2
+
+  * Doom demo
+  * Major SDL improvements: color palettes, input events, audio
+  * Various improvements for CHECK_* and CORRECT_*, and new AUTO_OPTIMIZE
+  * Experimental work towards supporting OpenGL in WebGL
+  * Various bug fixes
+
 2011-05-01: Version 1.1
 
   * Much improved Bullet demo (llvm opts, quantum = 1, CubicVR.js)
