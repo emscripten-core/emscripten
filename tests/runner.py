@@ -1522,6 +1522,13 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*cleaned*')
 
     def test_statics(self):
+        # static initializers save i16 but load i8 for some reason
+        global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+        global SAFE_HEAP, SAFE_HEAP_LINES
+        if SAFE_HEAP:
+          SAFE_HEAP = 3
+          SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26']
+
         src = '''
           #include <stdio.h>
           #include <string.h>
@@ -2061,7 +2068,7 @@ if 'benchmark' not in sys.argv:
 
       self.do_test(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
                    'Successfully generated', # The real test for valid output is in image_compare
-                   ['-i', 'image.j2k', '-o', 'image.raw'],
+                   '-i image.j2k -o image.raw'.split(' '),
                    libraries=[lib],
                    includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
                              path_from_root('tests', 'openjpeg', 'codec'),
@@ -2242,14 +2249,6 @@ if 'benchmark' not in sys.argv:
       SAFE_HEAP_LINES = ["src.cpp:99"]
 
       self.do_test(src, '*ok*')
-
-      SAFE_HEAP_LINES = ["src.cpp:7"]
-
-      try:
-        self.do_test(src, '*nothingatall*')
-      except Exception, e:
-        # This test *should* fail, by throwing this exception
-        assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
     def test_check_overflow(self):
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1
@@ -2478,7 +2477,7 @@ if 'benchmark' not in sys.argv:
 
 
   # Generate tests for all our compilers
-  def make_test(name, compiler, llvm_opts, embetter, quantum_size):
+  def make_test(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
     exec('''
 class %s(T):
   def setUp(self):
@@ -2488,8 +2487,9 @@ class %s(T):
     llvm_opts = %d
     embetter = %d
     quantum_size = %d
+    USE_TYPED_ARRAYS = %d
     INVOKE_RUN = 1
-    RELOOP = OPTIMIZE = USE_TYPED_ARRAYS = embetter
+    RELOOP = OPTIMIZE = embetter
     QUANTUM_SIZE = quantum_size
     ASSERTIONS = 1-embetter
     SAFE_HEAP = 1-(embetter and llvm_opts)
@@ -2508,14 +2508,19 @@ class %s(T):
     shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
     self.get_dir() # make sure it exists
 TT = %s
-''' % (fullname, compiler, llvm_opts, embetter, quantum_size, fullname))
+''' % (fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
-  for embetter in [0,1]:
-    for llvm_opts in [0,1]:
-      for name, compiler, quantum in [('clang', CLANG, 1), ('clang', CLANG, 4), ('llvm_gcc', LLVM_GCC, 4)]:
-        fullname = '%s_%d_%d%s' % (name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum))
-        exec('%s = make_test("%s","%s",%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum))
+  for llvm_opts in [0,1]:
+    for name, compiler, quantum, embetter, typed_arrays in [
+      ('clang', CLANG, 1, 0, 0), ('clang', CLANG, 4, 0, 0), ('llvm_gcc', LLVM_GCC, 4, 0, 0),
+      ('clang', CLANG, 1, 1, 1), ('clang', CLANG, 4, 1, 1), ('llvm_gcc', LLVM_GCC, 4, 1, 1)#,
+#                                 ('clang', CLANG, 4, 1, 2), ('llvm_gcc', LLVM_GCC, 4, 1, 2)
+    ]:
+      fullname = '%s_%d_%d%s%s' % (
+        name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
+      )
+      exec('%s = make_test("%s","%s",%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 

@@ -74,7 +74,6 @@ Runtime = {
   staticAlloc: unInline('staticAlloc', ['size']),
   alignMemory: unInline('alignMemory', ['size', 'quantum']),
 
-  // TODO: cleanup
   isNumberType: function(type) {
     return type in Runtime.INT_TYPES || type in Runtime.FLOAT_TYPES;
   },

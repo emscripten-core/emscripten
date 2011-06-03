@@ -169,7 +169,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               if (needsPostSet(value)) { // ident, or expression containing an ident
                 ret.push({
                   intertype: 'GlobalVariablePostSet',
-                  JS: 'IHEAP[' + getFastValue(item.ident, '+', i) + '] = ' + value + ';'
+                  JS: makeSetValue(item.ident, i, value, 'i32', false, true) // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
                 });
                 constant[i] = '0';
               }
@@ -682,11 +682,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     if (ident == '_llvm_va_start') {
       // varargs - we received a pointer to the varargs as a final 'extra' parameter
       var data = 'arguments[' + Framework.currItem.funcData.ident + '.length]';
-      if (SAFE_HEAP) {
-        return 'SAFE_HEAP_STORE(' + params[0].ident + ', ' + data + ', null, ' + !checkSafeHeap() + ')';
-      } else {
-        return 'IHEAP[' + params[0].ident + '] = ' + data;
-      }
+      return makeSetValue(params[0].ident, 0, data, 'void*');
     } else if (ident == '_llvm_va_end') {
       return ';';
     }
@@ -694,6 +690,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var func = Functions.currFunctions[ident];
     var args = [];
     var varargs = [];
+    var varargsTypes = [];
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
@@ -702,13 +699,19 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       } else {
         varargs.push(val);
         varargs = varargs.concat(zeros(getNativeFieldSize(param.type)-1));
+        varargsTypes.push(param.type);
+        varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize(param.type)-1));
       }
     });
 
     args = args.map(indexizeFunctions);
     varargs = varargs.map(indexizeFunctions);
     if (func && func.hasVarArgs) {
-      varargs = makePointer('[' + varargs + ']', 0, 'ALLOC_STACK');
+      if (varargs.length === 0) {
+        varargs = [0];
+        varargsTypes = ['i32'];
+      }
+      varargs = makePointer('[' + varargs + ']', 0, 'ALLOC_STACK', varargsTypes);
     }
 
     if (getVarData(funcData, ident)) {

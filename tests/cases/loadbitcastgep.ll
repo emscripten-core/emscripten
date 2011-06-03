@@ -14,7 +14,7 @@ entry:
   %retval = alloca i32                            ; [#uses=2]
   %0 = alloca i32                                 ; [#uses=2]
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
-  %1 = load i16* bitcast (i32* getelementptr inbounds (%struct.CPU_Regs* @cpu_regs, i32 0, i32 0, i32 1, i32 0, i32 0) to i16*), align 2 ; [#uses=1]
+  %1 = load i32* bitcast (i32* getelementptr inbounds (%struct.CPU_Regs* @cpu_regs, i32 0, i32 0, i32 1, i32 0, i32 0) to i32*), align 2 ; [#uses=1]
   store i16 %1, i16* bitcast (%struct.CPU_Regs* @cpu_regs to i16*), align 2
   %2 = call i32 @puts(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   store i32 0, i32* %0, align 4

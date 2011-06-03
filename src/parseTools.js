@@ -27,8 +27,16 @@ function preprocess(text, constants) {
       }
     } else {
       if (line[1] && line[1] == 'i') { // if
-        var ident = line.substr(4);
-        showStack.push(!!this[ident] && this[ident] > 0);
+        var parts = line.split(' ');
+        var ident = parts[1];
+        var op = parts[2];
+        var value = parts[3];
+        if (op) {
+          assert(op === '==')
+          showStack.push(ident in this && this[ident] == value);
+        } else {
+          showStack.push(ident in this && this[ident] > 0);
+        }
       } else if (line[2] && line[2] == 'l') { // else
         showStack.push(!showStack.pop());
       } else if (line[2] && line[2] == 'n') { // endif
@@ -560,6 +568,26 @@ function calcAllocatedSize(type) {
   }
 }
 
+// Generates the type signature for a structure, for each byte, the type that is there.
+// i32, 0, 0, 0 - for example, an int32 is here, then nothing to do for the 3 next bytes, naturally
+function generateStructTypes(type) {
+  if (isArray(type)) return type; // already in the form of [type, type,...]
+  if (Runtime.isNumberType(type) || isPointerType(type)) {
+    return [type];//.concat(zeros(getNativeFieldSize(type)));
+  }
+  var typeData = Types.types[type];
+  assert(typeData, 'invalid type in generateStructTypes: ' + type);
+  var fields = typeData.fields;
+  var ret = [];
+  for (var i = 0; i < fields.length; i++) {
+    ret = ret.concat(generateStructTypes(fields[i]));
+    if (i < fields.length-1) {
+      ret = ret.concat(zeros(typeData.flatIndexes[i+1] - ret.length));
+    }
+  }
+  return ret;
+}
+
 // Flow blocks
 
 function recurseBlock(block, func) {
@@ -645,7 +673,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst) {
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP) {
-    if (type !== 'null') type = '"' + safeQuote(type) + '"';
+    if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
+    if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + !checkSafeHeap() + ')';
   } else {
     return makeGetSlabs(ptr, type)[0] + '[' + offset + ']';
@@ -675,7 +704,7 @@ function indexizeFunctions(value) { // TODO: Also check for externals
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -688,8 +717,9 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst) {
   value = indexizeFunctions(value);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP) {
-    if (type !== 'null') type = '"' + safeQuote(type) + '"';
-    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + !checkSafeHeap() + ');';
+    if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
+    if (type[0] === '#') type = type.substr(1);
+    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ');';
   } else {
     return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + ']=' + value }).join('; ') + ';';
   }
@@ -700,9 +730,9 @@ function makeCopyValue(dest, destPos, src, srcPos, type, modifier) {
     return makeSetValue(dest, destPos, makeGetValue(src, srcPos, type) + (modifier || ''), type);
   }
   // Null is special-cased: We copy over all heaps
-  return 'IHEAP[' + dest + '+' + destPos + '] = IHEAP[' + src + '+' + srcPos + ']; ' +
-         (USE_TYPED_ARRAY_FHEAP ? 'FHEAP[' + dest + '+' + destPos + '] = FHEAP[' + src + '+' + srcPos + ']; ' : '') +
-         (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + ' + ' + destPos + ', ' + src + ' + ' + srcPos + ')' : '');
+  return makeGetSlabs(dest, 'null', true).map(function(slab) {
+    return slab + '[' + dest + ' + ' + destPos + ']=' + slab + '[' + src + ' + ' + srcPos + ']'
+  }).join('; ') + ';' + (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + ' + ' + destPos + ', ' + src + ' + ' + srcPos + ')' : '');
 }
 
 // Given two values and an operation, returns the result of that operation.
@@ -742,26 +772,45 @@ function makeGetPos(ptr) {
   return ptr;
 }
 
-function makePointer(slab, pos, allocator, type) { // type is FFU
+function makePointer(slab, pos, allocator, type) {
+  assert(type, 'makePointer requires type info');
   if (slab in set('HEAP', 'IHEAP', 'FHEAP')) return pos;
-  return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ')';
+  var types = generateStructTypes(type);
+  if (dedup(types).length === 1) types = types[0];
+  return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ', ' +
+         JSON.stringify(types) +
+         ')';
 }
 
 function makeGetSlabs(ptr, type, allowMultiple) {
   assert(type);
   if (!USE_TYPED_ARRAYS) {
     return ['HEAP'];
-  } else {
+  } else if (USE_TYPED_ARRAYS == 1) {
     if (type in Runtime.FLOAT_TYPES || type === 'int64') {
-      assert(USE_TYPED_ARRAY_FHEAP, 'Attempt to use FHEAP without USE_TYPED_ARRAY_FHEAP');
       return ['FHEAP'];
-    } else if (type in Runtime.INT_TYPES || isPointerType(type) || !USE_TYPED_ARRAY_FHEAP) {
+    } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
       return ['IHEAP'];
     } else {
       assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
       return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
     }
+  } else { // USE_TYPED_ARRAYS == 2)
+    switch(type) {
+      case 'i8': return ['HEAP8']; break;
+      case 'i16': return ['HEAP16']; break;
+      case 'i32': return ['HEAP32']; break;
+      case 'i64': return ['HEAP64']; break;
+      case 'float': return ['HEAPF32']; break;
+      case 'double': return ['HEAPF64']; break;
+      default: {
+        assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
+        throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
+        return ['IHEAP', 'FHEAP'];
+      }
+    }
   }
+  return [];
 }
 
 function finalizeLLVMFunctionCall(item) {

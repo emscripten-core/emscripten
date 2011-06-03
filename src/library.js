@@ -167,7 +167,7 @@ var Library = {
         textIndex += 1;
       }
     }
-    return Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
+    return Pointer_make(ret.concat(0), 0, ALLOC_STACK, 'i8'); // NB: Stored on the stack
     //var len = ret.length+1;
     //var ret = Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
     //STACKTOP -= len; // XXX horrible hack. we rewind the stack, to 'undo' the alloc we just did.
@@ -263,16 +263,16 @@ var Library = {
     SEEK_END: 2, /* End of file.        */
     init: function() {
       try {
-        _stdin = Pointer_make([0], null, ALLOC_STATIC);
-        IHEAP[_stdin] = STDIO.prepare('<<stdin>>');
+        _stdin = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+        {{{ makeSetValue('_stdin', '0', "STDIO.prepare('<<stdin>>')", 'i32') }}};
       } catch(e){} // stdin/out/err may not exist if not needed
       try {
-        _stdout = Pointer_make([0], null, ALLOC_STATIC);
-        IHEAP[_stdout] = STDIO.prepare('<<stdout>>', null, true);
+        _stdout = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+        {{{ makeSetValue('_stdout', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
       } catch(e){}
       try {
-        _stderr = Pointer_make([0], null, ALLOC_STATIC);
-        IHEAP[_stderr] = STDIO.prepare('<<stderr>>', null, true);
+        _stderr = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+        {{{ makeSetValue('_stderr', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
       } catch(e){}
     },
     cleanFilename: function(filename) {
@@ -487,7 +487,7 @@ var Library = {
     // Leaky and non-shared... FIXME
     var info = STDIO.streams[stream];
     if (!info) return -1;
-    return Pointer_make(info.data.slice(offset, offset+num), null, ALLOC_NORMAL);
+    return Pointer_make(info.data.slice(offset, offset+num), null, ALLOC_NORMAL, 'i8');
   },
 
   munmap: function(start, num) {
@@ -623,11 +623,27 @@ var Library = {
     assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');
 #endif
     var curr;
+#if USE_TYPED_ARRAYS == 2
+    var stop = src + num;
+    var fast = dest%4 === src%4;
+    while (src%4 !== 0 && src < stop) {
+      HEAP8[dest++] = HEAP8[src++];
+    }
+    while (src+4 <= stop && fast) {
+      HEAP32[dest] = HEAP32[src];
+      src += 4;
+      dest += 4;
+    }
+    while (src < stop) {
+      HEAP8[dest++] = HEAP8[src++];
+    }
+#else
     for (var i = 0; i < num; i++) {
       // TODO: optimize for the typed arrays case
       // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
       {{{ makeCopyValue('dest', 'i', 'src', 'i', 'null', ' || 0') }}};
     }
+#endif
   },
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
@@ -816,7 +832,7 @@ var Library = {
   },
 
   strdup: function(ptr) {
-    return Pointer_make(String_copy(ptr, true), 0, ALLOC_NORMAL);
+    return Pointer_make(String_copy(ptr, true), 0, ALLOC_NORMAL, 'i8');
   },
 
   strpbrk: function(ptr1, ptr2) {
@@ -828,8 +844,8 @@ var Library = {
     return 0;
   },
 
-  // Compiled from newlib; for the original source and licensing, see library_strtok_r.c
-  strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=IHEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=IHEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=IHEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=IHEAP[f]=0;else{c=b+-1;a:for(;;){e=IHEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=IHEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else IHEAP[b+-1]=0; IHEAP[f]=b;c=c}else if(a==7){IHEAP[f]=b;IHEAP[b+-1]=0;c=b+-1}}return c},
+  // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays
+  strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=HEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=HEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=HEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=HEAP[f]=0;else{c=b+-1;a:for(;;){e=HEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=HEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else HEAP[b+-1]=0; HEAP[f]=b;c=c}else if(a==7){HEAP[f]=b;HEAP[b+-1]=0;c=b+-1}}return c},
 
   // ctype.h
 
@@ -905,10 +921,12 @@ var Library = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0
       ];
-      me.ret = Pointer_make([Pointer_make(values, 0, ALLOC_STATIC)+256], 0, ALLOC_STATIC);
-      assert(IHEAP[IHEAP[me.ret]] == 2);
-      assert(IHEAP[IHEAP[me.ret]-2] == 0);
-      assert(IHEAP[IHEAP[me.ret]+18] == 8195);
+      me.ret = Pointer_make([Pointer_make(values, 0, ALLOC_STATIC, 'void*')+256], 0, ALLOC_STATIC, 'i16');
+#if USE_TYPED_ARRAYS == 0
+      assert(HEAP[HEAP[me.ret]] == 2);
+      assert(HEAP[HEAP[me.ret]-2] == 0);
+      assert(HEAP[HEAP[me.ret]+18] == 8195);
+#endif
     }
     return me.ret;
   },
@@ -1220,7 +1238,7 @@ var Library = {
     // var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
     var me = _localeconv;
     if (!me.ret) {
-      me.ret = Pointer_make([Pointer_make(intArrayFromString('.'), null)], null); // just decimal point, for now
+      me.ret = Pointer_make([Pointer_make(intArrayFromString('.'), null, ALLOC_NORMAL, 'i8')], null, ALLOC_NORMAL, 'i8'); // just decimal point, for now
     }
     return me.ret;
   },
@@ -1230,7 +1248,7 @@ var Library = {
   nl_langinfo: function(item) {
     var me = _nl_langinfo;
     if (!me.ret) {
-      me.ret = Pointer_make(intArrayFromString("eh?"), null); 
+      me.ret = Pointer_make(intArrayFromString("eh?"), null, ALLOC_NORMAL, 'i8'); 
     }
     return me.ret;
   },
@@ -1240,7 +1258,7 @@ var Library = {
   __errno_location: function() { 
     var me = ___errno_location;
     if (!me.ret) {
-      me.ret = Pointer_make([0], 0, ALLOC_STATIC);
+      me.ret = Pointer_make([0], 0, ALLOC_STATIC, 'i32');
     }
     return me.ret;
   },

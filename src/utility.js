@@ -188,6 +188,14 @@ function isNumber(x) {
   return x == parseFloat(x);
 }
 
+function isArray(x) {
+  try {
+    return typeof x === 'object' && 'length' in x && 'slice' in x;
+  } catch(e) {
+    return false;
+  }
+}
+
 function flatten(x) {
   if (typeof x !== 'object') return x;
   var ret = [];

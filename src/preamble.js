@@ -19,18 +19,18 @@ var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 
 function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
-#if SAFE_HEAP_LOG
   //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
-#endif
   if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
   // You cannot, however, do the nonportable act of store X and load Y!
   if (store) {
-    HEAP_HISTORY[dest] = type; // [{ type: type, stack: new Error().stack }]; // |stack| is useful for debugging. Also uncomment the lines later down
+    HEAP_HISTORY[dest] = ignore ? null : type;
   } else {
+#if USE_TYPED_ARRAYS == 0
     if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false) { // false can be the result of a mathop comparator
       throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
     }
+#endif
     if (type === null) return;
     var history = HEAP_HISTORY[dest];
     if (history === null) return;
@@ -52,10 +52,7 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   }
 }
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
-#if SAFE_HEAP_LOG
-  print('store: ' + dest + ' [' + type + '] |' + value + '|');
-#endif
-  if (!value && value !== 0 && value !== false) { // false can be the result of a mathop comparator
+  if (!ignore && !value && value !== 0 && value !== false) { // false can be the result of a mathop comparator
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
   SAFE_HEAP_ACCESS(dest, type, true, ignore);
@@ -63,41 +60,61 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
     print((new Error()).stack);
     throw "Bad store!" + dest;
   }
-#if USE_TYPED_ARRAY_FHEAP
+#if USE_TYPED_ARRAYS == 1
   if (type === null) {
     IHEAP[dest] = value;
     FHEAP[dest] = value;
   } else if (type in Runtime.FLOAT_TYPES) {
     FHEAP[dest] = value;
-  } else
-#endif
-  {
+  } else {
     IHEAP[dest] = value;
   }
+#else
+#if USE_TYPED_ARRAYS == 2
+  assert(type != 'null', 'typed arrays 2 with null type!');
+  switch(type) {
+    case 'i8': HEAP8[dest] = value; break;
+    case 'i16': HEAP16[dest] = value; break;
+    case 'i32': HEAP32[dest] = value; break;
+    case 'i64': HEAP64[dest] = value; break;
+    case 'float': HEAPF32[dest] = value; break;
+    case 'double': HEAPF64[dest] = value; break;
+    default: throw 'weird type for typed array II: ' + type + new Error().stack;
+  }
+#else
+  HEAP[dest] = value;
+#endif
+#endif
 }
 function SAFE_HEAP_LOAD(dest, type, ignore) {
   SAFE_HEAP_ACCESS(dest, type, ignore);
-#if USE_TYPED_ARRAY_FHEAP
+
+#if USE_TYPED_ARRAYS == 1
   if (type in Runtime.FLOAT_TYPES) {
-#if SAFE_HEAP_LOG
-  print('load : ' + dest + ' [' + type + '] |' + FHEAP[dest] + '|');
-#endif
     return FHEAP[dest];
-  } else
-#endif
-  {
-#if SAFE_HEAP_LOG
-    print('load : ' + dest + ' [' + type + '] |' + IHEAP[dest] + '|');
-#endif
+  } else {
     return IHEAP[dest];
   }
+#else
+#if USE_TYPED_ARRAYS == 2
+  switch(type) {
+    case 'i8': return HEAP8[dest]; break;
+    case 'i16': return HEAP16[dest]; break;
+    case 'i32': return HEAP32[dest]; break;
+    case 'i64': return HEAP64[dest]; break;
+    case 'float': return HEAPF32[dest]; break;
+    case 'double': return HEAPF64[dest]; break;
+    default: throw 'weird type for typed array II: ' + type;
+  }
+  return null;
+#else
+  return HEAP[dest];
+#endif
+#endif
 }
 function SAFE_HEAP_COPY_HISTORY(dest, src) {
   HEAP_HISTORY[dest] = HEAP_HISTORY[src];
   SAFE_HEAP_ACCESS(dest, HEAP_HISTORY[dest] || null, true, false);
-#if SAFE_HEAP_LOG
-  print('copy history: ' + dest + ' [' + HEAP_HISTORY[dest] + '] from ' + src);
-#endif
 }
 function __Z16PROTECT_HEAPADDRPv(dest) {
   HEAP_WATCHED[dest] = true;
@@ -241,7 +258,7 @@ var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
 
-function Pointer_make(slab, pos, allocator) {
+function Pointer_make(slab, pos, allocator, types) {
   pos = pos ? pos : 0;
   assert(pos === 0); // TODO: remove 'pos'
   if (slab === HEAP) return pos;
@@ -259,6 +276,8 @@ function Pointer_make(slab, pos, allocator) {
   // Finalize
   var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
 
+  var type = typeof types === 'string' ? types : null;
+
   for (i = 0; i < size; i++) {
     var curr = slab[i];
 
@@ -266,7 +285,9 @@ function Pointer_make(slab, pos, allocator) {
       curr = Runtime.getFunctionIndex(curr);
     }
 
-    {{{ makeSetValue(0, 'ret+i', 'curr', 'null') }}}
+    if (type || types[i]) {
+      {{{ makeSetValue(0, 'ret+i', 'curr', '#type || types[i]') }}}
+    }
   }
 
   return ret;
@@ -293,7 +314,14 @@ function alignMemoryPage(x) {
   return Math.ceil(x/PAGE_SIZE)*PAGE_SIZE;
 }
 
-var HEAP, IHEAP, FHEAP;
+var HEAP;
+#if USE_TYPED_ARRAYS == 1
+var IHEAP, FHEAP;
+#endif
+#if USE_TYPED_ARRAYS == 2
+var HEAP8, HEAP16, HEAP32, HEAPF32, HEAPF64;
+#endif
+
 var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
 
@@ -302,30 +330,39 @@ var TOTAL_MEMORY = 50*1024*1024;
 
 function __initializeRuntime__() {
 #if USE_TYPED_ARRAYS
-  // TODO: Remove one of the 3 heaps!
   HAS_TYPED_ARRAYS = false;
   try {
-#if USE_TYPED_ARRAY_FHEAP
     HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array()['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-#else
-    HAS_TYPED_ARRAYS = !!Int32Array && !!(new Int32Array()['subarray']); // check for full engine support (use string #endif
-#endif
   } catch(e) {}
 
   if (HAS_TYPED_ARRAYS) {
+#if USE_TYPED_ARRAYS == 1
     HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-#if USE_TYPED_ARRAY_FHEAP
     FHEAP = new Float64Array(TOTAL_MEMORY);
+#endif
+#if USE_TYPED_ARRAYS == 2
+    var buffer = new ArrayBuffer(TOTAL_MEMORY);
+    HEAP8 = new Int8Array(buffer);
+    HEAP16 = new Int16Array(buffer);
+    HEAP32 = new Int32Array(buffer);
+    HEAPF32 = new Float32Array(buffer);
+    HEAPF64 = new Float64Array(buffer);
 #endif
   } else
 #endif
   {
     // Without this optimization, Chrome is slow. Sadly, the constant here needs to be tweaked depending on the code being run...
     var FAST_MEMORY = TOTAL_MEMORY/32;
-    IHEAP = FHEAP = HEAP = new Array(FAST_MEMORY);
+    HEAP = new Array(FAST_MEMORY);
     for (var i = 0; i < FAST_MEMORY; i++) {
-      IHEAP[i] = 0; // We do *not* use {{{ makeSetValue(0, 'i', 0, 'null') }}} here, since this is done just to optimize runtime speed
+      HEAP[i] = 0; // XXX We do *not* use {{{ makeSetValue(0, 'i', 0, 'null') }}} here, since this is done just to optimize runtime speed
     }
+#if USE_TYPED_ARRAYS == 1
+    IHEAP = FHEAP = HEAP;
+#endif
+#if USE_TYPED_ARRAYS == 2
+    HEAP8 = HEAP16 = HEAP32 = HEAPF32 = HEAPF64 = HEAP;
+#endif
   }
 
   var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
@@ -335,10 +372,6 @@ function __initializeRuntime__() {
   }
 
   Module['HEAP'] = HEAP;
-  Module['IHEAP'] = IHEAP;
-#if USE_TYPED_ARRAY_FHEAP
-  Module['FHEAP'] = FHEAP;
-#endif
 
   STACK_ROOT = STACKTOP = alignMemoryPage(10);
   var TOTAL_STACK = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!
@@ -356,7 +389,8 @@ function __shutdownRuntime__() {
     }
     func(atexit.arg);
   }
-  //HEAP = IHEAP = FHEAP = null; // allow browser to GC?
+
+  // allow browser to GC, set heaps to null?
 
   // Print summary of correction activity
   CorrectionsMonitor.print();
@@ -367,15 +401,23 @@ function __shutdownRuntime__() {
 // a normal JavaScript array of numbers
 function Array_copy(ptr, num) {
   // TODO: In the SAFE_HEAP case, do some reading here, for debugging purposes - currently this is an 'unnoticed read'.
-#if USE_TYPED_ARRAYS
+#if USE_TYPED_ARRAYS == 1
   if (HAS_TYPED_ARRAYS) {
     return Array.prototype.slice.call(IHEAP.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
                                                                      // Consider making a typed array here, for speed?
-  } else
-#endif
-  {
+  } else {
     return IHEAP.slice(ptr, ptr+num);
   }
+#endif
+#if USE_TYPED_ARRAYS == 2
+  if (HAS_TYPED_ARRAYS) {
+    return Array.prototype.slice.call(HEAP8.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
+                                                                     // Consider making a typed array here, for speed?
+  } else {
+    return HEAP8.slice(ptr, ptr+num);
+  }
+#endif
+  return HEAP.slice(ptr, ptr+num);
 }
 
 function String_len(ptr) {
