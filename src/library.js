@@ -229,7 +229,7 @@ var Library = {
     var text = __formatString(-src, ptr); // |-|src tells formatstring to use C-style params (typically they are from varargs)
     var i;
     for (i = 0; i < num; i++) {
-      {{{ makeCopyValue('dst+i', 'text+i', 1, 'i8') }}}
+      {{{ makeCopyValues('dst+i', 'text+i', 1, 'i8') }}}
       if ({{{ makeGetValue('dst', 'i', 'i8') }}} == 0) break;
     }
     return i; // Actually, should return how many *would* have been written, if the |num| had not stopped us.
@@ -624,7 +624,7 @@ var Library = {
 #endif
     // TODO: optimize for the typed arrays case
     // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
-    {{{ makeCopyValue('dest', 'src', 'num', 'null', ' || 0') }}};
+    {{{ makeCopyValues('dest', 'src', 'num', 'null', ' || 0') }}};
   },
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
@@ -646,9 +646,7 @@ var Library = {
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
   memset: function(ptr, value, num) {
-    for (var i = 0; i < num; i++) {
-      {{{ makeSetValue('ptr', 'i', 'value', 'null') }}}
-    }
+    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}}
   },
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
@@ -677,7 +675,7 @@ var Library = {
   strcpy: function(pdest, psrc) {
     var i = 0;
     do {
-      {{{ makeCopyValue('pdest+i', 'psrc+i', 1, 'i8') }}}
+      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8') }}}
       i ++;
     } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
   },
@@ -695,7 +693,7 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     do {
-      {{{ makeCopyValue('pdest+len+i', 'psrc+i', 1, 'i8') }}}
+      {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8') }}}
       i ++;
     } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
     return pdest;
@@ -705,7 +703,7 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     while(1) {
-      {{{ makeCopyValue('pdest+len+i', 'psrc+i', 1, 'i8') }}}
+      {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8') }}}
       if ({{{ makeGetValue('pdest', 'len+i', 'i8') }}} == 0) break;
       i ++;
       if (i == num) {
@@ -915,7 +913,7 @@ var Library = {
   // LLVM specifics
 
   llvm_va_copy: function(ppdest, ppsrc) {
-    {{{ makeCopyValue('ppdest', 'ppsrc', QUANTUM_SIZE, 'null') }}}
+    {{{ makeCopyValues('ppdest', 'ppsrc', QUANTUM_SIZE, 'null') }}}
     /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
     var psrc = IHEAP[ppsrc]-1;
     var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values

@@ -725,7 +725,21 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   }
 }
 
-function makeCopyValue(dest, src, num, type, modifier) {
+function makeSetValues(ptr, pos, value, type, num) {
+  function safety() {
+    return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + dest + '+$mcpi$, ' + type + ', 1)' : '');
+  }
+  if (USE_TYPED_ARRAYS in set(0, 1)) {
+    return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
+      makeSetValue(ptr, getFastValue(pos, '+', '$mspi$'), value, type) + ';\n}';
+  } else { // USE_TYPED_ARRAYS == 2
+    return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
+           '  HEAP8[' + getFastValue(ptr, '+', pos) + '+$mspi$] = ' + value + safety() + '\n}';
+           // TODO: optimize this, setting 4 values at a time etc. like makeCopyValues
+  }
+}
+
+function makeCopyValues(dest, src, num, type, modifier) {
   function safety() {
     return ';' + (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + '+$mcpi$, ' + src + '+$mcpi$)' : '');
   }
@@ -739,7 +753,7 @@ function makeCopyValue(dest, src, num, type, modifier) {
       ) + '\n' + '}';
   } else { // USE_TYPED_ARRAYS == 2
     return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
-           '  HEAP8[' + dest + '+$mcpi$] = HEAP8[' + src + '+$mcpi$]; ' + safety() + ';\n';
+           '  HEAP8[' + dest + '+$mcpi$] = HEAP8[' + src + '+$mcpi$]; ' + safety() + ';\n' +
            '}';
 /* TODO: rework something like this potential optimizing code
     if (isNumber(num) && num < 12) {
@@ -761,6 +775,7 @@ function makeCopyValue(dest, src, num, type, modifier) {
   }
 */
   }
+  return null;
 }
 
 // Given two values and an operation, returns the result of that operation.
@@ -802,7 +817,7 @@ function makeGetPos(ptr) {
 
 function makePointer(slab, pos, allocator, type) {
   assert(type, 'makePointer requires type info');
-  if (slab in set('HEAP', 'IHEAP', 'FHEAP')) return pos;
+  if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in set('IHEAP', 'FHEAP'))) return pos;
   var types = generateStructTypes(type);
   if (dedup(types).length === 1) types = types[0];
   return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ', ' +
@@ -815,7 +830,7 @@ function makeGetSlabs(ptr, type, allowMultiple) {
   if (!USE_TYPED_ARRAYS) {
     return ['HEAP'];
   } else if (USE_TYPED_ARRAYS == 1) {
-    if (type in Runtime.FLOAT_TYPES || type === 'int64') {
+    if (type in Runtime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
       return ['FHEAP'];
     } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
       return ['IHEAP'];
@@ -824,6 +839,7 @@ function makeGetSlabs(ptr, type, allowMultiple) {
       return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
     }
   } else { // USE_TYPED_ARRAYS == 2)
+    if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
     switch(type) {
       case 'i8': return ['HEAP8']; break;
       case 'i16': return ['HEAP16']; break;
@@ -832,9 +848,7 @@ function makeGetSlabs(ptr, type, allowMultiple) {
       case 'float': return ['HEAPF32']; break;
       case 'double': return ['HEAPF64']; break;
       default: {
-        assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
         throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
-        return ['IHEAP', 'FHEAP'];
       }
     }
   }

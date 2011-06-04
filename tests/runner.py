@@ -301,7 +301,7 @@ if 'benchmark' not in sys.argv:
 
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         if js_engines is None:
-          js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE]
+          js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE]
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:

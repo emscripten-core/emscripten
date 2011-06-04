@@ -288,7 +288,7 @@ mergeInto(Library, {
     var srcData = SDL.surfaces[src];
     var dstData = SDL.surfaces[dst];
     assert(srcData.width === dstData.width && srcData.height === dstData.height);
-    {{{ makeCopyValue('dstData.buffer', 'srcData.buffer', 'srcData.width*srcData.height*4', 'i8') }}}
+    {{{ makeCopyValues('dstData.buffer', 'srcData.buffer', 'srcData.width*srcData.height*4', 'i8') }}}
     return 0;
   },
 
