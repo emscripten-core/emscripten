@@ -552,81 +552,67 @@ function intertyper(data, parseFunctions, baseLineNum) {
       this.forwardItem(item, 'Reintegrator');
     }
   });
-  // 'call'
-  substrate.addActor('Call', {
-    processItem: function(item) {
-      item.intertype = 'call';
-      if (['tail'].indexOf(item.tokens[0].text) != -1) {
-        item.tokens.splice(0, 1);
-      }
-      assertEq(item.tokens[0].text, 'call');
-      while (item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
-        item.tokens.splice(1, 1);
-      }
-      item.type = item.tokens[1].text;
-      Types.needAnalysis[item.type] = 0;
-      item.functionType = '';
-      while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS)) {
-        // We cannot compile assembly. If you hit this, perhaps tell the compiler not
-        // to generate arch-specific code? |-U__i386__ -U__x86_64__| might help, it undefines
-        // the standard archs.
-        assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
-        
-        item.functionType += item.tokens[2].text;
-        item.tokens.splice(2, 1);
-      }
-      var tokensLeft = item.tokens.slice(2);
-      item.ident = eatLLVMIdent(tokensLeft);
-      // We cannot compile assembly, see above.
-      assert(item.ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
-      if (item.ident.substr(-2) == '()') {
-        // See comment in isStructType()
-        item.ident = item.ident.substr(0, item.ident.length-2);
-        // Also, we remove some spaces which might occur.
-        while (item.ident[item.ident.length-1] == ' ') {
-          item.ident = item.ident.substr(0, item.ident.length-1);
-        }
-        item.params = [];
-      } else {
-        item.params = parseParamTokens(tokensLeft[0].item.tokens);
-      }
-      item.ident = toNiceIdent(item.ident);
-      if (item.indent == 2) {
-        // standalone call - not in assign
-        item.standalone = true;
-        return [item];
-      }
-      this.forwardItem(item, 'Reintegrator');
-      return null;
+  // 'call', 'invoke'
+  function makeCall(item, type) {
+    item.intertype = type;
+    if (['tail'].indexOf(item.tokens[0].text) != -1) {
+      item.tokens.splice(0, 1);
     }
-  });
-  // 'invoke'
-  substrate.addActor('Invoke', {
-    processItem: function(item) {
-      item.intertype = 'invoke';
-      item.functionType = '';
-      cleanOutTokens(keys(LLVM.CALLING_CONVENTIONS), item.tokens, 1);
-      while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1) {
-        item.functionType += item.tokens[2].text;
-        item.tokens.splice(2, 1);
+    assertEq(item.tokens[0].text, type);
+    while (item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
+      item.tokens.splice(1, 1);
+    }
+    item.type = item.tokens[1].text;
+    Types.needAnalysis[item.type] = 0;
+    item.functionType = '';
+    while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS)) {
+      // We cannot compile assembly. If you hit this, perhaps tell the compiler not
+      // to generate arch-specific code? |-U__i386__ -U__x86_64__| might help, it undefines
+      // the standard archs.
+      assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
+      
+      item.functionType += item.tokens[2].text;
+      item.tokens.splice(2, 1);
+    }
+    var tokensLeft = item.tokens.slice(2);
+    item.ident = eatLLVMIdent(tokensLeft);
+    // We cannot compile assembly, see above.
+    assert(item.ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
+    if (item.ident.substr(-2) == '()') {
+      // See comment in isStructType()
+      item.ident = item.ident.substr(0, item.ident.length-2);
+      // Also, we remove some spaces which might occur.
+      while (item.ident[item.ident.length-1] == ' ') {
+        item.ident = item.ident.substr(0, item.ident.length-1);
       }
+      item.params = [];
+    } else {
+      item.params = parseParamTokens(tokensLeft[0].item.tokens);
+    }
+    item.ident = toNiceIdent(item.ident);
+    if (type === 'invoke') {
       cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
-      item.type = item.tokens[1].text;
-      Types.needAnalysis[item.type] = 0;
-      item.ident = toNiceIdent(item.tokens[2].text);
-      item.params = parseParamTokens(item.tokens[3].item.tokens);
       item.toLabel = toNiceIdent(item.tokens[6].text);
       item.unwindLabel = toNiceIdent(item.tokens[9].text);
-      if (item.indent == 2) {
-        // standalone call - not in assign
-        item.standalone = true;
-        return [item];
-      }
-      this.forwardItem(item, 'Reintegrator');
-      return null;
+    }
+    if (item.indent == 2) {
+      // standalone call - not in assign
+      item.standalone = true;
+      return [item];
+    }
+    this.forwardItem(item, 'Reintegrator');
+    return null;
+  }
+  substrate.addActor('Call', {
+    processItem: function(item) {
+      return makeCall.call(this, item, 'call');
     }
   });
-
+  substrate.addActor('Invoke', {
+    processItem: function(item) {
+      return makeCall.call(this, item, 'invoke');
+    }
+  });
   // 'alloca'
   substrate.addActor('Alloca', {
     processItem: function(item) {
