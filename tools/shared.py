@@ -23,8 +23,8 @@ LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
 if '-s' not in SPIDERMONKEY_ENGINE:
   SPIDERMONKEY_ENGINE += ['-s'] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
 
-if 'stackQuota' not in str(SPIDERMONKEY_ENGINE):
-  SPIDERMONKEY_ENGINE += ['-e', "stackQuota(100000000000); ; gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of stack&gc
+if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+  SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
 
 # Utilities
 
