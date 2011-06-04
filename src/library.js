@@ -229,7 +229,7 @@ var Library = {
     var text = __formatString(-src, ptr); // |-|src tells formatstring to use C-style params (typically they are from varargs)
     var i;
     for (i = 0; i < num; i++) {
-      {{{ makeCopyValue('dst', 'i', 'text', 'i', 'i8') }}}
+      {{{ makeCopyValue('dst+i', 'text+i', 1, 'i8') }}}
       if ({{{ makeGetValue('dst', 'i', 'i8') }}} == 0) break;
     }
     return i; // Actually, should return how many *would* have been written, if the |num| had not stopped us.
@@ -622,28 +622,9 @@ var Library = {
 #if ASSERTIONS
     assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');
 #endif
-    var curr;
-#if USE_TYPED_ARRAYS == 2
-    var stop = src + num;
-    var fast = dest%4 === src%4;
-    while (src%4 !== 0 && src < stop) {
-      HEAP8[dest++] = HEAP8[src++];
-    }
-    while (src+4 <= stop && fast) {
-      HEAP32[dest] = HEAP32[src];
-      src += 4;
-      dest += 4;
-    }
-    while (src < stop) {
-      HEAP8[dest++] = HEAP8[src++];
-    }
-#else
-    for (var i = 0; i < num; i++) {
-      // TODO: optimize for the typed arrays case
-      // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
-      {{{ makeCopyValue('dest', 'i', 'src', 'i', 'null', ' || 0') }}};
-    }
-#endif
+    // TODO: optimize for the typed arrays case
+    // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
+    {{{ makeCopyValue('dest', 'src', 'num', 'null', ' || 0') }}};
   },
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
@@ -696,7 +677,7 @@ var Library = {
   strcpy: function(pdest, psrc) {
     var i = 0;
     do {
-      {{{ makeCopyValue('pdest', 'i', 'psrc', 'i', 'i8') }}}
+      {{{ makeCopyValue('pdest+i', 'psrc+i', 1, 'i8') }}}
       i ++;
     } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
   },
@@ -714,7 +695,7 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     do {
-      {{{ makeCopyValue('pdest', 'len+i', 'psrc', 'i', 'i8') }}}
+      {{{ makeCopyValue('pdest+len+i', 'psrc+i', 1, 'i8') }}}
       i ++;
     } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
     return pdest;
@@ -724,7 +705,7 @@ var Library = {
     var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
     var i = 0;
     while(1) {
-      {{{ makeCopyValue('pdest', 'len+i', 'psrc', 'i', 'i8') }}}
+      {{{ makeCopyValue('pdest+len+i', 'psrc+i', 1, 'i8') }}}
       if ({{{ makeGetValue('pdest', 'len+i', 'i8') }}} == 0) break;
       i ++;
       if (i == num) {
@@ -934,7 +915,7 @@ var Library = {
   // LLVM specifics
 
   llvm_va_copy: function(ppdest, ppsrc) {
-    {{{ makeCopyValue('ppdest', 0, 'ppsrc', 0, 'null') }}}
+    {{{ makeCopyValue('ppdest', 'ppsrc', QUANTUM_SIZE, 'null') }}}
     /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
     var psrc = IHEAP[ppsrc]-1;
     var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values

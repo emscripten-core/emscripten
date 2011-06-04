@@ -725,14 +725,42 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   }
 }
 
-function makeCopyValue(dest, destPos, src, srcPos, type, modifier) {
-  if (type !== 'null') {
-    return makeSetValue(dest, destPos, makeGetValue(src, srcPos, type) + (modifier || ''), type);
+function makeCopyValue(dest, src, num, type, modifier) {
+  function safety() {
+    return ';' + (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + '+$mcpi$, ' + src + '+$mcpi$)' : '');
   }
-  // Null is special-cased: We copy over all heaps
-  return makeGetSlabs(dest, 'null', true).map(function(slab) {
-    return slab + '[' + dest + ' + ' + destPos + ']=' + slab + '[' + src + ' + ' + srcPos + ']'
-  }).join('; ') + ';' + (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + dest + ' + ' + destPos + ', ' + src + ' + ' + srcPos + ')' : '');
+  if (USE_TYPED_ARRAYS in set(0, 1)) {
+    return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
+      (type !== 'null' ? makeSetValue(dest, '$mcpi$', makeGetValue(src, '$mcpi$', type) + (modifier || ''), type)
+                       : // Null is special-cased: We copy over all heaps
+                        makeGetSlabs(dest, 'null', true).map(function(slab) {
+                          return slab + '[' + dest + '+$mcpi$]=' + slab + '[' + src + '+$mcpi$]'
+                        }).join('; ') + safety()
+      ) + '\n' + '}';
+  } else { // USE_TYPED_ARRAYS == 2
+    return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
+           '  HEAP8[' + dest + '+$mcpi$] = HEAP8[' + src + '+$mcpi$]; ' + safety() + ';\n';
+           '}';
+/* TODO: rework something like this potential optimizing code
+    if (isNumber(num) && num < 12) {
+    } else { // num >= 12 or unknown
+    }
+    var stop = src + num;
+    var fast = dest%4 === src%4;
+    while (src%4 !== 0 && src < stop) {
+      HEAP8[dest++] = HEAP8[src++];
+    }
+    while (src+4 <= stop && fast) {
+      HEAP32[dest] = HEAP32[src];
+      src += 4;
+      dest += 4;
+    }
+    while (src < stop) {
+      HEAP8[dest++] = HEAP8[src++];
+    }
+  }
+*/
+  }
 }
 
 // Given two values and an operation, returns the result of that operation.
