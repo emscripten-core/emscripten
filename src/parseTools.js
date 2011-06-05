@@ -660,6 +660,18 @@ function checkSafeHeap() {
 }
 
 
+function getHeapOffset(offset, type) {
+  if (USE_TYPED_ARRAYS !== 2) {
+    return offset;
+  } else {
+    if (getNativeFieldSize(type) > 4) {
+      dprint(type + ' has size > 4, which means we cannot be guaranteed to load it aligned! For now, USE_TYPED_ARRAYS==2 cannot handle that.');
+      return 'abort("size > 4, alignment issues with USE_TYPED_ARRAYS==2")';
+    }
+    return '((' + offset + ')>>' + (Math.log(getNativeFieldSize(type, true))/Math.LN2) + ')';
+  }
+}
+
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst) {
   if (isStructType(type)) {
@@ -677,7 +689,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst) {
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + !checkSafeHeap() + ')';
   } else {
-    return makeGetSlabs(ptr, type)[0] + '[' + offset + ']';
+    return makeGetSlabs(ptr, type)[0] + '[' + getHeapOffset(offset, type) + ']';
   }
 }
 
@@ -721,13 +733,13 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ');';
   } else {
-    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + offset + ']=' + value }).join('; ') + ';';
+    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ') + ';';
   }
 }
 
 function makeSetValues(ptr, pos, value, type, num) {
   function safety() {
-    return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + dest + '+$mcpi$, ' + type + ', 1)' : '');
+    return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + getFastValue(ptr, '+', pos) + '+$mspi$, ' + type + ', 1)' : '');
   }
   if (USE_TYPED_ARRAYS in set(0, 1)) {
     return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
@@ -868,7 +880,7 @@ function makeGetSlabs(ptr, type, allowMultiple) {
       case 'i8': return ['HEAP8']; break;
       case 'i16': return ['HEAP16']; break;
       case 'i32': return ['HEAP32']; break;
-      case 'i64': return ['HEAP64']; break;
+      case 'i64': return ['abort("No HEAP64")']; break;
       case 'float': return ['HEAPF32']; break;
       case 'double': return ['HEAPF64']; break;
       default: {

@@ -72,13 +72,14 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #else
 #if USE_TYPED_ARRAYS == 2
   assert(type != 'null', 'typed arrays 2 with null type!');
+  if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
     case 'i8': HEAP8[dest] = value; break;
-    case 'i16': HEAP16[dest] = value; break;
-    case 'i32': HEAP32[dest] = value; break;
-    case 'i64': HEAP64[dest] = value; break;
-    case 'float': HEAPF32[dest] = value; break;
-    case 'double': HEAPF64[dest] = value; break;
+    case 'i16': HEAP16[dest>>1] = value; break;
+    case 'i32': HEAP32[dest>>2] = value; break;
+    case 'i64': abort('no HEAP64'); break;
+    case 'float': HEAPF32[dest>>2] = value; break;
+    case 'double': HEAPF64[dest>>3] = value; break;
     default: throw 'weird type for typed array II: ' + type + new Error().stack;
   }
 #else
@@ -97,13 +98,14 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
   }
 #else
 #if USE_TYPED_ARRAYS == 2
+  if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
     case 'i8': return HEAP8[dest]; break;
-    case 'i16': return HEAP16[dest]; break;
-    case 'i32': return HEAP32[dest]; break;
-    case 'i64': return HEAP64[dest]; break;
-    case 'float': return HEAPF32[dest]; break;
-    case 'double': return HEAPF64[dest]; break;
+    case 'i16': return HEAP16[dest>>1]; break;
+    case 'i32': return HEAP32[dest>>2]; break;
+    case 'i64': abort('no HEAP64'); break;
+    case 'float': return HEAPF32[dest>>2]; break;
+    case 'double': return HEAPF64[dest>>3]; break;
     default: throw 'weird type for typed array II: ' + type;
   }
   return null;
@@ -293,7 +295,10 @@ function Pointer_make(slab, pos, allocator, types) {
     assert(type, 'Must know what type to store in Pointer_make!');
 #endif
 
-    if (type === 'i8') {
+    if (type === 'i1') {
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'i1') }}}
+      i += {{{ getNativeFieldSize('i1', true) }}};
+    } else if (type === 'i8') {
       {{{ makeSetValue(0, 'ret+i', 'curr', 'i8') }}}
       i += {{{ getNativeFieldSize('i8', true) }}};
     } else if (type === 'i16') {
@@ -302,16 +307,18 @@ function Pointer_make(slab, pos, allocator, types) {
     } else if (type === 'i32' || type[type.length-1] === '*') { // hardcoded pointers as 32-bit
       {{{ makeSetValue(0, 'ret+i', 'curr', 'i32') }}}
       i += {{{ getNativeFieldSize('i32', true) }}};
-    } else if (type === 'i64') {
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'i64') }}}
-      i += {{{ getNativeFieldSize('i64', true) }}};
     } else if (type === 'float') {
       {{{ makeSetValue(0, 'ret+i', 'curr', 'float') }}}
       i += {{{ getNativeFieldSize('float', true) }}};
+    } else if (type === 'i64') {
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'i64') }}}
+      i += {{{ getNativeFieldSize('i64', true) }}};
     } else if (type === 'double') {
       {{{ makeSetValue(0, 'ret+i', 'curr', 'double') }}}
       i += {{{ getNativeFieldSize('double', true) }}};
-    } else throw 'invalid type for Pointer_make: ' + type;
+    } else {
+      abort('invalid type for Pointer_make: ' + type);
+    }
   }
 
   return ret;
@@ -379,13 +386,13 @@ function __initializeRuntime__() {
     var FAST_MEMORY = TOTAL_MEMORY/32;
     HEAP = new Array(FAST_MEMORY);
     for (var i = 0; i < FAST_MEMORY; i++) {
-      HEAP[i] = 0; // XXX We do *not* use {{{ makeSetValue(0, 'i', 0, 'null') }}} here, since this is done just to optimize runtime speed
+      HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
     }
 #if USE_TYPED_ARRAYS == 1
     IHEAP = FHEAP = HEAP;
 #endif
 #if USE_TYPED_ARRAYS == 2
-    HEAP8 = HEAP16 = HEAP32 = HEAPF32 = HEAPF64 = HEAP;
+    abort('Cannot fallback to non-typed array case in USE_TYPED_ARRAYS == 2: Code is too specialized');
 #endif
   }
 

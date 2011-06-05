@@ -25,6 +25,7 @@ var settings = JSON.parse(readline());
 for (setting in settings) {
   this[setting] = settings[setting];
 }
+
 var CONSTANTS = { 'QUANTUM_SIZE': QUANTUM_SIZE };
 
 if (CORRECT_SIGNS >= 2) {
@@ -41,6 +42,10 @@ if (SAFE_HEAP >= 2) {
 }
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
+
+// Settings sanity checks
+
+assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
 
 // Load compiler code
 
