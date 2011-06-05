@@ -900,7 +900,7 @@ var Library = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0
       ];
-      me.ret = Pointer_make([Pointer_make(values, 0, ALLOC_STATIC, 'void*')+256], 0, ALLOC_STATIC, 'i16');
+      me.ret = Pointer_make([Pointer_make(values, 0, ALLOC_STATIC, 'i16')+256], 0, ALLOC_STATIC, 'void*');
 #if USE_TYPED_ARRAYS == 0
       assert(HEAP[HEAP[me.ret]] == 2);
       assert(HEAP[HEAP[me.ret]-2] == 0);

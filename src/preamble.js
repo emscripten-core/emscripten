@@ -262,32 +262,56 @@ function Pointer_make(slab, pos, allocator, types) {
   pos = pos ? pos : 0;
   assert(pos === 0); // TODO: remove 'pos'
   if (slab === HEAP) return pos;
-  var size = slab.length;
-
-  var i;
-#if ASSERTIONS
-  for (i = 0; i < size; i++) {
-    if (slab[i] === undefined) {
-      throw 'Invalid element in slab at ' + new Error().stack; // This can be caught, and you can try again to allocate later, see globalFuncs in run()
-    }
+  var zeroinit, size;
+  if (typeof slab === 'number') {
+    zeroinit = true;
+    size = slab;
+  } else {
+    zeroinit = false;
+    size = slab.length;
   }
-#endif
 
   // Finalize
   var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
 
-  var type = typeof types === 'string' ? types : null;
+  var singleType = typeof types === 'string' ? types : null;
 
-  for (i = 0; i < size; i++) {
-    var curr = slab[i];
+  var i = 0, type;
+  while (i < size) {
+    var curr = zeroinit ? 0 : slab[i];
 
     if (typeof curr === 'function') {
       curr = Runtime.getFunctionIndex(curr);
     }
 
-    if (type || types[i]) {
-      {{{ makeSetValue(0, 'ret+i', 'curr', '#type || types[i]') }}}
+    type = singleType || types[i];
+    if (type === 0) {
+      i++;
+      continue;
     }
+#if ASSERTIONS
+    assert(type, 'Must know what type to store in Pointer_make!');
+#endif
+
+    if (type === 'i8') {
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'i8') }}}
+      i += {{{ getNativeFieldSize('i8', true) }}};
+    } else if (type === 'i16') {
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'i16') }}}
+      i += {{{ getNativeFieldSize('i16', true) }}};
+    } else if (type === 'i32' || type[type.length-1] === '*') { // hardcoded pointers as 32-bit
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'i32') }}}
+      i += {{{ getNativeFieldSize('i32', true) }}};
+    } else if (type === 'i64') {
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'i64') }}}
+      i += {{{ getNativeFieldSize('i64', true) }}};
+    } else if (type === 'float') {
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'float') }}}
+      i += {{{ getNativeFieldSize('float', true) }}};
+    } else if (type === 'double') {
+      {{{ makeSetValue(0, 'ret+i', 'curr', 'double') }}}
+      i += {{{ getNativeFieldSize('double', true) }}};
+    } else throw 'invalid type for Pointer_make: ' + type;
   }
 
   return ret;
@@ -488,8 +512,8 @@ function intArrayToString(array) {
   return ret;
 }
 
-var unSign = {{{ unSign.toString() }}}
-var reSign = {{{ reSign.toString() }}}
+{{{ unSign }}}
+{{{ reSign }}}
 
 // Use console read if available, otherwise we are in a browser, use an XHR
 if (!this['read']) {
