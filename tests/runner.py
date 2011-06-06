@@ -1715,6 +1715,9 @@ if 'benchmark' not in sys.argv:
           self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
+        global USE_TYPED_ARRAYS
+        if USE_TYPED_ARRAYS == 2: return self.skip() # relies on double values
+
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
         self.do_test(src, output, ['3', '16'])
@@ -2492,6 +2495,7 @@ class %s(T):
     USE_TYPED_ARRAYS = %d
     INVOKE_RUN = 1
     RELOOP = OPTIMIZE = embetter
+    if USE_TYPED_ARRAYS == 2: RELOOP = 0 # XXX
     QUANTUM_SIZE = quantum_size
     ASSERTIONS = 1-embetter
     SAFE_HEAP = 1-(embetter and llvm_opts)
@@ -2517,8 +2521,8 @@ TT = %s
     for name, compiler, quantum, embetter, typed_arrays in [
       ('clang', CLANG, 1, 0, 0), ('clang', CLANG, 4, 0, 0), ('llvm_gcc', LLVM_GCC, 4, 0, 0),
       ('clang', CLANG, 1, 1, 1), ('clang', CLANG, 4, 1, 1), ('llvm_gcc', LLVM_GCC, 4, 1, 1),
-#      ('clang', CLANG, 4, 1, 2),
-#      ('llvm_gcc', LLVM_GCC, 4, 0, 2)
+      #('clang', CLANG, 4, 1, 2),
+      #('llvm_gcc', LLVM_GCC, 4, 1, 2),
     ]:
       fullname = '%s_%d_%d%s%s' % (
         name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)

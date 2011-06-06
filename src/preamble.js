@@ -51,6 +51,17 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
     }
   }
 }
+#if USE_TYPED_ARRAYS == 2
+var warned64 = false;
+function warn64() {
+  if (!warned64) {
+    __ATEXIT__.push(function() {
+      print('Warning: using a 64-bit type with USE_TYPED_ARRAYS == 2. This is emulated as a 32-bit value, and will likely fail horribly.');
+    });
+    warned64 = true;
+  }
+}
+#endif
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if SAFE_HEAP_LOG
   print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
@@ -78,12 +89,12 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   assert(type != 'null', 'typed arrays 2 with null type!');
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
-    case 'i8': HEAP8[dest] = value; break;
+    case 'i1': case 'i8': HEAP8[dest] = value; break;
     case 'i16': assert(dest % 2 === 0, type + ' loads must be aligned'); HEAP16[dest>>1] = value; break;
     case 'i32': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAP32[dest>>2] = value; break;
-    case 'i64': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
+    case 'i64': assert(dest % 4 === 0, type + ' loads must be aligned'); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
     case 'float': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAPF32[dest>>2] = value; break;
-    case 'double': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
+    case 'double': assert(dest % 4 === 0, type + ' loads must be aligned'); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
     default: throw 'weird type for typed array II: ' + type + new Error().stack;
   }
 #else
@@ -113,7 +124,7 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
 #endif
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
-    case 'i8': {
+    case 'i1': case 'i8': {
 #if SAFE_HEAP_LOG
       print('SAFE_HEAP load: ' + [dest, originalType, HEAP8[dest], ignore]);
 #endif
@@ -133,6 +144,7 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
       print('SAFE_HEAP load: ' + [dest, originalType, HEAP32[dest], ignore]);
 #endif
       assert(dest % 4 === 0, type + ' loads must be aligned');
+      if (type === 'i64') warn64();
       return HEAP32[dest>>2];
       break;
     }
@@ -141,6 +153,7 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
       print('SAFE_HEAP load: ' + [dest, originalType, HEAPF32[dest], ignore]);
 #endif
       assert(dest % 4 === 0, type + ' loads must be aligned');
+      if (type === 'double') warn64();
       return HEAPF32[dest>>2];
       break;
     }
@@ -452,7 +465,7 @@ function __initializeRuntime__() {
 }
 
 function __shutdownRuntime__() {
-  while( __ATEXIT__.length > 0) {
+  while(__ATEXIT__.length > 0) {
     var atexit = __ATEXIT__.pop();
     var func = atexit.func;
     if (typeof func === 'number') {
