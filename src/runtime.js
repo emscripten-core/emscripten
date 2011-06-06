@@ -22,6 +22,7 @@ RuntimeGenerator = {
 
   // An allocation that lives as long as the current function call
   stackAlloc: function(size) {
+    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + (QUANTUM_SIZE - (isNumber(size) ? Math.min(size, QUANTUM_SIZE) : QUANTUM_SIZE)) + ';';
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK);
     if (ASSERTIONS) {
       ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
@@ -31,6 +32,7 @@ RuntimeGenerator = {
 
   stackEnter: function(initial) {
     if (initial === 0 && SKIP_STACK_IN_SMALL) return '';
+    if (USE_TYPED_ARRAYS === 2) initial = Runtime.forceAlign(initial);
     var ret = 'var __stackBase__  = STACKTOP; STACKTOP += ' + initial;
     if (ASSERTIONS) {
       ret += '; assert(STACKTOP < STACK_MAX)';
@@ -59,7 +61,7 @@ RuntimeGenerator = {
     if (typeof quantum !== 'number') {
       quantum = '(quantum ? quantum : QUANTUM_SIZE)';
     }
-    return target + ' = Math.ceil(' + target + '/' + quantum + ')*' + quantum + ';';
+    return target + ' = ' + Runtime.forceAlign(target, quantum) + ';';
   }
 };
 
@@ -70,9 +72,14 @@ function unInline(name_, params) {
 }
 
 Runtime = {
-  stackAlloc: unInline('stackAlloc', ['size']),
-  staticAlloc: unInline('staticAlloc', ['size']),
-  alignMemory: unInline('alignMemory', ['size', 'quantum']),
+  forceAlign: function(target, quantum) {
+    quantum = quantum || QUANTUM_SIZE;
+    if (isNumber(target) && isNumber(quantum)) {
+      return Math.ceil(target/quantum)*quantum;
+    } else {
+      return 'Math.ceil((' + target + ')/' + quantum + ')*' + quantum;
+    }
+  },
 
   isNumberType: function(type) {
     return type in Runtime.INT_TYPES || type in Runtime.FLOAT_TYPES;
@@ -166,6 +173,10 @@ Runtime = {
     return ret;
   }
 };
+
+Runtime.stackAlloc = unInline('stackAlloc', ['size']);
+Runtime.staticAlloc = unInline('staticAlloc', ['size']);
+Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum']);
 
 function getRuntime() {
   var ret = 'var Runtime = {\n';

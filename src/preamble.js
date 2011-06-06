@@ -52,6 +52,10 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   }
 }
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
+#if SAFE_HEAP_LOG
+  print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
+#endif
+
   if (!ignore && !value && value !== 0 && value !== false) { // false can be the result of a mathop comparator
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
@@ -75,11 +79,11 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
     case 'i8': HEAP8[dest] = value; break;
-    case 'i16': HEAP16[dest>>1] = value; break;
-    case 'i32': HEAP32[dest>>2] = value; break;
-    case 'i64': abort('no HEAP64'); break;
-    case 'float': HEAPF32[dest>>2] = value; break;
-    case 'double': HEAPF64[dest>>3] = value; break;
+    case 'i16': assert(dest % 2 === 0, type + ' loads must be aligned'); HEAP16[dest>>1] = value; break;
+    case 'i32': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAP32[dest>>2] = value; break;
+    case 'i64': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
+    case 'float': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAPF32[dest>>2] = value; break;
+    case 'double': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
     default: throw 'weird type for typed array II: ' + type + new Error().stack;
   }
 #else
@@ -92,24 +96,61 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
 
 #if USE_TYPED_ARRAYS == 1
   if (type in Runtime.FLOAT_TYPES) {
+#if SAFE_HEAP_LOG
+    print('SAFE_HEAP load: ' + [dest, type, FHEAP[dest], ignore]);
+#endif
     return FHEAP[dest];
   } else {
+#if SAFE_HEAP_LOG
+    print('SAFE_HEAP load: ' + [dest, type, IHEAP[dest], ignore]);
+#endif
     return IHEAP[dest];
   }
 #else
 #if USE_TYPED_ARRAYS == 2
+#if SAFE_HEAP_LOG
+  var originalType = type;
+#endif
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
-    case 'i8': return HEAP8[dest]; break;
-    case 'i16': return HEAP16[dest>>1]; break;
-    case 'i32': return HEAP32[dest>>2]; break;
-    case 'i64': abort('no HEAP64'); break;
-    case 'float': return HEAPF32[dest>>2]; break;
-    case 'double': return HEAPF64[dest>>3]; break;
+    case 'i8': {
+#if SAFE_HEAP_LOG
+      print('SAFE_HEAP load: ' + [dest, originalType, HEAP8[dest], ignore]);
+#endif
+      return HEAP8[dest];
+      break;
+    }
+    case 'i16': {
+#if SAFE_HEAP_LOG
+      print('SAFE_HEAP load: ' + [dest, originalType, HEAP16[dest], ignore]);
+#endif
+      assert(dest % 2 === 0, type + ' loads must be aligned');
+      return HEAP16[dest>>1];
+      break;
+    }
+    case 'i32': case 'i64': { // XXX store int64 as int32
+#if SAFE_HEAP_LOG
+      print('SAFE_HEAP load: ' + [dest, originalType, HEAP32[dest], ignore]);
+#endif
+      assert(dest % 4 === 0, type + ' loads must be aligned');
+      return HEAP32[dest>>2];
+      break;
+    }
+    case 'float': case 'double': { // XXX store doubles as floats
+#if SAFE_HEAP_LOG
+      print('SAFE_HEAP load: ' + [dest, originalType, HEAPF32[dest], ignore]);
+#endif
+      assert(dest % 4 === 0, type + ' loads must be aligned');
+      return HEAPF32[dest>>2];
+      break;
+    }
     default: throw 'weird type for typed array II: ' + type;
   }
   return null;
 #else
+#if SAFE_HEAP_LOG
+  print('SAFE_HEAP load: ' + [dest, type, HEAP[dest], ignore]);
+#endif
   return HEAP[dest];
 #endif
 #endif
@@ -350,7 +391,7 @@ var HEAP;
 var IHEAP, FHEAP;
 #endif
 #if USE_TYPED_ARRAYS == 2
-var HEAP8, HEAP16, HEAP32, HEAPF32, HEAPF64;
+var HEAP8, HEAP16, HEAP32, HEAPF32;
 #endif
 
 var STACK_ROOT, STACKTOP, STACK_MAX;
@@ -377,7 +418,6 @@ function __initializeRuntime__() {
     HEAP16 = new Int16Array(buffer);
     HEAP32 = new Int32Array(buffer);
     HEAPF32 = new Float32Array(buffer);
-    HEAPF64 = new Float64Array(buffer);
 #endif
   } else
 #endif

@@ -302,6 +302,8 @@ if 'benchmark' not in sys.argv:
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         if js_engines is None:
           js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE]
+        if USE_TYPED_ARRAYS == 2:
+          js_engines = [SPIDERMONKEY_ENGINE] # when oh when will v8 support typed arrays in the console
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
@@ -2514,8 +2516,9 @@ TT = %s
   for llvm_opts in [0,1]:
     for name, compiler, quantum, embetter, typed_arrays in [
       ('clang', CLANG, 1, 0, 0), ('clang', CLANG, 4, 0, 0), ('llvm_gcc', LLVM_GCC, 4, 0, 0),
-      ('clang', CLANG, 1, 1, 1), ('clang', CLANG, 4, 1, 1), ('llvm_gcc', LLVM_GCC, 4, 1, 1)#,
-#                                 ('clang', CLANG, 4, 1, 2), ('llvm_gcc', LLVM_GCC, 4, 1, 2)
+      ('clang', CLANG, 1, 1, 1), ('clang', CLANG, 4, 1, 1), ('llvm_gcc', LLVM_GCC, 4, 1, 1),
+#      ('clang', CLANG, 4, 1, 2),
+#      ('llvm_gcc', LLVM_GCC, 4, 0, 2)
     ]:
       fullname = '%s_%d_%d%s%s' % (
         name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)

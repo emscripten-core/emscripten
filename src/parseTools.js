@@ -665,8 +665,7 @@ function getHeapOffset(offset, type) {
     return offset;
   } else {
     if (getNativeFieldSize(type) > 4) {
-      dprint(type + ' has size > 4, which means we cannot be guaranteed to load it aligned! For now, USE_TYPED_ARRAYS==2 cannot handle that.');
-      return 'abort("size > 4, alignment issues with USE_TYPED_ARRAYS==2")';
+      type = 'i32'; // XXX we emulate 64-bit values as 32
     }
     return '((' + offset + ')>>' + (Math.log(getNativeFieldSize(type, true))/Math.LN2) + ')';
   }
@@ -876,13 +875,21 @@ function makeGetSlabs(ptr, type, allowMultiple) {
     }
   } else { // USE_TYPED_ARRAYS == 2)
     if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
+    function warn64() {
+      if (!Debugging.shownUTA2_64Warning) {
+        dprint('WARNING: .ll contains i64 or double values. These 64-bit values are dangerous in USE_TYPED_ARRAYS == 2.');
+        dprint('         We store i64 as i32, and double as float. This can cause serious problems!');
+        Debugging.shownUTA2_64Warning = true;
+      }
+    }
     switch(type) {
+      case 'i1': return ['HEAP8']; break;
       case 'i8': return ['HEAP8']; break;
       case 'i16': return ['HEAP16']; break;
       case 'i32': return ['HEAP32']; break;
-      case 'i64': return ['abort("No HEAP64")']; break;
       case 'float': return ['HEAPF32']; break;
-      case 'double': return ['HEAPF64']; break;
+      case 'i64': warn64(); return ['HEAP32']; break;
+      case 'double': warn64(); return ['HEAPF32']; break;
       default: {
         throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
       }

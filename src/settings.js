@@ -39,6 +39,13 @@ INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 
 OPTIMIZE = 0; // Optimize llvm operations into js commands
 RELOOP = 0; // Recreate js native loops from llvm data
 USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
+                      // 1 has two heaps, IHEAP (int32) and FHEAP (double),
+                      // and addresses there are a match for normal addresses. This wastes memory but can be fast.
+                      // 2 is a single heap, accessible through views as int8, int32, etc. This saves memory but
+                      // has more overhead of pointer calculations. It also is limited to storing doubles as floats,
+                      // simply because double stores are not necessarily 64-bit aligned, and we can only access
+                      // 64-bit aligned values with a 64-bit typed array. Likewise int64s are stored as int32's,
+                      // which is potentially very dangerous!
 SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                          // functions that have no basic stack usage. But, they
                          // may allocate stack later, and in a loop, this can be
@@ -51,6 +58,8 @@ SAFE_HEAP = 0; // Check each write to the heap against a list of blocked address
                // SAFE_HEAP_LINES, checking only the specified lines.
                // If equal to 3, checking all *but* the specified lines. Note
                // that 3 is the option you usually want here.
+SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
+
 LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops

@@ -534,6 +534,7 @@ function analyzer(data) {
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i].value;
           if (!item || item.intertype != 'alloca') break;
+          if (USE_TYPED_ARRAYS === 2) index = Runtime.forceAlign(index, Math.min(item.allocatedSize, QUANTUM_SIZE));
           item.allocatedIndex = index;
           index += item.allocatedSize;
           delete item.allocatedSize;
