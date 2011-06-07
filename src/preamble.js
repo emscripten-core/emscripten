@@ -13,6 +13,9 @@
 var HEAP_WATCHED = [];
 var HEAP_HISTORY = [];
 function SAFE_HEAP_CLEAR(dest) {
+#if SAFE_HEAP_LOG
+  print('SAFE_HEAP clear: ' + dest);
+#endif
   HEAP_HISTORY[dest] = [];
 }
 var SAFE_HEAP_ERRORS = 0;
@@ -169,6 +172,9 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
 #endif
 }
 function SAFE_HEAP_COPY_HISTORY(dest, src) {
+#if SAFE_HEAP_LOG
+  print('SAFE_HEAP copy: ' + [dest, src]);
+#endif
   HEAP_HISTORY[dest] = HEAP_HISTORY[src];
   SAFE_HEAP_ACCESS(dest, HEAP_HISTORY[dest] || null, true, false);
 }
