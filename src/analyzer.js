@@ -518,7 +518,6 @@ function analyzer(data) {
   substrate.addActor('StackAnalyzer', {
     processItem: function(data) {
       data.functions.forEach(function(func) {
-        var total = 0;
         var lines = func.labels[0].lines;
         for (var i = 0; i < lines.length; i++) {
           var line = lines[i];
@@ -527,9 +526,7 @@ function analyzer(data) {
           assert(isNumber(item.allocatedNum));
           item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
             calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
-          total += item.allocatedSize;
         }
-        func.initialStack = total;
         var index = 0;
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i].value;
@@ -539,6 +536,7 @@ function analyzer(data) {
           index += item.allocatedSize;
           delete item.allocatedSize;
         }
+        func.initialStack = index;
       });
       this.forwardItem(data, 'Relooper');
     }
