@@ -136,7 +136,7 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
     }
     case 'i16': {
 #if SAFE_HEAP_LOG
-      print('SAFE_HEAP load: ' + [dest, originalType, HEAP16[dest], ignore]);
+      print('SAFE_HEAP load: ' + [dest, originalType, HEAP16[dest>>1], ignore]);
 #endif
       assert(dest % 2 === 0, type + ' loads must be aligned');
       return HEAP16[dest>>1];
@@ -144,7 +144,7 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
     }
     case 'i32': case 'i64': { // XXX store int64 as int32
 #if SAFE_HEAP_LOG
-      print('SAFE_HEAP load: ' + [dest, originalType, HEAP32[dest], ignore]);
+      print('SAFE_HEAP load: ' + [dest, originalType, HEAP32[dest>>2], ignore]);
 #endif
       assert(dest % 4 === 0, type + ' loads must be aligned');
       if (type === 'i64') warn64();
@@ -153,7 +153,7 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
     }
     case 'float': case 'double': { // XXX store doubles as floats
 #if SAFE_HEAP_LOG
-      print('SAFE_HEAP load: ' + [dest, originalType, HEAPF32[dest], ignore]);
+      print('SAFE_HEAP load: ' + [dest, originalType, HEAPF32[dest>>2], ignore]);
 #endif
       assert(dest % 4 === 0, type + ' loads must be aligned');
       if (type === 'double') warn64();
