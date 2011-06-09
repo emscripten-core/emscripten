@@ -1027,11 +1027,7 @@ function makeSignOp(value, type, op) {
       if (op === 're') {
         return '((' + value + ')|0)';
       } else {
-        // If this is an ident, we can shortcut. If not, our shortcut could
-        // lead to multiple evaluation, so give up
-        if (isNiceIdent(value, true)) {
-          return '(' + value + ' >= 0 ? ' + value + ' : (' + value + '+' + (2*Math.abs(1 << 31)) + '))';
-        }
+        return '((' + value + ')>>>0)';
       }
     }
     return op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !AUTO_OPTIMIZE) + (
