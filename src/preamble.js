@@ -58,9 +58,9 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 var warned64 = false;
 function warn64() {
   if (!warned64) {
-    __ATEXIT__.push(function() {
+    __ATEXIT__.push({ func: function() {
       print('Warning: using a 64-bit type with USE_TYPED_ARRAYS == 2. This is emulated as a 32-bit value, and will likely fail horribly.');
-    });
+    } });
     warned64 = true;
   }
 }
