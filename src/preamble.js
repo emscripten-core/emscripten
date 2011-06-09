@@ -419,56 +419,55 @@ var STATICTOP;
 var HAS_TYPED_ARRAYS = false;
 var TOTAL_MEMORY = 50*1024*1024;
 
-function __initializeRuntime__() {
+// Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
-  HAS_TYPED_ARRAYS = false;
-  try {
-    HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array()['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-  } catch(e) {}
+HAS_TYPED_ARRAYS = false;
+try {
+  HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array()['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+} catch(e) {}
 
-  if (HAS_TYPED_ARRAYS) {
+if (HAS_TYPED_ARRAYS) {
 #if USE_TYPED_ARRAYS == 1
-    HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-    FHEAP = new Float64Array(TOTAL_MEMORY);
+  HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+  FHEAP = new Float64Array(TOTAL_MEMORY);
 #endif
 #if USE_TYPED_ARRAYS == 2
-    var buffer = new ArrayBuffer(TOTAL_MEMORY);
-    HEAP8 = new Int8Array(buffer);
-    HEAP16 = new Int16Array(buffer);
-    HEAP32 = new Int32Array(buffer);
-    HEAPF32 = new Float32Array(buffer);
+  var buffer = new ArrayBuffer(TOTAL_MEMORY);
+  HEAP8 = new Int8Array(buffer);
+  HEAP16 = new Int16Array(buffer);
+  HEAP32 = new Int32Array(buffer);
+  HEAPF32 = new Float32Array(buffer);
 #endif
-  } else
+} else
 #endif
-  {
-    // Without this optimization, Chrome is slow. Sadly, the constant here needs to be tweaked depending on the code being run...
-    var FAST_MEMORY = TOTAL_MEMORY/32;
-    HEAP = new Array(FAST_MEMORY);
-    for (var i = 0; i < FAST_MEMORY; i++) {
-      HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
-    }
+{
+  // Without this optimization, Chrome is slow. Sadly, the constant here needs to be tweaked depending on the code being run...
+  var FAST_MEMORY = TOTAL_MEMORY/32;
+  HEAP = new Array(FAST_MEMORY);
+  for (var i = 0; i < FAST_MEMORY; i++) {
+    HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
+  }
 #if USE_TYPED_ARRAYS == 1
-    IHEAP = FHEAP = HEAP;
+  IHEAP = FHEAP = HEAP;
 #endif
 #if USE_TYPED_ARRAYS == 2
-    abort('Cannot fallback to non-typed array case in USE_TYPED_ARRAYS == 2: Code is too specialized');
+  abort('Cannot fallback to non-typed array case in USE_TYPED_ARRAYS == 2: Code is too specialized');
 #endif
-  }
-
-  var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
-                                           // Also this ensures we leave 0 as an invalid address, 'NULL'
-  for (var i = 0; i < base.length; i++) {
-    {{{ makeSetValue(0, 'i', 'base[i]', 'i8') }}}
-  }
-
-  Module['HEAP'] = HEAP;
-
-  STACK_ROOT = STACKTOP = alignMemoryPage(10);
-  var TOTAL_STACK = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!
-  STACK_MAX = STACK_ROOT + TOTAL_STACK;
-
-  STATICTOP = alignMemoryPage(STACK_MAX);
 }
+
+var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
+                                         // Also this ensures we leave 0 as an invalid address, 'NULL'
+for (var i = 0; i < base.length; i++) {
+  {{{ makeSetValue(0, 'i', 'base[i]', 'i8') }}}
+}
+
+Module['HEAP'] = HEAP;
+
+STACK_ROOT = STACKTOP = alignMemoryPage(10);
+var TOTAL_STACK = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!
+STACK_MAX = STACK_ROOT + TOTAL_STACK;
+
+STATICTOP = alignMemoryPage(STACK_MAX);
 
 function __shutdownRuntime__() {
   while(__ATEXIT__.length > 0) {

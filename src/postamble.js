@@ -23,8 +23,6 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  __initializeRuntime__();
-
   var globalFuncs = [];
 
 {{GLOBAL_VARS}}
