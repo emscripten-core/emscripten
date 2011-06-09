@@ -389,24 +389,34 @@ function analyzer(data) {
           } else {
             obj.signed++;
           }
-          if (obj.unsigned + obj.signed >= obj.total && obj.found >= obj.total) return true; // see comment below
         }
-        return false;
       }
 
       item.functions.forEach(function(func) {
         func.lines.forEach(function(line, i) {
           if (line.intertype === 'assign' && line.value.intertype === 'load') {
-            var obj = { ident: line.ident, found: 0, unsigned: 0, signed: 0, total: func.variables[line.ident].uses };
+            var total = func.variables[line.ident].uses;
+            if (total === 0) return;
+            var obj = { ident: line.ident, found: 0, unsigned: 0, signed: 0, total: total };
 //print('zz SIGNALYZE ' + line.lineNum + ' : ' + dump(obj));
-            for (var j = i+1; j < func.lines.length; j++) {
-              if (walkInterdata(func.lines[j], seekIdent, seekMathop, obj)) break;
+            // in loops with phis, we can also be used *before* we are defined
+            var j = i-1, k = i+1;
+            while(1) {
+//print('        ' + [j >= 0 ? func.lines[j].lineNum : null, k < func.lines.length ? func.lines[k].lineNum : null, obj.found, obj.total]);
+              assert(j >= 0 || k < func.lines.length, 'Signalyzer ran out of space to look for sign indications for line ' + line.lineNum);
+              if (j >= 0 && walkInterdata(func.lines[j], seekIdent, seekMathop, obj)) break;
+              if (k < func.lines.length && walkInterdata(func.lines[k], seekIdent, seekMathop, obj)) break;
+              if (obj.total && obj.found >= obj.total) break; // see comment below
+              j -= 1;
+              k += 1;
             }
 //print('zz signz: ' + dump(obj));
             // unsigned+signed might be < total, since the same ident can appear multiple times in the same mathop.
             // found can actually be > total, since we currently have the same ident in a GEP (see cubescript test)
             // in the GEP item, and a child item (we have the ident copied onto the GEP item as a convenience).
-            // probably not a bug-causer, but FIXME. see also a reference to this above in seekmathop
+            // probably not a bug-causer, but FIXME. see also a reference to this above
+            // we also leave the loop above potentially early due to this. otherwise, though, we end up scanning the
+            // entire function in some cases which is very slow
             assert(obj.found >= obj.total, 'Could not Signalyze line ' + line.lineNum);
             line.value.unsigned = obj.unsigned > 0;
             dprint('vars', 'Signalyzer: ' + line.ident + ' has unsigned == ' + line.value.unsigned + ' (line ' + line.lineNum + ')');
