@@ -356,12 +356,12 @@ mergeInto(Library, {
     assert(obtained === 0, 'Cannot return obtained SDL audio params');
 
     SDL.audio = {
-      freq: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.freq', 'i32') }}},
-      format: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.format', 'i16') }}},
-      channels: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.channels', 'i8') }}},
-      samples: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.samples', 'i16') }}},
-      callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*') }}},
-      userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*') }}},
+      freq: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.freq', 'i32', 0, 1) }}},
+      format: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.format', 'i16', 0, 1) }}},
+      channels: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.channels', 'i8', 0, 1) }}},
+      samples: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.samples', 'i16', 0, 1) }}},
+      callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*', 0, 1) }}},
+      userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*', 0, 1) }}},
       paused: true,
       timer: null
     };
@@ -381,7 +381,7 @@ mergeInto(Library, {
       SDL.audio.pushAudio = function(ptr, size) {
         var mozBuffer = SDL.audio.mozBuffer;
         for (var i = 0; i < totalSamples; i++) {
-          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16') }}} / 65536)-1; // hardcoded 16-bit audio
+          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 1) }}} / 65536)-1; // hardcoded 16-bit audio
         }
         SDL.audio.mozOutput['mozWriteAudio'](mozBuffer);
       }

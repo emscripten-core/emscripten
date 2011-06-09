@@ -65,6 +65,7 @@ function warn64() {
   }
 }
 #endif
+
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if SAFE_HEAP_LOG
   print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
@@ -105,7 +106,8 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #endif
 #endif
 }
-function SAFE_HEAP_LOAD(dest, type, ignore) {
+
+function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
   SAFE_HEAP_ACCESS(dest, type, ignore);
 
 #if USE_TYPED_ARRAYS == 1
@@ -125,44 +127,36 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
 #if SAFE_HEAP_LOG
   var originalType = type;
 #endif
+  var ret;
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
     case 'i1': case 'i8': {
-#if SAFE_HEAP_LOG
-      print('SAFE_HEAP load: ' + [dest, originalType, HEAP8[dest], ignore]);
-#endif
-      return HEAP8[dest];
+      ret = (unsigned ? HEAPU8 : HEAP8)[dest];
       break;
     }
     case 'i16': {
-#if SAFE_HEAP_LOG
-      print('SAFE_HEAP load: ' + [dest, originalType, HEAP16[dest>>1], ignore]);
-#endif
       assert(dest % 2 === 0, type + ' loads must be aligned');
-      return HEAP16[dest>>1];
+      ret = (unsigned ? HEAPU16 : HEAP16)[dest>>1];
       break;
     }
     case 'i32': case 'i64': { // XXX store int64 as int32
-#if SAFE_HEAP_LOG
-      print('SAFE_HEAP load: ' + [dest, originalType, HEAP32[dest>>2], ignore]);
-#endif
       assert(dest % 4 === 0, type + ' loads must be aligned');
       if (type === 'i64') warn64();
-      return HEAP32[dest>>2];
+      ret = (unsigned ? HEAPU32 : HEAP32)[dest>>2];
       break;
     }
     case 'float': case 'double': { // XXX store doubles as floats
-#if SAFE_HEAP_LOG
-      print('SAFE_HEAP load: ' + [dest, originalType, HEAPF32[dest>>2], ignore]);
-#endif
       assert(dest % 4 === 0, type + ' loads must be aligned');
       if (type === 'double') warn64();
-      return HEAPF32[dest>>2];
+      ret = HEAPF32[dest>>2];
       break;
     }
     default: throw 'weird type for typed array II: ' + type;
   }
-  return null;
+#if SAFE_HEAP_LOG
+  print('SAFE_HEAP load: ' + [dest, originalType, ret, unsigned, ignore]);
+#endif
+  return ret;
 #else
 #if SAFE_HEAP_LOG
   print('SAFE_HEAP load: ' + [dest, type, HEAP[dest], ignore]);
@@ -171,6 +165,7 @@ function SAFE_HEAP_LOAD(dest, type, ignore) {
 #endif
 #endif
 }
+
 function SAFE_HEAP_COPY_HISTORY(dest, src) {
 #if SAFE_HEAP_LOG
   print('SAFE_HEAP copy: ' + [dest, src]);
@@ -178,12 +173,7 @@ function SAFE_HEAP_COPY_HISTORY(dest, src) {
   HEAP_HISTORY[dest] = HEAP_HISTORY[src];
   SAFE_HEAP_ACCESS(dest, HEAP_HISTORY[dest] || null, true, false);
 }
-function __Z16PROTECT_HEAPADDRPv(dest) {
-  HEAP_WATCHED[dest] = true;
-}
-function __Z18UNPROTECT_HEAPADDRPv(dest) {
-  delete HEAP_WATCHED[dest];
-}
+
 //==========================================
 #endif
 
@@ -390,7 +380,7 @@ function Pointer_stringify(ptr) {
   var i = 0;
   var t;
   while (1) {
-    t = String.fromCharCode({{{ makeGetValue('ptr', 'i', 'i8') }}});
+    t = String.fromCharCode({{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}});
     if (t == "\0") { break; } else {}
     ret += t;
     i += 1;
@@ -410,7 +400,7 @@ var HEAP;
 var IHEAP, FHEAP;
 #endif
 #if USE_TYPED_ARRAYS == 2
-var HEAP8, HEAP16, HEAP32, HEAPF32;
+var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
 #endif
 
 var STACK_ROOT, STACKTOP, STACK_MAX;
@@ -436,6 +426,9 @@ if (HAS_TYPED_ARRAYS) {
   HEAP8 = new Int8Array(buffer);
   HEAP16 = new Int16Array(buffer);
   HEAP32 = new Int32Array(buffer);
+  HEAPU8 = new Uint8Array(buffer);
+  HEAPU16 = new Uint16Array(buffer);
+  HEAPU32 = new Uint32Array(buffer);
   HEAPF32 = new Float32Array(buffer);
 #endif
 } else

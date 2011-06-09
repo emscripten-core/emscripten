@@ -672,12 +672,12 @@ function getHeapOffset(offset, type) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
     for (var i = 0; i < typeData.fields.length; i++) {
-      ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst));
+      ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst, unsigned));
     }
     return '{ ' + ret.join(', ') + ' }';
   }
@@ -686,9 +686,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst) {
   if (SAFE_HEAP) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
-    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + !checkSafeHeap() + ')';
+    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + (!checkSafeHeap()+0) + ')';
   } else {
-    return makeGetSlabs(ptr, type)[0] + '[' + getHeapOffset(offset, type) + ']';
+    return makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
   }
 }
 
@@ -860,7 +860,7 @@ function makePointer(slab, pos, allocator, type) {
          ')';
 }
 
-function makeGetSlabs(ptr, type, allowMultiple) {
+function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   assert(type);
   if (!USE_TYPED_ARRAYS) {
     return ['HEAP'];
@@ -883,12 +883,11 @@ function makeGetSlabs(ptr, type, allowMultiple) {
       }
     }
     switch(type) {
-      case 'i1': return ['HEAP8']; break;
-      case 'i8': return ['HEAP8']; break;
-      case 'i16': return ['HEAP16']; break;
-      case 'i32': return ['HEAP32']; break;
+      case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
+      case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
+      case 'i64': warn64();
+      case 'i32': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
       case 'float': return ['HEAPF32']; break;
-      case 'i64': warn64(); return ['HEAP32']; break;
       case 'double': warn64(); return ['HEAPF32']; break;
       default: {
         throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
@@ -1048,6 +1047,14 @@ function makeRounding(value, bits, signed) {
   return 'Math.floor(' + value + ')';
 }
 
+function isUnsignedOp(op, variant) {
+  return op in set('udiv', 'urem', 'uitofp', 'zext', 'lshr') || (variant && variant[0] == 'u');
+}
+
+function isSignedOp(op, variant) {
+  return op in set('sdiv', 'srem', 'sitofp', 'sext', 'ashr') || (variant && variant[0] == 's');
+}
+
 function processMathop(item) { with(item) {
   for (var i = 1; i <= 4; i++) {
     if (item['param'+i]) {
@@ -1059,10 +1066,10 @@ function processMathop(item) { with(item) {
       item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
     }
   }
-  if (op in set('udiv', 'urem', 'uitofp', 'zext', 'lshr') || (variant && variant[0] == 'u')) {
+  if (isUnsignedOp(op, variant)) {
     ident1 = makeSignOp(ident1, type, 'un');
     ident2 = makeSignOp(ident2, type, 'un');
-  } else if (op in set('sdiv', 'srem', 'sitofp', 'sext', 'ashr') || (variant && variant[0] == 's')) {
+  } else if (isSignedOp(op, variant)) {
     ident1 = makeSignOp(ident1, type, 're');
     ident2 = makeSignOp(ident2, type, 're');
   }
@@ -1199,4 +1206,27 @@ function processMathop(item) { with(item) {
     default: throw 'Unknown mathcmp op: ' + item.op;
   }
 } }
+
+// Walks through some intertype data, calling a function at every item. If
+// the function returns true, will stop the walk.
+// TODO: Use this in analyzer, possibly also in jsifier
+function walkInterdata(item, pre, post, obj) {
+  if (!item || !item.intertype) return false;
+//print('   walk: ' + [item.lineNum, item.intertype]);
+//if (item.intertype === 'value') print(dump(item));
+  if (pre(item, obj)) return true;
+  var originalObj = obj;
+  if (obj.replaceWith) obj = obj.replaceWith; // allow pre to replace the object we pass to all its children
+  if (item.value && walkInterdata(item.value, pre, post,  obj)) return true;
+  var i;
+  for (i = 1; i <= 4; i++) {
+    if (item['param'+i] && walkInterdata(item['param'+i], pre, post,  obj)) return true;
+  }
+  if (item.params) {
+    for (i = 0; i <= item.params.length; i++) {
+      if (walkInterdata(item.params[i], pre, post,  obj)) return true;
+    }
+  }
+  return post(item, originalObj, obj);
+}
 

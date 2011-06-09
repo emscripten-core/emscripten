@@ -638,7 +638,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       case VAR_NATIVIZED: {
         return value; // We have the actual value here
       }
-      case VAR_EMULATED: return makeGetValue(value, null, item.type);
+      case VAR_EMULATED: return makeGetValue(value, null, item.type, 0, item.unsigned);
       default: throw "unknown [load] impl: " + impl;
     }
   });
@@ -670,8 +670,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('mathop', processMathop);
 
   makeFuncLineActor('bitcast', function(item) {
-    var ident = toNiceIdent(item.ident);
-    return ident;
+    return item.ident;
   });
 
   function makeFunctionCall(ident, params, funcData) {

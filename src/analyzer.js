@@ -355,7 +355,64 @@ function analyzer(data) {
           dprint('vars', '// var ' + vname + ': ' + JSON.stringify(variable));
         }
       });
+      this.forwardItem(item, 'Signalyzer');
+    }
+  });
+
+  // Sign analyzer
+  //
+  // Analyze our variables and detect their signs. In USE_TYPED_ARRAYS == 2,
+  // we can read signed or unsigned values and prevent the need for signing
+  // corrections.
+  //
+  // For each variable that is the result of a Load, we look a little forward
+  // to see where it is used. We only care about mathops, since only they
+  // need signs.
+  //
+  substrate.addActor('Signalyzer', {
+    processItem: function(item) {
       this.forwardItem(item, 'QuantumFixer');
+      if (USE_TYPED_ARRAYS !== 2) return;
+
+      function seekIdent(item, obj) {
+//if (item.intertype === 'value') print('seeeeeeek ' + dump(item));
+        if (item.ident === obj.ident) {
+          obj.found++;
+//print('zz FOUNDZEY');
+        }
+      }
+
+      function seekMathop(item, obj) {
+        if (item.intertype === 'mathop' && obj.found && !obj.decided) {
+          if (isUnsignedOp(item.op, item.variant)) {
+            obj.unsigned++;
+          } else {
+            obj.signed++;
+          }
+          if (obj.unsigned + obj.signed >= obj.total && obj.found >= obj.total) return true; // see comment below
+        }
+        return false;
+      }
+
+      item.functions.forEach(function(func) {
+        func.lines.forEach(function(line, i) {
+          if (line.intertype === 'assign' && line.value.intertype === 'load') {
+            var obj = { ident: line.ident, found: 0, unsigned: 0, signed: 0, total: func.variables[line.ident].uses };
+//print('zz SIGNALYZE ' + line.lineNum + ' : ' + dump(obj));
+            for (var j = i+1; j < func.lines.length; j++) {
+              if (walkInterdata(func.lines[j], seekIdent, seekMathop, obj)) break;
+            }
+//print('zz signz: ' + dump(obj));
+            // unsigned+signed might be < total, since the same ident can appear multiple times in the same mathop.
+            // found can actually be > total, since we currently have the same ident in a GEP (see cubescript test)
+            // in the GEP item, and a child item (we have the ident copied onto the GEP item as a convenience).
+            // probably not a bug-causer, but FIXME. see also a reference to this above in seekmathop
+            assert(obj.found >= obj.total, 'Could not Signalyze line ' + line.lineNum);
+            line.value.unsigned = obj.unsigned > 0;
+            dprint('vars', 'Signalyzer: ' + line.ident + ' has unsigned == ' + line.value.unsigned + ' (line ' + line.lineNum + ')');
+          }
+        });
+      });
     }
   });
 

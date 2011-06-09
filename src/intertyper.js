@@ -636,6 +636,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.params = splitTokenList(item.tokens.slice(2, last)).map(function(segment) {
         var subSegments = splitTokenList(segment[0].item.tokens);
         return {
+          intertype: 'phiparam',
           label: toNiceIdent(subSegments[1][0].text),
           value: parseLLVMSegment(subSegments[0])
         };

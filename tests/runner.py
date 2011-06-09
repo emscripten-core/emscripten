@@ -496,12 +496,12 @@ if 'benchmark' not in sys.argv:
               *y = -1;
               printf("*%d*\\n", x);
             }
-            {
+            /*{ // This case is not checked. The hint for unsignedness is just the %u in printf, and we do not analyze that
               unsigned int x;
               unsigned int *y = &x;
               *y = -1;
               printf("*%u*\\n", x);
-            }
+            }*/
             {
               char x;
               char *y = &x;
@@ -523,7 +523,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
         '''
-        self.do_test(src, '*255*\n*65535*\n*4294967295*\n*-1*\n*-1*\n*-1*')
+        self.do_test(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
     def test_bitfields(self):
         global SAFE_HEAP; SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
@@ -2538,7 +2538,7 @@ class %s(T):
     USE_TYPED_ARRAYS = %d
     INVOKE_RUN = 1
     RELOOP = OPTIMIZE = embetter
-    if USE_TYPED_ARRAYS == 2: RELOOP = 0 # XXX
+    if USE_TYPED_ARRAYS == 2: RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in this case, and is very slow
     QUANTUM_SIZE = quantum_size
     ASSERTIONS = 1-embetter
     SAFE_HEAP = 1-(embetter and llvm_opts)
@@ -2562,8 +2562,10 @@ TT = %s
 
   for llvm_opts in [0,1]:
     for name, compiler, quantum, embetter, typed_arrays in [
-      ('clang', CLANG, 1, 0, 0), ('clang', CLANG, 4, 0, 0), ('llvm_gcc', LLVM_GCC, 4, 0, 0),
-      ('clang', CLANG, 1, 1, 1), ('clang', CLANG, 4, 1, 1), ('llvm_gcc', LLVM_GCC, 4, 1, 1),
+      ('clang', CLANG, 1, 0, 0), ('clang', CLANG, 4, 0, 0),
+      ('llvm_gcc', LLVM_GCC, 4, 0, 0),
+      ('clang', CLANG, 1, 1, 1), ('clang', CLANG, 4, 1, 1),
+      ('llvm_gcc', LLVM_GCC, 4, 1, 1),
       #('clang', CLANG, 4, 1, 2),
       #('llvm_gcc', LLVM_GCC, 4, 1, 2),
     ]:
