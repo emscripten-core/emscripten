@@ -471,6 +471,60 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
 
+        # Now let's see some code that should just work in USE_TYPED_ARRAYS == 2, but requires
+        # corrections otherwise
+        if USE_TYPED_ARRAYS == 2:
+          CORRECT_SIGNS = 0
+          CHECK_SIGNS = 1
+        else:
+          CORRECT_SIGNS = 1
+          CHECK_SIGNS = 0
+
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
+            {
+              unsigned char x;
+              unsigned char *y = &x;
+              *y = -1;
+              printf("*%d*\\n", x);
+            }
+            {
+              unsigned short x;
+              unsigned short *y = &x;
+              *y = -1;
+              printf("*%d*\\n", x);
+            }
+            {
+              unsigned int x;
+              unsigned int *y = &x;
+              *y = -1;
+              printf("*%u*\\n", x);
+            }
+            {
+              char x;
+              char *y = &x;
+              *y = 255;
+              printf("*%d*\\n", x);
+            }
+            {
+              char x;
+              char *y = &x;
+              *y = 65535;
+              printf("*%d*\\n", x);
+            }
+            {
+              char x;
+              char *y = &x;
+              *y = 0xffffffff;
+              printf("*%d*\\n", x);
+            }
+            return 0;
+          }
+        '''
+        self.do_test(src, '*255*\n*65535*\n*4294967295*\n*-1*\n*-1*\n*-1*')
+
     def test_bitfields(self):
         global SAFE_HEAP; SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
         src = '''
@@ -1881,18 +1935,7 @@ if 'benchmark' not in sys.argv:
                    #build_ll_hook=self.do_autodebug)
 
     def test_zlib(self):
-      global CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES
-
-      if COMPILER == LLVM_GCC:
-        # Test for line-specific corrections in gcc, and in clang do the opposite
-        global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-        CORRECT_SIGNS = 2
-        CORRECT_SIGNS_LINES = [
-          "trees.c:728", "inflate.c:1169", "deflate.c:1566", "trees.c:773", "trees.c:1089", "adler32.c:69", "trees.c:1233",
-          "deflate.c:1685", "inflate.c:850", "inflate.c:851", "trees.c:1148", "inflate.c:1333"
-        ]
-      else:
-        CORRECT_SIGNS = 1
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
 
       self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
