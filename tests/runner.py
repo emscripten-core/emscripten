@@ -2603,9 +2603,9 @@ else:
 
   global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = []
 
-  QUANTUM_SIZE = 1
+  QUANTUM_SIZE = 4
   RELOOP = OPTIMIZE = 1
-  USE_TYPED_ARRAYS = 0
+  USE_TYPED_ARRAYS = 2
   ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = 0
   INVOKE_RUN = 1
   CORRECT_SIGNS = 0
@@ -2613,7 +2613,7 @@ else:
   CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
   LLVM_OPTS = 1
 
-  TEST_REPS = 3
+  TEST_REPS = 4
   TOTAL_TESTS = 4
 
   tests_done = 0
@@ -2716,8 +2716,17 @@ atattccatctttgtgtgct
 ''')
 
     def test_raytrace(self):
-      src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
+      global QUANTUM_SIZE, USE_TYPED_ARRAYS
+      old_quantum = QUANTUM_SIZE
+      old_use_typed_arrays = USE_TYPED_ARRAYS
+      QUANTUM_SIZE = 1
+      USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code
+
+      src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['5', '64'], open(path_from_root('tests', 'raytrace_5_64.ppm'), 'r').read())
+
+      QUANTUM_SIZE = old_quantum
+      USE_TYPED_ARRAYS = old_use_typed_arrays
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
