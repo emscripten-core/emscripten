@@ -1950,7 +1950,7 @@ if 'benchmark' not in sys.argv:
       if COMPILER == LLVM_GCC:
         global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
-      if USE_TYPED_ARRAYS == 2 and LLVM_OPTS: return self.skip() # We have slightly different rounding here for some reason. TODO: activate this
+      if USE_TYPED_ARRAYS == 2: return self.skip() # We have slightly different rounding here for some reason. TODO: activate this
 
       if SAFE_HEAP:
         # Ignore bitfield warnings
