@@ -983,7 +983,7 @@ function getGetElementPtrIndexes(item) {
 function handleOverflow(text, bits) {
   if (!bits) return text;
   var correct = correctOverflows();
-  warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
+  warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits + ' at line ' + Framework.currItem.lineNum);
   if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !AUTO_OPTIMIZE) + (
     AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier(Framework.currItem.lineNum) + '"' : ''
   ) + ')';
