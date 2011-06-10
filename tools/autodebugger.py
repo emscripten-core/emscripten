@@ -141,7 +141,7 @@ for i in range(len(lines)):
   #if i == 5:
   #  lines[i] += '\n
 
-  m = re.match('  store (?P<type>i64|i32|i16|i8) %(?P<var>[\w.]+), .*', lines[i])
+  m = re.match('  store (?P<type>i64|i32|i16|i8|float|double) %(?P<var>[\w.]+), .*', lines[i])
   if m and m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
     lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), i+1+lines_added, m.group('type'), m.group('var'))
     lines_added += 1
