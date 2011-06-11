@@ -257,6 +257,12 @@ class RunnerCore(unittest.TestCase):
   def run_llvm_interpreter(self, args):
     return Popen([LLVM_INTERPRETER] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
+  def build_native(self, filename, compiler='g++'):
+    Popen([compiler, '-O3', filename, '-o', filename+'.native'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+
+  def run_native(self, filename, args):
+    Popen([filename+'.native'] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
+
   def assertContained(self, value, string):
     if type(value) is not str: value = value() # lazy loading
     if type(string) is not str: string = string()
@@ -2619,14 +2625,23 @@ else:
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TEST_REPS))
+  total_native_times = map(lambda x: 0., range(TEST_REPS))
 
   class Benchmark(RunnerCore):
-    def print_stats(self, times):
+    def print_stats(self, times, native_times):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
       std = math.sqrt(mean_of_squared - mean*mean)
-      print '   mean: %.3f (+-%.3f) seconds          (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
+
+      mean_native = sum(native_times)/len(native_times)
+      squared_native_times = map(lambda x: x*x, native_times)
+      mean_of_squared_native = sum(squared_native_times)/len(native_times)
+      std_native = math.sqrt(mean_of_squared_native - mean_native*mean_native)
+
+      print
+      print '   JavaScript  : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
+      print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f times slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, mean/mean_native)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
       self.pick_llvm_opts(3, True)
@@ -2656,7 +2671,7 @@ else:
 
         final_filename = filename + '.cc.js'
 
-      # Run
+      # Run JS
       global total_times
       times = []
       for i in range(TEST_REPS):
@@ -2669,22 +2684,25 @@ else:
           # Sanity check on output
           self.assertContained(expected_output, js_output)
 
-      self.print_stats(times)
+      # Run natively
+      self.build_native(filename)
+      global total_native_times
+      native_times = []
+      for i in range(TEST_REPS):
+        start = time.time()
+        self.run_native(filename, args)
+        curr = time.time()-start
+        native_times.append(curr)
+        total_native_times[i] += curr
+
+      self.print_stats(times, native_times)
 
       global tests_done
       tests_done += 1
       if tests_done == TOTAL_TESTS:
         print
         print 'Total stats:'
-        self.print_stats(total_times)
-
-    def zzztest_dlmalloc(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-      global CORRECT_SIGNS; CORRECT_SIGNS = 2
-      global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
-
-      src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
-      self.do_test(src, '*1,0*', ['200'])
+        self.print_stats(total_times, total_native_times)
 
     def test_primes(self):
       src = '''
@@ -2692,7 +2710,7 @@ else:
         #include<math.h>
         int main() {
           int primes = 0, curri = 2;
-          while (primes < 30000) {
+          while (primes < 100000) {
             int ok = true;
             for (int j = 2; j < sqrtf(curri); j++) {
               if (curri % j == 0) {
@@ -2709,20 +2727,15 @@ else:
           return 1;
         }
       '''
-      self.do_benchmark(src, [], 'lastprime: 348949.')
+      self.do_benchmark(src, [], 'lastprime: 1297001.')
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-      self.do_benchmark(src, ['9'], 'Pfannkuchen(9) = 30.')
+      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.')
 
     def test_fasta(self):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
-      self.do_benchmark(src, ['100000'], '''atgtgtaagaaaaagtttttaatatcatctaactcggtggaatgcacacttatggccaac
-
-tgaccttgggacgagttaagataccataagaggttgcctgtaagttaagataacaaaggg
-
-atattccatctttgtgtgct
-''')
+      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def test_raytrace(self):
       global QUANTUM_SIZE, USE_TYPED_ARRAYS
@@ -2732,7 +2745,7 @@ atattccatctttgtgtgct
       USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
-      self.do_benchmark(src, ['5', '64'], open(path_from_root('tests', 'raytrace_5_64.ppm'), 'r').read())
+      self.do_benchmark(src, ['7', '256'], '256 256')
 
       QUANTUM_SIZE = old_quantum
       USE_TYPED_ARRAYS = old_use_typed_arrays

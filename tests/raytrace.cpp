@@ -6,7 +6,9 @@
 #include <iostream>    // compile with ie g++ -O2 -ffast-math sphereflake.cc
 #include <stdlib.h>
 
-#include "emscripten.h"
+//#include "emscripten.h"
+
+static int outputLeft = 550; // limit output, so we do not benchmark speed of printing
 
 #define GIMME_SHADOWS  // usage: ./sphereflake [lvl=6] >pix.ppm
 
@@ -117,12 +119,18 @@ static void trace_rgss(const int width,const int height) {
 				ray.d=(scan+rgss[idx]).norm();
 				g+=ray_trace(pool,ray); /*trace*/
 			}
-			std::cout << int(scale*g)<< " ";
+      if (outputLeft) {
+  		  std::cout << int(scale*g)<< " ";
+        outputLeft--;
+      }
 			scan.x+=1; /*next pixel*/
 		}
 		scan.x=0;scan.y-=1; /*next line*/
 	}
-  std::cout << "\n"; // XXX Emscripten: std::endl crashes...
+  if (outputLeft) {
+    std::cout << "\n"; // XXX Emscripten: std::endl crashes...
+    outputLeft--;
+  }
 }
 	
 struct basis_t{ /* bogus and compact, exactly what we need */
