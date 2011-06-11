@@ -989,7 +989,7 @@ function handleOverflow(text, bits) {
   ) + ')';
   if (!correct) return text;
   if (bits <= 32) {
-    return '(' + text + ')&' + (Math.pow(2, bits) - 1);
+    return '((' + text + ')&' + (Math.pow(2, bits) - 1) + ')';
   } else {
     return text; // We warned about this earlier
   }

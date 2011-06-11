@@ -5700,15 +5700,31 @@ History:
 
 // Emscripten tests
 
-int main() {
-  #define NUM 10
+int main(int ac, char **av)
+{
+  int NUM = ac > 1 ? atoi(av[1]) : 0;
   char* allocations[NUM];
-  for (int i = 0; i < NUM; i++) {
+  for (int i = 0; i < NUM/2; i++) {
+    allocations[i] = (char*)malloc((11*i)%1024 + 256);
+    assert(allocations[i]);
+    if (i > 10 && i%4 == 1 && allocations[i-10]) {
+      free(allocations[i-10]);
+      allocations[i-10] = NULL;
+    }
+  }
+  for (int i = NUM/2; i < NUM; i++) {
     allocations[i] = (char*)malloc(1024*(i+1));
+    assert(allocations[i]);
+    if (i > 10 && i%4 != 1 && allocations[i-10]) {
+      free(allocations[i-10]);
+      allocations[i-10] = NULL;
+    }
   }
   char* first = allocations[0];
   for (int i = 0; i < NUM; i++) {
-    free(allocations[i]);
+    if (allocations[i]) {
+      free(allocations[i]);
+    }
   }
   char *last = (char*)malloc(512); // should be identical, as we free'd it all
   char *newer = (char*)malloc(512); // should be different
