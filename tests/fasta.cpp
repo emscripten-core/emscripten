@@ -7,6 +7,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+// limit output, so we do not benchmark speed of printing
+void puts_limited(char *x)
+{
+  static int left = 550;
+  int len = strlen(x);
+  if (len <= left) {
+    puts(x);
+    left -= len;
+    return;
+  }
+  if (left > 0) {
+    x[left] = '\0';
+    puts(x);
+    x[left] = 'z';
+    left = 0;
+  }
+}
+
 struct Random {
    enum { IM = 139968, IA = 3877, IC = 29573 };
    Random() : last(42) {}
@@ -68,7 +86,7 @@ struct LineBuffer {
       lastN = N + 1;
       return *this;
    }
-   void writeline() { puts(buffer); }
+   void writeline() { puts_limited(buffer); }
 protected:
    char buffer[lineLength + 2];
    size_t lastN;
@@ -87,7 +105,7 @@ struct RotatingString {
       memcpy(temp, buffer + pos, bytes);
       temp[bytes] = '\n';
       temp[bytes] = '\0';
-      puts(temp);
+      puts_limited(temp);
       delete temp;
       pos += bytes;
       if ( pos > size )
