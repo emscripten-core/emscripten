@@ -1776,19 +1776,20 @@ if 'benchmark' not in sys.argv:
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
         self.do_test(src, output, ['3', '16'])
 
-    def test_dlmalloc(self):
-        # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
-        #              used, see Mozilla bug 593659.
-        global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
-        src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
-        self.do_test(src, '*1,0*')
-
     def test_fasta(self):
         results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
 (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''') ]
         for i, j in results:
           src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
+
+    def test_dlmalloc(self):
+      #global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      #global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:4816', 'src.cpp:4191']
+
+      src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
+      self.do_test(src, '*1,0*', ['100'])
 
     def zzztest_gl(self):
       # Switch to gcc from g++ - we don't compile properly otherwise (why?)

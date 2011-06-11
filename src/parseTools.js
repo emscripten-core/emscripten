@@ -1014,13 +1014,19 @@ function finalizeLLVMParameter(param) {
 
 function makeSignOp(value, type, op) {
   if (!value) return value;
+  var bits, full;
+  if (type in Runtime.INT_TYPES) {
+    bits = parseInt(type.substr(1));
+    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !AUTO_OPTIMIZE) + (
+      AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier(Framework.currItem.lineNum) + '"' : ''
+    ) + ')';
+    // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
+    if (isNumber(value)) {
+      return eval(full).toString();
+    }
+  }
   if (!correctSigns() && !CHECK_SIGNS) return value;
   if (type in Runtime.INT_TYPES) {
-    var bits = parseInt(type.substr(1));
-    if (isNumber(value)) {
-      // Sign/unsign constants at compile time
-      return eval(op + 'Sign(' + value + ', ' + bits + ', 1)').toString();
-    }
     // shortcuts for 32-bit case
     if (bits === 32 && !CHECK_SIGNS) {
       if (op === 're') {
@@ -1029,12 +1035,9 @@ function makeSignOp(value, type, op) {
         return '((' + value + ')>>>0)';
       }
     }
-    return op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !AUTO_OPTIMIZE) + (
-      AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier(Framework.currItem.lineNum) + '"' : ''
-    ) + ')'; // If we are correcting a specific sign here, do not check for it
-  } else {
-    return value;
+    return full;
   }
+  return value;
 }
 
 function makeRounding(value, bits, signed) {
