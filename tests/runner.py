@@ -1785,14 +1785,11 @@ if 'benchmark' not in sys.argv:
 
     def test_dlmalloc(self):
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-      #global CHECK_SIGNS; CHECK_SIGNS = 1
-      #global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1 # Why work with this? XXX
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
-      #global AUTO_OPTIMIZE; AUTO_OPTIMIZE = 1
 
       src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
-      self.do_test(src, '*1,0*', ['100'])#, build_ll_hook=self.do_autodebug)
+      self.do_test(src, '*1,0*', ['200'])
 
     def zzztest_gl(self):
       # Switch to gcc from g++ - we don't compile properly otherwise (why?)
