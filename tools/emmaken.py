@@ -21,7 +21,8 @@ Example uses:
 
    where PATH is the path to this file.
 
- * With CMake, do something like
+ * With CMake, the same command will work (with cmake instead of ./configure). You may also be
+   able to do the following in your CMakeLists.txt:
 
     SET(CMAKE_C_COMPILER "PATH/emmaken.py")
     SET(CMAKE_CXX_COMPILER "PATH/emmakenxx.py")
@@ -98,7 +99,7 @@ try:
     # ranlib
     os.execvp(LLVM_DIS, ['-show-annotations', sys.argv[1]])
     sys.exit(0)
-  if sys.argv[1] in ['x', 't']:
+  if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
     # noop ar
     sys.exit(0)
 
@@ -168,7 +169,7 @@ try:
   print >> sys.stderr, "Running:", call, ' '.join(newargs)
 
   os.execvp(call, [call] + newargs)
-except:
-  print 'Error in emmaken.py. Is the config file ~/.emscripten set up properly?'
+except Exception, e:
+  print 'Error in emmaken.py. Is the config file ~/.emscripten set up properly?', e
   raise
 
