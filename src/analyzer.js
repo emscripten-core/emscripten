@@ -907,14 +907,10 @@ function analyzer(data) {
           return ret;
         }
 
-        if (canReturn) return makeLoop();
+        if (entries.length === 1 && canReturn) return makeLoop();
 
         // === handle multiple branches from the entry with a 'multiple' ===
         //
-        // We cannot loop back to the entries, but aside from that we know nothing. We
-        // try to create as much structure as possible, leaving subblocks to be |emulated|
-        // if we can't do any better.
-
         // For each entry, try to 'build it out' as much as possible. Add labels, until
         //    * hit a post label
         //    * hit a label reachable by another actual entry
@@ -957,33 +953,34 @@ function analyzer(data) {
 
         dprint('relooping', '  Considering multiple, canHandle: ' + getLabelIds(handlingNow));
 
-        if (handlingNow.length == 0) {
-          // Spaghetti - cannot even find a single label to do before the rest. What a mess.
-          throw "Spaghetti encountered in relooping.";
+        if (handlingNow.length > 0) {
+          // This is a 'multiple'
+
+          var actualEntries = getLabelIds(actualEntryLabels);
+          dprint('relooping', '   Creating multiple, with entries: ' + actualEntries + ', post entries: ' + dump(postEntryLabels));
+          actualEntryLabels.forEach(function(actualEntryLabel) {
+            dprint('relooping', '      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
+
+            keys(postEntryLabels).forEach(function(post) {
+              replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + blockId);
+            });
+            // Create child block
+            actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict);
+          });
+          return {
+            type: 'multiple',
+            id: blockId,
+            needBlockId: true,
+            entries: actualEntries,
+            entryLabels: actualEntryLabels,
+            labels: handlingNow,
+            next: makeBlock(labels.filter(function(label) { return handlingNow.indexOf(label) == -1 }), keys(postEntryLabels), labelsDict)
+          };
         }
 
-        // This is a 'multiple'
+        assert(canReturn, 'If not a multiple, must be able to create a loop');
 
-        var actualEntries = getLabelIds(actualEntryLabels);
-        dprint('relooping', '   Creating multiple, with entries: ' + actualEntries + ', post entries: ' + dump(postEntryLabels));
-        actualEntryLabels.forEach(function(actualEntryLabel) {
-          dprint('relooping', '      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
-
-          keys(postEntryLabels).forEach(function(post) {
-            replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + blockId);
-          });
-          // Create child block
-          actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict);
-        });
-        return {
-          type: 'multiple',
-          id: blockId,
-          needBlockId: true,
-          entries: actualEntries,
-          entryLabels: actualEntryLabels,
-          labels: handlingNow,
-          next: makeBlock(labels.filter(function(label) { return handlingNow.indexOf(label) == -1 }), keys(postEntryLabels), labelsDict)
-        };
+        return makeLoop();
       }
 
       // TODO: each of these can be run in parallel
