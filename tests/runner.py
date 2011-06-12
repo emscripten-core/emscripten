@@ -2729,6 +2729,28 @@ else:
       '''
       self.do_benchmark(src, [], 'lastprime: 1297001.')
 
+    def test_memops(self):
+      src = '''
+        #include<stdio.h>
+        #include<string.h>
+        #include<stdlib.h>
+        int main() {
+          int N = 10*1024*1024;
+          int final = 0;
+          char *buf = (char*)malloc(N);
+          for (int t = 0; t < 20; t++) {
+            for (int i = 0; i < N; i++)
+              buf[i] = (i*i)%256;
+            memcpy(buf, buf+N/2, N/2);
+            for (int i = 0; i < N; i++)
+              final += buf[i] & 1;
+          }
+          printf("final: %d.\\n", final);
+          return 1;
+        }      
+      '''
+      self.do_benchmark(src, [], 'final: 104857600.')
+
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
       self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.')

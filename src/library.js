@@ -622,7 +622,6 @@ var Library = {
 #if ASSERTIONS
     assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');
 #endif
-    // TODO: optimize for the typed arrays case
     // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
     {{{ makeCopyValues('dest', 'src', 'num', 'null', ' || 0') }}};
   },
