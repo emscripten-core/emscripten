@@ -2621,7 +2621,7 @@ else:
   LLVM_OPTS = 1
 
   TEST_REPS = 4
-  TOTAL_TESTS = 4
+  TOTAL_TESTS = 5
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TEST_REPS))
