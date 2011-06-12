@@ -390,10 +390,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               first = false;
             });
           } else {
-            block.entryLabels.forEach(function(entryLabel, i) {
-              var last = i === block.entryLabels.length-1;
-              ret += indent + multipleIdent + (first ? '' : 'else ') + // add the final |if| only when we have assertions (we have a final else there)
-                              ((!last || ASSERTIONS) ? 'if (__label__ == ' + getLabelId(entryLabel.ident) + ')' : '') + ' {\n';
+            // TODO: Find out cases where the final if is not needed - where we know we must be in a specific label at that point
+            block.entryLabels.forEach(function(entryLabel) {
+              ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
               ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
               ret += indent + multipleIdent + '}\n';
               first = false;
