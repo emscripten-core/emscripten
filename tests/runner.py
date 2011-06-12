@@ -2576,9 +2576,11 @@ TT = %s
 
   for llvm_opts in [0,1]:
     for name, compiler, quantum, embetter, typed_arrays in [
-      ('clang', CLANG, 1, 0, 0), ('clang', CLANG, 4, 0, 0),
+      ('clang', CLANG, 1, 0, 0),
+      ('clang', CLANG, 4, 0, 0),
       ('llvm_gcc', LLVM_GCC, 4, 0, 0),
-      ('clang', CLANG, 1, 1, 1), ('clang', CLANG, 4, 1, 1),
+      ('clang', CLANG, 1, 1, 1),
+      ('clang', CLANG, 4, 1, 1),
       ('llvm_gcc', LLVM_GCC, 4, 1, 1),
       ('clang', CLANG, 4, 1, 2),
       #('llvm_gcc', LLVM_GCC, 4, 1, 2),
@@ -2730,18 +2732,18 @@ else:
       self.do_benchmark(src, [], 'lastprime: 1297001.')
 
     def test_memops(self):
+      # memcpy would also be interesting, however native code uses SSE/NEON/etc. and is much, much faster than JS can be
       src = '''
         #include<stdio.h>
         #include<string.h>
         #include<stdlib.h>
         int main() {
-          int N = 10*1024*1024;
+          int N = 4*1024*1024;
           int final = 0;
           char *buf = (char*)malloc(N);
           for (int t = 0; t < 20; t++) {
             for (int i = 0; i < N; i++)
-              buf[i] = (i*i)%256;
-            memcpy(buf, buf+N/2, N/2);
+              buf[i] = (i*i + final)%256;
             for (int i = 0; i < N; i++)
               final += buf[i] & 1;
           }
@@ -2749,7 +2751,7 @@ else:
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 104857600.')
+      self.do_benchmark(src, [], 'final: 41943040.')
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
