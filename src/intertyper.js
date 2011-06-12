@@ -425,6 +425,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
             });
           }
         } else {
+          if (!item.tokens[3]) throw 'Did you run llvm-dis with -show-annotations? (b)';
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
           if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
