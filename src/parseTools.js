@@ -759,14 +759,14 @@ function makeSetValues(ptr, pos, value, type, num) {
       'while ($dest$%4 !== 0 && $dest$ < $stop$) {\n' +
       '  ' + safety('$dest$') + '; HEAP8[$dest$++] = ' + value + ';\n' +
       '}\n' +
-      '$dest$ = $dest$ >> 2;\n' +
+      '$dest$ >>= 2;\n' +
       '$stop4$ = $stop$ >> 2;\n' +
       'while ($dest$ < $stop4$) {\n' +
          safety('($dest$<<2)+0', '($src$<<2)+0') + ';' + safety('($dest$<<2)+1', '($src$<<2)+1') + ';' + 
          safety('($dest$<<2)+2', '($src$<<2)+2') + ';' + safety('($dest$<<2)+3', '($src$<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
       '  HEAP32[$dest$++] = $value4$;\n' + // this is the fast inner loop we try hard to stay in
       '}\n' +
-      '$dest$ = $dest$ << 2;\n' +
+      '$dest$ <<= 2;\n' +
       'while ($dest$ < $stop$) {\n' +
       '  ' + safety('$dest$') + '; HEAP8[$dest$++] = ' + value + ';\n' +
       '}'
@@ -803,16 +803,16 @@ function makeCopyValues(dest, src, num, type, modifier) {
       '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
       '}\n' +
       'if ($fast$) {\n' +
-      '  $src$ = $src$ >> 2;\n' +
-      '  $dest$ = $dest$ >> 2;\n' +
+      '  $src$ >>= 2;\n' +
+      '  $dest$ >>= 2;\n' +
       '  $stop4$ = $stop$ >> 2;\n' +
       '  while ($src$ < $stop4$) {\n' +
            safety('($dest$<<2)+0', '($src$<<2)+0') + ';' + safety('($dest$<<2)+1', '($src$<<2)+1') + ';' + 
            safety('($dest$<<2)+2', '($src$<<2)+2') + ';' + safety('($dest$<<2)+3', '($src$<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
       '    HEAP32[$dest$++] = HEAP32[$src$++];\n' + // this is the fast inner loop we try hard to stay in
       '  }\n' +
-      '  $src$ = $src$ << 2;\n' +
-      '  $dest$ = $dest$ << 2;\n' +
+      '  $src$ <<= 2;\n' +
+      '  $dest$ <<= 2;\n' +
       '}\n' +
       'while ($src$ < $stop$) {\n' +
       '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
