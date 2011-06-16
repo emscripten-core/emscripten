@@ -615,13 +615,15 @@ We will now take a look at some performance benchmarks:
 
 \bigskip
 
-\begin{tabular}{ l | c | c | c }
+\begin{tabular}{ l | c | c | c || c }
   \hline
-  \textbf{benchmark} & \textbf{JS} & \textbf{gcc} & \textbf{ratio} \\
-  fannkuch (9)     & 0.577 & 0.054 &  10.68 \\
-  fasta (100,000)  & 0.640 & 0.055 &  11.63 \\
-  primes           & 0.490 & 0.160 &   3.06 \\
-  raytrace (5, 64) & 1.078 & 0.033 &  32.66 \\
+  \textbf{benchmark} & \textbf{SM}    & \textbf{V8}    & \textbf{gcc} & \textbf{ratio} \\
+  \hline
+  fannkuch (10)      & 1.158          & \textbf{0.931} & 0.231       &  4.04 \\
+  fasta (2100000)    & \textbf{1.115} & 1.128          & 0.452       &  2.47 \\
+  primes             & \textbf{1.443} & 3.194          & 0.438       &  3.29 \\
+  raytrace (7,256)   & \textbf{1.930} & 2.944          & 0.228       &  8.47 \\
+  dlmalloc (400,400) & 5.050          & \textbf{1.880} & 0.315       &  5.97 \\
   \hline
 \end{tabular}
 
@@ -634,23 +636,29 @@ can be found at \url{https://github.com/kripken/emscripten/tree/master/tests}
 embedded inside runner.py in the function test\_primes). The second
 column is the elapsed time (in seconds) when running the compiled code (generated using all Emscripten and LLVM
 optimizations as well as the Closure Compiler) in the SpiderMonkey JavaScript
-engine (specifically, the JaegerMonkey branch, checked out April 2nd, 2011, running with \emph{-m -n -a}).
-The third column is the elapsed time (in seconds) when running the original code compiled with \emph{gcc -O3},
-using GCC 4.4.4. The last column is the ratio, that is, how much slower the JavaScript code is
-when compared to gcc. All the tests were run on a Lenovo N500 laptop with
-an Intel T6400 Core 2 Duo CPU clocked at 1.2GHz, running on Ubuntu 10.10.
+engine (specifically the JaegerMonkey branch, checked out June 15th, 2011).
+The third column is the elapsed time when running the same JavaScript code in the V8 JavaScript engine
+(checked out Jun 15th, 2011). In both the second and third column lower values
+are better; the best of the two is in bold.
+The fourth column is the elapsed time when running the original code compiled with \emph{gcc -O3},
+using GCC 4.4.4. The last column is the ratio, that is, how much slower the JavaScript code
+(running in the faster of the two engines for that test) is
+when compared to gcc. All the tests were run on a MacBook Pro with
+an Intel i7 CPU clocked at 2.66GHz, running on Ubuntu 10.04.
 
-Clearly the results greatly vary by the benchmark, with the generated JavaScript running from 3.06 to 32.66 times
-slower. It appears that code that does simple numerical operations -- like
+Clearly the results greatly vary by the benchmark, with the generated JavaScript running from 2.47 to 8.47 times
+slower. There are also significant differences between the two JavaScript engines, with each better
+at some of the benchmarks.
+It appears that code that does simple numerical operations -- like
 the primes test -- can run fairly fast, while code that has a lot of memory
 accesses, for example due to using structures -- like the raytrace test --
-will be much slower. (The main issue with structures is that Emscripten does not
+will be slower. (The main issue with structures is that Emscripten does not
 `nativize' them yet, as it does to simple local variables.)
 
 Code that has a mix of simple numerical operations and memory accesses
-tends to run around 10 times slower than the most-optimized C++ code,
-as we can see in the fannkuch and fasta benchmarks. While a factor of 10
-is a significant slowdown, it is still more than fast enough for
+tends to run around 5-10 times slower than the most-optimized C++ code,
+as we can see above. While this is a significant slowdown compared to
+optimized native code, it is still more than fast enough for
 many purposes, and the main point of course is that the code can run
 anywhere the web can be accessed. Further work on Emscripten is expected to
 improve the speed as well, as are improvements to LLVM, the Closure

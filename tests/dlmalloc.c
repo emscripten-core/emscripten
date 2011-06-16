@@ -5703,31 +5703,37 @@ History:
 int main(int ac, char **av)
 {
   int NUM = ac > 1 ? atoi(av[1]) : 0;
-  char* allocations[NUM];
-  for (int i = 0; i < NUM/2; i++) {
-    allocations[i] = (char*)malloc((11*i)%1024 + 256);
-    assert(allocations[i]);
-    if (i > 10 && i%4 == 1 && allocations[i-10]) {
-      free(allocations[i-10]);
-      allocations[i-10] = NULL;
+  int REPS = ac > 2 ? atoi(av[2]) : 0;
+  int c1 = 0, c2 = 0;
+  for (int x = 0; x < REPS; x++) {
+    char* allocations[NUM];
+    for (int i = 0; i < NUM/2; i++) {
+      allocations[i] = (char*)malloc((11*i)%1024 + x);
+      assert(allocations[i]);
+      if (i > 10 && i%4 == 1 && allocations[i-10]) {
+        free(allocations[i-10]);
+        allocations[i-10] = NULL;
+      }
     }
-  }
-  for (int i = NUM/2; i < NUM; i++) {
-    allocations[i] = (char*)malloc(1024*(i+1));
-    assert(allocations[i]);
-    if (i > 10 && i%4 != 1 && allocations[i-10]) {
-      free(allocations[i-10]);
-      allocations[i-10] = NULL;
+    for (int i = NUM/2; i < NUM; i++) {
+      allocations[i] = (char*)malloc(1024*(i+1));
+      assert(allocations[i]);
+      if (i > 10 && i%4 != 1 && allocations[i-10]) {
+        free(allocations[i-10]);
+        allocations[i-10] = NULL;
+      }
     }
-  }
-  char* first = allocations[0];
-  for (int i = 0; i < NUM; i++) {
-    if (allocations[i]) {
-      free(allocations[i]);
+    char* first = allocations[0];
+    for (int i = 0; i < NUM; i++) {
+      if (allocations[i]) {
+        free(allocations[i]);
+      }
     }
+    char *last = (char*)malloc(512); // should be identical, as we free'd it all
+    char *newer = (char*)malloc(512); // should be different
+    c1 += first == last;
+    c2 += first == newer;
   }
-  char *last = (char*)malloc(512); // should be identical, as we free'd it all
-  char *newer = (char*)malloc(512); // should be different
-  printf("*%d,%d*\n", first == last, first == newer);
+  printf("*%d,%d*\n", c1, c2);
 }
 
