@@ -59,50 +59,61 @@ class RunnerCore(unittest.TestCase):
     return dirname
 
   # Similar to LLVM::createStandardModulePasses()
-  def pick_llvm_opts(self, optimization_level, optimize_size):
+  def pick_llvm_opts(self, optimization_level, optimize_size, allow_nonportable=False):
     global LLVM_OPT_OPTS
     LLVM_OPT_OPTS = []
 
     if optimization_level == 0: return
 
+    if allow_nonportable:
+      LLVM_OPT_OPTS.append('-O3')
+      return
+
+    # createStandardAliasAnalysisPasses
+    #LLVM_OPT_OPTS.append('-tbaa')
+    #LLVM_OPT_OPTS.append('-basicaa') # makes fannkuch slow but primes fast
+
     LLVM_OPT_OPTS.append('-globalopt')
     LLVM_OPT_OPTS.append('-ipsccp')
     LLVM_OPT_OPTS.append('-deadargelim')
-    # nonportable LLVM_OPT_OPTS.append('-instcombine')
+    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
     LLVM_OPT_OPTS.append('-simplifycfg')
+
     LLVM_OPT_OPTS.append('-prune-eh')
     LLVM_OPT_OPTS.append('-inline')
     LLVM_OPT_OPTS.append('-functionattrs')
     if optimization_level > 2:
       LLVM_OPT_OPTS.append('-argpromotion')
-    #LLVM_OPT_OPTS.append('-scalarrepl') # XXX Danger: Can turn a memcpy into something that violates the load-store
-    #                                    #             consistency hypothesis. See hashnum() in lua.
-    #                                    #             Note: this opt is of great importance for raytrace...
-    ##LLVM_OPT_OPTS.append('-early-cse') # ?
+
+    if allow_nonportable: LLVM_OPT_OPTS.append('-scalarrepl') # XXX Danger: Can turn a memcpy into something that violates the load-store
+    #                                                         #             consistency hypothesis. See hashnum() in lua.
+    #                                                         #             Note: this opt is of great importance for raytrace...
+    if allow_nonportable: LLVM_OPT_OPTS.append('-early-cse') # ?
     LLVM_OPT_OPTS.append('-simplify-libcalls')
     LLVM_OPT_OPTS.append('-jump-threading')
-    ##LLVM_OPT_OPTS.append('-correlated-propagation') # ?
+    if allow_nonportable: LLVM_OPT_OPTS.append('-correlated-propagation') # ?
     LLVM_OPT_OPTS.append('-simplifycfg')
-    # nonportable LLVM_OPT_OPTS.append('-instcombine')
+    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
+
     LLVM_OPT_OPTS.append('-tailcallelim')
     LLVM_OPT_OPTS.append('-simplifycfg')
     LLVM_OPT_OPTS.append('-reassociate')
     LLVM_OPT_OPTS.append('-loop-rotate')
     LLVM_OPT_OPTS.append('-licm')
     LLVM_OPT_OPTS.append('-loop-unswitch') # XXX should depend on optimize_size
-    # nonportable LLVM_OPT_OPTS.append('-instcombine')
+    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
     LLVM_OPT_OPTS.append('-indvars')
-    ##LLVM_OPT_OPTS.append('-loop-idiom') # ?
+    if allow_nonportable: LLVM_OPT_OPTS.append('-loop-idiom') # ?
     LLVM_OPT_OPTS.append('-loop-deletion')
     LLVM_OPT_OPTS.append('-loop-unroll')
-    # nonportable LLVM_OPT_OPTS.append('-instcombine')
-    #if optimization_level > 1:
-    #  LLVM_OPT_OPTS.append('-gvn') # XXX Danger: Messes up Lua output for unknown reasons
-    #                               #             Note: this opt is of minor importance for raytrace...
+    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
+    if optimization_level > 1:
+      if allow_nonportable: LLVM_OPT_OPTS.append('-gvn') # XXX Danger: Messes up Lua output for unknown reasons
+                                                         #             Note: this opt is of minor importance for raytrace...
     LLVM_OPT_OPTS.append('-memcpyopt') # Danger?
     LLVM_OPT_OPTS.append('-sccp')
 
-    # nonportable LLVM_OPT_OPTS.append('-instcombine')
+    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
     LLVM_OPT_OPTS.append('-jump-threading')
     LLVM_OPT_OPTS.append('-correlated-propagation')
     LLVM_OPT_OPTS.append('-dse')
@@ -2623,7 +2634,7 @@ else:
   LLVM_OPTS = 1
 
   TEST_REPS = 4
-  TOTAL_TESTS = 5
+  TOTAL_TESTS = 6
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TEST_REPS))
@@ -2646,7 +2657,8 @@ else:
       print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f times slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, mean/mean_native)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
-      self.pick_llvm_opts(3, True)
+      global USE_TYPED_ARRAYS
+      self.pick_llvm_opts(3, True, USE_TYPED_ARRAYS == 2)
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')
