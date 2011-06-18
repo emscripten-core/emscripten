@@ -264,7 +264,7 @@ var Library = {
     init: function() {
       try {
         _stdin = Pointer_make([0], null, ALLOC_STATIC, 'void*');
-        {{{ makeSetValue('_stdin', '0', "STDIO.prepare('<<stdin>>')", 'i32') }}};
+        {{{ makeSetValue('_stdin', '0', "STDIO.prepare('<<stdin>>', null, null, true)", 'i32') }}};
       } catch(e){} // stdin/out/err may not exist if not needed
       try {
         _stdout = Pointer_make([0], null, ALLOC_STATIC, 'void*');
@@ -278,7 +278,7 @@ var Library = {
     cleanFilename: function(filename) {
       return filename.replace('./', '');
     },
-    prepare: function(filename, data, print_) {
+    prepare: function(filename, data, print_, interactiveInput) {
       filename = STDIO.cleanFilename(filename);
       var stream = STDIO.counter++;
       STDIO.streams[stream] = {
@@ -287,6 +287,7 @@ var Library = {
         position: 0,
         eof: 0,
         error: 0,
+        interactiveInput: interactiveInput, // true for stdin - on the web, we allow interactive input
         print: print_ // true for stdout and stderr - we print when receiving data for them
       };
       STDIO.filenames[filename] = stream;
@@ -310,6 +311,14 @@ var Library = {
     read: function(stream, ptr, size) {
       var info = STDIO.streams[stream];
       if (!info) return -1;
+      if (info.interactiveInput) {
+        var text = intArrayFromString(window.prompt('?'));
+        for (var i = 0; i < text.length && i < size; i++) {
+          {{{ makeSetValue('ptr', '0', 'text[i]', 'i8') }}}
+          ptr++;
+        }
+        return size;
+      }
       for (var i = 0; i < size; i++) {
         if (info.position >= info.data.length) {
           info.eof = 1;
