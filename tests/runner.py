@@ -239,9 +239,12 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE']:
-      value = eval(setting)
-      exported_settings[setting] = value
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS']:
+      try:
+        value = eval(setting)
+        exported_settings[setting] = value
+      except:
+        pass
     compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
 
     # Detect compilation crashes and errors
@@ -2158,6 +2161,8 @@ if 'benchmark' not in sys.argv:
       global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
       global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
+      global EXPORTED_FUNCTIONS; EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
+
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n22\n\n5.470',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])

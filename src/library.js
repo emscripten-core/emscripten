@@ -205,16 +205,6 @@ var Library = {
   },
   _ZNSo3putEc: 'putchar',
 
-  getc: function(file) {
-    return -1; // EOF
-  },
-  getc_unlocked: 'getc',
-  _IO_getc: 'getc',
-
-  ungetc: function(chr, stream) {
-    return chr;
-  },
-
   _ZNSo5flushEv: function() {
     __print__('\n');
   },
@@ -312,9 +302,13 @@ var Library = {
       var info = STDIO.streams[stream];
       if (!info) return -1;
       if (info.interactiveInput) {
-        var text = intArrayFromString(window.prompt('?'));
-        for (var i = 0; i < text.length && i < size; i++) {
-          {{{ makeSetValue('ptr', '0', 'text[i]', 'i8') }}}
+        for (var i = 0; i < size; i++) {
+          if (info.data.length === 0) {
+            info.data = intArrayFromString(window.prompt(PRINTBUFFER.length > 0 ? PRINTBUFFER : '?')).map(function(x) { return x === 0 ? 10 : x }); // change 0 to newline
+            PRINTBUFFER = '';
+            if (info.data.length === 0) return i;
+          }
+          {{{ makeSetValue('ptr', '0', 'info.data.shift()', 'i8') }}}
           ptr++;
         }
         return size;
@@ -390,6 +384,7 @@ var Library = {
   fread__deps: ['$STDIO'],
   fread: function(ptr, size, count, stream) {
     var info = STDIO.streams[stream];
+    if (info.interactiveInput) return STDIO.read(stream, ptr, size*count);
     for (var i = 0; i < count; i++) {
       if (info.position + size > info.data.length) {
         info.eof = 1;
@@ -452,9 +447,22 @@ var Library = {
 
   fputc__deps: ['$STDIO'],
   fputc: function(chr, stream) {
-    if (!_fputc.ptr) _fputc.ptr = _malloc(1);
-    {{{ makeSetValue('_fputc.ptr', '0', 'chr', 'i8') }}}
-    STDIO.write(stream, _fputc.ptr, 1);
+    if (!Module._fputc_ptr) Module._fputc_ptr = _malloc(1);
+    {{{ makeSetValue('Module._fputc_ptr', '0', 'chr', 'i8') }}}
+    STDIO.write(stream, Module._fputc_ptr, 1);
+  },
+
+  getc: function(file) {
+    if (!Module._getc_ptr) Module._getc_ptr = _malloc(1);
+    var ret = STDIO.read(file, Module._getc_ptr, 1);
+    if (ret === 0) return -1; // EOF
+    return {{{ makeGetValue('Module._getc_ptr', '0', 'i8') }}}
+  },
+  getc_unlocked: 'getc',
+  _IO_getc: 'getc',
+
+  ungetc: function(chr, stream) {
+    return chr;
   },
 
   // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html
