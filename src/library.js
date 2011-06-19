@@ -243,7 +243,12 @@ var Library = {
 
   // stdio.h - file functions
 
+  stdin: 0,
+  stdout: 0,
+  stderr: 0,
+
   $STDIO__postset: 'STDIO.init()',
+  $STDIO__deps: ['stdin', 'stdout', 'stderr'],
   $STDIO: {
     streams: {},
     filenames: {},
@@ -252,18 +257,27 @@ var Library = {
     SEEK_CUR: 1, /* Current position.   */
     SEEK_END: 2, /* End of file.        */
     init: function() {
-      try {
-        _stdin = Pointer_make([0], null, ALLOC_STATIC, 'void*');
-        {{{ makeSetValue('_stdin', '0', "STDIO.prepare('<<stdin>>', null, null, true)", 'i32') }}};
-      } catch(e){} // stdin/out/err may not exist if not needed
-      try {
-        _stdout = Pointer_make([0], null, ALLOC_STATIC, 'void*');
-        {{{ makeSetValue('_stdout', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
-      } catch(e){}
-      try {
-        _stderr = Pointer_make([0], null, ALLOC_STATIC, 'void*');
-        {{{ makeSetValue('_stderr', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
-      } catch(e){}
+      _stdin = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+      {{{ makeSetValue('_stdin', '0', "STDIO.prepare('<<stdin>>', null, null, true)", 'i32') }}};
+      if (Module.stdin) {
+        // Make sure stdin returns a newline
+        var orig = Module.stdin;
+        Module.stdin = function stdinFixed(prompt) {
+          var ret = orig(prompt);
+          if (ret[ret.length-1] !== '\n') ret = ret + '\n';
+          return ret;
+        }
+      } else {
+        Module.stdin = function stdin(prompt) {
+          return window.prompt(prompt);
+        };
+      }
+
+      _stdout = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+      {{{ makeSetValue('_stdout', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
+
+      _stderr = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+      {{{ makeSetValue('_stderr', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
     },
     cleanFilename: function(filename) {
       return filename.replace('./', '');
@@ -304,7 +318,7 @@ var Library = {
       if (info.interactiveInput) {
         for (var i = 0; i < size; i++) {
           if (info.data.length === 0) {
-            info.data = intArrayFromString(window.prompt(PRINTBUFFER.length > 0 ? PRINTBUFFER : '?')).map(function(x) { return x === 0 ? 10 : x }); // change 0 to newline
+            info.data = intArrayFromString(Module.stdin(PRINTBUFFER.length > 0 ? PRINTBUFFER : '?')).map(function(x) { return x === 0 ? 10 : x }); // change 0 to newline
             PRINTBUFFER = '';
             if (info.data.length === 0) return i;
           }
@@ -463,6 +477,15 @@ var Library = {
 
   ungetc: function(chr, stream) {
     return chr;
+  },
+
+  gets: function(ptr) {
+    var num = 0;
+    while (STDIO.read({{{ makeGetValue('_stdin', '0', 'void*') }}}, ptr+num, 1) &&
+           {{{ makeGetValue('ptr', 'num', 'i8') }}} !== 10) { num++; }
+    if (num === 0) return 0;
+    {{{ makeSetValue('ptr', 'num', 0, 'i8') }}}
+    return ptr;
   },
 
   // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html

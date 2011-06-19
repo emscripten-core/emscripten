@@ -1769,7 +1769,10 @@ if 'benchmark' not in sys.argv:
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]);''' # 200 becomes -56, since signed chars are used in memory
+          '''
+            STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]); // 200 becomes -56, since signed chars are used in memory
+            Module.stdin = function(prompt) { return 'hi there!' };
+          '''
         )
         open(filename, 'w').write(src)
 
@@ -1778,7 +1781,7 @@ if 'benchmark' not in sys.argv:
       other.close()
 
       src = open(path_from_root('tests', 'files.cpp'), 'r').read()
-      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\n', post_build=post)
+      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\n', post_build=post)
 
     ### 'Big' tests
 

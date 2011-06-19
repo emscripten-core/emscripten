@@ -30,6 +30,7 @@ int main()
 
   // Standard streams
 
+  printf("input:%s\n", gets((char*)malloc(1024)));
   fwrite("texto\n", 1, 6, stdout);
   fwrite("texte\n", 1, 6, stderr);
 
