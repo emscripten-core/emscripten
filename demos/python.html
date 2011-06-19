@@ -1,7 +1,7 @@
 <html>
 <head>
   <title>
-    Emscripten: Python
+    Python on the Web
   </title>
   <link id="bespin_base" href="skywriter/"/>
   <script src="skywriter/BespinEmbedded.js"></script>
@@ -13,26 +13,44 @@
   </style>
 
   <!--
-       Changes from automatically generated code:
+        The attached python.js (or python.cc.js) is CPython 2.7.1, licensed under
+        the PSF: http://docs.python.org/license.html
 
-          * At the beginning, add |arguments=[]| before |var args=arguments|;
+        Additional steps to create this demo:
 
-          * In |_PyRun_SimpleStringFlags|, add
-
-              if(!this.RAN_ALREADY){this.RAN_ALREADY=true;throw "halting, since this is the first run" }           
-
-          * At the end, comment out |run(args)|.
+          * Compile with _PyRun_SimpleStringFlags exported in EXPORTED_FUNCTIONS
+          * Find the actual name of that function (closure changes it, see .vars), and use it as per the XXX comment below.
   -->
 
-  <script src="python.js"></script>
-
   <script>
+    var Module = {
+      noInitialRun: true
+    };
+  </script>
+  <script src="python.cc.js"></script>
+  <script>
+    var orig = Module._PyRun_SimpleStringFlags;
+    var RAN_ALREADY;
+    QDb = function() { // XXX Have the actual name here! See comment above.
+      if(!RAN_ALREADY) {
+        RAN_ALREADY = true;
+        throw "halting, since this is the first run";
+      }
+      orig.apply(null, arguments);
+    }
+
     // print function which the Python engine will call
     var lines = [], printed = false;
 
-    function print(text) {
+    function print(text, force) {
+      //force = true; // XXX - for debugging
       lines.push(text);
       printed = true;
+
+      if (force) {
+        var element = document.getElementById('output');
+        element.innerHTML = text;
+      }
     }
 
     function execute(text) {
@@ -42,11 +60,13 @@
       var element = document.getElementById('output');
       if (!element) return; // perhaps during startup
 
-      var ptr = Module.Pointer_make(Module.intArrayFromString(text), 0, 2); // leak!
+      var ptr = Module.Pointer_make(Module.intArrayFromString(text), 0, 2, 'i8'); // leak!
       try {
         Module._PyRun_SimpleStringFlags(ptr, 0);
       } catch(e) {
-        if (e === 'halting, since this is the first run') return;
+        if (e === 'halting, since this is the first run') {
+          return;
+        }
         element.innerHTML = 'JS crash: |<b>' + e + '</b>|. Please let us know about this problem!<hr>' + element.innerHTML;
         return;
       }
@@ -61,14 +81,14 @@
     var editor;
 
     function doRun() {
-      args = ['-S', '-c', 'print ""'];
+      args = ['-S', '-c', 'print 5'];
       try {
         Module.run(args);
       } catch (e) {
-        if (e !== 'halting, since this is the first run') throw e;
+        if (e !== 'halting, since this is the first run') {
+          throw e;
+        }
       }
-      execute("");
-
       setTimeout(function() { 
         if (!bespin.useBespin) setTimeout(arguments.callee, 10);
         bespin.useBespin(document.getElementById('the_input'), { "stealFocus":true, "syntax": "python" }).then(function(env) {
@@ -80,17 +100,19 @@
   </script>
 </head>
 <body onload="doRun(); document.getElementById('the_input').focus()">
+  <h1>Python on the Web</h1>
   <p>
     This is CPython, the standard <a href="http://www.python.org">Python</a> implementation, compiled from C to
     JavaScript using <a href="http://emscripten.org">Emscripten</a>,
-    running in your browser (without any plugins).
+    running in your browser (without any plugins). It is both a tech demo and also a usable tool, for example, to
+    assist in teaching people Python by just visiting a website (instead of installing Python locally).
   </p>
   <p>
+    Notes:
     <ul>
       <li>Most core language stuff should work, except for importing non-static modules (in other words, <code>import sys</code> will
           work, but other modules won't).</li>
       <li>Please report bugs if you find them!</li>
-      <li>Tested on Firefox 4 and Chrome 10.</li>
       <li>The editor is <a href="https://mozillalabs.com/skywriter/">Skywriter</a>.
     </ul>
   </p>
@@ -100,9 +122,8 @@
     <b>Enter some Python</b>:
     <input type="submit" value="execute">
     <div id="the_input">import sys
-print 'Hello world! This is Python {} on {}'.format(sys.version, sys.platform)
-
-print 'Here are some numbers:', [2*x for x in range(5)][:4]
+print 'Hello %s, here are some numbers:' % raw_input('What is your name?'), [2*x for x in range(5)][:4]
+print 'This is Python {} on {}'.format(sys.version, sys.platform)
     </div>
   </form>
   <hr>
