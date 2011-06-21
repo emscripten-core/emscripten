@@ -413,7 +413,7 @@ var TOTAL_MEMORY = 50*1024*1024;
 #if USE_TYPED_ARRAYS
 HAS_TYPED_ARRAYS = false;
 try {
-  HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array()['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+  HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 } catch(e) {}
 
 if (HAS_TYPED_ARRAYS) {
