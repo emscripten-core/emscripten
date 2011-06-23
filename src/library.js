@@ -226,7 +226,7 @@ var Library = {
   },
 
   fileno: function(file) {
-    return 1; // TODO
+    return file;
   },
 
   isatty: function(file) {
