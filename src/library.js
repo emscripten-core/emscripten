@@ -476,6 +476,11 @@ var Library = {
   _IO_getc: 'getc',
 
   ungetc: function(chr, stream) {
+    var f = STDIO.streams[stream];
+    if (!f)
+      return -1; // EOF
+    if (!f.interactiveInput)
+      f.position--;
     return chr;
   },
 

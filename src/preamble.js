@@ -549,7 +549,7 @@ function jrint(label, obj) { // XXX manual debugging
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.
 // For LLVM-originating strings, see parser.js:parseLLVMString function
-function intArrayFromString(stringy) {
+function intArrayFromString(stringy, dontAddNull) {
   var ret = [];
   var t;
   var i = 0;
@@ -557,7 +557,8 @@ function intArrayFromString(stringy) {
     ret.push(stringy.charCodeAt(i));
     i = i + 1;
   }
-  ret.push(0);
+  if (!dontAddNull)
+    ret.push(0);
   return ret;
 }
 Module['intArrayFromString'] = intArrayFromString;
