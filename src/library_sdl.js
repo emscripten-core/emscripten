@@ -204,14 +204,14 @@ mergeInto(Library, {
       // Copy pixel data to somewhere accessible to 'C/C++'
       var num2 = surfData.image.data.length;
       for (var i = 0; i < num2; i++) {
-        IHEAP[surfData.buffer+i] = surfData.image.data[i];
+        {{{ makeSetValue('surfData.buffer', 'i', 'surfData.image.data[i]', 'i8') }}};
       }
     }
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
     // TODO: Use macros like in library.js
-    IHEAP[surf + 5*QUANTUM_SIZE] = surfData.buffer;
+    {{{ makeSetValue('surf', '5*QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
   },
 
   SDL_UnlockSurface: function(surf) {
@@ -220,7 +220,7 @@ mergeInto(Library, {
     var num = surfData.image.data.length;
     if (!surfData.colors) {
       for (var i = 0; i < num; i++) {
-        surfData.image.data[i] = IHEAP[surfData.buffer+i]; // XXX - make sure alpha values are proper in your input
+        surfData.image.data[i] = {{{ makeGetValue('surfData.buffer', 'i', 'i8') }}}; // XXX - make sure alpha values are proper in your input
       }
     } else {
       var width = Module['canvas'].width;
@@ -231,7 +231,7 @@ mergeInto(Library, {
       for (var y = 0; y < height; y++) {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
-          var val = IHEAP[s++];
+          var val = {{{ makeGetValue('s++', '0', 'i8') }}};
           var color = colors[val] || [Math.floor(Math.random()*255),Math.floor(Math.random()*255),Math.floor(Math.random()*255)]; // XXX
           var start = base + x*4;
           data[start]   = color[0];
@@ -325,11 +325,7 @@ mergeInto(Library, {
     var surfData = SDL.surfaces[surf];
     surfData.colors = [];
     for (var i = firstColor; i < nColors; i++) {
-#if USE_TYPED_ARRAYS
-      surfData.colors[i] = Array.prototype.slice.call(IHEAP, colors + i*4, colors + i*4 + 4);
-#else
-      surfData.colors[i] = IHEAP.slice(colors + i*4, colors + i*4 + 4);
-#endif
+      surfData.colors[i] = Array_copy(colors + i*4, colors + i*4 + 4);
     }
     return 1;
   },
