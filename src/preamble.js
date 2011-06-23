@@ -589,11 +589,10 @@ if (!this['read']) {
 
 function readBinary(filename) {
   var stringy = read(filename);
-  var data = new Array(stringy.length+1);
+  var data = new Array(stringy.length);
   for (var i = 0; i < stringy.length; i++) {
     data[i] = stringy.charCodeAt(i) & 0xff;
   }
-  data[stringy.length] = 0;
   return data;
 }
 
