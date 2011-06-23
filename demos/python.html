@@ -44,7 +44,7 @@
 
     function print(text, force) {
       //force = true; // XXX - for debugging
-      lines.push(text || '\n');
+      lines.push(text);
       printed = true;
 
       if (force) {
@@ -72,7 +72,7 @@
       }
 
       if (printed) {
-        element.value = lines.join('') + element.value;
+        element.value = lines.join('\n') + element.value;
       } else {
         element.value = '\n(no output)\n-------------\n' + element.value;
       }
