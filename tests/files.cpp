@@ -52,7 +52,8 @@ int main()
   FILE *other = fopen("test.file", "r");
   assert(other);
   char otherData[1000];
-  fread(otherData, 1, 10, other);
+  num = fread(otherData, 1, 9, other);
+  otherData[num] = 0;
   fclose(other);
   printf("other=%s.\n", otherData);
 

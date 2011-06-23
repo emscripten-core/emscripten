@@ -466,6 +466,7 @@ var Library = {
     STDIO.write(stream, Module._fputc_ptr, 1);
   },
 
+  getc__deps: ['$STDIO'],
   getc: function(file) {
     if (!Module._getc_ptr) Module._getc_ptr = _malloc(1);
     var ret = STDIO.read(file, Module._getc_ptr, 1);
@@ -474,6 +475,11 @@ var Library = {
   },
   getc_unlocked: 'getc',
   _IO_getc: 'getc',
+
+  getchar__deps: ['getc'],
+  getchar: function() {
+    return _getc(_stdin);
+  },
 
   ungetc: function(chr, stream) {
     return chr;
