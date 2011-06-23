@@ -1,5 +1,64 @@
 // To use emscripten's SDL library here, you need to define
 // Module.canvas and at least one of Module.ctx2D, Module.ctxGL.
+//
+// More specifically, our SDL implementation will look for
+// Module.canvas and Module.ctx2D. You should fill them using
+// something like
+//
+//      function onLoad() {
+//        // Pass canvas and context to the generated code
+//        Module.canvas = document.getElementById('canvas');
+//        Module.ctx2D = Module.canvas.getContext('2d');
+//      }
+//
+// Note that this must be called during onload, since you will
+// only be able to access the canvas element in the page after
+// it loads. You will likely also want to disable running by
+// default, with something like
+//
+//      var Module = {
+//        noInitialRun: true
+//      };
+//
+// which is defined BEFORE you load the compiled code. Here
+// is a full example:
+
+/*
+<html>
+  <head>
+    <title>Demo</title>
+    <script type='text/javascript'>
+      var Module = {
+        noInitialRun: true
+      };
+
+      // implement print
+      var print = function(text) {
+        var element = document.getElementById('output')
+        element.innerHTML = text.replace('\n', '<br>', 'g') + element.innerHTML;
+      }
+    </script>
+    <script src='doom.ccsimple.js' type='text/javascript'></script>
+    <script type='text/javascript'>
+      function onLoad() {
+        // Pass canvas and context to the generated code, and do the actual run() here
+        Module.canvas = document.getElementById('canvas');
+        Module.ctx2D = Module.canvas.getContext('2d');
+        if (!Module.ctx2D) {
+          alert('Canvas not available :(');
+          return;
+        }
+        Module.run();
+      }
+    </script>
+  <body onload='onLoad()' style='background-color: black; color: white'>
+    <center>
+      <canvas id='canvas' width='320' height='200'></canvas>
+    </center>
+    <div id='output'></div>
+  </body>
+</html>
+*/
 
 mergeInto(Library, {
   $SDL__deps: ['$Browser'],
