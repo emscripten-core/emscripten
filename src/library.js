@@ -274,10 +274,10 @@ var Library = {
       }
 
       _stdout = Pointer_make([0], null, ALLOC_STATIC, 'void*');
-      {{{ makeSetValue('_stdout', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
+      {{{ makeSetValue('_stdout', '0', "STDIO.prepare('<<stdout>>', null, true)", 'i32') }}};
 
       _stderr = Pointer_make([0], null, ALLOC_STATIC, 'void*');
-      {{{ makeSetValue('_stderr', '0', "STDIO.prepare('<<stdin>>', null, true)", 'i32') }}};
+      {{{ makeSetValue('_stderr', '0', "STDIO.prepare('<<stderr>>', null, true)", 'i32') }}};
     },
     cleanFilename: function(filename) {
       return filename.replace('./', '');
@@ -456,7 +456,6 @@ var Library = {
   fputs__deps: ['$STDIO', 'fputc'],
   fputs: function(p, stream) {
     STDIO.write(stream, p, String_len(p));
-    _fputc('\n'.charCodeAt(0), stream);
   },
 
   fputc__deps: ['$STDIO'],
@@ -1195,6 +1194,10 @@ var Library = {
   },
 
   getuid: function() {
+    return 100;
+  },
+
+  getgid: function() {
     return 100;
   },
 
