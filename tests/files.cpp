@@ -51,11 +51,30 @@ int main()
   
   FILE *other = fopen("test.file", "r");
   assert(other);
+
   char otherData[1000];
   num = fread(otherData, 1, 9, other);
   otherData[num] = 0;
-  fclose(other);
   printf("other=%s.\n", otherData);
+
+  // Seeking
+
+  fseek(other, 2, SEEK_SET);
+  num = fread(otherData, 1, 5, other);
+  otherData[num] = 0;
+  printf("seeked=%s.\n", otherData);
+
+  fseek(other, -1, SEEK_CUR);
+  num = fread(otherData, 1, 3, other);
+  otherData[num] = 0;
+  printf("seeked=%s.\n", otherData);
+
+  fseek(other, -2, SEEK_END);
+  num = fread(otherData, 1, 2, other);
+  otherData[num] = 0;
+  printf("seeked=%s.\n", otherData);
+
+  fclose(other);
 
   return 0;
 }
