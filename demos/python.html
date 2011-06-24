@@ -49,7 +49,7 @@
 
       if (force) {
         var element = document.getElementById('output');
-        element.innerHTML = text;
+        element.value = text;
       }
     }
 
@@ -67,14 +67,14 @@
         if (e === 'halting, since this is the first run') {
           return;
         }
-        element.innerHTML = 'JS crash: |<b>' + e + '</b>|. Please let us know about this problem!<hr>' + element.innerHTML;
+        element.value = 'JS crash:\n\n' + e + '\n\nPlease let us know about this problem!\n' + element.value;
         return;
       }
 
       if (printed) {
-        element.innerHTML = lines.map(function(line) { return line.replace('<', '&lt;', 'g') }).join('<br>') + '<hr>' + element.innerHTML;
+        element.value = lines.join('\n') + element.value;
       } else {
-        element.innerHTML = '<small><i>(no output)</i></small><hr>' + element.innerHTML;
+        element.value = '\n(no output)\n-------------\n' + element.value;
       }
     }
 
@@ -127,7 +127,6 @@ print 'This is Python {} on {}'.format(sys.version, sys.platform)
     </div>
   </form>
   <hr>
-  <div id="output" style="font-family: Courier New,Courier,monospace;"></div>
+  <textarea id="output" style="font-family: monospace; width: 80%" rows="10" readonly></textarea>
 </body>
 </html>
-
