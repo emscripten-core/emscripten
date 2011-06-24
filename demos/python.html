@@ -72,7 +72,7 @@
       }
 
       if (printed) {
-        element.value = element.value + lines.join('\n');
+        element.value = element.value + lines.join('\n') + '\n';
         // scroll down
         var len = element.textLength;
         element.setSelectionRange(len-1, len);
