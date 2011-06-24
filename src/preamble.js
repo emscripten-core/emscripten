@@ -557,8 +557,9 @@ function intArrayFromString(stringy, dontAddNull) {
     ret.push(stringy.charCodeAt(i));
     i = i + 1;
   }
-  if (!dontAddNull)
+  if (!dontAddNull) {
     ret.push(0);
+  }
   return ret;
 }
 Module['intArrayFromString'] = intArrayFromString;
