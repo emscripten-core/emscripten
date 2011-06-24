@@ -368,6 +368,11 @@ var Library = {
   },
   __01fopen64_: 'fopen',
 
+  fdopen: function(descriptor, mode) {
+    // TODO: Check whether mode is acceptable for the current stream.
+    return descriptor;
+  },
+
   rewind__deps: ['$STDIO'],
   rewind: function(stream) {
     var info = STDIO.streams[stream];
@@ -388,6 +393,7 @@ var Library = {
     return 0;
   },
   __01fseeko64_: 'fseek',
+  __01lseek64_: 'fseek',
 
   ftell__deps: ['$STDIO'],
   ftell: function(stream) {
@@ -509,6 +515,13 @@ var Library = {
     } else {
       return assert(false, 'open with odd params: ' + [flags, mode]);
     }
+  },
+
+  __01open64___deps: ['open'],
+  __01open64_: function(filename, mode, flags) {
+    // open(), but with flags and mode switched.
+    // TODO: Verify why this happens at all.
+    return _open(filename, flags, mode);
   },
 
   close: function(stream) {
@@ -1211,6 +1224,11 @@ var Library = {
     return 0; // NULL
   },
 
+  unlink: function(filename) {
+    // TODO: Actually implement.
+    return 0;
+  },
+
   // time.h
 
   time: function(ptr) {
@@ -1259,7 +1277,7 @@ var Library = {
   // stat.h
 
   __01stat64_: function() { return -1 },
-  __01fstat64_: function() { return -1 },
+  __01fstat64_: 'fstat',
 
   // locale.h
 
