@@ -17,7 +17,7 @@ Module.callMain = function callMain(args) {
   argv.push(0);
   argv = Pointer_make(argv, null, ALLOC_STATIC, 'i32');
 
-  _main(argc, argv, 0);
+  return _main(argc, argv, 0);
 }
 
 function run(args) {
@@ -29,10 +29,12 @@ function run(args) {
 
   __globalConstructor__();
 
+  var ret = null;
   if (Module['_main']) {
-    Module.callMain(args);
+    ret = Module.callMain(args);
     __shutdownRuntime__();
   }
+  return ret;
 }
 Module['run'] = run;
 
