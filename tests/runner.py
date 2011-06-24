@@ -2167,7 +2167,7 @@ if 'benchmark' not in sys.argv:
       global EXPORTED_FUNCTIONS; EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
 
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
-                      'hello python world!\n\n[0, 2, 4, 6]\n\n5\n\n22\n\n5.470',
+                      'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
     ### Test cases in separate files
