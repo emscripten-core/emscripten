@@ -72,9 +72,10 @@
       }
 
       if (printed) {
-        element.value = lines.join('\n') + element.value;
-      } else {
-        element.value = '\n(no output)\n-------------\n' + element.value;
+        element.value = element.value + lines.join('\n');
+        // scroll down
+        var len = element.textLength;
+        element.setSelectionRange(len-1, len);
       }
     }
 
@@ -127,6 +128,6 @@ print 'This is Python {} on {}'.format(sys.version, sys.platform)
     </div>
   </form>
   <hr>
-  <textarea id="output" style="font-family: monospace; width: 80%" rows="10" readonly></textarea>
+  <textarea id="output" style="font-family: monospace; width: 80%" rows="8" readonly></textarea>
 </body>
 </html>
