@@ -198,7 +198,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var shortident = item.ident.substr(1);
       if (shortident in Library) {
         function addFromLibrary(ident) {
-          var me = arguments.callee;
           if (ident in addedLibraryItems) return '';
           // Don't replace implemented functions with library ones (which can happen when we add dependencies).
           // Note: We don't return the dependencies here. Be careful not to end up where this matters
@@ -207,10 +206,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           addedLibraryItems[ident] = true;
           var snippet = Library[ident];
           var redirectedIdent = null;
+          var deps = Library[ident + '__deps'] || [];
+
           if (typeof snippet === 'string') {
             if (Library[snippet]) {
+              // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
+              // This avoid having duplicate functions with identical content.
               redirectedIdent = snippet;
-              snippet = Library[snippet]; // redirection for aliases
+              deps.push(snippet);
+              snippet = '_' + snippet;
             }
           } else if (typeof snippet === 'object') {
             // JSON.stringify removes functions, so we need to make sure they are added
@@ -244,7 +248,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             });
           }
 
-          var deps = Library[ident + '__deps'] || [];
           if (redirectedIdent) {
             deps = deps.concat(Library[redirectedIdent + '__deps'] || []);
           }
@@ -254,7 +257,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else {
             ident = '_' + ident;
           }
-          return 'var ' + ident + '=' + snippet + (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+          return (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '') + 'var ' + ident + '=' + snippet + ';';
         }
         item.JS = addFromLibrary(shortident);
       } else {

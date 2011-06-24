@@ -1276,7 +1276,7 @@ var Library = {
 
   // stat.h
 
-  __01stat64_: function() { return -1 },
+  __01stat64_: 'fstat',
   __01fstat64_: 'fstat',
 
   // locale.h
