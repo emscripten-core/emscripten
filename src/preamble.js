@@ -576,7 +576,7 @@ function intArrayToString(array) {
 {{{ reSign }}}
 
 // Use console read if available, otherwise we are in a browser, use an XHR
-if (this.read == undefined) {
+if (this.read === undefined) {
   var read = function(url) {
     // TODO: use mozResponseArrayBuffer/responseStream/etc. if available
     var xhr = new XMLHttpRequest();

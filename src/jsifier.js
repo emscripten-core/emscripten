@@ -262,9 +262,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             ident = '_' + ident;
           }
           var depsString =  deps ? '\n' + deps.map(addFromLibrary).join('\n') : '';
-          var defString = 'var ' + ident + '=' + snippet + ';';
           if (BUILD_AS_SHARED_LIB) {
-            defString = 'if (typeof ' + ident + ' == "undefined") {\n  ' + defString + '\n}';
+            var defString = 'if (typeof ' + ident + ' === "undefined") {\n  this.' + ident + '=' + snippet + ';\n}';
+          } else {
+            var defString = 'var ' + ident + '=' + snippet + ';';
           }
           return depsString + defString;
         }

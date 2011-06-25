@@ -1202,9 +1202,9 @@ var Library = {
   // Data for dlfcn.h.
   $DLFCN_DATA: {
     error: null,
-    is_error: false,
-    loaded_libs: {}, // handle -> [refcount, name, lib_object]
-    loaded_lib_names: {}, // name -> handle
+    isError: false,
+    loadedLibs: {}, // handle -> [refcount, name, lib_object]
+    loadedLibNames: {}, // name -> handle
   },
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN_DATA'],
@@ -1212,35 +1212,35 @@ var Library = {
     filename = Pointer_stringify(filename);
     filename += '.js';
 
-    if (DLFCN_DATA.loaded_lib_names[filename]) {
+    if (DLFCN_DATA.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
-      var handle = DLFCN_DATA.loaded_lib_names[filename];
-      DLFCN_DATA.loaded_libs[handle][0]++;
+      var handle = DLFCN_DATA.loadedLibNames[filename];
+      DLFCN_DATA.loadedLibs[handle][0]++;
       return handle;
     }
 
     try {
       var lib_data = read(filename);
     } catch (e) {
-      DLFCN_DATA.is_error = true;
+      DLFCN_DATA.isError = true;
       return 0;
     }
 
     try {
       var lib_module = eval(lib_data)();
     } catch (e) {
-      DLFCN_DATA.is_error = true;
+      DLFCN_DATA.isError = true;
       return 0;
     }
 
     // Not all browsers support Object.keys().
     var handle = 1;
-    for (var key in DLFCN_DATA.loaded_libs) {
-      if (DLFCN_DATA.loaded_libs.hasOwnProperty(key)) handle++;
+    for (var key in DLFCN_DATA.loadedLibs) {
+      if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
     }
 
-    DLFCN_DATA.loaded_libs[handle] = [1, filename, lib_module];
-    DLFCN_DATA.loaded_lib_names[filename] = handle;
+    DLFCN_DATA.loadedLibs[handle] = [1, filename, lib_module];
+    DLFCN_DATA.loadedLibNames[filename] = handle;
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     if (flag & 256) { // RTLD_GLOBAL
@@ -1257,14 +1257,14 @@ var Library = {
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN_DATA'],
   dlclose: function(handle) {
-    if (!DLFCN_DATA.loaded_libs[handle]) {
-      DLFCN_DATA.is_error = true;
+    if (!DLFCN_DATA.loadedLibs[handle]) {
+      DLFCN_DATA.isError = true;
       return 1;
     } else {
-      var lib_record = DLFCN_DATA.loaded_libs[handle];
+      var lib_record = DLFCN_DATA.loadedLibs[handle];
       if (lib_record[0]-- == 0) {
-        delete DLFCN_DATA.loaded_lib_names[lib_record[1]];
-        delete DLFCN_DATA.loaded_libs[handle];
+        delete DLFCN_DATA.loadedLibNames[lib_record[1]];
+        delete DLFCN_DATA.loadedLibs[handle];
       }
       return 0;
     }
@@ -1276,19 +1276,20 @@ var Library = {
     // TODO: Properly mangle.
     symbol = '_' + symbol;
 
-    if (!DLFCN_DATA.loaded_libs[handle]) {
-      DLFCN_DATA.is_error = true;
+    if (!DLFCN_DATA.loadedLibs[handle]) {
+      DLFCN_DATA.isError = true;
       return 0;
     } else {
-      var lib_module = DLFCN_DATA.loaded_libs[handle][2];
+      var lib_module = DLFCN_DATA.loadedLibs[handle][2];
       if (!lib_module[symbol]) {
-        DLFCN_DATA.is_error = true;
+        DLFCN_DATA.isError = true;
         return 0;
       } else {
         var result = lib_module[symbol];
         if (typeof result == 'function') {
           FUNCTION_TABLE.push(result);
-          result = FUNCTION_TABLE.length - 1;
+          FUNCTION_TABLE.push(0);
+          result = FUNCTION_TABLE.length - 2;
         }
         return result;
       }
@@ -1297,7 +1298,7 @@ var Library = {
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN_DATA'],
   dlerror: function() {
-    if (DLFCN_DATA.is_error) {
+    if (DLFCN_DATA.isError) {
       return 0;
     } else {
       // TODO: Return non-generic error messages.
@@ -1306,7 +1307,7 @@ var Library = {
         var arr = Module.intArrayFromString(msg)
         DLFCN_DATA.error = Pointer_make(arr, 0, 2, 'i8');
       }
-      DLFCN_DATA.is_error = false;
+      DLFCN_DATA.isError = false;
       return DLFCN_DATA.error;
     }
   },
