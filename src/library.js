@@ -1194,6 +1194,123 @@ var Library = {
     return Math.pow(2, x);
   },
 
+  
+  // ==========================================================================
+  // dlfcn.h
+  // ==========================================================================
+
+  // Data for dlfcn.h.
+  $DLFCN_DATA: {
+    error: null,
+    is_error: false,
+    loaded_libs: {}, // handle -> [refcount, name, lib_object]
+    loaded_lib_names: {}, // name -> handle
+  },
+  // void* dlopen(const char* filename, int flag);
+  dlopen__deps: ['$DLFCN_DATA'],
+  dlopen: function(filename, flag) {
+    filename = Pointer_stringify(filename);
+    filename += '.js';
+
+    if (DLFCN_DATA.loaded_lib_names[filename]) {
+      // Already loaded; increment ref count and return.
+      var handle = DLFCN_DATA.loaded_lib_names[filename];
+      DLFCN_DATA.loaded_libs[handle][0]++;
+      return handle;
+    }
+
+    try {
+      var lib_data = read(filename);
+    } catch (e) {
+      DLFCN_DATA.is_error = true;
+      return 0;
+    }
+
+    try {
+      var lib_module = eval(lib_data)();
+    } catch (e) {
+      DLFCN_DATA.is_error = true;
+      return 0;
+    }
+
+    // Not all browsers support Object.keys().
+    var handle = 1;
+    for (var key in DLFCN_DATA.loaded_libs) {
+      if (DLFCN_DATA.loaded_libs.hasOwnProperty(key)) handle++;
+    }
+
+    DLFCN_DATA.loaded_libs[handle] = [1, filename, lib_module];
+    DLFCN_DATA.loaded_lib_names[filename] = handle;
+
+    // We don't care about RTLD_NOW and RTLD_LAZY.
+    if (flag & 256) { // RTLD_GLOBAL
+      for (var ident in lib_module) {
+        if (lib_module.hasOwnProperty(ident)) {
+          // TODO: Check if we need to unmangle here.
+          Module[ident] = lib_module[ident];
+        }
+      }
+    }
+
+    return handle;
+  },
+  // int dlclose(void* handle);
+  dlclose__deps: ['$DLFCN_DATA'],
+  dlclose: function(handle) {
+    if (!DLFCN_DATA.loaded_libs[handle]) {
+      DLFCN_DATA.is_error = true;
+      return 1;
+    } else {
+      var lib_record = DLFCN_DATA.loaded_libs[handle];
+      if (lib_record[0]-- == 0) {
+        delete DLFCN_DATA.loaded_lib_names[lib_record[1]];
+        delete DLFCN_DATA.loaded_libs[handle];
+      }
+      return 0;
+    }
+  },
+  // void* dlsym(void* handle, const char* symbol);
+  dlsym__deps: ['$DLFCN_DATA'],
+  dlsym: function(handle, symbol) {
+    symbol = Pointer_stringify(symbol);
+    // TODO: Properly mangle.
+    symbol = '_' + symbol;
+
+    if (!DLFCN_DATA.loaded_libs[handle]) {
+      DLFCN_DATA.is_error = true;
+      return 0;
+    } else {
+      var lib_module = DLFCN_DATA.loaded_libs[handle][2];
+      if (!lib_module[symbol]) {
+        DLFCN_DATA.is_error = true;
+        return 0;
+      } else {
+        var result = lib_module[symbol];
+        if (typeof result == 'function') {
+          FUNCTION_TABLE.push(result);
+          result = FUNCTION_TABLE.length - 1;
+        }
+        return result;
+      }
+    }
+  },
+  // char* dlerror(void);
+  dlerror__deps: ['$DLFCN_DATA'],
+  dlerror: function() {
+    if (DLFCN_DATA.is_error) {
+      return 0;
+    } else {
+      // TODO: Return non-generic error messages.
+      if (DLFCN_DATA.error === null) {
+        var msg = 'An error occurred while loading dynamic library.';
+        var arr = Module.intArrayFromString(msg)
+        DLFCN_DATA.error = Pointer_make(arr, 0, 2, 'i8');
+      }
+      DLFCN_DATA.is_error = false;
+      return DLFCN_DATA.error;
+    }
+  },
+
   // ==========================================================================
   // unistd.h
   // ==========================================================================

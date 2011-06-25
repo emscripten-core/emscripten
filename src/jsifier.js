@@ -261,7 +261,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else {
             ident = '_' + ident;
           }
-          return (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '') + 'var ' + ident + '=' + snippet + ';';
+          var depsString =  deps ? '\n' + deps.map(addFromLibrary).join('\n') : '';
+          var defString = 'var ' + ident + '=' + snippet + ';';
+          if (BUILD_AS_SHARED_LIB) {
+            defString = 'if (typeof ' + ident + ' == "undefined") {\n  ' + defString + '\n}';
+          }
+          return depsString + defString;
         }
         item.JS = addFromLibrary(shortident);
       } else {
@@ -764,14 +769,18 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     //        postamble
     //          global_vars
 
-    var shellParts = read('shell.js').split('{{BODY}}');
+    var shellFile = BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js';
+    var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[0]);
-      var pre = processMacros(preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
-      print(pre);
+      if (!BUILD_AS_SHARED_LIB) {
+        var pre = processMacros(preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
+        print(pre);
+      }
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
       print(Functions.generateIndexing());
 
-      var postParts = processMacros(preprocess(read('postamble.js'), CONSTANTS)).split('{{GLOBAL_VARS}}');
+      var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
+      var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
       print(postParts[0]);
         itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
         itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });

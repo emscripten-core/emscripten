@@ -107,6 +107,9 @@ EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
 
 SHOW_LABELS = 0; // Show labels in the generated code
 
+BUILD_AS_SHARED_LIB = 1; // Whether to build the code as a shared library, which
+                         // must be loaded dynamically using dlopen().
+
 // Compiler debugging options
 DEBUG_TAGS_SHOWING = [];
   // Some useful items:
