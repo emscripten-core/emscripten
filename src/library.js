@@ -14,7 +14,9 @@
 // new function with an '_', it will not be found.
 
 var Library = {
+  // ==========================================================================
   // stdio.h
+  // ==========================================================================
 
   _scanString: function() {
     // Supports %x, %4x, %d.%d
@@ -200,6 +202,9 @@ var Library = {
     __print__(Pointer_stringify(p) + '\n');
   },
 
+  putc: 'fputc',
+  _IO_putc: 'fputc',
+
   putchar: function(p) {
     __print__(String.fromCharCode(p));
   },
@@ -238,10 +243,13 @@ var Library = {
 
   flockfile: function(file) {
   },
+
   funlockfile: function(file) {
   },
 
+  // ==========================================================================
   // stdio.h - file functions
+  // ==========================================================================
 
   stdin: 0,
   stdout: 0,
@@ -468,7 +476,8 @@ var Library = {
   fputc: function(chr, stream) {
     if (!Module._fputc_ptr) Module._fputc_ptr = _malloc(1);
     {{{ makeSetValue('Module._fputc_ptr', '0', 'chr', 'i8') }}}
-    STDIO.write(stream, Module._fputc_ptr, 1);
+    var ret = STDIO.write(stream, Module._fputc_ptr, 1);
+    return (ret == -1) ? -1 /* EOF */ : chr;
   },
 
   getc__deps: ['$STDIO'],
@@ -569,7 +578,9 @@ var Library = {
     return STDIO.open(filename) ? 0 : -1;
   },
 
+  // ==========================================================================
   // stdlib.h
+  // ==========================================================================
 
   malloc: Runtime.staticAlloc,
   _Znwj: 'malloc',
@@ -679,7 +690,9 @@ var Library = {
     _free(temp);
   },
 
+  // ==========================================================================
   // string.h
+  // ==========================================================================
 
   memcpy: function (dest, src, num, idunno) {
 #if ASSERTIONS
@@ -888,7 +901,9 @@ var Library = {
   // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays
   strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=HEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=HEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=HEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=HEAP[f]=0;else{c=b+-1;a:for(;;){e=HEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=HEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else HEAP[b+-1]=0; HEAP[f]=b;c=c}else if(a==7){HEAP[f]=b;HEAP[b+-1]=0;c=b+-1}}return c},
 
+  // ==========================================================================
   // ctype.h
+  // ==========================================================================
 
   isdigit: function(chr) {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
@@ -938,7 +953,9 @@ var Library = {
     return chr;
   },
 
+  // ==========================================================================
   // ctype.h Linux specifics
+  // ==========================================================================
 
   __ctype_b_loc: function() { // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
@@ -1097,7 +1114,9 @@ var Library = {
     __print__(Pointer_stringify(data));
   },
 
+  // ==========================================================================
   // math.h
+  // ==========================================================================
 
   cos: 'Math.cos',
   cosf: 'Math.cos',
@@ -1175,7 +1194,9 @@ var Library = {
     return Math.pow(2, x);
   },
 
+  // ==========================================================================
   // unistd.h
+  // ==========================================================================
 
   sysconf: function(name_) {
     // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
@@ -1210,6 +1231,16 @@ var Library = {
 
   readlink: function(path, buf, bufsiz) {
     return -1;
+  },
+
+  unlink: function(pathname) {
+    var pathStr = Pointer_stringify(pathname);
+    var fd = STDIO.filenames[pathStr];
+    if (fd === undefined) {
+      return -1;
+    }
+    delete STDIO.filenames[pathStr];
+    return 0;
   },
 
   getuid: function() {
@@ -1248,7 +1279,9 @@ var Library = {
     return 0;
   },
 
+  // ==========================================================================
   // setjmp.h
+  // ==========================================================================
 
   _setjmp: function(env) {
     // XXX print('WARNING: setjmp() not really implemented, will fail if longjmp() is actually called');
@@ -1260,7 +1293,9 @@ var Library = {
     assert(0);
   },
 
+  // ==========================================================================
   // signal.h
+  // ==========================================================================
 
   signal: function(sig, func) {
     // TODO
@@ -1295,7 +1330,9 @@ var Library = {
     return me.ret;
   },
 
+  // ==========================================================================
   // langinfo.h
+  // ==========================================================================
 
   nl_langinfo: function(item) {
     var me = _nl_langinfo;
@@ -1305,7 +1342,9 @@ var Library = {
     return me.ret;
   },
 
+  // ==========================================================================
   // errno.h
+  // ==========================================================================
 
   __errno_location: function() { 
     var me = ___errno_location;
@@ -1315,14 +1354,18 @@ var Library = {
     return me.ret;
   },
 
+  // ==========================================================================
   // pthread.h (stubs for mutexes only - no thread support yet!)
+  // ==========================================================================
 
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
 
+  // ==========================================================================
   // malloc.h
+  // ==========================================================================
 
   memalign: function(boundary, size) {
     // leaks, and even returns an invalid pointer. Horrible hack... but then, this is a deprecated function...
@@ -1330,13 +1373,17 @@ var Library = {
     return ret + boundary - (ret % boundary);
   },
 
+  // ==========================================================================
   // dirent.h
+  // ==========================================================================
 
   opendir: function(pname) {
     return 0;
   },
 
+  // ==========================================================================
   // ** emscripten.h **
+  // ==========================================================================
   emscripten_run_script: function(ptr) {
     eval(Pointer_stringify(ptr));
   },
