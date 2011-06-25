@@ -42,6 +42,7 @@ if (SAFE_HEAP >= 2) {
 }
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
+EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 
 // Settings sanity checks
 

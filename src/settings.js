@@ -101,6 +101,10 @@ AUTO_OPTIMIZE = 0; // When run with the CHECK_* options, will not fail on errors
 EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
                                 // be accessible outside of the generated code.
 
+EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
+                       // exported, so they are guaranteed to be
+                       // accessible outside of the generated code.
+
 SHOW_LABELS = 0; // Show labels in the generated code
 
 // Compiler debugging options

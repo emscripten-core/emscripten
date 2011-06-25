@@ -178,9 +178,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           }
           constant = makePointer(constant, null, 'ALLOC_STATIC', item.type);
 
+          var js = item.ident + '=' + constant + ';';
+          if (item.ident in EXPORTED_GLOBALS) {
+            js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
+          }
           return ret.concat({
             intertype: 'GlobalVariable',
-            JS: item.ident + '=' + constant + ';',
+            JS: js,
           });
         }
       }
