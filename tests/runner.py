@@ -1097,6 +1097,21 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*26,26,90,90,26,90*\n*1,0,0,1*\n*goodbye!*')
 
+    def test_mathfuncptr(self):
+        src = '''
+          #include <math.h>
+          #include <stdio.h>
+
+          int
+          main(void) {
+           float (*fn)(float) = &sqrtf;
+           float (*fn2)(float) = &fabsf;
+           printf("fn2(-5) = %d, fn(10) = %f\\n", (int)fn2(-5), fn(10));
+           return 0;
+          }
+          '''
+        self.do_test(src, 'fn2(-5) = 5, fn(10) = 3.16')
+
     def test_emptyclass(self):
         src = '''
         #include <stdio.h>
