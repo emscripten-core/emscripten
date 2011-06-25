@@ -774,10 +774,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var shellFile = BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js';
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[0]);
-      if (!BUILD_AS_SHARED_LIB) {
-        var pre = processMacros(preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
-        print(pre);
-      }
+      var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
+      var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
+      print(pre);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
       print(Functions.generateIndexing());
 
