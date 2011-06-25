@@ -277,7 +277,7 @@ var Library = {
         }
       } else {
         Module.stdin = function stdin(prompt) {
-          return window.prompt(prompt);
+          return window.prompt(prompt) || '';
         };
       }
 
