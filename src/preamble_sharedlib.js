@@ -4,7 +4,7 @@
 // Runtime essentials
 //========================================
 
-function __globalConstructor__() {
+var __globalConstructor__ = function globalConstructor() {
 }
 
 // === Body ===

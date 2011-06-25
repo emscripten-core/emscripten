@@ -203,7 +203,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the runtime of their parents.
         item.JS = '';
-      } else if (shortident in Library) {
+      } else if (Library.hasOwnProperty(shortident)) {
         function addFromLibrary(ident) {
           if (ident in addedLibraryItems) return '';
           // Don't replace implemented functions with library ones (which can happen when we add dependencies).
