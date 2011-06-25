@@ -1255,11 +1255,6 @@ var Library = {
     return 0; // NULL
   },
 
-  unlink: function(filename) {
-    // TODO: Actually implement.
-    return 0;
-  },
-
   // time.h
 
   time: function(ptr) {
