@@ -599,7 +599,7 @@ var Library = {
     return ret;
   },
 
-  abs: 'Math.abs',
+  abs: 'Math.abs', // XXX should be integer?
 
   atoi: function(s) {
     return Math.floor(Number(Pointer_stringify(s)));

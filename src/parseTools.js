@@ -692,14 +692,21 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned) {
   }
 }
 
-function indexizeFunctions(value) { // TODO: Also check for externals
+function indexizeFunctions(value) {
   if (value in Functions.currFunctions) {
     return Functions.getIndex(value);
   }
   if (value && value[0] && value[0] == '_') {
     var rootIdent = LibraryManager.getRootIdent(value.slice(1));
-    if (rootIdent && typeof Library[rootIdent] === 'function') {
+    if (!rootIdent) return value;
+    if (typeof Library[rootIdent] === 'function') {
       return Functions.getIndex('_' + rootIdent);
+    } else if (rootIdent.substr(0, 5) === 'Math.') {
+      // Library[..] can be a string, in which case we apply that string. There is one
+      // case where this can be a function: Math.*, since we try to optimize those as much
+      // as possible. In other words, we don't want to have a wrapper function(x) return Math.sqrt(x).
+      // If other functions are deemed important as well, we will need to add them here.
+      return Functions.getIndex(rootIdent);
     }
   }
   return value;
