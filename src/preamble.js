@@ -455,6 +455,19 @@ for (var i = 0; i < base.length; i++) {
 }
 
 Module['HEAP'] = HEAP;
+#if USE_TYPED_ARRAYS == 1
+Module['IHEAP'] = IHEAP;
+Module['FHEAP'] = FHEAP;
+#endif
+#if USE_TYPED_ARRAYS == 2
+Module['HEAP8'] = HEAP8;
+Module['HEAP16'] = HEAP16;
+Module['HEAP32'] = HEAP32;
+Module['HEAPU8'] = HEAPU8;
+Module['HEAPU16'] = HEAPU16;
+Module['HEAPU32'] = HEAPU32;
+Module['HEAPF32'] = HEAPF32;
+#endif
 
 STACK_ROOT = STACKTOP = alignMemoryPage(10);
 var TOTAL_STACK = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!
