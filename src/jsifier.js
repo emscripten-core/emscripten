@@ -257,7 +257,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else {
             ident = '_' + ident;
           }
-          return (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '') + 'var ' + ident + '=' + snippet + ';';
+          var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '') + 'var ' + ident + '=' + snippet + ';';
+          if (ident in EXPORTED_FUNCTIONS) {
+            text += '\nModule["' + ident + '"] = ' + ident + ';';
+          }
+          return text;
         }
         item.JS = addFromLibrary(shortident);
       } else {
