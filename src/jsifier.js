@@ -401,9 +401,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               first = false;
             });
           }
-          if (ASSERTIONS) {
-            ret += indent + multipleIdent + 'else { throw "Bad multiple branching: " + __label__ + " : " + (new Error().stack); }\n';
-          }
           if (!block.loopless) {
             ret += indent + '} while(0);\n';
           }
