@@ -694,7 +694,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned) {
 
 function indexizeFunctions(value) { // TODO: Also check for externals
   if (value in Functions.currFunctions) {
-    return Functions.getIndex(value);
+    if (BUILD_AS_SHARED_LIB) {
+      return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
+    } else {
+      return Functions.getIndex(value);
+    }
   }
   if (value && value[0] && value[0] == '_') {
     var rootIdent = LibraryManager.getRootIdent(value.slice(1));

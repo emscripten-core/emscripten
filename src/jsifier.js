@@ -200,7 +200,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     processItem: function(item) {
       var ret = [item];
       var shortident = item.ident.substr(1);
-      if (shortident in Library) {
+      if (BUILD_AS_SHARED_LIB) {
+        // Shared libraries reuse the runtime of their parents.
+        item.JS = '';
+      } else if (shortident in Library) {
         function addFromLibrary(ident) {
           if (ident in addedLibraryItems) return '';
           // Don't replace implemented functions with library ones (which can happen when we add dependencies).
@@ -261,13 +264,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else {
             ident = '_' + ident;
           }
-          var depsString =  deps ? '\n' + deps.map(addFromLibrary).join('\n') : '';
-          if (BUILD_AS_SHARED_LIB) {
-            var defString = 'if (typeof ' + ident + ' === "undefined") {\n  this.' + ident + '=' + snippet + ';\n}';
-          } else {
-            var defString = 'var ' + ident + '=' + snippet + ';';
-          }
-          return depsString + defString;
+          return (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '') + 'var ' + ident + '=' + snippet + ';';
         }
         item.JS = addFromLibrary(shortident);
       } else {

@@ -1209,6 +1209,7 @@ var Library = {
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN_DATA'],
   dlopen: function(filename, flag) {
+    // TODO: Add support for LD_LIBRARY_PATH.
     filename = Pointer_stringify(filename);
     filename += '.js';
 
@@ -1227,7 +1228,7 @@ var Library = {
     }
 
     try {
-      var lib_module = eval(lib_data)();
+      var lib_module = eval(lib_data)(FUNCTION_TABLE.length);
     } catch (e) {
       DLFCN_DATA.isError = true;
       return 0;
@@ -1287,6 +1288,7 @@ var Library = {
       } else {
         var result = lib_module[symbol];
         if (typeof result == 'function') {
+          // TODO: Cache functions rather than appending on every lookup.
           FUNCTION_TABLE.push(result);
           FUNCTION_TABLE.push(0);
           result = FUNCTION_TABLE.length - 2;
