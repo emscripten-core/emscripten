@@ -278,8 +278,8 @@ var START_TIME = Date.now();
 // Runtime essentials
 //========================================
 
-function __globalConstructor__() {
-}
+var __globalConstructor__ = function globalConstructor() {
+};
 
 var __THREW__ = false; // Used in checking for thrown exceptions.
 

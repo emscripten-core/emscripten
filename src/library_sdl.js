@@ -1,7 +1,7 @@
 // To use emscripten's SDL library here, you need to define
 // Module.canvas and at least one of Module.ctx2D, Module.ctxGL.
 //
-// More specifically, our SDL implementation will look for
+// More specifically, for 2D our SDL implementation will look for
 // Module.canvas and Module.ctx2D. You should fill them using
 // something like
 //
@@ -59,6 +59,25 @@
   </body>
 </html>
 */
+
+// Other stuff to take into account:
+//
+//  * It's best to set the ctx stuff in your html file, as above. Otherwise you will need
+//    to edit the generated .js file each time you generate it.
+//
+//  * Your code should not write a 32-bit value and expect that to set an RGBA pixel.
+//    The reason is that that data will be read as 8-bit values, and according to the
+//    load-store consistency assumption, it should be written that way (see docs/paper.pdf).
+//    Instead, do something like        *ptr++ = R; *ptr++ = G; *ptr++ = B;
+//
+//  * SQL_Quit will wipe the screen with random noise. This is intentional, in order
+//    to make it clear when SDL has shut down (which could be due to an error). If you
+//    want your output to remain on the screen, do not call SDL_Quit.
+//
+//  * A normal C++ main loop with SDL_Delay will not work in JavaScript - there is no way
+//    to wait for a short time without locking up the web page entirely. The simplest
+//    solution here is to have a singleIteration() function which is a single loop
+//    iteration, and from JS to do something like      setInterval(_singleIteration, 1/30)
 
 mergeInto(Library, {
   $SDL__deps: ['$Browser'],
