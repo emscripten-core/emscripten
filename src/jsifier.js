@@ -627,7 +627,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
     ret += 'return';
     if (item.value) {
-      ret += ' ' + finalizeLLVMParameter(item.value);
+      ret += ' ' + indexizeFunctions(finalizeLLVMParameter(item.value));
     }
     return ret + ';';
   });
