@@ -1862,7 +1862,7 @@ if 'benchmark' not in sys.argv:
         int main() {
           void* lib_handle;
           CMP_TYPE (*getter_ptr)();
-          CMP_TYPE lib_cmp;
+          CMP_TYPE lib_cmp_ptr;
           int arr[5] = {4, 2, 5, 1, 3};
 
           lib_handle = dlopen("liblib.so", RTLD_NOW);
@@ -1875,7 +1875,7 @@ if 'benchmark' not in sys.argv:
             printf("Could not find func.\\n");
             return 1;
           }
-          lib_cmp = getter_ptr();
+          lib_cmp_ptr = getter_ptr();
 
           qsort((void*)arr, 5, sizeof(int), main_cmp);
           printf("Sort with main comparison: ");
@@ -1884,7 +1884,7 @@ if 'benchmark' not in sys.argv:
           }
           printf("\\n");
 
-          qsort((void*)arr, 5, sizeof(int), lib_cmp);
+          qsort((void*)arr, 5, sizeof(int), lib_cmp_ptr);
           printf("Sort with lib comparison: ");
           for (int i = 0; i < 5; i++) {
             printf("%d ", arr[i]);

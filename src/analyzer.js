@@ -1129,7 +1129,7 @@ function analyzer(data) {
   // Add additional necessary items
   if (INCLUDE_FULL_LIBRARY) {
     assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
-    var libFuncsToInclude = Object.keys(Library);
+    var libFuncsToInclude = keys(Library);
   } else {
     var libFuncsToInclude = ['memset', 'malloc', 'free'];
   }
