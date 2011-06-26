@@ -101,7 +101,19 @@ AUTO_OPTIMIZE = 0; // When run with the CHECK_* options, will not fail on errors
 EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
                                 // be accessible outside of the generated code.
 
+EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
+                       // exported, so they are guaranteed to be
+                       // accessible outside of the generated code.
+
+INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather than just the
+                          // functions used by the generated code. This is needed when
+                          // dynamically loading modules that make use of runtime
+                          // library functions that are not used in the main module.
+
 SHOW_LABELS = 0; // Show labels in the generated code
+
+BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which
+                         // must be loaded dynamically using dlopen().
 
 // Compiler debugging options
 DEBUG_TAGS_SHOWING = [];

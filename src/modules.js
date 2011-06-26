@@ -140,7 +140,13 @@ var Functions = {
 
   // Generate code for function indexing
   generateIndexing: function() {
-    return 'var FUNCTION_TABLE = [' + this.indexedFunctions.toString().replace('"', '') + '];';
+    var indices = this.indexedFunctions.toString().replace('"', '');
+    if (BUILD_AS_SHARED_LIB) {
+      // Shared libraries reuse the parent's function table.
+      return 'FUNCTION_TABLE = FUNCTION_TABLE.concat([' + indices + ']);';
+    } else {
+      return 'var FUNCTION_TABLE = [' + indices + '];';
+    }
   }
 };
 
