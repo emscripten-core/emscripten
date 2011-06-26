@@ -239,7 +239,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY']:
       try:
         value = eval(setting)
         exported_settings[setting] = value
@@ -1778,6 +1778,203 @@ if 'benchmark' not in sys.argv:
         else:
           # Bloated memory; same layout as C/C++
           self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
+
+    def test_dlfcn_basic(self):
+      global BUILD_AS_SHARED_LIB
+      lib_src = '''
+        #include <cstdio>
+
+        class Foo {
+        public:
+          Foo() {
+            printf("Constructing lib object.\\n");
+          }
+        };
+
+        Foo global;
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'liblib.cpp')
+      BUILD_AS_SHARED_LIB = 1
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+
+      src = '''
+        #include <cstdio>
+        #include <dlfcn.h>
+
+        class Bar {
+        public:
+          Bar() {
+            printf("Constructing main object.\\n");
+          }
+        };
+
+        Bar global;
+
+        int main() {
+          dlopen("liblib.so", RTLD_NOW);
+          return 0;
+        }
+        '''
+      BUILD_AS_SHARED_LIB = 0
+      self.do_test(src, 'Constructing main object.\nConstructing lib object.\n')
+
+    def test_dlfcn_qsort(self):
+      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
+      lib_src = '''
+        int lib_cmp(const void* left, const void* right) {
+          const int* a = (const int*) left;
+          const int* b = (const int*) right;
+          if(*a > *b) return 1;
+          else if(*a == *b) return  0;
+          else return -1;
+        }
+
+        typedef int (*CMP_TYPE)(const void*, const void*);
+
+        CMP_TYPE get_cmp() {
+          return lib_cmp;
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'liblib.cpp')
+      BUILD_AS_SHARED_LIB = 1
+      EXPORTED_FUNCTIONS = ['__Z7get_cmpv']
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+
+      src = '''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <dlfcn.h>
+
+        typedef int (*CMP_TYPE)(const void*, const void*);
+
+        int main_cmp(const void* left, const void* right) {
+          const int* a = (const int*) left;
+          const int* b = (const int*) right;
+          if(*a < *b) return 1;
+          else if(*a == *b) return  0;
+          else return -1;
+        }
+
+        int main() {
+          void* lib_handle;
+          CMP_TYPE (*getter_ptr)();
+          CMP_TYPE lib_cmp;
+          int arr[5] = {4, 2, 5, 1, 3};
+
+          lib_handle = dlopen("liblib.so", RTLD_NOW);
+          if (lib_handle == NULL) {
+            printf("Could not load lib.\\n");
+            return 1;
+          }
+          getter_ptr = (CMP_TYPE (*)()) dlsym(lib_handle, "_Z7get_cmpv");
+          if (getter_ptr == NULL) {
+            printf("Could not find func.\\n");
+            return 1;
+          }
+          lib_cmp = getter_ptr();
+
+          qsort((void*)arr, 5, sizeof(int), main_cmp);
+          printf("Sort with main comparison: ");
+          for (int i = 0; i < 5; i++) {
+            printf("%d ", arr[i]);
+          }
+          printf("\\n");
+
+          qsort((void*)arr, 5, sizeof(int), lib_cmp);
+          printf("Sort with lib comparison: ");
+          for (int i = 0; i < 5; i++) {
+            printf("%d ", arr[i]);
+          }
+          printf("\\n");
+
+          return 0;
+        }
+        '''
+      BUILD_AS_SHARED_LIB = 0
+      EXPORTED_FUNCTIONS = ['_main']
+      self.do_test(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
+                   output_nicerizer=lambda x: x.replace('\n', '*'))
+
+    def test_dlfcn_data_and_fptr(self):
+      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS, EXPORTED_GLOBALS
+      lib_src = '''
+        #include <stdio.h>
+
+        int global = 42;
+
+        void lib_fptr() {
+          printf("Second calling lib_fptr from main.\\n");
+        }
+
+        void (*func(int x, void(*fptr)()))() {
+          printf("In func: %d\\n", x);
+          fptr();
+          return lib_fptr;
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'liblib.cpp')
+      BUILD_AS_SHARED_LIB = 1
+      EXPORTED_FUNCTIONS = ['__Z4funciPFvvE']
+      EXPORTED_GLOBALS = ['_global']
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+
+      src = '''
+        #include <stdio.h>
+        #include <dlfcn.h>
+
+        typedef void (*FUNCTYPE(int, void(*)()))();
+
+        FUNCTYPE func;
+
+        void main_fptr() {
+          printf("First calling main_fptr from lib.\\n");
+        }
+
+        int main() {
+          void* lib_handle;
+          FUNCTYPE* func_fptr;
+
+          // Test basic lib loading.
+          lib_handle = dlopen("liblib.so", RTLD_NOW);
+          if (lib_handle == NULL) {
+            printf("Could not load lib.\\n");
+            return 1;
+          }
+
+          // Test looked up function.
+          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "_Z4funciPFvvE");
+          if (func_fptr == NULL) {
+            printf("Could not find func.\\n");
+            return 1;
+          }
+
+          // Test passing function pointers across module bounds.
+          void (*fptr)() = func_fptr(13, main_fptr);
+          fptr();
+
+          // Test global data.
+          int* global = (int*) dlsym(lib_handle, "global");
+          if (global == NULL) {
+            printf("Could not find global.\\n");
+            return 1;
+          }
+
+          printf("Var: %d\\n", *global);
+
+          return 0;
+        }
+        '''
+      BUILD_AS_SHARED_LIB = 0
+      EXPORTED_FUNCTIONS = ['_main']
+      EXPORTED_GLOBALS = []
+      self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*Var: 42*',
+                   output_nicerizer=lambda x: x.replace('\n', '*'))
 
     def test_files(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
