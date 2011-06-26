@@ -3,6 +3,23 @@
 
 // Main function
 function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+  // Add additional necessary items for the main pass
+  if (!functionsOnly) {
+    var libFuncsToInclude;
+    if (INCLUDE_FULL_LIBRARY) {
+      assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
+      libFuncsToInclude = keys(Library);
+    } else {
+      libFuncsToInclude = ['memset', 'malloc', 'free'];
+    }
+    libFuncsToInclude.forEach(function(ident) {
+      data.functionStubs.push({
+        intertype: 'functionStub',
+        ident: '_' + ident
+      });
+    });
+  }
+
   // Does simple 'macro' substitution, using Django-like syntax,
   // {{{ code }}} will be replaced with |eval(code)|.
   function processMacros(text) {
