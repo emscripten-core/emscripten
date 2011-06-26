@@ -643,19 +643,24 @@ var Library = {
 
   strtod__deps: ['isspace', 'isdigit'],
   strtod: function(str, endptr) {
-    // FIXME handles only whitespace + |[0-9]+(.[0.9]+)?|, no e+
+    // Skip space.
     while (_isspace(str)) str++;
+
     var chr;
     var ret = 0;
+
+    // Get whole part.
     while(1) {
       chr = {{{ makeGetValue('str', 0, 'i8') }}};
       if (!_isdigit(chr)) break;
       ret = ret*10 + chr - '0'.charCodeAt(0);
       str++;
     }
+
+    // Get fractional part.
     if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
       str++;
-      var mul=1/10;
+      var mul = 1/10;
       while(1) {
         chr = {{{ makeGetValue('str', 0, 'i8') }}};
         if (!_isdigit(chr)) break;
@@ -664,9 +669,36 @@ var Library = {
         str++;
       }
     }
+
+    // Get exponent part.
+    chr = {{{ makeGetValue('str', 0, 'i8') }}};
+    if (chr == 'e'.charCodeAt(0) || chr == 'E'.charCodeAt(0)) {
+      str++;
+      var exponent = 0;
+      var expNegative = false;
+      chr = {{{ makeGetValue('str', 0, 'i8') }}};
+      if (chr == '-'.charCodeAt(0)) {
+        negative = true;
+        str++;
+      } else if (chr == '+'.charCodeAt(0)) {
+        str++;
+      }
+      chr = {{{ makeGetValue('str', 0, 'i8') }}};
+      while(1) {
+        if (!_isdigit(chr)) break;
+        exponent = exponent*10 + chr - '0'.charCodeAt(0);
+        str++;
+        chr = {{{ makeGetValue('str', 0, 'i8') }}};
+      }
+      if (expNegative) exponent = -exponent;
+      ret = Math.pow(ret, exponent);
+    }
+
+    // Set end pointer.
     if (endptr) {
       {{{ makeSetValue('endptr', 0, 'str', '*') }}}
     }
+
     return ret;
   },
 
