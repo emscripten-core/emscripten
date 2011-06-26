@@ -178,9 +178,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           }
           constant = makePointer(constant, null, 'ALLOC_STATIC', item.type);
 
+          var js = item.ident + '=' + constant + ';';
+          if (item.ident in EXPORTED_GLOBALS) {
+            js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
+          }
           return ret.concat({
             intertype: 'GlobalVariable',
-            JS: item.ident + '=' + constant + ';',
+            JS: js,
           });
         }
       }
@@ -196,7 +200,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     processItem: function(item) {
       var ret = [item];
       var shortident = item.ident.substr(1);
-      if (shortident in Library) {
+      if (BUILD_AS_SHARED_LIB) {
+        // Shared libraries reuse the runtime of their parents.
+        item.JS = '';
+      } else if (Library.hasOwnProperty(shortident)) {
         function addFromLibrary(ident) {
           if (ident in addedLibraryItems) return '';
           // Don't replace implemented functions with library ones (which can happen when we add dependencies).
@@ -764,14 +771,17 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     //        postamble
     //          global_vars
 
-    var shellParts = read('shell.js').split('{{BODY}}');
+    var shellFile = BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js';
+    var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[0]);
-      var pre = processMacros(preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
+      var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
+      var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
       print(pre);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
       print(Functions.generateIndexing());
 
-      var postParts = processMacros(preprocess(read('postamble.js'), CONSTANTS)).split('{{GLOBAL_VARS}}');
+      var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
+      var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
       print(postParts[0]);
         itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
         itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });

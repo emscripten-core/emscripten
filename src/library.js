@@ -277,7 +277,7 @@ var Library = {
         }
       } else {
         Module.stdin = function stdin(prompt) {
-          return window.prompt(prompt);
+          return window.prompt(prompt) || '';
         };
       }
 
@@ -1192,6 +1192,126 @@ var Library = {
 
   exp2: function(x) {
     return Math.pow(2, x);
+  },
+
+  
+  // ==========================================================================
+  // dlfcn.h
+  // ==========================================================================
+
+  // Data for dlfcn.h.
+  $DLFCN_DATA: {
+    error: null,
+    isError: false,
+    loadedLibs: {}, // handle -> [refcount, name, lib_object]
+    loadedLibNames: {}, // name -> handle
+  },
+  // void* dlopen(const char* filename, int flag);
+  dlopen__deps: ['$DLFCN_DATA'],
+  dlopen: function(filename, flag) {
+    // TODO: Add support for LD_LIBRARY_PATH.
+    filename = Pointer_stringify(filename);
+    filename += '.js';
+
+    if (DLFCN_DATA.loadedLibNames[filename]) {
+      // Already loaded; increment ref count and return.
+      var handle = DLFCN_DATA.loadedLibNames[filename];
+      DLFCN_DATA.loadedLibs[handle][0]++;
+      return handle;
+    }
+
+    try {
+      var lib_data = read(filename);
+    } catch (e) {
+      DLFCN_DATA.isError = true;
+      return 0;
+    }
+
+    try {
+      var lib_module = eval(lib_data)(FUNCTION_TABLE.length);
+    } catch (e) {
+      DLFCN_DATA.isError = true;
+      return 0;
+    }
+
+    // Not all browsers support Object.keys().
+    var handle = 1;
+    for (var key in DLFCN_DATA.loadedLibs) {
+      if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
+    }
+
+    DLFCN_DATA.loadedLibs[handle] = [1, filename, lib_module];
+    DLFCN_DATA.loadedLibNames[filename] = handle;
+
+    // We don't care about RTLD_NOW and RTLD_LAZY.
+    if (flag & 256) { // RTLD_GLOBAL
+      for (var ident in lib_module) {
+        if (lib_module.hasOwnProperty(ident)) {
+          // TODO: Check if we need to unmangle here.
+          Module[ident] = lib_module[ident];
+        }
+      }
+    }
+
+    return handle;
+  },
+  // int dlclose(void* handle);
+  dlclose__deps: ['$DLFCN_DATA'],
+  dlclose: function(handle) {
+    if (!DLFCN_DATA.loadedLibs[handle]) {
+      DLFCN_DATA.isError = true;
+      return 1;
+    } else {
+      var lib_record = DLFCN_DATA.loadedLibs[handle];
+      if (lib_record[0]-- == 0) {
+        delete DLFCN_DATA.loadedLibNames[lib_record[1]];
+        delete DLFCN_DATA.loadedLibs[handle];
+      }
+      return 0;
+    }
+  },
+  // void* dlsym(void* handle, const char* symbol);
+  dlsym__deps: ['$DLFCN_DATA'],
+  dlsym: function(handle, symbol) {
+    symbol = Pointer_stringify(symbol);
+    // TODO: Properly mangle.
+    symbol = '_' + symbol;
+
+    if (!DLFCN_DATA.loadedLibs[handle]) {
+      DLFCN_DATA.isError = true;
+      return 0;
+    } else {
+      var lib_module = DLFCN_DATA.loadedLibs[handle][2];
+      if (!lib_module[symbol]) {
+        DLFCN_DATA.isError = true;
+        return 0;
+      } else {
+        var result = lib_module[symbol];
+        if (typeof result == 'function') {
+          // TODO: Cache functions rather than appending on every lookup.
+          FUNCTION_TABLE.push(result);
+          FUNCTION_TABLE.push(0);
+          result = FUNCTION_TABLE.length - 2;
+        }
+        return result;
+      }
+    }
+  },
+  // char* dlerror(void);
+  dlerror__deps: ['$DLFCN_DATA'],
+  dlerror: function() {
+    if (DLFCN_DATA.isError) {
+      return 0;
+    } else {
+      // TODO: Return non-generic error messages.
+      if (DLFCN_DATA.error === null) {
+        var msg = 'An error occurred while loading dynamic library.';
+        var arr = Module.intArrayFromString(msg)
+        DLFCN_DATA.error = Pointer_make(arr, 0, 2, 'i8');
+      }
+      DLFCN_DATA.isError = false;
+      return DLFCN_DATA.error;
+    }
   },
 
   // ==========================================================================

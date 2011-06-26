@@ -598,7 +598,7 @@ if (!this['read']) {
     xhr.send(null);
     if (xhr.status != 200 && xhr.status != 0) throw 'failed to open: ' + url;
     return xhr.responseText;
-  }
+  };
 }
 
 function readBinary(filename) {
