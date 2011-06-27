@@ -66,7 +66,7 @@ var Library = {
   _formatString__deps: ['$STDIO', 'isdigit'],
   _formatString: function() {
     function isFloatArg(type) {
-      return String.toLowerCase().fromCharCode(type) in Runtime.set('f', 'e', 'g');
+      return String.fromCharCode(type).toLowerCase() in Runtime.set('f', 'e', 'g');
     }
     var cStyle = false;
     var textIndex = arguments[0];
@@ -957,7 +957,7 @@ var Library = {
       var expNegative = false;
       chr = {{{ makeGetValue('str', 0, 'i8') }}};
       if (chr == '-'.charCodeAt(0)) {
-        negative = true;
+        expNegative = true;
         str++;
       } else if (chr == '+'.charCodeAt(0)) {
         str++;
@@ -970,7 +970,7 @@ var Library = {
         chr = {{{ makeGetValue('str', 0, 'i8') }}};
       }
       if (expNegative) exponent = -exponent;
-      ret = Math.pow(ret, exponent);
+      ret *= Math.pow(10, exponent);
     }
 
     // Set end pointer.
