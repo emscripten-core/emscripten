@@ -601,11 +601,11 @@ if 'benchmark' not in sys.argv:
           #include <cmath>
           int main()
           {
-            printf("*%.2f,%.2f,%f*\\n", M_PI, -M_PI, 1/0.0);
+            printf("*%.2f,%.2f,%f,%f*\\n", M_PI, -M_PI, 1/0.0, -1/0.0);
             return 0;
           }
         '''
-        self.do_test(src, '*3.14,-3.14,Infinity*')
+        self.do_test(src, '*3.14,-3.14,inf,-inf*')
 
     def test_getgep(self):
         # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP

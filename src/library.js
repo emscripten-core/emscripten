@@ -286,7 +286,7 @@ var Library = {
 
             // Normalize it so wholePart is one digit.
             if (wholePart == '0') {
-              while (fractionPart[0] == '0') {
+              while (fractionPart.length && fractionPart[0] == '0') {
                 exponent--;
                 fractionPart = fractionPart.slice(1);
               }
@@ -332,8 +332,8 @@ var Library = {
                   fractionPart += '0';
                 }
               }
-              if (fractionPart.length && dropTrailingZeros) {
-                while (fractionPart[fractionPart.length - 1] == '0') {
+              if (dropTrailingZeros) {
+                while (fractionPart.length && fractionPart[fractionPart.length - 1] == '0') {
                   fractionPart = fractionPart.slice(0, -1);
                 }
               }
