@@ -1040,19 +1040,21 @@ function handleOverflow(text, bits) {
 
 // From parseLLVMSegment
 function finalizeLLVMParameter(param) {
+  var ret;
   if (isNumber(param)) {
     return param;
   } else if (typeof param === 'string') {
-    return toNiceIdentCarefully(param);
+    ret = toNiceIdentCarefully(param);
   } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
-    return finalizeLLVMFunctionCall(param);
+    ret = finalizeLLVMFunctionCall(param);
   } else if (param.intertype == 'value') {
-    return parseNumerical(param.ident);
+    ret = parseNumerical(param.ident);
   } else if (param.intertype == 'structvalue') {
-    return param.values.map(finalizeLLVMParameter);
+    ret = param.values.map(finalizeLLVMParameter);
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
+  return indexizeFunctions(ret);
 }
 
 function makeSignOp(value, type, op) {
@@ -1104,7 +1106,7 @@ function isSignedOp(op, variant) {
 function processMathop(item) { with(item) {
   for (var i = 1; i <= 4; i++) {
     if (item['param'+i]) {
-      item['ident'+i] = indexizeFunctions(finalizeLLVMParameter(item['param'+i]));
+      item['ident'+i] = finalizeLLVMParameter(item['param'+i]);
       if (!isNumber(item['ident'+i])) {
         item['ident'+i] = '(' + item['ident'+i] + ')'; // we may have nested expressions. So enforce the order of operations we want
       }

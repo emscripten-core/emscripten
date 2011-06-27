@@ -528,7 +528,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     });
   }
   makeFuncLineActor('store', function(item) {
-    var value = indexizeFunctions(finalizeLLVMParameter(item.value));
+    var value = finalizeLLVMParameter(item.value);
     if (pointingLevels(item.pointerType) == 1) {
       value = parseNumerical(value, removePointing(item.pointerType));
     }
@@ -544,7 +544,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         if (item.pointer.intertype == 'value') {
           return makeSetValue(item.ident, 0, value, item.valueType);
         } else {
-          return makeSetValue(0, indexizeFunctions(finalizeLLVMParameter(item.pointer)), value, item.valueType);
+          return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType);
         }
         break;
       default:
@@ -644,7 +644,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
     ret += 'return';
     if (item.value) {
-      ret += ' ' + indexizeFunctions(finalizeLLVMParameter(item.value));
+      ret += ' ' + finalizeLLVMParameter(item.value);
     }
     return ret + ';';
   });
@@ -688,10 +688,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var params = item.params;
     function makeOne(i) {
       if (i === params.length-1) {
-        return indexizeFunctions(finalizeLLVMParameter(params[i].value));
+        return finalizeLLVMParameter(params[i].value);
       }
       return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
-                                   indexizeFunctions(finalizeLLVMParameter(params[i].value)) + ' : (' + makeOne(i+1) + ')';
+                                   finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
     }
     return makeOne(0);
   });
