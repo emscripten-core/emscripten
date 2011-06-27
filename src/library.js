@@ -63,10 +63,10 @@ var Library = {
   },
   sscanf: '_scanString',
 
-  _formatString__deps: ['$STDIO'],
+  _formatString__deps: ['$STDIO', 'isdigit'],
   _formatString: function() {
     function isFloatArg(type) {
-      return String.fromCharCode(type) in Runtime.set('f', 'e', 'g');
+      return String.toLowerCase().fromCharCode(type) in Runtime.set('f', 'e', 'g');
     }
     var cStyle = false;
     var textIndex = arguments[0];
@@ -101,66 +101,345 @@ var Library = {
       if (curr === 0) break;
       next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
       if (curr == '%'.charCodeAt(0)) {
-        // Handle very very simply formatting, namely only %.X[f|d|u|etc.]
-        var precision = -1;
-        if (next == '.'.charCodeAt(0)) {
-          textIndex++;
-          precision = 0;
-          while(1) {
-            var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-            if (!(precisionChr >= '0'.charCodeAt(0) && precisionChr <= '9'.charCodeAt(0))) break;
-            precision *= 10;
-            precision += precisionChr - '0'.charCodeAt(0);
-            textIndex++;
-          }
-          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-        }
-        if (next == 'l'.charCodeAt(0) || next == 'L'.charCodeAt(0)) {
-          textIndex++;
-          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-        }
-        if (isFloatArg(next)) {
-          next = 'f'.charCodeAt(0); // no support for 'e'
-        }
-        if (['d', 'i', 'u', 'p', 'f'].indexOf(String.fromCharCode(next)) != -1) {
-          var currArg;
-          var argText;
-          currArg = getNextArg(next);
-          argText = String(+currArg); // +: boolean=>int
-          if (next == 'u'.charCodeAt(0)) {
-            argText = String(unSign(currArg, 32));
-          } else if (next == 'p'.charCodeAt(0)) {
-            argText = '0x' + currArg.toString(16);
-          } else {
-            argText = String(+currArg); // +: boolean=>int
-          }
-          if (precision >= 0) {
-            if (isFloatArg(next)) {
-              argText = (Math.round(currArg*Math.pow(10,precision))/Math.pow(10,precision)).toString();
-              var dotIndex = argText.indexOf('.');
-              if (dotIndex == -1 && next == 'f'.charCodeAt(0)) {
-                dotIndex = argText.length;
-                argText += '.';
+        // Handle flags.
+        var flagAlwaysSigned = false;
+        var flagLeftAlign = false;
+        var flagAlternative = false;
+        var flagZeroPad = false;
+        flagsLoop: while (1) {
+          switch (next) {
+            case '+'.charCodeAt(0):
+              flagAlwaysSigned = true;
+              break;
+            case '-'.charCodeAt(0):
+              flagLeftAlign = true;
+              break;
+            case '#'.charCodeAt(0):
+              flagAlternative = true;
+              break;
+            case '0'.charCodeAt(0):
+              if (flagZeroPad) {
+                break flagsLoop;
+              } else {
+                flagZeroPad = true;
+                break;
               }
-              argText += '00000000000'; // padding
-              argText = argText.substr(0, dotIndex+1+precision);
+            default:
+              break flagsLoop;
+          }
+          textIndex++;
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        }
+
+        // Handle width.
+        var width = 0;
+        if (next == '*'.charCodeAt(0)) {
+          width = getNextArg('i');
+          textIndex++;
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        } else {
+          while (_isdigit(next)) {
+            width = width * 10 + (next - '0'.charCodeAt(0));
+            textIndex++;
+            next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+          }
+        }
+
+        // Handle precision.
+        var precisionSet = false;
+        if (next == '.'.charCodeAt(0)) {
+          var precision = 0;
+          precisionSet = true;
+          textIndex++;
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+          if (next == '*'.charCodeAt(0)) {
+            precision = getNextArg('i');
+            textIndex++;
+          } else {
+            while(1) {
+              var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+              if (!_isdigit(precisionChr)) break;
+              precision *= 10;
+              precision += precisionChr - '0'.charCodeAt(0);
+              textIndex++;
+            }
+          }
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        } else {
+          var precision = 6; // Standard default.
+        }
+
+        // Handle (ignore) integer sizes.
+        if (next == 'l'.charCodeAt(0) && {{{ makeGetValue(0, 'textIndex+2', 'i8') }}} == 'l'.charCodeAt(0) ||
+            next == 'h'.charCodeAt(0) && {{{ makeGetValue(0, 'textIndex+2', 'i8') }}} == 'h'.charCodeAt(0)) {
+          textIndex += 2;
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        } else if (next == 'l'.charCodeAt(0) || next == 'L'.charCodeAt(0) ||
+                   next == 'h'.charCodeAt(0) || next == 'z'.charCodeAt(0) ||
+                   next == 'j'.charCodeAt(0) || next == 't'.charCodeAt(0)) {
+          textIndex++;
+          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        }
+
+        // Handle type specifier.
+        var isNumeric = false;
+        if (['d', 'i', 'u', 'o', 'x', 'X', 'p'].indexOf(String.fromCharCode(next)) != -1) {
+          // Integer.
+          var isNumeric = true;
+          var currArg = +getNextArg(next); // +: boolean=>int
+          var currAbsArg = Math.abs(currArg);
+          var argText;
+          var prefix = '';
+          if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
+            argText = currAbsArg.toString(10);
+          } else if (next == 'u'.charCodeAt(0)) {
+            argText = unSign(currAbsArg, 32).toString(10);
+          } else if (next == 'o'.charCodeAt(0)) {
+            argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
+          } else if (next == 'x'.charCodeAt(0)) {
+            prefix = flagAlternative ? '0x' : '';
+            argText = currAbsArg.toString(16);
+          } else if (next == 'X'.charCodeAt(0)) {
+            prefix = flagAlternative ? '0X' : '';
+            argText = currAbsArg.toString(16).toUpperCase();
+          } else if (next == 'p'.charCodeAt(0)) {
+            prefix = '0x';
+            argText = currAbsArg.toString(16);
+          }
+          if (precisionSet) {
+            while (argText.length < precision) {
+              argText = '0' + argText;
+            }
+          }
+          // Add sign.
+          if (currArg < 0) {
+            prefix = '-' + prefix;
+          } else if (flagAlwaysSigned) {
+            prefix = '+' + prefix;
+          }
+          // Add padding.
+          while (prefix.length + argText.length < width) {
+            if (flagLeftAlign) {
+              argText += ' ';
             } else {
-              while (argText.length < precision) {
+              if (flagZeroPad) {
                 argText = '0' + argText;
+              } else {
+                prefix = ' ' + prefix;
               }
             }
           }
+          argText = prefix + argText;
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
           textIndex += 2;
+        } else if (['f', 'F', 'e', 'E', 'g', 'G'].indexOf(String.fromCharCode(next)) != -1) {
+          // Float.
+          // To properly reproduce the C behaviour, we need to do a round trip
+          // through the JS number formatter. Slow, but good for compatibility
+          // and is probably not a bottleneck in typical usage scenarios.
+          var isNumeric = true;
+          var currArg = +getNextArg(next); // +: boolean=>int
+          var absArgText = String(Math.abs(currArg));
+
+          if (absArgText == 'NaN' || absArgText == 'Infinity') {
+            // Special values.
+            absArgText = absArgText.slice(0, 3);
+            if (next > 'Z'.charCodeAt(0)) {
+              absArgText = absArgText.toLowerCase();
+            } else {
+              absArgText = absArgText.toUpperCase();
+            }
+            if (currArg < 0) ret.push('-'.charCodeAt(0));
+            absArgText.split('').forEach(function(chr) {
+              ret.push(chr.charCodeAt(0));
+            });
+          } else {
+            var isGeneral = false;
+
+            // Split the number into whole, fraction and exponent.
+            var indexOfPeriod = absArgText.indexOf('.');
+            var indexOfE = absArgText.indexOf('e');
+            var wholePart, fractionPart, exponentPart;
+            if (indexOfE == -1) {
+              if (indexOfPeriod == -1) {
+                wholePart = absArgText;
+                fractionPart = '';
+              } else {
+                wholePart = absArgText.slice(0, indexOfPeriod);
+                fractionPart = absArgText.slice(indexOfPeriod + 1);
+              }
+              exponentPart = '';
+            } else {
+              if (indexOfPeriod == -1) {
+                wholePart = absArgText.slice(0, indexOfE);
+                fractionPart = '';
+              } else {
+                wholePart = absArgText.slice(0, indexOfPeriod);
+                fractionPart = absArgText.slice(indexOfPeriod + 1, indexOfE);
+              }
+              exponentPart = absArgText.slice(indexOfE + 1);
+            }
+            var exponent = parseInt(exponentPart || 0, 10);
+
+            // Normalize it so wholePart is one digit.
+            if (wholePart == '0') {
+              while (fractionPart[0] == '0') {
+                exponent--;
+                fractionPart = fractionPart.slice(1);
+              }
+              if (fractionPart) {
+                exponent--;
+                wholePart = fractionPart[0];
+                fractionPart = fractionPart.slice(1);
+              }
+            } else {
+              exponent += wholePart.length - 1;
+              fractionPart = wholePart.slice(1) + fractionPart;
+              wholePart = wholePart[0];
+            }
+
+            // Convert g/G to f/F or e/E, as per:
+            // http://pubs.opengroup.org/onlinepubs/9699919799/functions/printf.html
+            if (next == 'g'.charCodeAt(0) || next == 'G'.charCodeAt(0)) {
+              isGeneral = true;
+              precision = precision || 1;
+              if (precision > exponent && exponent >= -4) {
+                next = ((next == 'g'.charCodeAt(0)) ? 'f' : 'F').charCodeAt(0);
+                precision -= exponent + 1;
+              } else {
+                next = ((next == 'g'.charCodeAt(0)) ? 'e' : 'E').charCodeAt(0);
+                precision--;
+              }
+            }
+
+            // Round or pad a fractional part given the current precision.
+            var applyPrecision = function(fractionPart) {
+              if (precision == 0) {
+                fractionPart = '';
+              } else if (fractionPart.length > precision) {
+                fractionPart = fractionPart.slice(0, precision) + '.' + fractionPart[precision];
+                fractionPart = Math.round(parseFloat(fractionPart)).toString(10);
+                while (fractionPart.length < precision) {
+                  fractionPart = '0' + fractionPart;
+                }
+              } else {
+                while (fractionPart.length < precision) {
+                  fractionPart += '0';
+                }
+              }
+              if (isGeneral && !flagAlternative) {
+                while (fractionPart[fractionPart.length - 1] == '0') {
+                  fractionPart = fractionPart.slice(0, -1);
+                }
+              }
+              return fractionPart;
+            };
+
+            var parts = [];
+            if (next == 'f'.charCodeAt(0) || next == 'F'.charCodeAt(0)) {
+              // Fixed point.
+              if (exponent) {
+                // Denormalize.
+                if (exponent > 0) {
+                  var step = Math.min(exponent, fractionPart.length);
+                  wholePart += fractionPart.slice(0, step);
+                  fractionPart = fractionPart.slice(step);
+                  exponent -= step;
+                  while (exponent-- > 0) wholePart += '0';
+                } else {
+                  var step = Math.min(-exponent, wholePart.length);
+                  fractionPart = wholePart.slice(-step) + fractionPart;
+                  wholePart = wholePart.slice(0, -step);
+                  exponent += step;
+                  while (exponent++ < 0) fractionPart = '0' + fractionPart;
+                }
+              }
+              if (precision == 0) {
+                wholePart = Math.round(parseFloat(wholePart + '.' + fractionPart)).toString(10);
+                fractionPart = '';
+              }
+              parts.push(wholePart || '0');
+              if (fractionPart) {
+                parts.push('.');
+                fractionPart = applyPrecision(fractionPart);
+                if (parseInt(fractionPart, 10) > 0) parts.push(fractionPart);
+              } else if (flagAlternative) {
+                parts.push('.');
+              }
+            } else {
+              // Scientific notation.
+              parts.push(wholePart);
+              fractionPart = applyPrecision(fractionPart);
+              if (parseInt(fractionPart, 10) > 0 && precision != 0) {
+                parts.push('.');
+                parts.push(fractionPart);
+              } else if (flagAlternative) {
+                parts.push('.');
+              }
+              if (exponent || !isGeneral) {
+                parts.push(String.fromCharCode(next));
+                parts.push(exponent >= 0 ? '+' : '-');
+                if (Math.abs(exponent) < 10) parts.push('0');
+                parts.push(Math.abs(exponent).toString(10));
+              }
+            }
+            // Add sign.
+            if (currArg < 0) {
+              parts.unshift('-');
+            } else if (flagAlwaysSigned) {
+              parts.unshift('+');
+            }
+            // Add padding.
+            var argText = parts.join('');
+            while (argText.length < width) {
+              if (flagLeftAlign) {
+                argText += ' ';
+              } else {
+                if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
+                  argText = argText[0] + '0' + argText.slice(1);
+                } else {
+                  argText = (flagZeroPad ? '0' : ' ') + argText;
+                }
+              }
+            }
+            argText.split('').forEach(function(chr) {
+              ret.push(chr.charCodeAt(0));
+            });
+          }
+          textIndex += 2;
         } else if (next == 's'.charCodeAt(0)) {
-          ret = ret.concat(String_copy(getNextArg(next)));
+          // String.
+          var copiedString = String_copy(getNextArg(next));
+          if (precisionSet && copiedString.length > precision) {
+            copiedString = copiedString.slice(0, precision);
+          }
+          if (!flagLeftAlign) {
+            while (copiedString.length < width--) {
+              ret.push(' '.charCodeAt(0));
+            }
+          }
+          ret = ret.concat(copiedString);
+          if (flagLeftAlign) {
+            while (copiedString.length < width--) {
+              ret.push(' '.charCodeAt(0));
+            }
+          }
           textIndex += 2;
         } else if (next == 'c'.charCodeAt(0)) {
-          ret = ret.concat(getNextArg(next));
+          if (flagLeftAlign) ret = ret.concat(getNextArg(next));
+          while (--width > 0) {
+            ret.push(' '.charCodeAt(0));
+          }
+          if (!flagLeftAlign) ret = ret.concat(getNextArg(next));
+          textIndex += 2;
+        } else if (next == 'n'.charCodeAt(0)) {
+          // TODO: Implement. Requires arguments to be passed in C-style.
+          // {{{ makeSetValue('argIndex', '0', 'ret.length', 'i32') }}}
           textIndex += 2;
         } else {
+          // TODO: Add support for a/A specifiers (hex float).
           ret.push(next);
           textIndex += 2; // not sure what to do with this %, so print it
         }

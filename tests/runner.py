@@ -1976,6 +1976,11 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*Var: 42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'))
 
+    def test_printf(self):
+      src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
+      expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
     def test_files(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       def post(filename):
