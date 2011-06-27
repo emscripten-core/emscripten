@@ -193,7 +193,8 @@ var Library = {
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
             argText = currAbsArg.toString(10);
           } else if (next == 'u'.charCodeAt(0)) {
-            argText = unSign(currAbsArg, 32).toString(10);
+            argText = unSign(currArg, 32).toString(10);
+            currArg = Math.abs(currArg);
           } else if (next == 'o'.charCodeAt(0)) {
             argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
           } else if (next == 'x'.charCodeAt(0)) {
@@ -331,7 +332,7 @@ var Library = {
                   fractionPart += '0';
                 }
               }
-              if (dropTrailingZeros) {
+              if (fractionPart.length && dropTrailingZeros) {
                 while (fractionPart[fractionPart.length - 1] == '0') {
                   fractionPart = fractionPart.slice(0, -1);
                 }

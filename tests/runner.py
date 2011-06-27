@@ -2150,7 +2150,7 @@ if 'benchmark' not in sys.argv:
       global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
-                      'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
+                      'hello lua world!\n17\n1\n2\n3\n4\n7',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
