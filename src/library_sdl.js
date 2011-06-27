@@ -62,6 +62,8 @@
 
 // Other stuff to take into account:
 //
+//  * Make sure alpha values are proper in your input. If they are all 0, everything will be transparent!
+//
 //  * It's best to set the ctx stuff in your html file, as above. Otherwise you will need
 //    to edit the generated .js file each time you generate it.
 //
@@ -297,8 +299,12 @@ mergeInto(Library, {
     // Copy pixel data to image
     var num = surfData.image.data.length;
     if (!surfData.colors) {
+      var data = surfData.image.data;
+      var buffer = surfData.buffer;
       for (var i = 0; i < num; i++) {
-        surfData.image.data[i] = {{{ makeGetValue('surfData.buffer', 'i', 'i8') }}}; // XXX - make sure alpha values are proper in your input
+        // We may need to correct signs here. Potentially you can hardcode a write of 255 to alpha, say, and
+        // the compiler may decide to write -1 in the llvm bitcode...
+        data[i] = {{{ makeGetValue('buffer', 'i', 'i8') + (CORRECT_SIGNS ? '&0xff' : '') }}};
       }
     } else {
       var width = Module['canvas'].width;
@@ -309,7 +315,8 @@ mergeInto(Library, {
       for (var y = 0; y < height; y++) {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
-          var val = {{{ makeGetValue('s++', '0', 'i8') }}};
+          // See comment above about signs
+          var val = {{{ makeGetValue('s++', '0', 'i8') + (CORRECT_SIGNS ? '&0xff' : '') }}};
           var color = colors[val] || [Math.floor(Math.random()*255),Math.floor(Math.random()*255),Math.floor(Math.random()*255)]; // XXX
           var start = base + x*4;
           data[start]   = color[0];

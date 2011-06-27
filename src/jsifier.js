@@ -3,6 +3,23 @@
 
 // Main function
 function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+  // Add additional necessary items for the main pass
+  if (!functionsOnly) {
+    var libFuncsToInclude;
+    if (INCLUDE_FULL_LIBRARY) {
+      assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
+      libFuncsToInclude = keys(Library);
+    } else {
+      libFuncsToInclude = ['memset', 'malloc', 'free'];
+    }
+    libFuncsToInclude.forEach(function(ident) {
+      data.functionStubs.push({
+        intertype: 'functionStub',
+        ident: '_' + ident
+      });
+    });
+  }
+
   // Does simple 'macro' substitution, using Django-like syntax,
   // {{{ code }}} will be replaced with |eval(code)|.
   function processMacros(text) {
@@ -511,7 +528,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     });
   }
   makeFuncLineActor('store', function(item) {
-    var value = indexizeFunctions(finalizeLLVMParameter(item.value));
+    var value = finalizeLLVMParameter(item.value);
     if (pointingLevels(item.pointerType) == 1) {
       value = parseNumerical(value, removePointing(item.pointerType));
     }
@@ -527,7 +544,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         if (item.pointer.intertype == 'value') {
           return makeSetValue(item.ident, 0, value, item.valueType);
         } else {
-          return makeSetValue(0, indexizeFunctions(finalizeLLVMParameter(item.pointer)), value, item.valueType);
+          return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType);
         }
         break;
       default:
@@ -671,10 +688,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var params = item.params;
     function makeOne(i) {
       if (i === params.length-1) {
-        return indexizeFunctions(finalizeLLVMParameter(params[i].value));
+        return finalizeLLVMParameter(params[i].value);
       }
       return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
-                                   indexizeFunctions(finalizeLLVMParameter(params[i].value)) + ' : (' + makeOne(i+1) + ')';
+                                   finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
     }
     return makeOne(0);
   });
