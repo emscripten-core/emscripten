@@ -314,6 +314,8 @@ var Library = {
               }
             }
 
+            var dropTrailingZeros = isGeneral && !flagAlternative;
+
             // Round or pad a fractional part given the current precision.
             var applyPrecision = function(fractionPart) {
               if (precision == 0) {
@@ -324,12 +326,12 @@ var Library = {
                 while (fractionPart.length < precision) {
                   fractionPart = '0' + fractionPart;
                 }
-              } else {
+              } else if (!dropTrailingZeros) {
                 while (fractionPart.length < precision) {
                   fractionPart += '0';
                 }
               }
-              if (isGeneral && !flagAlternative) {
+              if (dropTrailingZeros) {
                 while (fractionPart[fractionPart.length - 1] == '0') {
                   fractionPart = fractionPart.slice(0, -1);
                 }
@@ -361,10 +363,12 @@ var Library = {
                 fractionPart = '';
               }
               parts.push(wholePart || '0');
+              fractionPart = applyPrecision(fractionPart);
               if (fractionPart) {
                 parts.push('.');
-                fractionPart = applyPrecision(fractionPart);
-                if (parseInt(fractionPart, 10) > 0) parts.push(fractionPart);
+                if (!dropTrailingZeros || parseInt(fractionPart, 10) > 0) {
+                  parts.push(fractionPart);
+                }
               } else if (flagAlternative) {
                 parts.push('.');
               }

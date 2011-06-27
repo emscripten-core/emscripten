@@ -17,6 +17,16 @@ int main() {
   printf("%lF\n", -INFINITY);
   printf("%lf\n", NAN);
   printf("%lF\n", NAN);
+  printf("%.f\n", 0.0f);
+  printf("%.0f\n", 0.0f);
+  printf("%.1f\n", 0.0f);
+  printf("%.2f\n", 0.0f);
+  printf("%.5f\n", 0.0f);
+  printf("%.f\n", 1.0f);
+  printf("%.0f\n", 1.0f);
+  printf("%.1f\n", 1.0f);
+  printf("%.2f\n", 1.0f);
+  printf("%.5f\n", 1.0f);
   printf("%g\n", 1.f);
   printf("%g\n", 12.f);
   printf("%g\n", 123.f);
