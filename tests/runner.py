@@ -601,11 +601,11 @@ if 'benchmark' not in sys.argv:
           #include <cmath>
           int main()
           {
-            printf("*%.2f,%.2f,%f*\\n", M_PI, -M_PI, 1/0.0);
+            printf("*%.2f,%.2f,%f,%f*\\n", M_PI, -M_PI, 1/0.0, -1/0.0);
             return 0;
           }
         '''
-        self.do_test(src, '*3.14,-3.14,Infinity*')
+        self.do_test(src, '*3.14,-3.14,inf,-inf*')
 
     def test_getgep(self):
         # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
@@ -1976,6 +1976,62 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*Var: 42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'))
 
+    def test_strtod(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          char* endptr;
+
+          printf("\n");
+          printf("%g\n", strtod("0", &endptr));
+          printf("%g\n", strtod("0.", &endptr));
+          printf("%g\n", strtod("0.0", &endptr));
+          printf("%g\n", strtod("1", &endptr));
+          printf("%g\n", strtod("1.", &endptr));
+          printf("%g\n", strtod("1.0", &endptr));
+          printf("%g\n", strtod("123", &endptr));
+          printf("%g\n", strtod("123.456", &endptr));
+          printf("%g\n", strtod("1234567891234567890", &endptr));
+          printf("%g\n", strtod("1234567891234567890e+50", &endptr));
+          printf("%g\n", strtod("84e+220", &endptr));
+          printf("%g\n", strtod("84e+420", &endptr));
+          printf("%g\n", strtod("123e-50", &endptr));
+          printf("%g\n", strtod("123e-250", &endptr));
+          printf("%g\n", strtod("123e-450", &endptr));
+
+          char str[] = "12.34e56end";
+          strtod(str, &endptr);
+          printf("%d\n", endptr - str);
+          return 0;
+        }
+        '''
+      expected = '''
+        0
+        0
+        0
+        1
+        1
+        1
+        123
+        123.456
+        1.23457e+18
+        1.23457e+68
+        8.4e+221
+        inf
+        1.23e-48
+        1.23e-248
+        0
+        8
+        '''
+      self.do_test(src, re.sub(r'\n\s+', '\n', expected))
+
+    def test_printf(self):
+      src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
+      expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
     def test_files(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       def post(filename):
@@ -2094,7 +2150,7 @@ if 'benchmark' not in sys.argv:
       global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
-                      'hello lua world!\n17.00000000000\n1.00000000000\n2.00000000000\n3.00000000000\n4.00000000000\n7.00000000000',
+                      'hello lua world!\n17\n1\n2\n3\n4\n7',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
