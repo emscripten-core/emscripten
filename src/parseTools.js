@@ -477,7 +477,7 @@ function IEEEUnHex(stringy) {
   a = a & 0xfffff;
   if (e === 0x7ff) {
     if (a == 0 && b == 0) {
-      return 'Infinity';
+      return neg ? '-Infinity' : 'Infinity';
     } else {
       return 'NaN';
     }
