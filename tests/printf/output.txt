@@ -21,6 +21,9 @@ nan
 nan       
        inf
 -inf      
+in%3.5valid
+123
+456
 0
 0
 0.0

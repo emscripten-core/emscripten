@@ -26,6 +26,9 @@ int main() {
   printf("%-010.2f\n", NAN);
   printf("%10.f\n", INFINITY);
   printf("%-10.f\n", -INFINITY);
+  printf("in%3.5valid\n", 0);
+  printf("%qd\n", 123ll);
+  printf("%Id\n", 456);
   printf("%.f\n", 0.0f);
   printf("%.0f\n", 0.0f);
   printf("%.1f\n", 0.0f);

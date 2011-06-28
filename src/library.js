@@ -97,6 +97,7 @@ var Library = {
     var ret = [];
     var curr, next, currArg;
     while(1) {
+      var startTextIndex = textIndex;
       curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
       if (curr === 0) break;
       next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
@@ -169,13 +170,15 @@ var Library = {
         }
 
         // Handle (ignore) integer sizes.
+        // TODO: Properly handle the sizes, for C style args.
         if (next == 'l'.charCodeAt(0) && {{{ makeGetValue(0, 'textIndex+2', 'i8') }}} == 'l'.charCodeAt(0) ||
             next == 'h'.charCodeAt(0) && {{{ makeGetValue(0, 'textIndex+2', 'i8') }}} == 'h'.charCodeAt(0)) {
           textIndex += 2;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         } else if (next == 'l'.charCodeAt(0) || next == 'L'.charCodeAt(0) ||
                    next == 'h'.charCodeAt(0) || next == 'z'.charCodeAt(0) ||
-                   next == 'j'.charCodeAt(0) || next == 't'.charCodeAt(0)) {
+                   next == 'j'.charCodeAt(0) || next == 't'.charCodeAt(0) ||
+                   next == 'I'.charCodeAt(0) || next == 'q'.charCodeAt(0)) {
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         }
@@ -234,7 +237,6 @@ var Library = {
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
-          textIndex += 2;
         } else if (['f', 'F', 'e', 'E', 'g', 'G'].indexOf(String.fromCharCode(next)) != -1) {
           // Float.
           var currArg = +getNextArg(next); // +: boolean=>int
@@ -319,7 +321,6 @@ var Library = {
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
-          textIndex += 2;
         } else if (next == 's'.charCodeAt(0)) {
           // String.
           var copiedString = String_copy(getNextArg(next));
@@ -337,22 +338,28 @@ var Library = {
               ret.push(' '.charCodeAt(0));
             }
           }
-          textIndex += 2;
         } else if (next == 'c'.charCodeAt(0)) {
+          // Character.
           if (flagLeftAlign) ret = ret.concat(getNextArg(next));
           while (--width > 0) {
             ret.push(' '.charCodeAt(0));
           }
           if (!flagLeftAlign) ret = ret.concat(getNextArg(next));
-          textIndex += 2;
         } else if (next == 'n'.charCodeAt(0)) {
+          // Write the length written so far to the next parameter.
           {{{ makeSetValue('getNextArg("d")', '0', 'ret.length', 'i32') }}}
-          textIndex += 2;
+        } else if (next == '%'.charCodeAt(0)) {
+          // Literal percent sign.
+          ret.push(curr);
         } else {
-          // TODO: Add support for a/A specifiers (hex float).
-          ret.push(next);
-          textIndex += 2; // not sure what to do with this %, so print it
+          // Unknown specifiers remain untouched.
+          for (var i = startTextIndex; i < textIndex + 2; i++) {
+            ret.push({{{ makeGetValue(0, 'i', 'i8') }}});
+          }
         }
+        textIndex += 2;
+        // TODO: Support a/A (hex float) and m (last error) specifiers.
+        // TODO: Support %1${specifier} for arg selection.
       } else {
         ret.push(curr);
         textIndex += 1;
