@@ -159,8 +159,7 @@ var Library = {
             while(1) {
               var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
               if (!_isdigit(precisionChr)) break;
-              precision *= 10;
-              precision += precisionChr - '0'.charCodeAt(0);
+              precision = precision * 10 + (precisionChr - '0'.charCodeAt(0));
               textIndex++;
             }
           }
@@ -182,10 +181,8 @@ var Library = {
         }
 
         // Handle type specifier.
-        var isNumeric = false;
         if (['d', 'i', 'u', 'o', 'x', 'X', 'p'].indexOf(String.fromCharCode(next)) != -1) {
           // Integer.
-          var isNumeric = true;
           var currArg = +getNextArg(next); // +: boolean=>int
           var currAbsArg = Math.abs(currArg);
           var argText;
@@ -212,12 +209,14 @@ var Library = {
               argText = '0' + argText;
             }
           }
+
           // Add sign.
           if (currArg < 0) {
             prefix = '-' + prefix;
           } else if (flagAlwaysSigned) {
             prefix = '+' + prefix;
           }
+
           // Add padding.
           while (prefix.length + argText.length < width) {
             if (flagLeftAlign) {
@@ -230,6 +229,7 @@ var Library = {
               }
             }
           }
+
           argText = prefix + argText;
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
@@ -237,75 +237,23 @@ var Library = {
           textIndex += 2;
         } else if (['f', 'F', 'e', 'E', 'g', 'G'].indexOf(String.fromCharCode(next)) != -1) {
           // Float.
-          // To properly reproduce the C behaviour, we need to do a round trip
-          // through the JS number formatter. Slow, but good for compatibility
-          // and is probably not a bottleneck in typical usage scenarios.
-          var isNumeric = true;
           var currArg = +getNextArg(next); // +: boolean=>int
-          var absArgText = String(Math.abs(currArg));
+          var argText;
 
-          if (absArgText == 'NaN' || absArgText == 'Infinity') {
-            // Special values.
-            absArgText = absArgText.slice(0, 3);
-            if (next > 'Z'.charCodeAt(0)) {
-              absArgText = absArgText.toLowerCase();
-            } else {
-              absArgText = absArgText.toUpperCase();
-            }
-            if (currArg < 0) ret.push('-'.charCodeAt(0));
-            absArgText.split('').forEach(function(chr) {
-              ret.push(chr.charCodeAt(0));
-            });
+          if (isNaN(currArg)) {
+            argText = 'nan';
+          } else if (!isFinite(currArg)) {
+            argText = (currArg < 0 ? '-' : '') + 'inf';
           } else {
             var isGeneral = false;
-
-            // Split the number into whole, fraction and exponent.
-            var indexOfPeriod = absArgText.indexOf('.');
-            var indexOfE = absArgText.indexOf('e');
-            var wholePart, fractionPart, exponentPart;
-            if (indexOfE == -1) {
-              if (indexOfPeriod == -1) {
-                wholePart = absArgText;
-                fractionPart = '';
-              } else {
-                wholePart = absArgText.slice(0, indexOfPeriod);
-                fractionPart = absArgText.slice(indexOfPeriod + 1);
-              }
-              exponentPart = '';
-            } else {
-              if (indexOfPeriod == -1) {
-                wholePart = absArgText.slice(0, indexOfE);
-                fractionPart = '';
-              } else {
-                wholePart = absArgText.slice(0, indexOfPeriod);
-                fractionPart = absArgText.slice(indexOfPeriod + 1, indexOfE);
-              }
-              exponentPart = absArgText.slice(indexOfE + 1);
-            }
-            var exponent = parseInt(exponentPart || 0, 10);
-
-            // Normalize it so wholePart is one digit.
-            if (wholePart == '0') {
-              while (fractionPart.length && fractionPart[0] == '0') {
-                exponent--;
-                fractionPart = fractionPart.slice(1);
-              }
-              if (fractionPart) {
-                exponent--;
-                wholePart = fractionPart[0];
-                fractionPart = fractionPart.slice(1);
-              }
-            } else {
-              exponent += wholePart.length - 1;
-              fractionPart = wholePart.slice(1) + fractionPart;
-              wholePart = wholePart[0];
-            }
+            var effectivePrecision = Math.min(precision, 20);
 
             // Convert g/G to f/F or e/E, as per:
             // http://pubs.opengroup.org/onlinepubs/9699919799/functions/printf.html
             if (next == 'g'.charCodeAt(0) || next == 'G'.charCodeAt(0)) {
               isGeneral = true;
               precision = precision || 1;
+              var exponent = parseInt(currArg.toExponential(effectivePrecision).split('e')[1], 10);
               if (precision > exponent && exponent >= -4) {
                 next = ((next == 'g'.charCodeAt(0)) ? 'f' : 'F').charCodeAt(0);
                 precision -= exponent + 1;
@@ -313,91 +261,42 @@ var Library = {
                 next = ((next == 'g'.charCodeAt(0)) ? 'e' : 'E').charCodeAt(0);
                 precision--;
               }
+              effectivePrecision = Math.min(precision, 20);
             }
 
-            var dropTrailingZeros = isGeneral && !flagAlternative;
+            if (next == 'e'.charCodeAt(0) || next == 'E'.charCodeAt(0)) {
+              argText = currArg.toExponential(effectivePrecision);
+              // Make sure the exponent has at least 2 digits.
+              if (/[eE][-+]\d$/.test(argText)) {
+                argText = argText.slice(0, -1) + '0' + argText.slice(-1);
+              }
+            } else if (next == 'f'.charCodeAt(0) || next == 'F'.charCodeAt(0)) {
+              argText = currArg.toFixed(effectivePrecision);
+            }
 
-            // Round or pad a fractional part given the current precision.
-            var applyPrecision = function(fractionPart) {
-              if (precision == 0) {
-                fractionPart = '';
-              } else if (fractionPart.length > precision) {
-                fractionPart = fractionPart.slice(0, precision) + '.' + fractionPart[precision];
-                fractionPart = Math.round(parseFloat(fractionPart)).toString(10);
-                while (fractionPart.length < precision) {
-                  fractionPart = '0' + fractionPart;
-                }
-              } else if (!dropTrailingZeros) {
-                while (fractionPart.length < precision) {
-                  fractionPart += '0';
-                }
-              }
-              if (dropTrailingZeros) {
-                while (fractionPart.length && fractionPart[fractionPart.length - 1] == '0') {
-                  fractionPart = fractionPart.slice(0, -1);
-                }
-              }
-              return fractionPart;
-            };
-
-            var parts = [];
-            if (next == 'f'.charCodeAt(0) || next == 'F'.charCodeAt(0)) {
-              // Fixed point.
-              if (exponent) {
-                // Denormalize.
-                if (exponent > 0) {
-                  var step = Math.min(exponent, fractionPart.length);
-                  wholePart += fractionPart.slice(0, step);
-                  fractionPart = fractionPart.slice(step);
-                  exponent -= step;
-                  while (exponent-- > 0) wholePart += '0';
-                } else {
-                  var step = Math.min(-exponent, wholePart.length);
-                  fractionPart = wholePart.slice(-step) + fractionPart;
-                  wholePart = wholePart.slice(0, -step);
-                  exponent += step;
-                  while (exponent++ < 0) fractionPart = '0' + fractionPart;
-                }
-              }
-              if (precision == 0) {
-                wholePart = Math.round(parseFloat(wholePart + '.' + fractionPart)).toString(10);
-                fractionPart = '';
-              }
-              parts.push(wholePart || '0');
-              fractionPart = applyPrecision(fractionPart);
-              if (fractionPart) {
-                parts.push('.');
-                if (!dropTrailingZeros || parseInt(fractionPart, 10) > 0) {
-                  parts.push(fractionPart);
-                }
-              } else if (flagAlternative) {
-                parts.push('.');
+            var parts = argText.split('e');
+            if (isGeneral && !flagAlternative) {
+              // Discard trailing zeros and periods.
+              while (parts[0].length > 1 && (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
+                parts[0] = parts[0].slice(0, -1);
               }
             } else {
-              // Scientific notation.
-              parts.push(wholePart);
-              fractionPart = applyPrecision(fractionPart);
-              if (parseInt(fractionPart, 10) > 0 && precision != 0) {
-                parts.push('.');
-                parts.push(fractionPart);
-              } else if (flagAlternative) {
-                parts.push('.');
-              }
-              if (exponent || !isGeneral) {
-                parts.push(String.fromCharCode(next));
-                parts.push(exponent >= 0 ? '+' : '-');
-                if (Math.abs(exponent) < 10) parts.push('0');
-                parts.push(Math.abs(exponent).toString(10));
-              }
+              // Make sure we have a period in alternative mode.
+              if (flagAlternative && argText.indexOf('.') == -1) parts[0] += '.';
+              // Zero pad until required precision.
+              while (precision > effectivePrecision++) parts[0] += '0';
             }
+            argText = parts[0] + (parts.length > 1 ? 'e' + parts[1] : '');
+
+            // Capitalize 'E' if needed.
+            if (next == 'E'.charCodeAt(0)) argText = argText.toUpperCase();
+
             // Add sign.
-            if (currArg < 0) {
-              parts.unshift('-');
-            } else if (flagAlwaysSigned) {
-              parts.unshift('+');
+            if (flagAlwaysSigned && currArg >= 0) {
+              argText = '+' + argText;
             }
+
             // Add padding.
-            var argText = parts.join('');
             while (argText.length < width) {
               if (flagLeftAlign) {
                 argText += ' ';
@@ -409,10 +308,11 @@ var Library = {
                 }
               }
             }
-            argText.split('').forEach(function(chr) {
-              ret.push(chr.charCodeAt(0));
-            });
           }
+          if (next < 'a'.charCodeAt(0)) argText = argText.toUpperCase();
+          argText.split('').forEach(function(chr) {
+            ret.push(chr.charCodeAt(0));
+          });
           textIndex += 2;
         } else if (next == 's'.charCodeAt(0)) {
           // String.
