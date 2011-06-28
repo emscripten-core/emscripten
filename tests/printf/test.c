@@ -20,6 +20,12 @@ int main() {
   printf("%lF\n", -INFINITY);
   printf("%lf\n", NAN);
   printf("%lF\n", NAN);
+  printf("%10f\n", NAN);
+  printf("%-10f\n", NAN);
+  printf("%010.2f\n", NAN);
+  printf("%-010.2f\n", NAN);
+  printf("%10.f\n", INFINITY);
+  printf("%-10.f\n", -INFINITY);
   printf("%.f\n", 0.0f);
   printf("%.0f\n", 0.0f);
   printf("%.1f\n", 0.0f);

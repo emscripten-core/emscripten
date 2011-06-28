@@ -15,6 +15,12 @@ INF
 -INF
 nan
 NAN
+       nan
+nan       
+       nan
+nan       
+       inf
+-inf      
 0
 0
 0.0

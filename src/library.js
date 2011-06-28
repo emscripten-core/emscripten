@@ -242,8 +242,10 @@ var Library = {
 
           if (isNaN(currArg)) {
             argText = 'nan';
+            flagZeroPad = false;
           } else if (!isFinite(currArg)) {
             argText = (currArg < 0 ? '-' : '') + 'inf';
+            flagZeroPad = false;
           } else {
             var isGeneral = false;
             var effectivePrecision = Math.min(precision, 20);
@@ -295,21 +297,25 @@ var Library = {
             if (flagAlwaysSigned && currArg >= 0) {
               argText = '+' + argText;
             }
+          }
 
-            // Add padding.
-            while (argText.length < width) {
-              if (flagLeftAlign) {
-                argText += ' ';
+          // Add padding.
+          while (argText.length < width) {
+            if (flagLeftAlign) {
+              argText += ' ';
+            } else {
+              if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
+                argText = argText[0] + '0' + argText.slice(1);
               } else {
-                if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
-                  argText = argText[0] + '0' + argText.slice(1);
-                } else {
-                  argText = (flagZeroPad ? '0' : ' ') + argText;
-                }
+                argText = (flagZeroPad ? '0' : ' ') + argText;
               }
             }
           }
+
+          // Adjust case.
           if (next < 'a'.charCodeAt(0)) argText = argText.toUpperCase();
+
+          // Insert the result into the buffer.
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
