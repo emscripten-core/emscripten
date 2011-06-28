@@ -2308,7 +2308,7 @@ if 'benchmark' not in sys.argv:
           '''
             STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
             run();
-            print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['*s-0*d.']].data)); // work around __formatString__ fail
+            print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['filename-1.ppm']].data));
           '''
         )
         src.close()
