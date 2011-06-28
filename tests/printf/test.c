@@ -2,6 +2,9 @@
 #include <math.h>
 
 int main() {
+  int x;
+  printf("ab%gc%nd\n", 1.23f, &x);
+  printf("n=%d\n", x);
   printf("\n");
   printf("Characters: %c %c\n", 'a', 65);
   printf("Decimals: %d %ld %lld %d\n", 1977, 650000L, 12LL, 4);

@@ -340,8 +340,7 @@ var Library = {
           if (!flagLeftAlign) ret = ret.concat(getNextArg(next));
           textIndex += 2;
         } else if (next == 'n'.charCodeAt(0)) {
-          // TODO: Implement. Requires arguments to be passed in C-style.
-          // {{{ makeSetValue('argIndex', '0', 'ret.length', 'i32') }}}
+          {{{ makeSetValue('getNextArg("d")', '0', 'ret.length', 'i32') }}}
           textIndex += 2;
         } else {
           // TODO: Add support for a/A specifiers (hex float).
