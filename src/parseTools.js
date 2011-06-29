@@ -365,6 +365,8 @@ function parseLLVMSegment(segment) {
     return parseLLVMFunctionCall([{text: '?'}].concat(segment));
   } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
     return parseLLVMFunctionCall(segment);
+  } else if (segment[1].text === 'blockaddress') {
+    return parseBlockAddress(segment);
   } else {
     type = segment[0].text;
     Types.needAnalysis[type] = 0;
@@ -1051,6 +1053,8 @@ function finalizeLLVMParameter(param) {
     ret = parseNumerical(param.ident);
   } else if (param.intertype == 'structvalue') {
     ret = param.values.map(finalizeLLVMParameter);
+  } else if (param.intertype === 'blockaddress') {
+    return finalizeBlockAddress(param);
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
@@ -1276,5 +1280,13 @@ function walkInterdata(item, pre, post, obj) {
     }
   }
   return post(item, originalObj, obj);
+}
+
+function parseBlockAddress(segment) {
+  return { intertype: 'blockaddress', func: toNiceIdent(segment[2].item.tokens[0].text), label: toNiceIdent(segment[2].item.tokens[2].text) };
+}
+
+function finalizeBlockAddress(param) {
+  return Functions.currFunctions[param.func].labelIds[param.label]; // XXX We rely on currFunctions here...?
 }
 

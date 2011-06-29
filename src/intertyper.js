@@ -258,6 +258,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
               return 'Switch';
             if (token0Text == 'unreachable')
               return 'Unreachable';
+            if (tokensLength >= 3 && token0Text == 'indirectbr')
+              return 'IndirectBr';
           } else if (item.indent === -1) {
             if (tokensLength >= 3 &&
                 (token0Text == 'load' || token1Text == 'load'))
@@ -343,6 +345,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
                 var text = segment[2].text;
                 text = text.substr(1, text.length-2);
                 return { intertype: 'string', text: text };
+              } else if (segment[1].text === 'blockaddress') {
+                return parseBlockAddress(segment);
               } else {
                 throw 'Invalid segment: ' + dump(segment);
               }
@@ -785,6 +789,19 @@ function intertyper(data, parseFunctions, baseLineNum) {
         intertype: 'unreachable',
         lineNum: item.lineNum
       }];
+    }
+  });
+  // 'indirectbr'
+  substrate.addActor('IndirectBr', {
+    processItem: function(item) {
+      var ret = {
+        intertype: 'indirectbr',
+        pointer: parseLLVMSegment(splitTokenList(item.tokens.slice(1))[0]),
+        type: item.tokens[1].text,
+        lineNum: item.lineNum
+      };
+      Types.needAnalysis[ret.type] = 0;
+      return [ret];
     }
   });
 

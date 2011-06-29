@@ -553,10 +553,16 @@ function analyzer(data) {
     processItem: function(item) {
       item.functions.forEach(function(func) {
         func.labelsDict = {};
+        func.labelIds = {};
+        func.labelIdCounter = 0;
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
+          func.labelIds[label.ident] = func.labelIdCounter++;
         });
+        func.labelIds[toNiceIdent('%entry')] = -1; // entry is always -1
+
         func.hasPhi = false;
+        func.hasIndirectBr = false;
         func.remarkableLabels = [];
         func.labels.forEach(function(label) {
           label.lines.forEach(function(line) {
@@ -573,6 +579,9 @@ function analyzer(data) {
                 }
               }
               func.hasPhi = true;
+            }
+            if (line.intertype == 'indirectbr') {
+              func.hasIndirectBr = true;
             }
           });
         });
@@ -791,7 +800,7 @@ function analyzer(data) {
       //              For now, we do this in a loop, so we can break out of it easily to get
       //              to the labels afterwards. TODO: Optimize that out
       //
-      function makeBlock(labels, entries, labelsDict) {
+      function makeBlock(labels, entries, labelsDict, forceEmulated) {
         if (labels.length == 0) return null;
         dprint('relooping', 'prelooping: ' + entries + ',' + labels.length + ' labels');
         assert(entries && entries[0]); // need at least 1 entry
@@ -804,7 +813,7 @@ function analyzer(data) {
           labels: labels,
           entries: entries.slice(0)
         };
-        if (!RELOOP) return emulated;
+        if (!RELOOP || forceEmulated) return emulated;
 
         calcLabelBranchingData(labels, labelsDict);
 
@@ -986,7 +995,7 @@ function analyzer(data) {
       // TODO: each of these can be run in parallel
       item.functions.forEach(function(func) {
         dprint('relooping', "// relooping function: " + func.ident);
-        func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict);
+        func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict, func.hasIndirectBr);
       });
 
       return finish();

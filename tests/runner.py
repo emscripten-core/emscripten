@@ -1469,6 +1469,30 @@ if 'benchmark' not in sys.argv:
           '''
         self.do_test(src, '*96,97,98,101,101*')
 
+    def test_indirectbr(self):
+        src = '''
+          #include <stdio.h>
+          int main(void) {
+            const void *addrs[2] = { &&FOO, &&BAR };
+
+            // confuse the optimizer so it doesn't hardcode the jump and avoid generating an |indirectbr| instruction
+            int which = 0;
+            for (int x = 0; x < 1000; x++) which = (which + x*x) % 7;
+            which = (which % 2) + 1;
+
+            goto *addrs[which];
+
+          FOO:
+            printf("bad\\n");
+            return 1;
+          BAR:
+            printf("good\\n");
+            const void *addr = &&FOO;
+            goto *addr;
+          }
+          '''
+        self.do_test(src, 'good\nbad')
+
     def test_pack(self):
         src = '''
           #include <stdio.h>

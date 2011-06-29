@@ -36,10 +36,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   Functions.currFunctions = functionsOnly ? givenFunctions : {};
   // Now that analysis has completed, we can get around to handling unparsedFunctions
   (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
-    // Save just what we need, to save memory - whether there are varargs, and the # of parameters
+    // Save just what we need, to save memory
     Functions.currFunctions[func.ident] = {
       hasVarArgs: func.hasVarArgs,
-      numParams: func.params.length
+      numParams: func.params.length,
+      labelIds: func.labelIds // TODO: We need this for globals, but perhaps we can calculate them early and free this
    };
   });
 
@@ -137,6 +138,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             return alignStruct(handleSegments(segment.contents), segment.type);
           } else if (segment.intertype === 'string') {
             return parseLLVMString(segment.text); // + ' /* ' + text + '*/';
+          } else if (segment.intertype === 'blockaddress') {
+            return finalizeBlockAddress(segment);
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
@@ -303,7 +306,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       item.labels.forEach(function(label) {
         label.lines.forEach(function(line) {
           line.func = item.ident;
-          line.funcData = item;
+          line.funcData = item; // TODO: remove all these, access it globally
           line.parentLabel = label.ident;
           ret.push(line);
           item.splitItems ++;
@@ -555,24 +558,20 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   makeFuncLineActor('deleted', function(item) { return ';' });
 
-  var LABEL_IDs = {};
-  var LABEL_ID_COUNTER = 0;
   function getLabelId(label) {
-    label = label.substr(1);
-    if (label === 'entry') return '-1';
-    if (label === parseInt(label)) return label; // clang
-    //return '"' + label + '"'; // debugging
-    label = toNiceIdent(label);
-    if (label in LABEL_IDs) return LABEL_IDs[label];
-    return LABEL_IDs[label] = LABEL_ID_COUNTER ++;
+    var funcData = Framework.currItem.funcData;
+    var labelIds = funcData.labelIds;
+    if (labelIds[label] !== undefined) return labelIds[label];
+    return labelIds[label] = funcData.labelIdCounter++;
   }
 
-  function makeBranch(label, lastLabel) {
+  function makeBranch(label, lastLabel, labelIsVariable) {
     var pre = '';
     if (lastLabel) {
       pre = '__lastLabel__ = ' + getLabelId(lastLabel) + '; ';
     }
     if (label[0] == 'B') {
+      assert(!labelIsVariable, 'Cannot handle branches to variables with special branching options');
       var parts = label.split('|');
       var trueLabel = parts[1] || '';
       var oldLabel = parts[2] || '';
@@ -590,7 +589,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         throw 'Invalid B-op in branch: ' + trueLabel + ',' + oldLabel;
       }
     } else {
-      return pre + '__label__ = ' + getLabelId(label) + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(label) + ' */' : '') + ' break;';
+      if (!labelIsVariable) label = getLabelId(label);
+      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(label) + ' */' : '') + ' break;';
     }
   }
 
@@ -675,6 +675,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
     return item.ident + '.f' + item.indexes[0][0].text;
+  });
+  makeFuncLineActor('indirectbr', function(item) {
+    return makeBranch(finalizeLLVMParameter(item.pointer), item.currLabelId, true);
   });
   makeFuncLineActor('alloca', function(item) {
     if (typeof item.allocatedIndex === 'number') {
