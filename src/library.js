@@ -210,19 +210,9 @@ var Library = {
           var currArg = getNextArg(false, argSize);
           // Truncate to requested size.
           argSize = argSize || 4;
-          var limit = undefined;
-          if (argSize == 4) {
-            limit = 0xFFFFFFFF;
-          } else if (argSize == 2) {
-            limit = 0xFFFF;
-          } else if (argSize == 1) {
-            limit = 0xFF;
-          }
-          if (limit !== undefined) {
-            currArg = currArg & limit;
-            if (!signed && currArg < 0 || signed && currArg > (limit - 1) / 2) {
-              currArg = ~(limit - currArg);
-            }
+          if (argSize <= 4) {
+            var limit = Math.pow(256, argSize) - 1;
+            currArg = (signed ? reSign : unSign)(currArg & limit, argSize * 8);
           }
           // Format the number.
           var currAbsArg = Math.abs(currArg);
@@ -1491,7 +1481,6 @@ var Library = {
   dlopen: function(filename, flag) {
     // TODO: Add support for LD_LIBRARY_PATH.
     filename = Pointer_stringify(filename);
-    filename += '.js';
 
     if (DLFCN_DATA.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.

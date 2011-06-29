@@ -1821,7 +1821,7 @@ if 'benchmark' not in sys.argv:
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
       self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
       src = '''
         #include <cstdio>
@@ -1866,7 +1866,7 @@ if 'benchmark' not in sys.argv:
       BUILD_AS_SHARED_LIB = 1
       EXPORTED_FUNCTIONS = ['__Z7get_cmpv']
       self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
       src = '''
         #include <stdio.h>
@@ -1946,7 +1946,7 @@ if 'benchmark' not in sys.argv:
       EXPORTED_FUNCTIONS = ['__Z4funciPFvvE']
       EXPORTED_GLOBALS = ['_global']
       self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
       src = '''
         #include <stdio.h>
