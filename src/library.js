@@ -65,9 +65,6 @@ var Library = {
 
   _formatString__deps: ['$STDIO', 'isdigit'],
   _formatString: function() {
-    function isFloatArg(type) {
-      return String.fromCharCode(type).toLowerCase() in Runtime.set('f', 'e', 'g');
-    }
     var cStyle = false;
     var textIndex = arguments[0];
     var argIndex = 1;
@@ -78,25 +75,26 @@ var Library = {
     } else {
       var _arguments = arguments;
     }
-    function getNextArg(type) {
+    function getNextArg(isFloat, size) {
       var ret;
       if (!cStyle) {
         ret = _arguments[argIndex];
         argIndex++;
       } else {
-        if (isFloatArg(type)) {
+        if (isFloat) {
           ret = {{{ makeGetValue(0, 'argIndex', 'double') }}};
         } else {
           ret = {{{ makeGetValue(0, 'argIndex', 'i32') }}};
         }
-        argIndex += {{{ QUANTUM_SIZE === 1 ? 1 : "type === 'l'.charCodeAt(0) ? 8 : 4" }}};
+        argIndex += {{{ QUANTUM_SIZE === 1 ? 1 : 'Math.max(4, size || 0)' }}};
       }
-      return ret;
+      return +ret; // +: boolean=>int
     }
 
     var ret = [];
     var curr, next, currArg;
     while(1) {
+      var startTextIndex = textIndex;
       curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
       if (curr === 0) break;
       next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
@@ -134,7 +132,7 @@ var Library = {
         // Handle width.
         var width = 0;
         if (next == '*'.charCodeAt(0)) {
-          width = getNextArg('i');
+          width = getNextArg();
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         } else {
@@ -153,7 +151,7 @@ var Library = {
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
           if (next == '*'.charCodeAt(0)) {
-            precision = getNextArg('i');
+            precision = getNextArg();
             textIndex++;
           } else {
             while(1) {
@@ -168,38 +166,94 @@ var Library = {
           var precision = 6; // Standard default.
         }
 
-        // Handle (ignore) integer sizes.
-        if (next == 'l'.charCodeAt(0) && {{{ makeGetValue(0, 'textIndex+2', 'i8') }}} == 'l'.charCodeAt(0) ||
-            next == 'h'.charCodeAt(0) && {{{ makeGetValue(0, 'textIndex+2', 'i8') }}} == 'h'.charCodeAt(0)) {
-          textIndex += 2;
-          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-        } else if (next == 'l'.charCodeAt(0) || next == 'L'.charCodeAt(0) ||
-                   next == 'h'.charCodeAt(0) || next == 'z'.charCodeAt(0) ||
-                   next == 'j'.charCodeAt(0) || next == 't'.charCodeAt(0)) {
-          textIndex++;
-          next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
+        // Handle integer sizes. WARNING: These assume a 32-bit architecture!
+        var argSize;
+        switch (String.fromCharCode(next)) {
+          case 'h':
+            var nextNext = {{{ makeGetValue(0, 'textIndex+2', 'i8') }}};
+            if (nextNext == 'h'.charCodeAt(0)) {
+              textIndex++;
+              argSize = 1; // char
+            } else {
+              argSize = 2; // short
+            }
+            break;
+          case 'l':
+            var nextNext = {{{ makeGetValue(0, 'textIndex+2', 'i8') }}};
+            if (nextNext == 'l'.charCodeAt(0)) {
+              textIndex++;
+              argSize = 8; // long long
+            } else {
+              argSize = 4; // long
+            }
+            break;
+          case 'L': // long long
+          case 'q': // int64_t
+          case 'j': // intmax_t
+            argSize = 8;
+            break;
+          case 'z': // size_t
+          case 't': // ptrdiff_t
+          case 'I': // signed ptrdiff_t or unsigned size_t
+            argSize = 4;
+            break;
+          default:
+            argSize = undefined;
         }
+        if (argSize !== undefined) textIndex++;
+        next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
 
         // Handle type specifier.
         if (['d', 'i', 'u', 'o', 'x', 'X', 'p'].indexOf(String.fromCharCode(next)) != -1) {
           // Integer.
-          var currArg = +getNextArg(next); // +: boolean=>int
+          var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
+          var currArg = getNextArg(false, argSize);
+          // Truncate to requested size.
+          argSize = argSize || 4;
+          var limit = undefined;
+          if (argSize == 4) {
+            limit = 0xFFFFFFFF;
+          } else if (argSize == 2) {
+            limit = 0xFFFF;
+          } else if (argSize == 1) {
+            limit = 0xFF;
+          }
+          if (limit !== undefined) {
+            currArg = currArg & limit;
+            if (!signed && currArg < 0 || signed && currArg > (limit - 1) / 2) {
+              currArg = ~(limit - currArg);
+            }
+          }
+          // Format the number.
           var currAbsArg = Math.abs(currArg);
           var argText;
           var prefix = '';
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
             argText = currAbsArg.toString(10);
           } else if (next == 'u'.charCodeAt(0)) {
-            argText = unSign(currArg, 32).toString(10);
+            argText = unSign(currArg, 8 * argSize).toString(10);
             currArg = Math.abs(currArg);
           } else if (next == 'o'.charCodeAt(0)) {
             argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
-          } else if (next == 'x'.charCodeAt(0)) {
+          } else if (next == 'x'.charCodeAt(0) || next == 'X'.charCodeAt(0)) {
             prefix = flagAlternative ? '0x' : '';
-            argText = currAbsArg.toString(16);
-          } else if (next == 'X'.charCodeAt(0)) {
-            prefix = flagAlternative ? '0X' : '';
-            argText = currAbsArg.toString(16).toUpperCase();
+            if (currArg < 0) {
+              // Represent negative numbers in hex as 2's complement.
+              currArg = -currArg;
+              argText = (currAbsArg - 1).toString(16);
+              var buffer = [];
+              for (var i = 0; i < argText.length; i++) {
+                buffer.push((0xF - parseInt(argText[i], 16)).toString(16));
+              }
+              argText = buffer.join('');
+              while (argText.length < argSize * 2) argText = 'f' + argText;
+            } else {
+              argText = currAbsArg.toString(16);
+            }
+            if (next == 'X'.charCodeAt(0)) {
+              prefix = prefix.toUpperCase();
+              argText = argText.toUpperCase();
+            }
           } else if (next == 'p'.charCodeAt(0)) {
             prefix = '0x';
             argText = currAbsArg.toString(16);
@@ -230,20 +284,22 @@ var Library = {
             }
           }
 
+          // Insert the result into the buffer.
           argText = prefix + argText;
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
-          textIndex += 2;
         } else if (['f', 'F', 'e', 'E', 'g', 'G'].indexOf(String.fromCharCode(next)) != -1) {
           // Float.
-          var currArg = +getNextArg(next); // +: boolean=>int
+          var currArg = getNextArg(true, argSize);
           var argText;
 
           if (isNaN(currArg)) {
             argText = 'nan';
+            flagZeroPad = false;
           } else if (!isFinite(currArg)) {
             argText = (currArg < 0 ? '-' : '') + 'inf';
+            flagZeroPad = false;
           } else {
             var isGeneral = false;
             var effectivePrecision = Math.min(precision, 20);
@@ -295,28 +351,31 @@ var Library = {
             if (flagAlwaysSigned && currArg >= 0) {
               argText = '+' + argText;
             }
+          }
 
-            // Add padding.
-            while (argText.length < width) {
-              if (flagLeftAlign) {
-                argText += ' ';
+          // Add padding.
+          while (argText.length < width) {
+            if (flagLeftAlign) {
+              argText += ' ';
+            } else {
+              if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
+                argText = argText[0] + '0' + argText.slice(1);
               } else {
-                if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
-                  argText = argText[0] + '0' + argText.slice(1);
-                } else {
-                  argText = (flagZeroPad ? '0' : ' ') + argText;
-                }
+                argText = (flagZeroPad ? '0' : ' ') + argText;
               }
             }
           }
+
+          // Adjust case.
           if (next < 'a'.charCodeAt(0)) argText = argText.toUpperCase();
+
+          // Insert the result into the buffer.
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
-          textIndex += 2;
         } else if (next == 's'.charCodeAt(0)) {
           // String.
-          var copiedString = String_copy(getNextArg(next));
+          var copiedString = String_copy(getNextArg());
           if (precisionSet && copiedString.length > precision) {
             copiedString = copiedString.slice(0, precision);
           }
@@ -331,23 +390,28 @@ var Library = {
               ret.push(' '.charCodeAt(0));
             }
           }
-          textIndex += 2;
         } else if (next == 'c'.charCodeAt(0)) {
-          if (flagLeftAlign) ret = ret.concat(getNextArg(next));
+          // Character.
+          if (flagLeftAlign) ret.push(getNextArg());
           while (--width > 0) {
             ret.push(' '.charCodeAt(0));
           }
-          if (!flagLeftAlign) ret = ret.concat(getNextArg(next));
-          textIndex += 2;
+          if (!flagLeftAlign) ret.push(getNextArg());
         } else if (next == 'n'.charCodeAt(0)) {
-          // TODO: Implement. Requires arguments to be passed in C-style.
-          // {{{ makeSetValue('argIndex', '0', 'ret.length', 'i32') }}}
-          textIndex += 2;
+          // Write the length written so far to the next parameter.
+          {{{ makeSetValue('getNextArg()', '0', 'ret.length', 'i32') }}}
+        } else if (next == '%'.charCodeAt(0)) {
+          // Literal percent sign.
+          ret.push(curr);
         } else {
-          // TODO: Add support for a/A specifiers (hex float).
-          ret.push(next);
-          textIndex += 2; // not sure what to do with this %, so print it
+          // Unknown specifiers remain untouched.
+          for (var i = startTextIndex; i < textIndex + 2; i++) {
+            ret.push({{{ makeGetValue(0, 'i', 'i8') }}});
+          }
         }
+        textIndex += 2;
+        // TODO: Support a/A (hex float) and m (last error) specifiers.
+        // TODO: Support %1${specifier} for arg selection.
       } else {
         ret.push(curr);
         textIndex += 1;
