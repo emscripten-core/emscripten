@@ -1466,7 +1466,17 @@ var Library = {
 
   
   // ==========================================================================
-  // dlfcn.h
+  // dlfcn.h - Dynamic library loading
+  //
+  // Some limitations:
+  //
+  //  * Minification on each file separately may not work, as they will
+  //    have different shortened names. You can in theory combine them, then
+  //    minify, then split... perhaps.
+  //
+  //  * LLVM optimizations may fail. If the child wants to access a function
+  //    in the parent, LLVM opts may remove it from the parent when it is
+  //    being compiled. Not sure how to tell LLVM to not do so.
   // ==========================================================================
 
   // Data for dlfcn.h.
@@ -1499,6 +1509,9 @@ var Library = {
     try {
       var lib_module = eval(lib_data)(FUNCTION_TABLE.length);
     } catch (e) {
+#if ASSERTIONS
+      print('Error in loading dynamic library: ' + e);
+#endif
       DLFCN_DATA.isError = true;
       return 0;
     }

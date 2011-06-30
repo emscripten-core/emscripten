@@ -3,8 +3,10 @@
 
 // Main function
 function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+  var mainPass = !functionsOnly;
+
   // Add additional necessary items for the main pass
-  if (!functionsOnly) {
+  if (mainPass) {
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
       assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
@@ -31,11 +33,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   substrate = new Substrate('JSifyer');
 
-  var GLOBAL_VARIABLES = functionsOnly ? givenGlobalVariables : data.globalVariables;
+  var GLOBAL_VARIABLES = !mainPass ? givenGlobalVariables : data.globalVariables;
 
-  Functions.currFunctions = functionsOnly ? givenFunctions : {};
-  // Now that analysis has completed, we can get around to handling unparsedFunctions
-  (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
+  Functions.currFunctions = !mainPass ? givenFunctions : {};
+  if (mainPass) {
+    Functions.currExternalFunctions = set(data.functionStubs.map(function(item) { return item.ident }));
+  }
+
+  // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
+  (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
     // Save just what we need, to save memory
     Functions.currFunctions[func.ident] = {
       hasVarArgs: func.hasVarArgs,
@@ -57,7 +63,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   if (data.unparsedFunctions.length > 0) {
     // We are now doing the final JS generation
     dprint('unparsedFunctions', '== Completed unparsedFunctions ==\n');
-    //Debugging.clear(); // Save some memory, before the final heavy lifting
+
+    // Save some memory, before the final heavy lifting
+    //Functions.currFunctions = null;
+    //Functions.currExternalFunctions = null;
+    //Debugging.clear();
   }
 
   // Actors
@@ -771,12 +781,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     items = null;
 
     var generated = [];
-    if (!functionsOnly) {
+    if (mainPass) {
       generated = generated.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
     }
     generated = generated.concat(itemsDict.function).concat(data.unparsedFunctions);
 
-    if (functionsOnly) return generated.map(function(item) { return item.JS }).join('\n');
+    if (!mainPass) return generated.map(function(item) { return item.JS }).join('\n');
 
     // We are ready to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
