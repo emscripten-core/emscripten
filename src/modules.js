@@ -124,8 +124,6 @@ var Types = {
 var Functions = {
   // The list of function datas which are being processed in the jsifier, currently
   currFunctions: [],
-  // The list of functions that are external'ly defined
-  currExternalFunctions: [],
 
   indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
 

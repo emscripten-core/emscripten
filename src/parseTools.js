@@ -695,7 +695,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned) {
 }
 
 function indexizeFunctions(value) {
-  if (value in Functions.currFunctions || value in Functions.currExternalFunctions) {
+  if (value in Functions.currFunctions) {
     if (BUILD_AS_SHARED_LIB) {
       return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
     } else {

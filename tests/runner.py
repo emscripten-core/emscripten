@@ -1924,24 +1924,14 @@ if 'benchmark' not in sys.argv:
                    output_nicerizer=lambda x: x.replace('\n', '*'))
 
     def test_dlfcn_data_and_fptr(self):
-      global LLVM_OPTS
-      if LLVM_OPTS: return self.skip() # LLVM opts will optimize out parent_func
-
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS, EXPORTED_GLOBALS
       lib_src = '''
         #include <stdio.h>
 
         int global = 42;
 
-        extern void parent_func(); // a function that is defined in the parent
-
         void lib_fptr() {
           printf("Second calling lib_fptr from main.\\n");
-          parent_func();
-          // call it also through a pointer, to check indexizing
-          void (*p_f)();
-          p_f = parent_func;
-          p_f();
         }
 
         void (*func(int x, void(*fptr)()))() {
@@ -1965,10 +1955,6 @@ if 'benchmark' not in sys.argv:
         typedef void (*FUNCTYPE(int, void(*)()))();
 
         FUNCTYPE func;
-
-        void parent_func() {
-          printf("parent_func called from child\\n");
-        }
 
         void main_fptr() {
           printf("First calling main_fptr from lib.\\n");
@@ -2011,7 +1997,7 @@ if 'benchmark' not in sys.argv:
       BUILD_AS_SHARED_LIB = 0
       EXPORTED_FUNCTIONS = ['_main']
       EXPORTED_GLOBALS = []
-      self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
+      self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*Var: 42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'))
 
     def test_strtod(self):
