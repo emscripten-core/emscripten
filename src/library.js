@@ -785,8 +785,12 @@ var Library = {
     var info = STDIO.streams[stream];
     if (!info) return -1;
     try {
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[0]', '1', 'i32') }}} // st_dev. XXX: hardcoded index 0 into the structure.
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[15]', 'stream', 'i32') }}} // st_ino. XXX: hardcoded index 15 into the structure.
       {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size. XXX: hardcoded index 9 into the structure.
     } catch(e) {
+      {{{ makeSetValue('ptr', '0', '1', 'i32') }}}
+      {{{ makeSetValue('ptr', '15', 'stream', 'i32') }}}
       {{{ makeSetValue('ptr', '9', 'info.data.length', 'i32') }}} // no FLATTENER
     }
     // TODO: other fields
@@ -1604,6 +1608,7 @@ var Library = {
     // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
     switch(name_) {
       case 29: case 30: return PAGE_SIZE;
+      case 2: return 1000000; // _SC_CLK_TCK
       default: throw 'unknown sysconf param: ' + name_;
     }
   },
