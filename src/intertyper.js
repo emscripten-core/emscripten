@@ -1,6 +1,8 @@
 // LLVM assembly => internal intermediate representation, which is ready
 // to be processed by the later stages.
 
+var tokenizer; // TODO: Clean this up/out
+
 //! @param parseFunctions We parse functions only on later passes, since we do not
 //!                       want to parse all of them at once, and have all their
 //!                       lines and data in memory at the same time.
@@ -92,7 +94,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   };
 
   // Line tokenizer
-  var tokenizer = substrate.addActor('Tokenizer', {
+  tokenizer = substrate.addActor('Tokenizer', {
     processItem: function(item, inner) {
       //assert(item.lineNum != 40000);
       //if (item.lineNum) print(item.lineNum);
@@ -327,7 +329,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
             // Handle a single segment (after comma separation)
             function handleSegment(segment) {
               if (segment[1].text == 'null') {
-                return { intertype: 'value', value: 0 };
+                return { intertype: 'value', value: 0, type: 'i32' };
               } else if (segment[1].text == 'zeroinitializer') {
                 return { intertype: 'emptystruct', type: segment[0].text };
               } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
@@ -339,12 +341,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
               } else if (segment[1].type && segment[1].type == '[') {
                 return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
               } else if (segment.length == 2) {
-                return { intertype: 'value', value: toNiceIdent(segment[1].text) };
+                return { intertype: 'value', type: segment[0].text, value: toNiceIdent(segment[1].text) };
               } else if (segment[1].text === 'c') {
                 // string
                 var text = segment[2].text;
                 text = text.substr(1, text.length-2);
-                return { intertype: 'string', text: text };
+                return { intertype: 'string', text: text, type: 'i8*' };
               } else if (segment[1].text === 'blockaddress') {
                 return parseBlockAddress(segment);
               } else {
@@ -636,15 +638,17 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       item.intertype = 'phi';
       item.type = item.tokens[1].text;
+      var typeToken = [item.tokens[1]];
       Types.needAnalysis[item.type] = 0;
       var last = getTokenIndexByText(item.tokens, ';');
       item.params = splitTokenList(item.tokens.slice(2, last)).map(function(segment) {
         var subSegments = splitTokenList(segment[0].item.tokens);
-        return {
+        var ret = {
           intertype: 'phiparam',
           label: toNiceIdent(subSegments[1][0].text),
-          value: parseLLVMSegment(subSegments[0])
+          value: parseLLVMSegment(typeToken.concat(subSegments[0]))
         };
+        return ret;
       });
       this.forwardItem(item, 'Reintegrator');
     }
@@ -674,6 +678,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.type = item.param2.type;
       } else {
         item.type = item.param1.type;
+      }
+      for (var i = 1; i <= 4; i++) {
+        if (item['param'+i]) item['param'+i].type = item.type; // All params have the same type
       }
       Types.needAnalysis[item.type] = 0;
       this.forwardItem(item, 'Reintegrator');
@@ -726,7 +733,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       return [{
         intertype: 'return',
         type: type,
-        value: (item.tokens[2] && type !== 'void') ? parseLLVMSegment(item.tokens.slice(2)) : null,
+        value: (item.tokens[2] && type !== 'void') ? parseLLVMSegment(item.tokens.slice(1)) : null,
         lineNum: item.lineNum
       }];
     }

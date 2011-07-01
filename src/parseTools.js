@@ -144,11 +144,10 @@ function isFunctionDef(token) {
 
 function isFunctionType(type) {
   var parts = type.split(' ');
-  if (parts.length != 2) return false;
   if (pointingLevels(type) !== 1) return false;
-  var text = removeAllPointing(parts[1]);
-  var ret = isType(parts[0]) && isFunctionDef({ text: text, item: {tokens: [{text: text.substr(1, text.length-2)}]} });
-  return ret;
+  var text = removeAllPointing(parts.slice(1).join(' '));
+  if (!text) return false;
+  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenizer.processItem({ lineText: text.substr(1, text.length-2) }, true) });
 }
 
 function isType(type) { // TODO!
@@ -346,13 +345,20 @@ function finalizeParam(param) {
 function parseLLVMSegment(segment) {
   var type;
   if (segment.length == 1) {
-    type = isType(segment[0].text) ? segment[0].text : '?';
-    Types.needAnalysis[type] = 0;
-    return {
-      intertype: 'value',
-      ident: toNiceIdent(segment[0].text),
-      type: type
-    };
+    if (isType(segment[0].text)) {
+      Types.needAnalysis[segment[0].text] = 0;
+      return {
+        intertype: 'type',
+        ident: toNiceIdent(segment[0].text),
+        type: segment[0].text
+      };
+    } else {
+      return {
+        intertype: 'value',
+        ident: toNiceIdent(segment[0].text),
+        type: 'i32'
+      };
+    }
   } else if (segment[1].type && segment[1].type == '{') {
     type = segment[0].text;
     Types.needAnalysis[type] = 0;
@@ -694,25 +700,14 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned) {
   }
 }
 
-function indexizeFunctions(value) {
-  if (value in Functions.currFunctions || value in Functions.currExternalFunctions) {
+function indexizeFunctions(value, type) {
+  assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing: ' + [value, type]);
+  assert(value !== type, 'Type set to value: ' + [value, type]);
+  if (type && isFunctionType(type) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
     if (BUILD_AS_SHARED_LIB) {
       return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
     } else {
       return Functions.getIndex(value);
-    }
-  }
-  if (value && value[0] && value[0] == '_') {
-    var rootIdent = LibraryManager.getRootIdent(value.slice(1));
-    if (!rootIdent) return value;
-    if (typeof Library[rootIdent] === 'function') {
-      return Functions.getIndex('_' + rootIdent);
-    } else if (rootIdent.substr(0, 5) === 'Math.') {
-      // Library[..] can be a string, in which case we apply that string. There is one
-      // case where this can be a function: Math.*, since we try to optimize those as much
-      // as possible. In other words, we don't want to have a wrapper function(x) return Math.sqrt(x).
-      // If other functions are deemed important as well, we will need to add them here.
-      return Functions.getIndex(rootIdent);
     }
   }
   return value;
@@ -738,7 +733,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
     return ret.join('; ');
   }
 
-  value = indexizeFunctions(value);
+  value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
@@ -1046,7 +1041,7 @@ function finalizeLLVMParameter(param) {
   if (isNumber(param)) {
     return param;
   } else if (typeof param === 'string') {
-    ret = toNiceIdentCarefully(param);
+    return toNiceIdentCarefully(param);
   } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
     ret = finalizeLLVMFunctionCall(param);
   } else if (param.intertype == 'value') {
@@ -1055,10 +1050,13 @@ function finalizeLLVMParameter(param) {
     ret = param.values.map(finalizeLLVMParameter);
   } else if (param.intertype === 'blockaddress') {
     return finalizeBlockAddress(param);
+  } else if (param.intertype === 'type') {
+    return param.ident; // we don't really want the type here
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
-  return indexizeFunctions(ret);
+  assert(param.type || (typeof param === 'string' && param.substr(0, 6) === 'CHECK_'), 'Missing type for param: ' + dump(param));
+  return indexizeFunctions(ret, param.type);
 }
 
 function makeSignOp(value, type, op) {
@@ -1264,8 +1262,6 @@ function processMathop(item) { with(item) {
 // TODO: Use this in analyzer, possibly also in jsifier
 function walkInterdata(item, pre, post, obj) {
   if (!item || !item.intertype) return false;
-//print('   walk: ' + [item.lineNum, item.intertype]);
-//if (item.intertype === 'value') print(dump(item));
   if (pre(item, obj)) return true;
   var originalObj = obj;
   if (obj.replaceWith) obj = obj.replaceWith; // allow pre to replace the object we pass to all its children
@@ -1283,7 +1279,7 @@ function walkInterdata(item, pre, post, obj) {
 }
 
 function parseBlockAddress(segment) {
-  return { intertype: 'blockaddress', func: toNiceIdent(segment[2].item.tokens[0].text), label: toNiceIdent(segment[2].item.tokens[2].text) };
+  return { intertype: 'blockaddress', func: toNiceIdent(segment[2].item.tokens[0].text), label: toNiceIdent(segment[2].item.tokens[2].text), type: 'i32' };
 }
 
 function finalizeBlockAddress(param) {

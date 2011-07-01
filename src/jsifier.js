@@ -36,9 +36,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   var GLOBAL_VARIABLES = !mainPass ? givenGlobalVariables : data.globalVariables;
 
   Functions.currFunctions = !mainPass ? givenFunctions : {};
-  if (mainPass) {
-    Functions.currExternalFunctions = set(data.functionStubs.map(function(item) { return item.ident }));
-  }
 
   // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
   (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
@@ -127,7 +124,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return indexizeFunctions(parseNumerical(value.value));
+      return indexizeFunctions(parseNumerical(value.value), type);
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
@@ -138,23 +135,26 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       function handleSegments(tokens) {
         // Handle a single segment (after comma separation)
         function handleSegment(segment) {
+          var ret;
           if (segment.intertype === 'value') {
-            return segment.value.toString();
+            ret = segment.value.toString();
           } else if (segment.intertype === 'emptystruct') {
-            return makeEmptyStruct(segment.type);
+            ret = makeEmptyStruct(segment.type);
           } else if (segment.intertype in PARSABLE_LLVM_FUNCTIONS) {
-            return finalizeLLVMFunctionCall(segment);
+            ret = finalizeLLVMFunctionCall(segment);
           } else if (segment.intertype in set('struct', 'list')) {
-            return alignStruct(handleSegments(segment.contents), segment.type);
+            ret = alignStruct(handleSegments(segment.contents), segment.type);
           } else if (segment.intertype === 'string') {
-            return parseLLVMString(segment.text); // + ' /* ' + text + '*/';
+            ret = parseLLVMString(segment.text); // + ' /* ' + text + '*/';
           } else if (segment.intertype === 'blockaddress') {
-            return finalizeBlockAddress(segment);
+            ret = finalizeBlockAddress(segment);
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
+          assert(segment.type, 'Missing type for constant segment: ' + dump(segment));
+          return indexizeFunctions(ret, segment.type);
         };
-        return tokens.map(handleSegment).map(indexizeFunctions);
+        return tokens.map(handleSegment)
       }
       return alignStruct(handleSegments(value.contents), type);
     }
@@ -302,7 +302,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         }
         item.JS = addFromLibrary(shortident);
       } else {
-        item.JS = '// stub for ' + item.ident;
+        item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
       }
       return ret;
     }
@@ -730,6 +730,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     var func = Functions.currFunctions[ident];
     var args = [];
+    var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
 
@@ -737,6 +738,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var val = finalizeParam(param);
       if (!func || !func.hasVarArgs || i < func.numParams-1) { // unrecognized functions (like library ones) cannot have varargs
         args.push(val);
+        argsTypes.push(param.type);
       } else {
         varargs.push(val);
         varargs = varargs.concat(zeros(getNativeFieldSize(param.type)-1));
@@ -745,8 +747,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }
     });
 
-    args = args.map(indexizeFunctions);
-    varargs = varargs.map(indexizeFunctions);
+    args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
+    varargs = varargs.map(function(vararg, i) { return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i]) });
+
     if (func && func.hasVarArgs) {
       if (varargs.length === 0) {
         varargs = [0];
