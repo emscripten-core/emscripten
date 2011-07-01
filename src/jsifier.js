@@ -3,8 +3,10 @@
 
 // Main function
 function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+  var mainPass = !functionsOnly;
+
   // Add additional necessary items for the main pass
-  if (!functionsOnly) {
+  if (mainPass) {
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
       assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
@@ -31,11 +33,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   substrate = new Substrate('JSifyer');
 
-  var GLOBAL_VARIABLES = functionsOnly ? givenGlobalVariables : data.globalVariables;
+  var GLOBAL_VARIABLES = !mainPass ? givenGlobalVariables : data.globalVariables;
 
-  Functions.currFunctions = functionsOnly ? givenFunctions : {};
-  // Now that analysis has completed, we can get around to handling unparsedFunctions
-  (functionsOnly ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
+  Functions.currFunctions = !mainPass ? givenFunctions : {};
+
+  // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
+  (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
     // Save just what we need, to save memory
     Functions.currFunctions[func.ident] = {
       hasVarArgs: func.hasVarArgs,
@@ -57,7 +60,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   if (data.unparsedFunctions.length > 0) {
     // We are now doing the final JS generation
     dprint('unparsedFunctions', '== Completed unparsedFunctions ==\n');
-    //Debugging.clear(); // Save some memory, before the final heavy lifting
+
+    // Save some memory, before the final heavy lifting
+    //Functions.currFunctions = null;
+    //Functions.currExternalFunctions = null;
+    //Debugging.clear();
   }
 
   // Actors
@@ -117,7 +124,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return indexizeFunctions(parseNumerical(value.value));
+      return indexizeFunctions(parseNumerical(value.value), type);
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
@@ -128,23 +135,26 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       function handleSegments(tokens) {
         // Handle a single segment (after comma separation)
         function handleSegment(segment) {
+          var ret;
           if (segment.intertype === 'value') {
-            return segment.value.toString();
+            ret = segment.value.toString();
           } else if (segment.intertype === 'emptystruct') {
-            return makeEmptyStruct(segment.type);
+            ret = makeEmptyStruct(segment.type);
           } else if (segment.intertype in PARSABLE_LLVM_FUNCTIONS) {
-            return finalizeLLVMFunctionCall(segment);
+            ret = finalizeLLVMFunctionCall(segment);
           } else if (segment.intertype in set('struct', 'list')) {
-            return alignStruct(handleSegments(segment.contents), segment.type);
+            ret = alignStruct(handleSegments(segment.contents), segment.type);
           } else if (segment.intertype === 'string') {
-            return parseLLVMString(segment.text); // + ' /* ' + text + '*/';
+            ret = parseLLVMString(segment.text); // + ' /* ' + text + '*/';
           } else if (segment.intertype === 'blockaddress') {
-            return finalizeBlockAddress(segment);
+            ret = finalizeBlockAddress(segment);
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
+          assert(segment.type, 'Missing type for constant segment: ' + dump(segment));
+          return indexizeFunctions(ret, segment.type);
         };
-        return tokens.map(handleSegment).map(indexizeFunctions);
+        return tokens.map(handleSegment)
       }
       return alignStruct(handleSegments(value.contents), type);
     }
@@ -292,7 +302,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         }
         item.JS = addFromLibrary(shortident);
       } else {
-        item.JS = '// stub for ' + item.ident;
+        item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
       }
       return ret;
     }
@@ -720,6 +730,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     var func = Functions.currFunctions[ident];
     var args = [];
+    var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
 
@@ -727,6 +738,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var val = finalizeParam(param);
       if (!func || !func.hasVarArgs || i < func.numParams-1) { // unrecognized functions (like library ones) cannot have varargs
         args.push(val);
+        argsTypes.push(param.type);
       } else {
         varargs.push(val);
         varargs = varargs.concat(zeros(getNativeFieldSize(param.type)-1));
@@ -735,8 +747,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }
     });
 
-    args = args.map(indexizeFunctions);
-    varargs = varargs.map(indexizeFunctions);
+    args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
+    varargs = varargs.map(function(vararg, i) { return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i]) });
+
     if (func && func.hasVarArgs) {
       if (varargs.length === 0) {
         varargs = [0];
@@ -771,12 +784,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     items = null;
 
     var generated = [];
-    if (!functionsOnly) {
+    if (mainPass) {
       generated = generated.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
     }
     generated = generated.concat(itemsDict.function).concat(data.unparsedFunctions);
 
-    if (functionsOnly) return generated.map(function(item) { return item.JS }).join('\n');
+    if (!mainPass) return generated.map(function(item) { return item.JS }).join('\n');
 
     // We are ready to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
