@@ -642,6 +642,10 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*yes*')
 
+        # Test for issue 39
+        if not LLVM_OPTS:
+          self.do_ll_test(path_from_root('tests', 'issue_39.ll'), '*yes*')
+
     def test_if_else(self):
         src = '''
           #include <stdio.h>

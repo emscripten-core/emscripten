@@ -715,11 +715,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
           lineNum: item.lineNum
         }];
       } else {
+        var commaIndex = findTokenText(item, ',');
         return [{
           intertype: 'branch',
-          ident: toNiceIdent(item.tokens[2].text),
-          labelTrue: toNiceIdent(item.tokens[5].text),
-          labelFalse: toNiceIdent(item.tokens[8].text),
+          condition: parseLLVMSegment(item.tokens.slice(1, commaIndex)),
+          labelTrue: toNiceIdent(item.tokens[commaIndex+2].text),
+          labelFalse: toNiceIdent(item.tokens[commaIndex+5].text),
           lineNum: item.lineNum
         }];
       }
