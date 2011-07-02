@@ -3069,7 +3069,7 @@ else:
         #include<stdlib.h>
         int main() {
           int N = 1024*1024;
-          int M = 600;
+          int M = 190;
           int final = 0;
           char *buf = (char*)malloc(N);
           for (int t = 0; t < M; t++) {
@@ -3083,7 +3083,7 @@ else:
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 800.')
+      self.do_benchmark(src, [], 'final: 720.')
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
