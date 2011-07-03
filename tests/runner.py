@@ -1636,6 +1636,12 @@ if 'benchmark' not in sys.argv:
           '''
         self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*cleaned*')
 
+    def test_time(self):
+      src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
+
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
         global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
