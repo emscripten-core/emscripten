@@ -784,17 +784,30 @@ var Library = {
   fstat: function(stream, ptr) {
     var info = STDIO.streams[stream];
     if (!info) return -1;
+    // XXX: hardcoded indexes into the structure.
     try {
-      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[0]', '1', 'i32') }}} // st_dev. XXX: hardcoded index 0 into the structure.
-      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[15]', 'stream', 'i32') }}} // st_ino. XXX: hardcoded index 15 into the structure.
-      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size. XXX: hardcoded index 9 into the structure.
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[0]', '1', 'i32') }}} // st_dev
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[15]', 'stream', 'i32') }}} // st_ino
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size
     } catch(e) {
+      // no FLATTENER
       {{{ makeSetValue('ptr', '0', '1', 'i32') }}}
       {{{ makeSetValue('ptr', '15', 'stream', 'i32') }}}
-      {{{ makeSetValue('ptr', '9', 'info.data.length', 'i32') }}} // no FLATTENER
+      {{{ makeSetValue('ptr', '9', 'info.data.length', 'i32') }}}
     }
     // TODO: other fields
     return 0;
+  },
+
+  stat__deps: ['open', 'fstat'],
+  stat: function(filename, ptr) {
+    if (typeof window === 'undefined') {
+      // d8 hangs if you try to read a folder.
+      return 0;
+    }
+    // TODO: Handle symbolic links.
+    var stream = _open(filename, 0, 256); // RDONLY, 0400.
+    return _fstat(stream, ptr);
   },
 
   mmap: function(start, num, prot, flags, stream, offset) {
@@ -1604,6 +1617,23 @@ var Library = {
   // unistd.h
   // ==========================================================================
 
+  getcwd__deps: ['malloc'],
+  getcwd: function(buf, size) {
+    // TODO: Implement for real once we have a file system.
+    var path = window ? window.location.pathname.replace(/\/[^/]*$/, '') : '/';
+    if (buf === 0) {
+      // Null. Allocate manually.
+      buf = _malloc(path.length);
+    } else if (size < path.length) {
+      return 0;
+      // TODO: Set errno.
+    }
+    for (var i = 0; i < path.length; i++) {
+      {{{ makeSetValue('buf+i', 0, 'path[i].charCodeAt(0)', 'i32') }}}
+    }
+    return buf;
+  },
+
   sysconf: function(name_) {
     // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
     switch(name_) {
@@ -1653,10 +1683,12 @@ var Library = {
   getuid: function() {
     return 100;
   },
+  geteuid: 'getuid',
 
   getgid: function() {
     return 100;
   },
+  getegid: 'getgid',
 
   getpwuid: function(uid) {
     return 0; // NULL
@@ -1711,12 +1743,17 @@ var Library = {
     return 0;
   },
 
+  // ==========================================================================
   // stat.h
+  // ==========================================================================
 
-  __01stat64_: 'fstat',
   __01fstat64_: 'fstat',
+  __01stat64_: 'stat',
+  __01lstat64_: 'stat',
 
+  // ==========================================================================
   // locale.h
+  // ==========================================================================
 
   setlocale: function(category, locale) {
     return 0;
