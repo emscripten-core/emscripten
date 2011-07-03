@@ -953,7 +953,7 @@ function finalizeLLVMFunctionCall(item) {
       };
       for (var i = 1; i <= 4; i++) {
         if (item.params[i-1]) {
-          temp['param' + i] = finalizeLLVMParameter(item.params[i-1]);
+          temp['param' + i] = item.params[i-1];
         }
       }
       return processMathop(temp);
@@ -1106,8 +1106,10 @@ function isSignedOp(op, variant) {
 }
 
 function processMathop(item) { with(item) {
+  var paramTypes = ['', '', '', ''];
   for (var i = 1; i <= 4; i++) {
     if (item['param'+i]) {
+      paramTypes[i-1] = item['param'+i].type || type;
       item['ident'+i] = finalizeLLVMParameter(item['param'+i]);
       if (!isNumber(item['ident'+i])) {
         item['ident'+i] = '(' + item['ident'+i] + ')'; // we may have nested expressions. So enforce the order of operations we want
@@ -1117,11 +1119,11 @@ function processMathop(item) { with(item) {
     }
   }
   if (isUnsignedOp(op, variant)) {
-    ident1 = makeSignOp(ident1, type, 'un');
-    ident2 = makeSignOp(ident2, type, 'un');
+    ident1 = makeSignOp(ident1, paramTypes[0], 'un');
+    ident2 = makeSignOp(ident2, paramTypes[1], 'un');
   } else if (isSignedOp(op, variant)) {
-    ident1 = makeSignOp(ident1, type, 're');
-    ident2 = makeSignOp(ident2, type, 're');
+    ident1 = makeSignOp(ident1, paramTypes[0], 're');
+    ident2 = makeSignOp(ident2, paramTypes[1], 're');
   }
   var bits = null;
   if (item.type[0] === 'i') {

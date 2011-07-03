@@ -606,14 +606,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   makeFuncLineActor('branch', function(item) {
     if (item.stolen) return ';'; // We will appear where we were stolen to
-    if (!item.ident) {
+    if (!item.condition) {
       return makeBranch(item.label, item.currLabelId);
     } else {
+      var condition = finalizeLLVMParameter(item.condition);
       var labelTrue = makeBranch(item.labelTrue, item.currLabelId);
       var labelFalse = makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
-      var head = 'if (' + item.ident + ') { ';
-      var head2 = 'if (!(' + item.ident + ')) { ';
+      var head = 'if (' + condition + ') { ';
+      var head2 = 'if (!(' + condition + ')) { ';
       var else_ = ' } else { ';
       var tail = ' }';
       if (labelTrue == ';') {
