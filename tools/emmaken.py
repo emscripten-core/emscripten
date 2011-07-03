@@ -85,7 +85,7 @@ try:
     sys.argv = sys.argv[:-1]
 
   CC_ARG_SKIP = ['-O1', '-O2', '-O3']
-  CC_ADDITIONAL_ARGS = ['-m32', '-U__i386__', '-U__x86_64__', '-U__SSE__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
+  CC_ADDITIONAL_ARGS = ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
                        '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]  
   DISALLOWED_LINK_ARGS = []#['rc']
