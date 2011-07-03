@@ -1781,6 +1781,13 @@ var Library = {
     return ret + boundary - (ret % boundary);
   },
 
+  posix_memalign__deps: ['memalign'],
+  posix_memalign: function(memptr, alignment, size) {
+    var ptr = _memalign(alignment, size);
+    {{{ makeSetValue('memptr', '0', 'ptr', 'i8*') }}}
+    return 0;
+  },
+
   // ==========================================================================
   // dirent.h
   // ==========================================================================
