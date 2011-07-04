@@ -375,7 +375,15 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
 
       if (item.tokens[2].text == 'alias') {
-        return null; // TODO: handle this. See raytrace.cpp
+        cleanOutTokensSet(LLVM.LINKAGES, item.tokens, 3);
+        cleanOutTokensSet(LLVM.VISIBILITIES, item.tokens, 3);
+        return [{
+          intertype: 'alias',
+          ident: toNiceIdent(item.tokens[0].text),
+          aliasee: toNiceIdent(item.tokens[4].text),
+          type: item.tokens[3].text,
+          lineNum: item.lineNum
+        }];
       }
       if (item.tokens[2].text == 'type') {
         var fields = [];

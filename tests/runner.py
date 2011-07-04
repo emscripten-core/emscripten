@@ -2609,8 +2609,6 @@ if 'benchmark' not in sys.argv:
 
         # Way 2: use CppHeaderParser
 
-        if COMPILER != LLVM_GCC: return self.skip() # FIXME: proper support for aliases, which clang generates here
-
         basename = os.path.join(self.get_dir(), 'bindingtest')
         Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
