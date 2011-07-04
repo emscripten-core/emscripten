@@ -51,6 +51,8 @@ for header in sys.argv[2:]:
 
 # Second pass - generate bindings
 
+funcs = []
+
 gen_c = open(basename + '.c', 'w')
 gen_js = open(basename + '.js', 'w')
 
@@ -83,6 +85,8 @@ for cname, clazz in classes.iteritems():
 }
 ''' % (ret, fullname, typedargs, callprefix, mname, justargs))
 
+    funcs.append('emscripten_bind_' + fullname)
+
     # JS
 
     if constructor:
@@ -99,10 +103,33 @@ function %s(%s) {
 }
 ''' % (cname, mname, justargs, 'return ' if ret != 'void' else '', fullname, (', ' if len(justargs) > 0 else '') + justargs))
 
+
 # Finish up
 
-gen_c.write('\n}\n')
-gen_c.close()
+gen_c.write('''
+}
 
+#include <stdio.h>
+
+struct EmscriptenEnsurer
+{
+  EmscriptenEnsurer() {
+    // Actually use the binding functions, so DFE will not eliminate them
+    int sum = 0;
+    void *seen = (void*)%s;
+''' % funcs[0])
+
+for func in funcs[1:]:
+  gen_c.write('''    sum += (void*)%s == seen;
+''' % func)
+
+gen_c.write('''    printf("(%d)\\n", sum);
+  }
+};
+
+EmscriptenEnsurer emscriptenEnsurer;
+''')
+
+gen_c.close()
 gen_js.close()
 

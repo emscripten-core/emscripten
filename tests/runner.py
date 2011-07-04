@@ -1646,7 +1646,6 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
       self.do_test(src, expected)
 
-
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
         global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
@@ -2612,7 +2611,15 @@ if 'benchmark' not in sys.argv:
         basename = os.path.join(self.get_dir(), 'bindingtest')
         Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
-        src = src + '\n#include "bindingtest.c"\n'
+        src = '''
+          #include "header.h"
+
+          ScriptMe::ScriptMe(int val) : value(val) { }
+          int ScriptMe::getVal() { return value; }
+          void ScriptMe::mulVal(int mul) { value *= mul; }
+
+          #include "bindingtest.c"
+        '''
 
         script_src_2 = '''
           var sme = new ScriptMe(83);
