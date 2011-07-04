@@ -210,19 +210,9 @@ var Library = {
           var currArg = getNextArg(false, argSize);
           // Truncate to requested size.
           argSize = argSize || 4;
-          var limit = undefined;
-          if (argSize == 4) {
-            limit = 0xFFFFFFFF;
-          } else if (argSize == 2) {
-            limit = 0xFFFF;
-          } else if (argSize == 1) {
-            limit = 0xFF;
-          }
-          if (limit !== undefined) {
-            currArg = currArg & limit;
-            if (!signed && currArg < 0 || signed && currArg > (limit - 1) / 2) {
-              currArg = ~(limit - currArg);
-            }
+          if (argSize <= 4) {
+            var limit = Math.pow(256, argSize) - 1;
+            currArg = (signed ? reSign : unSign)(currArg & limit, argSize * 8);
           }
           // Format the number.
           var currAbsArg = Math.abs(currArg);
@@ -794,13 +784,31 @@ var Library = {
   fstat: function(stream, ptr) {
     var info = STDIO.streams[stream];
     if (!info) return -1;
+    // XXX: hardcoded indexes into the structure.
     try {
-      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size. XXX: hardcoded index 9 into the structure.
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[0]', '1', 'i32') }}} // st_dev
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[15]', 'stream', 'i32') }}} // st_ino
+      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size
     } catch(e) {
-      {{{ makeSetValue('ptr', '9', 'info.data.length', 'i32') }}} // no FLATTENER
+      // no FLATTENER
+      {{{ makeSetValue('ptr', '0', '1', 'i32') }}}
+      {{{ makeSetValue('ptr', '15', 'stream', 'i32') }}}
+      {{{ makeSetValue('ptr', '9', 'info.data.length', 'i32') }}}
     }
     // TODO: other fields
     return 0;
+  },
+
+  stat__deps: ['open', 'fstat'],
+  stat: function(filename, ptr) {
+    if (typeof window === 'undefined') {
+      // d8 hangs if you try to read a folder.
+      // http://code.google.com/p/v8/issues/detail?id=1533
+      return 0;
+    }
+    // TODO: Handle symbolic links.
+    var stream = _open(filename, 0, 256); // RDONLY, 0400.
+    return _fstat(stream, ptr);
   },
 
   mmap: function(start, num, prot, flags, stream, offset) {
@@ -1501,7 +1509,6 @@ var Library = {
   dlopen: function(filename, flag) {
     // TODO: Add support for LD_LIBRARY_PATH.
     filename = Pointer_stringify(filename);
-    filename += '.js';
 
     if (DLFCN_DATA.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
@@ -1611,10 +1618,28 @@ var Library = {
   // unistd.h
   // ==========================================================================
 
+  getcwd__deps: ['malloc'],
+  getcwd: function(buf, size) {
+    // TODO: Implement for real once we have a file system.
+    var path = window ? window.location.pathname.replace(/\/[^/]*$/, '') : '/';
+    if (buf === 0) {
+      // Null. Allocate manually.
+      buf = _malloc(path.length);
+    } else if (size < path.length) {
+      return 0;
+      // TODO: Set errno.
+    }
+    for (var i = 0; i < path.length; i++) {
+      {{{ makeSetValue('buf', 'i', 'path[i].charCodeAt(0)', 'i8') }}}
+    }
+    return buf;
+  },
+
   sysconf: function(name_) {
     // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
     switch(name_) {
       case 29: case 30: return PAGE_SIZE;
+      case 2: return 1000000; // _SC_CLK_TCK
       default: throw 'unknown sysconf param: ' + name_;
     }
   },
@@ -1659,16 +1684,25 @@ var Library = {
   getuid: function() {
     return 100;
   },
+  geteuid: 'getuid',
 
   getgid: function() {
     return 100;
   },
+  getegid: 'getgid',
 
   getpwuid: function(uid) {
     return 0; // NULL
   },
 
+  // ==========================================================================
   // time.h
+  // ==========================================================================
+
+  clock: function() {
+    if (_clock.start === undefined) _clock.start = new Date();
+    return (_clock.start.getTime() - Date.now())*1000;
+  },
 
   time: function(ptr) {
     var ret = Math.floor(Date.now()/1000);
@@ -1677,6 +1711,197 @@ var Library = {
     }
     return ret;
   },
+
+  difftime: function(time1, time0) {
+    return time1 - time0;
+  },
+
+  __tm_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'tm_sec'],
+    ['i32', 'tm_min'],
+    ['i32', 'tm_hour'],
+    ['i32', 'tm_mday'],
+    ['i32', 'tm_mon'],
+    ['i32', 'tm_year'],
+    ['i32', 'tm_wday'],
+    ['i32', 'tm_yday'],
+    ['i32', 'tm_isdst'],
+    ['i32', 'tm_gmtoff'],
+    ['i8*', 'tm_zone'],
+  ]),
+  // Statically allocated time struct.
+  __tm_current: 0,
+  // Statically allocated timezone strings.
+  __tm_timezones: {},
+  // Statically allocated time strings.
+  __tm_formatted: 0,
+
+  mktime__deps: ['__tm_struct_layout', 'tzset'],
+  mktime: function(tmPtr) {
+    _tzset();
+    var year = {{{ makeGetValue('tmPtr', '___tm_struct_layout.tm_year', 'i32') }}};
+    var timestamp = new Date(year >= 1900 ? year : year + 1900,
+                             {{{ makeGetValue('tmPtr', '___tm_struct_layout.tm_mon', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', '___tm_struct_layout.tm_mday', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', '___tm_struct_layout.tm_hour', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', '___tm_struct_layout.tm_min', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', '___tm_struct_layout.tm_sec', 'i32') }}},
+                             0).getTime() / 1000;
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_wday', 'new Date(timestamp).getDay()', 'i32') }}}
+    var yday = Math.round((timestamp - (new Date(year, 0, 1)).getTime()) / (1000 * 60 * 60 * 24));
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_yday', 'yday', 'i32') }}}
+    return timestamp;
+  },
+  timelocal: 'mktime',
+
+  gmtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'gmtime_r'],
+  gmtime: function(time) {
+    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
+    return _gmtime_r(time, ___tm_current);
+  },
+
+  gmtime_r__deps: ['__tm_struct_layout', '__tm_timezones'],
+  gmtime_r: function(time, tmPtr) {
+    var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_sec', 'date.getUTCSeconds()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_min', 'date.getUTCMinutes()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_hour', 'date.getUTCHours()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_mday', 'date.getUTCDate()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_mon', 'date.getUTCMonth()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_year', 'date.getUTCFullYear()-1900', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_wday', 'date.getUTCDay()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_gmtoff', '0', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_isdst', '0', 'i32') }}}
+
+    var start = new Date(date.getFullYear(), 0, 1);
+    var yday = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_yday', 'yday', 'i32') }}}
+
+    var timezone = "GMT";
+    if (!(timezone in ___tm_timezones)) {
+      ___tm_timezones[timezone] = Pointer_make(intArrayFromString(timezone), null, ALLOC_NORMAL, 'i8');
+    }
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
+
+    return tmPtr;
+  },
+
+  timegm__deps: ['__tm_struct_layout', 'mktime'],
+  timegm: function(tmPtr) {
+    _tzset();
+    var offset = {{{ makeGetValue('_timezone', 0, 'i32') }}};
+    var daylight = {{{ makeGetValue('_daylight', 0, 'i32') }}};
+    daylight = (daylight == 1) ? 60 * 60 : 0;
+    var ret = _mktime(tmPtr) - (offset + daylight);
+    return ret;
+  },
+
+  localtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'localtime_r'],
+  localtime: function(time) {
+    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
+    return _localtime_r(time, ___tm_current);
+  },
+
+  localtime_r__deps: ['__tm_struct_layout', '__tm_timezones', 'tzset'],
+  localtime_r: function(time, tmPtr) {
+    _tzset();
+    var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_sec', 'date.getSeconds()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_min', 'date.getMinutes()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_hour', 'date.getHours()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_mday', 'date.getDate()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_mon', 'date.getMonth()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_year', 'date.getFullYear()-1900', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_wday', 'date.getDay()', 'i32') }}}
+
+    var start = new Date(date.getFullYear(), 0, 1);
+    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_yday', 'yday', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_gmtoff', '-start.getTimezoneOffset() * 60', 'i32') }}}
+
+    var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_isdst', 'dst', 'i32') }}}
+
+    var timezone = date.toString().match(/\(([A-Z]+)\)/)[1];
+    if (!(timezone in ___tm_timezones)) {
+      ___tm_timezones[timezone] = Pointer_make(intArrayFromString(timezone), null, ALLOC_NORMAL, 'i8');
+    }
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
+
+    return tmPtr;
+  },
+
+  asctime__deps: ['malloc', '__tm_formatted', 'asctime_r'],
+  asctime: function(tmPtr) {
+    if (!___tm_formatted) ___tm_formatted = _malloc(26);
+    return _asctime_r(tmPtr, ___tm_formatted);
+  },
+
+  asctime_r__deps: ['__tm_formatted', 'mktime'],
+  asctime_r: function(tmPtr, buf) {
+    var date = new Date(_mktime(tmPtr)*1000);
+    var formatted = date.toString();
+    var datePart = formatted.replace(/\d{4}.*/, '').replace(/ 0/, '  ');
+    var timePart = formatted.match(/\d{2}:\d{2}:\d{2}/)[0];
+    formatted = datePart + timePart + ' ' + date.getFullYear() + '\n';
+    formatted.split('').forEach(function(chr, index) {
+      {{{ makeSetValue('buf', 'index', 'chr.charCodeAt(0)', 'i8') }}}
+    });
+    {{{ makeSetValue('buf', '25', '0', 'i8') }}}
+    return buf;
+  },
+
+  ctime__deps: ['localtime', 'asctime'],
+  ctime: function(timer) {
+    return _asctime(_localtime(timer));
+  },
+
+  ctime_r__deps: ['localtime', 'asctime'],
+  ctime_r: function(timer, buf) {
+    return _asctime_r(_localtime_r(timer, ___tm_current), buf);
+  },
+
+  dysize: function(year) {
+    var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
+    return leap ? 366 : 365;
+  },
+
+  // TODO: Initialize these to defaults on startup from system settings.
+  tzname: null,
+  daylight: null,
+  timezone: null,
+  tzset__deps: ['malloc', 'tzname', 'daylight', 'timezone'],
+  tzset: function() {
+    // TODO: Use (malleable) environment variables instead of system settings.
+    if (_tzname !== null) return;
+
+    _timezone = _malloc(QUANTUM_SIZE);
+    {{{ makeSetValue('_timezone', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+
+    _daylight = _malloc(QUANTUM_SIZE);
+    var winter = new Date(2000, 0, 1);
+    var summer = new Date(2000, 6, 1);
+    {{{ makeSetValue('_daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
+
+    var winterName = winter.toString().match(/\(([A-Z]+)\)/)[1];
+    var summerName = summer.toString().match(/\(([A-Z]+)\)/)[1];
+    var winterNamePtr = Pointer_make(intArrayFromString(winterName), null, ALLOC_NORMAL, 'i8');
+    var summerNamePtr = Pointer_make(intArrayFromString(summerName), null, ALLOC_NORMAL, 'i8');
+    _tzname = _malloc(2 * QUANTUM_SIZE);
+    {{{ makeSetValue('_tzname', '0', 'winterNamePtr', 'i32') }}}
+    {{{ makeSetValue('_tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+  },
+
+  stime: function(when) {
+    // TODO: Set errno.
+    return -1;
+  },
+
+  // TODO: Implement strftime(), strptime() and getdate().
+
+  // ==========================================================================
+  // sys/time.h
+  // ==========================================================================
 
   gettimeofday: function(ptr) {
     // %struct.timeval = type { i32, i32 }
@@ -1717,12 +1942,17 @@ var Library = {
     return 0;
   },
 
+  // ==========================================================================
   // stat.h
+  // ==========================================================================
 
-  __01stat64_: 'fstat',
   __01fstat64_: 'fstat',
+  __01stat64_: 'stat',
+  __01lstat64_: 'stat',
 
+  // ==========================================================================
   // locale.h
+  // ==========================================================================
 
   setlocale: function(category, locale) {
     return 0;

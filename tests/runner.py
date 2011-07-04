@@ -1640,6 +1640,12 @@ if 'benchmark' not in sys.argv:
           '''
         self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*cleaned*')
 
+    def test_time(self):
+      src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
+
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
         global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
@@ -1825,7 +1831,7 @@ if 'benchmark' not in sys.argv:
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
       self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
       src = '''
         #include <cstdio>
@@ -1870,7 +1876,7 @@ if 'benchmark' not in sys.argv:
       BUILD_AS_SHARED_LIB = 1
       EXPORTED_FUNCTIONS = ['__Z7get_cmpv']
       self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
       src = '''
         #include <stdio.h>
@@ -1960,7 +1966,7 @@ if 'benchmark' not in sys.argv:
       EXPORTED_FUNCTIONS = ['__Z4funciPFvvE']
       EXPORTED_GLOBALS = ['_global']
       self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so.js'))
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
       src = '''
         #include <stdio.h>
@@ -2477,7 +2483,7 @@ if 'benchmark' not in sys.argv:
       global EXPORTED_FUNCTIONS; EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
 
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
-                      'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470',
+                      'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
     ### Test cases in separate files
