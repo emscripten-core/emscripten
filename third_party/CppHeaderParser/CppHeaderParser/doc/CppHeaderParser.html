@@ -1,0 +1,657 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module CppHeaderParser</title>
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>CppHeaderParser</strong></big></big> (version 1.9)</font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/senex/workspace/cppheaderparser/CppHeaderParser/CppHeaderParser.py">/home/senex/workspace/cppheaderparser/CppHeaderParser/CppHeaderParser.py</a></font></td></tr></table>
+    <p><tt>Parse&nbsp;C++&nbsp;header&nbsp;files&nbsp;and&nbsp;generate&nbsp;a&nbsp;data&nbsp;structure<br>
+representing&nbsp;the&nbsp;class</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="inspect.html">inspect</a><br>
+<a href="ply.lex.html">ply.lex</a><br>
+</td><td width="25%" valign=top><a href="os.html">os</a><br>
+<a href="re.html">re</a><br>
+</td><td width="25%" valign=top><a href="sys.html">sys</a><br>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="CppHeaderParser.html#CppHeader">CppHeader</a>
+</font></dt><dt><font face="helvetica, arial"><a href="__builtin__.html#dict">__builtin__.dict</a>(<a href="__builtin__.html#object">__builtin__.object</a>)
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="CppHeaderParser.html#CppClass">CppClass</a>
+</font></dt><dt><font face="helvetica, arial"><a href="CppHeaderParser.html#CppEnum">CppEnum</a>
+</font></dt><dt><font face="helvetica, arial"><a href="CppHeaderParser.html#CppMethod">CppMethod</a>
+</font></dt><dt><font face="helvetica, arial"><a href="CppHeaderParser.html#CppVariable">CppVariable</a>
+</font></dt></dl>
+</dd>
+<dt><font face="helvetica, arial"><a href="exceptions.html#Exception">exceptions.Exception</a>(<a href="exceptions.html#BaseException">exceptions.BaseException</a>)
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="CppHeaderParser.html#CppParseError">CppParseError</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="CppClass">class <strong>CppClass</strong></a>(<a href="__builtin__.html#dict">__builtin__.dict</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Takes&nbsp;a&nbsp;name&nbsp;stack&nbsp;and&nbsp;turns&nbsp;it&nbsp;into&nbsp;a&nbsp;class<br>
+&nbsp;<br>
+Contains&nbsp;the&nbsp;following&nbsp;Keys:<br>
+self['name']&nbsp;-&nbsp;Name&nbsp;of&nbsp;the&nbsp;class<br>
+self['doxygen']&nbsp;-&nbsp;Doxygen&nbsp;comments&nbsp;associated&nbsp;with&nbsp;the&nbsp;class&nbsp;if&nbsp;they&nbsp;exist<br>
+self['inherits']&nbsp;-&nbsp;List&nbsp;of&nbsp;Classes&nbsp;that&nbsp;this&nbsp;one&nbsp;inherits&nbsp;where&nbsp;the&nbsp;values<br>
+&nbsp;&nbsp;&nbsp;&nbsp;are&nbsp;of&nbsp;the&nbsp;form&nbsp;{"access":&nbsp;Anything&nbsp;in&nbsp;supportedAccessSpecifier<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"class":&nbsp;Name&nbsp;of&nbsp;the&nbsp;class<br>
+self['methods']&nbsp;-&nbsp;Dictionary&nbsp;where&nbsp;keys&nbsp;are&nbsp;from&nbsp;supportedAccessSpecifier<br>
+&nbsp;&nbsp;&nbsp;&nbsp;and&nbsp;values&nbsp;are&nbsp;a&nbsp;lists&nbsp;of&nbsp;<a href="#CppMethod">CppMethod</a>'s<br>
+self['properties']&nbsp;-&nbsp;Dictionary&nbsp;where&nbsp;keys&nbsp;are&nbsp;from&nbsp;supportedAccessSpecifier<br>
+&nbsp;&nbsp;&nbsp;&nbsp;and&nbsp;values&nbsp;are&nbsp;lists&nbsp;of&nbsp;<a href="#CppVariable">CppVariable</a>'s&nbsp;<br>
+self['enums']&nbsp;-&nbsp;Dictionary&nbsp;where&nbsp;keys&nbsp;are&nbsp;from&nbsp;supportedAccessSpecifier&nbsp;and<br>
+&nbsp;&nbsp;&nbsp;&nbsp;values&nbsp;are&nbsp;lists&nbsp;of&nbsp;<a href="#CppEnum">CppEnum</a>'s<br>
+&nbsp;<br>
+An&nbsp;example&nbsp;of&nbsp;how&nbsp;this&nbsp;could&nbsp;look&nbsp;is&nbsp;as&nbsp;follows:<br>
+#self&nbsp;=<br>
+{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;'name':&nbsp;""<br>
+&nbsp;&nbsp;&nbsp;&nbsp;'inherits':[]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;'methods':<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'public':[],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'protected':[],&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'private':[]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;},&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;'properties':<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'public':[],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'protected':[],&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'private':[]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;&nbsp;&nbsp;'enums':<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'public':[],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'protected':[],&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'private':[]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+}<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="CppHeaderParser.html#CppClass">CppClass</a></dd>
+<dd><a href="__builtin__.html#dict">__builtin__.dict</a></dd>
+<dd><a href="__builtin__.html#object">__builtin__.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="CppClass-__init__"><strong>__init__</strong></a>(self, nameStack)</dt></dl>
+
+<dl><dt><a name="CppClass-__repr__"><strong>__repr__</strong></a>(self)</dt><dd><tt>Convert&nbsp;class&nbsp;to&nbsp;a&nbsp;string</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Methods inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><a name="CppClass-__cmp__"><strong>__cmp__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__cmp__">__cmp__</a>(y)&nbsp;&lt;==&gt;&nbsp;cmp(x,y)</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__contains__"><strong>__contains__</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-__contains__">__contains__</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__delitem__"><strong>__delitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__delitem__">__delitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;del&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__eq__"><strong>__eq__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__eq__">__eq__</a>(y)&nbsp;&lt;==&gt;&nbsp;x==y</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__ge__"><strong>__ge__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__ge__">__ge__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__getitem__"><strong>__getitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__getitem__">__getitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__gt__"><strong>__gt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__gt__">__gt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;y</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__iter__"><strong>__iter__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__iter__">__iter__</a>()&nbsp;&lt;==&gt;&nbsp;iter(x)</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__le__"><strong>__le__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__le__">__le__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__len__"><strong>__len__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__len__">__len__</a>()&nbsp;&lt;==&gt;&nbsp;len(x)</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__lt__"><strong>__lt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__lt__">__lt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;y</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__ne__"><strong>__ne__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__ne__">__ne__</a>(y)&nbsp;&lt;==&gt;&nbsp;x!=y</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__setitem__"><strong>__setitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppClass-__setitem__">__setitem__</a>(i,&nbsp;y)&nbsp;&lt;==&gt;&nbsp;x[i]=y</tt></dd></dl>
+
+<dl><dt><a name="CppClass-__sizeof__"><strong>__sizeof__</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-__sizeof__">__sizeof__</a>()&nbsp;-&gt;&nbsp;size&nbsp;of&nbsp;D&nbsp;in&nbsp;memory,&nbsp;in&nbsp;bytes</tt></dd></dl>
+
+<dl><dt><a name="CppClass-clear"><strong>clear</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-clear">clear</a>()&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Remove&nbsp;all&nbsp;items&nbsp;from&nbsp;D.</tt></dd></dl>
+
+<dl><dt><a name="CppClass-copy"><strong>copy</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-copy">copy</a>()&nbsp;-&gt;&nbsp;a&nbsp;shallow&nbsp;copy&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppClass-get"><strong>get</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-get">get</a>(k[,d])&nbsp;-&gt;&nbsp;D[k]&nbsp;if&nbsp;k&nbsp;in&nbsp;D,&nbsp;else&nbsp;d.&nbsp;&nbsp;d&nbsp;defaults&nbsp;to&nbsp;None.</tt></dd></dl>
+
+<dl><dt><a name="CppClass-has_key"><strong>has_key</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-has_key">has_key</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppClass-items"><strong>items</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-items">items</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;(key,&nbsp;value)&nbsp;pairs,&nbsp;as&nbsp;2-tuples</tt></dd></dl>
+
+<dl><dt><a name="CppClass-iteritems"><strong>iteritems</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-iteritems">iteritems</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;(key,&nbsp;value)&nbsp;items&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppClass-iterkeys"><strong>iterkeys</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-iterkeys">iterkeys</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;keys&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppClass-itervalues"><strong>itervalues</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-itervalues">itervalues</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;values&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppClass-keys"><strong>keys</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-keys">keys</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;keys</tt></dd></dl>
+
+<dl><dt><a name="CppClass-pop"><strong>pop</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-pop">pop</a>(k[,d])&nbsp;-&gt;&nbsp;v,&nbsp;remove&nbsp;specified&nbsp;key&nbsp;and&nbsp;return&nbsp;the&nbsp;corresponding&nbsp;value.<br>
+If&nbsp;key&nbsp;is&nbsp;not&nbsp;found,&nbsp;d&nbsp;is&nbsp;returned&nbsp;if&nbsp;given,&nbsp;otherwise&nbsp;KeyError&nbsp;is&nbsp;raised</tt></dd></dl>
+
+<dl><dt><a name="CppClass-popitem"><strong>popitem</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-popitem">popitem</a>()&nbsp;-&gt;&nbsp;(k,&nbsp;v),&nbsp;remove&nbsp;and&nbsp;return&nbsp;some&nbsp;(key,&nbsp;value)&nbsp;pair&nbsp;as&nbsp;a<br>
+2-tuple;&nbsp;but&nbsp;raise&nbsp;KeyError&nbsp;if&nbsp;D&nbsp;is&nbsp;empty.</tt></dd></dl>
+
+<dl><dt><a name="CppClass-setdefault"><strong>setdefault</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-setdefault">setdefault</a>(k[,d])&nbsp;-&gt;&nbsp;D.<a href="#CppClass-get">get</a>(k,d),&nbsp;also&nbsp;set&nbsp;D[k]=d&nbsp;if&nbsp;k&nbsp;not&nbsp;in&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppClass-update"><strong>update</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-update">update</a>(E,&nbsp;**F)&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Update&nbsp;D&nbsp;from&nbsp;<a href="__builtin__.html#dict">dict</a>/iterable&nbsp;E&nbsp;and&nbsp;F.<br>
+If&nbsp;E&nbsp;has&nbsp;a&nbsp;.<a href="#CppClass-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;k&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;E[k]<br>
+If&nbsp;E&nbsp;lacks&nbsp;.<a href="#CppClass-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(k,&nbsp;v)&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;v<br>
+In&nbsp;either&nbsp;case,&nbsp;this&nbsp;is&nbsp;followed&nbsp;by:&nbsp;for&nbsp;k&nbsp;in&nbsp;F:&nbsp;D[k]&nbsp;=&nbsp;F[k]</tt></dd></dl>
+
+<dl><dt><a name="CppClass-values"><strong>values</strong></a>(...)</dt><dd><tt>D.<a href="#CppClass-values">values</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;values</tt></dd></dl>
+
+<hr>
+Data and other attributes inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><strong>__hash__</strong> = None</dl>
+
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object&gt;<dd><tt>T.<a href="#CppClass-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;object&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+<dl><dt><strong>fromkeys</strong> = &lt;built-in method fromkeys of type object&gt;<dd><tt><a href="__builtin__.html#dict">dict</a>.<a href="#CppClass-fromkeys">fromkeys</a>(S[,v])&nbsp;-&gt;&nbsp;New&nbsp;<a href="__builtin__.html#dict">dict</a>&nbsp;with&nbsp;keys&nbsp;from&nbsp;S&nbsp;and&nbsp;values&nbsp;equal&nbsp;to&nbsp;v.<br>
+v&nbsp;defaults&nbsp;to&nbsp;None.</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="CppEnum">class <strong>CppEnum</strong></a>(<a href="__builtin__.html#dict">__builtin__.dict</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Takes&nbsp;a&nbsp;name&nbsp;stack&nbsp;and&nbsp;turns&nbsp;it&nbsp;into&nbsp;an&nbsp;Enum<br>
+&nbsp;<br>
+Contains&nbsp;the&nbsp;following&nbsp;Keys:<br>
+self['name']&nbsp;-&nbsp;Name&nbsp;of&nbsp;the&nbsp;enum&nbsp;(ex.&nbsp;"ItemState")<br>
+self['namespace']&nbsp;-&nbsp;Namespace&nbsp;containing&nbsp;the&nbsp;enum<br>
+self['values']&nbsp;-&nbsp;List&nbsp;of&nbsp;values&nbsp;where&nbsp;the&nbsp;values&nbsp;are&nbsp;a&nbsp;dictionary&nbsp;of&nbsp;the<br>
+&nbsp;&nbsp;&nbsp;&nbsp;form&nbsp;{"name":&nbsp;name&nbsp;of&nbsp;the&nbsp;key&nbsp;(ex.&nbsp;"PARSING_HEADER"),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"value":&nbsp;Specified&nbsp;value&nbsp;of&nbsp;the&nbsp;enum,&nbsp;this&nbsp;key&nbsp;will&nbsp;only&nbsp;exist<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;a&nbsp;value&nbsp;for&nbsp;a&nbsp;given&nbsp;enum&nbsp;value&nbsp;was&nbsp;defined<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="CppHeaderParser.html#CppEnum">CppEnum</a></dd>
+<dd><a href="__builtin__.html#dict">__builtin__.dict</a></dd>
+<dd><a href="__builtin__.html#object">__builtin__.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="CppEnum-__init__"><strong>__init__</strong></a>(self, nameStack)</dt></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Methods inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><a name="CppEnum-__cmp__"><strong>__cmp__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__cmp__">__cmp__</a>(y)&nbsp;&lt;==&gt;&nbsp;cmp(x,y)</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__contains__"><strong>__contains__</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-__contains__">__contains__</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__delitem__"><strong>__delitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__delitem__">__delitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;del&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__eq__"><strong>__eq__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__eq__">__eq__</a>(y)&nbsp;&lt;==&gt;&nbsp;x==y</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__ge__"><strong>__ge__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__ge__">__ge__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__getitem__"><strong>__getitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__getitem__">__getitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__gt__"><strong>__gt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__gt__">__gt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;y</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__iter__"><strong>__iter__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__iter__">__iter__</a>()&nbsp;&lt;==&gt;&nbsp;iter(x)</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__le__"><strong>__le__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__le__">__le__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__len__"><strong>__len__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__len__">__len__</a>()&nbsp;&lt;==&gt;&nbsp;len(x)</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__lt__"><strong>__lt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__lt__">__lt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;y</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__ne__"><strong>__ne__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__ne__">__ne__</a>(y)&nbsp;&lt;==&gt;&nbsp;x!=y</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__repr__"><strong>__repr__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__repr__">__repr__</a>()&nbsp;&lt;==&gt;&nbsp;repr(x)</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__setitem__"><strong>__setitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppEnum-__setitem__">__setitem__</a>(i,&nbsp;y)&nbsp;&lt;==&gt;&nbsp;x[i]=y</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-__sizeof__"><strong>__sizeof__</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-__sizeof__">__sizeof__</a>()&nbsp;-&gt;&nbsp;size&nbsp;of&nbsp;D&nbsp;in&nbsp;memory,&nbsp;in&nbsp;bytes</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-clear"><strong>clear</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-clear">clear</a>()&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Remove&nbsp;all&nbsp;items&nbsp;from&nbsp;D.</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-copy"><strong>copy</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-copy">copy</a>()&nbsp;-&gt;&nbsp;a&nbsp;shallow&nbsp;copy&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-get"><strong>get</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-get">get</a>(k[,d])&nbsp;-&gt;&nbsp;D[k]&nbsp;if&nbsp;k&nbsp;in&nbsp;D,&nbsp;else&nbsp;d.&nbsp;&nbsp;d&nbsp;defaults&nbsp;to&nbsp;None.</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-has_key"><strong>has_key</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-has_key">has_key</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-items"><strong>items</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-items">items</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;(key,&nbsp;value)&nbsp;pairs,&nbsp;as&nbsp;2-tuples</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-iteritems"><strong>iteritems</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-iteritems">iteritems</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;(key,&nbsp;value)&nbsp;items&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-iterkeys"><strong>iterkeys</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-iterkeys">iterkeys</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;keys&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-itervalues"><strong>itervalues</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-itervalues">itervalues</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;values&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-keys"><strong>keys</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-keys">keys</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;keys</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-pop"><strong>pop</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-pop">pop</a>(k[,d])&nbsp;-&gt;&nbsp;v,&nbsp;remove&nbsp;specified&nbsp;key&nbsp;and&nbsp;return&nbsp;the&nbsp;corresponding&nbsp;value.<br>
+If&nbsp;key&nbsp;is&nbsp;not&nbsp;found,&nbsp;d&nbsp;is&nbsp;returned&nbsp;if&nbsp;given,&nbsp;otherwise&nbsp;KeyError&nbsp;is&nbsp;raised</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-popitem"><strong>popitem</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-popitem">popitem</a>()&nbsp;-&gt;&nbsp;(k,&nbsp;v),&nbsp;remove&nbsp;and&nbsp;return&nbsp;some&nbsp;(key,&nbsp;value)&nbsp;pair&nbsp;as&nbsp;a<br>
+2-tuple;&nbsp;but&nbsp;raise&nbsp;KeyError&nbsp;if&nbsp;D&nbsp;is&nbsp;empty.</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-setdefault"><strong>setdefault</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-setdefault">setdefault</a>(k[,d])&nbsp;-&gt;&nbsp;D.<a href="#CppEnum-get">get</a>(k,d),&nbsp;also&nbsp;set&nbsp;D[k]=d&nbsp;if&nbsp;k&nbsp;not&nbsp;in&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-update"><strong>update</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-update">update</a>(E,&nbsp;**F)&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Update&nbsp;D&nbsp;from&nbsp;<a href="__builtin__.html#dict">dict</a>/iterable&nbsp;E&nbsp;and&nbsp;F.<br>
+If&nbsp;E&nbsp;has&nbsp;a&nbsp;.<a href="#CppEnum-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;k&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;E[k]<br>
+If&nbsp;E&nbsp;lacks&nbsp;.<a href="#CppEnum-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(k,&nbsp;v)&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;v<br>
+In&nbsp;either&nbsp;case,&nbsp;this&nbsp;is&nbsp;followed&nbsp;by:&nbsp;for&nbsp;k&nbsp;in&nbsp;F:&nbsp;D[k]&nbsp;=&nbsp;F[k]</tt></dd></dl>
+
+<dl><dt><a name="CppEnum-values"><strong>values</strong></a>(...)</dt><dd><tt>D.<a href="#CppEnum-values">values</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;values</tt></dd></dl>
+
+<hr>
+Data and other attributes inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><strong>__hash__</strong> = None</dl>
+
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object&gt;<dd><tt>T.<a href="#CppEnum-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;object&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+<dl><dt><strong>fromkeys</strong> = &lt;built-in method fromkeys of type object&gt;<dd><tt><a href="__builtin__.html#dict">dict</a>.<a href="#CppEnum-fromkeys">fromkeys</a>(S[,v])&nbsp;-&gt;&nbsp;New&nbsp;<a href="__builtin__.html#dict">dict</a>&nbsp;with&nbsp;keys&nbsp;from&nbsp;S&nbsp;and&nbsp;values&nbsp;equal&nbsp;to&nbsp;v.<br>
+v&nbsp;defaults&nbsp;to&nbsp;None.</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="CppHeader">class <strong>CppHeader</strong></a></font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Parsed&nbsp;C++&nbsp;class&nbsp;header<br>
+&nbsp;<br>
+Variables&nbsp;produced:<br>
+self.<strong>classes</strong>&nbsp;-&nbsp;Dictionary&nbsp;of&nbsp;classes&nbsp;found&nbsp;in&nbsp;a&nbsp;given&nbsp;header&nbsp;file&nbsp;where&nbsp;the<br>
+&nbsp;&nbsp;&nbsp;&nbsp;key&nbsp;is&nbsp;the&nbsp;name&nbsp;of&nbsp;the&nbsp;class<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="CppHeader-__init__"><strong>__init__</strong></a>(self, headerFileName, argType<font color="#909090">='file'</font>)</dt></dl>
+
+<dl><dt><a name="CppHeader-__repr__"><strong>__repr__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="CppHeader-cur_namespace"><strong>cur_namespace</strong></a>(self, add_double_colon<font color="#909090">=False</font>)</dt></dl>
+
+<dl><dt><a name="CppHeader-evaluate_class_stack"><strong>evaluate_class_stack</strong></a>(self)</dt><dd><tt>Create&nbsp;a&nbsp;Class&nbsp;out&nbsp;of&nbsp;the&nbsp;name&nbsp;stack&nbsp;(but&nbsp;not&nbsp;its&nbsp;parts)</tt></dd></dl>
+
+<dl><dt><a name="CppHeader-evaluate_enum_stack"><strong>evaluate_enum_stack</strong></a>(self)</dt><dd><tt>Create&nbsp;an&nbsp;Enum&nbsp;out&nbsp;of&nbsp;the&nbsp;name&nbsp;stack</tt></dd></dl>
+
+<dl><dt><a name="CppHeader-evaluate_method_stack"><strong>evaluate_method_stack</strong></a>(self)</dt><dd><tt>Create&nbsp;a&nbsp;method&nbsp;out&nbsp;of&nbsp;the&nbsp;name&nbsp;stack</tt></dd></dl>
+
+<dl><dt><a name="CppHeader-evaluate_property_stack"><strong>evaluate_property_stack</strong></a>(self)</dt><dd><tt>Create&nbsp;a&nbsp;Property&nbsp;out&nbsp;of&nbsp;the&nbsp;name&nbsp;stack</tt></dd></dl>
+
+<dl><dt><a name="CppHeader-evaluate_stack"><strong>evaluate_stack</strong></a>(self)</dt><dd><tt>Evaluates&nbsp;the&nbsp;current&nbsp;name&nbsp;stack</tt></dd></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="CppMethod">class <strong>CppMethod</strong></a>(<a href="__builtin__.html#dict">__builtin__.dict</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Takes&nbsp;a&nbsp;name&nbsp;stack&nbsp;and&nbsp;turns&nbsp;it&nbsp;into&nbsp;a&nbsp;method<br>
+&nbsp;<br>
+Contains&nbsp;the&nbsp;following&nbsp;Keys:<br>
+self['rtnType']&nbsp;-&nbsp;Return&nbsp;type&nbsp;of&nbsp;the&nbsp;method&nbsp;(ex.&nbsp;"int")<br>
+self['name']&nbsp;-&nbsp;Name&nbsp;of&nbsp;the&nbsp;method&nbsp;(ex.&nbsp;"getSize")<br>
+self['doxygen']&nbsp;-&nbsp;Doxygen&nbsp;comments&nbsp;associated&nbsp;with&nbsp;the&nbsp;method&nbsp;if&nbsp;they&nbsp;exist<br>
+self['parameters']&nbsp;-&nbsp;List&nbsp;of&nbsp;CppVariables<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="CppHeaderParser.html#CppMethod">CppMethod</a></dd>
+<dd><a href="__builtin__.html#dict">__builtin__.dict</a></dd>
+<dd><a href="__builtin__.html#object">__builtin__.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="CppMethod-__init__"><strong>__init__</strong></a>(self, nameStack, curClass)</dt></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Methods inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><a name="CppMethod-__cmp__"><strong>__cmp__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__cmp__">__cmp__</a>(y)&nbsp;&lt;==&gt;&nbsp;cmp(x,y)</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__contains__"><strong>__contains__</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-__contains__">__contains__</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__delitem__"><strong>__delitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__delitem__">__delitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;del&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__eq__"><strong>__eq__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__eq__">__eq__</a>(y)&nbsp;&lt;==&gt;&nbsp;x==y</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__ge__"><strong>__ge__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__ge__">__ge__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__getitem__"><strong>__getitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__getitem__">__getitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__gt__"><strong>__gt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__gt__">__gt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;y</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__iter__"><strong>__iter__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__iter__">__iter__</a>()&nbsp;&lt;==&gt;&nbsp;iter(x)</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__le__"><strong>__le__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__le__">__le__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__len__"><strong>__len__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__len__">__len__</a>()&nbsp;&lt;==&gt;&nbsp;len(x)</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__lt__"><strong>__lt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__lt__">__lt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;y</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__ne__"><strong>__ne__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__ne__">__ne__</a>(y)&nbsp;&lt;==&gt;&nbsp;x!=y</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__repr__"><strong>__repr__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__repr__">__repr__</a>()&nbsp;&lt;==&gt;&nbsp;repr(x)</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__setitem__"><strong>__setitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppMethod-__setitem__">__setitem__</a>(i,&nbsp;y)&nbsp;&lt;==&gt;&nbsp;x[i]=y</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-__sizeof__"><strong>__sizeof__</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-__sizeof__">__sizeof__</a>()&nbsp;-&gt;&nbsp;size&nbsp;of&nbsp;D&nbsp;in&nbsp;memory,&nbsp;in&nbsp;bytes</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-clear"><strong>clear</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-clear">clear</a>()&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Remove&nbsp;all&nbsp;items&nbsp;from&nbsp;D.</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-copy"><strong>copy</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-copy">copy</a>()&nbsp;-&gt;&nbsp;a&nbsp;shallow&nbsp;copy&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-get"><strong>get</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-get">get</a>(k[,d])&nbsp;-&gt;&nbsp;D[k]&nbsp;if&nbsp;k&nbsp;in&nbsp;D,&nbsp;else&nbsp;d.&nbsp;&nbsp;d&nbsp;defaults&nbsp;to&nbsp;None.</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-has_key"><strong>has_key</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-has_key">has_key</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-items"><strong>items</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-items">items</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;(key,&nbsp;value)&nbsp;pairs,&nbsp;as&nbsp;2-tuples</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-iteritems"><strong>iteritems</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-iteritems">iteritems</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;(key,&nbsp;value)&nbsp;items&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-iterkeys"><strong>iterkeys</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-iterkeys">iterkeys</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;keys&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-itervalues"><strong>itervalues</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-itervalues">itervalues</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;values&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-keys"><strong>keys</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-keys">keys</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;keys</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-pop"><strong>pop</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-pop">pop</a>(k[,d])&nbsp;-&gt;&nbsp;v,&nbsp;remove&nbsp;specified&nbsp;key&nbsp;and&nbsp;return&nbsp;the&nbsp;corresponding&nbsp;value.<br>
+If&nbsp;key&nbsp;is&nbsp;not&nbsp;found,&nbsp;d&nbsp;is&nbsp;returned&nbsp;if&nbsp;given,&nbsp;otherwise&nbsp;KeyError&nbsp;is&nbsp;raised</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-popitem"><strong>popitem</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-popitem">popitem</a>()&nbsp;-&gt;&nbsp;(k,&nbsp;v),&nbsp;remove&nbsp;and&nbsp;return&nbsp;some&nbsp;(key,&nbsp;value)&nbsp;pair&nbsp;as&nbsp;a<br>
+2-tuple;&nbsp;but&nbsp;raise&nbsp;KeyError&nbsp;if&nbsp;D&nbsp;is&nbsp;empty.</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-setdefault"><strong>setdefault</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-setdefault">setdefault</a>(k[,d])&nbsp;-&gt;&nbsp;D.<a href="#CppMethod-get">get</a>(k,d),&nbsp;also&nbsp;set&nbsp;D[k]=d&nbsp;if&nbsp;k&nbsp;not&nbsp;in&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-update"><strong>update</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-update">update</a>(E,&nbsp;**F)&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Update&nbsp;D&nbsp;from&nbsp;<a href="__builtin__.html#dict">dict</a>/iterable&nbsp;E&nbsp;and&nbsp;F.<br>
+If&nbsp;E&nbsp;has&nbsp;a&nbsp;.<a href="#CppMethod-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;k&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;E[k]<br>
+If&nbsp;E&nbsp;lacks&nbsp;.<a href="#CppMethod-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(k,&nbsp;v)&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;v<br>
+In&nbsp;either&nbsp;case,&nbsp;this&nbsp;is&nbsp;followed&nbsp;by:&nbsp;for&nbsp;k&nbsp;in&nbsp;F:&nbsp;D[k]&nbsp;=&nbsp;F[k]</tt></dd></dl>
+
+<dl><dt><a name="CppMethod-values"><strong>values</strong></a>(...)</dt><dd><tt>D.<a href="#CppMethod-values">values</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;values</tt></dd></dl>
+
+<hr>
+Data and other attributes inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><strong>__hash__</strong> = None</dl>
+
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object&gt;<dd><tt>T.<a href="#CppMethod-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;object&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+<dl><dt><strong>fromkeys</strong> = &lt;built-in method fromkeys of type object&gt;<dd><tt><a href="__builtin__.html#dict">dict</a>.<a href="#CppMethod-fromkeys">fromkeys</a>(S[,v])&nbsp;-&gt;&nbsp;New&nbsp;<a href="__builtin__.html#dict">dict</a>&nbsp;with&nbsp;keys&nbsp;from&nbsp;S&nbsp;and&nbsp;values&nbsp;equal&nbsp;to&nbsp;v.<br>
+v&nbsp;defaults&nbsp;to&nbsp;None.</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="CppParseError">class <strong>CppParseError</strong></a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="CppHeaderParser.html#CppParseError">CppParseError</a></dd>
+<dd><a href="exceptions.html#Exception">exceptions.Exception</a></dd>
+<dd><a href="exceptions.html#BaseException">exceptions.BaseException</a></dd>
+<dd><a href="__builtin__.html#object">__builtin__.object</a></dd>
+</dl>
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><a name="CppParseError-__init__"><strong>__init__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__init__">__init__</a>(...)&nbsp;initializes&nbsp;x;&nbsp;see&nbsp;x.__class__.__doc__&nbsp;for&nbsp;signature</tt></dd></dl>
+
+<hr>
+Data and other attributes inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object&gt;<dd><tt>T.<a href="#CppParseError-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;object&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+<hr>
+Methods inherited from <a href="exceptions.html#BaseException">exceptions.BaseException</a>:<br>
+<dl><dt><a name="CppParseError-__delattr__"><strong>__delattr__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__delattr__">__delattr__</a>('name')&nbsp;&lt;==&gt;&nbsp;del&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="CppParseError-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="CppParseError-__getitem__"><strong>__getitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__getitem__">__getitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppParseError-__getslice__"><strong>__getslice__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__getslice__">__getslice__</a>(i,&nbsp;j)&nbsp;&lt;==&gt;&nbsp;x[i:j]<br>
+&nbsp;<br>
+Use&nbsp;of&nbsp;negative&nbsp;indices&nbsp;is&nbsp;not&nbsp;supported.</tt></dd></dl>
+
+<dl><dt><a name="CppParseError-__reduce__"><strong>__reduce__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="CppParseError-__repr__"><strong>__repr__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__repr__">__repr__</a>()&nbsp;&lt;==&gt;&nbsp;repr(x)</tt></dd></dl>
+
+<dl><dt><a name="CppParseError-__setattr__"><strong>__setattr__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__setattr__">__setattr__</a>('name',&nbsp;value)&nbsp;&lt;==&gt;&nbsp;x.name&nbsp;=&nbsp;value</tt></dd></dl>
+
+<dl><dt><a name="CppParseError-__setstate__"><strong>__setstate__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="CppParseError-__str__"><strong>__str__</strong></a>(...)</dt><dd><tt>x.<a href="#CppParseError-__str__">__str__</a>()&nbsp;&lt;==&gt;&nbsp;str(x)</tt></dd></dl>
+
+<dl><dt><a name="CppParseError-__unicode__"><strong>__unicode__</strong></a>(...)</dt></dl>
+
+<hr>
+Data descriptors inherited from <a href="exceptions.html#BaseException">exceptions.BaseException</a>:<br>
+<dl><dt><strong>__dict__</strong></dt>
+</dl>
+<dl><dt><strong>args</strong></dt>
+</dl>
+<dl><dt><strong>message</strong></dt>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="CppVariable">class <strong>CppVariable</strong></a>(<a href="__builtin__.html#dict">__builtin__.dict</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Takes&nbsp;a&nbsp;name&nbsp;stack&nbsp;and&nbsp;turns&nbsp;it&nbsp;into&nbsp;a&nbsp;method<br>
+&nbsp;<br>
+Contains&nbsp;the&nbsp;following&nbsp;Keys:<br>
+self['type']&nbsp;-&nbsp;Type&nbsp;for&nbsp;the&nbsp;variable&nbsp;(ex.&nbsp;"const&nbsp;string&nbsp;&amp;")<br>
+self['name']&nbsp;-&nbsp;Name&nbsp;of&nbsp;the&nbsp;variable&nbsp;(ex.&nbsp;"numItems")<br>
+self['namespace']&nbsp;-&nbsp;Namespace&nbsp;containing&nbsp;the&nbsp;enum<br>
+self['desc']&nbsp;-&nbsp;Description&nbsp;of&nbsp;the&nbsp;variable&nbsp;if&nbsp;part&nbsp;of&nbsp;a&nbsp;method&nbsp;(optional)<br>
+self['doxygen']&nbsp;-&nbsp;Doxygen&nbsp;comments&nbsp;associated&nbsp;with&nbsp;the&nbsp;method&nbsp;if&nbsp;they&nbsp;exist<br>
+self['defaltValue']&nbsp;-&nbsp;Default&nbsp;value&nbsp;of&nbsp;the&nbsp;variable,&nbsp;this&nbsp;key&nbsp;will&nbsp;only<br>
+&nbsp;&nbsp;&nbsp;&nbsp;exist&nbsp;if&nbsp;there&nbsp;is&nbsp;a&nbsp;default&nbsp;value<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="CppHeaderParser.html#CppVariable">CppVariable</a></dd>
+<dd><a href="__builtin__.html#dict">__builtin__.dict</a></dd>
+<dd><a href="__builtin__.html#object">__builtin__.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="CppVariable-__init__"><strong>__init__</strong></a>(self, nameStack, **kwargs)</dt></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Methods inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><a name="CppVariable-__cmp__"><strong>__cmp__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__cmp__">__cmp__</a>(y)&nbsp;&lt;==&gt;&nbsp;cmp(x,y)</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__contains__"><strong>__contains__</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-__contains__">__contains__</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__delitem__"><strong>__delitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__delitem__">__delitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;del&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__eq__"><strong>__eq__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__eq__">__eq__</a>(y)&nbsp;&lt;==&gt;&nbsp;x==y</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__ge__"><strong>__ge__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__ge__">__ge__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__getitem__"><strong>__getitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__getitem__">__getitem__</a>(y)&nbsp;&lt;==&gt;&nbsp;x[y]</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__gt__"><strong>__gt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__gt__">__gt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&gt;y</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__iter__"><strong>__iter__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__iter__">__iter__</a>()&nbsp;&lt;==&gt;&nbsp;iter(x)</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__le__"><strong>__le__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__le__">__le__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;=y</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__len__"><strong>__len__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__len__">__len__</a>()&nbsp;&lt;==&gt;&nbsp;len(x)</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__lt__"><strong>__lt__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__lt__">__lt__</a>(y)&nbsp;&lt;==&gt;&nbsp;x&lt;y</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__ne__"><strong>__ne__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__ne__">__ne__</a>(y)&nbsp;&lt;==&gt;&nbsp;x!=y</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__repr__"><strong>__repr__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__repr__">__repr__</a>()&nbsp;&lt;==&gt;&nbsp;repr(x)</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__setitem__"><strong>__setitem__</strong></a>(...)</dt><dd><tt>x.<a href="#CppVariable-__setitem__">__setitem__</a>(i,&nbsp;y)&nbsp;&lt;==&gt;&nbsp;x[i]=y</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-__sizeof__"><strong>__sizeof__</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-__sizeof__">__sizeof__</a>()&nbsp;-&gt;&nbsp;size&nbsp;of&nbsp;D&nbsp;in&nbsp;memory,&nbsp;in&nbsp;bytes</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-clear"><strong>clear</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-clear">clear</a>()&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Remove&nbsp;all&nbsp;items&nbsp;from&nbsp;D.</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-copy"><strong>copy</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-copy">copy</a>()&nbsp;-&gt;&nbsp;a&nbsp;shallow&nbsp;copy&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-get"><strong>get</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-get">get</a>(k[,d])&nbsp;-&gt;&nbsp;D[k]&nbsp;if&nbsp;k&nbsp;in&nbsp;D,&nbsp;else&nbsp;d.&nbsp;&nbsp;d&nbsp;defaults&nbsp;to&nbsp;None.</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-has_key"><strong>has_key</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-has_key">has_key</a>(k)&nbsp;-&gt;&nbsp;True&nbsp;if&nbsp;D&nbsp;has&nbsp;a&nbsp;key&nbsp;k,&nbsp;else&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-items"><strong>items</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-items">items</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;(key,&nbsp;value)&nbsp;pairs,&nbsp;as&nbsp;2-tuples</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-iteritems"><strong>iteritems</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-iteritems">iteritems</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;(key,&nbsp;value)&nbsp;items&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-iterkeys"><strong>iterkeys</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-iterkeys">iterkeys</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;keys&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-itervalues"><strong>itervalues</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-itervalues">itervalues</a>()&nbsp;-&gt;&nbsp;an&nbsp;iterator&nbsp;over&nbsp;the&nbsp;values&nbsp;of&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-keys"><strong>keys</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-keys">keys</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;keys</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-pop"><strong>pop</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-pop">pop</a>(k[,d])&nbsp;-&gt;&nbsp;v,&nbsp;remove&nbsp;specified&nbsp;key&nbsp;and&nbsp;return&nbsp;the&nbsp;corresponding&nbsp;value.<br>
+If&nbsp;key&nbsp;is&nbsp;not&nbsp;found,&nbsp;d&nbsp;is&nbsp;returned&nbsp;if&nbsp;given,&nbsp;otherwise&nbsp;KeyError&nbsp;is&nbsp;raised</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-popitem"><strong>popitem</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-popitem">popitem</a>()&nbsp;-&gt;&nbsp;(k,&nbsp;v),&nbsp;remove&nbsp;and&nbsp;return&nbsp;some&nbsp;(key,&nbsp;value)&nbsp;pair&nbsp;as&nbsp;a<br>
+2-tuple;&nbsp;but&nbsp;raise&nbsp;KeyError&nbsp;if&nbsp;D&nbsp;is&nbsp;empty.</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-setdefault"><strong>setdefault</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-setdefault">setdefault</a>(k[,d])&nbsp;-&gt;&nbsp;D.<a href="#CppVariable-get">get</a>(k,d),&nbsp;also&nbsp;set&nbsp;D[k]=d&nbsp;if&nbsp;k&nbsp;not&nbsp;in&nbsp;D</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-update"><strong>update</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-update">update</a>(E,&nbsp;**F)&nbsp;-&gt;&nbsp;None.&nbsp;&nbsp;Update&nbsp;D&nbsp;from&nbsp;<a href="__builtin__.html#dict">dict</a>/iterable&nbsp;E&nbsp;and&nbsp;F.<br>
+If&nbsp;E&nbsp;has&nbsp;a&nbsp;.<a href="#CppVariable-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;k&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;E[k]<br>
+If&nbsp;E&nbsp;lacks&nbsp;.<a href="#CppVariable-keys">keys</a>()&nbsp;method,&nbsp;does:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(k,&nbsp;v)&nbsp;in&nbsp;E:&nbsp;D[k]&nbsp;=&nbsp;v<br>
+In&nbsp;either&nbsp;case,&nbsp;this&nbsp;is&nbsp;followed&nbsp;by:&nbsp;for&nbsp;k&nbsp;in&nbsp;F:&nbsp;D[k]&nbsp;=&nbsp;F[k]</tt></dd></dl>
+
+<dl><dt><a name="CppVariable-values"><strong>values</strong></a>(...)</dt><dd><tt>D.<a href="#CppVariable-values">values</a>()&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;D's&nbsp;values</tt></dd></dl>
+
+<hr>
+Data and other attributes inherited from <a href="__builtin__.html#dict">__builtin__.dict</a>:<br>
+<dl><dt><strong>__hash__</strong> = None</dl>
+
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object&gt;<dd><tt>T.<a href="#CppVariable-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;object&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+<dl><dt><strong>fromkeys</strong> = &lt;built-in method fromkeys of type object&gt;<dd><tt><a href="__builtin__.html#dict">dict</a>.<a href="#CppVariable-fromkeys">fromkeys</a>(S[,v])&nbsp;-&gt;&nbsp;New&nbsp;<a href="__builtin__.html#dict">dict</a>&nbsp;with&nbsp;keys&nbsp;from&nbsp;S&nbsp;and&nbsp;values&nbsp;equal&nbsp;to&nbsp;v.<br>
+v&nbsp;defaults&nbsp;to&nbsp;None.</tt></dl>
+
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-is_enum_namestack"><strong>is_enum_namestack</strong></a>(nameStack)</dt><dd><tt>Determines&nbsp;if&nbsp;a&nbsp;namestack&nbsp;is&nbsp;an&nbsp;enum&nbsp;namestack</tt></dd></dl>
+ <dl><dt><a name="-is_namespace"><strong>is_namespace</strong></a>(nameStack)</dt><dd><tt>Determines&nbsp;if&nbsp;a&nbsp;namespace&nbsp;is&nbsp;being&nbsp;specified</tt></dd></dl>
+ <dl><dt><a name="-lineno"><strong>lineno</strong></a>()</dt><dd><tt>Returns&nbsp;the&nbsp;current&nbsp;line&nbsp;number&nbsp;in&nbsp;our&nbsp;program.</tt></dd></dl>
+ <dl><dt><a name="-t_COMMENT_MULTILINE"><strong>t_COMMENT_MULTILINE</strong></a>(t)</dt><dd><tt>/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/</tt></dd></dl>
+ <dl><dt><a name="-t_COMMENT_SINGLELINE"><strong>t_COMMENT_SINGLELINE</strong></a>(t)</dt><dd><tt>\/\/.*\n</tt></dd></dl>
+ <dl><dt><a name="-t_NEWLINE"><strong>t_NEWLINE</strong></a>(t)</dt><dd><tt>\n+</tt></dd></dl>
+ <dl><dt><a name="-t_error"><strong>t_error</strong></a>(v)</dt></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>__version__</strong> = '1.9'<br>
+<strong>debug</strong> = 0<br>
+<strong>doxygenCommentCache</strong> = ''<br>
+<strong>supportedAccessSpecifier</strong> = ['public', 'protected', 'private']<br>
+<strong>t_AMPERSTAND</strong> = '&amp;'<br>
+<strong>t_ASTERISK</strong> = r'\*'<br>
+<strong>t_CHAR_LITERAL</strong> = "'.'"<br>
+<strong>t_CLOSE_BRACE</strong> = '}'<br>
+<strong>t_CLOSE_PAREN</strong> = r'\)'<br>
+<strong>t_COLON</strong> = ':'<br>
+<strong>t_COMMA</strong> = ','<br>
+<strong>t_DIVIDE</strong> = '/[^/]'<br>
+<strong>t_EQUALS</strong> = '='<br>
+<strong>t_MINUS</strong> = r'\-'<br>
+<strong>t_NAME</strong> = '[&lt;&gt;A-Za-z_~][A-Za-z0-9_]*'<br>
+<strong>t_NUMBER</strong> = '[0-9][0-9XxA-Fa-f]*'<br>
+<strong>t_OPEN_BRACE</strong> = '{'<br>
+<strong>t_OPEN_PAREN</strong> = r'\('<br>
+<strong>t_OPERATOR_DIVIDE_OVERLOAD</strong> = '/='<br>
+<strong>t_PLUS</strong> = r'\+'<br>
+<strong>t_PRECOMP_MACRO</strong> = r'\#.*'<br>
+<strong>t_PRECOMP_MACRO_CONT</strong> = r'.*\\\n'<br>
+<strong>t_SEMI_COLON</strong> = ';'<br>
+<strong>t_STRING_LITERAL</strong> = r'"([^"\\]|\\.)*"'<br>
+<strong>t_ignore</strong> = ' <font color="#c040c0">\t\r</font>[].|!?%@'<br>
+<strong>tokens</strong> = ['NUMBER', 'NAME', 'OPEN_PAREN', 'CLOSE_PAREN', 'OPEN_BRACE', 'CLOSE_BRACE', 'COLON', 'SEMI_COLON', 'COMMA', 'COMMENT_SINGLELINE', 'COMMENT_MULTILINE', 'PRECOMP_MACRO', 'PRECOMP_MACRO_CONT', 'ASTERISK', 'AMPERSTAND', 'EQUALS', 'MINUS', 'PLUS', 'DIVIDE', 'CHAR_LITERAL', ...]<br>
+<strong>version</strong> = '1.9'</td></tr></table>
+</body></html>

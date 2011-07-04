@@ -29,6 +29,7 @@ NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 DFE = path_from_root('tools', 'dead_function_eliminator.py')
+BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 
 # Global cache for tests (we have multiple TestCase instances; this object lets them share data)
 
@@ -2565,7 +2566,7 @@ if 'benchmark' not in sys.argv:
     ### Integration tests
 
     def test_scriptaclass(self):
-        src = '''
+        header = '''
           struct ScriptMe {
             int value;
             ScriptMe(int val);
@@ -2574,10 +2575,20 @@ if 'benchmark' not in sys.argv:
                           // as a library)
             void mulVal(int mul);
           };
+        '''
+        header_filename = os.path.join(self.get_dir(), 'header.h')
+        open(header_filename, 'w').write(header)
+
+        src = '''
+          #include "header.h"
+
           ScriptMe::ScriptMe(int val) : value(val) { }
           int ScriptMe::getVal() { return value; }
           void ScriptMe::mulVal(int mul) { value *= mul; }
         '''
+
+        # Way 1: use demangler and namespacer
+
         script_src = '''
           var sme = Module._.ScriptMe.__new__(83);          // malloc(sizeof(ScriptMe)), ScriptMe::ScriptMe(sme, 83) / new ScriptMe(83) (at addr sme)
           Module._.ScriptMe.mulVal(sme, 2);                 // ScriptMe::mulVal(sme, 2)       sme.mulVal(2)
@@ -2595,6 +2606,31 @@ if 'benchmark' not in sys.argv:
           )
           open(filename, 'w').write(src)
         self.do_test(src, '*166*\n*ok*', post_build=post)
+
+        # Way 2: use CppHeaderParser
+
+        if COMPILER != LLVM_GCC: return self.skip() # FIXME: proper support for aliases, which clang generates here
+
+        basename = os.path.join(self.get_dir(), 'bindingtest')
+        Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+
+        src = src + '\n#include "bindingtest.c"\n'
+
+        script_src_2 = '''
+          var sme = new ScriptMe(83);
+          sme.mulVal(2);
+          print('*' + sme.getVal() + '*'); 
+          print('*ok*');
+        '''
+
+        def post2(filename):
+          src = open(filename, 'r').read().replace(
+            '// {{MODULE_ADDITIONS}',
+            '''load('bindingtest.js')''' + '\n\n' + script_src_2 + '\n\n' + 
+              '// {{MODULE_ADDITIONS}'
+          )
+          open(filename, 'w').write(src)
+        self.do_test(src, '*166*\n*ok*', post_build=post2)
 
     ### Tests for tools
 
