@@ -622,7 +622,7 @@ We will now take a look at some performance benchmarks:
   fannkuch (10)      & 1.158          & \textbf{0.931} & 0.231       &  4.04 \\
   fasta (2100000)    & \textbf{1.115} & 1.128          & 0.452       &  2.47 \\
   primes             & \textbf{1.443} & 3.194          & 0.438       &  3.29 \\
-  raytrace (7,256)   & \textbf{1.930} & 2.944          & 0.228       &  8.47 \\
+  raytrace (7,256)   & \textbf{1.930} & 2.944          & 0.228       &  8.46 \\
   dlmalloc (400,400) & 5.050          & \textbf{1.880} & 0.315       &  5.97 \\
   \hline
 \end{tabular}
@@ -657,7 +657,7 @@ using GCC 4.4.4. The last column is the ratio, that is, how much slower the Java
 when compared to gcc. All the tests were run on a MacBook Pro with
 an Intel i7 CPU clocked at 2.66GHz, running on Ubuntu 10.04.
 
-Clearly the results greatly vary by the benchmark, with the generated JavaScript running from 2.47 to 8.47 times
+Clearly the results greatly vary by the benchmark, with the generated JavaScript running from 2.47 to 8.46 times
 slower. There are also significant differences between the two JavaScript engines, with each better
 at some of the benchmarks.
 It appears that code that does simple numerical operations -- like
@@ -666,10 +666,8 @@ accesses, for example due to using structures -- like the raytrace test --
 will be slower. (The main issue with structures is that Emscripten does not
 `nativize' them yet, as it does to simple local variables.)
 
-Code that has a mix of simple numerical operations and memory accesses
-tends to run around 5-10 times slower than the most-optimized C++ code,
-as we can see above. While this is a significant slowdown compared to
-optimized native code, it is still more than fast enough for
+Being 2.47 to 8.46 times slower than the most-optimized C++ code
+is a significant slowdown, but it is still more than fast enough for
 many purposes, and the main point of course is that the code can run
 anywhere the web can be accessed. Further work on Emscripten is expected to
 improve the speed as well, as are improvements to LLVM, the Closure
