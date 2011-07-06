@@ -1,0 +1,874 @@
+<html>
+<head>
+<title>PLY Internals</title>
+</head>
+<body bgcolor="#ffffff">
+
+<h1>PLY Internals</h1>
+ 
+<b>
+David M. Beazley <br>
+dave@dabeaz.com<br>
+</b>
+
+<p>
+<b>PLY Version: 3.0</b>
+<p>
+
+<!-- INDEX -->
+<div class="sectiontoc">
+<ul>
+<li><a href="#internal_nn1">Introduction</a>
+<li><a href="#internal_nn2">Grammar Class</a>
+<li><a href="#internal_nn3">Productions</a>
+<li><a href="#internal_nn4">LRItems</a>
+<li><a href="#internal_nn5">LRTable</a>
+<li><a href="#internal_nn6">LRGeneratedTable</a>
+<li><a href="#internal_nn7">LRParser</a>
+<li><a href="#internal_nn8">ParserReflect</a>
+<li><a href="#internal_nn9">High-level operation</a>
+</ul>
+</div>
+<!-- INDEX -->
+
+
+<H2><a name="internal_nn1"></a>1. Introduction</H2>
+
+
+This document describes classes and functions that make up the internal
+operation of PLY.  Using this programming interface, it is possible to
+manually build an parser using a different interface specification
+than what PLY normally uses.  For example, you could build a gramar
+from information parsed in a completely different input format.  Some of
+these objects may be useful for building more advanced parsing engines
+such as GLR.
+
+<p>
+It should be stressed that using PLY at this level is not for the
+faint of heart.  Generally, it's assumed that you know a bit of
+the underlying compiler theory and how an LR parser is put together.
+
+<H2><a name="internal_nn2"></a>2. Grammar Class</H2>
+
+
+The file <tt>ply.yacc</tt> defines a class <tt>Grammar</tt> that 
+is used to hold and manipulate information about a grammar
+specification.   It encapsulates the same basic information
+about a grammar that is put into a YACC file including 
+the list of tokens, precedence rules, and grammar rules. 
+Various operations are provided to perform different validations
+on the grammar.  In addition, there are operations to compute
+the first and follow sets that are needed by the various table
+generation algorithms.
+
+<p>
+<tt><b>Grammar(terminals)</b></tt>
+
+<blockquote>
+Creates a new grammar object.  <tt>terminals</tt> is a list of strings
+specifying the terminals for the grammar.  An instance <tt>g</tt> of
+<tt>Grammar</tt> has the following methods:
+</blockquote>
+
+<p>
+<b><tt>g.set_precedence(term,assoc,level)</tt></b>
+<blockquote>
+Sets the precedence level and associativity for a given terminal <tt>term</tt>.  
+<tt>assoc</tt> is one of <tt>'right'</tt>,
+<tt>'left'</tt>, or <tt>'nonassoc'</tt> and <tt>level</tt> is a positive integer.  The higher
+the value of <tt>level</tt>, the higher the precedence.  Here is an example of typical
+precedence settings:
+
+<pre>
+g.set_precedence('PLUS',  'left',1)
+g.set_precedence('MINUS', 'left',1)
+g.set_precedence('TIMES', 'left',2)
+g.set_precedence('DIVIDE','left',2)
+g.set_precedence('UMINUS','left',3)
+</pre>
+
+This method must be called prior to adding any productions to the
+grammar with <tt>g.add_production()</tt>.  The precedence of individual grammar
+rules is determined by the precedence of the right-most terminal.
+
+</blockquote>
+<p>
+<b><tt>g.add_production(name,syms,func=None,file='',line=0)</tt></b>
+<blockquote>
+Adds a new grammar rule.  <tt>name</tt> is the name of the rule,
+<tt>syms</tt> is a list of symbols making up the right hand
+side of the rule, <tt>func</tt> is the function to call when
+reducing the rule.   <tt>file</tt> and <tt>line</tt> specify
+the filename and line number of the rule and are used for
+generating error messages.    
+
+<p>
+The list of symbols in <tt>syms</tt> may include character
+literals and <tt>%prec</tt> specifiers.  Here are some
+examples:
+
+<pre>
+g.add_production('expr',['expr','PLUS','term'],func,file,line)
+g.add_production('expr',['expr','"+"','term'],func,file,line)
+g.add_production('expr',['MINUS','expr','%prec','UMINUS'],func,file,line)
+</pre>
+
+<p>
+If any kind of error is detected, a <tt>GrammarError</tt> exception
+is raised with a message indicating the reason for the failure.
+</blockquote>
+
+<p>
+<b><tt>g.set_start(start=None)</tt></b>
+<blockquote>
+Sets the starting rule for the grammar.  <tt>start</tt> is a string
+specifying the name of the start rule.   If <tt>start</tt> is omitted,
+the first grammar rule added with <tt>add_production()</tt> is taken to be
+the starting rule.  This method must always be called after all
+productions have been added.
+</blockquote>
+
+<p>
+<b><tt>g.find_unreachable()</tt></b>
+<blockquote>
+Diagnostic function.  Returns a list of all unreachable non-terminals
+defined in the grammar.  This is used to identify inactive parts of
+the grammar specification.
+</blockquote>
+
+<p>
+<b><tt>g.infinite_cycle()</tt></b>
+<blockquote>
+Diagnostic function.  Returns a list of all non-terminals in the
+grammar that result in an infinite cycle.  This condition occurs if
+there is no way for a grammar rule to expand to a string containing
+only terminal symbols.
+</blockquote>
+
+<p>
+<b><tt>g.undefined_symbols()</tt></b>
+<blockquote>
+Diagnostic function.  Returns a list of tuples <tt>(name, prod)</tt>
+corresponding to undefined symbols in the grammar. <tt>name</tt> is the
+name of the undefined symbol and <tt>prod</tt> is an instance of 
+<tt>Production</tt> which has information about the production rule
+where the undefined symbol was used.
+</blockquote>
+
+<p>
+<b><tt>g.unused_terminals()</tt></b>
+<blockquote>
+Diagnostic function.  Returns a list of terminals that were defined,
+but never used in the grammar.
+</blockquote>
+
+<p>
+<b><tt>g.unused_rules()</tt></b>
+<blockquote>
+Diagnostic function.  Returns a list of <tt>Production</tt> instances
+corresponding to production rules that were defined in the grammar,
+but never used anywhere.  This is slightly different
+than <tt>find_unreachable()</tt>.
+</blockquote>
+
+<p>
+<b><tt>g.unused_precedence()</tt></b>
+<blockquote>
+Diagnostic function.  Returns a list of tuples <tt>(term, assoc)</tt> 
+corresponding to precedence rules that were set, but never used the
+grammar.  <tt>term</tt> is the terminal name and <tt>assoc</tt> is the
+precedence associativity (e.g., <tt>'left'</tt>, <tt>'right'</tt>, 
+or <tt>'nonassoc'</tt>.
+</blockquote>
+
+<p>
+<b><tt>g.compute_first()</tt></b>
+<blockquote>
+Compute all of the first sets for all symbols in the grammar.  Returns a dictionary
+mapping symbol names to a list of all first symbols.
+</blockquote>
+
+<p>
+<b><tt>g.compute_follow()</tt></b>
+<blockquote>
+Compute all of the follow sets for all non-terminals in the grammar.
+The follow set is the set of all possible symbols that might follow a
+given non-terminal.  Returns a dictionary mapping non-terminal names
+to a list of symbols.
+</blockquote>
+
+<p>
+<b><tt>g.build_lritems()</tt></b>
+<blockquote>
+Calculates all of the LR items for all productions in the grammar.  This
+step is required before using the grammar for any kind of table generation.
+See the section on LR items below.
+</blockquote>
+
+<p>
+The following attributes are set by the above methods and may be useful
+in code that works with the grammar.  All of these attributes should be
+assumed to be read-only.  Changing their values directly will likely 
+break the grammar.
+
+<p>
+<b><tt>g.Productions</tt></b>
+<blockquote>
+A list of all productions added.  The first entry is reserved for
+a production representing the starting rule.  The objects in this list
+are instances of the <tt>Production</tt> class, described shortly.
+</blockquote>
+
+<p>
+<b><tt>g.Prodnames</tt></b>
+<blockquote>
+A dictionary mapping the names of nonterminals to a list of all
+productions of that nonterminal.
+</blockquote>
+
+<p>
+<b><tt>g.Terminals</tt></b>
+<blockquote>
+A dictionary mapping the names of terminals to a list of the
+production numbers where they are used.
+</blockquote>
+
+<p>
+<b><tt>g.Nonterminals</tt></b>
+<blockquote>
+A dictionary mapping the names of nonterminals to a list of the
+production numbers where they are used.
+</blockquote>
+
+<p>
+<b><tt>g.First</tt></b>
+<blockquote>
+A dictionary representing the first sets for all grammar symbols.  This is
+computed and returned by the <tt>compute_first()</tt> method.
+</blockquote>
+
+<p>
+<b><tt>g.Follow</tt></b>
+<blockquote>
+A dictionary representing the follow sets for all grammar rules.  This is
+computed and returned by the <tt>compute_follow()</tt> method.
+</blockquote>
+
+<p>
+<b><tt>g.Start</tt></b>
+<blockquote>
+Starting symbol for the grammar.  Set by the <tt>set_start()</tt> method.
+</blockquote>
+
+For the purposes of debugging, a <tt>Grammar</tt> object supports the <tt>__len__()</tt> and
+<tt>__getitem__()</tt> special methods.  Accessing <tt>g[n]</tt> returns the nth production
+from the grammar.
+
+
+<H2><a name="internal_nn3"></a>3. Productions</H2>
+
+
+<tt>Grammar</tt> objects store grammar rules as instances of a <tt>Production</tt> class.  This
+class has no public constructor--you should only create productions by calling <tt>Grammar.add_production()</tt>.
+The following attributes are available on a <tt>Production</tt> instance <tt>p</tt>.
+
+<p>
+<b><tt>p.name</tt></b>
+<blockquote>
+The name of the production. For a grammar rule such as <tt>A : B C D</tt>, this is <tt>'A'</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.prod</tt></b>
+<blockquote>
+A tuple of symbols making up the right-hand side of the production.  For a grammar rule such as <tt>A : B C D</tt>, this is <tt>('B','C','D')</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.number</tt></b>
+<blockquote>
+Production number.  An integer containing the index of the production in the grammar's <tt>Productions</tt> list.
+</blockquote>
+
+<p>
+<b><tt>p.func</tt></b>
+<blockquote>
+The name of the reduction function associated with the production.
+This is the function that will execute when reducing the entire
+grammar rule during parsing.
+</blockquote>
+
+<p>
+<b><tt>p.callable</tt></b>
+<blockquote>
+The callable object associated with the name in <tt>p.func</tt>.  This is <tt>None</tt>
+unless the production has been bound using <tt>bind()</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.file</tt></b>
+<blockquote>
+Filename associated with the production.  Typically this is the file where the production was defined.  Used for error messages.
+</blockquote>
+
+<p>
+<b><tt>p.lineno</tt></b>
+<blockquote>
+Line number associated with the production.  Typically this is the line number in <tt>p.file</tt> where the production was defined.  Used for error messages.
+</blockquote>
+
+<p>
+<b><tt>p.prec</tt></b>
+<blockquote>
+Precedence and associativity associated with the production.  This is a tuple <tt>(assoc,level)</tt> where
+<tt>assoc</tt> is one of <tt>'left'</tt>,<tt>'right'</tt>, or <tt>'nonassoc'</tt> and <tt>level</tt> is
+an integer.   This value is determined by the precedence of the right-most terminal symbol in the production
+or by use of the <tt>%prec</tt> specifier when adding the production.
+</blockquote>
+
+<p>
+<b><tt>p.usyms</tt></b>
+<blockquote>
+A list of all unique symbols found in the production.
+</blockquote>
+
+<p>
+<b><tt>p.lr_items</tt></b>
+<blockquote>
+A list of all LR items for this production.  This attribute only has a meaningful value if the
+<tt>Grammar.build_lritems()</tt> method has been called.  The items in this list are 
+instances of <tt>LRItem</tt> described below.
+</blockquote>
+
+<p>
+<b><tt>p.lr_next</tt></b>
+<blockquote>
+The head of a linked-list representation of the LR items in <tt>p.lr_items</tt>.  
+This attribute only has a meaningful value if the <tt>Grammar.build_lritems()</tt> 
+method has been called.  Each <tt>LRItem</tt> instance has a <tt>lr_next</tt> attribute
+to move to the next item.  The list is terminated by <tt>None</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.bind(dict)</tt></b>
+<blockquote>
+Binds the production function name in <tt>p.func</tt> to a callable object in 
+<tt>dict</tt>.   This operation is typically carried out in the last step
+prior to running the parsing engine and is needed since parsing tables are typically
+read from files which only include the function names, not the functions themselves.
+</blockquote>
+
+<P>
+<tt>Production</tt> objects support
+the <tt>__len__()</tt>, <tt>__getitem__()</tt>, and <tt>__str__()</tt>
+special methods.
+<tt>len(p)</tt> returns the number of symbols in <tt>p.prod</tt>
+and <tt>p[n]</tt> is the same as <tt>p.prod[n]</tt>. 
+
+<H2><a name="internal_nn4"></a>4. LRItems</H2>
+
+
+The construction of parsing tables in an LR-based parser generator is primarily
+done over a set of "LR Items".   An LR item represents a stage of parsing one
+of the grammar rules.   To compute the LR items, it is first necessary to
+call <tt>Grammar.build_lritems()</tt>.  Once this step, all of the productions
+in the grammar will have their LR items attached to them.
+
+<p>
+Here is an interactive example that shows what LR items look like if you
+interactively experiment.  In this example, <tt>g</tt> is a <tt>Grammar</tt> 
+object.
+
+<blockquote>
+<pre>
+>>> <b>g.build_lritems()</b>
+>>> <b>p = g[1]</b>
+>>> <b>p</b>
+Production(statement -> ID = expr)
+>>>
+</pre>
+</blockquote>
+
+In the above code, <tt>p</tt> represents the first grammar rule. In
+this case, a rule <tt>'statement -> ID = expr'</tt>.
+
+<p>
+Now, let's look at the LR items for <tt>p</tt>.
+
+<blockquote>
+<pre>
+>>> <b>p.lr_items</b>
+[LRItem(statement -> . ID = expr), 
+ LRItem(statement -> ID . = expr), 
+ LRItem(statement -> ID = . expr), 
+ LRItem(statement -> ID = expr .)]
+>>>
+</pre>
+</blockquote>
+
+In each LR item, the dot (.) represents a specific stage of parsing.  In each LR item, the dot
+is advanced by one symbol.  It is only when the dot reaches the very end that a production
+is successfully parsed.
+
+<p>
+An instance <tt>lr</tt> of <tt>LRItem</tt> has the following
+attributes that hold information related to that specific stage of
+parsing.
+
+<p>
+<b><tt>lr.name</tt></b>
+<blockquote>
+The name of the grammar rule. For example, <tt>'statement'</tt> in the above example.
+</blockquote>
+
+<p>
+<b><tt>lr.prod</tt></b>
+<blockquote>
+A tuple of symbols representing the right-hand side of the production, including the
+special <tt>'.'</tt> character.  For example, <tt>('ID','.','=','expr')</tt>.
+</blockquote>
+
+<p>
+<b><tt>lr.number</tt></b>
+<blockquote>
+An integer representing the production number in the grammar.
+</blockquote>
+
+<p>
+<b><tt>lr.usyms</tt></b>
+<blockquote>
+A set of unique symbols in the production.  Inherited from the original <tt>Production</tt> instance.
+</blockquote>
+
+<p>
+<b><tt>lr.lr_index</tt></b>
+<blockquote>
+An integer representing the position of the dot (.).  You should never use <tt>lr.prod.index()</tt>
+to search for it--the result will be wrong if the grammar happens to also use (.) as a character
+literal.
+</blockquote>
+
+<p>
+<b><tt>lr.lr_after</tt></b>
+<blockquote>
+A list of all productions that can legally appear immediately to the right of the
+dot (.).  This list contains <tt>Production</tt> instances.   This attribute
+represents all of the possible branches a parse can take from the current position.
+For example, suppose that <tt>lr</tt> represents a stage immediately before
+an expression like this:
+
+<pre>
+>>> <b>lr</b>
+LRItem(statement -> ID = . expr)
+>>>
+</pre>
+
+Then, the value of <tt>lr.lr_after</tt> might look like this, showing all productions that
+can legally appear next:
+
+<pre>
+>>> <b>lr.lr_after</b>
+[Production(expr -> expr PLUS expr), 
+ Production(expr -> expr MINUS expr), 
+ Production(expr -> expr TIMES expr), 
+ Production(expr -> expr DIVIDE expr), 
+ Production(expr -> MINUS expr), 
+ Production(expr -> LPAREN expr RPAREN), 
+ Production(expr -> NUMBER), 
+ Production(expr -> ID)]
+>>>
+</pre>
+
+</blockquote>
+
+<p>
+<b><tt>lr.lr_before</tt></b>
+<blockquote>
+The grammar symbol that appears immediately before the dot (.) or <tt>None</tt> if
+at the beginning of the parse.  
+</blockquote>
+
+<p>
+<b><tt>lr.lr_next</tt></b>
+<blockquote>
+A link to the next LR item, representing the next stage of the parse.  <tt>None</tt> if <tt>lr</tt>
+is the last LR item.
+</blockquote>
+
+<tt>LRItem</tt> instances also support the <tt>__len__()</tt> and <tt>__getitem__()</tt> special methods.
+<tt>len(lr)</tt> returns the number of items in <tt>lr.prod</tt> including the dot (.). <tt>lr[n]</tt>
+returns <tt>lr.prod[n]</tt>.
+
+<p>
+It goes without saying that all of the attributes associated with LR
+items should be assumed to be read-only.  Modifications will very
+likely create a small black-hole that will consume you and your code.
+
+<H2><a name="internal_nn5"></a>5. LRTable</H2>
+
+
+The <tt>LRTable</tt> class is used to represent LR parsing table data. This
+minimally includes the production list, action table, and goto table. 
+
+<p>
+<b><tt>LRTable()</tt></b>
+<blockquote>
+Create an empty LRTable object.  This object contains only the information needed to
+run an LR parser.  
+</blockquote>
+
+An instance <tt>lrtab</tt> of <tt>LRTable</tt> has the following methods:
+
+<p>
+<b><tt>lrtab.read_table(module)</tt></b>
+<blockquote>
+Populates the LR table with information from the module specified in <tt>module</tt>.
+<tt>module</tt> is either a module object already loaded with <tt>import</tt> or
+the name of a Python module.   If it's a string containing a module name, it is
+loaded and parsing data is extracted.   Returns the signature  value that was used
+when initially writing the tables.  Raises a <tt>VersionError</tt> exception if
+the module was created using an incompatible version of PLY.
+</blockquote>
+
+<p>
+<b><tt>lrtab.bind_callables(dict)</tt></b>
+<blockquote>
+This binds all of the function names used in productions to callable objects
+found in the dictionary <tt>dict</tt>.  During table generation and when reading
+LR tables from files, PLY only uses the names of action functions such as <tt>'p_expr'</tt>,
+<tt>'p_statement'</tt>, etc.  In order to actually run the parser, these names
+have to be bound to callable objects.   This method is always called prior to
+running a parser.
+</blockquote>
+
+After <tt>lrtab</tt> has been populated, the following attributes are defined.
+
+<p>
+<b><tt>lrtab.lr_method</tt></b>
+<blockquote>
+The LR parsing method used (e.g., <tt>'LALR'</tt>)
+</blockquote>
+
+
+<p>
+<b><tt>lrtab.lr_productions</tt></b>
+<blockquote>
+The production list.  If the parsing tables have been newly
+constructed, this will be a list of <tt>Production</tt> instances.  If
+the parsing tables have been read from a file, it's a list
+of <tt>MiniProduction</tt> instances.  This, together
+with <tt>lr_action</tt> and <tt>lr_goto</tt> contain all of the
+information needed by the LR parsing engine.
+</blockquote>
+
+<p>
+<b><tt>lrtab.lr_action</tt></b>
+<blockquote>
+The LR action dictionary that implements the underlying state machine.
+The keys of this dictionary are the LR states.
+</blockquote>
+
+<p>
+<b><tt>lrtab.lr_goto</tt></b>
+<blockquote>
+The LR goto table that contains information about grammar rule reductions.
+</blockquote>
+
+
+<H2><a name="internal_nn6"></a>6. LRGeneratedTable</H2>
+
+
+The <tt>LRGeneratedTable</tt> class represents constructed LR parsing tables on a
+grammar.  It is a subclass of <tt>LRTable</tt>.
+
+<p>
+<b><tt>LRGeneratedTable(grammar, method='LALR',log=None)</tt></b>
+<blockquote>
+Create the LR parsing tables on a grammar.  <tt>grammar</tt> is an instance of <tt>Grammar</tt>,
+<tt>method</tt> is a string with the parsing method (<tt>'SLR'</tt> or <tt>'LALR'</tt>), and
+<tt>log</tt> is a logger object used to write debugging information.  The debugging information
+written to <tt>log</tt> is the same as what appears in the <tt>parser.out</tt> file created
+by yacc.  By supplying a custom logger with a different message format, it is possible to get
+more information (e.g., the line number in <tt>yacc.py</tt> used for issuing each line of
+output in the log).   The result is an instance of <tt>LRGeneratedTable</tt>.
+</blockquote>
+
+<p>
+An instance <tt>lr</tt> of <tt>LRGeneratedTable</tt> has the following attributes.
+
+<p>
+<b><tt>lr.grammar</tt></b>
+<blockquote>
+A link to the Grammar object used to construct the parsing tables.
+</blockquote>
+
+<p>
+<b><tt>lr.lr_method</tt></b>
+<blockquote>
+The LR parsing method used (e.g., <tt>'LALR'</tt>)
+</blockquote>
+
+
+<p>
+<b><tt>lr.lr_productions</tt></b>
+<blockquote>
+A reference to <tt>grammar.Productions</tt>.  This, together with <tt>lr_action</tt> and <tt>lr_goto</tt>
+contain all of the information needed by the LR parsing engine.
+</blockquote>
+
+<p>
+<b><tt>lr.lr_action</tt></b>
+<blockquote>
+The LR action dictionary that implements the underlying state machine.  The keys of this dictionary are
+the LR states.
+</blockquote>
+
+<p>
+<b><tt>lr.lr_goto</tt></b>
+<blockquote>
+The LR goto table that contains information about grammar rule reductions.
+</blockquote>
+
+<p>
+<b><tt>lr.sr_conflicts</tt></b>
+<blockquote>
+A list of tuples <tt>(state,token,resolution)</tt> identifying all shift/reduce conflicts. <tt>state</tt> is the LR state
+number where the conflict occurred, <tt>token</tt> is the token causing the conflict, and <tt>resolution</tt> is
+a string describing the resolution taken.  <tt>resolution</tt> is either <tt>'shift'</tt> or <tt>'reduce'</tt>.
+</blockquote>
+
+<p>
+<b><tt>lr.rr_conflicts</tt></b>
+<blockquote>
+A list of tuples <tt>(state,rule,rejected)</tt> identifying all reduce/reduce conflicts.  <tt>state</tt> is the
+LR state number where the conflict occurred, <tt>rule</tt> is the production rule that was selected
+and <tt>rejected</tt> is the production rule that was rejected.   Both <tt>rule</tt> and </tt>rejected</tt> are
+instances of <tt>Production</tt>.  They can be inspected to provide the user with more information.
+</blockquote>
+
+<p>
+There are two public methods of <tt>LRGeneratedTable</tt>.
+
+<p>
+<b><tt>lr.write_table(modulename,outputdir="",signature="")</tt></b>
+<blockquote>
+Writes the LR parsing table information to a Python module.  <tt>modulename</tt> is a string 
+specifying the name of a module such as <tt>"parsetab"</tt>.  <tt>outputdir</tt> is the name of a 
+directory where the module should be created.  <tt>signature</tt> is a string representing a
+grammar signature that's written into the output file. This can be used to detect when
+the data stored in a module file is out-of-sync with the the grammar specification (and that
+the tables need to be regenerated).  If <tt>modulename</tt> is a string <tt>"parsetab"</tt>,
+this function creates a file called <tt>parsetab.py</tt>.  If the module name represents a
+package such as <tt>"foo.bar.parsetab"</tt>, then only the last component, <tt>"parsetab"</tt> is
+used.
+</blockquote>
+
+
+<H2><a name="internal_nn7"></a>7. LRParser</H2>
+
+
+The <tt>LRParser</tt> class implements the low-level LR parsing engine.
+
+
+<p>
+<b><tt>LRParser(lrtab, error_func)</tt></b>
+<blockquote>
+Create an LRParser.  <tt>lrtab</tt> is an instance of <tt>LRTable</tt>
+containing the LR production and state tables.  <tt>error_func</tt> is the
+error function to invoke in the event of a parsing error.
+</blockquote>
+
+An instance <tt>p</tt> of <tt>LRParser</tt> has the following methods:
+
+<p>
+<b><tt>p.parse(input=None,lexer=None,debug=0,tracking=0,tokenfunc=None)</tt></b>
+<blockquote>
+Run the parser.  <tt>input</tt> is a string, which if supplied is fed into the
+lexer using its <tt>input()</tt> method.  <tt>lexer</tt> is an instance of the
+<tt>Lexer</tt> class to use for tokenizing.  If not supplied, the last lexer
+created with the <tt>lex</tt> module is used.   <tt>debug</tt> is a boolean flag
+that enables debugging.   <tt>tracking</tt> is a boolean flag that tells the
+parser to perform additional line number tracking.  <tt>tokenfunc</tt> is a callable
+function that returns the next token.  If supplied, the parser will use it to get
+all tokens.
+</blockquote>
+
+<p>
+<b><tt>p.restart()</tt></b>
+<blockquote>
+Resets the parser state for a parse already in progress.
+</blockquote>
+
+<H2><a name="internal_nn8"></a>8. ParserReflect</H2>
+
+
+<p>
+The <tt>ParserReflect</tt> class is used to collect parser specification data
+from a Python module or object.   This class is what collects all of the
+<tt>p_rule()</tt> functions in a PLY file, performs basic error checking,
+and collects all of the needed information to build a grammar.    Most of the
+high-level PLY interface as used by the <tt>yacc()</tt> function is actually
+implemented by this class.
+
+<p>
+<b><tt>ParserReflect(pdict, log=None)</tt></b>
+<blockquote>
+Creates a <tt>ParserReflect</tt> instance. <tt>pdict</tt> is a dictionary
+containing parser specification data.  This dictionary typically corresponds
+to the module or class dictionary of code that implements a PLY parser.
+<tt>log</tt> is a logger instance that will be used to report error
+messages.
+</blockquote>
+
+An instance <tt>p</tt> of <tt>ParserReflect</tt> has the following methods:
+
+<p>
+<b><tt>p.get_all()</tt></b>
+<blockquote>
+Collect and store all required parsing information.
+</blockquote>
+
+<p>
+<b><tt>p.validate_all()</tt></b>
+<blockquote>
+Validate all of the collected parsing information.  This is a seprate step
+from <tt>p.get_all()</tt> as a performance optimization.  In order to
+increase parser start-up time, a parser can elect to only validate the
+parsing data when regenerating the parsing tables.   The validation
+step tries to collect as much information as possible rather than
+raising an exception at the first sign of trouble.  The attribute
+<tt>p.error</tt> is set if there are any validation errors.  The
+value of this attribute is also returned.
+</blockquote>
+
+<p>
+<b><tt>p.signature()</tt></b>
+<blockquote>
+Compute a signature representing the contents of the collected parsing
+data.  The signature value should change if anything in the parser
+specification has changed in a way that would justify parser table
+regeneration.   This method can be called after <tt>p.get_all()</tt>,
+but before <tt>p.validate_all()</tt>.
+</blockquote>
+
+The following attributes are set in the process of collecting data:
+
+<p>
+<b><tt>p.start</tt></b>
+<blockquote>
+The grammar start symbol, if any. Taken from <tt>pdict['start']</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.error_func</tt></b>
+<blockquote>
+The error handling function or <tt>None</tt>. Taken from <tt>pdict['p_error']</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.tokens</tt></b>
+<blockquote>
+The token list. Taken from <tt>pdict['tokens']</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.prec</tt></b>
+<blockquote>
+The precedence specifier.  Taken from <tt>pdict['precedence']</tt>.
+</blockquote>
+
+<p>
+<b><tt>p.preclist</tt></b>
+<blockquote>
+A parsed version of the precedence specified.  A list of tuples of the form
+<tt>(token,assoc,level)</tt> where <tt>token</tt> is the terminal symbol,
+<tt>assoc</tt> is the associativity (e.g., <tt>'left'</tt>) and <tt>level</tt>
+is a numeric precedence level.
+</blockquote>
+
+<p>
+<b><tt>p.grammar</tt></b>
+<blockquote>
+A list of tuples <tt>(name, rules)</tt> representing the grammar rules. <tt>name</tt> is the
+name of a Python function or method in <tt>pdict</tt> that starts with <tt>"p_"</tt>.
+<tt>rules</tt> is a list of tuples <tt>(filename,line,prodname,syms)</tt> representing
+the grammar rules found in the documentation string of that function. <tt>filename</tt> and <tt>line</tt> contain location
+information that can be used for debugging. <tt>prodname</tt> is the name of the 
+production. <tt>syms</tt> is the right-hand side of the production.  If you have a
+function like this
+
+<pre>
+def p_expr(p):
+    '''expr : expr PLUS expr
+            | expr MINUS expr
+            | expr TIMES expr
+            | expr DIVIDE expr'''
+</pre>
+
+then the corresponding entry in <tt>p.grammar</tt> might look like this:
+
+<pre>
+('p_expr', [ ('calc.py',10,'expr', ['expr','PLUS','expr']),
+             ('calc.py',11,'expr', ['expr','MINUS','expr']),
+             ('calc.py',12,'expr', ['expr','TIMES','expr']),
+             ('calc.py',13,'expr', ['expr','DIVIDE','expr'])
+           ])
+</pre>
+</blockquote>
+
+<p>
+<b><tt>p.pfuncs</tt></b>
+<blockquote>
+A sorted list of tuples <tt>(line, file, name, doc)</tt> representing all of
+the <tt>p_</tt> functions found. <tt>line</tt> and <tt>file</tt> give location
+information.  <tt>name</tt> is the name of the function. <tt>doc</tt> is the
+documentation string.   This list is sorted in ascending order by line number.
+</blockquote>
+
+<p>
+<b><tt>p.files</tt></b>
+<blockquote>
+A dictionary holding all of the source filenames that were encountered
+while collecting parser information.  Only the keys of this dictionary have
+any meaning.
+</blockquote>
+
+<p>
+<b><tt>p.error</tt></b>
+<blockquote>
+An attribute that indicates whether or not any critical errors 
+occurred in validation.  If this is set, it means that that some kind
+of problem was detected and that no further processing should be
+performed.
+</blockquote>
+
+
+<H2><a name="internal_nn9"></a>9. High-level operation</H2>
+
+
+Using all of the above classes requires some attention to detail.  The <tt>yacc()</tt>
+function carries out a very specific sequence of operations to create a grammar.
+This same sequence should be emulated if you build an alternative PLY interface.
+
+<ol>
+<li>A <tt>ParserReflect</tt> object is created and raw grammar specification data is
+collected.
+<li>A <tt>Grammar</tt> object is created and populated with information
+from the specification data.
+<li>A <tt>LRGenerator</tt> object is created to run the LALR algorithm over
+the <tt>Grammar</tt> object.
+<li>Productions in the LRGenerator and bound to callables using the <tt>bind_callables()</tt>
+method.
+<li>A <tt>LRParser</tt> object is created from from the information in the
+<tt>LRGenerator</tt> object.
+</ol>
+
+</body>
+</html>
+
+
+
+
+
+
+

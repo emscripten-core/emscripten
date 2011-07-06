@@ -221,6 +221,21 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
   });
 
+  // alias
+  substrate.addActor('Alias', {
+    processItem: function(item) {
+      item.intertype = 'GlobalVariableStub';
+      var ret = [item];
+      item.JS = 'var ' + item.ident + ';';
+      // Set the actual value in a postset, since it may be a global variable. TODO: handle alias of alias (needs ordering)
+      ret.push({
+        intertype: 'GlobalVariablePostSet',
+        JS: item.ident + ' = ' + item.aliasee + ';'
+      });
+      return ret;
+    }
+  });
+
   var moduleFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
 
   var addedLibraryItems = {};
@@ -830,6 +845,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   substrate.addItems(values(data.globalVariables), 'GlobalVariable');
   substrate.addItems(data.functions, 'FunctionSplitter');
   substrate.addItems(data.functionStubs, 'FunctionStub');
+  substrate.addItems(data.aliass, 'Alias');
 
   return finalCombiner(substrate.solve());
 }

@@ -473,7 +473,7 @@ function IEEEUnHex(stringy) {
   stringy = stringy.substr(2); // leading '0x';
   if (stringy.replace(/0/g, '') === '') return 0;
   while (stringy.length < 16) stringy = '0' + stringy;
-  assert(stringy.length === 16, 'Can only undex 16-digit double numbers, nothing platform-specific');
+  assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific');
   var top = eval('0x' + stringy[0]);
   var neg = !!(top & 8); // sign
   if (neg) {

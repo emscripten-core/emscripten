@@ -6,6 +6,7 @@ var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
                 'weak_odr', 'externally_visible', 'dllimport', 'dllexport', 'unnamed_addr'),
+  VISIBILITIES: set('default', 'hidden', 'protected'),
   PARAM_ATTR: set('noalias', 'signext', 'zeroext', 'inreg', 'sret', 'nocapture', 'nest'),
   CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10')
 };

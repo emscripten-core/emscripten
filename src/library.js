@@ -802,7 +802,7 @@ var Library = {
   stat__deps: ['open', 'fstat'],
   stat: function(filename, ptr) {
     if (typeof window === 'undefined') {
-      // d8 hangs if you try to read a folder.
+      // XXX d8 hangs if you try to read a folder.
       // http://code.google.com/p/v8/issues/detail?id=1533
       return 0;
     }
@@ -2009,6 +2009,13 @@ var Library = {
     // leaks, and even returns an invalid pointer. Horrible hack... but then, this is a deprecated function...
     var ret = Runtime.staticAlloc(size + boundary);
     return ret + boundary - (ret % boundary);
+  },
+
+  posix_memalign__deps: ['memalign'],
+  posix_memalign: function(memptr, alignment, size) {
+    var ptr = _memalign(alignment, size);
+    {{{ makeSetValue('memptr', '0', 'ptr', 'i8*') }}}
+    return 0;
   },
 
   // ==========================================================================

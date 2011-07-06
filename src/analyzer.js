@@ -29,7 +29,7 @@ function analyzer(data) {
   substrate.addActor('Gatherer', {
     processItem: function(item) {
       // Single-liners
-      ['globalVariable', 'functionStub', 'unparsedFunction'].forEach(function(intertype) {
+      ['globalVariable', 'functionStub', 'unparsedFunction', 'alias'].forEach(function(intertype) {
         var temp = splitter(item.items, function(item) { return item.intertype == intertype });
         item.items = temp.leftIn;
         item[intertype + 's'] = temp.splitOut;

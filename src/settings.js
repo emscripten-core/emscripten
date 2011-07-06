@@ -46,6 +46,7 @@ USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
                       // simply because double stores are not necessarily 64-bit aligned, and we can only access
                       // 64-bit aligned values with a 64-bit typed array. Likewise int64s are stored as int32's,
                       // which is potentially very dangerous!
+                      // TODO: require compiling with -malign-double, which does align doubles
 SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                          // functions that have no basic stack usage. But, they
                          // may allocate stack later, and in a loop, this can be

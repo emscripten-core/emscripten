@@ -1,0 +1,7 @@
+This directory mostly contains tests for various types of error
+conditions.  To run:
+
+  $ python testlex.py .
+  $ python testyacc.py .
+
+The script 'cleanup.sh' cleans up this directory to its original state.
