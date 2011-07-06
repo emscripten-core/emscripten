@@ -1792,7 +1792,7 @@ var Library = {
     var offset = {{{ makeGetValue('_timezone', 0, 'i32') }}};
     var daylight = {{{ makeGetValue('_daylight', 0, 'i32') }}};
     daylight = (daylight == 1) ? 60 * 60 : 0;
-    var ret = _mktime(tmPtr) - (offset + daylight);
+    var ret = _mktime(tmPtr) + offset - daylight;
     return ret;
   },
 
@@ -1817,7 +1817,7 @@ var Library = {
     var start = new Date(date.getFullYear(), 0, 1);
     var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_yday', 'yday', 'i32') }}}
-    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_gmtoff', '-start.getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_gmtoff', 'start.getTimezoneOffset() * 60', 'i32') }}}
 
     var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
     {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_isdst', 'dst', 'i32') }}}
@@ -1876,7 +1876,7 @@ var Library = {
     if (_tzname !== null) return;
 
     _timezone = _malloc(QUANTUM_SIZE);
-    {{{ makeSetValue('_timezone', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue('_timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
     _daylight = _malloc(QUANTUM_SIZE);
     var winter = new Date(2000, 0, 1);
