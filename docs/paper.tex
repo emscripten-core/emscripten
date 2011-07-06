@@ -153,11 +153,20 @@ language into JavaScript. For example, if compiling Java into JavaScript
 (as the Google Web Toolkit does), then one can benefit from the fact
 that Java's loops, ifs and so forth generally have a very direct parallel
 in JavaScript. But of course the downside in that approach is it yields a
-compiler only for Java. We will also see in Section~\ref{sec:relooper} that it is in fact possible to reconstruct
-a substantial part of the original high-level structure of the original code,
-so that compiling LLVM assembly, while more difficult, can still yield good results.
+compiler only for Java. In Section~\ref{sec:relooper}
+we present the `Relooper' algorithm, which generates high-level loop structures from the low-level
+branching data present in LLVM assembly. It is similar to loop recovery algorithms used in decompilation
+(see, for example, \cite{Cifuentes98assemblyto}, \cite{pro97}).
+The main difference between the Relooper and standard loop recovery algorithms
+is that the Relooper generates loops in a different language than that which was compiled originally, whereas
+decompilers generally assume they are returning to the original language. The Relooper's
+goal is not to accurately recreate the original source code, but rather to generate
+native JavaScript control flow structures, which can then be implemented
+efficiently in modern JavaScript engines.
 
-Another challenge in Emscripten is to achieve good performance. LLVM assembly
+Another challenge in Emscripten is to maintain accuracy (that is, to
+keep the results of the compiled code the same as the original)
+while not sacrificing performance. LLVM assembly
 is an abstraction of how modern CPUs are programmed for, and its basic
 operations are not all directly possible in JavaScript. For example, if in
 LLVM we are to add two unsigned 8-bit numbers $x$ and $y$, with overflowing (e.g., 255
@@ -172,7 +181,7 @@ We conclude this introduction with a list of this paper's main contributions:
 \begin{itemize}
 \item We describe Emscripten itself, during
       which we detail its approach in compiling LLVM into JavaScript.
-\item We give details of Emscripten's `Relooper' algorithm, which generates
+\item We give details of Emscripten's Relooper algorithm, mentioned earlier, which generates
       high-level loop structures from low-level branching data, and prove
       its validity.
 \end{itemize}
@@ -1070,6 +1079,9 @@ We thank the following people for their contributions to Emscripten: David LaPal
 List of languages that compile into JavaScript. Available at \url{https://github.com/jashkenas/coffee-script/wiki/List-of-languages-that-compile-to-JS}.
 Retrieved April 2011.
 
+\bibitem[Cifuentes et~al. (1998)]{Cifuentes98assemblyto} C. Cifuentes, D. Simon and A. Fraboulet.
+Assembly to High-Level Language Translation. In Int. Conf. on Softw. Maint, pp. 228--237, IEEE-CS Press, 1998.
+
 \bibitem[Cooper et~al. (2006)]{links} E. Cooper, S. Lindley, P. Wadler and J. Yallop.
 Links: Web programming without tiers. In 5th International Symposium on Formal Methods for Components and Objects (FMCO), 2006.
 
@@ -1088,6 +1100,9 @@ AFAX: Rich client/server web applications in F\#. Draft. Available at \url{http:
 
 \bibitem[Prabhakar (2007)]{gwt} C. Prabhakar.
 Google Web Toolkit: GWT Java Ajax Programming. Packt Publishing, 2007.
+
+\bibitem[Proebsting et~al. (1997)]{pro97} T.A. Proebsting and S. A. Watterson.
+Krakatoa: Decompilation in Java (Does Bytecode Reveal Source?) In Third USENIX Conference on Object-Oriented Technologies and Systems (COOTS), 1997.
 
 \bibitem[Yee et~al. (2009)]{nacl} B. Yee, D. Sehr, G. Dardyk, J. B. Chen, R. Muth, T. Ormandy, S.
 Okasaka, N. Narula, and N. Fullagar. Native Client: A Sandbox for
