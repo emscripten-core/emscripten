@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json
 
 # Setup
 
@@ -19,7 +19,7 @@ exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 try:
   assert COMPILER_OPTS != None
 except:
-  raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template at ~/tests/settings.py into it.')
+  raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template from settings.py into it.')
 
 # Paths
 
@@ -246,7 +246,8 @@ class RunnerCore(unittest.TestCase):
         exported_settings[setting] = value
       except:
         pass
-    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    settings = ['%s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
+    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', '-o', filename + '.o.js', '-s'] + settings, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0

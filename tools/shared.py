@@ -1,10 +1,9 @@
-
-import shutil, time
+import shutil, time, os
 from subprocess import Popen, PIPE, STDOUT
 
 CONFIG_FILE = os.path.expanduser('~/.emscripten')
 if not os.path.exists(CONFIG_FILE):
-  shutil.copy(path_from_root('tests', 'settings.py'), CONFIG_FILE)
+  shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
 exec(open(CONFIG_FILE, 'r').read())
 
 # Tools
@@ -67,4 +66,3 @@ def line_splitter(data):
 def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
   return string[0:MAX] + '...'
-
