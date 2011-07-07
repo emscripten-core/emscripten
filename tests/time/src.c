@@ -44,8 +44,8 @@ int main() {
   // Verify localtime() picks up timezone data.
   time_t t2 = xmas2002 - 60 * 60 * 24 * 30 * 6;
   tm_ptr = localtime(&t2);
-  printf("localtime timezone: %d\n", (timezone + tm_ptr->tm_isdst * 60 * 60 ==
-                                      -tm_ptr->tm_gmtoff));
+  time_t dst_diff = (tm_ptr->tm_isdst == 1) ? tm_ptr->tm_isdst * 60 * 60 : 0;
+  printf("localtime timezone: %d\n", (timezone + tm_ptr->tm_gmtoff == dst_diff));
   printf("localtime daylight: %d\n", daylight == tm_ptr->tm_isdst);
   printf("localtime tzname: %d\n", (!strcmp(tzname[0], tm_ptr->tm_zone) ||
                                     !strcmp(tzname[1], tm_ptr->tm_zone)));
@@ -57,10 +57,9 @@ int main() {
   time_t t3 = 0;
   struct tm tm2;
   localtime_r(&t3, &tm2);
-  printf("old year: %d\n", tm_ptr->tm_year);
-  printf("new year: %d\n", tm2.tm_year);
+  printf("localtime_r(1): %d\n", tm2.tm_year != tm_ptr->tm_year);
   localtime(&xmas2002);
-  printf("old year again: %d\n", tm_ptr->tm_year);
+  printf("localtime_r(2): %d\n", tm2.tm_year != tm_ptr->tm_year);
 
   // Verify time() returns reasonable value (between 2011 and 2030).
   time_t t4 = 0;
@@ -79,14 +78,14 @@ int main() {
   printf("2004 days: %d\n", dysize(2004));
 
   // Verify asctime() formatting().
-  printf("asctime: %s", asctime(localtime(&xmas2002)));
+  printf("asctime: %s", asctime(gmtime(&xmas2002)));
 
   // Verify asctime_r() doesn't clobber static data.
   time_t t6 = 1309635200ll;
-  tm_ptr = localtime(&xmas2002);
+  tm_ptr = gmtime(&xmas2002);
   char* formatted = asctime(tm_ptr);
   char buffer[32];
-  asctime_r(localtime(&t6), buffer);
+  asctime_r(gmtime(&t6), buffer);
   printf("old asctime: %s", formatted);
   printf("new asctime_r: %s", buffer);
   asctime_r(tm_ptr, buffer);
