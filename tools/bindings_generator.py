@@ -16,6 +16,12 @@ We generate the following:
 
   * BASENAME.js: JavaScript bindings file, with generated JavaScript wrapper
                  objects. This is a high-level wrapping, using native JS classes.
+
+The C bindings file is basically a tiny C wrapper around the C++ code.
+It's only purpose is to make it easy to access the C++ code in the JS
+bindings, and to prevent DFE from removing the code we care about. The
+JS bindings do more serious work, creating class structures in JS and
+linking them to the C bindings.
 '''
 
 import os, sys, glob
@@ -50,26 +56,26 @@ for header in sys.argv[2:]:
       classes[cname] = clazz
 
 # Second pass - generate bindings
+# TODO: Bind virtual functions using dynamic binding in the C binding code
 
-funcs = []
+funcs = {} # name -> # of copies in the original, and originalname in a copy
 
 gen_c = open(basename + '.c', 'w')
 gen_js = open(basename + '.js', 'w')
 
 gen_c.write('extern "C" {\n')
 
-for cname, clazz in classes.iteritems():
-  print 'Generating', cname
-  # TODO: Generate all parent class (recursively) data too
-
-  constructor_counter = 0
+def generate_class(generating_cname, cname, clazz):
+  inherited = generating_cname != cname
 
   for method in clazz['methods']['public']:
-    #print '   ', method['name'], method
+    print '   ', method['name'], method
 
     mname = method['name']
     args = method['parameters']
     constructor = mname == cname
+
+    if constructor and inherited: continue
 
     # C
 
@@ -77,34 +83,61 @@ for cname, clazz in classes.iteritems():
     callprefix = 'new ' if constructor else 'self->'
     typedargs = ', '.join( ([] if constructor else [cname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args) )
     justargs = ', '.join(map(lambda arg: arg['name'], args))
-    fullname = cname + '__' + mname
+    fullname = 'emscripten_bind_' + generating_cname + '__' + mname
+    generating_cname_suffixed = generating_cname
+    mname_suffixed = mname
+    count = funcs.setdefault(fullname, 0)
+    funcs[fullname] += 1
+
+    # handle overloading
+    if count > 0:
+      suffix = '_' + str(count+1)
+      funcs[fullname + suffix] = fullname # this should never change
+      fullname += suffix
+      mname_suffixed += suffix
+      if constructor:
+        generating_cname_suffixed += suffix
 
     gen_c.write('''
-%s emscripten_bind_%s(%s) {
+%s %s(%s) {
   return %s%s(%s);
 }
 ''' % (ret, fullname, typedargs, callprefix, mname, justargs))
 
-    funcs.append('emscripten_bind_' + fullname)
-
     # JS
 
     if constructor:
-      gen_js.write('''
+      dupe = type(funcs[fullname]) is str
+      if not dupe:
+        gen_js.write('''
 function %s(%s) {
-  this.ptr = _emscripten_bind_%s(%s);
+  this.ptr = _%s(%s);
 }
-''' % (cname + (str(constructor_counter) if constructor_counter > 0 else ''), justargs, fullname, justargs))
-      constructor_counter += 1
-    else: # TODO: handle case of multiple constructors
+''' % (generating_cname_suffixed, justargs, fullname, justargs))
+      else:
+        gen_js.write('''
+function %s(%s) {
+  this.ptr = _%s(%s);
+}
+%s.prototype = %s.prototype;
+''' % (generating_cname_suffixed, justargs, fullname, justargs, generating_cname_suffixed, cname))
+    else:
       gen_js.write('''
 %s.prototype.%s = function(%s) {
-  %s_emscripten_bind_%s(this.ptr%s);
+  %s_%s(this.ptr%s);
 }
-''' % (cname, mname, justargs, 'return ' if ret != 'void' else '', fullname, (', ' if len(justargs) > 0 else '') + justargs))
+''' % (generating_cname, mname_suffixed, justargs, 'return ' if ret != 'void' else '', fullname, (', ' if len(justargs) > 0 else '') + justargs))
 
+for cname, clazz in classes.iteritems():
+  generate_class(cname, cname, clazz)
+
+  # In addition, generate all methods of parent classes. We do not inherit in JS (how would we do multiple inheritance etc.?)
+  for parent in clazz['inherits']:
+    generate_class(cname, parent['class'], classes[parent['class']])
 
 # Finish up
+
+funcs = funcs.keys()
 
 gen_c.write('''
 }

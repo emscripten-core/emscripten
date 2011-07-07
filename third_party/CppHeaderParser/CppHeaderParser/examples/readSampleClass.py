@@ -49,3 +49,26 @@ print cppHeader.classes["OmegaClass"]["namespace"]
 
 print "\nType for omegaString is:"
 print cppHeader.classes["AlphaClass"]["properties"]["public"][0]["type"]
+
+# by hart
+print 'global typedefs:'
+print cppHeader.typedefs
+
+print 'order of classes:'
+for cls in cppHeader.classes_order:
+	print '\t', cls['name']
+
+print 'order of typedefs:'
+for name in cppHeader.typedefs_order:
+	print '\t', name
+
+print cppHeader.classes['ThetaClass']
+print '_'*80
+print cppHeader.classes['ThetaClass2']
+
+print cppHeader.structs
+
+print cppHeader.namespaces
+
+print cppHeader.classes['FixMe']
+

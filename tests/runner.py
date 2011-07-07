@@ -2565,6 +2565,7 @@ if 'benchmark' not in sys.argv:
     ### Integration tests
 
     def test_scriptaclass(self):
+        header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
           struct ScriptMe {
             int value;
@@ -2575,8 +2576,9 @@ if 'benchmark' not in sys.argv:
             void mulVal(int mul);
           };
         '''
-        header_filename = os.path.join(self.get_dir(), 'header.h')
-        open(header_filename, 'w').write(header)
+        h = open(header_filename, 'w')
+        h.write(header)
+        h.close()
 
         src = '''
           #include "header.h"
@@ -2608,23 +2610,100 @@ if 'benchmark' not in sys.argv:
 
         # Way 2: use CppHeaderParser
 
+        header = '''
+          #include <stdio.h>
+
+          class Parent {
+          protected:
+            int value;
+          public:
+            Parent(int val);
+            int getVal() { return value; }; // inline should work just fine here, unlike Way 1 before
+            void mulVal(int mul);
+          };
+
+          class Child1 : public Parent {
+          public:
+            Child1() : Parent(7) { printf("Child1:%d\\n", value); };
+            Child1(int val) : Parent(val*2) { value -= 1; printf("Child1:%d\\n", value); };
+            int getValSqr() { return value*value; }
+            int getValSqr(int more) { return value*value*more; }
+          };
+
+          class Child2 : Parent {
+          public:
+            Child2() : Parent(9) { printf("Child2:%d\\n", value); };
+            int getValCube() { return value*value*value; }
+          private:
+            void doSomethingSecret() { printf("security breached!\\n"); }; // we should not be able to do this
+          };
+        '''
+        open(header_filename, 'w').write(header)
+
         basename = os.path.join(self.get_dir(), 'bindingtest')
-        Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        output = Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
         src = '''
           #include "header.h"
 
-          ScriptMe::ScriptMe(int val) : value(val) { }
-          int ScriptMe::getVal() { return value; }
-          void ScriptMe::mulVal(int mul) { value *= mul; }
+          Parent::Parent(int val) : value(val) { printf("Parent:%d\\n", val); }
+          void Parent::mulVal(int mul) { value *= mul; }
 
           #include "bindingtest.c"
         '''
 
         script_src_2 = '''
-          var sme = new ScriptMe(83);
+          var sme = new Parent(42);
           sme.mulVal(2);
-          print('*' + sme.getVal() + '*'); 
+          print('*')
+          print(sme.getVal());
+
+          print('c1');
+
+          var c1 = new Child1();
+          print(c1.getVal());
+          c1.mulVal(2);
+          print(c1.getVal());
+          print(c1.getValSqr());
+          print(c1.getValSqr_2(3));
+
+          print('c1 v2');
+
+          c1 = new Child1_2(8);
+          print(c1.getVal());
+          c1.mulVal(2);
+          print(c1.getVal());
+          print(c1.getValSqr());
+          print(c1.getValSqr_2(3));
+
+          print('c2')
+
+          var c2 = new Child2();
+          print(c2.getVal());
+          c2.mulVal(2);
+          print(c2.getVal());
+          print(c2.getValCube());
+          var succeeded;
+          try {
+            succeeded = 0;
+            print(c2.doSomethingSecret()); // should fail since private
+            succeeded = 1;
+          } catch(e) {}
+          print(succeeded);
+          try {
+            succeeded = 0;
+            print(c2.getValSqr()); // function from the other class
+            succeeded = 1;
+          } catch(e) {}
+          print(succeeded);
+          try {
+            succeeded = 0;
+            c2.getValCube(); // sanity
+            succeeded = 1;
+          } catch(e) {}
+          print(succeeded);
+
           print('*ok*');
         '''
 
@@ -2635,7 +2714,33 @@ if 'benchmark' not in sys.argv:
               '// {{MODULE_ADDITIONS}'
           )
           open(filename, 'w').write(src)
-        self.do_test(src, '*166*\n*ok*', post_build=post2)
+        self.do_test(src, '''*
+84
+c1
+Parent:7
+Child1:7
+7
+14
+196
+588
+c1 v2
+Parent:16
+Child1:15
+15
+30
+900
+2700
+c2
+Parent:9
+Child2:9
+9
+18
+5832
+0
+0
+1
+*ok*
+''', post_build=post2)
 
     ### Tests for tools
 
