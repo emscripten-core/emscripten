@@ -2673,6 +2673,9 @@ if 'benchmark' not in sys.argv:
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
 
+    def test_unannotated(self):
+      self.do_ll_test(path_from_root('tests', 'unannotated.ll'), 'test\n')
+
     def test_linespecific(self):
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
 
