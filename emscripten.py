@@ -163,10 +163,6 @@ def main(args):
   # Compile the assembly to Javascript.
   emscript(args.infile, json.dumps(settings), args.outfile)
 
-  # Clean up temporary files.
-  for filename in TEMP_FILES_TO_CLEAN:
-    os.unlink(filename)
-
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -192,4 +188,10 @@ if __name__ == '__main__':
                       nargs=argparse.ZERO_OR_MORE,
                       metavar='FOO=BAR',
                       help='Overrides for settings defined in settings.js.')
-  main(parser.parse_args())
+
+  try:
+    main(parser.parse_args())
+  finally:
+    # Clean up temporary files.
+    for filename in TEMP_FILES_TO_CLEAN:
+      os.unlink(filename)
