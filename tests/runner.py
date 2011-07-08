@@ -171,7 +171,7 @@ class RunnerCore(unittest.TestCase):
 
     self.do_emscripten(filename, output_processor)
 
-  def do_emscripten(self, filename, output_processor=None):
+  def do_emscripten(self, filename, output_processor=None, append_ext=True):
     # Run Emscripten
     exported_settings = {}
     for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY']:
@@ -181,7 +181,7 @@ class RunnerCore(unittest.TestCase):
       except:
         pass
     settings = ['%s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
-    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', '-o', filename + '.o.js', '-s'] + settings, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js', '-s'] + settings, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
@@ -2675,6 +2675,13 @@ if 'benchmark' not in sys.argv:
 
     def test_unannotated(self):
       self.do_ll_test(path_from_root('tests', 'unannotated.ll'), 'test\n')
+
+    def test_autoassemble(self):
+      filename = os.path.join(self.get_dir(), 'src.bc')
+      shutil.copy(path_from_root('tests', 'autoassemble.bc'), filename)
+      self.do_emscripten(filename, append_ext=False)
+      shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'src.cpp.o.js'))
+      self.do_test(None, 'test\n', no_build=True)
 
     def test_linespecific(self):
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
