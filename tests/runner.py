@@ -2486,8 +2486,9 @@ if 'benchmark' not in sys.argv:
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
-    ### Test cases in separate files
-
+    # Test cases in separate files. Note that these files may contain invalid .ll!
+    # They are only valid enough for us to read for test purposes, not for llvm-as
+    # to process.
     def test_cases(self):
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
       if LLVM_OPTS: return self.skip() # Our code is not exactly 'normal' llvm assembly
