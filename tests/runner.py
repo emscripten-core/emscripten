@@ -543,6 +543,11 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '*3.14,-3.14,inf,-inf*')
 
+    def test_math_hyperbolic(self):
+        src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
+        expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
+        self.do_test(src, expected)
+
     def test_getgep(self):
         # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
         src = '''
