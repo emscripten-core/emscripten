@@ -28,9 +28,9 @@
 %\maketitle
 
 \begin{abstract}
-We present Emscripten, an LLVM-to-JavaScript compiler. Emscripten compiles
-LLVM (Low Level Virtual Machine) assembly code into standard JavaScript, which opens up two avenues for running code written
-in languages other than JavaScript on the web: (1) Compile code directly into LLVM bitcode, and
+We present Emscripten, a compiler from LLVM (Low Level Virtual Machine) assembly to JavaScript. This
+opens up two avenues for running code written
+in languages other than JavaScript on the web: (1) Compile code directly into LLVM assemby, and
 then compile that into JavaScript using Emscripten, or (2) Compile
 a language's entire runtime into LLVM and then JavaScript, as in the previous
 approach, and then use the compiled runtime to run code written in that language. For example, the
@@ -107,8 +107,8 @@ not Python, so for example division of integers can yield unexpected results
 but in JavaScript and in Pyjamas a floating-point number can be generated).
 
 In this paper we present another project along those lines: \textbf{Emscripten},
-which compiles LLVM assembly code into JavaScript. LLVM (the Low Level Virtual
-Machine\footnote{\url{http://llvm.org/}}) is a compiler project primarily focused on C, C++ and
+which compiles LLVM (Low Level Virtual Machine\footnote{\url{http://llvm.org/}}) assembly into JavaScript.
+LLVM is a compiler project primarily focused on C, C++ and
 Objective-C. It compiles those languages through a \emph{frontend} (the
 main ones of which are Clang and LLVM-GCC) into the
 LLVM intermediary representation (which can be machine-readable
