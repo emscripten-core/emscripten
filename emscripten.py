@@ -9,7 +9,7 @@ import tempfile
 import tools.shared as shared
 
 
-# TODO: Clean up temporary files.
+TEMP_FILES_TO_CLEAN = []
 
 
 def path_from_root(*target):
@@ -20,8 +20,10 @@ def path_from_root(*target):
 
 def get_temp_file(suffix):
   """Returns a named temp file  with the given prefix."""
-  return tempfile.NamedTemporaryFile(
+  named_file = tempfile.NamedTemporaryFile(
       dir=shared.TEMP_DIR, suffix=suffix, delete=False)
+  TEMP_FILES_TO_CLEAN.append(named_file.name)
+  return named_file
 
 
 def assemble(filepath):
@@ -160,6 +162,10 @@ def main(args):
 
   # Compile the assembly to Javascript.
   emscript(args.infile, json.dumps(settings), args.outfile)
+
+  # Clean up temporary files.
+  for filename in TEMP_FILES_TO_CLEAN:
+    os.unlink(filename)
 
 
 if __name__ == '__main__':
