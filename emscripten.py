@@ -73,7 +73,8 @@ def optimize(filepath):
     The path to the optimized file.
   """
   out = get_temp_file('.bc')
-  ret = subprocess.call([shared.LLVM_OPT, '-O3', '-o=-', filepath], stdout=out)
+  opts = shared.pick_llvm_opts(3, True)
+  ret = subprocess.call([shared.LLVM_OPT, '-o=-', filepath] + opts, stdout=out)
   out.close()
   if ret != 0: raise RuntimeError('Could not optimize %s.' % filepath)
   return out.name
@@ -108,6 +109,11 @@ def compile_malloc():
   return out.name
 
 
+def has_annotations(filepath):
+  """Tests whether an assembly file contains annotations."""
+  return filepath.endswith('.ll') and '[#uses=' in open(filepath).read()
+
+
 def emscript(infile, settings, outfile):
   """Runs the emscripten LLVM-to-JS compiler.
 
@@ -129,9 +135,10 @@ def emscript(infile, settings, outfile):
 
 def main(args):
   # Construct a final linked and disassembled file.
-  args.infile = assemble(args.infile)
-  if args.dlmalloc: args.infile = link(args.infile, compile_malloc())
-  if args.optimize: args.infile = optimize(args.infile)
+  if args.dlmalloc or args.optimize or not has_annotations(args.infile):
+    args.infile = assemble(args.infile)
+    if args.dlmalloc: args.infile = link(args.infile, compile_malloc())
+    if args.optimize: args.infile = optimize(args.infile)
   args.infile = disassemble(args.infile)
 
   # Prepare settings for serialization to JSON.
@@ -165,7 +172,7 @@ if __name__ == '__main__':
   parser.add_argument('-O', '--optimize',
                       default=False,
                       action='store_true',
-                      help='Run LLVM -O3 optimizations on the input.')
+                      help='Run LLVM optimizations on the input.')
   parser.add_argument('-m', '--dlmalloc',
                       default=False,
                       action='store_true',

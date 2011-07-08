@@ -62,73 +62,7 @@ class RunnerCore(unittest.TestCase):
   # Similar to LLVM::createStandardModulePasses()
   def pick_llvm_opts(self, optimization_level, optimize_size, allow_nonportable=False):
     global LLVM_OPT_OPTS
-    LLVM_OPT_OPTS = []
-
-    if optimization_level == 0: return
-
-    if allow_nonportable:
-      LLVM_OPT_OPTS.append('-O3')
-      return
-
-    # createStandardAliasAnalysisPasses
-    #LLVM_OPT_OPTS.append('-tbaa')
-    #LLVM_OPT_OPTS.append('-basicaa') # makes fannkuch slow but primes fast
-
-    LLVM_OPT_OPTS.append('-globalopt')
-    LLVM_OPT_OPTS.append('-ipsccp')
-    LLVM_OPT_OPTS.append('-deadargelim')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    LLVM_OPT_OPTS.append('-simplifycfg')
-
-    LLVM_OPT_OPTS.append('-prune-eh')
-    LLVM_OPT_OPTS.append('-inline')
-    LLVM_OPT_OPTS.append('-functionattrs')
-    if optimization_level > 2:
-      LLVM_OPT_OPTS.append('-argpromotion')
-
-    if allow_nonportable: LLVM_OPT_OPTS.append('-scalarrepl') # XXX Danger: Can turn a memcpy into something that violates the load-store
-    #                                                         #             consistency hypothesis. See hashnum() in lua.
-    #                                                         #             Note: this opt is of great importance for raytrace...
-    if allow_nonportable: LLVM_OPT_OPTS.append('-early-cse') # ?
-    LLVM_OPT_OPTS.append('-simplify-libcalls')
-    LLVM_OPT_OPTS.append('-jump-threading')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-correlated-propagation') # ?
-    LLVM_OPT_OPTS.append('-simplifycfg')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-
-    LLVM_OPT_OPTS.append('-tailcallelim')
-    LLVM_OPT_OPTS.append('-simplifycfg')
-    LLVM_OPT_OPTS.append('-reassociate')
-    LLVM_OPT_OPTS.append('-loop-rotate')
-    LLVM_OPT_OPTS.append('-licm')
-    LLVM_OPT_OPTS.append('-loop-unswitch') # XXX should depend on optimize_size
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    LLVM_OPT_OPTS.append('-indvars')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-loop-idiom') # ?
-    LLVM_OPT_OPTS.append('-loop-deletion')
-    LLVM_OPT_OPTS.append('-loop-unroll')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    if optimization_level > 1:
-      if allow_nonportable: LLVM_OPT_OPTS.append('-gvn') # XXX Danger: Messes up Lua output for unknown reasons
-                                                         #             Note: this opt is of minor importance for raytrace...
-    LLVM_OPT_OPTS.append('-memcpyopt') # Danger?
-    LLVM_OPT_OPTS.append('-sccp')
-
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    LLVM_OPT_OPTS.append('-jump-threading')
-    LLVM_OPT_OPTS.append('-correlated-propagation')
-    LLVM_OPT_OPTS.append('-dse')
-    LLVM_OPT_OPTS.append('-adce')
-    LLVM_OPT_OPTS.append('-simplifycfg')
-
-    LLVM_OPT_OPTS.append('-strip-dead-prototypes')
-    LLVM_OPT_OPTS.append('-deadtypeelim')
-
-    if optimization_level > 2:
-      LLVM_OPT_OPTS.append('-globaldce')
-  
-    if optimization_level > 1:
-      LLVM_OPT_OPTS.append('-constmerge')
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, optimize_size, allow_nonportable)
 
   # Emscripten optimizations that we run on the .ll file
   def do_ll_opts(self, filename):

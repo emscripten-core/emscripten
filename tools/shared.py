@@ -46,9 +46,7 @@ def to_cc(cxx):
   return cxx.replace('clang++', 'clang').replace('g++', 'gcc')
 
 def line_splitter(data):
-  '''
-  Silly little tool to split JSON arrays over many lines.
-  '''
+  """Silly little tool to split JSON arrays over many lines."""
 
   out = ''
   counter = 0
@@ -66,3 +64,73 @@ def line_splitter(data):
 def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
   return string[0:MAX] + '...'
+
+def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False):
+  opts = []
+  if optimization_level > 0:
+    if allow_nonportable:
+      opts.append('-O%d' % optimization_level)
+    else:
+      # createStandardAliasAnalysisPasses
+      #opts.append('-tbaa')
+      #opts.append('-basicaa') # makes fannkuch slow but primes fast
+
+      opts.append('-globalopt')
+      opts.append('-ipsccp')
+      opts.append('-deadargelim')
+      if allow_nonportable: opts.append('-instcombine')
+      opts.append('-simplifycfg')
+
+      opts.append('-prune-eh')
+      opts.append('-inline')
+      opts.append('-functionattrs')
+      if optimization_level > 2:
+        opts.append('-argpromotion')
+
+      # XXX Danger: Can turn a memcpy into something that violates the
+      #             load-store consistency hypothesis. See hashnum() in Lua.
+      #             Note: this opt is of great importance for raytrace...
+      if allow_nonportable: opts.append('-scalarrepl')
+
+      if allow_nonportable: opts.append('-early-cse') # ?
+      opts.append('-simplify-libcalls')
+      opts.append('-jump-threading')
+      if allow_nonportable: opts.append('-correlated-propagation') # ?
+      opts.append('-simplifycfg')
+      if allow_nonportable: opts.append('-instcombine')
+
+      opts.append('-tailcallelim')
+      opts.append('-simplifycfg')
+      opts.append('-reassociate')
+      opts.append('-loop-rotate')
+      opts.append('-licm')
+      opts.append('-loop-unswitch') # XXX should depend on optimize_size
+      if allow_nonportable: opts.append('-instcombine')
+      opts.append('-indvars')
+      if allow_nonportable: opts.append('-loop-idiom') # ?
+      opts.append('-loop-deletion')
+      opts.append('-loop-unroll')
+      if allow_nonportable: opts.append('-instcombine')
+
+      # XXX Danger: Messes up Lua output for unknown reasons
+      #             Note: this opt is of minor importance for raytrace...
+      if optimization_level > 1 and allow_nonportable: opts.append('-gvn')
+
+      opts.append('-memcpyopt') # Danger?
+      opts.append('-sccp')
+
+      if allow_nonportable: opts.append('-instcombine')
+      opts.append('-jump-threading')
+      opts.append('-correlated-propagation')
+      opts.append('-dse')
+      opts.append('-adce')
+      opts.append('-simplifycfg')
+
+      opts.append('-strip-dead-prototypes')
+      opts.append('-deadtypeelim')
+
+      if optimization_level > 2: opts.append('-globaldce')
+
+      if optimization_level > 1: opts.append('-constmerge')
+
+  return opts
