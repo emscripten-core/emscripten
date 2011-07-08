@@ -9,7 +9,12 @@ import tempfile
 import tools.shared as shared
 
 
+# Temporary files that should be deleted once teh program is finished.
 TEMP_FILES_TO_CLEAN = []
+# The data layout used by llvm-gcc (as opposed to clang).
+GCC_DATA_LAYOUT = ('target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16'
+                   '-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64'
+                   '-v128:128:128-a0:0:64-f80:32:32-f128:128:128-n8:16:32"')
 
 
 def path_from_root(*target):
@@ -98,21 +103,48 @@ def link(*objects):
   return out.name
 
 
-def compile_malloc():
-  """Compiles dlmalloc to LLVM bitcode and returns the path to the .bc file."""
+def compile_malloc(compiler):
+  """Compiles dlmalloc to LLVM bitcode.
+
+  Args:
+    compiler: The compiler command to use, a path to either clang or llvm-gcc.
+
+  Returns:
+    The path to the compiled dlmalloc as an LLVM bitcode (.bc) file.
+  """
   src = path_from_root('src', 'dlmalloc.c')
   out = get_temp_file('.bc')
-  clang = shared.to_cc(shared.CLANG)
-  include_dir = '-I' + path_from_root('src', 'include')
-  command = [clang, '-c', '-g', '-emit-llvm', '-m32', '-o-', include_dir, src]
+  includes = '-I' + path_from_root('src', 'include')
+  command = [compiler, '-c', '-g', '-emit-llvm', '-m32', '-o-', includes, src]
   ret = subprocess.call(command, stdout=out)
   out.close()
   if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
 
 
+def determine_compiler(filepath):
+  """Determines whether a given file uses llvm-gcc or clang data layout.
+
+  Args:
+    filepath: The .bc or .ll file containing the bitcode/assembly to test.
+
+  Returns:
+    The path to the compiler, either llvm-gcc or clang.
+  """
+  assembly = open(disassemble(filepath)).read()
+  is_gcc = GCC_DATA_LAYOUT in assembly
+  return shared.to_cc(shared.LLVM_GCC if is_gcc else shared.CLANG)
+
+
 def has_annotations(filepath):
-  """Tests whether an assembly file contains annotations."""
+  """Tests whether an assembly file contains annotations.
+
+  Args:
+    filepath: The .ll file containing the assembly to check.
+
+  Returns:
+    Whether the provided file is valid assembly and has annotations.
+  """
   return filepath.endswith('.ll') and '[#uses=' in open(filepath).read()
 
 
@@ -139,7 +171,9 @@ def main(args):
   # Construct a final linked and disassembled file.
   if args.dlmalloc or args.optimize or not has_annotations(args.infile):
     args.infile = assemble(args.infile)
-    if args.dlmalloc: args.infile = link(args.infile, compile_malloc())
+    if args.dlmalloc:
+      malloc = compile_malloc(determine_compiler(args.infile))
+      args.infile = link(args.infile, malloc)
     if args.optimize: args.infile = optimize(args.infile)
   args.infile = disassemble(args.infile)
 
@@ -151,10 +185,10 @@ def main(args):
 
   # Adjust sign correction for dlmalloc.
   if args.dlmalloc:
-    CORRECT_SIGNS = int(settings.get('CORRECT_SIGNS', 0))
+    CORRECT_SIGNS = settings.get('CORRECT_SIGNS', 0)
     if CORRECT_SIGNS in (0, 2):
       path = path_from_root('src', 'dlmalloc.c')
-      old_lines = json.loads(settings.get('CORRECT_SIGNS_LINES', '[]'))
+      old_lines = settings.get('CORRECT_SIGNS_LINES', [])
       line_nums = [4816, 4191, 4246, 4199, 4205, 4235, 4227]
       lines = old_lines + [path + ':' + str(i) for i in line_nums]
       settings['CORRECT_SIGNS'] = 2
