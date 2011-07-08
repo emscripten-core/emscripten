@@ -482,7 +482,7 @@ function __shutdownRuntime__() {
     if (typeof func === 'number') {
       func = FUNCTION_TABLE[func];
     }
-    func(atexit.arg);
+    func(atexit.arg || null);
   }
 
   // allow browser to GC, set heaps to null?

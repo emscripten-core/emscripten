@@ -681,7 +681,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             + makeFunctionCall(item.ident, item.params, item.funcData) + ' '
             + '} catch(e) { '
             + 'if (ABORT) throw e; __THREW__ = true; '
-            + (EXCEPTION_DEBUG ? 'print("Exception: " + e + " : " + e.stack + ", currently at: " + (new Error().stack)); ' : '')
+            + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
             + 'return null } })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
