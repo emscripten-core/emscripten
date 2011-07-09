@@ -1701,7 +1701,7 @@ var Library = {
 
   clock: function() {
     if (_clock.start === undefined) _clock.start = new Date();
-    return (_clock.start.getTime() - Date.now())*1000;
+    return (Date.now() - _clock.start.getTime()) * 1000;
   },
 
   time: function(ptr) {

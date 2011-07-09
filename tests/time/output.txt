@@ -33,5 +33,6 @@ asctime: Wed Dec 25 03:22:43 2002
 old asctime: Wed Dec 25 03:22:43 2002
 new asctime_r: Sat Jul  2 19:33:20 2011
 old asctime again: Wed Dec 25 03:22:43 2002
-clock: 0
+clock(start): 1
+clock(end): 1
 ctime: 0

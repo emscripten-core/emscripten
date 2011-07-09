@@ -91,10 +91,14 @@ int main() {
   asctime_r(tm_ptr, buffer);
   printf("old asctime again: %s", formatted);
 
-  // Verify that clock() is initially 0 and doesn't crash.
-  printf("clock: %d\n", clock());
+  // Verify that clock() advances.
+  time_t start_t = time(NULL);
+  clock_t start = clock();
+  printf("clock(start): %d\n", start >= 0);
+  while (clock() - start < 2 * CLOCKS_PER_SEC); // Poor man's sleep().
+  printf("clock(end): %d\n", time(NULL) - start_t == 2);
 
-  // Verify that ctime_r(x, buf) is equivalent to asctime_r(localtime(x), buf2).
+  // Verify that ctime_r(x, buf) is equivalent to asctime_r(localtime(x), buf).
   time_t t7 = time(0);
   char buffer2[30];
   char buffer3[30];

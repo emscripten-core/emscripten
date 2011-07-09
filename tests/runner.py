@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json
 
 # Setup
 
@@ -19,7 +19,7 @@ exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 try:
   assert COMPILER_OPTS != None
 except:
-  raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template at ~/tests/settings.py into it.')
+  raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template from settings.py into it.')
 
 # Paths
 
@@ -62,73 +62,7 @@ class RunnerCore(unittest.TestCase):
   # Similar to LLVM::createStandardModulePasses()
   def pick_llvm_opts(self, optimization_level, optimize_size, allow_nonportable=False):
     global LLVM_OPT_OPTS
-    LLVM_OPT_OPTS = []
-
-    if optimization_level == 0: return
-
-    if allow_nonportable:
-      LLVM_OPT_OPTS.append('-O3')
-      return
-
-    # createStandardAliasAnalysisPasses
-    #LLVM_OPT_OPTS.append('-tbaa')
-    #LLVM_OPT_OPTS.append('-basicaa') # makes fannkuch slow but primes fast
-
-    LLVM_OPT_OPTS.append('-globalopt')
-    LLVM_OPT_OPTS.append('-ipsccp')
-    LLVM_OPT_OPTS.append('-deadargelim')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    LLVM_OPT_OPTS.append('-simplifycfg')
-
-    LLVM_OPT_OPTS.append('-prune-eh')
-    LLVM_OPT_OPTS.append('-inline')
-    LLVM_OPT_OPTS.append('-functionattrs')
-    if optimization_level > 2:
-      LLVM_OPT_OPTS.append('-argpromotion')
-
-    if allow_nonportable: LLVM_OPT_OPTS.append('-scalarrepl') # XXX Danger: Can turn a memcpy into something that violates the load-store
-    #                                                         #             consistency hypothesis. See hashnum() in lua.
-    #                                                         #             Note: this opt is of great importance for raytrace...
-    if allow_nonportable: LLVM_OPT_OPTS.append('-early-cse') # ?
-    LLVM_OPT_OPTS.append('-simplify-libcalls')
-    LLVM_OPT_OPTS.append('-jump-threading')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-correlated-propagation') # ?
-    LLVM_OPT_OPTS.append('-simplifycfg')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-
-    LLVM_OPT_OPTS.append('-tailcallelim')
-    LLVM_OPT_OPTS.append('-simplifycfg')
-    LLVM_OPT_OPTS.append('-reassociate')
-    LLVM_OPT_OPTS.append('-loop-rotate')
-    LLVM_OPT_OPTS.append('-licm')
-    LLVM_OPT_OPTS.append('-loop-unswitch') # XXX should depend on optimize_size
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    LLVM_OPT_OPTS.append('-indvars')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-loop-idiom') # ?
-    LLVM_OPT_OPTS.append('-loop-deletion')
-    LLVM_OPT_OPTS.append('-loop-unroll')
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    if optimization_level > 1:
-      if allow_nonportable: LLVM_OPT_OPTS.append('-gvn') # XXX Danger: Messes up Lua output for unknown reasons
-                                                         #             Note: this opt is of minor importance for raytrace...
-    LLVM_OPT_OPTS.append('-memcpyopt') # Danger?
-    LLVM_OPT_OPTS.append('-sccp')
-
-    if allow_nonportable: LLVM_OPT_OPTS.append('-instcombine')
-    LLVM_OPT_OPTS.append('-jump-threading')
-    LLVM_OPT_OPTS.append('-correlated-propagation')
-    LLVM_OPT_OPTS.append('-dse')
-    LLVM_OPT_OPTS.append('-adce')
-    LLVM_OPT_OPTS.append('-simplifycfg')
-
-    LLVM_OPT_OPTS.append('-strip-dead-prototypes')
-    LLVM_OPT_OPTS.append('-deadtypeelim')
-
-    if optimization_level > 2:
-      LLVM_OPT_OPTS.append('-globaldce')
-  
-    if optimization_level > 1:
-      LLVM_OPT_OPTS.append('-constmerge')
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, optimize_size, allow_nonportable)
 
   # Emscripten optimizations that we run on the .ll file
   def do_ll_opts(self, filename):
@@ -186,7 +120,7 @@ class RunnerCore(unittest.TestCase):
       self.do_llvm_dis(filename)
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[]):
     # Copy over necessary files for compiling the source
     if main_file is None:
       f = open(filename, 'w')
@@ -235,9 +169,9 @@ class RunnerCore(unittest.TestCase):
     # Finalize
     self.prep_ll_test(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
-    self.do_emscripten(filename, output_processor)
+    self.do_emscripten(filename, output_processor, extra_args=extra_emscripten_args)
 
-  def do_emscripten(self, filename, output_processor=None):
+  def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
     # Run Emscripten
     exported_settings = {}
     for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY']:
@@ -246,7 +180,8 @@ class RunnerCore(unittest.TestCase):
         exported_settings[setting] = value
       except:
         pass
-    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + '.o.ll', str(exported_settings).replace("'", '"'), filename + '.o.js'], stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    settings = ['%s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
+    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js', '-s'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
@@ -299,7 +234,7 @@ if 'benchmark' not in sys.argv:
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output=None, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None):
+    def do_test(self, src, expected_output=None, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
         #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         if force_c or (main_file is not None and main_file[-2:]) == '.c':
           basename = 'src.c'
@@ -310,7 +245,7 @@ if 'benchmark' not in sys.argv:
         filename = os.path.join(dirname, basename)
         if not no_build:
           self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                     build_ll_hook=build_ll_hook)
+                     build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args)
 
         if post_build is not None:
           post_build(filename + '.o.js')
@@ -2843,6 +2778,30 @@ Child2:9
       except Exception, e:
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
+
+    def test_autoassemble(self):
+      src = r'''
+        #include <stdio.h>
+
+        int main() {
+          puts("test\n");
+          return 0;
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'src.cpp')
+      self.build(src, dirname, filename)
+
+      new_filename = os.path.join(dirname, 'new.bc')
+      shutil.copy(filename + '.o', new_filename)
+      self.do_emscripten(new_filename, append_ext=False)
+
+      shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
+      self.do_test(None, 'test\n', basename='new.cpp', no_build=True)
+
+    def test_dlmalloc_linked(self):
+      src = open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
+      self.do_test(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
 
     def test_linespecific(self):
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
