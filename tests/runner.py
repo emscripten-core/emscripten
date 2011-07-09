@@ -2673,15 +2673,25 @@ if 'benchmark' not in sys.argv:
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
 
-    def test_unannotated(self):
-      self.do_ll_test(path_from_root('tests', 'unannotated.ll'), 'test\n')
-
     def test_autoassemble(self):
-      filename = os.path.join(self.get_dir(), 'src.bc')
-      shutil.copy(path_from_root('tests', 'autoassemble.bc'), filename)
-      self.do_emscripten(filename, append_ext=False)
-      shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'src.cpp.o.js'))
-      self.do_test(None, 'test\n', no_build=True)
+      src = r'''
+        #include <stdio.h>
+
+        int main() {
+          puts("test\n");
+          return 0;
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'src.cpp')
+      self.build(src, dirname, filename)
+
+      new_filename = os.path.join(dirname, 'new.bc')
+      shutil.copy(filename + '.o', new_filename)
+      self.do_emscripten(new_filename, append_ext=False)
+
+      shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
+      self.do_test(None, 'test\n', basename='new.cpp', no_build=True)
 
     def test_dlmalloc_linked(self):
       src = open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
