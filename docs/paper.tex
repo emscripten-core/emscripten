@@ -499,9 +499,24 @@ more challenging. For example, if we want to convert
 exact same behavior, in particular, we must handle overflows properly, which would not be the case if we just implement
 this as $\%1 + \%2$ in JavaScript. For example, with inputs of $255$ and $1$, the
 correct output is 0, but simple addition in JavaScript will give us 256. We
-can emulate the proper behavior by adding additional code, one way
-(not necessarily the most optimal) would be to check for overflows after
-each addition, and correct them as necessary. This however significantly degrades performance.
+can of course emulate the proper behavior by adding additional code.
+This however significantly degrades performance,
+because modern JavaScript engines can often translate something like $z = x + y$ into
+native code containing a single instruction (or very close to that), but if instead we had
+something like $z = (x + y)\&255$ (in order to correct overflows), the JavaScript engine
+would need to generate additional code to perform the AND operation.\footnote{
+In theory, the JavaScript engine could determine that we are implicitly working
+on 8-bit values here, and generate machine code that no longer needs the AND operation.
+However, most or all modern JavaScript engines have just two internal numeric types, doubles and
+32-bit integers. This is so because they are tuned for `normal' JavaScript code
+on the web, which in most cases is served well by just those two types.
+
+In addition, even if JavaScript engines did analyze code containing $\&255$, etc.,
+in order to deduce that a variable can be implemented
+as an 8-bit integer, there is a cost to including all the necessary $\&255$ text
+in the script, because code size is a significant factor on the web. Adding even
+a few characters for every single mathematic operation, in a large JavaScript file,
+could add up to a significant increase in download size.}
 
 Emscripten's approach to this problem is to allow the generation of both accurate code,
 that is identical in behavior to LLVM assembly, and inaccurate code which is
