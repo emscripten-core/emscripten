@@ -4,7 +4,7 @@
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
 
 Usage:
-        bindings_generator.py BASENAME HEADER1 HEADER2 ...
+        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- "LAMBDA"]
 
   BASENAME is the name used for output files (with added suffixes).
   HEADER1 etc. are the C++ headers to parse
@@ -18,6 +18,9 @@ We generate the following:
 
   * BASENAME.js: JavaScript bindings file, with generated JavaScript wrapper
                  objects. This is a high-level wrapping, using native JS classes.
+
+  * LAMBDA: Optionally, provide the text of a lambda function here that will be
+            used to process the header files. This lets you manually tweak them.
 
 The C bindings file is basically a tiny C wrapper around the C++ code.
 It's only purpose is to make it easy to access the C++ code in the JS
@@ -41,21 +44,29 @@ import CppHeaderParser
 
 basename = sys.argv[1]
 
+processor = lambda line: line
+if '--' in sys.argv:
+  index = sys.argv.index('--')
+  processor = eval(sys.argv[index+1])
+  sys.argv = sys.argv[:index]
+
 # First pass - read everything
 
 classes = {}
 
+all_h_name = basename + '.all.h'
+all_h = open(all_h_name, 'w')
+
 for header in sys.argv[2:]:
-  #[('tests', 'bullet', 'src', 'BulletCollision/CollisionDispatch/btCollisionWorld.h')]:
-  parsed = CppHeaderParser.CppHeader(header)
-  #header = CppHeaderParser.CppHeader(path_from_root('tests', 'bullet', 'src', 'btBulletDynamicsCommon.h'))
-  #print header.classes.keys()
-  #print dir(header.classes['btCollisionShape'])
-  #print header.classes['btCollisionWorld']['methods']['public']
-  for cname, clazz in parsed.classes.iteritems():
-    if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
-      print 'Seen', cname
-      classes[cname] = clazz
+  all_h.write('//// ' + header + '\n')
+  all_h.write(processor(open(header, 'r').read()))
+
+all_h.close()
+
+parsed = CppHeaderParser.CppHeader(all_h_name)
+for cname, clazz in parsed.classes.iteritems():
+  if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
+    classes[cname] = clazz
 
 # Second pass - generate bindings
 # TODO: Bind virtual functions using dynamic binding in the C binding code
