@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
 

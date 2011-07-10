@@ -29,7 +29,6 @@ NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 DFE = path_from_root('tools', 'dead_function_eliminator.py')
-BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 
 # Global cache for tests (we have multiple TestCase instances; this object lets them share data)
 
@@ -2577,7 +2576,7 @@ if 'benchmark' not in sys.argv:
         open(header_filename, 'w').write(header)
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
-        output = Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
         src = '''
