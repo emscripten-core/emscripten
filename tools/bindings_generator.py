@@ -29,7 +29,7 @@ JS bindings do more serious work, creating class structures in JS and
 linking them to the C bindings.
 '''
 
-import os, sys, glob
+import os, sys, glob, re
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -65,7 +65,9 @@ all_h.close()
 
 parsed = CppHeaderParser.CppHeader(all_h_name)
 for cname, clazz in parsed.classes.iteritems():
+  #print 'zz see', cname
   if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
+    #print 'zz for real', cname
     classes[cname] = clazz
 
 # Second pass - generate bindings
