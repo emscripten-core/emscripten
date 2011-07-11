@@ -84,6 +84,9 @@ def generate_class(generating_cname, cname, clazz):
   inherited = generating_cname != cname
 
   for method in clazz['methods']['public']:
+    if method['pure_virtual']: return # Nothing to generate for pure virtual classes
+
+  for method in clazz['methods']['public']:
     print '   ', method['name'], method
 
     mname = method['name']
@@ -91,10 +94,22 @@ def generate_class(generating_cname, cname, clazz):
     constructor = mname == cname
 
     if constructor and inherited: continue
+    if method['pure_virtual']: continue
+
+    skip = False
+    for i in range(len(args)):
+      if args[i]['name'] == '':
+        args[i]['name'] = 'arg' + str(i+1)
+      if '>' in args[i]['name']:
+        print 'WARNING: odd ">" in %s, skipping' % cname
+        skip = True
+        break
+    if skip:
+      continue
 
     # C
 
-    ret = (cname + ' *') if constructor else method['rtnType']
+    ret = ((cname + ' *') if constructor else method['rtnType']).replace('virtual ', '')
     callprefix = 'new ' if constructor else 'self->'
     typedargs = ', '.join( ([] if constructor else [cname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args) )
     justargs = ', '.join(map(lambda arg: arg['name'], args))
@@ -113,11 +128,27 @@ def generate_class(generating_cname, cname, clazz):
       if constructor:
         generating_cname_suffixed += suffix
 
+    actualmname = ''
+    if mname == '__operator___assignment_':
+      callprefix = '*self = '
+      continue # TODO
+    elif mname == '__operator____imult__':
+      callprefix = '*self * '
+      continue # TODO
+    elif mname == '__operator____iadd__':
+      callprefix = '*self + '
+      continue # TODO
+    elif mname == '__operator____isub__':
+      callprefix = '*self - '
+      continue # TODO
+    else:
+      actualmname = mname
+
     gen_c.write('''
 %s %s(%s) {
-  return %s%s(%s);
+  %s%s%s(%s);
 }
-''' % (ret, fullname, typedargs, callprefix, mname, justargs))
+''' % (ret, fullname, typedargs, 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, justargs))
 
     # JS
 
