@@ -87,12 +87,12 @@ def generate_class(generating_cname, cname, clazz):
     if method['pure_virtual']: return # Nothing to generate for pure virtual classes
 
   for method in clazz['methods']['public']:
-    print '   ', method['name'], method
-
     mname = method['name']
     args = method['parameters']
     constructor = mname == cname
+    destructor = method['destructor']
 
+    if destructor: continue
     if constructor and inherited: continue
     if method['pure_virtual']: continue
 
@@ -180,6 +180,8 @@ for cname, clazz in classes.iteritems():
   # In addition, generate all methods of parent classes. We do not inherit in JS (how would we do multiple inheritance etc.?)
   for parent in clazz['inherits']:
     generate_class(cname, parent['class'], classes[parent['class']])
+
+  # TODO: Add a destructor
 
 # Finish up
 
