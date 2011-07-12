@@ -388,6 +388,14 @@ function Pointer_stringify(ptr) {
   return ret;
 }
 
+function Array_stringify(array) {
+  var ret = "";
+  for (var i = 0; i < array.length; i++) {
+    ret += String.fromCharCode(array[i]);
+  }
+  return ret;
+}
+
 // Memory management
 
 var PAGE_SIZE = 4096;
