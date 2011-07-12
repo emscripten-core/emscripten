@@ -184,6 +184,7 @@ class RunnerCore(unittest.TestCase):
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
+    assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js: ' + str(compiler_output)
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
