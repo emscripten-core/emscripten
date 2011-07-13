@@ -538,14 +538,14 @@ if 'benchmark' not in sys.argv:
           int main()
           {
             printf("*%.2f,%.2f,%f,%f", M_PI, -M_PI, 1/0.0, -1/0.0);
-            printf(",%d", finite(NAN));
-            printf(",%d", finite(INFINITY));
-            printf(",%d", finite(-INFINITY));
-            printf(",%d", finite(12.3));
-            printf(",%d", isinf(NAN));
-            printf(",%d", isinf(INFINITY));
-            printf(",%d", isinf(-INFINITY));
-            printf(",%d", isinf(12.3));
+            printf(",%d", finite(NAN) != 0);
+            printf(",%d", finite(INFINITY) != 0);
+            printf(",%d", finite(-INFINITY) != 0);
+            printf(",%d", finite(12.3) != 0);
+            printf(",%d", isinf(NAN) != 0);
+            printf(",%d", isinf(INFINITY) != 0);
+            printf(",%d", isinf(-INFINITY) != 0);
+            printf(",%d", isinf(12.3) != 0);
             printf("*\\n");
             return 0;
           }
