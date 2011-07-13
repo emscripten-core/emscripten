@@ -179,8 +179,8 @@ class RunnerCore(unittest.TestCase):
         exported_settings[setting] = value
       except:
         pass
-    settings = ['%s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
-    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js', '-s'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
+    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
