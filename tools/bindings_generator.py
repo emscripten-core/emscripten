@@ -53,6 +53,7 @@ if '--' in sys.argv:
 # First pass - read everything
 
 classes = {}
+struct_parents = {}
 
 all_h_name = basename + '.all.h'
 all_h = open(all_h_name, 'w')
@@ -67,8 +68,11 @@ parsed = CppHeaderParser.CppHeader(all_h_name)
 for cname, clazz in parsed.classes.iteritems():
   #print 'zz see', cname
   if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
-    #print 'zz for real', cname
+    #print 'zz for real', cname, clazz._public_structs
     classes[cname] = clazz
+    for sname, struct in clazz._public_structs.iteritems():
+      struct_parents[sname] = cname
+      #print 'zz seen struct %s in %s' % (sname, cname)
 
 # Second pass - generate bindings
 # TODO: Bind virtual functions using dynamic binding in the C binding code
@@ -98,12 +102,27 @@ def generate_class(generating_cname, cname, clazz):
 
     skip = False
     for i in range(len(args)):
-      if args[i]['name'] == '':
+      #print 'zz   arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type'], 'x'
+      if args[i]['name'].replace(' ', '') == '':
         args[i]['name'] = 'arg' + str(i+1)
+      elif args[i]['name'] == '&':
+        args[i]['name'] = 'arg' + str(i+1)
+        args[i]['type'] += '&'
+
       if '>' in args[i]['name']:
         print 'WARNING: odd ">" in %s, skipping' % cname
         skip = True
         break
+      #print 'c1', struct_parents.keys()
+      if args[i]['type'][-1] == '&':
+        sname = args[i]['type'][:-1]
+        if sname[-1] == ' ': sname = sname[:-1]
+        if sname in struct_parents:
+          args[i]['type'] = struct_parents[sname] + '::' + sname + '&'
+        elif sname.replace('const ', '') in struct_parents:
+          sname = sname.replace('const ', '')
+          args[i]['type'] = 'const ' + struct_parents[sname] + '::' + sname + '&'
+      #print 'POST arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type']
     if skip:
       continue
 
