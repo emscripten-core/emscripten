@@ -76,6 +76,19 @@ int main()
 
   fclose(other);
 
+  // fscanf
+
+  outf = fopen("fscan.f", "w");
+  fprintf(outf, "10 hello");
+  fclose(outf);
+
+  int number;
+  char text[100];
+  inf = fopen("fscan.f", "r");
+  num = fscanf(inf, "%d %s", &number, text);
+  fclose(inf);
+  printf("fscanfed: %d - %s\n", number, text);
+
   return 0;
 }
 

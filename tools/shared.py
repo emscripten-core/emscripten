@@ -1,6 +1,10 @@
 import shutil, time, os
 from subprocess import Popen, PIPE, STDOUT
 
+abspath = os.path.abspath(os.path.dirname(__file__))
+def path_from_root(*pathelems):
+  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+
 CONFIG_FILE = os.path.expanduser('~/.emscripten')
 if not os.path.exists(CONFIG_FILE):
   shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
@@ -16,6 +20,8 @@ LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to do just    []
 LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
+
+BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 
 # Engine tweaks
 

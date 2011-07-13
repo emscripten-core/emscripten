@@ -499,9 +499,24 @@ more challenging. For example, if we want to convert
 exact same behavior, in particular, we must handle overflows properly, which would not be the case if we just implement
 this as $\%1 + \%2$ in JavaScript. For example, with inputs of $255$ and $1$, the
 correct output is 0, but simple addition in JavaScript will give us 256. We
-can emulate the proper behavior by adding additional code, one way
-(not necessarily the most optimal) would be to check for overflows after
-each addition, and correct them as necessary. This however significantly degrades performance.
+can of course emulate the proper behavior by adding additional code.
+This however significantly degrades performance,
+because modern JavaScript engines can often translate something like $z = x + y$ into
+native code containing a single instruction (or very close to that), but if instead we had
+something like $z = (x + y)\&255$ (in order to correct overflows), the JavaScript engine
+would need to generate additional code to perform the AND operation.\footnote{
+In theory, the JavaScript engine could determine that we are implicitly working
+on 8-bit values here, and generate machine code that no longer needs the AND operation.
+However, most or all modern JavaScript engines have just two internal numeric types, doubles and
+32-bit integers. This is so because they are tuned for `normal' JavaScript code
+on the web, which in most cases is served well by just those two types.
+
+In addition, even if JavaScript engines did analyze code containing $\&255$, etc.,
+in order to deduce that a variable can be implemented
+as an 8-bit integer, there is a cost to including all the necessary $\&255$ text
+in the script, because code size is a significant factor on the web. Adding even
+a few characters for every single mathematic operation, in a large JavaScript file,
+could add up to a significant increase in download size.}
 
 Emscripten's approach to this problem is to allow the generation of both accurate code,
 that is identical in behavior to LLVM assembly, and inaccurate code which is
@@ -682,6 +697,51 @@ anywhere the web can be accessed. Further work on Emscripten is expected to
 improve the speed as well, as are improvements to LLVM, the Closure
 Compiler, and JavaScript engines themselves; see further discussion
 in the Summary.
+
+\subsection{Limitations}
+
+Emscripten's compilation approach, as has been described in this Section so far,
+is to generate `natural' JavaScript, as close as possible to normal JavaScript
+on the web, so that modern JavaScript engines perform well on it. In particular,
+we try to generate `normal' JavaScript operations, like regular addition and
+multiplication and so forth. This is a very
+different approach than, say, emulating a CPU on a low level, or for the case
+of LLVM, writing an LLVM bitcode interpreter in JavaScript. The latter approach
+has the benefit of being able to run virtually any compiled code, at the cost
+of speed, whereas Emscripten makes a tradeoff in the other direction. We will
+now give a summary of some of the limitations of Emscripten's approach.
+
+\begin{itemize}
+\item \textbf{64-bit Integers}: JavaScript numbers are all 64-bit doubles, with engines
+      typically implementing them as 32-bit integers where possible for speed.
+      A consequence of this is that it is impossible to directly implement
+      64-bit integers in JavaScript, as integer values larger than 32 bits will become doubles,
+      with only 53 bits for the significand. Thus, when Emscripten uses normal
+      JavaScript addition and so forth for 64-bit integers, it runs the risk of
+      rounding effects. This could be solved by emulating 64-bit integers,
+      but it would be much slower than native code.
+\item \textbf{Multithreading}: JavaScript has Web Workers, which are additional
+      threads (or processes) that communicate via message passing. There is no
+      shared state in this model, which means that it is not directly possible
+      to compile multithreaded code in C++ into JavaScript. A partial solution
+      could be to emulate threads, without Workers, by manually controlling
+      which blocks of code run (a variation on the switch in a loop construction
+      mentioned earlier) and manually switching between threads every so often.
+      However, in that case there would not be any utilization
+      of additional CPU cores, and furthermore performance would be slow due to not
+      using normal JavaScript loops.
+\end{itemize}
+
+After seeing these limitations, it is worth noting that some advanced LLVM instructions turn out to be
+surprisingly easy to implement. For example, C++ exceptions are represented in
+LLVM by \emph{invoke} and \emph{unwind}, where \emph{invoke} is a call to a function that will
+potentially trigger an \emph{unwind}, and \emph{unwind} returns to the earliest invoke.
+If one were to implement those
+in a typical compiler, doing so would require careful work. In Emscripen, however,
+it is possible to do so using JavaScript exceptions in a straightforward manner:
+\emph{invoke} becomes a function call wrapped in a \emph{try} block, and \emph{unwind}
+becomes \emph{throw}. This is a case where compiling to a high-level language turns
+out to be quite convenient.
 
 \section{Emscripten's Architecture}
 \label{sec:emarch}
@@ -997,12 +1057,7 @@ things, compile real-world C and C++ code and run that on the web. In
 addition, by compiling the runtimes of languages which are implemented in C and C++,
 we can run them on the web as well, for example Python and Lua.
 
-Important future tasks for Emscripten are to broaden its
-standard library and to support additional types of code, such as
-multithreaded code (JavaScript Web Workers do not support shared state,
-so this is not possible directly, but it can be emulated in various ways).
-
-But perhaps the largest future goal of Emscripten is to improve the performance of
+Perhaps the largest future goal of Emscripten is to improve the performance of
 the generated code. As we have seen, speeds of around $1/10$th that of
 GCC are possible, which is already good enough for many purposes, but
 can be improved much more. The code Emscripten generates will become faster

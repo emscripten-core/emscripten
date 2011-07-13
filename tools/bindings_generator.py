@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+
 '''
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
 
 Usage:
-        bindings_generator.py BASENAME HEADER1 HEADER2 ...
+        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- "LAMBDA"]
 
   BASENAME is the name used for output files (with added suffixes).
   HEADER1 etc. are the C++ headers to parse
@@ -17,6 +19,9 @@ We generate the following:
   * BASENAME.js: JavaScript bindings file, with generated JavaScript wrapper
                  objects. This is a high-level wrapping, using native JS classes.
 
+  * LAMBDA: Optionally, provide the text of a lambda function here that will be
+            used to process the header files. This lets you manually tweak them.
+
 The C bindings file is basically a tiny C wrapper around the C++ code.
 It's only purpose is to make it easy to access the C++ code in the JS
 bindings, and to prevent DFE from removing the code we care about. The
@@ -24,7 +29,7 @@ JS bindings do more serious work, creating class structures in JS and
 linking them to the C bindings.
 '''
 
-import os, sys, glob
+import os, sys, glob, re
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -39,21 +44,35 @@ import CppHeaderParser
 
 basename = sys.argv[1]
 
+processor = lambda line: line
+if '--' in sys.argv:
+  index = sys.argv.index('--')
+  processor = eval(sys.argv[index+1])
+  sys.argv = sys.argv[:index]
+
 # First pass - read everything
 
 classes = {}
+struct_parents = {}
+
+all_h_name = basename + '.all.h'
+all_h = open(all_h_name, 'w')
 
 for header in sys.argv[2:]:
-  #[('tests', 'bullet', 'src', 'BulletCollision/CollisionDispatch/btCollisionWorld.h')]:
-  parsed = CppHeaderParser.CppHeader(header)
-  #header = CppHeaderParser.CppHeader(path_from_root('tests', 'bullet', 'src', 'btBulletDynamicsCommon.h'))
-  #print header.classes.keys()
-  #print dir(header.classes['btCollisionShape'])
-  #print header.classes['btCollisionWorld']['methods']['public']
-  for cname, clazz in parsed.classes.iteritems():
-    if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
-      print 'Seen', cname
-      classes[cname] = clazz
+  all_h.write('//// ' + header + '\n')
+  all_h.write(processor(open(header, 'r').read()))
+
+all_h.close()
+
+parsed = CppHeaderParser.CppHeader(all_h_name)
+for cname, clazz in parsed.classes.iteritems():
+  #print 'zz see', cname
+  if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
+    #print 'zz for real', cname, clazz._public_structs
+    classes[cname] = clazz
+    for sname, struct in clazz._public_structs.iteritems():
+      struct_parents[sname] = cname
+      #print 'zz seen struct %s in %s' % (sname, cname)
 
 # Second pass - generate bindings
 # TODO: Bind virtual functions using dynamic binding in the C binding code
@@ -69,17 +88,47 @@ def generate_class(generating_cname, cname, clazz):
   inherited = generating_cname != cname
 
   for method in clazz['methods']['public']:
-    print '   ', method['name'], method
+    if method['pure_virtual']: return # Nothing to generate for pure virtual classes
 
+  for method in clazz['methods']['public']:
     mname = method['name']
     args = method['parameters']
     constructor = mname == cname
+    destructor = method['destructor']
 
+    if destructor: continue
     if constructor and inherited: continue
+    if method['pure_virtual']: continue
+
+    skip = False
+    for i in range(len(args)):
+      #print 'zz   arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type'], 'x'
+      if args[i]['name'].replace(' ', '') == '':
+        args[i]['name'] = 'arg' + str(i+1)
+      elif args[i]['name'] == '&':
+        args[i]['name'] = 'arg' + str(i+1)
+        args[i]['type'] += '&'
+
+      if '>' in args[i]['name']:
+        print 'WARNING: odd ">" in %s, skipping' % cname
+        skip = True
+        break
+      #print 'c1', struct_parents.keys()
+      if args[i]['type'][-1] == '&':
+        sname = args[i]['type'][:-1]
+        if sname[-1] == ' ': sname = sname[:-1]
+        if sname in struct_parents:
+          args[i]['type'] = struct_parents[sname] + '::' + sname + '&'
+        elif sname.replace('const ', '') in struct_parents:
+          sname = sname.replace('const ', '')
+          args[i]['type'] = 'const ' + struct_parents[sname] + '::' + sname + '&'
+      #print 'POST arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type']
+    if skip:
+      continue
 
     # C
 
-    ret = (cname + ' *') if constructor else method['rtnType']
+    ret = ((cname + ' *') if constructor else method['rtnType']).replace('virtual ', '')
     callprefix = 'new ' if constructor else 'self->'
     typedargs = ', '.join( ([] if constructor else [cname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args) )
     justargs = ', '.join(map(lambda arg: arg['name'], args))
@@ -98,11 +147,27 @@ def generate_class(generating_cname, cname, clazz):
       if constructor:
         generating_cname_suffixed += suffix
 
+    actualmname = ''
+    if mname == '__operator___assignment_':
+      callprefix = '*self = '
+      continue # TODO
+    elif mname == '__operator____imult__':
+      callprefix = '*self * '
+      continue # TODO
+    elif mname == '__operator____iadd__':
+      callprefix = '*self + '
+      continue # TODO
+    elif mname == '__operator____isub__':
+      callprefix = '*self - '
+      continue # TODO
+    else:
+      actualmname = mname
+
     gen_c.write('''
 %s %s(%s) {
-  return %s%s(%s);
+  %s%s%s(%s);
 }
-''' % (ret, fullname, typedargs, callprefix, mname, justargs))
+''' % (ret, fullname, typedargs, 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, justargs))
 
     # JS
 
@@ -134,6 +199,8 @@ for cname, clazz in classes.iteritems():
   # In addition, generate all methods of parent classes. We do not inherit in JS (how would we do multiple inheritance etc.?)
   for parent in clazz['inherits']:
     generate_class(cname, parent['class'], classes[parent['class']])
+
+  # TODO: Add a destructor
 
 # Finish up
 

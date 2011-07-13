@@ -19,14 +19,14 @@ var Library = {
   // ==========================================================================
 
   _scanString: function() {
-    // Supports %x, %4x, %d.%d
+    // Supports %x, %4x, %d.%d, %s
     var str = Pointer_stringify(arguments[0]);
     var stri = 0;
     var fmt = Pointer_stringify(arguments[1]);
     var fmti = 0;
     var args = Array.prototype.slice.call(arguments, 2);
     var argsi = 0;
-    var read = 0;
+    var fields = 0;
     while (fmti < fmt.length) {
       if (fmt[fmti] === '%') {
         fmti++;
@@ -37,19 +37,35 @@ var Library = {
         var curr = 0;
         while ((curr < max_ || isNaN(max_)) && stri+curr < str.length) {
           if ((type === 'd' && parseInt(str[stri+curr]) >= 0) ||
-              (type === 'x' && parseInt(str[stri+curr].replace(/[a-fA-F]/, 5)) >= 0)) {
+              (type === 'x' && parseInt(str[stri+curr].replace(/[a-fA-F]/, 5)) >= 0) ||
+              (type === 's')) {
             curr++;
           } else {
             break;
           }
         }
-        if (curr === 0) { print("FAIL"); break; }
+        if (curr === 0) return 0; // failure
         var text = str.substr(stri, curr);
         stri += curr;
-        var value = type === 'd' ? parseInt(text) : eval('0x' + text);
-        {{{ makeSetValue('args[argsi]', '0', 'value', 'i32') }}}
+        switch (type) {
+          case 'd': {
+            {{{ makeSetValue('args[argsi]', '0', 'parseInt(text)', 'i32') }}}
+            break;
+          }
+          case 'x': {
+            {{{ makeSetValue('args[argsi]', '0', 'eval("0x" + text)', 'i32') }}}
+            break;
+          }
+          case 's': {
+            var array = intArrayFromString(text);
+            for (var j = 0; j < array.length; j++) {
+              {{{ makeSetValue('args[argsi]', 'j', 'array[j]', 'i8') }}}
+            }
+            break;
+          }
+        }
         argsi++;
-        read++;
+        fields++;
       } else { // not '%'
         if (fmt[fmti] === str[stri]) {
           fmti++;
@@ -59,9 +75,12 @@ var Library = {
         }
       }
     }
-    return read; // XXX Possibly we should return EOF (-1) sometimes
+    return { fields: fields, bytes: stri };
   },
-  sscanf: '_scanString',
+  sscanf__deps: ['_scanString'],
+  sscanf: function() {
+    return __scanString.apply(null, arguments).fields;
+  },
 
   _formatString__deps: ['$STDIO', 'isdigit'],
   _formatString: function() {
@@ -750,6 +769,17 @@ var Library = {
     if (num === 0) return 0;
     {{{ makeSetValue('ptr', 'num', 0, 'i8') }}}
     return ptr;
+  },
+
+  fscanf__deps: ['_scanString'],
+  fscanf: function(stream, format) {
+    var f = STDIO.streams[stream];
+    if (!f)
+      return -1; // EOF
+    arguments[0] = Pointer_make(f.data.slice(f.position).concat(0), 0, ALLOC_STACK, 'i8');
+    var ret = __scanString.apply(null, arguments);
+    f.position += ret.bytes;
+    return ret.fields;
   },
 
   // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html

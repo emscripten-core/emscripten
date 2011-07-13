@@ -9,9 +9,10 @@ import tempfile
 import tools.shared as shared
 
 
-# Temporary files that should be deleted once teh program is finished.
+# Temporary files that should be deleted once the program is finished.
 TEMP_FILES_TO_CLEAN = []
-# The data layout used by llvm-gcc (as opposed to clang).
+# The data layout used by llvm-gcc (as opposed to clang, which doesn't have the
+# f128:128:128 part).
 GCC_DATA_LAYOUT = ('target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16'
                    '-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64'
                    '-v128:128:128-a0:0:64-f80:32:32-f128:128:128-n8:16:32"')
@@ -42,9 +43,8 @@ def assemble(filepath):
     The path to the assembled file.
   """
   if not filepath.endswith('.bc'):
-    out = get_temp_file('.bc')
-    ret = subprocess.call([shared.LLVM_AS, '-o=-', filepath], stdout=out)
-    out.close()
+    command = [shared.LLVM_AS, '-o=-', filepath]
+    with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
     if ret != 0: raise RuntimeError('Could not assemble %s.' % filepath)
     filepath = out.name
   return filepath
@@ -61,10 +61,8 @@ def disassemble(filepath):
     The path to the disassembled file.
   """
   if not filepath.endswith('.ll'):
-    out = get_temp_file('.ll')
     command = [shared.LLVM_DIS, '-o=-', filepath] + shared.LLVM_DIS_OPTS
-    ret = subprocess.call(command, stdout=out)
-    out.close()
+    with get_temp_file('.ll') as out: ret = subprocess.call(command, stdout=out)
     if ret != 0: raise RuntimeError('Could not disassemble %s.' % filepath)
     filepath = out.name
   return filepath
@@ -79,10 +77,8 @@ def optimize(filepath):
   Returns:
     The path to the optimized file.
   """
-  out = get_temp_file('.bc')
-  opts = shared.pick_llvm_opts(3, True)
-  ret = subprocess.call([shared.LLVM_OPT, '-o=-', filepath] + opts, stdout=out)
-  out.close()
+  command = [shared.LLVM_OPT, '-o=-', filepath] + shared.pick_llvm_opts(3, True)
+  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not optimize %s.' % filepath)
   return out.name
 
@@ -96,9 +92,8 @@ def link(*objects):
   Returns:
     The path to the linked file.
   """
-  out = get_temp_file('.bc')
-  ret = subprocess.call([shared.LLVM_LINK] + list(objects), stdout=out)
-  out.close()
+  command = [shared.LLVM_LINK] + list(objects)
+  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not link %s.' % objects)
   return out.name
 
@@ -113,11 +108,9 @@ def compile_malloc(compiler):
     The path to the compiled dlmalloc as an LLVM bitcode (.bc) file.
   """
   src = path_from_root('src', 'dlmalloc.c')
-  out = get_temp_file('.bc')
   includes = '-I' + path_from_root('src', 'include')
   command = [compiler, '-c', '-g', '-emit-llvm', '-m32', '-o-', includes, src]
-  ret = subprocess.call(command, stdout=out)
-  out.close()
+  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
 

@@ -29,7 +29,6 @@ NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 DFE = path_from_root('tools', 'dead_function_eliminator.py')
-BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 
 # Global cache for tests (we have multiple TestCase instances; this object lets them share data)
 
@@ -185,6 +184,7 @@ class RunnerCore(unittest.TestCase):
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
+    assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js: ' + str(compiler_output)
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
@@ -2037,7 +2037,7 @@ if 'benchmark' not in sys.argv:
       other.close()
 
       src = open(path_from_root('tests', 'files.cpp'), 'r').read()
-      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.', post_build=post)
+      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n', post_build=post)
 
     ### 'Big' tests
 
@@ -2582,7 +2582,7 @@ if 'benchmark' not in sys.argv:
         open(header_filename, 'w').write(header)
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
-        output = Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
         src = '''
@@ -2784,15 +2784,25 @@ Child2:9
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
 
-    def test_unannotated(self):
-      self.do_ll_test(path_from_root('tests', 'unannotated.ll'), 'test\n')
-
     def test_autoassemble(self):
-      filename = os.path.join(self.get_dir(), 'src.bc')
-      shutil.copy(path_from_root('tests', 'autoassemble.bc'), filename)
-      self.do_emscripten(filename, append_ext=False)
-      shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'src.cpp.o.js'))
-      self.do_test(None, 'test\n', no_build=True)
+      src = r'''
+        #include <stdio.h>
+
+        int main() {
+          puts("test\n");
+          return 0;
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'src.cpp')
+      self.build(src, dirname, filename)
+
+      new_filename = os.path.join(dirname, 'new.bc')
+      shutil.copy(filename + '.o', new_filename)
+      self.do_emscripten(new_filename, append_ext=False)
+
+      shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
+      self.do_test(None, 'test\n', basename='new.cpp', no_build=True)
 
     def test_dlmalloc_linked(self):
       src = open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
