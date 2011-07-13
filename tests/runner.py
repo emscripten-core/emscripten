@@ -537,11 +537,18 @@ if 'benchmark' not in sys.argv:
           #include <cmath>
           int main()
           {
-            printf("*%.2f,%.2f,%f,%f*\\n", M_PI, -M_PI, 1/0.0, -1/0.0);
+            printf("*%.2f,%.2f,%f,%f", M_PI, -M_PI, 1/0.0, -1/0.0);
+            printf(",%d", finite(NAN));
+            printf(",%d", finite(INFINITY));
+            printf(",%d", finite(12.3));
+            printf(",%d", isinf(NAN));
+            printf(",%d", isinf(INFINITY));
+            printf(",%d", isinf(12.3));
+            printf("*\\n");
             return 0;
           }
         '''
-        self.do_test(src, '*3.14,-3.14,inf,-inf*')
+        self.do_test(src, '*3.14,-3.14,inf,-inf,0,0,1,0,1,0')
 
     def test_math_hyperbolic(self):
         src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()

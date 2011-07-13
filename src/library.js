@@ -1486,17 +1486,20 @@ var Library = {
     return sig;
   },
 
-  __finite: function(x) {
+  finite: function(x) {
     return isFinite(x);
   },
+  __finite: 'finite',
 
-  __isinf: function(x) {
-    return !isFinite(x);
+  isinf: function(x) {
+    return !isNaN(x) && !isFinite(x);
   },
+  __isinf: 'isinf',
 
-  __isnan: function(x) {
+  isnan: function(x) {
     return isNaN(x);
   },
+  __isnan: 'isnan',
 
   copysign: function(a, b) {
       if (a<0 === b<0) return a;
