@@ -1220,6 +1220,30 @@ var Library = {
   // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays
   strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=HEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=HEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=HEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=HEAP[f]=0;else{c=b+-1;a:for(;;){e=HEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=HEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else HEAP[b+-1]=0; HEAP[f]=b;c=c}else if(a==7){HEAP[f]=b;HEAP[b+-1]=0;c=b+-1}}return c},
 
+  strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],
+  strerror_r: function(errnum, strerrbuf, buflen) {
+    if (errnum in ERRNO_MESSAGES) {
+      if (ERRNO_MESSAGES[errnum].length > buflen - 1) {
+        return ___setErrNo(ERRNO_CODES.ERANGE);
+      } else {
+        var msg = ERRNO_MESSAGES[errnum];
+        for (var i = 0; i < msg.length; i++) {
+          {{{ makeSetValue('strerrbuf', 'i', 'msg.charCodeAt(i)', 'i8') }}}
+        }
+        {{{ makeSetValue('strerrbuf', 'i', 0, 'i8') }}}
+        return 0;
+      }
+    } else {
+      return ___setErrNo(ERRNO_CODES.EINVAL);
+    }
+  },
+  strerror__deps: ['strerror_r'],
+  strerror: function(errnum) {
+    if (!_strerror.buffer) _strerror.buffer = _malloc(256);
+    _strerror_r(errnum, _strerror.buffer, 256);
+    return _strerror.buffer;
+  },
+
   // ==========================================================================
   // ctype.h
   // ==========================================================================
@@ -2045,12 +2069,185 @@ var Library = {
   // errno.h
   // ==========================================================================
 
+  $ERRNO_CODES: {
+    E2BIG: 7,
+    EACCES: 13,
+    EADDRINUSE: 98,
+    EADDRNOTAVAIL: 99,
+    EAFNOSUPPORT: 97,
+    EAGAIN: 11,
+    EALREADY: 114,
+    EBADF: 9,
+    EBADMSG: 74,
+    EBUSY: 16,
+    ECANCELED: 125,
+    ECHILD: 10,
+    ECONNABORTED: 103,
+    ECONNREFUSED: 111,
+    ECONNRESET: 104,
+    EDEADLK: 35,
+    EDESTADDRREQ: 89,
+    EDOM: 33,
+    EDQUOT: 122,
+    EEXIST: 17,
+    EFAULT: 14,
+    EFBIG: 27,
+    EHOSTUNREACH: 113,
+    EIDRM: 43,
+    EILSEQ: 84,
+    EINPROGRESS: 115,
+    EINTR: 4,
+    EINVAL: 22,
+    EIO: 5,
+    EISCONN: 106,
+    EISDIR: 21,
+    ELOOP: 40,
+    EMFILE: 24,
+    EMLINK: 31,
+    EMSGSIZE: 90,
+    EMULTIHOP: 72,
+    ENAMETOOLONG: 36,
+    ENETDOWN: 100,
+    ENETRESET: 102,
+    ENETUNREACH: 101,
+    ENFILE: 23,
+    ENOBUFS: 105,
+    ENODATA: 61,
+    ENODEV: 19,
+    ENOENT: 2,
+    ENOEXEC: 8,
+    ENOLCK: 37,
+    ENOLINK: 67,
+    ENOMEM: 12,
+    ENOMSG: 42,
+    ENOPROTOOPT: 92,
+    ENOSPC: 28,
+    ENOSR: 63,
+    ENOSTR: 60,
+    ENOSYS: 38,
+    ENOTCONN: 107,
+    ENOTDIR: 20,
+    ENOTEMPTY: 39,
+    ENOTRECOVERABLE: 131,
+    ENOTSOCK: 88,
+    ENOTSUP: 95,
+    ENOTTY: 25,
+    ENXIO: 6,
+    EOVERFLOW: 75,
+    EOWNERDEAD: 130,
+    EPERM: 1,
+    EPIPE: 32,
+    EPROTO: 71,
+    EPROTONOSUPPORT: 93,
+    EPROTOTYPE: 91,
+    ERANGE: 34,
+    EROFS: 30,
+    ESPIPE: 29,
+    ESRCH: 3,
+    ESTALE: 116,
+    ETIME: 62,
+    ETIMEDOUT: 110,
+    ETXTBSY: 26,
+    EWOULDBLOCK: 11,
+    EXDEV: 18,
+  },
+  $ERRNO_MESSAGES: {
+    2: 'No such file or directory',
+    13: 'Permission denied',
+    98: 'Address already in use',
+    99: 'Cannot assign requested address',
+    97: 'Address family not supported by protocol',
+    11: 'Resource temporarily unavailable',
+    114: 'Operation already in progress',
+    9: 'Bad file descriptor',
+    74: 'Bad message',
+    16: 'Device or resource busy',
+    125: 'Operation canceled',
+    10: 'No child processes',
+    103: 'Software caused connection abort',
+    111: 'Connection refused',
+    104: 'Connection reset by peer',
+    35: 'Resource deadlock avoided',
+    89: 'Destination address required',
+    33: 'Numerical argument out of domain',
+    122: 'Disk quota exceeded',
+    17: 'File exists',
+    14: 'Bad address',
+    27: 'File too large',
+    113: 'No route to host',
+    43: 'Identifier removed',
+    84: 'Invalid or incomplete multibyte or wide character',
+    115: 'Operation now in progress',
+    4: 'Interrupted system call',
+    22: 'Invalid argument',
+    5: 'Input/output error',
+    106: 'Transport endpoint is already connected',
+    21: 'Is a directory',
+    40: 'Too many levels of symbolic links',
+    24: 'Too many open files',
+    31: 'Too many links',
+    90: 'Message too long',
+    72: 'Multihop attempted',
+    36: 'File name too long',
+    100: 'Network is down',
+    102: 'Network dropped connection on reset',
+    101: 'Network is unreachable',
+    23: 'Too many open files in system',
+    105: 'No buffer space available',
+    61: 'No data available',
+    19: 'No such device',
+    2: 'No such file or directory',
+    8: 'Exec format error',
+    37: 'No locks available',
+    67: 'Link has been severed',
+    12: 'Cannot allocate memory',
+    42: 'No message of desired type',
+    92: 'Protocol not available',
+    28: 'No space left on device',
+    63: 'Out of streams resources',
+    60: 'Device not a stream',
+    38: 'Function not implemented',
+    107: 'Transport endpoint is not connected',
+    20: 'Not a directory',
+    39: 'Directory not empty',
+    131: 'State not recoverable',
+    88: 'Socket operation on non-socket',
+    95: 'Operation not supported',
+    25: 'Inappropriate ioctl for device',
+    6: 'No such device or address',
+    75: 'Value too large for defined data type',
+    130: 'Owner died',
+    1: 'Operation not permitted',
+    32: 'Broken pipe',
+    71: 'Protocol error',
+    93: 'Protocol not supported',
+    91: 'Protocol wrong type for socket',
+    34: 'Numerical result out of range',
+    30: 'Read-only file system',
+    29: 'Illegal seek',
+    3: 'No such process',
+    116: 'Stale NFS file handle',
+    62: 'Timer expired',
+    110: 'Connection timed out',
+    26: 'Text file busy',
+    11: 'Resource temporarily unavailable',
+    18: 'Invalid cross-device link'
+  },
+  errno: 0,
+  __setErrNo__deps: ['errno'],
+  __setErrNo: function(value) {
+    // NOTE: This still doesn't fix the case where errno is updated from user
+    // code, but it works for errno being set from our library.
+    var me = ___setErrNo;
+    if (!me.ptr) me.ptr = Pointer_make([0], 0, ALLOC_STATIC, 'i32');
+    {{{ makeSetValue('me.ptr', '0', 'value', 'i32') }}}
+    _errno = value;
+    return value;  // For convenient setting and returning of errno.
+  },
+  __errno_location__deps: ['__setErrNo'],
   __errno_location: function() { 
-    var me = ___errno_location;
-    if (!me.ret) {
-      me.ret = Pointer_make([0], 0, ALLOC_STATIC, 'i32');
-    }
-    return me.ret;
+    if (___setErrNo.ptr === undefined) ___setErrNo(0);
+    return ___setErrNo.ptr;
   },
 
   // ==========================================================================

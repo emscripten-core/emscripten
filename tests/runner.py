@@ -677,6 +677,33 @@ if 'benchmark' not in sys.argv:
         '''
         self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another', ['wowie', 'too', '74'])
 
+    def test_error(self):
+        src = r'''
+          #include <stdio.h>
+          #include <errno.h>
+          #include <string.h>
+
+          int main() {
+            char* err;
+            char buffer[200];
+
+            err = strerror(EDOM);
+            strerror_r(EWOULDBLOCK, buffer, 200);
+            printf("<%s>\n", err);
+            printf("<%s>\n", buffer);
+
+            printf("<%d>\n", strerror_r(EWOULDBLOCK, buffer, 0));
+
+            return 0;
+          }
+          '''
+        expected = '''
+          <Numerical argument out of domain>
+          <Resource temporarily unavailable>
+          <34>
+          '''
+        self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+
     def test_mainenv(self):
         src = '''
           #include <stdio.h>
