@@ -693,6 +693,8 @@ if 'benchmark' not in sys.argv:
             printf("<%s>\n", buffer);
 
             printf("<%d>\n", strerror_r(EWOULDBLOCK, buffer, 0));
+            errno = 123;
+            printf("<%d>\n", errno);
 
             return 0;
           }
@@ -701,6 +703,7 @@ if 'benchmark' not in sys.argv:
           <Numerical argument out of domain>
           <Resource temporarily unavailable>
           <34>
+          <123>
           '''
         self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
 

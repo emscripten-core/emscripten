@@ -2233,20 +2233,16 @@ var Library = {
     11: 'Resource temporarily unavailable',
     18: 'Invalid cross-device link'
   },
-  errno: 0,
-  __setErrNo__deps: ['errno'],
   __setErrNo: function(value) {
-    // NOTE: This still doesn't fix the case where errno is updated from user
-    // code, but it works for errno being set from our library.
+    // For convenient setting and returning of errno.
     var me = ___setErrNo;
     if (!me.ptr) me.ptr = Pointer_make([0], 0, ALLOC_STATIC, 'i32');
     {{{ makeSetValue('me.ptr', '0', 'value', 'i32') }}}
-    _errno = value;
-    return value;  // For convenient setting and returning of errno.
+    return value;
   },
   __errno_location__deps: ['__setErrNo'],
-  __errno_location: function() { 
-    if (___setErrNo.ptr === undefined) ___setErrNo(0);
+  __errno_location: function() {
+    if (!___setErrNo.ptr) ___setErrNo(0);
     return ___setErrNo.ptr;
   },
 
