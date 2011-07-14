@@ -1,0 +1,1280 @@
+i: -10
+sinh: -11013.2
+cosh: 11013.2
+tanh: -1
+asinh: -2.99822
+acosh: nan
+atanh: nan
+
+i: -9.875
+sinh: -9719.14
+cosh: 9719.14
+tanh: -1
+asinh: -2.98571
+acosh: nan
+atanh: nan
+
+i: -9.75
+sinh: -8577.11
+cosh: 8577.11
+tanh: -1
+asinh: -2.97303
+acosh: nan
+atanh: nan
+
+i: -9.625
+sinh: -7569.28
+cosh: 7569.28
+tanh: -1
+asinh: -2.9602
+acosh: nan
+atanh: nan
+
+i: -9.5
+sinh: -6679.86
+cosh: 6679.86
+tanh: -1
+asinh: -2.9472
+acosh: nan
+atanh: nan
+
+i: -9.375
+sinh: -5894.96
+cosh: 5894.96
+tanh: -1
+asinh: -2.93403
+acosh: nan
+atanh: nan
+
+i: -9.25
+sinh: -5202.28
+cosh: 5202.28
+tanh: -1
+asinh: -2.92068
+acosh: nan
+atanh: nan
+
+i: -9.125
+sinh: -4591
+cosh: 4591
+tanh: -1
+asinh: -2.90715
+acosh: nan
+atanh: nan
+
+i: -9
+sinh: -4051.54
+cosh: 4051.54
+tanh: -1
+asinh: -2.89344
+acosh: nan
+atanh: nan
+
+i: -8.875
+sinh: -3575.47
+cosh: 3575.47
+tanh: -1
+asinh: -2.87954
+acosh: nan
+atanh: nan
+
+i: -8.75
+sinh: -3155.34
+cosh: 3155.34
+tanh: -1
+asinh: -2.86545
+acosh: nan
+atanh: nan
+
+i: -8.625
+sinh: -2784.58
+cosh: 2784.58
+tanh: -1
+asinh: -2.85116
+acosh: nan
+atanh: nan
+
+i: -8.5
+sinh: -2457.38
+cosh: 2457.38
+tanh: -1
+asinh: -2.83666
+acosh: nan
+atanh: nan
+
+i: -8.375
+sinh: -2168.63
+cosh: 2168.63
+tanh: -1
+asinh: -2.82194
+acosh: nan
+atanh: nan
+
+i: -8.25
+sinh: -1913.81
+cosh: 1913.81
+tanh: -1
+asinh: -2.80701
+acosh: nan
+atanh: nan
+
+i: -8.125
+sinh: -1688.93
+cosh: 1688.93
+tanh: -1
+asinh: -2.79186
+acosh: nan
+atanh: nan
+
+i: -8
+sinh: -1490.48
+cosh: 1490.48
+tanh: -1
+asinh: -2.77647
+acosh: nan
+atanh: nan
+
+i: -7.875
+sinh: -1315.34
+cosh: 1315.34
+tanh: -1
+asinh: -2.76085
+acosh: nan
+atanh: nan
+
+i: -7.75
+sinh: -1160.79
+cosh: 1160.79
+tanh: -1
+asinh: -2.74498
+acosh: nan
+atanh: nan
+
+i: -7.625
+sinh: -1024.39
+cosh: 1024.39
+tanh: -1
+asinh: -2.72885
+acosh: nan
+atanh: nan
+
+i: -7.5
+sinh: -904.021
+cosh: 904.021
+tanh: -0.999999
+asinh: -2.71247
+acosh: nan
+atanh: nan
+
+i: -7.375
+sinh: -797.796
+cosh: 797.796
+tanh: -0.999999
+asinh: -2.69581
+acosh: nan
+atanh: nan
+
+i: -7.25
+sinh: -704.052
+cosh: 704.053
+tanh: -0.999999
+asinh: -2.67887
+acosh: nan
+atanh: nan
+
+i: -7.125
+sinh: -621.324
+cosh: 621.324
+tanh: -0.999999
+asinh: -2.66165
+acosh: nan
+atanh: nan
+
+i: -7
+sinh: -548.316
+cosh: 548.317
+tanh: -0.999998
+asinh: -2.64412
+acosh: nan
+atanh: nan
+
+i: -6.875
+sinh: -483.887
+cosh: 483.888
+tanh: -0.999998
+asinh: -2.62629
+acosh: nan
+atanh: nan
+
+i: -6.75
+sinh: -427.029
+cosh: 427.03
+tanh: -0.999997
+asinh: -2.60813
+acosh: nan
+atanh: nan
+
+i: -6.625
+sinh: -376.851
+cosh: 376.853
+tanh: -0.999996
+asinh: -2.58965
+acosh: nan
+atanh: nan
+
+i: -6.5
+sinh: -332.57
+cosh: 332.572
+tanh: -0.999995
+asinh: -2.57081
+acosh: nan
+atanh: nan
+
+i: -6.375
+sinh: -293.492
+cosh: 293.494
+tanh: -0.999994
+asinh: -2.55163
+acosh: nan
+atanh: nan
+
+i: -6.25
+sinh: -259.005
+cosh: 259.007
+tanh: -0.999993
+asinh: -2.53207
+acosh: nan
+atanh: nan
+
+i: -6.125
+sinh: -228.571
+cosh: 228.573
+tanh: -0.99999
+asinh: -2.51212
+acosh: nan
+atanh: nan
+
+i: -6
+sinh: -201.713
+cosh: 201.716
+tanh: -0.999988
+asinh: -2.49178
+acosh: nan
+atanh: nan
+
+i: -5.875
+sinh: -178.011
+cosh: 178.014
+tanh: -0.999984
+asinh: -2.47102
+acosh: nan
+atanh: nan
+
+i: -5.75
+sinh: -157.094
+cosh: 157.097
+tanh: -0.99998
+asinh: -2.44982
+acosh: nan
+atanh: nan
+
+i: -5.625
+sinh: -138.634
+cosh: 138.638
+tanh: -0.999974
+asinh: -2.42818
+acosh: nan
+atanh: nan
+
+i: -5.5
+sinh: -122.344
+cosh: 122.348
+tanh: -0.999967
+asinh: -2.40606
+acosh: nan
+atanh: nan
+
+i: -5.375
+sinh: -107.968
+cosh: 107.972
+tanh: -0.999957
+asinh: -2.38345
+acosh: nan
+atanh: nan
+
+i: -5.25
+sinh: -95.2805
+cosh: 95.2858
+tanh: -0.999945
+asinh: -2.36032
+acosh: nan
+atanh: nan
+
+i: -5.125
+sinh: -84.0841
+cosh: 84.09
+tanh: -0.999929
+asinh: -2.33666
+acosh: nan
+atanh: nan
+
+i: -5
+sinh: -74.2032
+cosh: 74.2099
+tanh: -0.999909
+asinh: -2.31244
+acosh: nan
+atanh: nan
+
+i: -4.875
+sinh: -65.4833
+cosh: 65.4909
+tanh: -0.999883
+asinh: -2.28762
+acosh: nan
+atanh: nan
+
+i: -4.75
+sinh: -57.7878
+cosh: 57.7965
+tanh: -0.99985
+asinh: -2.26219
+acosh: nan
+atanh: nan
+
+i: -4.625
+sinh: -50.9965
+cosh: 51.0063
+tanh: -0.999808
+asinh: -2.23611
+acosh: nan
+atanh: nan
+
+i: -4.5
+sinh: -45.003
+cosh: 45.0141
+tanh: -0.999753
+asinh: -2.20935
+acosh: nan
+atanh: nan
+
+i: -4.375
+sinh: -39.7136
+cosh: 39.7262
+tanh: -0.999683
+asinh: -2.18187
+acosh: nan
+atanh: nan
+
+i: -4.25
+sinh: -35.0456
+cosh: 35.0598
+tanh: -0.999593
+asinh: -2.15363
+acosh: nan
+atanh: nan
+
+i: -4.125
+sinh: -30.9258
+cosh: 30.942
+tanh: -0.999478
+asinh: -2.12459
+acosh: nan
+atanh: nan
+
+i: -4
+sinh: -27.2899
+cosh: 27.3082
+tanh: -0.999329
+asinh: -2.09471
+acosh: nan
+atanh: nan
+
+i: -3.875
+sinh: -24.081
+cosh: 24.1017
+tanh: -0.999139
+asinh: -2.06394
+acosh: nan
+atanh: nan
+
+i: -3.75
+sinh: -21.2488
+cosh: 21.2723
+tanh: -0.998894
+asinh: -2.03222
+acosh: nan
+atanh: nan
+
+i: -3.625
+sinh: -18.749
+cosh: 18.7757
+tanh: -0.998581
+asinh: -1.99951
+acosh: nan
+atanh: nan
+
+i: -3.5
+sinh: -16.5426
+cosh: 16.5728
+tanh: -0.998178
+asinh: -1.96572
+acosh: nan
+atanh: nan
+
+i: -3.375
+sinh: -14.595
+cosh: 14.6293
+tanh: -0.997661
+asinh: -1.9308
+acosh: nan
+atanh: nan
+
+i: -3.25
+sinh: -12.8758
+cosh: 12.9146
+tanh: -0.996998
+asinh: -1.89467
+acosh: nan
+atanh: nan
+
+i: -3.125
+sinh: -11.358
+cosh: 11.4019
+tanh: -0.996147
+asinh: -1.85725
+acosh: nan
+atanh: nan
+
+i: -3
+sinh: -10.0179
+cosh: 10.0677
+tanh: -0.995055
+asinh: -1.81845
+acosh: nan
+atanh: nan
+
+i: -2.875
+sinh: -8.8345
+cosh: 8.89092
+tanh: -0.993655
+asinh: -1.77816
+acosh: nan
+atanh: nan
+
+i: -2.75
+sinh: -7.78935
+cosh: 7.85328
+tanh: -0.99186
+asinh: -1.73628
+acosh: nan
+atanh: nan
+
+i: -2.625
+sinh: -6.86607
+cosh: 6.93851
+tanh: -0.98956
+asinh: -1.69268
+acosh: nan
+atanh: nan
+
+i: -2.5
+sinh: -6.0502
+cosh: 6.13229
+tanh: -0.986614
+asinh: -1.64723
+acosh: nan
+atanh: nan
+
+i: -2.375
+sinh: -5.329
+cosh: 5.42201
+tanh: -0.982845
+asinh: -1.59978
+acosh: nan
+atanh: nan
+
+i: -2.25
+sinh: -4.69117
+cosh: 4.79657
+tanh: -0.978026
+asinh: -1.55016
+acosh: nan
+atanh: nan
+
+i: -2.125
+sinh: -4.12673
+cosh: 4.24617
+tanh: -0.971873
+asinh: -1.49818
+acosh: nan
+atanh: nan
+
+i: -2
+sinh: -3.62686
+cosh: 3.7622
+tanh: -0.964028
+asinh: -1.44364
+acosh: nan
+atanh: nan
+
+i: -1.875
+sinh: -3.18373
+cosh: 3.33709
+tanh: -0.954045
+asinh: -1.38629
+acosh: nan
+atanh: nan
+
+i: -1.75
+sinh: -2.79041
+cosh: 2.96419
+tanh: -0.941376
+asinh: -1.3259
+acosh: nan
+atanh: nan
+
+i: -1.625
+sinh: -2.44075
+cosh: 2.63767
+tanh: -0.925346
+asinh: -1.26216
+acosh: nan
+atanh: nan
+
+i: -1.5
+sinh: -2.12928
+cosh: 2.35241
+tanh: -0.905148
+asinh: -1.19476
+acosh: nan
+atanh: nan
+
+i: -1.375
+sinh: -1.85112
+cosh: 2.10396
+tanh: -0.879827
+asinh: -1.12336
+acosh: nan
+atanh: nan
+
+i: -1.25
+sinh: -1.60192
+cosh: 1.88842
+tanh: -0.848284
+asinh: -1.04759
+acosh: nan
+atanh: nan
+
+i: -1.125
+sinh: -1.37778
+cosh: 1.70243
+tanh: -0.809301
+asinh: -0.96706
+acosh: nan
+atanh: nan
+
+i: -1
+sinh: -1.1752
+cosh: 1.54308
+tanh: -0.761594
+asinh: -0.881374
+acosh: nan
+atanh: -inf
+
+i: -0.875
+sinh: -0.991007
+cosh: 1.40787
+tanh: -0.703906
+asinh: -0.790169
+acosh: nan
+atanh: -1.35403
+
+i: -0.75
+sinh: -0.822317
+cosh: 1.29468
+tanh: -0.635149
+asinh: -0.693147
+acosh: nan
+atanh: -0.972955
+
+i: -0.625
+sinh: -0.666492
+cosh: 1.20175
+tanh: -0.5546
+asinh: -0.590144
+acosh: nan
+atanh: -0.733169
+
+i: -0.5
+sinh: -0.521095
+cosh: 1.12763
+tanh: -0.462117
+asinh: -0.481212
+acosh: nan
+atanh: -0.549306
+
+i: -0.375
+sinh: -0.383851
+cosh: 1.07114
+tanh: -0.358357
+asinh: -0.366725
+acosh: nan
+atanh: -0.394229
+
+i: -0.25
+sinh: -0.252612
+cosh: 1.03141
+tanh: -0.244919
+asinh: -0.247466
+acosh: nan
+atanh: -0.255413
+
+i: -0.125
+sinh: -0.125326
+cosh: 1.00782
+tanh: -0.124353
+asinh: -0.124677
+acosh: nan
+atanh: -0.125657
+
+i: 0
+sinh: 0
+cosh: 1
+tanh: 0
+asinh: 0
+acosh: nan
+atanh: 0
+
+i: 0.125
+sinh: 0.125326
+cosh: 1.00782
+tanh: 0.124353
+asinh: 0.124677
+acosh: nan
+atanh: 0.125657
+
+i: 0.25
+sinh: 0.252612
+cosh: 1.03141
+tanh: 0.244919
+asinh: 0.247466
+acosh: nan
+atanh: 0.255413
+
+i: 0.375
+sinh: 0.383851
+cosh: 1.07114
+tanh: 0.358357
+asinh: 0.366725
+acosh: nan
+atanh: 0.394229
+
+i: 0.5
+sinh: 0.521095
+cosh: 1.12763
+tanh: 0.462117
+asinh: 0.481212
+acosh: nan
+atanh: 0.549306
+
+i: 0.625
+sinh: 0.666492
+cosh: 1.20175
+tanh: 0.5546
+asinh: 0.590144
+acosh: nan
+atanh: 0.733169
+
+i: 0.75
+sinh: 0.822317
+cosh: 1.29468
+tanh: 0.635149
+asinh: 0.693147
+acosh: nan
+atanh: 0.972955
+
+i: 0.875
+sinh: 0.991007
+cosh: 1.40787
+tanh: 0.703906
+asinh: 0.790169
+acosh: nan
+atanh: 1.35403
+
+i: 1
+sinh: 1.1752
+cosh: 1.54308
+tanh: 0.761594
+asinh: 0.881374
+acosh: 0
+atanh: inf
+
+i: 1.125
+sinh: 1.37778
+cosh: 1.70243
+tanh: 0.809301
+asinh: 0.96706
+acosh: 0.494933
+atanh: nan
+
+i: 1.25
+sinh: 1.60192
+cosh: 1.88842
+tanh: 0.848284
+asinh: 1.04759
+acosh: 0.693147
+atanh: nan
+
+i: 1.375
+sinh: 1.85112
+cosh: 2.10396
+tanh: 0.879827
+asinh: 1.12336
+acosh: 0.841019
+atanh: nan
+
+i: 1.5
+sinh: 2.12928
+cosh: 2.35241
+tanh: 0.905148
+asinh: 1.19476
+acosh: 0.962424
+atanh: nan
+
+i: 1.625
+sinh: 2.44075
+cosh: 2.63767
+tanh: 0.925346
+asinh: 1.26216
+acosh: 1.06673
+atanh: nan
+
+i: 1.75
+sinh: 2.79041
+cosh: 2.96419
+tanh: 0.941376
+asinh: 1.3259
+acosh: 1.15881
+atanh: nan
+
+i: 1.875
+sinh: 3.18373
+cosh: 3.33709
+tanh: 0.954045
+asinh: 1.38629
+acosh: 1.24158
+atanh: nan
+
+i: 2
+sinh: 3.62686
+cosh: 3.7622
+tanh: 0.964028
+asinh: 1.44364
+acosh: 1.31696
+atanh: nan
+
+i: 2.125
+sinh: 4.12673
+cosh: 4.24617
+tanh: 0.971873
+asinh: 1.49818
+acosh: 1.38629
+atanh: nan
+
+i: 2.25
+sinh: 4.69117
+cosh: 4.79657
+tanh: 0.978026
+asinh: 1.55016
+acosh: 1.45057
+atanh: nan
+
+i: 2.375
+sinh: 5.329
+cosh: 5.42201
+tanh: 0.982845
+asinh: 1.59978
+acosh: 1.51055
+atanh: nan
+
+i: 2.5
+sinh: 6.0502
+cosh: 6.13229
+tanh: 0.986614
+asinh: 1.64723
+acosh: 1.5668
+atanh: nan
+
+i: 2.625
+sinh: 6.86607
+cosh: 6.93851
+tanh: 0.98956
+asinh: 1.69268
+acosh: 1.6198
+atanh: nan
+
+i: 2.75
+sinh: 7.78935
+cosh: 7.85328
+tanh: 0.99186
+asinh: 1.73628
+acosh: 1.66992
+atanh: nan
+
+i: 2.875
+sinh: 8.8345
+cosh: 8.89092
+tanh: 0.993655
+asinh: 1.77816
+acosh: 1.71748
+atanh: nan
+
+i: 3
+sinh: 10.0179
+cosh: 10.0677
+tanh: 0.995055
+asinh: 1.81845
+acosh: 1.76275
+atanh: nan
+
+i: 3.125
+sinh: 11.358
+cosh: 11.4019
+tanh: 0.996147
+asinh: 1.85725
+acosh: 1.80594
+atanh: nan
+
+i: 3.25
+sinh: 12.8758
+cosh: 12.9146
+tanh: 0.996998
+asinh: 1.89467
+acosh: 1.84725
+atanh: nan
+
+i: 3.375
+sinh: 14.595
+cosh: 14.6293
+tanh: 0.997661
+asinh: 1.9308
+acosh: 1.88683
+atanh: nan
+
+i: 3.5
+sinh: 16.5426
+cosh: 16.5728
+tanh: 0.998178
+asinh: 1.96572
+acosh: 1.92485
+atanh: nan
+
+i: 3.625
+sinh: 18.749
+cosh: 18.7757
+tanh: 0.998581
+asinh: 1.99951
+acosh: 1.96141
+atanh: nan
+
+i: 3.75
+sinh: 21.2488
+cosh: 21.2723
+tanh: 0.998894
+asinh: 2.03222
+acosh: 1.99663
+atanh: nan
+
+i: 3.875
+sinh: 24.081
+cosh: 24.1017
+tanh: 0.999139
+asinh: 2.06394
+acosh: 2.03061
+atanh: nan
+
+i: 4
+sinh: 27.2899
+cosh: 27.3082
+tanh: 0.999329
+asinh: 2.09471
+acosh: 2.06344
+atanh: nan
+
+i: 4.125
+sinh: 30.9258
+cosh: 30.942
+tanh: 0.999478
+asinh: 2.12459
+acosh: 2.09519
+atanh: nan
+
+i: 4.25
+sinh: 35.0456
+cosh: 35.0598
+tanh: 0.999593
+asinh: 2.15363
+acosh: 2.12593
+atanh: nan
+
+i: 4.375
+sinh: 39.7136
+cosh: 39.7262
+tanh: 0.999683
+asinh: 2.18187
+acosh: 2.15573
+atanh: nan
+
+i: 4.5
+sinh: 45.003
+cosh: 45.0141
+tanh: 0.999753
+asinh: 2.20935
+acosh: 2.18464
+atanh: nan
+
+i: 4.625
+sinh: 50.9965
+cosh: 51.0063
+tanh: 0.999808
+asinh: 2.23611
+acosh: 2.21273
+atanh: nan
+
+i: 4.75
+sinh: 57.7878
+cosh: 57.7965
+tanh: 0.99985
+asinh: 2.26219
+acosh: 2.24002
+atanh: nan
+
+i: 4.875
+sinh: 65.4833
+cosh: 65.4909
+tanh: 0.999883
+asinh: 2.28762
+acosh: 2.26658
+atanh: nan
+
+i: 5
+sinh: 74.2032
+cosh: 74.2099
+tanh: 0.999909
+asinh: 2.31244
+acosh: 2.29243
+atanh: nan
+
+i: 5.125
+sinh: 84.0841
+cosh: 84.09
+tanh: 0.999929
+asinh: 2.33666
+acosh: 2.31762
+atanh: nan
+
+i: 5.25
+sinh: 95.2805
+cosh: 95.2858
+tanh: 0.999945
+asinh: 2.36032
+acosh: 2.34218
+atanh: nan
+
+i: 5.375
+sinh: 107.968
+cosh: 107.972
+tanh: 0.999957
+asinh: 2.38345
+acosh: 2.36614
+atanh: nan
+
+i: 5.5
+sinh: 122.344
+cosh: 122.348
+tanh: 0.999967
+asinh: 2.40606
+acosh: 2.38953
+atanh: nan
+
+i: 5.625
+sinh: 138.634
+cosh: 138.638
+tanh: 0.999974
+asinh: 2.42818
+acosh: 2.41237
+atanh: nan
+
+i: 5.75
+sinh: 157.094
+cosh: 157.097
+tanh: 0.99998
+asinh: 2.44982
+acosh: 2.4347
+atanh: nan
+
+i: 5.875
+sinh: 178.011
+cosh: 178.014
+tanh: 0.999984
+asinh: 2.47102
+acosh: 2.45653
+atanh: nan
+
+i: 6
+sinh: 201.713
+cosh: 201.716
+tanh: 0.999988
+asinh: 2.49178
+acosh: 2.47789
+atanh: nan
+
+i: 6.125
+sinh: 228.571
+cosh: 228.573
+tanh: 0.99999
+asinh: 2.51212
+acosh: 2.49879
+atanh: nan
+
+i: 6.25
+sinh: 259.005
+cosh: 259.007
+tanh: 0.999993
+asinh: 2.53207
+acosh: 2.51927
+atanh: nan
+
+i: 6.375
+sinh: 293.492
+cosh: 293.494
+tanh: 0.999994
+asinh: 2.55163
+acosh: 2.53932
+atanh: nan
+
+i: 6.5
+sinh: 332.57
+cosh: 332.572
+tanh: 0.999995
+asinh: 2.57081
+acosh: 2.55898
+atanh: nan
+
+i: 6.625
+sinh: 376.851
+cosh: 376.853
+tanh: 0.999996
+asinh: 2.58965
+acosh: 2.57825
+atanh: nan
+
+i: 6.75
+sinh: 427.029
+cosh: 427.03
+tanh: 0.999997
+asinh: 2.60813
+acosh: 2.59716
+atanh: nan
+
+i: 6.875
+sinh: 483.887
+cosh: 483.888
+tanh: 0.999998
+asinh: 2.62629
+acosh: 2.61571
+atanh: nan
+
+i: 7
+sinh: 548.316
+cosh: 548.317
+tanh: 0.999998
+asinh: 2.64412
+acosh: 2.63392
+atanh: nan
+
+i: 7.125
+sinh: 621.324
+cosh: 621.324
+tanh: 0.999999
+asinh: 2.66165
+acosh: 2.6518
+atanh: nan
+
+i: 7.25
+sinh: 704.052
+cosh: 704.053
+tanh: 0.999999
+asinh: 2.67887
+acosh: 2.66936
+atanh: nan
+
+i: 7.375
+sinh: 797.796
+cosh: 797.796
+tanh: 0.999999
+asinh: 2.69581
+acosh: 2.68661
+atanh: nan
+
+i: 7.5
+sinh: 904.021
+cosh: 904.021
+tanh: 0.999999
+asinh: 2.71247
+acosh: 2.70358
+atanh: nan
+
+i: 7.625
+sinh: 1024.39
+cosh: 1024.39
+tanh: 1
+asinh: 2.72885
+acosh: 2.72025
+atanh: nan
+
+i: 7.75
+sinh: 1160.79
+cosh: 1160.79
+tanh: 1
+asinh: 2.74498
+acosh: 2.73665
+atanh: nan
+
+i: 7.875
+sinh: 1315.34
+cosh: 1315.34
+tanh: 1
+asinh: 2.76085
+acosh: 2.75278
+atanh: nan
+
+i: 8
+sinh: 1490.48
+cosh: 1490.48
+tanh: 1
+asinh: 2.77647
+acosh: 2.76866
+atanh: nan
+
+i: 8.125
+sinh: 1688.93
+cosh: 1688.93
+tanh: 1
+asinh: 2.79186
+acosh: 2.78428
+atanh: nan
+
+i: 8.25
+sinh: 1913.81
+cosh: 1913.81
+tanh: 1
+asinh: 2.80701
+acosh: 2.79967
+atanh: nan
+
+i: 8.375
+sinh: 2168.63
+cosh: 2168.63
+tanh: 1
+asinh: 2.82194
+acosh: 2.81481
+atanh: nan
+
+i: 8.5
+sinh: 2457.38
+cosh: 2457.38
+tanh: 1
+asinh: 2.83666
+acosh: 2.82974
+atanh: nan
+
+i: 8.625
+sinh: 2784.58
+cosh: 2784.58
+tanh: 1
+asinh: 2.85116
+acosh: 2.84443
+atanh: nan
+
+i: 8.75
+sinh: 3155.34
+cosh: 3155.34
+tanh: 1
+asinh: 2.86545
+acosh: 2.85892
+atanh: nan
+
+i: 8.875
+sinh: 3575.47
+cosh: 3575.47
+tanh: 1
+asinh: 2.87954
+acosh: 2.8732
+atanh: nan
+
+i: 9
+sinh: 4051.54
+cosh: 4051.54
+tanh: 1
+asinh: 2.89344
+acosh: 2.88727
+atanh: nan
+
+i: 9.125
+sinh: 4591
+cosh: 4591
+tanh: 1
+asinh: 2.90715
+acosh: 2.90115
+atanh: nan
+
+i: 9.25
+sinh: 5202.28
+cosh: 5202.28
+tanh: 1
+asinh: 2.92068
+acosh: 2.91484
+atanh: nan
+
+i: 9.375
+sinh: 5894.96
+cosh: 5894.96
+tanh: 1
+asinh: 2.93403
+acosh: 2.92834
+atanh: nan
+
+i: 9.5
+sinh: 6679.86
+cosh: 6679.86
+tanh: 1
+asinh: 2.9472
+acosh: 2.94166
+atanh: nan
+
+i: 9.625
+sinh: 7569.28
+cosh: 7569.28
+tanh: 1
+asinh: 2.9602
+acosh: 2.9548
+atanh: nan
+
+i: 9.75
+sinh: 8577.11
+cosh: 8577.11
+tanh: 1
+asinh: 2.97303
+acosh: 2.96777
+atanh: nan
+
+i: 9.875
+sinh: 9719.14
+cosh: 9719.14
+tanh: 1
+asinh: 2.98571
+acosh: 2.98058
+atanh: nan
+

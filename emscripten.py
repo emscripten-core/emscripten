@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
-import argparse
 import json
+import optparse
 import os
 import subprocess
 import sys
 import tempfile
-import tools.shared as shared
+from tools import shared
 
 
 # Temporary files that should be deleted once the program is finished.
@@ -173,7 +173,7 @@ def main(args):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
-    name, value = setting.split('=', 1)
+    name, value = setting.strip().split('=', 1)
     settings[name] = json.loads(value)
 
   # Adjust sign correction for dlmalloc.
@@ -192,33 +192,40 @@ def main(args):
 
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description='Compile LLVM assembly to Javascript.',
+  parser = optparse.OptionParser(
+      usage='usage: %prog [-h] [-O] [-m] [-o OUTFILE] [-s FOO=BAR]* infile',
+      description=('Compile an LLVM assembly file to Javascript. Accepts both '
+                   'human-readable (*.ll) and bitcode (*.bc) formats.'),
       epilog='You should have an ~/.emscripten file set up; see settings.py.')
-  parser.add_argument('infile',
-                      help='The LLVM assembly file to compile, either in '
-                           'human-readable (*.ll) or in bitcode (*.bc) format.')
-  parser.add_argument('-O', '--optimize',
-                      default=False,
-                      action='store_true',
-                      help='Run LLVM optimizations on the input.')
-  parser.add_argument('-m', '--dlmalloc',
-                      default=False,
-                      action='store_true',
-                      help='Use dlmalloc. Without, uses a dummy allocator.')
-  parser.add_argument('-o', '--outfile',
-                      default=sys.stdout,
-                      type=argparse.FileType('w'),
-                      help='Where to write the output; defaults to stdout.')
-  parser.add_argument('-s', '--settings',
-                      default=[],
-                      nargs=argparse.ZERO_OR_MORE,
-                      metavar='FOO=BAR',
-                      help='Overrides for settings defined in settings.js.')
+  parser.add_option('-O', '--optimize',
+                    default=False,
+                    action='store_true',
+                    help='Run LLVM optimizations on the input.')
+  parser.add_option('-m', '--dlmalloc',
+                    default=False,
+                    action='store_true',
+                    help='Use dlmalloc. Without, uses a dummy allocator.')
+  parser.add_option('-o', '--outfile',
+                    default=sys.stdout,
+                    help='Where to write the output; defaults to stdout.')
+  parser.add_option('-s', '--setting',
+                    dest='settings',
+                    default=[],
+                    action='append',
+                    metavar='FOO=BAR',
+                    help=('Overrides for settings defined in settings.js. '
+                          'May occur multiple times.'))
+
+  # Convert to the same format that argparse would have produced.
+  keywords, positional = parser.parse_args()
+  if len(positional) != 1:
+    raise RuntimeError('Must provide exactly one positional argument.')
+  keywords.infile = positional[0]
+  if isinstance(keywords.outfile, basestring):
+    keywords.outfile = open(keywords.outfile, 'w')
 
   try:
-    main(parser.parse_args())
+    main(keywords)
   finally:
-    # Clean up temporary files.
     for filename in TEMP_FILES_TO_CLEAN:
       os.unlink(filename)
