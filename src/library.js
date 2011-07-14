@@ -342,7 +342,8 @@ var Library = {
             var parts = argText.split('e');
             if (isGeneral && !flagAlternative) {
               // Discard trailing zeros and periods.
-              while (parts[0].length > 1 && (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
+              while (parts[0].length > 1 && parts[0].indexOf('.') != -1 &&
+                     (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
                 parts[0] = parts[0].slice(0, -1);
               }
             } else {
@@ -1485,17 +1486,20 @@ var Library = {
     return sig;
   },
 
-  __finite: function(x) {
-    return x !== Infinity && x !== -Infinity;
+  finite: function(x) {
+    return isFinite(x);
   },
+  __finite: 'finite',
 
-  __isinf: function(x) {
-    return x === Infinity || x === -Infinity;
+  isinf: function(x) {
+    return !isNaN(x) && !isFinite(x);
   },
+  __isinf: 'isinf',
 
-  __isnan: function(x) {
+  isnan: function(x) {
     return isNaN(x);
   },
+  __isnan: 'isnan',
 
   copysign: function(a, b) {
       if (a<0 === b<0) return a;
@@ -1504,6 +1508,33 @@ var Library = {
 
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
+  },
+
+  sinh: function(x) {
+    var p = Math.pow(Math.E, x);
+    return (p - (1 / p)) / 2;
+  },
+
+  cosh: function(x) {
+    var p = Math.pow(Math.E, x);
+    return (p + (1 / p)) / 2;
+  },
+
+  tanh__deps: ['sinh', 'cosh'],
+  tanh: function(x) {
+    return _sinh(x) / _cosh(x);
+  },
+
+  asinh: function(x) {
+    return Math.log(x + Math.sqrt(x * x + 1));
+  },
+
+  acosh: function(x) {
+    return Math.log(x * 1 + Math.sqrt(x * x - 1));
+  },
+
+  atanh: function(x) {
+    return Math.log((1 + x) / (1 - x)) / 2;
   },
 
   // LLVM internal math
