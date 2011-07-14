@@ -4,7 +4,7 @@
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
 
 Usage:
-        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- "LAMBDA"]
+        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- "LAMBDA" ["IGNORED"]]
 
   BASENAME is the name used for output files (with added suffixes).
   HEADER1 etc. are the C++ headers to parse
@@ -21,6 +21,9 @@ We generate the following:
 
   * LAMBDA: Optionally, provide the text of a lambda function here that will be
             used to process the header files. This lets you manually tweak them.
+
+  * IGNORED: Optionally, a list of classes and class::methods not to generate code for.
+             Comma separated.
 
 The C bindings file is basically a tiny C wrapper around the C++ code.
 It's only purpose is to make it easy to access the C++ code in the JS
@@ -45,9 +48,13 @@ import CppHeaderParser
 basename = sys.argv[1]
 
 processor = lambda line: line
+ignored = []
+
 if '--' in sys.argv:
   index = sys.argv.index('--')
   processor = eval(sys.argv[index+1])
+  if len(sys.argv) > index+2:
+    ignored = sys.argv[index+2].split(',')
   sys.argv = sys.argv[:index]
 
 # First pass - read everything
@@ -68,7 +75,7 @@ parsed = CppHeaderParser.CppHeader(all_h_name)
 for cname, clazz in parsed.classes.iteritems():
   #print 'zz see', cname
   if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
-    #print 'zz for real', cname, clazz._public_structs
+    #print 'zz for real', cname, clazz, dir(clazz)
     classes[cname] = clazz
     for sname, struct in clazz._public_structs.iteritems():
       struct_parents[sname] = cname
@@ -87,11 +94,15 @@ gen_c.write('extern "C" {\n')
 def generate_class(generating_cname, cname, clazz):
   inherited = generating_cname != cname
 
+  # Nothing to generate for pure virtual classes
+  if len(clazz.get_all_pure_virtual_methods().keys()) > 0: return
   for method in clazz['methods']['public']:
-    if method['pure_virtual']: return # Nothing to generate for pure virtual classes
+    if method['pure_virtual']: return
 
   for method in clazz['methods']['public']:
     mname = method['name']
+    if cname + '::' + mname in ignored: continue
+
     args = method['parameters']
     constructor = mname == cname
     destructor = method['destructor']
@@ -130,6 +141,41 @@ def generate_class(generating_cname, cname, clazz):
 
     ret = ((cname + ' *') if constructor else method['rtnType']).replace('virtual ', '')
     callprefix = 'new ' if constructor else 'self->'
+
+    actualmname = ''
+    if mname == '__operator___assignment_':
+      callprefix = '*self = '
+      continue # TODO
+    elif mname == '__operator____mul__':
+      callprefix = '*self * '
+      continue # TODO
+    elif mname == '__operator____div__':
+      callprefix = '*self + '
+      continue # TODO
+    elif mname == '__operator____add__':
+      callprefix = '*self + '
+      continue # TODO
+    elif mname == '__operator____sub__':
+      callprefix = '*self - '
+      continue # TODO
+    elif mname == '__operator____imult__':
+      callprefix = '*self * '
+      continue # TODO
+    elif mname == '__operator____idiv__':
+      callprefix = '*self + '
+      continue # TODO
+    elif mname == '__operator____iadd__':
+      callprefix = '*self + '
+      continue # TODO
+    elif mname == '__operator____isub__':
+      callprefix = '*self - '
+      continue # TODO
+    elif mname == '__operator____eq__':
+      callprefix = '*self - '
+      continue # TODO
+    else:
+      actualmname = mname
+
     typedargs = ', '.join( ([] if constructor else [cname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args) )
     justargs = ', '.join(map(lambda arg: arg['name'], args))
     fullname = 'emscripten_bind_' + generating_cname + '__' + mname
@@ -146,22 +192,6 @@ def generate_class(generating_cname, cname, clazz):
       mname_suffixed += suffix
       if constructor:
         generating_cname_suffixed += suffix
-
-    actualmname = ''
-    if mname == '__operator___assignment_':
-      callprefix = '*self = '
-      continue # TODO
-    elif mname == '__operator____imult__':
-      callprefix = '*self * '
-      continue # TODO
-    elif mname == '__operator____iadd__':
-      callprefix = '*self + '
-      continue # TODO
-    elif mname == '__operator____isub__':
-      callprefix = '*self - '
-      continue # TODO
-    else:
-      actualmname = mname
 
     gen_c.write('''
 %s %s(%s) {
@@ -194,6 +224,8 @@ function %s(%s) {
 ''' % (generating_cname, mname_suffixed, justargs, 'return ' if ret != 'void' else '', fullname, (', ' if len(justargs) > 0 else '') + justargs))
 
 for cname, clazz in classes.iteritems():
+  if cname in ignored: continue
+
   generate_class(cname, cname, clazz)
 
   # In addition, generate all methods of parent classes. We do not inherit in JS (how would we do multiple inheritance etc.?)
