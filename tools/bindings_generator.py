@@ -94,13 +94,9 @@ gen_c.write('extern "C" {\n')
 def generate_class(generating_cname, cname, clazz):
   inherited = generating_cname != cname
 
-  # Nothing to generate for pure virtual classes
-  if len(clazz.get_all_pure_virtual_methods().keys()) > 0: return
-  for method in clazz['methods']['public']:
-    if method['pure_virtual']: return
-
   for method in clazz['methods']['public']:
     mname = method['name']
+    #print "zz generating: ", generating_cname, cname, mname
     if cname + '::' + mname in ignored: continue
 
     args = method['parameters']
@@ -225,6 +221,36 @@ function %s(%s) {
 
 for cname, clazz in classes.iteritems():
   if cname in ignored: continue
+
+  # Nothing to generate for pure virtual classes
+
+  def check_pure_virtual(clazz, progeny):
+    if any([check_pure_virtual(classes[parent['class']], [clazz] + progeny) for parent in clazz['inherits']]): return True
+
+    def dirtied(mname):
+      for progen in progeny:
+        for method in clazz['methods']['public']:
+          if method['name'] == mname and not method['pure_virtual']: return True
+      return False
+
+    for method in clazz['methods']['public']:
+      if method['pure_virtual'] and not dirtied(method['name']): return True
+
+  if check_pure_virtual(clazz, []): continue
+
+  # Add a constructor if none exist
+  has_constructor = False
+  for method in clazz['methods']['public']:
+    mname = method['name']
+    has_constructor = has_constructor or (cname == mname)
+
+  if not has_constructor:
+    clazz['methods']['public'] = [{
+      'name': cname,
+      'parameters': [],
+      'pure_virtual': False,
+      'destructor': False,
+    }] + clazz['methods']['public']
 
   generate_class(cname, cname, clazz)
 
