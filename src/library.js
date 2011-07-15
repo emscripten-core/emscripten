@@ -2196,7 +2196,6 @@ var Library = {
     105: 'No buffer space available',
     61: 'No data available',
     19: 'No such device',
-    2: 'No such file or directory',
     8: 'Exec format error',
     37: 'No locks available',
     67: 'Link has been severed',
@@ -2230,7 +2229,6 @@ var Library = {
     62: 'Timer expired',
     110: 'Connection timed out',
     26: 'Text file busy',
-    11: 'Resource temporarily unavailable',
     18: 'Invalid cross-device link'
   },
   __setErrNo: function(value) {
