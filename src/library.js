@@ -15,7 +15,309 @@
 
 var Library = {
   // ==========================================================================
-  // stdio.h
+  // File system base.
+  // ==========================================================================
+
+  $FS__deps: ['$ERRNO_CODES', '__setErrNo'],
+  $FS: {
+    // The main file system tree. All the contents are inside this.
+    root: {
+      read: true,
+      write: false,
+      isFolder: true,
+      timestamp: new Date(),
+      inodeNumber: 1,
+      contents: {}
+    },
+    // The path to the current folder.
+    currentPath: '/',
+    // The inode to assign to the next created object.
+    nextInode: 2,
+    // Currently opened file or directory streams. Padded with null so the zero
+    // index is unused, as the indices are used as pointers. This is not split
+    // into separate fileStreams and folderStreams lists because the pointers
+    // must be interchangeable, e.g. when used in fdopen().
+    streams: [null],
+    // Converts any path to an absolute path. Resolves embedded "." and ".."
+    // parts.
+    absolutePath: function(relative, base) {
+      if (base === undefined) base = FS.currentPath;
+      else if (relative[0] == '/') base = '';
+      var full = base + '/' + relative;
+      var parts = full.split('/').reverse();
+      var absolute = [''];
+      while (parts.length) {
+        var part = parts.pop();
+        if (part == '' || part == '.') {
+          // Nothing.
+        } else if (part == '..') {
+          if (absolute.length <= 1) return null;
+          absolute.pop();
+        } else {
+          absolute.push(part);
+        }
+      }
+      return absolute.join('/');
+    },
+    // Finds the file system object at a given path.
+    findObject: function(path) {
+      var linksVisited = 0;
+      path = FS.absolutePath(path);
+      if (path === null) {
+        ___setErrNo(ERRNO_CODES.ENOENT);
+        return null;
+      }
+      path = path.split('/').reverse();
+      path.pop();
+      var current = FS.root;
+      while (path.length) {
+        var target = path.pop();
+        if (!current.isFolder) {
+          ___setErrNo(ERRNO_CODES.ENOTDIR);
+          return null;
+        } else if (!current.read) {
+          ___setErrNo(ERRNO_CODES.EACCESS);
+          return null;
+        } else if (!current.contents.hasOwnProperty(target)) {
+          ___setErrNo(ERRNO_CODES.ENOENT);
+          return null;
+        }
+        current = current.contents[target];
+        if (current.link) {
+          current = FS.findObject(current.link);
+          if (++linksVisited > 64) {
+            ___setErrNo(ERRNO_CODES.ELOOP);
+            return null;
+          }
+        }
+      }
+      return current;
+    },
+    // Creates a file system record: file, link, device or folder.
+    createObject: function(parent, name, properties, canRead, canWrite) {
+      if (!parent) parent = '/';
+      if (typeof parent === 'string') parent = FS.findObject(parent);
+
+      if (!parent) throw new Error('Parent path must exist.');
+      if (!parent.isFolder) throw new Error('Parent must be a folder.');
+      if (!name || name == '.' || name == '..') {
+        throw new Error('Name must not be empty.');
+      }
+      if (parent.contents.hasOwnProperty(name)) {
+        throw new Error("Can't overwrite object.");
+      }
+
+      parent.contents[name] = {
+        read: canRead === undefined ? true : canRead,
+        write: canWrite === undefined ? false : canWrite,
+        timestamp: new Date(),
+        inodeNumber: FS.nextInode++
+      };
+      for (var key in properties) {
+        if (properties.hasOwnProperty(key)) {
+          parent.contents[name][key] = properties[key];
+        }
+      }
+
+      return parent.contents[name];
+    },
+    // Creates a folder.
+    createFolder: function(parent, name, canRead, canWrite) {
+      var properties = {isFolder: true, contents: {}};
+      return FS.createObject(parent, name, properties, canRead, canWrite);
+    },
+    // Creates a a folder and all its missing parents.
+    createPath: function(parent, path, canRead, canWrite) {
+      var current = FS.findObject(parent);
+      if (current === null) throw new Error('Invalid parent.');
+      path = path.split('/').reverse();
+      while (path.length) {
+        var part = path.pop();
+        if (!part) continue;
+        if (!current.contents.hasOwnProperty(part)) {
+          FS.createFolder(current, part, canRead, canWrite);
+        }
+        current = current.contents[part];
+      }
+      return current;
+    },
+
+    // Creates a file record, given specific properties.
+    createFile: function(parent, name, properties, canRead, canWrite) {
+      properties.isFolder = false;
+      return FS.createObject(parent, name, properties, canRead, canWrite);
+    },
+    // Creates a file record from existing data.
+    createDataFile: function(parent, name, data, canRead, canWrite) {
+      if (typeof data === 'string') {
+        var dataArray = [];
+        for (var i = 0; i < data; i++) dataArray.push(data.charCodeAt(i));
+        data = dataArray;
+      }
+      return FS.createFile(parent, name, {contents: data}, canRead, canWrite);
+    },
+    // Creates a file record for lazy-loading from a URL.
+    createLazyFile: function(parent, name, url, canRead, canWrite) {
+      return FS.createFile(parent, name, {url: url}, canRead, canWrite);
+    },
+    // Creates a link to a sepcific local path.
+    createLink: function(parent, name, target, canRead, canWrite) {
+      return FS.createFile(parent, name, {link: target}, canRead, canWrite);
+    },
+    // Creates a device with read and write callbacks.
+    createDevice: function(parent, name, read, write) {
+      var ops = {read: read, write: write};
+      return FS.createFile(parent, name, ops, Boolean(read), Boolean(write));
+    },
+  },
+
+  // ==========================================================================
+  // dirent.h
+  // ==========================================================================
+
+  // TODO: Switch to dynamically calculated layout.
+  //__dirent_struct_layout: Runtime.generateStructInfo('dirent'),
+  __dirent_struct_layout: {
+    __size__: 268,
+    // The inode number of the entry.
+    d_ino: 0,
+    // The offset of the next entry.
+    d_off: 4,
+    // The length of the d_name buffer.
+    d_reclen: 8,
+    // The filename of the entry.
+    d_name: 11
+  },
+  opendir__deps: ['$FS', '__setErrNo', '__dirent_struct_layout'],
+  opendir: function(dirname) {
+    // DIR *opendir(const char *dirname);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/opendir.html
+    // NOTE: Calculating absolute path redundantly since we need to associate it
+    //       with the opened stream.
+    var path = FS.absolutePath(Pointer_stringify(dirname));
+    if (path === null) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return null;
+    }
+    var target = FS.findObject(path);
+    if (target === null) return 0;
+    if (!target.isFolder) {
+      ___setErrNo(ERRNO_CODES.ENOTDIR);
+      return 0;
+    } else if (!target.read) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return 0;
+    }
+    var id = FS.streams.length;
+    var contents = [];
+    for (var key in target.contents) contents.push(key);
+    FS.streams[id] = {
+      isFolder: true,
+      path: path,
+      object: target,
+      // Remember the contents at the time of opening in an array, so we can
+      // seek between them relying on a single order.
+      contents: contents,
+      // An index into contents. Special values: -2 is ".", -1 is "..".
+      position: -2,
+      // Each stream has its own area for readdir() returns.
+      currentEntry: _malloc(___dirent_struct_layout.__size__)
+    };
+    return id;
+  },
+  closedir__deps: ['$FS', '__setErrNo'],
+  closedir: function(dirp) {
+    // int closedir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
+    if (!FS.streams[dirp] || !FS.streams[dirp].isFolder) {
+      return ___setErrNo(ERRNO_CODES.EBADF);
+    } else {
+      _free(FS.streams[dirp].currentEntry);
+      delete FS.streams[dirp];
+      return 0;
+    }
+  },
+  telldir__deps: ['$FS', '__setErrNo'],
+  telldir: function(dirp) {
+    // long int telldir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/telldir.html
+    if (!FS.streams[dirp] || !FS.streams[dirp].isFolder) {
+      return ___setErrNo(ERRNO_CODES.EBADF);
+    } else {
+      return FS.streams[dirp].position;
+    }
+  },
+  seekdir__deps: ['$FS', '__setErrNo'],
+  seekdir: function(dirp, loc) {
+    // void seekdir(DIR *dirp, long int loc);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/seekdir.html
+    if (!FS.streams[dirp] || !FS.streams[dirp].isFolder) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+    } else if (loc >= FS.streams[dirp].contents.length) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+    } else {
+      FS.streams[dirp].position = loc;
+    }
+  },
+  rewinddir__deps: ['seekdir'],
+  rewinddir: function(dirp) {
+    // void rewinddir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/rewinddir.html
+    _seekdir(dirp, -2);
+  },
+  readdir_r__deps: ['$FS', '__setErrNo', '__dirent_struct_layout'],
+  readdir_r: function(dirp, entry, result) {
+    // int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
+    if (!FS.streams[dirp] || !FS.streams[dirp].isFolder) {
+      return ___setErrNo(ERRNO_CODES.EBADF);
+    }
+    var stream = FS.streams[dirp];
+    var loc = stream.position;
+    if (loc < -2 || loc >= FS.streams[dirp].contents.length) {
+      {{{ makeSetValue('result', '0', '0', '*i8') }}}
+    } else {
+      var name, inode;
+      if (loc === -2) {
+        name = '.';
+        inode = 1; // Really undefined.
+      } else if (loc === -1) {
+        name = '..';
+        inode = 1; // Really undefined.
+      } else {
+        name = stream.contents[loc];
+        inode = stream.object.contents[name].inodeNumber;
+      }
+      stream.position++;
+      {{{ makeSetValue('entry', '___dirent_struct_layout.d_ino', 'inode', 'i32') }}}
+      {{{ makeSetValue('entry', '___dirent_struct_layout.d_off', 'stream.position', 'i32') }}}
+      {{{ makeSetValue('entry', '___dirent_struct_layout.d_reclen', 'name.length + 1', 'i32') }}}
+      for (var i = 0; i < name.length; i++) {
+        {{{ makeSetValue('entry', '___dirent_struct_layout.d_name + i', 'name.charCodeAt(i)', 'i8') }}}
+      }
+      {{{ makeSetValue('entry', '___dirent_struct_layout.d_name + i', '0', 'i8') }}}
+      {{{ makeSetValue('result', '0', 'entry', '*i8') }}}
+    }
+    return 0;
+  },
+  readdir__deps: ['readdir_r', '__setErrNo'],
+  readdir: function(dirp) {
+    // struct dirent *readdir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
+    if (!FS.streams[dirp] || !FS.streams[dirp].isFolder) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return 0;
+    } else {
+      if (!_readdir.result) _readdir.result = _malloc(4);
+      _readdir_r(dirp, FS.streams[dirp].currentEntry, _readdir.result);
+      if ({{{ makeGetValue(0, '_readdir.result', '*i8') }}} === 0) {
+        return 0;
+      } else {
+        return FS.streams[dirp].currentEntry;
+      }
+    }
+  },
+
   // ==========================================================================
 
   _scanString: function() {
@@ -2267,14 +2569,6 @@ var Library = {
   posix_memalign: function(memptr, alignment, size) {
     var ptr = _memalign(alignment, size);
     {{{ makeSetValue('memptr', '0', 'ptr', 'i8*') }}}
-    return 0;
-  },
-
-  // ==========================================================================
-  // dirent.h
-  // ==========================================================================
-
-  opendir: function(pname) {
     return 0;
   },
 

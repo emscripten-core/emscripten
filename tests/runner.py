@@ -2078,6 +2078,84 @@ if 'benchmark' not in sys.argv:
       src = open(path_from_root('tests', 'files.cpp'), 'r').read()
       self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n', post_build=post)
 
+    def test_folders(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            FS.createFolder('/', 'test', true, false);
+            FS.createPath('/', 'test/hello/world/', true, false);
+            FS.createPath('/test', 'goodbye/world/', true, false);
+            FS.createPath('/test/goodbye', 'noentry', false, false);
+            FS.createDataFile('/test', 'freeforall.ext', 'abc', true, true);
+            FS.createDataFile('/test', 'restricted.ext', 'def', false, false);
+          '''
+        )
+        open(filename, 'w').write(src)
+
+      src = r'''
+        #include <stdio.h>
+        #include <dirent.h>
+        #include <errno.h>
+
+        int main() {
+          struct dirent *e;
+
+          // Basic correct behaviour.
+          DIR* d = opendir("/test");
+          printf("--E: %d\n", errno);
+          while ((e = readdir(d))) puts(e->d_name);
+          printf("--E: %d\n", errno);
+
+          // Empty folder; tell/seek.
+          puts("****");
+          d = opendir("/test/hello/world/");
+          e = readdir(d);
+          puts(e->d_name);
+          int pos = telldir(d);
+          e = readdir(d);
+          puts(e->d_name);
+          seekdir(d, pos);
+          e = readdir(d);
+          puts(e->d_name);
+
+          // Errors.
+          puts("****");
+          printf("--E: %d\n", errno);
+          d = opendir("/test/goodbye/noentry");
+          printf("--E: %d, D: %d\n", errno, d);
+          d = opendir("/i/dont/exist");
+          printf("--E: %d, D: %d\n", errno, d);
+          d = opendir("/test/freeforall.ext");
+          printf("--E: %d, D: %d\n", errno, d);
+          while ((e = readdir(d))) puts(e->d_name);
+          printf("--E: %d\n", errno);
+
+          return 0;
+        }
+        '''
+      expected = '''
+        --E: 0
+        .
+        ..
+        hello
+        goodbye
+        freeforall.ext
+        restricted.ext
+        --E: 0
+        ****
+        .
+        ..
+        ..
+        ****
+        --E: 0
+        --E: 13, D: 0
+        --E: 2, D: 0
+        --E: 20, D: 0
+        --E: 9
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRun)
+
     ### 'Big' tests
 
     def test_fannkuch(self):
