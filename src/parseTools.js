@@ -895,9 +895,7 @@ function makePointer(slab, pos, allocator, type) {
     }
   }
 
-  return 'Pointer_make(' + slab + ', ' + (pos ? pos : 0) + (allocator ? ', ' + allocator : '') + ', ' +
-         JSON.stringify(types) +
-         ')';
+  return 'allocate(' + slab + ', ' + JSON.stringify(types) + (allocator ? ', ' + allocator : '') + ')';
 }
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {

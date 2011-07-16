@@ -301,19 +301,13 @@ function assert(condition, text) {
   }
 }
 
-// Creates a pointer for a certain slab and a certain address in that slab.
-// If just a slab is given, will allocate room for it and copy it there. In
-// other words, do whatever is necessary in order to return a pointer, that
-// points to the slab (and possibly position) we are given.
+// Allocates memory for some data and initializes it properly.
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
 
-function Pointer_make(slab, pos, allocator, types) {
-  pos = pos ? pos : 0;
-  assert(pos === 0); // TODO: remove 'pos'
-  if (slab === HEAP) return pos;
+function allocate(slab, types, allocator) {
   var zeroinit, size;
   if (typeof slab === 'number') {
     zeroinit = true;
@@ -323,7 +317,6 @@ function Pointer_make(slab, pos, allocator, types) {
     size = slab.length;
   }
 
-  // Finalize
   var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
 
   var singleType = typeof types === 'string' ? types : null;
@@ -342,7 +335,7 @@ function Pointer_make(slab, pos, allocator, types) {
       continue;
     }
 #if ASSERTIONS
-    assert(type, 'Must know what type to store in Pointer_make!');
+    assert(type, 'Must know what type to store in allocate!');
 #endif
 
     if (type === 'i1') {
@@ -367,13 +360,13 @@ function Pointer_make(slab, pos, allocator, types) {
       {{{ makeSetValue(0, 'ret+i', 'curr', 'double') }}}
       i += {{{ getNativeFieldSize('double', true) }}};
     } else {
-      abort('invalid type for Pointer_make: ' + type);
+      abort('invalid type for allocate: ' + type);
     }
   }
 
   return ret;
 }
-Module['Pointer_make'] = Pointer_make;
+Module['allocate'] = allocate;
 
 function Pointer_stringify(ptr) {
   var ret = "";

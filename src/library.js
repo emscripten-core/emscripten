@@ -427,9 +427,9 @@ var Library = {
         textIndex += 1;
       }
     }
-    return Pointer_make(ret.concat(0), 0, ALLOC_STACK, 'i8'); // NB: Stored on the stack
+    return allocate(ret.concat(0), 'i8', ALLOC_STACK); // NB: Stored on the stack
     //var len = ret.length+1;
-    //var ret = Pointer_make(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
+    //var ret = allocate(ret.concat(0), 0, ALLOC_STACK); // NB: Stored on the stack
     //STACKTOP -= len; // XXX horrible hack. we rewind the stack, to 'undo' the alloc we just did.
     //                 // the point is that this works if nothing else allocs on the stack before
     //                 // the string is read, which should be true - it is very transient, see the *printf* functions below.
@@ -523,7 +523,7 @@ var Library = {
     SEEK_CUR: 1, /* Current position.   */
     SEEK_END: 2, /* End of file.        */
     init: function() {
-      _stdin = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+      _stdin = allocate([0], 'void*', ALLOC_STATIC);
       {{{ makeSetValue('_stdin', '0', "STDIO.prepare('<<stdin>>', null, null, true)", 'i32') }}};
       if (Module.stdin) {
         // Make sure stdin returns a newline
@@ -539,10 +539,10 @@ var Library = {
         };
       }
 
-      _stdout = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+      _stdout = allocate([0], 'void*', ALLOC_STATIC);
       {{{ makeSetValue('_stdout', '0', "STDIO.prepare('<<stdout>>', null, true)", 'i32') }}};
 
-      _stderr = Pointer_make([0], null, ALLOC_STATIC, 'void*');
+      _stderr = allocate([0], 'void*', ALLOC_STATIC);
       {{{ makeSetValue('_stderr', '0', "STDIO.prepare('<<stderr>>', null, true)", 'i32') }}};
     },
     cleanFilename: function(filename) {
@@ -776,7 +776,7 @@ var Library = {
     var f = STDIO.streams[stream];
     if (!f)
       return -1; // EOF
-    arguments[0] = Pointer_make(f.data.slice(f.position).concat(0), 0, ALLOC_STACK, 'i8');
+    arguments[0] = allocate(f.data.slice(f.position).concat(0), 'i8', ALLOC_STACK);
     var ret = __scanString.apply(null, arguments);
     f.position += ret.bytes;
     return ret.fields;
@@ -846,7 +846,7 @@ var Library = {
     // Leaky and non-shared... FIXME
     var info = STDIO.streams[stream];
     if (!info) return -1;
-    return Pointer_make(info.data.slice(offset, offset+num), null, ALLOC_NORMAL, 'i8');
+    return allocate(info.data.slice(offset, offset+num), 'i8', ALLOC_NORMAL);
   },
 
   munmap: function(start, num) {
@@ -1205,7 +1205,7 @@ var Library = {
   },
 
   strdup: function(ptr) {
-    return Pointer_make(String_copy(ptr, true), 0, ALLOC_NORMAL, 'i8');
+    return allocate(String_copy(ptr, true), 'i8', ALLOC_NORMAL);
   },
 
   strpbrk: function(ptr1, ptr2) {
@@ -1322,7 +1322,7 @@ var Library = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0
       ];
-      me.ret = Pointer_make([Pointer_make(values, 0, ALLOC_STATIC, 'i16')+256], 0, ALLOC_STATIC, 'void*');
+      me.ret = allocate([allocate(values, 'i16', ALLOC_STATIC)+256], 'void*', ALLOC_STATIC);
 #if USE_TYPED_ARRAYS == 0
       assert(HEAP[HEAP[me.ret]] == 2);
       assert(HEAP[HEAP[me.ret]-2] == 0);
@@ -1692,7 +1692,7 @@ var Library = {
       if (DLFCN_DATA.error === null) {
         var msg = 'An error occurred while loading dynamic library.';
         var arr = Module.intArrayFromString(msg)
-        DLFCN_DATA.error = Pointer_make(arr, 0, 2, 'i8');
+        DLFCN_DATA.error = allocate(arr, 'i8', 2);
       }
       DLFCN_DATA.isError = false;
       return DLFCN_DATA.error;
@@ -1864,7 +1864,7 @@ var Library = {
 
     var timezone = "GMT";
     if (!(timezone in ___tm_timezones)) {
-      ___tm_timezones[timezone] = Pointer_make(intArrayFromString(timezone), null, ALLOC_NORMAL, 'i8');
+      ___tm_timezones[timezone] = allocate(intArrayFromString(timezone), 'i8', ALLOC_NORMAL);
     }
     {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
 
@@ -1909,7 +1909,7 @@ var Library = {
 
     var timezone = date.toString().match(/\(([A-Z]+)\)/)[1];
     if (!(timezone in ___tm_timezones)) {
-      ___tm_timezones[timezone] = Pointer_make(intArrayFromString(timezone), null, ALLOC_NORMAL, 'i8');
+      ___tm_timezones[timezone] = allocate(intArrayFromString(timezone), 'i8', ALLOC_NORMAL);
     }
     {{{ makeSetValue('tmPtr', '___tm_struct_layout.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
 
@@ -1970,8 +1970,8 @@ var Library = {
 
     var winterName = winter.toString().match(/\(([A-Z]+)\)/)[1];
     var summerName = summer.toString().match(/\(([A-Z]+)\)/)[1];
-    var winterNamePtr = Pointer_make(intArrayFromString(winterName), null, ALLOC_NORMAL, 'i8');
-    var summerNamePtr = Pointer_make(intArrayFromString(summerName), null, ALLOC_NORMAL, 'i8');
+    var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
+    var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
     _tzname = _malloc(2 * QUANTUM_SIZE);
     {{{ makeSetValue('_tzname', '0', 'winterNamePtr', 'i32') }}}
     {{{ makeSetValue('_tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
@@ -2048,7 +2048,7 @@ var Library = {
     // var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
     var me = _localeconv;
     if (!me.ret) {
-      me.ret = Pointer_make([Pointer_make(intArrayFromString('.'), null, ALLOC_NORMAL, 'i8')], null, ALLOC_NORMAL, 'i8'); // just decimal point, for now
+      me.ret = allocate([allocate(intArrayFromString('.'), 'i8', ALLOC_NORMAL)], 'i8', ALLOC_NORMAL); // just decimal point, for now
     }
     return me.ret;
   },
@@ -2060,7 +2060,7 @@ var Library = {
   nl_langinfo: function(item) {
     var me = _nl_langinfo;
     if (!me.ret) {
-      me.ret = Pointer_make(intArrayFromString("eh?"), null, ALLOC_NORMAL, 'i8'); 
+      me.ret = allocate(intArrayFromString("eh?"), 'i8', ALLOC_NORMAL); 
     }
     return me.ret;
   },
@@ -2234,7 +2234,7 @@ var Library = {
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
     var me = ___setErrNo;
-    if (!me.ptr) me.ptr = Pointer_make([0], 0, ALLOC_STATIC, 'i32');
+    if (!me.ptr) me.ptr = allocate([0], 'i32', ALLOC_STATIC);
     {{{ makeSetValue('me.ptr', '0', 'value', 'i32') }}}
     return value;
   },

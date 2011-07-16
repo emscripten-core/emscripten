@@ -8,14 +8,14 @@ Module.callMain = function callMain(args) {
       argv.push(0);
     }
   }
-  var argv = [Pointer_make(intArrayFromString("/bin/this.program"), null, ALLOC_STATIC, 'i8') ];
+  var argv = [allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_STATIC) ];
   pad();
   for (var i = 0; i < argc-1; i = i + 1) {
-    argv.push(Pointer_make(intArrayFromString(args[i]), null, ALLOC_STATIC, 'i8'));
+    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_STATIC));
     pad();
   }
   argv.push(0);
-  argv = Pointer_make(argv, null, ALLOC_STATIC, 'i32');
+  argv = allocate(argv, 'i32', ALLOC_STATIC);
 
   return _main(argc, argv, 0);
 }

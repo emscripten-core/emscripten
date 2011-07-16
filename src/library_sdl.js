@@ -357,7 +357,7 @@ mergeInto(Library, {
   },
 
   SDL_GetError: function() {
-    return Pointer_make(intArrayFromString("SDL is cool"), null);
+    return allocate(intArrayFromString("SDL is cool"), 'i8');
   },
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {

@@ -11,9 +11,9 @@ var LibraryGL = {
       case Module.ctxGL.VENDOR:
       case Module.ctxGL.RENDERER:
       case Module.ctxGL.VERSION:
-        return Pointer_make(intArrayFromString(Module.ctxGL.getParameter(name_)), null, ALLOC_NORMAL);
+        return allocate(intArrayFromString(Module.ctxGL.getParameter(name_)), 'i8', ALLOC_NORMAL);
       case 0x1F03: // Extensions
-        return Pointer_make(intArrayFromString(Module.ctxGL.getSupportedExtensions().join(' ')), null, ALLOC_NORMAL);
+        return allocate(intArrayFromString(Module.ctxGL.getSupportedExtensions().join(' ')), 'i8', ALLOC_NORMAL);
       default:
         throw 'Failure: Invalid glGetString value: ' + name_;
     }
