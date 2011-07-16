@@ -116,6 +116,11 @@ SHOW_LABELS = 0; // Show labels in the generated code
 BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which
                          // must be loaded dynamically using dlopen().
 
+RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
+                       // increases the size of the generated script, but allows you
+                       // to more easily perform operations from handwritten JS on
+                       // objects with structures etc.
+
 // Compiler debugging options
 DEBUG_TAGS_SHOWING = [];
   // Some useful items:

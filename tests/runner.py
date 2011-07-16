@@ -173,7 +173,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO']:
       try:
         value = eval(setting)
         exported_settings[setting] = value
@@ -2722,6 +2722,44 @@ Child2:9
 *ok*
 ''', post_build=post2)
 
+    def test_typeinfo(self):
+      global RUNTIME_TYPE_INFO; RUNTIME_TYPE_INFO = 1
+      global QUANTUM_SIZE
+      if QUANTUM_SIZE != 4: return self.skip()
+
+      src = '''
+        #include<stdio.h>
+        struct UserStruct {
+          int x;
+          char y;
+          void *z;
+        };
+        int main() {
+          UserStruct u;
+          u.y = 5;
+          printf("*ok:%d*\\n", u.y);
+          return 0;
+        }
+      '''
+
+      def post(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{POST_RUN_ADDITIONS}}',
+          '''
+            if (Runtime.typeInfo) {
+              print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
+            } else {
+              print('No type info.');
+            }
+          '''
+        )
+        open(filename, 'w').write(src)
+      self.do_test(src, '*ok:5*\n|i32,i8,i8*|0,4,8|', post_build=post)
+
+      # Make sure that without the setting, we don't spam the .js with the type info
+      RUNTIME_TYPE_INFO = 0
+      self.do_test(src, 'No type info.', post_build=post)
+
     ### Tests for tools
 
     def test_safe_heap(self):
@@ -3028,7 +3066,7 @@ Child2:9
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO
 
     COMPILER = '%s'
     llvm_opts = %d
@@ -3050,6 +3088,7 @@ class %s(T):
     CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
     CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
     INIT_STACK = 0
+    RUNTIME_TYPE_INFO = 0
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = []
@@ -3100,7 +3139,7 @@ else:
   QUANTUM_SIZE = 1
   RELOOP = OPTIMIZE = 1
   USE_TYPED_ARRAYS = 0
-  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = 0
+  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = RUNTIME_TYPE_INFO = 0
   INVOKE_RUN = 1
   CORRECT_SIGNS = 0
   CORRECT_ROUNDINGS = 0

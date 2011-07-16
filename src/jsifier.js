@@ -826,6 +826,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
       print(pre);
+      if (RUNTIME_TYPE_INFO) {
+        Types.cleanForRuntime();
+        print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
+      }
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
       print(Functions.generateIndexing());
 
