@@ -41,6 +41,7 @@ var Library = {
     // Converts any path to an absolute path. Resolves embedded "." and ".."
     // parts.
     absolutePath: function(relative, base) {
+      // TODO: Check if slash escaping should be taken into account.
       if (base === undefined) base = FS.currentPath;
       else if (relative[0] == '/') base = '';
       var full = base + '/' + relative;
@@ -316,6 +317,67 @@ var Library = {
         return FS.streams[dirp].currentEntry;
       }
     }
+  },
+  // TODO: Check if we need to link any aliases.
+
+  // ==========================================================================
+  // libgen.h
+  // ==========================================================================
+
+  __libgenSplitName: function(path) {
+    if (path === 0 || {{{ makeGetValue('path', 0, 'i8') }}} === 0) {
+      // Null or empty results in '.'.
+      var me = ___libgenSplitName;
+      if (!me.ret) {
+        me.ret = allocate(['.'.charCodeAt(0), 0], 'i8', ALLOC_STATIC);
+      }
+      return [me.ret, -1];
+    } else {
+      var slash = '/'.charCodeAt(0);
+      var allSlashes = true;
+      var slashPositions = [];
+      for (var i = 0; {{{ makeGetValue('path', 'i', 'i8') }}} !== 0; i++) {
+        if ({{{ makeGetValue('path', 'i', 'i8') }}} === slash) {
+          slashPositions.push(i);
+        } else {
+          allSlashes = false;
+        }
+      }
+      var length = i;
+      if (allSlashes) {
+        // All slashes result in a single slash.
+        {{{ makeSetValue('path', '1', '0', 'i8') }}}
+        return [path, -1];
+      } else {
+        // Strip trailing slashes.
+        while (slashPositions.length &&
+               slashPositions[slashPositions.length - 1] == length - 1) {
+          {{{ makeSetValue('path', 'slashPositions.pop(i)', '0', 'i8') }}}
+          length--;
+        }
+        return [path, slashPositions.pop()];
+      }
+    }
+  },
+  basename__deps: ['__libgenSplitName'],
+  basename: function(path) {
+    // char *basename(char *path);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/basename.html
+    var result = ___libgenSplitName(path);
+    return result[0] + result[1] + 1;
+  },
+  __xpg_basename: 'basename',
+  dirname__deps: ['__libgenSplitName'],
+  dirname: function(path) {
+    // char *dirname(char *path);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/dirname.html
+    var result = ___libgenSplitName(path);
+    if (result[1] == 0) {
+      {{{ makeSetValue('result[0]', 1, '0', 'i8') }}}
+    } else if (result[1] !== -1) {
+      {{{ makeSetValue('result[0]', 'result[1]', '0', 'i8') }}}
+    }
+    return result[0];
   },
 
   // ==========================================================================
