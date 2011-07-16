@@ -86,7 +86,7 @@ var Library = {
         current = current.contents[target];
         if (current.link) {
           current = FS.findObject(current.link);
-          if (++linksVisited > 64) {
+          if (++linksVisited > 40) { // Usual Linux SYMLOOP_MAX.
             ___setErrNo(ERRNO_CODES.ELOOP);
             return null;
           }
@@ -319,6 +319,39 @@ var Library = {
     }
   },
   // TODO: Check if we need to link any aliases.
+
+  // ==========================================================================
+  // utime.h
+  // ==========================================================================
+
+  // TODO: Switch to dynamically calculated layout.
+  //__utimbuf_struct_layout: Runtime.generateStructInfo('utimbuf'),
+  __utimbuf_struct_layout: {
+    __size__: 8,
+    actime: 0,
+    modtime: 4
+  },
+  utime__deps: ['$FS', '__setErrNo', '__utimbuf_struct_layout'],
+  utime: function(path, times) {
+    // int utime(const char *path, const struct utimbuf *times);
+    // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
+    var time;
+    if (times) {
+      // NOTE: We don't keep track of access timestamps.
+      time = {{{ makeGetValue('times', '___utimbuf_struct_layout.modtime', 'i32') }}}
+      time = new Date(time * 1000);
+    } else {
+      time = new Date();
+    }
+    var file = FS.findObject(Pointer_stringify(path));
+    if (file === null) return -1;
+    if (!file.write) {
+      ___setErrNo(ERRNO_CODES.EPERM);
+      return -1;
+    }
+    file.timestamp = time;
+    return 0;
+  },
 
   // ==========================================================================
   // libgen.h

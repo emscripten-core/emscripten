@@ -2211,6 +2211,50 @@ if 'benchmark' not in sys.argv:
       '''
       self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
 
+    def test_utime(self):
+      def addPreRunAndChecks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            var TEST_F1 = FS.createFolder('/', 'writeable', true, true);
+            var TEST_F2 = FS.createFolder('/', 'unwriteable', true, false);
+          '''
+        ).replace(
+          '// {{POST_RUN_ADDITIONS}}',
+          '''
+            print('first changed: ' + (TEST_F1.timestamp.getTime() == 1200000000000));
+            print('second changed: ' + (TEST_F2.timestamp.getTime() == 1200000000000));
+          '''
+        )
+        open(filename, 'w').write(src)
+
+      src = r'''
+        #include <stdio.h>
+        #include <errno.h>
+        #include <utime.h>
+
+        int main() {
+          struct utimbuf t = {1000000000, 1200000000};
+          char* writeable = "/writeable";
+          char* unwriteable = "/unwriteable";
+
+          utime(writeable, &t);
+          printf("writeable errno: %d\n", errno);
+
+          utime(unwriteable, &t);
+          printf("unwriteable errno: %d\n", errno);
+
+          return 0;
+        }
+        '''
+      expected = '''
+        writeable errno: 0
+        unwriteable errno: 1
+        first changed: true
+        second changed: false
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRunAndChecks)
+
     ### 'Big' tests
 
     def test_fannkuch(self):
