@@ -288,6 +288,11 @@ LibraryManager.library = {
         {{{ makeSetValue('entry', '___dirent_struct_layout.d_name + i', 'name.charCodeAt(i)', 'i8') }}}
       }
       {{{ makeSetValue('entry', '___dirent_struct_layout.d_name + i', '0', 'i8') }}}
+      var type = stream.isFolder ? 4 // DT_DIR, directory.
+               : stream.contents !== undefined ? 8 // DT_REG, regular file.
+               : stream.link !== undefined ? 10 // DT_LNK, symbolic link.
+               : 2 // DT_CHR, character device.
+      {{{ makeSetValue('entry', '___dirent_struct_layout.d_type', 'type', 'i8') }}}
       {{{ makeSetValue('result', '0', 'entry', 'i8*') }}}
     }
     return 0;
