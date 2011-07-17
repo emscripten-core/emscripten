@@ -276,7 +276,7 @@ var Library = {
     var stream = FS.streams[dirp];
     var loc = stream.position;
     if (loc < -2 || loc >= FS.streams[dirp].contents.length) {
-      {{{ makeSetValue('result', '0', '0', '*i8') }}}
+      {{{ makeSetValue('result', '0', '0', 'i8*') }}}
     } else {
       var name, inode;
       if (loc === -2) {
@@ -297,7 +297,7 @@ var Library = {
         {{{ makeSetValue('entry', '___dirent_struct_layout.d_name + i', 'name.charCodeAt(i)', 'i8') }}}
       }
       {{{ makeSetValue('entry', '___dirent_struct_layout.d_name + i', '0', 'i8') }}}
-      {{{ makeSetValue('result', '0', 'entry', '*i8') }}}
+      {{{ makeSetValue('result', '0', 'entry', 'i8*') }}}
     }
     return 0;
   },
@@ -311,7 +311,7 @@ var Library = {
     } else {
       if (!_readdir.result) _readdir.result = _malloc(4);
       _readdir_r(dirp, FS.streams[dirp].currentEntry, _readdir.result);
-      if ({{{ makeGetValue(0, '_readdir.result', '*i8') }}} === 0) {
+      if ({{{ makeGetValue(0, '_readdir.result', 'i8*') }}} === 0) {
         return 0;
       } else {
         return FS.streams[dirp].currentEntry;
