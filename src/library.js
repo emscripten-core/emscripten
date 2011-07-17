@@ -453,6 +453,161 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // sys/stat.h
+  // ==========================================================================
+
+  __stat_struct_layout: Runtime.generateStructInfo(
+    ['st_dev', '__pad1', 'st_ino', 'st_mode', 'st_nlink', 'st_uid', 'st_gid',
+     'st_rdev', '__pad2', 'st_size', 'st_blksize', 'st_blocks', 'st_atim',
+     'st_mtim', 'st_ctim', '__unused4', '__unused5'],
+    '%struct.stat'
+  ),
+  stat__deps: ['$FS', '__stat_struct_layout'],
+  stat: function(path, buf, dontResolveLastLink) {
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
+    // int stat(const char *path, struct stat *buf);
+    // dontResolveLastLink is a shortcut for lstat(). It should never be used in
+    // client code.
+    var obj = FS.findObject(path, dontResolveLastLink);
+    if (obj === null || !FS.forceLoadFile(obj)) return -1;
+
+    // Constants.
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_nlink', '1', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_uid', '0', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_gid', '0', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_blksize', '4096', 'i32') }}}
+
+    // Variables.
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_ino', 'obj.inodeNumber', 'i32') }}}
+    var time = Math.floor(obj.timestamp.getTime() / 1000);
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_atime', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_mtime', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_ctime', 'time', 'i32') }}}
+    var mode = 0;
+    if (obj.read || obj.write) {
+      //  Device numbers reuse inode numbers.
+      {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', 'obj.inodeNumber', 'i64') }}}
+      {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', 'obj.inodeNumber', 'i64') }}}
+      {{{ makeSetValue('buf', '___stat_struct_layout.st_size', '0', 'i32') }}}
+      {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', '0', 'i32') }}}
+      mode = 020000;  // 0020000
+    } else {
+      {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', '1', 'i64') }}}
+      {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', '0', 'i64') }}}
+      // NOTE: In our implementation, st_blocks = st_size / st_blksize, but this
+      //       is not required by the standard.
+      if (obj.isFolder) {
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'obj.contents.length * 4096', 'i32') }}}
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'obj.contents.length', 'i32') }}}
+        mode = 040000;  // S_IFDIR
+      } else {
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'obj.contents.length', 'i32') }}}
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'obj.contents.length / 4096', 'i32') }}}
+        mode = 0100000;  // S_IFREG
+      }
+    }
+    if (obj.read) mode |= 0555;
+    if (obj.write) mode |= 0222;
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_mode', 'mode', 'i32') }}}
+
+    return 0;
+  },
+  lstat__deps: ['stat'],
+  lstat: function() {
+    return _stat(path, buf, true);
+  },
+  fstat__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'stat'],
+  fstat: function(fildes, buf) {
+    // int fstat(int fildes, struct stat *buf);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fstat.html
+    if (!FS.streams[fildes]) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else {
+      var pathArray = intArrayFromString(FS.streams[filedes].path);
+      var pathPtr = allocate(pathArray, 'i8', ALLOC_NORMAL);
+      var result = _stat(pathPtr, buf);
+      _free(pathPtr);
+      return result;
+    }
+  },
+  mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  mknod: function(path, mode, dev) {
+    // int mknod(const char *path, mode_t mode, dev_t dev);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mknod.html
+    if (dev !== 0 || !(mode & 0140000)) {  // S_IFREG | S_IFDIR
+      // Can't create devices or pipes through mknod().
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      var properties = {contents: [], isFolder: Boolean(mode & 040000)};
+      try {
+        FS.createObject(Pointer_stringify(_dirname(path)),
+                        Pointer_stringify(_basename(path)),
+                        properties,
+                        mode & 0400,
+                        mode & 0200);
+        return 0;
+      } catch (e) {
+        return -1;
+      }
+    }
+  },
+  mkdir__deps: ['mknod'],
+  mkdir: function(path, mode) {
+    // int mkdir(const char *path, mode_t mode);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkdir.html
+    return _mknod(path, 040000 | (mode & 0600), 0);
+  },
+  mkfifo__deps: ['__setErrNo', '$ERRNO_CODES'],
+  mkfifo: function(path, mode) {
+    // int mkfifo(const char *path, mode_t mode);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkfifo.html
+    // NOTE: We support running only a single process, and named pipes require
+    //       blocking, which we can't provide. The error code is not very
+    //       accurate, but it's the closest among those allowed in the standard
+    //       and unlikely to result in retries.
+    ___setErrNo(ERRNO_CODES.EROFS);
+    return -1;
+  },
+  chmod__deps: ['$FS'],
+  chmod: function(path, mode) {
+    // int chmod(const char *path, mode_t mode);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chmod.html
+    var obj = FS.findObject(Pointer_stringify(path));
+    if (obj === null) return -1;
+    obj.read = mode & 0400;
+    obj.write = mode & 0200;
+    obj.timestamp = new Date();
+    return 0;
+  },
+  fchmod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chmod'],
+  fchmod: function(fildes, mode) {
+    // int fchmod(int fildes, mode_t mode);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fchmod.html
+    if (!FS.streams[fildes]) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else {
+      var pathArray = intArrayFromString(FS.streams[filedes].path);
+      var pathPtr = allocate(pathArray, 'i8', ALLOC_NORMAL);
+      var result = _chmod(pathPtr, mode);
+      _free(pathPtr);
+      return result;
+    }
+  },
+  umask__deps: ['$FS'],
+  umask: function(newMask) {
+    var oldMask = FS.cmask;
+    FS.cmask = newMask;
+    return oldMask;
+  },
+  // TODO: Check if these or any other aliases are needed:
+  // __01fstat64_: 'fstat',
+  // __01stat64_: 'stat',
+  // __01lstat64_: 'stat',
+
+  // ==========================================================================
 
   _scanString: function() {
     // Supports %x, %4x, %d.%d, %s
@@ -1248,36 +1403,6 @@ LibraryManager.library = {
 
   fcntl: function() { }, // TODO...
 
-  fstat: function(stream, ptr) {
-    var info = STDIO.streams[stream];
-    if (!info) return -1;
-    // XXX: hardcoded indexes into the structure.
-    try {
-      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[0]', '1', 'i32') }}} // st_dev
-      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[15]', 'stream', 'i32') }}} // st_ino
-      {{{ makeSetValue('ptr', '$struct_stat___FLATTENER[9]', 'info.data.length', 'i32') }}} // st_size
-    } catch(e) {
-      // no FLATTENER
-      {{{ makeSetValue('ptr', '0', '1', 'i32') }}}
-      {{{ makeSetValue('ptr', '15', 'stream', 'i32') }}}
-      {{{ makeSetValue('ptr', '9', 'info.data.length', 'i32') }}}
-    }
-    // TODO: other fields
-    return 0;
-  },
-
-  stat__deps: ['open', 'fstat'],
-  stat: function(filename, ptr) {
-    if (typeof window === 'undefined') {
-      // XXX d8 hangs if you try to read a folder.
-      // http://code.google.com/p/v8/issues/detail?id=1533
-      return 0;
-    }
-    // TODO: Handle symbolic links.
-    var stream = _open(filename, 0, 256); // RDONLY, 0400.
-    return _fstat(stream, ptr);
-  },
-
   mmap: function(start, num, prot, flags, stream, offset) {
     // Leaky and non-shared... FIXME
     var info = STDIO.streams[stream];
@@ -2006,7 +2131,6 @@ LibraryManager.library = {
     return Math.pow(2, x);
   },
 
-  
   // ==========================================================================
   // dlfcn.h - Dynamic library loading
   //
@@ -2458,14 +2582,6 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // stat.h
-  // ==========================================================================
-
-  __01fstat64_: 'fstat',
-  __01stat64_: 'stat',
-  __01lstat64_: 'stat',
-
-  // ==========================================================================
   // locale.h
   // ==========================================================================
 
@@ -2490,7 +2606,7 @@ LibraryManager.library = {
   nl_langinfo: function(item) {
     var me = _nl_langinfo;
     if (!me.ret) {
-      me.ret = allocate(intArrayFromString("eh?"), 'i8', ALLOC_NORMAL); 
+      me.ret = allocate(intArrayFromString("eh?"), 'i8', ALLOC_NORMAL);
     }
     return me.ret;
   },
