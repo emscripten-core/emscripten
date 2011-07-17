@@ -176,19 +176,10 @@ LibraryManager.library = {
   // dirent.h
   // ==========================================================================
 
-  // TODO: Switch to dynamically calculated layout.
-  //__dirent_struct_layout: Runtime.generateStructInfo('dirent'),
-  __dirent_struct_layout: {
-    __size__: 268,
-    // The inode number of the entry.
-    d_ino: 0,
-    // The offset of the next entry.
-    d_off: 4,
-    // The length of the d_name buffer.
-    d_reclen: 8,
-    // The filename of the entry.
-    d_name: 11
-  },
+  __dirent_struct_layout: Runtime.generateStructInfo(
+    ['d_ino', 'd_off', 'd_reclen', 'd_type', 'd_name'],
+    '%struct.dirent'
+  ),
   opendir__deps: ['$FS', '__setErrNo', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
@@ -324,13 +315,10 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  // TODO: Switch to dynamically calculated layout.
-  //__utimbuf_struct_layout: Runtime.generateStructInfo('utimbuf'),
-  __utimbuf_struct_layout: {
-    __size__: 8,
-    actime: 0,
-    modtime: 4
-  },
+  __utimbuf_struct_layout: Runtime.generateStructInfo(
+    ['actime', 'modtime'],
+    '%struct.utimbuf'
+  ),
   utime__deps: ['$FS', '__setErrNo', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
