@@ -19,6 +19,7 @@ LibraryManager.library = {
   // ==========================================================================
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo'],
+  $FS__postset: 'FS.ignorePermissions = false;',
   $FS: {
     // The main file system tree. All the contents are inside this.
     root: {
@@ -34,7 +35,7 @@ LibraryManager.library = {
     // The inode to assign to the next created object.
     nextInode: 2,
     // The file creation mask used by the program.
-    cmask: 022,
+    cmask: 0x1ff,  // S_IRWXU | S_IRWXG | S_IRWXO.
     // Currently opened file or directory streams. Padded with null so the zero
     // index is unused, as the indices are used as pointers. This is not split
     // into separate fileStreams and folderStreams lists because the pointers
@@ -42,11 +43,11 @@ LibraryManager.library = {
     streams: [null],
     // Whether we are currently ignoring permissions. Useful when preparing the
     // filesystem and creating files inside read-only folders.
-    ignorePermissions: false,
+    ignorePermissions: true,
     // Converts any path to an absolute path. Resolves embedded "." and ".."
     // parts.
     absolutePath: function(relative, base) {
-      // TODO: Check if slash escaping should be taken into account.
+      if (!relative && relative !== '') return null;
       if (base === undefined) base = FS.currentPath;
       else if (relative[0] == '/') base = '';
       var full = base + '/' + relative;
@@ -78,6 +79,7 @@ LibraryManager.library = {
       path = path.split('/').reverse();
       path.pop();
       var current = FS.root;
+      var traversed = [''];
       while (path.length) {
         var target = path.pop();
         if (!current.isFolder) {
@@ -92,12 +94,14 @@ LibraryManager.library = {
         }
         current = current.contents[target];
         if (current.link && !(dontResolveLastLink && path.length == 0)) {
-          current = FS.findObject(current.link, dontResolveLastLink);
+          var link = FS.absolutePath(current.link, traversed.join('/'));
+          current = FS.findObject(link, dontResolveLastLink);
           if (++linksVisited > 40) { // Usual Linux SYMLOOP_MAX.
             ___setErrNo(ERRNO_CODES.ELOOP);
             return null;
           }
         }
+        traversed.push(target);
       }
       return current;
     },
@@ -171,7 +175,7 @@ LibraryManager.library = {
     createDataFile: function(parent, name, data, canRead, canWrite) {
       if (typeof data === 'string') {
         var dataArray = [];
-        for (var i = 0; i < data; i++) dataArray.push(data.charCodeAt(i));
+        for (var i = 0; i < data.length; i++) dataArray.push(data.charCodeAt(i));
         data = dataArray;
       }
       return FS.createFile(parent, name, {contents: data}, canRead, canWrite);
@@ -184,15 +188,22 @@ LibraryManager.library = {
     createLink: function(parent, name, target, canRead, canWrite) {
       return FS.createFile(parent, name, {link: target}, canRead, canWrite);
     },
-    // Creates a device with read and write callbacks.
-    createDevice: function(parent, name, read, write) {
-      var ops = {read: read, write: write};
-      return FS.createFile(parent, name, ops, Boolean(read), Boolean(write));
+    // Creates a character device with input and output callbacks:
+    //   input: takes no parameters, returns a byte value.
+    //   output: takes a byte value, doesn't return anything.
+    // TODO: Decide how to handle flushing in a consistent manner.
+    createDevice: function(parent, name, input, output) {
+      if (!(input || output)) {
+        throw new Error('A device must have at least one callback defined.');
+      }
+      var ops = {input: input, output: output};
+      return FS.createFile(parent, name, ops, Boolean(input), Boolean(output));
     },
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile: function(obj) {
-      if (obj.contents !== undefined) return true;
+      if (obj.input !== undefined || obj.output !== undefined ||
+          obj.link !== undefined || obj.contents !== undefined) return true;
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
@@ -291,10 +302,14 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/seekdir.html
     if (!FS.streams[dirp] || !FS.streams[dirp].isFolder) {
       ___setErrNo(ERRNO_CODES.EBADF);
-    } else if (loc >= FS.streams[dirp].contents.length) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
     } else {
-      FS.streams[dirp].position = loc;
+      var entries = 0;
+      for (var key in FS.streams[dirp].contents) entries++;
+      if (loc >= entries) {
+        ___setErrNo(ERRNO_CODES.EINVAL);
+      } else {
+        FS.streams[dirp].position = loc;
+      }
     }
   },
   rewinddir__deps: ['seekdir'],
@@ -312,7 +327,9 @@ LibraryManager.library = {
     }
     var stream = FS.streams[dirp];
     var loc = stream.position;
-    if (loc < -2 || loc >= FS.streams[dirp].contents.length) {
+    var entries = 0;
+    for (var key in stream.contents) entries++;
+    if (loc < -2 || loc >= entries) {
       {{{ makeSetValue('result', '0', '0', 'i8*') }}}
     } else {
       var name, inode;
