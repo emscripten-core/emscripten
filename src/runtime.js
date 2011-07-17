@@ -169,14 +169,14 @@ Runtime = {
   // but not at runtime. The reason is that during compilation we cannot simplify
   // the type names yet.)
   generateStructInfo: function(struct, typeName) {
-    var fields = struct.map(function(item) { return item[0] });
     var type, alignment;
     if (typeName) {
       type = Types.types[typeName];
       if (!type) return null;
+      assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName);
       alignment = type.flatIndexes;
     } else {
-      var type = { fields: fields };
+      var type = { fields: struct.map(function(item) { return item[0] }) };
       alignment = Runtime.calculateStructAlignment(type);
     }
     var ret = {
