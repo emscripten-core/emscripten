@@ -475,8 +475,8 @@ LibraryManager.library = {
 
   __stat_struct_layout: Runtime.generateStructInfo(
     ['st_dev', '__pad1', 'st_ino', 'st_mode', 'st_nlink', 'st_uid', 'st_gid',
-     'st_rdev', '__pad2', 'st_size', 'st_blksize', 'st_blocks', 'st_atim',
-     'st_mtim', 'st_ctim', '__unused4', '__unused5'],
+     'st_rdev', '__pad2', 'st_size', 'st_blksize', 'st_blocks', 'st_atime',
+     'st_mtime', 'st_ctime', '__unused4', '__unused5'],
     '%struct.stat'
   ),
   stat__deps: ['$FS', '__stat_struct_layout'],
@@ -485,7 +485,7 @@ LibraryManager.library = {
     // int stat(const char *path, struct stat *buf);
     // dontResolveLastLink is a shortcut for lstat(). It should never be used in
     // client code.
-    var obj = FS.findObject(path, dontResolveLastLink);
+    var obj = FS.findObject(Pointer_stringify(path), dontResolveLastLink);
     if (obj === null || !FS.forceLoadFile(obj)) return -1;
 
     // Constants.
@@ -501,38 +501,42 @@ LibraryManager.library = {
     {{{ makeSetValue('buf', '___stat_struct_layout.st_mtime', 'time', 'i32') }}}
     {{{ makeSetValue('buf', '___stat_struct_layout.st_ctime', 'time', 'i32') }}}
     var mode = 0;
-    if (obj.read || obj.write) {
+    if (obj.input !== undefined || obj.output !== undefined) {
       //  Device numbers reuse inode numbers.
       {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', 'obj.inodeNumber', 'i64') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', 'obj.inodeNumber', 'i64') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_size', '0', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', '0', 'i32') }}}
-      mode = 020000;  // 0020000
+      mode = 0x2000;  // S_IFCHR.
     } else {
       {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', '1', 'i64') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', '0', 'i64') }}}
-      // NOTE: In our implementation, st_blocks = st_size / st_blksize, but this
-      //       is not required by the standard.
+      // NOTE: In our implementation, st_blocks = Math.ceil(st_size/st_blksize),
+      //       but this is not required by the standard.
       if (obj.isFolder) {
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'obj.contents.length * 4096', 'i32') }}}
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'obj.contents.length', 'i32') }}}
-        mode = 040000;  // S_IFDIR
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', '4096', 'i32') }}}
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', '1', 'i32') }}}
+        mode = 0x4000;  // S_IFDIR.
       } else {
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'obj.contents.length', 'i32') }}}
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'obj.contents.length / 4096', 'i32') }}}
-        mode = 0100000;  // S_IFREG
+        var data = obj.contents || obj.link;
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'data.length', 'i32') }}}
+        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'Math.ceil(data.length / 4096)', 'i32') }}}
+        mode = obj.link === undefined ? 0x8000 : 0xA000;  // S_IFREG, S_IFLNK.
       }
     }
-    if (obj.read) mode |= 0555;
-    if (obj.write) mode |= 0222;
+    if (obj.read) mode |= 0x16D;  // S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH.
+    if (obj.write) mode |= 0x92;  // S_IWUSR | S_IWGRP | S_IWOTH.
     {{{ makeSetValue('buf', '___stat_struct_layout.st_mode', 'mode', 'i32') }}}
 
     return 0;
   },
   lstat__deps: ['stat'],
-  lstat: function() {
+  lstat: function(path, buf) {
+    // int lstat(const char *path, struct stat *buf);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/lstat.html
     return _stat(path, buf, true);
   },
+  // TODO: Test once open() is implemented using FS.
   fstat__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'stat'],
   fstat: function(fildes, buf) {
     // int fstat(int fildes, struct stat *buf);
@@ -548,24 +552,25 @@ LibraryManager.library = {
       return result;
     }
   },
-  mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'strlen', 'strcpy', 'dirname', 'basename'],
   mknod: function(path, mode, dev) {
     // int mknod(const char *path, mode_t mode, dev_t dev);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mknod.html
-    if (dev !== 0 || !(mode & 0140000)) {  // S_IFREG | S_IFDIR
+    if (dev !== 0 || !(mode & 0xC000)) {  // S_IFREG | S_IFDIR.
       // Can't create devices or pipes through mknod().
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     } else {
-      var properties = {contents: [], isFolder: Boolean(mode & 040000)};
+      var properties = {contents: [], isFolder: Boolean(mode & 0x4000)};  // S_IFDIR.
+      var buffer = _malloc(_strlen(path) + 1);
+      var parent = Pointer_stringify(_dirname(_strcpy(buffer, path)));
+      var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
       try {
-        FS.createObject(Pointer_stringify(_dirname(path)),
-                        Pointer_stringify(_basename(path)),
-                        properties,
-                        mode & 0400,
-                        mode & 0200);
+        FS.createObject(parent, name, properties, mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+        _free(buffer);
         return 0;
       } catch (e) {
+        _free(buffer);
         return -1;
       }
     }
@@ -574,7 +579,7 @@ LibraryManager.library = {
   mkdir: function(path, mode) {
     // int mkdir(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkdir.html
-    return _mknod(path, 040000 | (mode & 0600), 0);
+    return _mknod(path, 0x4000 | (mode & 0x180), 0);  // S_IFDIR, S_IRUSR | S_IWUSR.
   },
   mkfifo__deps: ['__setErrNo', '$ERRNO_CODES'],
   mkfifo: function(path, mode) {
@@ -593,11 +598,12 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chmod.html
     var obj = FS.findObject(Pointer_stringify(path));
     if (obj === null) return -1;
-    obj.read = mode & 0400;
-    obj.write = mode & 0200;
+    obj.read = mode & 0x100;  // S_IRUSR.
+    obj.write = mode & 0x80;  // S_IWUSR.
     obj.timestamp = new Date();
     return 0;
   },
+  // TODO: Test once open() is implemented using FS.
   fchmod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chmod'],
   fchmod: function(fildes, mode) {
     // int fchmod(int fildes, mode_t mode);
@@ -613,6 +619,7 @@ LibraryManager.library = {
       return result;
     }
   },
+  // TODO: Test once cmask is used.
   umask__deps: ['$FS'],
   umask: function(newMask) {
     var oldMask = FS.cmask;
