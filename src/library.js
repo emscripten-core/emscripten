@@ -1633,6 +1633,7 @@ LibraryManager.library = {
       {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8') }}}
       i ++;
     } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
+    return pdest;
   },
 
   strncpy: function(pdest, psrc, num) {
@@ -1642,6 +1643,7 @@ LibraryManager.library = {
       {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
       padding = padding || {{{ makeGetValue('psrc', 'i', 'i8') }}} == 0;
     }
+    return pdest;
   },
 
   strcat__deps: ['strlen'],
