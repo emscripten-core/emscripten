@@ -33,11 +33,16 @@ LibraryManager.library = {
     currentPath: '/',
     // The inode to assign to the next created object.
     nextInode: 2,
+    // The file creation mask used by the program.
+    cmask: 022,
     // Currently opened file or directory streams. Padded with null so the zero
     // index is unused, as the indices are used as pointers. This is not split
     // into separate fileStreams and folderStreams lists because the pointers
     // must be interchangeable, e.g. when used in fdopen().
     streams: [null],
+    // Whether we are currently ignoring permissions. Useful when preparing the
+    // filesystem and creating files inside read-only folders.
+    ignorePermissions: false,
     // Converts any path to an absolute path. Resolves embedded "." and ".."
     // parts.
     absolutePath: function(relative, base) {
@@ -60,8 +65,10 @@ LibraryManager.library = {
       }
       return absolute.join('/');
     },
-    // Finds the file system object at a given path.
-    findObject: function(path) {
+    // Finds the file system object at a given path. If dontResolveLastLink is
+    // set to true and the object is a symbolic link, it will be returned as is
+    // instead of being resolved. Links embedded in the path as still resolved.
+    findObject: function(path, dontResolveLastLink) {
       var linksVisited = 0;
       path = FS.absolutePath(path);
       if (path === null) {
@@ -77,15 +84,15 @@ LibraryManager.library = {
           ___setErrNo(ERRNO_CODES.ENOTDIR);
           return null;
         } else if (!current.read) {
-          ___setErrNo(ERRNO_CODES.EACCESS);
+          ___setErrNo(ERRNO_CODES.EACCES);
           return null;
         } else if (!current.contents.hasOwnProperty(target)) {
           ___setErrNo(ERRNO_CODES.ENOENT);
           return null;
         }
         current = current.contents[target];
-        if (current.link) {
-          current = FS.findObject(current.link);
+        if (current.link && !(dontResolveLastLink && path.length == 0)) {
+          current = FS.findObject(current.link, dontResolveLastLink);
           if (++linksVisited > 40) { // Usual Linux SYMLOOP_MAX.
             ___setErrNo(ERRNO_CODES.ELOOP);
             return null;
@@ -99,12 +106,24 @@ LibraryManager.library = {
       if (!parent) parent = '/';
       if (typeof parent === 'string') parent = FS.findObject(parent);
 
-      if (!parent) throw new Error('Parent path must exist.');
-      if (!parent.isFolder) throw new Error('Parent must be a folder.');
+      if (!parent) {
+        ___setErrNo(ERRNO_CODES.EACCES);
+        throw new Error('Parent path must exist.');
+      }
+      if (!parent.isFolder) {
+        ___setErrNo(ERRNO_CODES.ENOTDIR);
+        throw new Error('Parent must be a folder.');
+      }
+      if (!parent.write && !FS.ignorePermissions) {
+        ___setErrNo(ERRNO_CODES.EACCES);
+        throw new Error('Parent folder must be writeable.');
+      }
       if (!name || name == '.' || name == '..') {
+        ___setErrNo(ERRNO_CODES.ENOENT);
         throw new Error('Name must not be empty.');
       }
       if (parent.contents.hasOwnProperty(name)) {
+        ___setErrNo(ERRNO_CODES.EEXIST);
         throw new Error("Can't overwrite object.");
       }
 
@@ -170,6 +189,33 @@ LibraryManager.library = {
       var ops = {read: read, write: write};
       return FS.createFile(parent, name, ops, Boolean(read), Boolean(write));
     },
+    // Makes sure a file's contents are loaded. Returns whether the file has
+    // been loaded successfully. No-op for files that have been loaded already.
+    forceLoadFile: function(obj) {
+      if (obj.contents !== undefined) return true;
+      var success = true;
+      if (typeof XMLHttpRequest !== 'undefined') {
+        // Browser.
+        // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', obj.url, false);
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');  // Binary.
+        xhr.send(null);
+        if (xhr.status != 200 && xhr.status != 0) success = false;
+        obj.contents = intArrayFromString(xhr.responseText || '');
+      } else if (typeof read !== 'undefined') {
+        // Command-line.
+        try {
+          obj.contents = intArrayFromString(read(obj.url));
+        } catch (e) {
+          success = false;
+        }
+      } else {
+        throw new Error('Cannot load without read() or XMLHttpRequest.');
+      }
+      if (!success) ___setErrNo(ERRNO_CODES.EIO);
+      return success;
+    }
   },
 
   // ==========================================================================
@@ -180,7 +226,7 @@ LibraryManager.library = {
     ['d_ino', 'd_off', 'd_reclen', 'd_type', 'd_name'],
     '%struct.dirent'
   ),
-  opendir__deps: ['$FS', '__setErrNo', '__dirent_struct_layout'],
+  opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/opendir.html
@@ -217,7 +263,7 @@ LibraryManager.library = {
     };
     return id;
   },
-  closedir__deps: ['$FS', '__setErrNo'],
+  closedir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   closedir: function(dirp) {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
@@ -229,7 +275,7 @@ LibraryManager.library = {
       return 0;
     }
   },
-  telldir__deps: ['$FS', '__setErrNo'],
+  telldir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   telldir: function(dirp) {
     // long int telldir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/telldir.html
@@ -239,7 +285,7 @@ LibraryManager.library = {
       return FS.streams[dirp].position;
     }
   },
-  seekdir__deps: ['$FS', '__setErrNo'],
+  seekdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   seekdir: function(dirp, loc) {
     // void seekdir(DIR *dirp, long int loc);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/seekdir.html
@@ -257,7 +303,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/rewinddir.html
     _seekdir(dirp, -2);
   },
-  readdir_r__deps: ['$FS', '__setErrNo', '__dirent_struct_layout'],
+  readdir_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   readdir_r: function(dirp, entry, result) {
     // int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
@@ -297,7 +343,7 @@ LibraryManager.library = {
     }
     return 0;
   },
-  readdir__deps: ['readdir_r', '__setErrNo'],
+  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
   readdir: function(dirp) {
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
@@ -324,7 +370,7 @@ LibraryManager.library = {
     ['actime', 'modtime'],
     '%struct.utimbuf'
   ),
-  utime__deps: ['$FS', '__setErrNo', '__utimbuf_struct_layout'],
+  utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
     // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
