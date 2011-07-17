@@ -1468,8 +1468,9 @@ LibraryManager.library = {
     }
   },
 
+  strcat__deps: ['strlen'],
   strcat: function(pdest, psrc) {
-    var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
+    var len = _strlen(pdest);
     var i = 0;
     do {
       {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8') }}}
@@ -1478,8 +1479,9 @@ LibraryManager.library = {
     return pdest;
   },
 
+  strncat__deps: ['strlen'],
   strncat: function(pdest, psrc, num) {
-    var len = Pointer_stringify(pdest).length; // TODO: use strlen, but need dependencies system
+    var len = _strlen(pdest);
     var i = 0;
     while(1) {
       {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8') }}}
@@ -1580,8 +1582,9 @@ LibraryManager.library = {
     return 0;
   },
 
+  strrchr__deps: ['strlen'],
   strrchr: function(ptr, chr) {
-    var ptr2 = ptr + Pointer_stringify(ptr).length; // TODO: use strlen, but need dependencies system
+    var ptr2 = ptr + _strlen(ptr);
     do {
       if ({{{ makeGetValue('ptr2', 0, 'i8') }}} == chr) return ptr2;
       ptr2--;
