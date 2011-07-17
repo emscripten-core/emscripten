@@ -160,15 +160,30 @@ Runtime = {
   //    ]
   // ) will return
   //    { field1: 0, field2: 4 } (depending on QUANTUM_SIZE)
-  generateStructInfo: function(struct) {
+  //
+  // You can optionally provide a type name as a second parameter. In that
+  // case, you do not need to provide the types (but you do still need to
+  // provide the names, since they are not present in the .ll), for example,
+  // generateStructInfo(['field1', 'field2'], '%struct.UserStructType');
+  // (Note that you will need the full %struct.* name here at compile time,
+  // but not at runtime. The reason is that during compilation we cannot simplify
+  // the type names yet.)
+  generateStructInfo: function(struct, typeName) {
     var fields = struct.map(function(item) { return item[0] });
-    var type = { fields: fields };
-    var alignment = Runtime.calculateStructAlignment(type);
+    var type, alignment;
+    if (typeName) {
+      type = Types.types[typeName];
+      if (!type) return null;
+      alignment = type.flatIndexes;
+    } else {
+      var type = { fields: fields };
+      alignment = Runtime.calculateStructAlignment(type);
+    }
     var ret = {
       __size__: type.flatSize
     };
     struct.forEach(function(item, i) {
-      ret[item[1]] = alignment[i];
+      ret[typeof item === 'string' ? item : item[1]] = alignment[i];
     });
     return ret;
   }
@@ -192,4 +207,66 @@ function getRuntime() {
   }
   return ret + '  __dummy__: 0\n}\n';
 }
+
+// Additional runtime elements, that need preprocessing
+
+// Converts a value we have as signed, into an unsigned value. For
+// example, -1 in int32 would be a very large number as unsigned.
+function unSign(value, bits, ignore, sig) {
+  if (value >= 0) {
+#if CHECK_SIGNS
+    if (!ignore) CorrectionsMonitor.note('UnSign', 1, sig);
+#endif
+    return value;
+  }
+#if CHECK_SIGNS
+  if (!ignore) CorrectionsMonitor.note('UnSign', 0, sig);
+#endif
+  return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
+                    : Math.pow(2, bits)         + value;
+  // TODO: clean up previous line
+}
+
+// Converts a value we have as unsigned, into a signed value. For
+// example, 200 in a uint8 would be a negative number.
+function reSign(value, bits, ignore, sig) {
+  if (value <= 0) {
+#if CHECK_SIGNS
+    if (!ignore) CorrectionsMonitor.note('ReSign', 1, sig);
+#endif
+    return value;
+  }
+  var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
+                        : Math.pow(2, bits-1);
+#if CHECK_SIGNS
+  var noted = false;
+#endif
+  if (value >= half) {
+#if CHECK_SIGNS
+    if (!ignore) {
+      CorrectionsMonitor.note('ReSign', 0, sig);
+      noted = true;
+    }
+#endif
+    value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
+  }
+#if CHECK_SIGNS
+  // If this is a 32-bit value, then it should be corrected at this point. And,
+  // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
+  // would indeed give the exact same result.
+  if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
+    if (!ignore) {
+      CorrectionsMonitor.note('ReSign', 0, sig);
+      noted = true;
+    }
+  }
+  if (!noted) CorrectionsMonitor.note('ReSign', 1, sig);
+#endif
+  return value;
+}
+
+// Just a stub. We don't care about noting compile-time corrections. But they are called.
+var CorrectionsMonitor = {
+  note: function(){}
+};
 

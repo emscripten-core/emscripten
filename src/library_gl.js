@@ -89,5 +89,5 @@ var LibraryGL = {
   });
 });
 
-mergeInto(Library, LibraryGL);
+mergeInto(LibraryManager.library, LibraryGL);
 

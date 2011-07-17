@@ -1,6 +1,6 @@
 // Utilities for browser environments
 
-mergeInto(Library, {
+mergeInto(LibraryManager.library, {
   $Browser: {
     // Given binary data for an image, in a format like PNG or JPG, we convert it
     // to flat pixel data. We do so using the browser's native code.

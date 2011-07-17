@@ -171,22 +171,26 @@ var Functions = {
 };
 
 var LibraryManager = {
-  ready: false,
+  library: null,
 
-  init: function() {
-    this.ready = true;
+  load: function() {
+    assert(!this.library);
+
+    for (suffix in set('', '_sdl', '_gl', '_browser')) {
+      eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
+    }
   },
 
   // Given an ident, see if it is an alias for something, and so forth, returning
   // the earliest ancestor (the root)
   getRootIdent: function(ident) {
-    if (!this.ready) return null;
-    var ret = Library[ident];
+    if (!this.library) return null;
+    var ret = LibraryManager.library[ident];
     if (!ret) return null;
     var last = ident;
     while (typeof ret === 'string') {
       last = ret;
-      ret = Library[ret];
+      ret = LibraryManager.library[ret];
     }
     return last;
   }
