@@ -7,10 +7,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   // Add additional necessary items for the main pass
   if (mainPass) {
+    LibraryManager.load();
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
       assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
-      libFuncsToInclude = keys(Library);
+      libFuncsToInclude = keys(LibraryManager.library);
     } else {
       libFuncsToInclude = ['memset', 'malloc', 'free'];
     }
@@ -248,7 +249,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the runtime of their parents.
         item.JS = '';
-      } else if (Library.hasOwnProperty(shortident)) {
+      } else if (LibraryManager.library.hasOwnProperty(shortident)) {
         function addFromLibrary(ident) {
           if (ident in addedLibraryItems) return '';
           // Don't replace implemented functions with library ones (which can happen when we add dependencies).
@@ -256,12 +257,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           if (('_' + ident) in moduleFunctions) return '';
 
           addedLibraryItems[ident] = true;
-          var snippet = Library[ident];
+          var snippet = LibraryManager.library[ident];
           var redirectedIdent = null;
-          var deps = Library[ident + '__deps'] || [];
+          var deps = LibraryManager.library[ident + '__deps'] || [];
 
           if (typeof snippet === 'string') {
-            if (Library[snippet]) {
+            if (LibraryManager.library[snippet]) {
               // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
               // This avoid having duplicate functions with identical content.
               redirectedIdent = snippet;
@@ -291,7 +292,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           }
 
           var postsetId = ident + '__postset';
-          var postset = Library[postsetId];
+          var postset = LibraryManager.library[postsetId];
           if (postset && !addedLibraryItems[postsetId]) {
             addedLibraryItems[postsetId] = true;
             ret.push({
@@ -301,7 +302,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           }
 
           if (redirectedIdent) {
-            deps = deps.concat(Library[redirectedIdent + '__deps'] || []);
+            deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
           }
           // $ident's are special, we do not prefix them with a '_'.
           if (ident[0] === '$') {

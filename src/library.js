@@ -13,7 +13,7 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-var Library = {
+LibraryManager.library = {
   // ==========================================================================
   // stdio.h
   // ==========================================================================
@@ -1801,19 +1801,10 @@ var Library = {
     return time1 - time0;
   },
 
-  __tm_struct_layout: Runtime.generateStructInfo([
-    ['i32', 'tm_sec'],
-    ['i32', 'tm_min'],
-    ['i32', 'tm_hour'],
-    ['i32', 'tm_mday'],
-    ['i32', 'tm_mon'],
-    ['i32', 'tm_year'],
-    ['i32', 'tm_wday'],
-    ['i32', 'tm_yday'],
-    ['i32', 'tm_isdst'],
-    ['i32', 'tm_gmtoff'],
-    ['i8*', 'tm_zone'],
-  ]),
+  __tm_struct_layout: Runtime.generateStructInfo(
+    ['tm_sec', 'tm_min', 'tm_hour', 'tm_mday', 'tm_mon', 'tm_year', 'tm_wday', 'tm_yday', 'tm_isdst', 'tm_gmtoff', 'tm_zone'],
+    '%struct.tm'
+  ),
   // Statically allocated time struct.
   __tm_current: 0,
   // Statically allocated timezone strings.
@@ -2288,68 +2279,5 @@ var Library = {
   _Z21emscripten_run_scriptPKc: function(ptr) {
     eval(Pointer_stringify(ptr));
   }
-};
-
-
-// 'Runtime' functions that need preprocessor parsing like library functions
-
-// Converts a value we have as signed, into an unsigned value. For
-// example, -1 in int32 would be a very large number as unsigned.
-function unSign(value, bits, ignore, sig) {
-  if (value >= 0) {
-#if CHECK_SIGNS
-    if (!ignore) CorrectionsMonitor.note('UnSign', 1, sig);
-#endif
-    return value;
-  }
-#if CHECK_SIGNS
-  if (!ignore) CorrectionsMonitor.note('UnSign', 0, sig);
-#endif
-  return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
-                    : Math.pow(2, bits)         + value;
-  // TODO: clean up previous line
-}
-
-// Converts a value we have as unsigned, into a signed value. For
-// example, 200 in a uint8 would be a negative number.
-function reSign(value, bits, ignore, sig) {
-  if (value <= 0) {
-#if CHECK_SIGNS
-    if (!ignore) CorrectionsMonitor.note('ReSign', 1, sig);
-#endif
-    return value;
-  }
-  var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
-                        : Math.pow(2, bits-1);
-#if CHECK_SIGNS
-  var noted = false;
-#endif
-  if (value >= half) {
-#if CHECK_SIGNS
-    if (!ignore) {
-      CorrectionsMonitor.note('ReSign', 0, sig);
-      noted = true;
-    }
-#endif
-    value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
-  }
-#if CHECK_SIGNS
-  // If this is a 32-bit value, then it should be corrected at this point. And,
-  // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
-  // would indeed give the exact same result.
-  if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
-    if (!ignore) {
-      CorrectionsMonitor.note('ReSign', 0, sig);
-      noted = true;
-    }
-  }
-  if (!noted) CorrectionsMonitor.note('ReSign', 1, sig);
-#endif
-  return value;
-}
-
-// Just a stub. We don't care about noting compile-time corrections. But they are called.
-var CorrectionsMonitor = {
-  note: function(){}
 };
 

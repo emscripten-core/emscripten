@@ -56,7 +56,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-load('runtime.js');
+eval(processMacros(preprocess(read('runtime.js'))));
 
 //===============================
 // Main
@@ -74,13 +74,5 @@ do {
 
 // Do it
 
-var inter = intertyper(lines);
-
-// Load library, with preprocessing and macros. Must be done after intertyper, so we know if we have debug info or not
-for (suffix in set('', '_sdl', '_gl', '_browser')) {
-  eval(processMacros(preprocess(read('library' + suffix + '.js'), CONSTANTS)));
-}
-LibraryManager.init();
-
-JSify(analyzer(inter));
+JSify(analyzer(intertyper(lines)));
 

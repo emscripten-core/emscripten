@@ -81,7 +81,7 @@
 //    solution here is to have a singleIteration() function which is a single loop
 //    iteration, and from JS to do something like      setInterval(_singleIteration, 1/30)
 
-mergeInto(Library, {
+mergeInto(LibraryManager.library, {
   $SDL__deps: ['$Browser'],
   $SDL: {
     defaults: {
