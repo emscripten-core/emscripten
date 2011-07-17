@@ -2156,6 +2156,23 @@ if 'benchmark' not in sys.argv:
       '''
       self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRun)
 
+    def test_stat(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            var f1 = FS.createFolder('/', 'test', true, true);
+            var f2 = FS.createDataFile(f1, 'file', 'abcdef', true, true);
+            var f3 = FS.createLink(f1, 'link', 'file', true, true);
+            var f4 = FS.createDevice(f1, 'device', function(){}, function(){});
+            f1.timestamp = f2.timestamp = f3.timestamp = f4.timestamp = new Date(1200000000000);
+          '''
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'stat', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
     def test_libgen(self):
       src = r'''
         #include <stdio.h>
