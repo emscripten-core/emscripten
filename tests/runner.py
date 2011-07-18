@@ -2732,12 +2732,17 @@ Child2:9
         struct UserStruct {
           int x;
           char y;
-          void *z;
+          short z;
+        };
+        struct Encloser {
+          short x;
+          UserStruct us;
+          int y;
         };
         int main() {
-          UserStruct u;
-          u.y = 5;
-          printf("*ok:%d*\\n", u.y);
+          Encloser e;
+          e.us.y = 5;
+          printf("*ok:%d*\\n", e.us.y);
           return 0;
         }
       '''
@@ -2748,13 +2753,15 @@ Child2:9
           '''
             if (Runtime.typeInfo) {
               print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
+              var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
+              print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
             } else {
               print('No type info.');
             }
           '''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, '*ok:5*\n|i32,i8,i8*|0,4,8|', post_build=post)
+      self.do_test(src, '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|', post_build=post)
 
       # Make sure that without the setting, we don't spam the .js with the type info
       RUNTIME_TYPE_INFO = 0
