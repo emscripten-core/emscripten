@@ -134,7 +134,6 @@ var Types = {
       if (shorter === longer) return;
       if (shorter in this.types) return;
       this.types[shorter] = this.types[longer];
-      delete this.types[longer];
     }, this);
   },
 

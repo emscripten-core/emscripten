@@ -167,11 +167,17 @@ Runtime = {
   // generateStructInfo(['field1', 'field2'], '%struct.UserStructType');
   // (Note that you will need the full %struct.* name here at compile time,
   // but not at runtime. The reason is that during compilation we cannot simplify
-  // the type names yet.)
-  generateStructInfo: function(struct, typeName) {
+  // the type names yet. At runtime, you can provide either the short or the
+  // full name.)
+  //
+  // When providing a typeName, you can generate information for nested
+  // structs, for example, struct = ['field1', { field2: ['sub1', 'sub2', 'sub3'] }, 'field3']
+  // which repesents a structure whose 2nd field is another structure.
+  generateStructInfo: function(struct, typeName, offset) {
     var type, alignment;
     if (typeName) {
-      type = Types.types[typeName];
+      offset = offset || 0;
+      type = typeof Types === 'undefined' ? Runtime.typeInfo[typeName] : Types.types[typeName];
       if (!type) return null;
       assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName);
       alignment = type.flatIndexes;
@@ -182,9 +188,22 @@ Runtime = {
     var ret = {
       __size__: type.flatSize
     };
-    struct.forEach(function(item, i) {
-      ret[typeof item === 'string' ? item : item[1]] = alignment[i];
-    });
+    if (typeName) {
+      struct.forEach(function(item, i) {
+        if (typeof item === 'string') {
+          ret[item] = alignment[i] + offset;
+        } else {
+          // embedded struct
+          var key;
+          for (var k in item) key = k;
+          ret[key] = Runtime.generateStructInfo(item[key], type.fields[i], alignment[i]);
+        }
+      });
+    } else {
+      struct.forEach(function(item, i) {
+        ret[item[1]] = alignment[i];
+      });
+    }
     return ret;
   }
 };
