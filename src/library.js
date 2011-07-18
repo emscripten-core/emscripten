@@ -473,11 +473,43 @@ LibraryManager.library = {
   // sys/stat.h
   // ==========================================================================
 
-  __stat_struct_layout: Runtime.generateStructInfo(
-    ['st_dev', '__pad1', 'st_ino', 'st_mode', 'st_nlink', 'st_uid', 'st_gid',
-     'st_rdev', '__pad2', 'st_size', 'st_blksize', 'st_blocks', 'st_atime',
-     'st_mtime', 'st_ctime', '__unused4', '__unused5'],
-    '%struct.stat'
+  // TODO: Update this to be auto-created.
+  __stat_struct_layout: Runtime.generateStructInfo([
+    // The device on which the record exists. Always 1 for non-device files.
+    'st_dev',
+    // Unused.
+    '__pad1',
+    // The inode number. When taken with st_dev, makes up a unique identifier.
+    'st_ino',
+    // The type of record and its permissions.
+    'st_mode',
+    // The number of hard links to this folder. Always 1.
+    'st_nlink',
+    // The user ID of the owner. Always 0.
+    'st_uid',
+    // The group ID of the owner. Always 0.
+    'st_gid',
+    // The device being served by this record (for device files).
+     'st_rdev',
+     // Unused.
+     '__pad2',
+     // The size of this file in bytes.
+     'st_size',
+     // The preferred size of each read/write block. Always 4096.
+     'st_blksize',
+     // The number of blocks taken up by this record. Unrelated to st_blksize.
+     'st_blocks',
+     // The time when this file was last accessed.
+     {st_atim: ['st_atime', 'st_atimensec']},
+     // The time when the contents of this file were last modified.
+     {st_mtim: ['st_mtime', 'st_mtimensec']},
+     // The time when the inode properties of this file were last modified.
+     {st_ctim: ['st_ctime', 'st_ctimensec']},
+     // Unused.
+     '__unused4',
+     // Unused.
+     '__unused5'
+    ], '%struct.stat'
   ),
   stat__deps: ['$FS', '__stat_struct_layout'],
   stat: function(path, buf, dontResolveLastLink) {
@@ -497,33 +529,40 @@ LibraryManager.library = {
     // Variables.
     {{{ makeSetValue('buf', '___stat_struct_layout.st_ino', 'obj.inodeNumber', 'i32') }}}
     var time = Math.floor(obj.timestamp.getTime() / 1000);
-    {{{ makeSetValue('buf', '___stat_struct_layout.st_atime', 'time', 'i32') }}}
-    {{{ makeSetValue('buf', '___stat_struct_layout.st_mtime', 'time', 'i32') }}}
-    {{{ makeSetValue('buf', '___stat_struct_layout.st_ctime', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_atim.st_atime', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_mtim.st_mtime', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_ctim.st_ctime', 'time', 'i32') }}}
     var mode = 0;
+    var size = 0;
+    var blocks = 0;
+    var dev = 0;
+    var rdev = 0;
     if (obj.input !== undefined || obj.output !== undefined) {
       //  Device numbers reuse inode numbers.
-      {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', 'obj.inodeNumber', 'i64') }}}
-      {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', 'obj.inodeNumber', 'i64') }}}
-      {{{ makeSetValue('buf', '___stat_struct_layout.st_size', '0', 'i32') }}}
-      {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', '0', 'i32') }}}
+      dev = rdev = obj.inodeNumber;
+      size = blocks = 0;
       mode = 0x2000;  // S_IFCHR.
     } else {
-      {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', '1', 'i64') }}}
-      {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', '0', 'i64') }}}
+      dev = 1;
+      rdev = 0;
       // NOTE: In our implementation, st_blocks = Math.ceil(st_size/st_blksize),
       //       but this is not required by the standard.
       if (obj.isFolder) {
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', '4096', 'i32') }}}
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', '1', 'i32') }}}
+        size = 4096;
+        blocks = 1;
         mode = 0x4000;  // S_IFDIR.
       } else {
         var data = obj.contents || obj.link;
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'data.length', 'i32') }}}
-        {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'Math.ceil(data.length / 4096)', 'i32') }}}
+        size = data.length;
+        blocks = Math.ceil(data.length / 4096);
         mode = obj.link === undefined ? 0x8000 : 0xA000;  // S_IFREG, S_IFLNK.
       }
     }
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', 'dev', 'i64') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', 'rdev', 'i64') }}}
+    // NOTE: These two may be i64, depending on compilation options.
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'size', 'i32') }}}
+    {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'blocks', 'i32') }}}
     if (obj.read) mode |= 0x16D;  // S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH.
     if (obj.write) mode |= 0x92;  // S_IWUSR | S_IWGRP | S_IWOTH.
     {{{ makeSetValue('buf', '___stat_struct_layout.st_mode', 'mode', 'i32') }}}
