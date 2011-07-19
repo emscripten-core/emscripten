@@ -2736,7 +2736,7 @@ if 'benchmark' not in sys.argv:
 
       # Compare to each other, and to expected output
       self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'))
-      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'), 'AD:34,10\nAD:43,7008\nAD:53,7018\n')
+      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'), 'AD:38,10\nAD:47,7008\nAD:57,7018\n')
 
       # Test using build_ll_hook
       src = '''

@@ -21,6 +21,7 @@ var Debugging = {
 
     var structToMemberMeta = {};
     var memberMetaToStruct = {};
+    var structMetaToStruct = {};
     var structToSize = {};
     var memberMetaToMembers = {};
     var metadataToMember = {};
@@ -36,14 +37,15 @@ var Debugging = {
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
-    var formStruct = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 (\d+), .+?, metadata !(\d+),[^,]*,[^,]*} ; \[ DW_TAG_structure_type \]$/;
-    var formStructMembers = /^!(\d+) = metadata !\{(metadata !\d+(?:, metadata !\d+)*)\}$/;
+    var formStruct = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 (\d+), [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
+    var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
     var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 (\d+), i64 \d+, i64 (\d+), .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
 
     var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
 
     var ret = lines.map(function(line, i) {
       line = line.replace(debugComment, '');
+      var skipLine = false;
 
       if (form6.exec(line)) return ';';
 
@@ -54,20 +56,24 @@ var Debugging = {
       }
       calc = formStruct.exec(line);
       if (calc) {
-        memberMetaToStruct[calc[1]] = calc[2];
+        structMetaToStruct[calc[1]] = calc[2];
         structToSize[calc[2]] = calc[3];
         structToMemberMeta[calc[2]] = calc[4];
-        return ';';
+        memberMetaToStruct[calc[4]] = calc[1];
+        skipLine = true;
       }
       calc = formStructMembers.exec(line);
-      if (calc) {
-        memberMetaToMembers[calc[1]] = calc[2].match(/\d+/g);
-        return ';';
+      if (calc && calc[1] in memberMetaToStruct) {
+        var children = calc[2].match(/!\d+/g) || [];
+        memberMetaToMembers[calc[1]] = children.map(function(i) {
+          return i.slice(1);
+        });
+        skipLine = true;
       }
       calc = formMember.exec(line);
       if (calc) {
         metadataToMember[calc[1]] = calc.slice(2);
-        return ';';
+        skipLine = true;
       }
       calc = form3.exec(line);
       if (calc) {
@@ -87,7 +93,7 @@ var Debugging = {
       }
       calc = form3c.exec(line) || form4.exec(line) || form5.exec(line);
       if (calc) return ';';
-      return line;
+      return skipLine ? ';' : line;
     }, this);
 
     /*
@@ -112,7 +118,6 @@ var Debugging = {
     }
 
     // Create base struct definitions.
-    Types.structDefinitions = {};
     for (var structName in structToMemberMeta) {
       // TODO: Account for bitfields.
       Types.structDefinitions[structName] = {
@@ -123,19 +128,21 @@ var Debugging = {
     // Fill struct members.
     for (var structName in structToMemberMeta) {
       var struct = Types.structDefinitions[structName];
-      var memberIds = memberMetaToMembers[structToMemberMeta[structName]];
+      var memberMetaId = structToMemberMeta[structName];
+      var memberIds = memberMetaToMembers[memberMetaId];
       for (var i = 0; i < memberIds.length; i++) {
-        var member = metadataToMember[memberIds[i]];
-        var memberObj = {
-          size: parseInt(member[1]) / 8,
-          offset: parseInt(member[2]) / 8
+        if (memberIds[i] in metadataToMember) {
+          var member = metadataToMember[memberIds[i]];
+          var memberObj = {
+            size: parseInt(member[1]) / 8,
+            offset: parseInt(member[2]) / 8
+          }
+          if (member[3] in structMetaToStruct) {
+            var subStruct = Types.structDefinitions[structMetaToStruct[member[3]]];
+            memberObj.members = subStruct.members;
+          }
+          struct.members[member[0]] = memberObj;
         }
-        dprint(member[3] + " in " + keys(memberMetaToStruct));
-        if (member[3] in memberMetaToStruct) {
-          var subStruct = Types.structDefinitions[memberMetaToStruct[member[3]]];
-          memberObj.members = subStruct.members;
-        }
-        struct.members[member[0]] = memberObj;
       }
     }
 
@@ -172,6 +179,7 @@ var Types = {
     this.fatTypes = this.types;
     this.types = temp;
   },
+  structDefinitions: {},
 
   // Remove all data not needed during runtime (like line numbers, JS, etc.)
   cleanForRuntime: function() {
