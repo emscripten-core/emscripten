@@ -19,6 +19,12 @@ var Debugging = {
     var metadataToParentMetadata = {};
     var metadataToFilename = {};
 
+    var structToMemberMeta = {};
+    var memberMetaToStruct = {};
+    var structToSize = {};
+    var memberMetaToMembers = {};
+    var metadataToMember = {};
+
     var form1 = new RegExp(/^  .*, !dbg !(\d+) *$/);
     var form2 = new RegExp(/^  .*, !dbg !(\d+) *; .*$/);
     var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), i32 \d+, metadata !(\d+), .*}$/);
@@ -30,6 +36,9 @@ var Debugging = {
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
+    var formStruct = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 (\d+), .+?, metadata !(\d+),[^,]*,[^,]*} ; \[ DW_TAG_structure_type \]$/;
+    var formStructMembers = /^!(\d+) = metadata !\{(metadata !\d+(?:, metadata !\d+)*)\}$/;
+    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 (\d+), i64 \d+, i64 (\d+), .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
 
     var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
 
@@ -42,6 +51,23 @@ var Debugging = {
       if (calc) {
         llvmLineToMetadata[i+1] = calc[1];
         return line.replace(', !dbg !' + calc[1], '');
+      }
+      calc = formStruct.exec(line);
+      if (calc) {
+        memberMetaToStruct[calc[1]] = calc[2];
+        structToSize[calc[2]] = calc[3];
+        structToMemberMeta[calc[2]] = calc[4];
+        return ';';
+      }
+      calc = formStructMembers.exec(line);
+      if (calc) {
+        memberMetaToMembers[calc[1]] = calc[2].match(/\d+/g);
+        return ';';
+      }
+      calc = formMember.exec(line);
+      if (calc) {
+        metadataToMember[calc[1]] = calc.slice(2);
+        return ';';
       }
       calc = form3.exec(line);
       if (calc) {
@@ -83,6 +109,34 @@ var Debugging = {
         assert(m, 'Confused as to parent metadata for llvm #' + l + ', metadata !' + m);
       }
       this.llvmLineToSourceFile[l] = metadataToFilename[m];
+    }
+
+    // Create base struct definitions.
+    Types.structDefinitions = {};
+    for (var structName in structToMemberMeta) {
+      // TODO: Account for bitfields.
+      Types.structDefinitions[structName] = {
+        size: parseInt(structToSize[structName]) / 8,
+        members: {}
+      }
+    }
+    // Fill struct members.
+    for (var structName in structToMemberMeta) {
+      var struct = Types.structDefinitions[structName];
+      var memberIds = memberMetaToMembers[structToMemberMeta[structName]];
+      for (var i = 0; i < memberIds.length; i++) {
+        var member = metadataToMember[memberIds[i]];
+        var memberObj = {
+          size: parseInt(member[1]) / 8,
+          offset: parseInt(member[2]) / 8
+        }
+        dprint(member[3] + " in " + keys(memberMetaToStruct));
+        if (member[3] in memberMetaToStruct) {
+          var subStruct = Types.structDefinitions[memberMetaToStruct[member[3]]];
+          memberObj.members = subStruct.members;
+        }
+        struct.members[member[0]] = memberObj;
+      }
     }
 
     this.on = true;
