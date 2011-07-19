@@ -671,6 +671,43 @@ LibraryManager.library = {
   // __01lstat64_: 'stat',
 
   // ==========================================================================
+  // sys/statvfs.h
+  // ==========================================================================
+
+  // TODO: Update this to be auto-created.
+  __statvfs_struct_layout: Runtime.generateStructInfo([
+      'f_bsize', 'f_frsize', 'f_blocks', 'f_bfree', 'f_bavail', 'f_files',
+      'f_ffree', 'f_favail', 'f_fsid', '__f_unused', 'f_flag', 'f_namemax',
+      '__f_spare'
+    ], '%struct.statvfs'
+  ),
+  statvfs__deps: ['$FS', '__statvfs_struct_layout'],
+  statvfs: function(path, buf) {
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
+    // int statvfs(const char *restrict path, struct statvfs *restrict buf);
+    // NOTE: None of the constant here are true. We're just returning safe and
+    //       sane values.
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_bsize', '4096', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_frsize', '4096', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_blocks', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_bfree', '500000', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_bavail', '500000', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_files', 'FS.nextInode', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_ffree', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_favail', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_fsid', '42', 'i32') }}}
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_flag', '2', 'i32') }}}  // ST_NOSUID
+    {{{ makeSetValue('buf', '___statvfs_struct_layout.f_namemax', '255', 'i32') }}}
+    return 0;
+  },
+  fstatvfs__deps: ['statvfs'],
+  fstatvfs: function(fildes, buf) {
+    // int fstatvfs(int fildes, struct statvfs *buf);
+    // http://pubs.opengroup.org/onlinepubs/009604499/functions/statvfs.html
+    return _statvfs(0, buf);
+  },
+
+  // ==========================================================================
 
   _scanString: function() {
     // Supports %x, %4x, %d.%d, %s
