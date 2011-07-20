@@ -495,6 +495,11 @@ LibraryManager.library = {
       members.st_atime = {offset: members.st_atim.offset + tvSecOffset};
       members.st_mtime = {offset: members.st_mtim.offset + tvSecOffset};
       members.st_ctime = {offset: members.st_ctim.offset + tvSecOffset};
+      var tvNSecOffset = members.st_atim.members.tv_nsec.offset;
+      var nanosec = (obj.timestamp.getTime() % 1000) * 1000;
+      {{{ makeSetValue('buf', 'members.st_atim.offset + tvNSecOffset', 'nanosec', 'i32') }}}
+      {{{ makeSetValue('buf', 'members.st_mtim.offset + tvNSecOffset', 'nanosec', 'i32') }}}
+      {{{ makeSetValue('buf', 'members.st_ctim.offset + tvNSecOffset', 'nanosec', 'i32') }}}
     }
     {{{ makeSetValue('buf', 'members.st_atime.offset', 'time', 'i32') }}}
     {{{ makeSetValue('buf', 'members.st_mtime.offset', 'time', 'i32') }}}
@@ -632,10 +637,10 @@ LibraryManager.library = {
     FS.cmask = newMask;
     return oldMask;
   },
-  // TODO: Check if these or any other aliases are needed:
-  // __01fstat64_: 'fstat',
-  // __01stat64_: 'stat',
-  // __01lstat64_: 'stat',
+  __01fstat64_: 'fstat',
+  __01stat64_: 'stat',
+  __01lstat64_: 'lstat',
+  // TODO: Check if other aliases are needed.
 
   // ==========================================================================
   // sys/statvfs.h
