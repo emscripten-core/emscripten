@@ -26,6 +26,7 @@ LibraryManager.library = {
       read: true,
       write: false,
       isFolder: true,
+      isDevice: false,
       timestamp: new Date(),
       inodeNumber: 1,
       contents: {}
@@ -147,7 +148,7 @@ LibraryManager.library = {
     },
     // Creates a folder.
     createFolder: function(parent, name, canRead, canWrite) {
-      var properties = {isFolder: true, contents: {}};
+      var properties = {isFolder: true, isDevice: false, contents: {}};
       return FS.createObject(parent, name, properties, canRead, canWrite);
     },
     // Creates a a folder and all its missing parents.
@@ -178,15 +179,18 @@ LibraryManager.library = {
         for (var i = 0; i < data.length; i++) dataArray.push(data.charCodeAt(i));
         data = dataArray;
       }
-      return FS.createFile(parent, name, {contents: data}, canRead, canWrite);
+      var properties = {isDevice: false, contents: data};
+      return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Creates a file record for lazy-loading from a URL.
     createLazyFile: function(parent, name, url, canRead, canWrite) {
-      return FS.createFile(parent, name, {url: url}, canRead, canWrite);
+      var properties = {isDevice: false, url: url};
+      return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Creates a link to a sepcific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
-      return FS.createFile(parent, name, {link: target}, canRead, canWrite);
+      var properties = {isDevice: false, link: target};
+      return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Creates a character device with input and output callbacks:
     //   input: takes no parameters, returns a byte value.
@@ -196,14 +200,14 @@ LibraryManager.library = {
       if (!(input || output)) {
         throw new Error('A device must have at least one callback defined.');
       }
-      var ops = {input: input, output: output};
+      var ops = {isDevice: true, input: input, output: output};
       return FS.createFile(parent, name, ops, Boolean(input), Boolean(output));
     },
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile: function(obj) {
-      if (obj.input !== undefined || obj.output !== undefined ||
-          obj.link !== undefined || obj.contents !== undefined) return true;
+      if (obj.isDevice || obj.isFolder || obj.link ||
+          'contents' in obj) return true;
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
@@ -243,7 +247,7 @@ LibraryManager.library = {
     var path = FS.absolutePath(Pointer_stringify(dirname));
     if (path === null) {
       ___setErrNo(ERRNO_CODES.ENOENT);
-      return null;
+      return 0;
     }
     var target = FS.findObject(path);
     if (target === null) return 0;
@@ -349,10 +353,10 @@ LibraryManager.library = {
         {{{ makeSetValue('entry', 'members.d_name.offset + i', 'name.charCodeAt(i)', 'i8') }}}
       }
       {{{ makeSetValue('entry', 'members.d_name.offset + i', '0', 'i8') }}}
-      var type = stream.isFolder ? 4 // DT_DIR, directory.
-               : stream.contents !== undefined ? 8 // DT_REG, regular file.
+      var type = stream.isDevice ? 2 // DT_CHR, character device.
+               : stream.isFolder ? 4 // DT_DIR, directory.
                : stream.link !== undefined ? 10 // DT_LNK, symbolic link.
-               : 2 // DT_CHR, character device.
+               : 8; // DT_REG, regular file.
       {{{ makeSetValue('entry', 'members.d_type.offset', 'type', 'i8') }}}
       {{{ makeSetValue('result', '0', 'entry', 'i8*') }}}
     }
@@ -509,7 +513,7 @@ LibraryManager.library = {
     var blocks = 0;
     var dev = 0;
     var rdev = 0;
-    if (obj.input !== undefined || obj.output !== undefined) {
+    if (obj.isDevice) {
       //  Device numbers reuse inode numbers.
       dev = rdev = obj.inodeNumber;
       size = blocks = 0;
@@ -563,7 +567,8 @@ LibraryManager.library = {
       return result;
     }
   },
-  mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'strlen', 'strcpy', 'dirname', 'basename'],
+  mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
+                'strlen', 'strcpy', 'dirname', 'basename'],
   mknod: function(path, mode, dev) {
     // int mknod(const char *path, mode_t mode, dev_t dev);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mknod.html
@@ -576,12 +581,11 @@ LibraryManager.library = {
       var buffer = _malloc(_strlen(path) + 1);
       var parent = Pointer_stringify(_dirname(_strcpy(buffer, path)));
       var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
+      _free(buffer);
       try {
         FS.createObject(parent, name, properties, mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
-        _free(buffer);
         return 0;
       } catch (e) {
-        _free(buffer);
         return -1;
       }
     }
