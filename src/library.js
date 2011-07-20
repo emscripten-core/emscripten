@@ -679,6 +679,184 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // fcntl.h
+  // ==========================================================================
+
+  __flock_struct_layout: Types.structDefinitions.flock,
+  open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
+               'strlen', 'strcpy', 'dirname', 'basename'],
+  open: function(path, oflag, mode) {
+    // int open(const char *path, int oflag, ...);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
+    // NOTE: This implementation tries to mimic glibc rather that strictly
+    // following the POSIX standard.
+
+    // Simplify flags.
+    var accessMode = oflag & 0x3;  // O_ACCMODE.
+    var isWrite = accessMode != 0x0;  // O_RDONLY.
+    var isRead = accessMode != 0x1;  // O_WRONLY.
+    var isCreate = Boolean(oflag & 0x40);  // O_CREAT.
+    var isExistCheck = Boolean(oflag & 0x80);  // O_EXCL.
+    var isTruncate = Boolean(oflag & 0x200);  // O_TRUNC.
+    var isAppend = Boolean(oflag & 0x400);  // O_APPEND.
+
+    // Verify path.
+    var pathStr = Pointer_stringify(path);
+    if (!pathStr) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return -1;
+    }
+    var absolutePath = FS.absolutePath(pathStr);
+    if (absolutePath === null) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return -1;
+    }
+    var buffer = _malloc(_strlen(path) + 1);
+    var parentPath = Pointer_stringify(_dirname(_strcpy(buffer, path)));
+    var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
+    _free(buffer);
+    var parent = FS.findObject(parentPath);
+    if (parent === null) return -1;
+    if (!parent.isFolder || !parent.read) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    }
+    var target = parent.contents[name] || null;
+
+    // Verify the file exists, create if needed and allowed.
+    if (target) {
+      if (isCreate && isExistCheck) {
+        ___setErrNo(ERRNO_CODES.EEXIST);
+        return -1;
+      }
+      if ((isWrite || isCreate || isTruncate) && target.isFolder) {
+        ___setErrNo(ERRNO_CODES.EISDIR);
+        return -1;
+      }
+      if (isRead && !target.read || isWrite && !target.write) {
+        ___setErrNo(ERRNO_CODES.EACCES);
+        return -1;
+      }
+      if (isTruncate && !target.isDevice) {
+        target.contents = [];
+      } else {
+        if (!FS.forceLoadFile(target)) {
+          ___setErrNo(ERRNO_CODES.EIO);
+          return -1;
+        }
+      }
+    } else {
+      if (!isCreate) {
+        ___setErrNo(ERRNO_CODES.ENOENT);
+        return -1;
+      }
+      if (!parent.write) {
+        ___setErrNo(ERRNO_CODES.EACCES);
+        return -1;
+      }
+      target = FS.createDataFile(parent, name, [], mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+    }
+
+    // Actually create an open stream.
+    var id = FS.streams.length;
+    FS.streams[id] = {
+      isFolder: false,
+      path: absolutePath,
+      object: target,
+      position: 0,
+      isRead: isRead,
+      isWrite: isWrite,
+      isAppend: isAppend
+    };
+    return id;
+  },
+  creat__deps: ['open'],
+  creat: function(path, mode) {
+    // int creat(const char *path, mode_t mode);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
+    return _open(path, 0x241, mode);  // O_WRONLY | O_CREAT | O_TRUNC.
+  },
+  fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
+  fcntl: function(fildes, cmd, arg) {
+    // int fcntl(int fildes, int cmd, ...);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/fcntl.html
+    if (!(fildes in FS.streams)) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    var stream = FS.streams[fildes];
+    switch (cmd) {
+      case 0:  // F_DUPFD.
+        if (arg < 0) {
+          ___setErrNo(ERRNO_CODES.EINVAL);
+          return -1;
+        }
+        var newStream = {};
+        for (var member in stream) {
+          newStream[member] = stream[member];
+        }
+        if (arg in FS.streams) arg = FS.streams.length;
+        FS.streams[arg] = newStream;
+        return arg;
+      case 1:  // F_GETFD.
+      case 2:  // F_SETFD.
+        return 0;  // FD_CLOEXEC makes no sense for a single process.
+      case 3:  // F_GETFL.
+        var flags = 0;
+        if (stream.isRead && stream.isWrite) flags = 0x2;  // O_RDWR.
+        else if (!stream.isRead && stream.isWrite) flags = 0x1;  // O_WRONLY.
+        else if (stream.isRead && !stream.isWrite) flags = 0x0;  // O_RDONLY.
+        if (stream.isAppend) flags |= 0x400;  // O_APPEND.
+        // Synchronization and blocking flags are irrelevant to us.
+        return flags;
+      case 4:  // F_SETFL.
+        stream.isAppend = Boolean(arg | 0x400);  // O_APPEND.
+        // Synchronization and blocking flags are irrelevant to us.
+        return 0;
+      case 5:  // F_GETLK.
+        var offset = ___flock_struct_layout.members.l_type.offset;
+        // We're always unlocked.
+        {{{ makeSetValue('arg', 'offset', '2', 'i16') }}}  // F_UNLCK.
+        return 0;
+      case 6:  // F_SETLK.
+      case 7:  // F_SETLKW.
+        // Pretend that the locking is successful.
+        return 0;
+      case 8:  // F_SETOWN.
+      case 9:  // F_GETOWN.
+        // These are for sockets. We don't have them implemented (yet?).
+        ___setErrNo(ERRNO_CODES.EINVAL);
+        return -1;
+      default:
+        ___setErrNo(ERRNO_CODES.EINVAL);
+        return -1;
+    }
+    // Should never be reached. Only to silence strict warnings.
+    return -1;
+  },
+  posix_fadvise: function(fd, offset, len, advice) {
+    // int posix_fadvise(int fd, off_t offset, off_t len, int advice);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fadvise.html
+    // Advise as much as you wish. We don't care.
+    return 0;
+  },
+  posix_madvise: 'posix_fadvise',
+  posix_fallocate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  posix_fallocate: function(fd, offset, len) {
+    // int posix_fallocate(int fd, off_t offset, off_t len);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
+    if (!(fd in FS.streams) || FS.streams[fd].link ||
+        FS.streams[fd].isFolder || FS.streams[fd].isDevice) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    var contents = FS.streams[fd].object.contents;
+    var limit = offset + len;
+    while (limit > contents.length) contents.push(0);
+    return 0;
+  },
+
+  // ==========================================================================
 
   _scanString: function() {
     // Supports %x, %4x, %d.%d, %s
@@ -1446,17 +1624,6 @@ LibraryManager.library = {
 
   // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html
 
-  open: function(filename, flags, mode) {
-    filename = Pointer_stringify(filename);
-    if (flags === 0) { // RDONLY
-      return STDIO.open(filename);
-    } else if (flags === 1) { // WRONLY
-      return STDIO.prepare(filename);
-    } else {
-      return assert(false, 'open with odd params: ' + [flags, mode]);
-    }
-  },
-
   __01open64___deps: ['open'],
   __01open64_: function(filename, mode, flags) {
     // open(), but with flags and mode switched.
@@ -1471,8 +1638,6 @@ LibraryManager.library = {
   read: function(stream, ptr, numbytes) {
     return STDIO.read(stream, ptr, numbytes);
   },
-
-  fcntl: function() { }, // TODO...
 
   mmap: function(start, num, prot, flags, stream, offset) {
     // Leaky and non-shared... FIXME

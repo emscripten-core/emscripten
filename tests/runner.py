@@ -2173,6 +2173,43 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
       self.do_test(src, expected, post_build=addPreRun)
 
+    def test_fcntl(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_fcntl_open(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            FS.createDataFile('/', 'test-file', 'abcdef', true, true);
+            FS.createFolder('/', 'test-folder', true, true);
+            FS.root.write = true;
+          '''
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_fcntl_misc(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
     def test_statvfs(self):
       src = r'''
         #include <stdio.h>
