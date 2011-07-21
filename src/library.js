@@ -48,7 +48,7 @@ LibraryManager.library = {
     // Converts any path to an absolute path. Resolves embedded "." and ".."
     // parts.
     absolutePath: function(relative, base) {
-      if (!relative && relative !== '') return null;
+      if (typeof relative !== 'string') return null;
       if (base === undefined) base = FS.currentPath;
       else if (relative[0] == '/') base = '';
       var full = base + '/' + relative;
@@ -59,13 +59,12 @@ LibraryManager.library = {
         if (part == '' || part == '.') {
           // Nothing.
         } else if (part == '..') {
-          if (absolute.length <= 1) return null;
-          absolute.pop();
+          if (absolute.length > 1) absolute.pop();
         } else {
           absolute.push(part);
         }
       }
-      return absolute.join('/');
+      return absolute.length == 1 ? '/' : absolute.join('/');
     },
     // Finds the file system object at a given path. If dontResolveLastLink is
     // set to true and the object is a symbolic link, it will be returned as is
@@ -77,6 +76,7 @@ LibraryManager.library = {
         ___setErrNo(ERRNO_CODES.ENOENT);
         return null;
       }
+      if (path == '/') return FS.root;
       path = path.split('/').reverse();
       path.pop();
       var current = FS.root;
@@ -193,8 +193,9 @@ LibraryManager.library = {
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Creates a character device with input and output callbacks:
-    //   input: takes no parameters, returns a byte value.
-    //   output: takes a byte value, doesn't return anything.
+    //   input: Takes no parameters, returns a byte value or null if no data is
+    //          currently available.
+    //   output: Takes a byte value; doesn't return anything.
     // TODO: Decide how to handle flushing in a consistent manner.
     createDevice: function(parent, name, input, output) {
       if (!(input || output)) {
@@ -232,6 +233,7 @@ LibraryManager.library = {
       return success;
     }
   },
+  // TODO: Replace dirname/basename usage with a core describePath.
 
   // ==========================================================================
   // dirent.h
