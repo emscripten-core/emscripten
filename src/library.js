@@ -887,6 +887,844 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // unistd.h
+  // ==========================================================================
+
+  access__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  access: function(path, amode) {
+    // int access(const char *path, int amode);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/access.html
+    path = Pointer_stringify(path);
+    var target = FS.findObject(path);
+    if (target === null) return -1;
+    if ((amode & 2 && !target.write) ||  // W_OK.
+        ((amode & 1 || amode & 4) && !target.read)) {  // X_OK, R_OK.
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else {
+      return 0;
+    }
+  },
+  chdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  chdir: function(path) {
+    // int chdir(const char *path);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/chdir.html
+    // NOTE: The path argument may be a string, to simplify fchdir().
+    if (typeof path !== 'string') path = Pointer_stringify(path);
+    path = FS.absolutePath(path);
+    // TODO: Resolve path so that no element of it is a link.
+    var target = FS.findObject(path);
+    if (target === null) return -1;
+    if (!target.isFolder) {
+      ___setErrNo(ERRNO_CODES.ENOTDIR);
+      return -1;
+    } else {
+      FS.currentPath = path;
+      return 0;
+    }
+  },
+  chown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  chown: function(path, owner, group, dontResolveLastLink) {
+    // int chown(const char *path, uid_t owner, gid_t group);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/chown.html
+    // We don't support multiple users, so changing ownership makes no sense.
+    // NOTE: The path argument may be a string, to simplify fchown().
+    // NOTE: dontResolveLastLink is a shortcut for lstat(). It should never be
+    //       used in client code.
+    if (typeof path !== 'string') path = Pointer_stringify(path);
+    var target = FS.findObject(path, dontResolveLastLink);
+    if (target === null) return -1;
+    target.timestamp = new Date();
+    return 0;
+  },
+  close__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  close: function(fildes) {
+    // int close(int fildes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/close.html
+    if (FS.streams[fildes]) {
+      delete FS.streams[fildes];
+      return 0;
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  dup__deps: ['fcntl'],
+  dup: function(fildes) {
+    // int dup(int fildes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
+    return _fcntl(fildes, 0, 0);  // F_DUPFD.
+  },
+  dup2__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'fcntl'],
+  dup2: function(fildes, fildes2) {
+    // int dup2(int fildes, int fildes2);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
+    // TODO: Verify: Duplicate FD to FD2, closing FD2 and making it open on the same file.
+    if (fildes2 < 0) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else if (fildes === fildes2 && FS.streams[fildes]) {
+      return fildes;
+    } else {
+      return _fcntl(fildes, 0, fildes2);  // F_DUPFD.
+    }
+  },
+  fchown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chown'],
+  fchown: function(fildes, owner, group) {
+    // int fchown(int fildes, uid_t owner, gid_t group);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchown.html
+    if (FS.streams[fildes]) {
+      return _chown(FS.streams[fildes].path, owner, group);
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  fchdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chdir'],
+  fchdir: function(fildes) {
+    // int fchdir(int fildes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchdir.html
+    if (FS.streams[fildes]) {
+      return _chdir(FS.streams[fildes].path);
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  ctermid__deps: ['strcpy'],
+  ctermid: function(s) {
+    // char *ctermid(char *s);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/ctermid.html
+    if (!_ctermid.ret) {
+      var arr = intArrayFromString('/dev/tty');
+      _ctermid.ret = allocate(arr, 'i8', ALLOC_NORMAL);
+    }
+    return s ? _strcpy(s, _ctermid.ret) : _ctermid.ret;
+  },
+  crypt: function(key, salt) {
+    // char *(const char *, const char *);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/crypt.html
+    // TODO: Implement (compile from source?).
+    ___setErrNo(ERRNO_CODES.ENOSYS);
+    return 0;
+  },
+  encrypt: function(key, salt) {
+    // void encrypt(char block[64], int edflag);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
+    // TODO: Implement (compile from source?).
+    ___setErrNo(ERRNO_CODES.ENOSYS);
+  },
+  fpathconf__deps: ['__setErrNo', '$ERRNO_CODES'],
+  fpathconf: function(fildes, name) {
+    // long fpathconf(int fildes, int name);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
+    // NOTE: The first parameter is ignored, so pathconf == fpathconf.
+    // The constants here aren't real values. Just mimicing glibc.
+    switch (name) {
+      case 0:  // _PC_LINK_MAX.
+        return 32000;
+      case 1:  // _PC_MAX_CANON.
+      case 2:  // _PC_MAX_INPUT.
+      case 3:  // _PC_NAME_MAX.
+        return 255;
+      case 4:  // _PC_PATH_MAX.
+      case 5:  // _PC_PIPE_BUF.
+      case 16:  // _PC_REC_MIN_XFER_SIZE.
+      case 17:  // _PC_REC_XFER_ALIGN.
+      case 18:  // _PC_ALLOC_SIZE_MIN.
+        return 4096;
+      case 6:  // _PC_CHOWN_RESTRICTED.
+      case 7:  // _PC_NO_TRUNC.
+      case 20:  // _PC_2_SYMLINKS.
+        return 1;
+      case 8:  // _PC_VDISABLE.
+        return 0;
+      case 9:  // _PC_SYNC_IO.
+      case 10:  // _PC_ASYNC_IO.
+      case 11:  // _PC_PRIO_IO.
+      case 12:  // _PC_SOCK_MAXBUF.
+      case 14:  // _PC_REC_INCR_XFER_SIZE.
+      case 15:  // _PC_REC_MAX_XFER_SIZE.
+      case 19:  // _PC_SYMLINK_MAX.
+        return -1;
+      case 13:  // _PC_FILESIZEBITS.
+        return 64;
+      defult:
+        ___setErrNo(ERRNO_CODES.EINVAL);
+        return -1;
+    }
+    // Should never be reached. Only to silence strict warnings.
+    return -1;
+  },
+  pathconf: 'fpathconf',
+  fsync__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  fsync: function(fildes, owner, group) {
+    // int fsync(int fildes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsync.html
+    if (FS.streams[fildes]) {
+      // We write directly to the file system, so there's nothing to do here.
+      return 0;
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  fdatasync: 'fsync',
+  truncate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  truncate: function(path, length) {
+    // int truncate(const char *path, off_t length);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/truncate.html
+    // NOTE: The path argument may be a string, to simplify ftruncate().
+    if (length < 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      if (typeof path !== 'string') path = Pointer_stringify(path);
+      var target = FS.findObject(path);
+      if (target === null) return -1;
+      if (target.isFolder) {
+        ___setErrNo(ERRNO_CODES.EISDIR);
+        return -1;
+      } else if (target.isDevice) {
+        ___setErrNo(ERRNO_CODES.EINVAL);
+        return -1;
+      } else {
+        var contents = target.contents;
+        if (length < contents.length) contents.length = length;
+        else while (length > contents.length) contents.push(0);
+        target.timestamp = new Date();
+        return 0;
+      }
+    }
+  },
+  ftruncate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'truncate'],
+  ftruncate: function(fildes, length) {
+    // int ftruncate(int fildes, off_t length);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftruncate.html
+    if (FS.streams[fildes] && FS.streams[fildes].isWrite) {
+      return _truncate(FS.streams[fildes].path, length);
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  getcwd__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  getcwd: function(buf, size) {
+    // char *getcwd(char *buf, size_t size);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getcwd.html
+    if (size == 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return 0;
+    } else if (size < FS.currentPath.length + 1) {
+      ___setErrNo(ERRNO_CODES.ERANGE);
+      return 0;
+    } else {
+      for (var i = 0; i < FS.currentPath.length; i++) {
+        {{{ makeSetValue('buf', 'i', 'FS.currentPath[i]', 'i8') }}}
+      }
+      {{{ makeSetValue('buf', 'i', '0', 'i8') }}}
+      return buf;
+    }
+  },
+  getwd__deps: ['getcwd'],
+  getwd: function(path_name) {
+    // char *getwd(char *path_name);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getwd.html
+    return _getcwd(path_name, 4096);  // PATH_MAX.
+  },
+  isatty__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  isatty: function(fildes) {
+    // int isatty(int fildes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
+    if (FS.streams[fildes]) {
+      var object = FS.streams[fildes].object;
+      if (object.isDevice && object.input && object.output) {
+        // As far as we're concerned, a TTY is any device which supports both
+        // input and output.
+        return 0;
+      } else {
+        ___setErrNo(ERRNO_CODES.ENOTTY);
+        return -1;
+      }
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  lchown__deps: ['chown'],
+  lchown: function(path, owner, group) {
+    // int lchown(const char *path, uid_t owner, gid_t group);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/lchown.html
+    return _chown(path, owner, group, true);
+  },
+  link__deps: ['__setErrNo', '$ERRNO_CODES'],
+  link: function(path1, path2) {
+    // int link(const char *path1, const char *path2);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/link.html
+    // We don't support hard links.
+    ___setErrNo(ERRNO_CODES.EMLINK);
+    return -1;
+  },
+  lockf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  lockf: function(fildes, func, size) {
+    // int lockf(int fildes, int function, off_t size);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/lockf.html
+    if (FS.streams[fildes]) {
+      // Pretend whatever locking or unlocking operation succeeded. Lokcing does
+      // not make sense since we have a single process/thread.
+      return 0;
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  lseek__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  lseek: function(fildes, offset, whence) {
+    // off_t lseek(int fildes, off_t offset, int whence);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/lseek.html
+    if (FS.streams[fildes] && !FS.streams[fildes].isDevice) {
+      var stream = FS.streams[fildes];
+      var position = offset;
+      if (whence === 1) {  // SEEK_CUR.
+        position += stream.position;
+      } else if (whence === 2) {  // SEEK_END.
+        position += stream.contents.length;
+      }
+      stream.position = position;
+      return position;
+    } else {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+  },
+  pipe__deps: ['__setErrNo', '$ERRNO_CODES'],
+  pipe: function(fildes) {
+    // int pipe(int fildes[2]);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/pipe.html
+    // It is possible to implement this using two device streams, but pipes make
+    // little sense in a single-threaded environment, so we do not support them.
+    ___setErrNo(ERRNO_CODES.ENOSYS);
+    return -1;
+  },
+  pread__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  pread: function(fildes, buf, nbyte, offset) {
+    // ssize_t pread(int fildes, void *buf, size_t nbyte, off_t offset);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
+    var stream = FS.streams[fildes];
+    if (!stream || stream.isDevice) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else if (!stream.isRead) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else if (stream.isFolder) {
+      ___setErrNo(ERRNO_CODES.EISDIR);
+      return -1;
+    } else if (nbyte < 0 || offset < 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      var contents = stream.object.contents;
+      var size = Math.min(contents.length - offset, nbyte);
+      for (var i = 0; i < size; i++) {
+        {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
+      }
+      return i;
+    }
+  },
+  read__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'pread'],
+  read: function(fildes, buf, nbyte) {
+    // ssize_t read(int fildes, void *buf, size_t nbyte);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
+    var stream = FS.streams[fildes];
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else if (!stream.isRead) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else if (nbyte < 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      if (stream.isDevice) {
+        if (stream.input) {
+          for (var i = 0; i < nbyte; i++) {
+            try {
+              var result = stream.input();
+            } catch (e) {
+              ___setErrNo(ERRNO_CODES.EIO);
+              return -1;
+            }
+            if (result === null || result === undefined) break;
+            {{{ makeSetValue('buf', 'i', 'result', 'i8') }}}
+          }
+          return i;
+        } else {
+          ___setErrNo(ERRNO_CODES.ENXIO);
+          return -1;
+        }
+      } else {
+        var bytesRead = _pread(fildes, buf, nbyte, stream.position);
+        if (bytesRead != -1) stream.position += bytesRead;
+        return bytesRead;
+      }
+    }
+  },
+  sync: function() {
+    // void sync(void);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/sync.html
+    // All our writing is already synchronized. This is a no-op.
+  },
+  rmdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
+                'dirname', 'basename', 'strcpy', 'strlen'],
+  rmdir: function(path) {
+    // int rmdir(const char *path);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/rmdir.html
+    var buffer = _malloc(_strlen(path) + 1);
+    var parent = Pointer_stringify(_dirname(_strcpy(buffer, path)));
+    var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
+    var absolutePath = FS.absolutePath(Pointer_stringify(path));
+    _free(buffer);
+    parent = FS.findObject(parent);
+    if (parent === null) return -1;
+    if (!parent.read) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else if (!parent.contents.hasOwnProperty(name)) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return -1;
+    } else if (!parent.contents[name].isFolder) {
+      ___setErrNo(ERRNO_CODES.ENOTDIR);
+      return -1;
+    } else if (!parent.contents[name].write) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else if (!parent.contents[name].contents.length != 0) {
+      ___setErrNo(ERRNO_CODES.ENOTEMPTY);
+      return -1;
+    } else if (absolutePath == FS.currentPath) {
+      ___setErrNo(ERRNO_CODES.EBUSY);
+      return -1;
+    } else {
+      delete parent.contents[name];
+      return 0;
+    }
+  },
+  unlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
+                 'dirname', 'basename', 'strcpy', 'strlen'],
+  unlink: function(path) {
+    // int unlink(const char *path);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/unlink.html
+    var buffer = _malloc(_strlen(path) + 1);
+    var parent = Pointer_stringify(_dirname(_strcpy(buffer, path)));
+    var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
+    _free(buffer);
+    parent = FS.findObject(parent);
+    if (parent === null) return -1;
+    if (!parent.read) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else if (!parent.contents.hasOwnProperty(name)) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return -1;
+    } else if (parent.contents[name].isFolder) {
+      ___setErrNo(ERRNO_CODES.EISDIR);
+      return -1;
+    } else if (!parent.contents[name].write) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else {
+      delete parent.contents[name];
+      return 0;
+    }
+  },
+  ttyname__deps: ['ttyname_r'],
+  ttyname: function(fildes) {
+    // char *ttyname(int fildes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
+    if (!_ttyname.ret) _ttyname.ret = _malloc(256);
+    return _ttyname_r(fildes, _ttyname.ret, 256);
+  },
+  ttyname_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  ttyname_r: function(fildes, name, namesize) {
+    // int ttyname_r(int fildes, char *name, size_t namesize);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
+    var stream = FS.streams[fildes];
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return 0;
+    } else if (!stream.isDevice || !stream.input || !stream.output) {
+      ___setErrNo(ERRNO_CODES.ENOTTY);
+      return 0;
+    } else {
+      var ret = stream.path;
+      if (namesize < ret.length + 1) {
+        ___setErrNo(ERRNO_CODES.ERANGE);
+        return 0;
+      } else {
+        for (var i = 0; i < ret.length; i++) {
+          {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
+        }
+        {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+        return name;
+      }
+    }
+  },
+  symlink__deps: ['$FS', 'mknod'],
+  symlink: function(path1, path2) {
+    // int symlink(const char *path1, const char *path2);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/symlink.html
+    var result = _mknod(path2, 0x10000 | 0x1C0, 0);  // S_IFREG, S_IRUSR | S_IWUSR | S_IXUSR.
+    if (result == 0) {
+      var target = FS.findObject(Pointer_stringify(path2));
+      delete target.contents;
+      target.link = Pointer_stringify(path1);
+      return 0;
+    } else {
+      return result;
+    }
+  },
+  readlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  readlink: function(path, buf, bufsize) {
+    // ssize_t readlink(const char *restrict path, char *restrict buf, size_t bufsize);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/readlink.html
+    var target = FS.findObject(Pointer_stringify(path), true);
+    if (target === null) return -1;
+    if (target.link !== undefined) {
+      var length = Math.min(bufsize, target.link.length);
+      for (var i = 0; i < length; i++) {
+        {{{ makeSetValue('name', 'i', 'target.link.charCodeAt(i)', 'i8') }}}
+      }
+      if (length > bufsize) {{{ makeSetValue('name', 'i++', '0', 'i8') }}}
+      return i;
+    } else {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+  },
+  pwrite__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  pwrite: function(fildes, buf, nbyte, offset) {
+    // ssize_t pwrite(int fildes, const void *buf, size_t nbyte, off_t offset);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
+    var stream = FS.streams[fildes];
+    if (!stream || stream.isDevice) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else if (!stream.isWrite) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else if (stream.isFolder) {
+      ___setErrNo(ERRNO_CODES.EISDIR);
+      return -1;
+    } else if (nbyte < 0 || offset < 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      var contents = stream.object.contents;
+      while (contents.length < offset) contents.push(0);
+      for (var i = 0; i < nbyte; i++) {
+        contents[offset + i] = {{{ makeGetValue('buf', 'i', 'i8') }}};
+      }
+      return i;
+    }
+  },
+  write__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'pwrite'],
+  write: function(fildes, buf, nbyte) {
+    // ssize_t write(int fildes, const void *buf, size_t nbyte);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
+    var stream = FS.streams[fildes];
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else if (!stream.isWrite) {
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    } else if (nbyte < 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      if (stream.isDevice) {
+        if (stream.output) {
+          for (var i = 0; i < nbyte; i++) {
+            try {
+              stream.output({{{ makeGetValue('buf', 'i', 'i8') }}});
+            } catch (e) {
+              ___setErrNo(ERRNO_CODES.EIO);
+              return -1;
+            }
+          }
+          return i;
+        } else {
+          ___setErrNo(ERRNO_CODES.ENXIO);
+          return -1;
+        }
+      } else {
+        var bytesWritten = _pwrite(fildes, buf, nbyte, stream.position);
+        if (bytesWritten != -1) stream.position += bytesWritten;
+        return bytesWritten;
+      }
+    }
+  },
+  alarm: function(seconds) {
+    // unsigned alarm(unsigned seconds);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
+    // We don't support signals, and there's no way to indicate failure, so just
+    // fail silently.
+    return 0;
+  },
+  ualarm: 'alarm',
+  confstr__deps: ['__setErrNo', '$ERRNO_CODES'],
+  confstr: function(name, buf, len) {
+    // size_t confstr(int name, char *buf, size_t len);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
+    var value;
+    switch (name) {
+      case 0:  // _CS_PATH.
+        // TODO: Get from environment variable.
+        value = '/';
+        break;
+      case 1:  // _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS.
+        // Mimicing glibc.
+        value = 'POSIX_V6_ILP32_OFF32\nPOSIX_V6_ILP32_OFFBIG';
+        break;
+      case 2:  // _CS_GNU_LIBC_VERSION.
+        // This JS implementation was tested against this glibc version.
+        value = 'glibc 2.14';
+        break;
+      case 3:  // _CS_GNU_LIBPTHREAD_VERSION.
+        // We don't support pthread.
+        value = '';
+        break;
+      case 1118:  // _CS_POSIX_V6_ILP32_OFF32_LIBS.
+      case 1122:  // _CS_POSIX_V6_ILP32_OFFBIG_LIBS.
+      case 1124:  // _CS_POSIX_V6_LP64_OFF64_CFLAGS.
+      case 1125:  // _CS_POSIX_V6_LP64_OFF64_LDFLAGS.
+      case 1126:  // _CS_POSIX_V6_LP64_OFF64_LIBS.
+      case 1128:  // _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS.
+      case 1129:  // _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS.
+      case 1130:  // _CS_POSIX_V6_LPBIG_OFFBIG_LIBS.
+        value = '';
+        break;
+      case 1116:  // _CS_POSIX_V6_ILP32_OFF32_CFLAGS.
+      case 1117:  // _CS_POSIX_V6_ILP32_OFF32_LDFLAGS.
+      case 1121:  // _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS.
+        value = '-m32';
+        break;
+      case 1120:  // _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS.
+        value = '-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64';
+        break;
+      default:
+        ___setErrNo(ERRNO_CODES.EINVAL);
+        return 0;
+    }
+    if (len == 0 || buf == 0) {
+      return value.length + 1;
+    } else {
+      var length = Math.min(len, value.length);
+      for (var i = 0; i < length; i++) {
+        {{{ makeSetValue('buf', 'i', 'value.charCodeAt(i)', 'i8') }}}
+      }
+      if (length > len) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}}
+      return i;
+    }
+  },
+  execl__deps: ['__setErrNo', '$ERRNO_CODES'],
+  execl: function(/* ... */) {
+    // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
+    // We don't support executing external code.
+    ___setErrNo(ERRNO_CODES.ENOEXEC);
+    return -1;
+  },
+  execle: 'execl',
+  execlp: 'execl',
+  execv: 'execl',
+  execve: 'execl',
+  execvp: 'execl',
+  _exit: function(status) {
+    // void _exit(int status);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
+    __shutdownRuntime__();
+    ABORT = true;
+    throw 'exit(' + status + ') called, at ' + new Error().stack;
+  },
+  fork__deps: ['__setErrNo', '$ERRNO_CODES'],
+  fork: function() {
+    // pid_t fork(void);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
+    // We don't support multiple processes.
+    ___setErrNo(ERRNO_CODES.EAGAIN);
+    return -1;
+  },
+  vfork: 'fork',
+  getgid: function() {
+    // gid_t getgid(void);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getgid.html
+    // We have just one process/group/user, all with ID 0.
+    return 0;
+  },
+  getegid: 'getgid',
+  getuid: 'getgid',
+  geteuid: 'getgid',
+  getpgrp: 'getgid',
+  getpid: 'getgid',
+  getppid: 'getgid',
+  getgroups__deps: ['__setErrNo', '$ERRNO_CODES'],
+  getgroups: function(gidsetsize, grouplist) {
+    // int getgroups(int gidsetsize, gid_t grouplist[]);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getgroups.html
+    if (gidsetsize < 1) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      {{{ makeSetValue('grouplist', '0', '0', 'i8') }}}
+      return 1;
+    }
+  },
+  gethostid: function() {
+    // long gethostid(void);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostid.html
+    return 42;
+  },
+  gethostname: function(name, namelen) {
+    // int gethostname(char *name, size_t namelen);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostname.html
+    var host = 'emscripten';
+    if (typeof window !== 'undefined' && window.location.host) {
+      host = window.location.host;
+    }
+    var length = Math.min(namelen, host.length);
+    for (var i = 0; i < length; i++) {
+      {{{ makeSetValue('name', 'i', 'host.charCodeAt(i)', 'i8') }}}
+    }
+    if (length > namelen) {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+    return 0;
+  },
+  getlogin: ['getlogin_r'],
+  getlogin: function() {
+    // char *getlogin(void);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
+    if (!_getlogin.ret) _getlogin.ret = _malloc(8);
+    return _getlogin_r(_getlogin.ret, 8);
+  },
+  getlogin_r__deps: ['__setErrNo', '$ERRNO_CODES'],
+  getlogin_r: function(name, namesize) {
+    // int getlogin_r(char *name, size_t namesize);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
+    var ret = 'root';
+    for (var i = 0; i < ret.length; i++) {
+      {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
+    }
+    {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+    return name;
+  },
+  getopt: function(argc, argv, optstring) {
+    // int getopt(int argc, char * const argv[], const char *optstring);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getopt.html
+    // TODO: Implement (probably compile from C).
+    return -1;
+  },
+  getpgid: function(pid) {
+    // pid_t getpgid(pid_t pid);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getpgid.html
+    // There can only be one process, and its group ID is 0.
+    return 0;
+  },
+  getsid: 'getpgid',
+  nice__deps: ['__setErrNo', '$ERRNO_CODES'],
+  nice: function(incr) {
+    // int nice(int incr);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/nice.html
+    // Niceness makes no sense in a single-process environment.
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return 0;
+  },
+  pause__deps: ['__setErrNo', '$ERRNO_CODES'],
+  pause: function() {
+    // int pause(void);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/pause.html
+    // We don't support signals, so we return immediately.
+    ___setErrNo(ERRNO_CODES.EINTR);
+    return -1;
+  },
+  setgid__deps: ['__setErrNo', '$ERRNO_CODES'],
+  setgid: function(gid) {
+    // int setgid(gid_t gid);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/setgid.html
+    // We have just one process/group/user, so it makes no sense to set IDs.
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return -1;
+  },
+  setegid: 'setgid',
+  setuid: 'setgid',
+  seteuid: 'setgid',
+  setsid: 'setgid',
+  setpgrp: 'setgid',
+  setpgid__deps: ['__setErrNo', '$ERRNO_CODES'],
+  setpgid: function(pid, pgid) {
+    // int setpgid(pid_t pid, pid_t pgid);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getpgid.html
+    // We have just one process/group/user, so it makes no sense to set IDs.
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return -1;
+  },
+  setregid: 'setpgid',
+  setreuid: 'setpgid',
+  setpgid__deps: ['usleep'],
+  sleep: function(seconds) {
+    // unsigned sleep(unsigned seconds);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/sleep.html
+    return _usleep(seconds * 1e6);
+  },
+  usleep: function(useconds) {
+    // int usleep(useconds_t useconds);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
+    // We're single-threaded, so use a busy loop. Super-ugly.
+    var start = new Date().getTime();
+    while (new Date().getTime() - start < useconds);
+    return 0;
+  },
+  swab: function(src, dest, nbytes) {
+    // void swab(const void *restrict src, void *restrict dest, ssize_t nbytes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/swab.html
+    if (nbytes < 0) return;
+    nbytes -= nbytes % 2;
+    for (var i = 0; i < nbytes; i += 2) {
+      var first = {{{ makeGetValue('src', 'i', 'i8') }}};
+      var second = {{{ makeGetValue('src', 'i + 1', 'i8') }}};
+      {{{ makeSetValue('dest', 'i', 'second', 'i8') }}}
+      {{{ makeSetValue('dest', 'i + 1', 'first', 'i8') }}}
+    }
+  },
+  tcgetpgrp: function(fildes) {
+    // pid_t tcgetpgrp(int fildes);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/tcgetpgrp.html
+    // Our only process always runs with group ID 0.
+    return 0;
+  },
+  tcsetpgrp__deps: ['__setErrNo', '$ERRNO_CODES'],
+  tcsetpgrp: function(fildes, pgid_id) {
+    // int tcsetpgrp(int fildes, pid_t pgid_id);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/tcsetpgrp.html
+    // We don't support multiple processes or groups with ID other than 0.
+    ___setErrNo(ERRNO_CODES.EINVAL);
+    return -1;
+  },
+  sysconf: function(name_) {
+    // TODO: Implement.
+    // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
+    switch(name_) {
+      case 29: case 30: return PAGE_SIZE;
+      case 2: return 1000000; // _SC_CLK_TCK
+      default: throw 'unknown sysconf param: ' + name_;
+    }
+  },
+  // TODO: Check if these aliases are correct and if any others are needed.
+  __01open64_: 'open',
+  __01lseek64_: 'lseek',
+
+  // ==========================================================================
 
   _scanString: function() {
     // Supports %x, %4x, %d.%d, %s
@@ -1362,10 +2200,6 @@ LibraryManager.library = {
     return file;
   },
 
-  isatty: function(file) {
-    return 0; // TODO
-  },
-
   clearerr: function(stream) {
   },
 
@@ -1374,10 +2208,6 @@ LibraryManager.library = {
 
   funlockfile: function(file) {
   },
-
-  // ==========================================================================
-  // stdio.h - file functions
-  // ==========================================================================
 
   stdin: 0,
   stdout: 0,
@@ -1529,7 +2359,6 @@ LibraryManager.library = {
     return 0;
   },
   __01fseeko64_: 'fseek',
-  __01lseek64_: 'fseek',
 
   ftell__deps: ['$STDIO'],
   ftell: function(stream) {
@@ -1654,21 +2483,6 @@ LibraryManager.library = {
 
   // unix file IO, see http://rabbit.eng.miami.edu/info/functions/unixio.html
 
-  __01open64___deps: ['open'],
-  __01open64_: function(filename, mode, flags) {
-    // open(), but with flags and mode switched.
-    // TODO: Verify why this happens at all.
-    return _open(filename, flags, mode);
-  },
-
-  close: function(stream) {
-    return 0;
-  },
-
-  read: function(stream, ptr, numbytes) {
-    return STDIO.read(stream, ptr, numbytes);
-  },
-
   mmap: function(start, num, prot, flags, stream, offset) {
     // Leaky and non-shared... FIXME
     var info = STDIO.streams[stream];
@@ -1686,11 +2500,6 @@ LibraryManager.library = {
   },
 
   setvbuf: 'setbuf',
-
-  access: function(filename) {
-    filename = Pointer_stringify(filename);
-    return STDIO.open(filename) ? 0 : -1;
-  },
 
   // ==========================================================================
   // stdlib.h
@@ -1719,10 +2528,9 @@ LibraryManager.library = {
     return Math.floor(Number(Pointer_stringify(s)));
   },
 
+  exit__deps: ['_exit'],
   exit: function(status) {
-    __shutdownRuntime__();
-    ABORT = true;
-    throw 'exit(' + status + ') called, at ' + new Error().stack;
+    __exit(status);
   },
 
   atexit: function(func, arg) {
@@ -2531,34 +3339,8 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // unistd.h
+  // System calls
   // ==========================================================================
-
-  getcwd__deps: ['malloc'],
-  getcwd: function(buf, size) {
-    // TODO: Implement for real once we have a file system.
-    var path = window ? window.location.pathname.replace(/\/[^/]*$/, '') : '/';
-    if (buf === 0) {
-      // Null. Allocate manually.
-      buf = _malloc(path.length);
-    } else if (size < path.length) {
-      return 0;
-      // TODO: Set errno.
-    }
-    for (var i = 0; i < path.length; i++) {
-      {{{ makeSetValue('buf', 'i', 'path[i].charCodeAt(0)', 'i8') }}}
-    }
-    return buf;
-  },
-
-  sysconf: function(name_) {
-    // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
-    switch(name_) {
-      case 29: case 30: return PAGE_SIZE;
-      case 2: return 1000000; // _SC_CLK_TCK
-      default: throw 'unknown sysconf param: ' + name_;
-    }
-  },
 
   sbrk: function(bytes) {
     // Implement a Linux-like 'memory area' for our 'process'.
@@ -2583,29 +3365,9 @@ LibraryManager.library = {
     return ret; // previous break location
   },
 
-  readlink: function(path, buf, bufsiz) {
-    return -1;
-  },
-
-  unlink: function(pathname) {
-    var pathStr = Pointer_stringify(pathname);
-    var fd = STDIO.filenames[pathStr];
-    if (fd === undefined) {
-      return -1;
-    }
-    delete STDIO.filenames[pathStr];
-    return 0;
-  },
-
-  getuid: function() {
-    return 100;
-  },
-  geteuid: 'getuid',
-
-  getgid: function() {
-    return 100;
-  },
-  getegid: 'getgid',
+  // ==========================================================================
+  // pwd.h
+  // ==========================================================================
 
   getpwuid: function(uid) {
     return 0; // NULL
