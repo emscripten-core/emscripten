@@ -237,7 +237,7 @@ LibraryManager.library = {
   // dirent.h
   // ==========================================================================
 
-  __dirent_struct_layout: Types.structDefinitions.dirent,
+  __dirent_struct_layout: Runtime.generateStructInfo(null, '%struct.dirent'),
   opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
@@ -271,7 +271,7 @@ LibraryManager.library = {
       // An index into contents. Special values: -2 is ".", -1 is "..".
       position: -2,
       // Each stream has its own area for readdir() returns.
-      currentEntry: _malloc(___dirent_struct_layout.size)
+      currentEntry: _malloc(___dirent_struct_layout.__size__)
     };
     return id;
   },
@@ -345,19 +345,19 @@ LibraryManager.library = {
         inode = stream.object.contents[name].inodeNumber;
       }
       stream.position++;
-      var members = ___dirent_struct_layout.members;
-      {{{ makeSetValue('entry', 'members.d_ino.offset', 'inode', 'i32') }}}
-      {{{ makeSetValue('entry', 'members.d_off.offset', 'stream.position', 'i32') }}}
-      {{{ makeSetValue('entry', 'members.d_reclen.offset', 'name.length + 1', 'i32') }}}
+      var offsets = ___dirent_struct_layout;
+      {{{ makeSetValue('entry', 'offsets.d_ino', 'inode', 'i32') }}}
+      {{{ makeSetValue('entry', 'offsets.d_off', 'stream.position', 'i32') }}}
+      {{{ makeSetValue('entry', 'offsets.d_reclen', 'name.length + 1', 'i32') }}}
       for (var i = 0; i < name.length; i++) {
-        {{{ makeSetValue('entry', 'members.d_name.offset + i', 'name.charCodeAt(i)', 'i8') }}}
+        {{{ makeSetValue('entry + offsets.d_name', 'i', 'name.charCodeAt(i)', 'i8') }}}
       }
-      {{{ makeSetValue('entry', 'members.d_name.offset + i', '0', 'i8') }}}
+      {{{ makeSetValue('entry + offsets.d_name', 'i', '0', 'i8') }}}
       var type = stream.isDevice ? 2 // DT_CHR, character device.
                : stream.isFolder ? 4 // DT_DIR, directory.
                : stream.link !== undefined ? 10 // DT_LNK, symbolic link.
                : 8; // DT_REG, regular file.
-      {{{ makeSetValue('entry', 'members.d_type.offset', 'type', 'i8') }}}
+      {{{ makeSetValue('entry', 'offsets.d_type', 'type', 'i8') }}}
       {{{ makeSetValue('result', '0', 'entry', 'i8*') }}}
     }
     return 0;
@@ -385,7 +385,7 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  __utimbuf_struct_layout: Types.structDefinitions.utimbuf,
+  __utimbuf_struct_layout: Runtime.generateStructInfo(null, '%struct.utimbuf'),
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
@@ -393,7 +393,7 @@ LibraryManager.library = {
     var time;
     if (times) {
       // NOTE: We don't keep track of access timestamps.
-      var offset = ___utimbuf_struct_layout.members.modtime.offset;
+      var offset = ___utimbuf_struct_layout.modtime;
       time = {{{ makeGetValue('times', 'offset', 'i32') }}}
       time = new Date(time * 1000);
     } else {
@@ -473,41 +473,39 @@ LibraryManager.library = {
   // sys/stat.h
   // ==========================================================================
 
-  __stat_struct_layout: Types.structDefinitions.stat,
+  __stat_struct_layout: Runtime.generateStructInfo(null, '%struct.stat'),
   stat__deps: ['$FS', '__stat_struct_layout'],
   stat: function(path, buf, dontResolveLastLink) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
     // int stat(const char *path, struct stat *buf);
-    // dontResolveLastLink is a shortcut for lstat(). It should never be used in
-    // client code.
+    // NOTE: dontResolveLastLink is a shortcut for lstat(). It should never be
+    //       used in client code.
     var obj = FS.findObject(Pointer_stringify(path), dontResolveLastLink);
     if (obj === null || !FS.forceLoadFile(obj)) return -1;
 
-    var members = ___stat_struct_layout.members;
+    var offsets = ___stat_struct_layout;
 
     // Constants.
-    {{{ makeSetValue('buf', 'members.st_nlink.offset', '1', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.st_uid.offset', '0', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.st_gid.offset', '0', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.st_blksize.offset', '4096', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_nlink', '1', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_uid', '0', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_gid', '0', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_blksize', '4096', 'i32') }}}
 
     // Variables.
-    {{{ makeSetValue('buf', 'members.st_ino.offset', 'obj.inodeNumber', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_ino', 'obj.inodeNumber', 'i32') }}}
     var time = Math.floor(obj.timestamp.getTime() / 1000);
-    if (members.st_atime === undefined) {
-      var tvSecOffset = members.st_atim.members.tv_sec.offset;
-      members.st_atime = {offset: members.st_atim.offset + tvSecOffset};
-      members.st_mtime = {offset: members.st_mtim.offset + tvSecOffset};
-      members.st_ctime = {offset: members.st_ctim.offset + tvSecOffset};
-      var tvNSecOffset = members.st_atim.members.tv_nsec.offset;
+    if (offsets.st_atime === undefined) {
+      offsets.st_atime = offsets.st_atim.tv_sec;
+      offsets.st_mtime = offsets.st_mtim.tv_sec;
+      offsets.st_ctime = offsets.st_ctim.tv_sec;
       var nanosec = (obj.timestamp.getTime() % 1000) * 1000;
-      {{{ makeSetValue('buf', 'members.st_atim.offset + tvNSecOffset', 'nanosec', 'i32') }}}
-      {{{ makeSetValue('buf', 'members.st_mtim.offset + tvNSecOffset', 'nanosec', 'i32') }}}
-      {{{ makeSetValue('buf', 'members.st_ctim.offset + tvNSecOffset', 'nanosec', 'i32') }}}
+      {{{ makeSetValue('buf', 'offsets.st_atim.tv_nsec', 'nanosec', 'i32') }}}
+      {{{ makeSetValue('buf', 'offsets.st_mtim.tv_nsec', 'nanosec', 'i32') }}}
+      {{{ makeSetValue('buf', 'offsets.st_ctim.tv_nsec', 'nanosec', 'i32') }}}
     }
-    {{{ makeSetValue('buf', 'members.st_atime.offset', 'time', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.st_mtime.offset', 'time', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.st_ctime.offset', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_atime', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_mtime', 'time', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_ctime', 'time', 'i32') }}}
     var mode = 0;
     var size = 0;
     var blocks = 0;
@@ -534,14 +532,14 @@ LibraryManager.library = {
         mode = obj.link === undefined ? 0x8000 : 0xA000;  // S_IFREG, S_IFLNK.
       }
     }
-    {{{ makeSetValue('buf', 'members.st_dev.offset', 'dev', 'i64') }}}
-    {{{ makeSetValue('buf', 'members.st_rdev.offset', 'rdev', 'i64') }}}
+    {{{ makeSetValue('buf', 'offsets.st_dev', 'dev', 'i64') }}}
+    {{{ makeSetValue('buf', 'offsets.st_rdev', 'rdev', 'i64') }}}
     // NOTE: These two may be i64, depending on compilation options.
-    {{{ makeSetValue('buf', 'members.st_size.offset', 'size', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.st_blocks.offset', 'blocks', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_size', 'size', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_blocks', 'blocks', 'i32') }}}
     if (obj.read) mode |= 0x16D;  // S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH.
     if (obj.write) mode |= 0x92;  // S_IWUSR | S_IWGRP | S_IWOTH.
-    {{{ makeSetValue('buf', 'members.st_mode.offset', 'mode', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.st_mode', 'mode', 'i32') }}}
 
     return 0;
   },
@@ -650,25 +648,25 @@ LibraryManager.library = {
   // sys/statvfs.h
   // ==========================================================================
 
-  __statvfs_struct_layout: Types.structDefinitions.statvfs,
+  __statvfs_struct_layout: Runtime.generateStructInfo(null, '%struct.statvfs'),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
     // int statvfs(const char *restrict path, struct statvfs *restrict buf);
-    var members = ___statvfs_struct_layout.members;
+    var offsets = ___statvfs_struct_layout;
     // NOTE: None of the constants here are true. We're just returning safe and
     //       sane values.
-    {{{ makeSetValue('buf', 'members.f_bsize.offset', '4096', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_frsize.offset', '4096', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_blocks.offset', '1000000', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_bfree.offset', '500000', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_bavail.offset', '500000', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_files.offset', 'FS.nextInode', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_ffree.offset', '1000000', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_favail.offset', '1000000', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_fsid.offset', '42', 'i32') }}}
-    {{{ makeSetValue('buf', 'members.f_flag.offset', '2', 'i32') }}}  // ST_NOSUID
-    {{{ makeSetValue('buf', 'members.f_namemax.offset', '255', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_bsize', '4096', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_frsize', '4096', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_blocks', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_bfree', '500000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_bavail', '500000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_files', 'FS.nextInode', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_ffree', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_favail', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_fsid', '42', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_flag', '2', 'i32') }}}  // ST_NOSUID
+    {{{ makeSetValue('buf', 'offsets.f_namemax', '255', 'i32') }}}
     return 0;
   },
   fstatvfs__deps: ['statvfs'],
@@ -682,7 +680,7 @@ LibraryManager.library = {
   // fcntl.h
   // ==========================================================================
 
-  __flock_struct_layout: Types.structDefinitions.flock,
+  __flock_struct_layout: Runtime.generateStructInfo(null, '%struct.flock'),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
                'strlen', 'strcpy', 'dirname', 'basename'],
   open: function(path, oflag, mode) {
@@ -814,7 +812,7 @@ LibraryManager.library = {
         // Synchronization and blocking flags are irrelevant to us.
         return 0;
       case 5:  // F_GETLK.
-        var offset = ___flock_struct_layout.members.l_type.offset;
+        var offset = ___flock_struct_layout.l_type;
         // We're always unlocked.
         {{{ makeSetValue('arg', 'offset', '2', 'i16') }}}  // F_UNLCK.
         return 0;
@@ -860,18 +858,18 @@ LibraryManager.library = {
   // poll.h
   // ==========================================================================
 
-  __pollfd_struct_layout: Types.structDefinitions.pollfd,
-  poll__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__pollfd_struct_layout'],
+  __pollfd_struct_layout: Runtime.generateStructInfo(null, '%struct.pollfd'),
+  poll__deps: ['$FS', '__pollfd_struct_layout'],
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
     // NOTE: This is pretty much a no-op mimicing glibc.
-    var members = ___pollfd_struct_layout.members;
+    var offsets = ___pollfd_struct_layout;
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
-      var pollfd = fds + ___pollfd_struct_layout.size * i;
-      var fd = {{{ makeGetValue('pollfd', 'members.fd.offset', 'i32') }}};
-      var events = {{{ makeGetValue('pollfd', 'members.events.offset', 'i16') }}};
+      var pollfd = fds + ___pollfd_struct_layout.__size__ * i;
+      var fd = {{{ makeGetValue('pollfd', 'offsets.fd', 'i32') }}};
+      var events = {{{ makeGetValue('pollfd', 'offsets.events', 'i16') }}};
       var revents = 0;
       if (fd in FS.streams) {
         var stream = FS.streams[fd];
@@ -881,7 +879,7 @@ LibraryManager.library = {
         if (events & 0x20) revents |= 0x20;  // POLLNVAL.
       }
       if (revents) nonzero++;
-      {{{ makeSetValue('pollfd', 'members.revents.offset', 'revents', 'i16') }}}
+      {{{ makeSetValue('pollfd', 'offsets.revents', 'revents', 'i16') }}}
     }
     return nonzero;
   },
@@ -2632,7 +2630,7 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  __tm_struct_layout: Types.structDefinitions.tm,
+  __tm_struct_layout: Runtime.generateStructInfo(null, '%struct.tm'),
   // Statically allocated time struct.
   __tm_current: 0,
   // Statically allocated timezone strings.
@@ -2643,56 +2641,56 @@ LibraryManager.library = {
   mktime__deps: ['__tm_struct_layout', 'tzset'],
   mktime: function(tmPtr) {
     _tzset();
-    var members = ___tm_struct_layout.members;
-    var year = {{{ makeGetValue('tmPtr', 'members.tm_year.offset', 'i32') }}};
+    var offsets = ___tm_struct_layout;
+    var year = {{{ makeGetValue('tmPtr', 'offsets.tm_year', 'i32') }}};
     var timestamp = new Date(year >= 1900 ? year : year + 1900,
-                             {{{ makeGetValue('tmPtr', 'members.tm_mon.offset', 'i32') }}},
-                             {{{ makeGetValue('tmPtr', 'members.tm_mday.offset', 'i32') }}},
-                             {{{ makeGetValue('tmPtr', 'members.tm_hour.offset', 'i32') }}},
-                             {{{ makeGetValue('tmPtr', 'members.tm_min.offset', 'i32') }}},
-                             {{{ makeGetValue('tmPtr', 'members.tm_sec.offset', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', 'offsets.tm_mon', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', 'offsets.tm_mday', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', 'offsets.tm_hour', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', 'offsets.tm_min', 'i32') }}},
+                             {{{ makeGetValue('tmPtr', 'offsets.tm_sec', 'i32') }}},
                              0).getTime() / 1000;
-    {{{ makeSetValue('tmPtr', 'members.tm_wday.offset', 'new Date(timestamp).getDay()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_wday', 'new Date(timestamp).getDay()', 'i32') }}}
     var yday = Math.round((timestamp - (new Date(year, 0, 1)).getTime()) / (1000 * 60 * 60 * 24));
-    {{{ makeSetValue('tmPtr', 'members.tm_yday.offset', 'yday', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_yday', 'yday', 'i32') }}}
     return timestamp;
   },
   timelocal: 'mktime',
 
   gmtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'gmtime_r'],
   gmtime: function(time) {
-    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.size);
+    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
     return _gmtime_r(time, ___tm_current);
   },
 
   gmtime_r__deps: ['__tm_struct_layout', '__tm_timezones'],
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
-    var members = ___tm_struct_layout.members;
-    {{{ makeSetValue('tmPtr', 'members.tm_sec.offset', 'date.getUTCSeconds()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_min.offset', 'date.getUTCMinutes()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_hour.offset', 'date.getUTCHours()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_mday.offset', 'date.getUTCDate()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_mon.offset', 'date.getUTCMonth()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_year.offset', 'date.getUTCFullYear()-1900', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_wday.offset', 'date.getUTCDay()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_gmtoff.offset', '0', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_isdst.offset', '0', 'i32') }}}
+    var offsets = ___tm_struct_layout;
+    {{{ makeSetValue('tmPtr', 'offsets.tm_sec', 'date.getUTCSeconds()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_min', 'date.getUTCMinutes()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_hour', 'date.getUTCHours()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_mday', 'date.getUTCDate()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_mon', 'date.getUTCMonth()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_year', 'date.getUTCFullYear()-1900', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_wday', 'date.getUTCDay()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_gmtoff', '0', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_isdst', '0', 'i32') }}}
 
     var start = new Date(date.getFullYear(), 0, 1);
     var yday = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    {{{ makeSetValue('tmPtr', 'members.tm_yday.offset', 'yday', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_yday', 'yday', 'i32') }}}
 
     var timezone = "GMT";
     if (!(timezone in ___tm_timezones)) {
       ___tm_timezones[timezone] = allocate(intArrayFromString(timezone), 'i8', ALLOC_NORMAL);
     }
-    {{{ makeSetValue('tmPtr', 'members.tm_zone.offset', '___tm_timezones[timezone]', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
 
     return tmPtr;
   },
 
-  timegm__deps: ['__tm_struct_layout', 'mktime'],
+  timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
     var offset = {{{ makeGetValue('_timezone', 0, 'i32') }}};
@@ -2704,36 +2702,36 @@ LibraryManager.library = {
 
   localtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'localtime_r'],
   localtime: function(time) {
-    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.size);
+    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
     return _localtime_r(time, ___tm_current);
   },
 
   localtime_r__deps: ['__tm_struct_layout', '__tm_timezones', 'tzset'],
   localtime_r: function(time, tmPtr) {
     _tzset();
-    var members = ___tm_struct_layout.members;
+    var offsets = ___tm_struct_layout;
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
-    {{{ makeSetValue('tmPtr', 'members.tm_sec.offset', 'date.getSeconds()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_min.offset', 'date.getMinutes()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_hour.offset', 'date.getHours()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_mday.offset', 'date.getDate()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_mon.offset', 'date.getMonth()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_year.offset', 'date.getFullYear()-1900', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_wday.offset', 'date.getDay()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_sec', 'date.getSeconds()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_min', 'date.getMinutes()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_hour', 'date.getHours()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_mday', 'date.getDate()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_mon', 'date.getMonth()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_year', 'date.getFullYear()-1900', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_wday', 'date.getDay()', 'i32') }}}
 
     var start = new Date(date.getFullYear(), 0, 1);
     var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    {{{ makeSetValue('tmPtr', 'members.tm_yday.offset', 'yday', 'i32') }}}
-    {{{ makeSetValue('tmPtr', 'members.tm_gmtoff.offset', 'start.getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_yday', 'yday', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_gmtoff', 'start.getTimezoneOffset() * 60', 'i32') }}}
 
     var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
-    {{{ makeSetValue('tmPtr', 'members.tm_isdst.offset', 'dst', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_isdst', 'dst', 'i32') }}}
 
     var timezone = date.toString().match(/\(([A-Z]+)\)/)[1];
     if (!(timezone in ___tm_timezones)) {
       ___tm_timezones[timezone] = allocate(intArrayFromString(timezone), 'i8', ALLOC_NORMAL);
     }
-    {{{ makeSetValue('tmPtr', 'members.tm_zone.offset', '___tm_timezones[timezone]', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
 
     return tmPtr;
   },

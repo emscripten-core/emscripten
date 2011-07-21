@@ -39,7 +39,7 @@ var Debugging = {
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
     var formStruct = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 (\d+), [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
     var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
-    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 (\d+), i64 \d+, i64 (\d+), .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
+    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
 
     var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
 
@@ -117,33 +117,33 @@ var Debugging = {
       this.llvmLineToSourceFile[l] = metadataToFilename[m];
     }
 
-    // Create base struct definitions.
-    for (var structName in structToMemberMeta) {
-      // TODO: Account for bitfields.
-      Types.structDefinitions[structName] = {
-        size: parseInt(structToSize[structName]) / 8,
-        members: {}
-      }
-    }
-    // Fill struct members.
-    for (var structName in structToMemberMeta) {
-      var struct = Types.structDefinitions[structName];
-      var memberMetaId = structToMemberMeta[structName];
-      var memberIds = memberMetaToMembers[memberMetaId];
-      for (var i = 0; i < memberIds.length; i++) {
-        if (memberIds[i] in metadataToMember) {
-          var member = metadataToMember[memberIds[i]];
-          var memberObj = {
-            size: parseInt(member[1]) / 8,
-            offset: parseInt(member[2]) / 8
+    // Create struct definitions.
+    // TODO: Account for bitfields.
+    function generateStructDefinition(name) {
+      if (!Types.structMetadata.hasOwnProperty(name)) {
+        var struct = [];
+        var membersMetaId = structToMemberMeta[name];
+        var memberIds = memberMetaToMembers[membersMetaId];
+        for (var i = 0; i < memberIds.length; i++) {
+          var memberId = memberIds[i];
+          if (memberId in metadataToMember) {
+            var member = metadataToMember[memberId];
+            if (member[1] in structMetaToStruct) {
+              var def = generateStructDefinition(structMetaToStruct[member[1]]);
+              var record = {};
+              record[member[0]] = def;
+              struct.push(record);
+            } else {
+              struct.push(member[0]);
+            }
           }
-          if (member[3] in structMetaToStruct) {
-            var subStruct = Types.structDefinitions[structMetaToStruct[member[3]]];
-            memberObj.members = subStruct.members;
-          }
-          struct.members[member[0]] = memberObj;
         }
+        Types.structMetadata[name] = struct;
       }
+      return Types.structMetadata[name];
+    }
+    for (var name in structToMemberMeta) {
+      generateStructDefinition(name);
     }
 
     this.on = true;
@@ -179,7 +179,7 @@ var Types = {
     this.fatTypes = this.types;
     this.types = temp;
   },
-  structDefinitions: {},
+  structMetadata: {},
 
   // Remove all data not needed during runtime (like line numbers, JS, etc.)
   cleanForRuntime: function() {
