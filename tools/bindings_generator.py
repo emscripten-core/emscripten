@@ -73,13 +73,35 @@ all_h.close()
 
 parsed = CppHeaderParser.CppHeader(all_h_name)
 for cname, clazz in parsed.classes.iteritems():
-  #print 'zz see', cname
+  print 'zz see', cname
   if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
-    #print 'zz for real', cname, clazz, dir(clazz)
+    print 'zz for real', cname, clazz, dir(clazz)
     classes[cname] = clazz
     for sname, struct in clazz._public_structs.iteritems():
       struct_parents[sname] = cname
       #print 'zz seen struct %s in %s' % (sname, cname)
+
+    # Add shadow versions of functions with default parameters
+    for method in clazz['methods']['public'][:]:
+      constructor = method['name'] == cname
+      method['constructor'] = constructor # work around cppheaderparser issue
+      args = method['parameters']
+      for i in range(len(args)):
+        if args[i].get('default'):
+          method['parameters'][i]['default'] = None
+          for j in range(i, len(args)):
+            method['parameters'][j]['default'] = None
+            print 'zz add version with default params', cname, method['name'], j, constructor
+            clazz['methods']['public'].append({
+              'name': method['name'] + '__' + str(j+1),
+              'truename': method['name'],
+              'parameters': args[:j+1],
+              'pure_virtual': False,
+              'constructor': constructor,
+              'destructor': False,
+              'rtnType': method['rtnType'],
+            })
+          method['parameters'] = method['parameters'][:i]
 
 # Second pass - generate bindings
 # TODO: Bind virtual functions using dynamic binding in the C binding code
@@ -96,25 +118,28 @@ def generate_class(generating_cname, cname, clazz):
 
   for method in clazz['methods']['public']:
     mname = method['name']
-    #print "zz generating: ", generating_cname, cname, mname
     if cname + '::' + mname in ignored: continue
 
     args = method['parameters']
-    constructor = mname == cname
+    constructor = method['constructor'] # we fixed this before
     destructor = method['destructor']
+
+    print "zz generating: ", generating_cname, cname, mname, constructor
 
     if destructor: continue
     if constructor and inherited: continue
-    if method['pure_virtual']: continue
 
     skip = False
     for i in range(len(args)):
-      #print 'zz   arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type'], 'x'
+      #print 'zz   arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type'], 'x', dir(args[i]), 'y', args[i].get('default'), 'z', args[i].get('defaltValue'), args[i].keys()
+
       if args[i]['name'].replace(' ', '') == '':
         args[i]['name'] = 'arg' + str(i+1)
       elif args[i]['name'] == '&':
         args[i]['name'] = 'arg' + str(i+1)
         args[i]['type'] += '&'
+
+      assert not args[i].get('default')
 
       if '>' in args[i]['name']:
         print 'WARNING: odd ">" in %s, skipping' % cname
@@ -170,7 +195,7 @@ def generate_class(generating_cname, cname, clazz):
       callprefix = '*self - '
       continue # TODO
     else:
-      actualmname = mname
+      actualmname = method.get('truename') or mname
 
     typedargs = ', '.join( ([] if constructor else [cname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args) )
     justargs = ', '.join(map(lambda arg: arg['name'], args))
@@ -181,9 +206,11 @@ def generate_class(generating_cname, cname, clazz):
     funcs[fullname] += 1
 
     # handle overloading
+    dupe = False
     if count > 0:
+      dupe = True
       suffix = '_' + str(count+1)
-      funcs[fullname + suffix] = fullname # this should never change
+      funcs[fullname + suffix] = 0
       fullname += suffix
       mname_suffixed += suffix
       if constructor:
@@ -198,7 +225,6 @@ def generate_class(generating_cname, cname, clazz):
     # JS
 
     if constructor:
-      dupe = type(funcs[fullname]) is str
       if not dupe:
         gen_js.write('''
 function %s(%s) {
@@ -228,23 +254,35 @@ for cname, clazz in classes.iteritems():
     if any([check_pure_virtual(classes[parent['class']], [clazz] + progeny) for parent in clazz['inherits']]): return True
 
     def dirtied(mname):
+      #print 'zz checking dirtiness for', mname, 'in', progeny
       for progen in progeny:
-        for method in clazz['methods']['public']:
-          if method['name'] == mname and not method['pure_virtual']: return True
+        for method in progen['methods']['public']:
+          if method['name'] == mname and not method['pure_virtual']:
+            #print 'zz dirty'
+            return True
+      #print 'zz not dirtied'
       return False
 
     for method in clazz['methods']['public']:
-      if method['pure_virtual'] and not dirtied(method['name']): return True
+      if method['pure_virtual'] and not dirtied(method['name']):
+        print 'zz ignoring pure virtual class', cname, 'due to', method['name']
+        return True
 
-  if check_pure_virtual(clazz, []): continue
+  if check_pure_virtual(clazz, []):
+    continue
 
   # Add a constructor if none exist
   has_constructor = False
   for method in clazz['methods']['public']:
     mname = method['name']
-    has_constructor = has_constructor or (cname == mname)
+    has_constructor = has_constructor or (cname == mname and not method['destructor'])
+
+  print 'zz ', cname, 'has constructor?', has_constructor
 
   if not has_constructor:
+    print 'zz no constructor for', cname, 'so ignoring'
+    continue
+
     clazz['methods']['public'] = [{
       'name': cname,
       'parameters': [],
