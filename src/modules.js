@@ -63,7 +63,7 @@ var Debugging = {
         skipLine = true;
       }
       calc = formStructMembers.exec(line);
-      if (calc && calc[1] in memberMetaToStruct) {
+      if (calc) {
         var children = calc[2].match(/!\d+/g) || [];
         memberMetaToMembers[calc[1]] = children.map(function(i) {
           return i.slice(1);
