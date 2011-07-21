@@ -857,6 +857,36 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // poll.h
+  // ==========================================================================
+
+  __pollfd_struct_layout: Types.structDefinitions.pollfd,
+  poll__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__pollfd_struct_layout'],
+  poll: function(fds, nfds, timeout) {
+    // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
+    // NOTE: This is pretty much a no-op mimicing glibc.
+    var members = ___pollfd_struct_layout.members;
+    var nonzero = 0;
+    for (var i = 0; i < nfds; i++) {
+      var pollfd = fds + ___pollfd_struct_layout.size * i;
+      var fd = {{{ makeGetValue('pollfd', 'members.fd.offset', 'i32') }}};
+      var events = {{{ makeGetValue('pollfd', 'members.events.offset', 'i16') }}};
+      var revents = 0;
+      if (fd in FS.streams) {
+        var stream = FS.streams[fd];
+        if (events & 0x1) revents |= 0x1;  // POLLIN.
+        if (events & 0x4) revents |= 0x4;  // POLLOUT.
+      } else {
+        if (events & 0x20) revents |= 0x20;  // POLLNVAL.
+      }
+      if (revents) nonzero++;
+      {{{ makeSetValue('pollfd', 'members.revents.offset', 'revents', 'i16') }}}
+    }
+    return nonzero;
+  },
+
+  // ==========================================================================
 
   _scanString: function() {
     // Supports %x, %4x, %d.%d, %s

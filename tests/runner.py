@@ -2210,6 +2210,57 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
       self.do_test(src, expected, post_build=addPreRun)
 
+    def test_poll(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            FS.createDataFile('/', 'file', 'abcdef', true, true);
+            FS.createDevice('/', 'device', function() {}, function() {});
+          '''
+        )
+        open(filename, 'w').write(src)
+      src = r'''
+        #include <stdio.h>
+        #include <errno.h>
+        #include <fcntl.h>
+        #include <poll.h>
+
+        int main() {
+          struct pollfd multi[5];
+          multi[0].fd = open("/file", O_RDONLY, 0777);
+          multi[1].fd = open("/device", O_RDONLY, 0777);
+          multi[2].fd = 123;
+          multi[3].fd = open("/file", O_RDONLY, 0777);
+          multi[4].fd = open("/file", O_RDONLY, 0777);
+          multi[0].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
+          multi[1].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
+          multi[2].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
+          multi[3].events = 0x00;
+          multi[4].events = POLLOUT | POLLNVAL | POLLERR;
+
+          printf("ret: %d\n", poll(multi, 5, 123));
+          printf("errno: %d\n", errno);
+          printf("multi[0].revents: 0x%x\n", multi[0].revents);
+          printf("multi[1].revents: 0x%x\n", multi[1].revents);
+          printf("multi[2].revents: 0x%x\n", multi[2].revents);
+          printf("multi[3].revents: 0x%x\n", multi[3].revents);
+          printf("multi[4].revents: 0x%x\n", multi[4].revents);
+
+          return 0;
+        }
+        '''
+      expected = r'''
+        ret: 4
+        errno: 0
+        multi[0].revents: 0x5
+        multi[1].revents: 0x5
+        multi[2].revents: 0x20
+        multi[3].revents: 0x0
+        multi[4].revents: 0x4
+        '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRun)
+
     def test_statvfs(self):
       src = r'''
         #include <stdio.h>
