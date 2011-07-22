@@ -11,7 +11,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
       assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
-      libFuncsToInclude = keys(LibraryManager.library);
+      libFuncsToInclude = [];
+      for (var key in LibraryManager.library) {
+        if (!key.match(/__(deps|postset)$/)) {
+          libFuncsToInclude.push(key);
+        }
+      }
     } else {
       libFuncsToInclude = ['memset', 'malloc', 'free'];
     }
