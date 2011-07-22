@@ -2404,6 +2404,17 @@ if 'benchmark' not in sys.argv:
       '''
       self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRunAndChecks)
 
+    def test_fs_base(self):
+      global INCLUDE_FULL_LIBRARY; INCLUDE_FULL_LIBRARY = 1
+      def addJS(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
+        open(filename, 'w').write(src)
+      src = 'int main() {return 0;}\n'
+      expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=addJS)
+
     ### 'Big' tests
 
     def test_fannkuch(self):

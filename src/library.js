@@ -50,7 +50,7 @@ LibraryManager.library = {
     absolutePath: function(relative, base) {
       if (typeof relative !== 'string') return null;
       if (base === undefined) base = FS.currentPath;
-      else if (relative[0] == '/') base = '';
+      if (relative && relative[0] == '/') base = '';
       var full = base + '/' + relative;
       var parts = full.split('/').reverse();
       var absolute = [''];
@@ -66,45 +66,90 @@ LibraryManager.library = {
       }
       return absolute.length == 1 ? '/' : absolute.join('/');
     },
+    // Analyzes a relative or absolute path returning a description, containing:
+    //   isRoot: Whether the path points to the root.
+    //   exists: Whether the object at the path exists.
+    //   error: If !exists, this will contain the errno code of the cause.
+    //   name: The base name of the object (null if !parentExists).
+    //   path: The absolute path to the object, with all links resolved.
+    //   object: The filesystem record of the object referenced by the path.
+    //   parentExists: Whether the parent of the object exist and is a folder.
+    //   parentPath: The absolute path to the parent folder.
+    //   parentObject: The filesystem record of the parent folder.
+    analyzePath: function(path, dontResolveLastLink, linksVisited) {
+      var ret = {
+        isRoot: false,
+        exists: false,
+        error: 0,
+        name: null,
+        path: null,
+        object: null,
+        parentExists: false,
+        parentPath: null,
+        parentObject: null
+      };
+      path = FS.absolutePath(path);
+      if (path == '/') {
+        ret.isRoot = true;
+        ret.exists = ret.parentExists = true;
+        ret.name = '/';
+        ret.path = ret.parentPath = '/';
+        ret.object = ret.parentObject = FS.root;
+      } else if (path !== null) {
+        linksVisited = linksVisited || 0;
+        path = path.slice(1).split('/');
+        var current = FS.root;
+        var traversed = [''];
+        while (path.length) {
+          if (path.length == 1 && current.isFolder) {
+            ret.parentExists = true;
+            ret.parentPath = traversed.length == 1 ? '/' : traversed.join('/');
+            ret.parentObject = current;
+            ret.name = path[0];
+          }
+          var target = path.shift();
+          if (!current.isFolder) {
+            ret.error = ERRNO_CODES.ENOTDIR;
+            break;
+          } else if (!current.read) {
+            ret.error = ERRNO_CODES.EACCES;
+            break;
+          } else if (!current.contents.hasOwnProperty(target)) {
+            ret.error = ERRNO_CODES.ENOENT;
+            break;
+          }
+          current = current.contents[target];
+          if (current.link && !(dontResolveLastLink && path.length == 0)) {
+            if (linksVisited > 40) { // Usual Linux SYMLOOP_MAX.
+              ret.error = ERRNO_CODES.ELOOP;
+              break;
+            }
+            var link = FS.absolutePath(current.link, traversed.join('/'));
+            return FS.analyzePath([link].concat(path).join('/'),
+                                  dontResolveLastLink, linksVisited + 1);
+          }
+          traversed.push(target);
+          if (path.length == 0) {
+            ret.exists = true;
+            ret.path = traversed.join('/');
+            ret.object = current;
+          }
+        }
+        return ret;
+      }
+      return ret;
+    },
     // Finds the file system object at a given path. If dontResolveLastLink is
     // set to true and the object is a symbolic link, it will be returned as is
     // instead of being resolved. Links embedded in the path as still resolved.
     findObject: function(path, dontResolveLastLink) {
-      var linksVisited = 0;
-      path = FS.absolutePath(path);
-      if (path === null) {
-        ___setErrNo(ERRNO_CODES.ENOENT);
+      var ret = FS.analyzePath(path, dontResolveLastLink);
+      if (ret.exists) {
+        return ret.object;
+      } else {
+        ___setErrNo(ret.error);
         return null;
       }
-      if (path == '/') return FS.root;
-      path = path.split('/').reverse();
-      path.pop();
-      var current = FS.root;
-      var traversed = [''];
-      while (path.length) {
-        var target = path.pop();
-        if (!current.isFolder) {
-          ___setErrNo(ERRNO_CODES.ENOTDIR);
-          return null;
-        } else if (!current.read) {
-          ___setErrNo(ERRNO_CODES.EACCES);
-          return null;
-        } else if (!current.contents.hasOwnProperty(target)) {
-          ___setErrNo(ERRNO_CODES.ENOENT);
-          return null;
-        }
-        current = current.contents[target];
-        if (current.link && !(dontResolveLastLink && path.length == 0)) {
-          var link = FS.absolutePath(current.link, traversed.join('/'));
-          current = FS.findObject(link, dontResolveLastLink);
-          if (++linksVisited > 40) { // Usual Linux SYMLOOP_MAX.
-            ___setErrNo(ERRNO_CODES.ELOOP);
-            return null;
-          }
-        }
-        traversed.push(target);
-      }
-      return current;
     },
     // Creates a file system record: file, link, device or folder.
     createObject: function(parent, name, properties, canRead, canWrite) {
