@@ -716,7 +716,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
         '''
-        self.do_test(src, '*0x0*')
+        self.do_test(src, '*(nil)*')
 
     def test_funcs(self):
         src = '''

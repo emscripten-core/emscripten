@@ -2156,8 +2156,12 @@ LibraryManager.library = {
               argText = argText.toUpperCase();
             }
           } else if (next == 'p'.charCodeAt(0)) {
-            prefix = '0x';
-            argText = currAbsArg.toString(16);
+            if (currAbsArg === 0) {
+              argText = '(nil)';
+            } else {
+              prefix = '0x';
+              argText = currAbsArg.toString(16);
+            }
           }
           if (precisionSet) {
             while (argText.length < precision) {
@@ -2277,9 +2281,15 @@ LibraryManager.library = {
           });
         } else if (next == 's'.charCodeAt(0)) {
           // String.
-          var copiedString = String_copy(getNextArg());
-          if (precisionSet && copiedString.length > precision) {
-            copiedString = copiedString.slice(0, precision);
+          var arg = getNextArg();
+          var copiedString;
+          if (arg) {
+            copiedString = String_copy(arg);
+            if (precisionSet && copiedString.length > precision) {
+              copiedString = copiedString.slice(0, precision);
+            }
+          } else {
+            copiedString = intArrayFromString('(null)', true);
           }
           if (!flagLeftAlign) {
             while (copiedString.length < width--) {
