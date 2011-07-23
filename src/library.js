@@ -934,15 +934,15 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/chdir.html
     // NOTE: The path argument may be a string, to simplify fchdir().
     if (typeof path !== 'string') path = Pointer_stringify(path);
-    path = FS.absolutePath(path);
-    // TODO: Resolve path so that no element of it is a link.
-    var target = FS.findObject(path);
-    if (target === null) return -1;
-    if (!target.isFolder) {
+    path = FS.analyzePath(path);
+    if (!path.exists) {
+      ___setErrNo(path.error);
+      return -1;
+    } else if (!path.object.isFolder) {
       ___setErrNo(ERRNO_CODES.ENOTDIR);
       return -1;
     } else {
-      FS.currentPath = path;
+      FS.currentPath = path.path;
       return 0;
     }
   },
@@ -952,7 +952,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/chown.html
     // We don't support multiple users, so changing ownership makes no sense.
     // NOTE: The path argument may be a string, to simplify fchown().
-    // NOTE: dontResolveLastLink is a shortcut for lstat(). It should never be
+    // NOTE: dontResolveLastLink is a shortcut for lchown(). It should never be
     //       used in client code.
     if (typeof path !== 'string') path = Pointer_stringify(path);
     var target = FS.findObject(path, dontResolveLastLink);
@@ -978,17 +978,17 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
     return _fcntl(fildes, 0, 0);  // F_DUPFD.
   },
-  dup2__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'fcntl'],
+  dup2__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'fcntl', 'close'],
   dup2: function(fildes, fildes2) {
     // int dup2(int fildes, int fildes2);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
-    // TODO: Verify: Duplicate FD to FD2, closing FD2 and making it open on the same file.
     if (fildes2 < 0) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     } else if (fildes === fildes2 && FS.streams[fildes]) {
       return fildes;
     } else {
+      _close(fildes2);
       return _fcntl(fildes, 0, fildes2);  // F_DUPFD.
     }
   },
@@ -1027,14 +1027,14 @@ LibraryManager.library = {
   crypt: function(key, salt) {
     // char *(const char *, const char *);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/crypt.html
-    // TODO: Implement (compile from source?).
+    // TODO: Implement (probably compile from C).
     ___setErrNo(ERRNO_CODES.ENOSYS);
     return 0;
   },
-  encrypt: function(key, salt) {
+  encrypt: function(block, edflag) {
     // void encrypt(char block[64], int edflag);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
-    // TODO: Implement (compile from source?).
+    // TODO: Implement (probably compile from C).
     ___setErrNo(ERRNO_CODES.ENOSYS);
   },
   fpathconf__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -1072,16 +1072,13 @@ LibraryManager.library = {
         return -1;
       case 13:  // _PC_FILESIZEBITS.
         return 64;
-      defult:
-        ___setErrNo(ERRNO_CODES.EINVAL);
-        return -1;
     }
-    // Should never be reached. Only to silence strict warnings.
+    ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
   },
   pathconf: 'fpathconf',
   fsync__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  fsync: function(fildes, owner, group) {
+  fsync: function(fildes) {
     // int fsync(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsync.html
     if (FS.streams[fildes]) {
@@ -1111,6 +1108,9 @@ LibraryManager.library = {
       } else if (target.isDevice) {
         ___setErrNo(ERRNO_CODES.EINVAL);
         return -1;
+      } else if (!target.write) {
+        ___setErrNo(ERRNO_CODES.EACCES);
+        return -1;
       } else {
         var contents = target.contents;
         if (length < contents.length) contents.length = length;
@@ -1126,6 +1126,9 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftruncate.html
     if (FS.streams[fildes] && FS.streams[fildes].isWrite) {
       return _truncate(FS.streams[fildes].path, length);
+    } else if (FS.streams[fildes]) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
     } else {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1143,7 +1146,7 @@ LibraryManager.library = {
       return 0;
     } else {
       for (var i = 0; i < FS.currentPath.length; i++) {
-        {{{ makeSetValue('buf', 'i', 'FS.currentPath[i]', 'i8') }}}
+        {{{ makeSetValue('buf', 'i', 'FS.currentPath.charCodeAt(i)', 'i8') }}}
       }
       {{{ makeSetValue('buf', 'i', '0', 'i8') }}}
       return buf;
@@ -1193,8 +1196,8 @@ LibraryManager.library = {
     // int lockf(int fildes, int function, off_t size);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lockf.html
     if (FS.streams[fildes]) {
-      // Pretend whatever locking or unlocking operation succeeded. Lokcing does
-      // not make sense since we have a single process/thread.
+      // Pretend whatever locking or unlocking operation succeeded. Locking does
+      // not make much sense, since we have a single process/thread.
       return 0;
     } else {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -1211,10 +1214,15 @@ LibraryManager.library = {
       if (whence === 1) {  // SEEK_CUR.
         position += stream.position;
       } else if (whence === 2) {  // SEEK_END.
-        position += stream.contents.length;
+        position += stream.object.contents.length;
       }
-      stream.position = position;
-      return position;
+      if (position < 0) {
+        ___setErrNo(ERRNO_CODES.EINVAL);
+        return -1;
+      } else {
+        stream.position = position;
+        return position;
+      }
     } else {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1234,13 +1242,13 @@ LibraryManager.library = {
     // ssize_t pread(int fildes, void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
     var stream = FS.streams[fildes];
-    if (!stream || stream.isDevice) {
+    if (!stream || stream.object.isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     } else if (!stream.isRead) {
       ___setErrNo(ERRNO_CODES.EACCES);
       return -1;
-    } else if (stream.isFolder) {
+    } else if (stream.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EISDIR);
       return -1;
     } else if (nbyte < 0 || offset < 0) {
@@ -1270,11 +1278,11 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     } else {
-      if (stream.isDevice) {
-        if (stream.input) {
+      if (stream.object.isDevice) {
+        if (stream.object.input) {
           for (var i = 0; i < nbyte; i++) {
             try {
-              var result = stream.input();
+              var result = stream.object.input();
             } catch (e) {
               ___setErrNo(ERRNO_CODES.EIO);
               return -1;
@@ -1299,66 +1307,50 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/sync.html
     // All our writing is already synchronized. This is a no-op.
   },
-  rmdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-                'dirname', 'basename', 'strcpy', 'strlen'],
+  rmdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   rmdir: function(path) {
     // int rmdir(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/rmdir.html
-    var buffer = _malloc(_strlen(path) + 1);
-    var parent = Pointer_stringify(_dirname(_strcpy(buffer, path)));
-    var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
-    var absolutePath = FS.absolutePath(Pointer_stringify(path));
-    _free(buffer);
-    parent = FS.findObject(parent);
-    if (parent === null) return -1;
-    if (!parent.read) {
+    path = FS.analyzePath(Pointer_stringify(path));
+    if (!path.parentExists || !path.exists) {
+      ___setErrNo(path.error);
+      return -1;
+    } else if (!path.object.write || path.isRoot) {
       ___setErrNo(ERRNO_CODES.EACCES);
       return -1;
-    } else if (!parent.contents.hasOwnProperty(name)) {
-      ___setErrNo(ERRNO_CODES.ENOENT);
-      return -1;
-    } else if (!parent.contents[name].isFolder) {
+    } else if (!path.object.isFolder) {
       ___setErrNo(ERRNO_CODES.ENOTDIR);
       return -1;
-    } else if (!parent.contents[name].write) {
-      ___setErrNo(ERRNO_CODES.EACCES);
-      return -1;
-    } else if (!parent.contents[name].contents.length != 0) {
-      ___setErrNo(ERRNO_CODES.ENOTEMPTY);
-      return -1;
-    } else if (absolutePath == FS.currentPath) {
-      ___setErrNo(ERRNO_CODES.EBUSY);
-      return -1;
     } else {
-      delete parent.contents[name];
-      return 0;
+      for (var i in path.object.contents) {
+        ___setErrNo(ERRNO_CODES.ENOTEMPTY);
+        return -1;
+      }
+      if (path.path == FS.currentPath) {
+        ___setErrNo(ERRNO_CODES.EBUSY);
+        return -1;
+      } else {
+        delete path.parentObject.contents[path.name];
+        return 0;
+      }
     }
   },
-  unlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-                 'dirname', 'basename', 'strcpy', 'strlen'],
+  unlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   unlink: function(path) {
     // int unlink(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/unlink.html
-    var buffer = _malloc(_strlen(path) + 1);
-    var parent = Pointer_stringify(_dirname(_strcpy(buffer, path)));
-    var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
-    _free(buffer);
-    parent = FS.findObject(parent);
-    if (parent === null) return -1;
-    if (!parent.read) {
-      ___setErrNo(ERRNO_CODES.EACCES);
+    path = FS.analyzePath(Pointer_stringify(path));
+    if (!path.parentExists || !path.exists) {
+      ___setErrNo(path.error);
       return -1;
-    } else if (!parent.contents.hasOwnProperty(name)) {
-      ___setErrNo(ERRNO_CODES.ENOENT);
-      return -1;
-    } else if (parent.contents[name].isFolder) {
+    } else if (path.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EISDIR);
       return -1;
-    } else if (!parent.contents[name].write) {
+    } else if (!path.object.write) {
       ___setErrNo(ERRNO_CODES.EACCES);
       return -1;
     } else {
-      delete parent.contents[name];
+      delete path.parentObject.contents[path.name];
       return 0;
     }
   },
@@ -1367,7 +1359,7 @@ LibraryManager.library = {
     // char *ttyname(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
     if (!_ttyname.ret) _ttyname.ret = _malloc(256);
-    return _ttyname_r(fildes, _ttyname.ret, 256);
+    return _ttyname_r(fildes, _ttyname.ret, 256) ? 0 : _ttyname.ret;
   },
   ttyname_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   ttyname_r: function(fildes, name, namesize) {
@@ -1375,37 +1367,40 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
     var stream = FS.streams[fildes];
     if (!stream) {
-      ___setErrNo(ERRNO_CODES.EBADF);
-      return 0;
-    } else if (!stream.isDevice || !stream.input || !stream.output) {
-      ___setErrNo(ERRNO_CODES.ENOTTY);
-      return 0;
+      return ___setErrNo(ERRNO_CODES.EBADF);
     } else {
-      var ret = stream.path;
-      if (namesize < ret.length + 1) {
-        ___setErrNo(ERRNO_CODES.ERANGE);
-        return 0;
+      var object = stream.object;
+      if (!object.isDevice || !object.input || !object.output) {
+        return ___setErrNo(ERRNO_CODES.ENOTTY);
       } else {
-        for (var i = 0; i < ret.length; i++) {
-          {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
+        var ret = stream.path;
+        if (namesize < ret.length + 1) {
+          return ___setErrNo(ERRNO_CODES.ERANGE);
+        } else {
+          for (var i = 0; i < ret.length; i++) {
+            {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
+          }
+          {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+          return 0;
         }
-        {{{ makeSetValue('name', 'i', '0', 'i8') }}}
-        return name;
       }
     }
   },
-  symlink__deps: ['$FS', 'mknod'],
+  symlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   symlink: function(path1, path2) {
     // int symlink(const char *path1, const char *path2);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/symlink.html
-    var result = _mknod(path2, 0x10000 | 0x1C0, 0);  // S_IFREG, S_IRUSR | S_IWUSR | S_IXUSR.
-    if (result == 0) {
-      var target = FS.findObject(Pointer_stringify(path2));
-      delete target.contents;
-      target.link = Pointer_stringify(path1);
-      return 0;
+    var path = FS.analyzePath(Pointer_stringify(path2), true);
+    if (!path.parentExists) {
+      ___setErrNo(path.error);
+      return -1;
+    } else if (path.exists) {
+      ___setErrNo(ERRNO_CODES.EEXIST);
+      return -1;
     } else {
-      return result;
+      FS.createLink(path.parentPath, path.name,
+                    Pointer_stringify(path1), true, true);
+      return 0;
     }
   },
   readlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -1415,11 +1410,11 @@ LibraryManager.library = {
     var target = FS.findObject(Pointer_stringify(path), true);
     if (target === null) return -1;
     if (target.link !== undefined) {
-      var length = Math.min(bufsize, target.link.length);
+      var length = Math.min(bufsize - 1, target.link.length);
       for (var i = 0; i < length; i++) {
-        {{{ makeSetValue('name', 'i', 'target.link.charCodeAt(i)', 'i8') }}}
+        {{{ makeSetValue('buf', 'i', 'target.link.charCodeAt(i)', 'i8') }}}
       }
-      if (length > bufsize) {{{ makeSetValue('name', 'i++', '0', 'i8') }}}
+      if (bufsize - 1 > length) {{{ makeSetValue('buf', 'i', '0', 'i8') }}}
       return i;
     } else {
       ___setErrNo(ERRNO_CODES.EINVAL);
@@ -1431,13 +1426,13 @@ LibraryManager.library = {
     // ssize_t pwrite(int fildes, const void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
     var stream = FS.streams[fildes];
-    if (!stream || stream.isDevice) {
+    if (!stream || stream.object.isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     } else if (!stream.isWrite) {
       ___setErrNo(ERRNO_CODES.EACCES);
       return -1;
-    } else if (stream.isFolder) {
+    } else if (stream.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EISDIR);
       return -1;
     } else if (nbyte < 0 || offset < 0) {
@@ -1467,11 +1462,11 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     } else {
-      if (stream.isDevice) {
-        if (stream.output) {
+      if (stream.object.isDevice) {
+        if (stream.object.output) {
           for (var i = 0; i < nbyte; i++) {
             try {
-              stream.output({{{ makeGetValue('buf', 'i', 'i8') }}});
+              stream.object.output({{{ makeGetValue('buf', 'i', 'i8') }}});
             } catch (e) {
               ___setErrNo(ERRNO_CODES.EIO);
               return -1;
@@ -1548,7 +1543,7 @@ LibraryManager.library = {
       for (var i = 0; i < length; i++) {
         {{{ makeSetValue('buf', 'i', 'value.charCodeAt(i)', 'i8') }}}
       }
-      if (length > len) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}}
+      if (len > length) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}}
       return i;
     }
   },
@@ -1601,7 +1596,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     } else {
-      {{{ makeSetValue('grouplist', '0', '0', 'i8') }}}
+      {{{ makeSetValue('grouplist', '0', '0', 'i32') }}}
       return 1;
     }
   },
@@ -1610,6 +1605,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostid.html
     return 42;
   },
+  gethostname__deps: ['__setErrNo', '$ERRNO_CODES'],
   gethostname: function(name, namelen) {
     // int gethostname(char *name, size_t namelen);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostname.html
@@ -1621,26 +1617,35 @@ LibraryManager.library = {
     for (var i = 0; i < length; i++) {
       {{{ makeSetValue('name', 'i', 'host.charCodeAt(i)', 'i8') }}}
     }
-    if (length > namelen) {{{ makeSetValue('name', 'i', '0', 'i8') }}}
-    return 0;
+    if (namelen > length) {
+      {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+      return 0;
+    } else {
+      ___setErrNo(ERRNO_CODES.ENAMETOOLONG);
+      return -1;
+    }
   },
   getlogin: ['getlogin_r'],
   getlogin: function() {
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
     if (!_getlogin.ret) _getlogin.ret = _malloc(8);
-    return _getlogin_r(_getlogin.ret, 8);
+    return _getlogin_r(_getlogin.ret, 8) ? 0 : _getlogin.ret;
   },
   getlogin_r__deps: ['__setErrNo', '$ERRNO_CODES'],
   getlogin_r: function(name, namesize) {
     // int getlogin_r(char *name, size_t namesize);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
     var ret = 'root';
-    for (var i = 0; i < ret.length; i++) {
-      {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
+    if (namesize < ret.length + 1) {
+      return ___setErrNo(ERRNO_CODES.ERANGE);
+    } else {
+      for (var i = 0; i < ret.length; i++) {
+        {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
+      }
+      {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+      return 0;
     }
-    {{{ makeSetValue('name', 'i', '0', 'i8') }}}
-    return name;
   },
   getopt: function(argc, argv, optstring) {
     // int getopt(int argc, char * const argv[], const char *optstring);
@@ -1694,7 +1699,7 @@ LibraryManager.library = {
   },
   setregid: 'setpgid',
   setreuid: 'setpgid',
-  setpgid__deps: ['usleep'],
+  sleep__deps: ['usleep'],
   sleep: function(seconds) {
     // unsigned sleep(unsigned seconds);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/sleep.html
@@ -1704,8 +1709,9 @@ LibraryManager.library = {
     // int usleep(useconds_t useconds);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
+    var msec = useconds / 1000;
     var start = new Date().getTime();
-    while (new Date().getTime() - start < useconds);
+    while (new Date().getTime() - start < msec);
     return 0;
   },
   swab: function(src, dest, nbytes) {
@@ -1734,14 +1740,169 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
   },
-  sysconf: function(name_) {
-    // TODO: Implement.
-    // XXX we only handle _SC_PAGE_SIZE/PAGESIZE for now, 30 on linux, 29 on OS X... be careful here!
-    switch(name_) {
-      case 29: case 30: return PAGE_SIZE;
-      case 2: return 1000000; // _SC_CLK_TCK
-      default: throw 'unknown sysconf param: ' + name_;
+  sysconf__deps: ['__setErrNo', '$ERRNO_CODES'],
+  sysconf: function(name) {
+    // long sysconf(int name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
+    // WARNING: Except for PAGE_SIZE, this is generated by a C program using
+    //          glibc. All the constants depend on values provided by glibc, and
+    //          code compiled with other C libraries is not guaranteed to work.
+    switch(name) {
+      case 30: return PAGE_SIZE;   // _SC_PAGE_SIZE / _SC_PAGESIZE
+      case 132:                    // _SC_ADVISORY_INFO
+      case 133:                    // _SC_BARRIERS
+      case 12:                     // _SC_ASYNCHRONOUS_IO
+      case 137:                    // _SC_CLOCK_SELECTION
+      case 138:                    // _SC_CPUTIME
+      case 15:                     // _SC_FSYNC
+      case 235:                    // _SC_IPV6
+      case 16:                     // _SC_MAPPED_FILES
+      case 17:                     // _SC_MEMLOCK
+      case 18:                     // _SC_MEMLOCK_RANGE
+      case 19:                     // _SC_MEMORY_PROTECTION
+      case 20:                     // _SC_MESSAGE_PASSING
+      case 149:                    // _SC_MONOTONIC_CLOCK
+      case 13:                     // _SC_PRIORITIZED_IO
+      case 10:                     // _SC_PRIORITY_SCHEDULING
+      case 236:                    // _SC_RAW_SOCKETS
+      case 153:                    // _SC_READER_WRITER_LOCKS
+      case 9:                      // _SC_REALTIME_SIGNALS
+      case 21:                     // _SC_SEMAPHORES
+      case 22:                     // _SC_SHARED_MEMORY_OBJECTS
+      case 159:                    // _SC_SPAWN
+      case 154:                    // _SC_SPIN_LOCKS
+      case 14:                     // _SC_SYNCHRONIZED_IO
+      case 77:                     // _SC_THREAD_ATTR_STACKADDR
+      case 78:                     // _SC_THREAD_ATTR_STACKSIZE
+      case 139:                    // _SC_THREAD_CPUTIME
+      case 80:                     // _SC_THREAD_PRIO_INHERIT
+      case 81:                     // _SC_THREAD_PRIO_PROTECT
+      case 79:                     // _SC_THREAD_PRIORITY_SCHEDULING
+      case 82:                     // _SC_THREAD_PROCESS_SHARED
+      case 68:                     // _SC_THREAD_SAFE_FUNCTIONS
+      case 67:                     // _SC_THREADS
+      case 164:                    // _SC_TIMEOUTS
+      case 11:                     // _SC_TIMERS
+      case 29:                     // _SC_VERSION
+      case 47:                     // _SC_2_C_BIND
+      case 48:                     // _SC_2_C_DEV
+      case 95:                     // _SC_2_CHAR_TERM
+      case 52:                     // _SC_2_LOCALEDEF
+      case 51:                     // _SC_2_SW_DEV
+      case 46:                     // _SC_2_VERSION
+        return 200809;
+      case 27:                     // _SC_MQ_OPEN_MAX
+      case 246:                    // _SC_XOPEN_STREAMS
+      case 127:                    // _SC_XBS5_LP64_OFF64
+      case 128:                    // _SC_XBS5_LPBIG_OFFBIG
+      case 23:                     // _SC_AIO_LISTIO_MAX
+      case 24:                     // _SC_AIO_MAX
+      case 160:                    // _SC_SPORADIC_SERVER
+      case 161:                    // _SC_THREAD_SPORADIC_SERVER
+      case 181:                    // _SC_TRACE
+      case 182:                    // _SC_TRACE_EVENT_FILTER
+      case 242:                    // _SC_TRACE_EVENT_NAME_MAX
+      case 183:                    // _SC_TRACE_INHERIT
+      case 184:                    // _SC_TRACE_LOG
+      case 243:                    // _SC_TRACE_NAME_MAX
+      case 244:                    // _SC_TRACE_SYS_MAX
+      case 245:                    // _SC_TRACE_USER_EVENT_MAX
+      case 165:                    // _SC_TYPED_MEMORY_OBJECTS
+      case 178:                    // _SC_V6_LP64_OFF64
+      case 179:                    // _SC_V6_LPBIG_OFFBIG
+      case 49:                     // _SC_2_FORT_DEV
+      case 50:                     // _SC_2_FORT_RUN
+      case 168:                    // _SC_2_PBS
+      case 169:                    // _SC_2_PBS_ACCOUNTING
+      case 175:                    // _SC_2_PBS_CHECKPOINT
+      case 170:                    // _SC_2_PBS_LOCATE
+      case 171:                    // _SC_2_PBS_MESSAGE
+      case 172:                    // _SC_2_PBS_TRACK
+      case 97:                     // _SC_2_UPE
+      case 76:                     // _SC_THREAD_THREADS_MAX
+      case 32:                     // _SC_SEM_NSEMS_MAX
+      case 173:                    // _SC_SYMLOOP_MAX
+      case 35:                     // _SC_TIMER_MAX
+        return -1;
+      case 176:                    // _SC_V6_ILP32_OFF32
+      case 177:                    // _SC_V6_ILP32_OFFBIG
+      case 7:                      // _SC_JOB_CONTROL
+      case 155:                    // _SC_REGEXP
+      case 8:                      // _SC_SAVED_IDS
+      case 157:                    // _SC_SHELL
+      case 125:                    // _SC_XBS5_ILP32_OFF32
+      case 126:                    // _SC_XBS5_ILP32_OFFBIG
+      case 92:                     // _SC_XOPEN_CRYPT
+      case 93:                     // _SC_XOPEN_ENH_I18N
+      case 129:                    // _SC_XOPEN_LEGACY
+      case 130:                    // _SC_XOPEN_REALTIME
+      case 131:                    // _SC_XOPEN_REALTIME_THREADS
+      case 94:                     // _SC_XOPEN_SHM
+      case 91:                     // _SC_XOPEN_UNIX
+        return 1;
+      case 74:                     // _SC_THREAD_KEYS_MAX
+      case 60:                     // _SC_IOV_MAX
+      case 69:                     // _SC_GETGR_R_SIZE_MAX
+      case 70:                     // _SC_GETPW_R_SIZE_MAX
+      case 4:                      // _SC_OPEN_MAX
+        return 1024;
+      case 31:                     // _SC_RTSIG_MAX
+      case 42:                     // _SC_EXPR_NEST_MAX
+      case 72:                     // _SC_TTY_NAME_MAX
+        return 32;
+      case 87:                     // _SC_ATEXIT_MAX
+      case 26:                     // _SC_DELAYTIMER_MAX
+      case 33:                     // _SC_SEM_VALUE_MAX
+        return 2147483647;
+      case 34:                     // _SC_SIGQUEUE_MAX
+      case 1:                      // _SC_CHILD_MAX
+        return 47839;
+      case 38:                     // _SC_BC_SCALE_MAX
+      case 36:                     // _SC_BC_BASE_MAX
+        return 99;
+      case 43:                     // _SC_LINE_MAX
+      case 37:                     // _SC_BC_DIM_MAX
+        return 2048;
+      case 0: return 2097152;      // _SC_ARG_MAX
+      case 3: return 65536;        // _SC_NGROUPS_MAX
+      case 28: return 32768;       // _SC_MQ_PRIO_MAX
+      case 44: return 32767;       // _SC_RE_DUP_MAX
+      case 75: return 16384;       // _SC_THREAD_STACK_MIN
+      case 39: return 1000;        // _SC_BC_STRING_MAX
+      case 89: return 700;         // _SC_XOPEN_VERSION
+      case 71: return 256;         // _SC_LOGIN_NAME_MAX
+      case 40: return 255;         // _SC_COLL_WEIGHTS_MAX
+      case 2: return 100;          // _SC_CLK_TCK
+      case 180: return 64;         // _SC_HOST_NAME_MAX
+      case 25: return 20;          // _SC_AIO_PRIO_DELTA_MAX
+      case 5: return 16;           // _SC_STREAM_MAX
+      case 6: return 6;            // _SC_TZNAME_MAX
+      case 73: return 4;           // _SC_THREAD_DESTRUCTOR_ITERATIONS
     }
+    ___setErrNo(ERRNO_CODES.EINVAL);
+    return -1;
+  },
+  sbrk: function(bytes) {
+    // Implement a Linux-like 'memory area' for our 'process'.
+    // Changes the size of the memory area by |bytes|; returns the
+    // address of the previous top ('break') of the memory area
+
+    // We need to make sure no one else allocates unfreeable memory!
+    // We must control this entirely. So we don't even need to do
+    // unfreeable allocations - the HEAP is ours, from STATICTOP up.
+    // TODO: We could in theory slice off the top of the HEAP when
+    // sbrk gets a negative increment in |bytes|...
+    var self = _sbrk;
+    if (!self.STATICTOP) {
+      STATICTOP = alignMemoryPage(STATICTOP);
+      self.STATICTOP = STATICTOP;
+      self.DATASIZE = 0;
+    } else {
+      assert(self.STATICTOP == STATICTOP, "No one should touch the heap!");
+    }
+    var ret = STATICTOP + self.DATASIZE;
+    self.DATASIZE += alignMemoryPage(bytes);
+    return ret;  // Previous break location.
   },
   // TODO: Check if these aliases are correct and if any others are needed.
   __01open64_: 'open',
@@ -3359,33 +3520,6 @@ LibraryManager.library = {
       DLFCN_DATA.isError = false;
       return DLFCN_DATA.error;
     }
-  },
-
-  // ==========================================================================
-  // System calls
-  // ==========================================================================
-
-  sbrk: function(bytes) {
-    // Implement a Linux-like 'memory area' for our 'process'.
-    // Changes the size of the memory area by |bytes|; returns the
-    // address of the previous top ('break') of the memory area
-
-    // We need to make sure no one else allocates unfreeable memory!
-    // We must control this entirely. So we don't even need to do
-    // unfreeable allocations - the HEAP is ours, from STATICTOP up.
-    // TODO: We could in theory slice off the top of the HEAP when
-    // sbrk gets a negative increment in |bytes|...
-    var self = _sbrk;
-    if (!self.STATICTOP) {
-      STATICTOP = alignMemoryPage(STATICTOP);
-      self.STATICTOP = STATICTOP;
-      self.DATASIZE = 0;
-    } else {
-      assert(self.STATICTOP == STATICTOP, "Noone should touch the heap!");
-    }
-    var ret = STATICTOP + self.DATASIZE;
-    self.DATASIZE += alignMemoryPage(bytes);
-    return ret; // previous break location
   },
 
   // ==========================================================================

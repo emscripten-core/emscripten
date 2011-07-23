@@ -1,0 +1,65 @@
+_PC_LINK_MAX: 32000
+errno: 0
+
+_PC_MAX_CANON: 255
+errno: 0
+
+_PC_MAX_INPUT: 255
+errno: 0
+
+_PC_NAME_MAX: 255
+errno: 0
+
+_PC_PATH_MAX: 4096
+errno: 0
+
+_PC_PIPE_BUF: 4096
+errno: 0
+
+_PC_REC_MIN_XFER_SIZE: 4096
+errno: 0
+
+_PC_REC_XFER_ALIGN: 4096
+errno: 0
+
+_PC_ALLOC_SIZE_MIN: 4096
+errno: 0
+
+_PC_CHOWN_RESTRICTED: 1
+errno: 0
+
+_PC_NO_TRUNC: 1
+errno: 0
+
+_PC_2_SYMLINKS: 1
+errno: 0
+
+_PC_VDISABLE: 0
+errno: 0
+
+_PC_SYNC_IO: -1
+errno: 0
+
+_PC_ASYNC_IO: -1
+errno: 0
+
+_PC_PRIO_IO: -1
+errno: 0
+
+_PC_SOCK_MAXBUF: -1
+errno: 0
+
+_PC_REC_INCR_XFER_SIZE: -1
+errno: 0
+
+_PC_REC_MAX_XFER_SIZE: -1
+errno: 0
+
+_PC_SYMLINK_MAX: -1
+errno: 0
+
+_PC_FILESIZEBITS: 64
+errno: 0
+
+(invalid): -1
+errno: 22

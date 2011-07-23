@@ -2415,6 +2415,139 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
       self.do_test(src, expected, post_build=addJS)
 
+    def test_unistd_access(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'access.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_curdir(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_close(self):
+      src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_confstr(self):
+      src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'confstr.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_ttyname(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'ttyname.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_dup(self):
+      src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_pathconf(self):
+      src = open(path_from_root('tests', 'unistd', 'pathconf.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'pathconf.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_truncate(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_swab(self):
+      src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'swab.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_isatty(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'isatty.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_sysconf(self):
+      src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'sysconf.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_login(self):
+      src = open(path_from_root('tests', 'unistd', 'login.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_unlink(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'unlink.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_links(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'links.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_sleep(self):
+      src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'sleep.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_io(self):
+      def addPreRun(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'io.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
+      self.do_test(src, expected, post_build=addPreRun)
+
+    def test_unistd_misc(self):
+      src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
+      self.do_test(src, expected)
+
     ### 'Big' tests
 
     def test_fannkuch(self):

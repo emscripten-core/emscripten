@@ -1,0 +1,42 @@
+access(/device) before: 0
+errno: 20
+access(/device) after rmdir: 0
+errno: 0
+access(/device) after unlink: -1
+
+access(/file) before: 0
+errno: 20
+access(/file) after rmdir: 0
+errno: 0
+access(/file) after unlink: -1
+
+access(/file-forbidden) before: 0
+errno: 13
+access(/file-forbidden) after rmdir: 0
+errno: 13
+access(/file-forbidden) after unlink: 0
+
+access(/noexist) before: -1
+errno: 2
+access(/noexist) after rmdir: -1
+errno: 2
+access(/noexist) after unlink: -1
+
+access(/empty) before: 0
+errno: 21
+access(/empty) after unlink: 0
+errno: 0
+access(/empty) after rmdir: -1
+
+access(/empty-forbidden) before: 0
+errno: 21
+access(/empty-forbidden) after unlink: 0
+errno: 13
+access(/empty-forbidden) after rmdir: 0
+
+access(/full) before: 0
+errno: 21
+access(/full) after unlink: 0
+errno: 39
+access(/full) after rmdir: 0
+

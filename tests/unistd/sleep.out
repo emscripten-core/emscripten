@@ -1,0 +1,6 @@
+sleep(2) ret: 0
+after sleep(2): 2
+errno: 0
+usleep(3000000) ret: 0
+after usleep(3000000): 3
+errno: 0
