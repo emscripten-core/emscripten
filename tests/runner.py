@@ -2406,14 +2406,17 @@ if 'benchmark' not in sys.argv:
 
     def test_fs_base(self):
       global INCLUDE_FULL_LIBRARY; INCLUDE_FULL_LIBRARY = 1
-      def addJS(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
-        open(filename, 'w').write(src)
-      src = 'int main() {return 0;}\n'
-      expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=addJS)
+      try:
+        def addJS(filename):
+          src = open(filename, 'r').read().replace(
+            '// {{PRE_RUN_ADDITIONS}}',
+            open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
+          open(filename, 'w').write(src)
+        src = 'int main() {return 0;}\n'
+        expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
+        self.do_test(src, expected, post_build=addJS)
+      finally:
+        INCLUDE_FULL_LIBRARY = 0
 
     def test_unistd_access(self):
       def addPreRun(filename):
