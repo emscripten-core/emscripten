@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 
 int main() {
@@ -121,8 +122,39 @@ int main() {
   printf("S_ISSOCK: %d\n", S_ISSOCK(s.st_mode));
   memset(&s, 0, sizeof s);
 
+  printf("\n--fstat FILE--\n");
+  printf("ret: %d\n", fstat(open("/test/file", O_RDONLY, 0777), &s));
+  printf("errno: %d\n", errno);
+  printf("st_dev: %llu\n", s.st_dev);
+  printf("st_ino: %lu\n", s.st_ino);
+  printf("st_mode: 0%o\n", s.st_mode);
+  printf("st_nlink: %d\n", s.st_nlink);
+  printf("st_rdev: %llu\n", s.st_rdev);
+  printf("st_size: %ld\n", s.st_size);
+  printf("st_atime: %ld\n", s.st_atime);
+  printf("st_mtime: %ld\n", s.st_mtime);
+  printf("st_ctime: %ld\n", s.st_ctime);
+  printf("st_blksize: %ld\n", s.st_blksize);
+  printf("st_blocks: %ld\n", s.st_blocks);
+  printf("S_ISBLK: %d\n", S_ISBLK(s.st_mode));
+  printf("S_ISCHR: %d\n", S_ISCHR(s.st_mode));
+  printf("S_ISDIR: %d\n", S_ISDIR(s.st_mode));
+  printf("S_ISFIFO: %d\n", S_ISFIFO(s.st_mode));
+  printf("S_ISREG: %d\n", S_ISREG(s.st_mode));
+  printf("S_ISLNK: %d\n", S_ISLNK(s.st_mode));
+  printf("S_ISSOCK: %d\n", S_ISSOCK(s.st_mode));
+  memset(&s, 0, sizeof s);
+
   printf("\n--chmod FILE--\n");
   printf("ret: %d\n", chmod("/test/file", 0200));
+  printf("errno: %d\n", errno);
+  stat("/test/file", &s);
+  printf("st_mode: 0%o\n", s.st_mode);
+  printf("st_mtime changed: %d\n", s.st_mtime != 1200000000l);
+  memset(&s, 0, sizeof s);
+
+  printf("\n--fchmod FILE--\n");
+  printf("ret: %d\n", fchmod(open("/test/file", O_WRONLY, 0777), 0777));
   printf("errno: %d\n", errno);
   stat("/test/file", &s);
   printf("st_mode: 0%o\n", s.st_mode);

@@ -241,7 +241,6 @@ LibraryManager.library = {
     //   input: Takes no parameters, returns a byte value or null if no data is
     //          currently available.
     //   output: Takes a byte value; doesn't return anything.
-    // TODO: Decide how to handle flushing in a consistent manner.
     createDevice: function(parent, name, input, output) {
       if (!(input || output)) {
         throw new Error('A device must have at least one callback defined.');
@@ -278,7 +277,6 @@ LibraryManager.library = {
       return success;
     }
   },
-  // TODO: Replace dirname/basename usage with a core describePath.
 
   // ==========================================================================
   // dirent.h
@@ -596,7 +594,6 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/lstat.html
     return _stat(path, buf, true);
   },
-  // TODO: Test once open() is implemented using FS.
   fstat__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'stat'],
   fstat: function(fildes, buf) {
     // int fstat(int fildes, struct stat *buf);
@@ -605,15 +602,14 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     } else {
-      var pathArray = intArrayFromString(FS.streams[filedes].path);
+      var pathArray = intArrayFromString(FS.streams[fildes].path);
       var pathPtr = allocate(pathArray, 'i8', ALLOC_NORMAL);
       var result = _stat(pathPtr, buf);
       _free(pathPtr);
       return result;
     }
   },
-  mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-                'strlen', 'strcpy', 'dirname', 'basename'],
+  mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   mknod: function(path, mode, dev) {
     // int mknod(const char *path, mode_t mode, dev_t dev);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mknod.html
@@ -623,12 +619,10 @@ LibraryManager.library = {
       return -1;
     } else {
       var properties = {contents: [], isFolder: Boolean(mode & 0x4000)};  // S_IFDIR.
-      var buffer = _malloc(_strlen(path) + 1);
-      var parent = Pointer_stringify(_dirname(_strcpy(buffer, path)));
-      var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
-      _free(buffer);
+      path = FS.analyzePath(Pointer_stringify(path));
       try {
-        FS.createObject(parent, name, properties, mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+        FS.createObject(path.parentObject, path.name, properties,
+                        mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
         return 0;
       } catch (e) {
         return -1;
@@ -663,7 +657,6 @@ LibraryManager.library = {
     obj.timestamp = new Date();
     return 0;
   },
-  // TODO: Test once open() is implemented using FS.
   fchmod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chmod'],
   fchmod: function(fildes, mode) {
     // int fchmod(int fildes, mode_t mode);
@@ -672,7 +665,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     } else {
-      var pathArray = intArrayFromString(FS.streams[filedes].path);
+      var pathArray = intArrayFromString(FS.streams[fildes].path);
       var pathPtr = allocate(pathArray, 'i8', ALLOC_NORMAL);
       var result = _chmod(pathPtr, mode);
       _free(pathPtr);
@@ -728,8 +721,7 @@ LibraryManager.library = {
   // ==========================================================================
 
   __flock_struct_layout: Runtime.generateStructInfo(null, '%struct.flock'),
-  open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-               'strlen', 'strcpy', 'dirname', 'basename'],
+  open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   open: function(path, oflag, mode) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
@@ -746,27 +738,12 @@ LibraryManager.library = {
     var isAppend = Boolean(oflag & 0x400);  // O_APPEND.
 
     // Verify path.
-    var pathStr = Pointer_stringify(path);
-    if (!pathStr) {
-      ___setErrNo(ERRNO_CODES.ENOENT);
+    path = FS.analyzePath(Pointer_stringify(path));
+    if (!path.parentExists) {
+      ___setErrNo(path.error);
       return -1;
     }
-    var absolutePath = FS.absolutePath(pathStr);
-    if (absolutePath === null) {
-      ___setErrNo(ERRNO_CODES.ENOENT);
-      return -1;
-    }
-    var buffer = _malloc(_strlen(path) + 1);
-    var parentPath = Pointer_stringify(_dirname(_strcpy(buffer, path)));
-    var name = Pointer_stringify(_basename(_strcpy(buffer, path)));
-    _free(buffer);
-    var parent = FS.findObject(parentPath);
-    if (parent === null) return -1;
-    if (!parent.isFolder || !parent.read) {
-      ___setErrNo(ERRNO_CODES.EACCES);
-      return -1;
-    }
-    var target = parent.contents[name] || null;
+    var target = path.object || null;
 
     // Verify the file exists, create if needed and allowed.
     if (target) {
@@ -795,18 +772,19 @@ LibraryManager.library = {
         ___setErrNo(ERRNO_CODES.ENOENT);
         return -1;
       }
-      if (!parent.write) {
+      if (!path.parentObject.write) {
         ___setErrNo(ERRNO_CODES.EACCES);
         return -1;
       }
-      target = FS.createDataFile(parent, name, [], mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+      target = FS.createDataFile(path.parentObject, path.name, [],
+                                 mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
     }
 
     // Actually create an open stream.
     var id = FS.streams.length;
     FS.streams[id] = {
       isFolder: false,
-      path: absolutePath,
+      path: path.path,
       object: target,
       position: 0,
       isRead: isRead,
