@@ -89,6 +89,9 @@ for classname, clazz in parsed.classes.iteritems():
       if args[i].get('default'):
         method['first_default_param'] = i
 
+    if method['static']:
+      method['rtnType'] = method['rtnType'].replace('static', '')
+
 # Second pass - generate bindings
 # TODO: Bind virtual functions using dynamic binding in the C binding code
 
@@ -110,8 +113,9 @@ def generate_class(generating_classname, classname, clazz):
     args = method['parameters']
     constructor = method['constructor'] # we fixed this before
     destructor = method['destructor']
+    static = method['static']
 
-    print "zz generating: ", generating_classname, classname, mname, constructor
+    print "zz generating: ", generating_classname, classname, mname, constructor, method['rtnType']
 
     if destructor: continue
     if constructor and inherited: continue
@@ -144,7 +148,7 @@ def generate_class(generating_classname, classname, clazz):
       continue
 
     ret = ((classname + ' *') if constructor else method['rtnType']).replace('virtual ', '')
-    callprefix = 'new ' if constructor else 'self->'
+    callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
     actualmname = ''
     if mname == '__operator___assignment_':
@@ -180,7 +184,8 @@ def generate_class(generating_classname, classname, clazz):
     else:
       actualmname = method.get('truename') or mname
 
-    typedargs = ([] if constructor else [classname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args)
+    need_self = not constructor and not static
+    typedargs = ([] if not need_self else [classname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args)
     justargs = map(lambda arg: arg['name'], args)
     fullname = 'emscripten_bind_' + generating_classname + '__' + mname
     generating_classname_suffixed = generating_classname
@@ -208,7 +213,7 @@ def generate_class(generating_classname, classname, clazz):
 %s %s_p%d(%s) {
   %s%s%s(%s);
 }
-''' % (ret, fullname, i, ', '.join(typedargs[:i + (0 if constructor else 1)]), 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, ', '.join(justargs[:i])))
+''' % (ret, fullname, i, ', '.join(typedargs[:i + (0 if not need_self else 1)]), 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, ', '.join(justargs[:i])))
 
       c_funcs.append(fullname + '_p' + str(i))
 
@@ -230,8 +235,8 @@ def generate_class(generating_classname, classname, clazz):
           calls += '''this.ptr = _%s_p%d(%s);
 ''' % (fullname, i, ', '.join(justargs[:i]))
       else:
-        calls += '''%s_%s_p%d(this.ptr%s);
-''' % ('return ' if ret != 'void' else '', fullname, i, (', ' if i > 0 else '') + ', '.join(justargs[:i]))
+        calls += '''%s_%s_p%d(%s%s);
+''' % ('return ' if ret != 'void' else '', fullname, i, 'this.ptr' if need_self else '', (', ' if i > 0 else '') + ', '.join(justargs[:i]))
 
     print 'Maekin:', classname, generating_classname, mname, mname_suffixed
     if constructor:
@@ -269,7 +274,9 @@ for classname, clazz in classes.iteritems():
   # Nothing to generate for pure virtual classes
 
   def check_pure_virtual(clazz, progeny):
-    if any([check_pure_virtual(classes[parent['class']], [clazz] + progeny) for parent in clazz['inherits']]): return True
+    print 'Checking pure virtual for', clazz['name'], clazz['inherits']
+    # If we do not recognize any of the parent classes, assume this is pure virtual - ignore it
+    if any([((not parent['class'] in classes) or check_pure_virtual(classes[parent['class']], [clazz] + progeny)) for parent in clazz['inherits']]): return True
 
     def dirtied(mname):
       #print 'zz checking dirtiness for', mname, 'in', progeny
@@ -312,6 +319,9 @@ for classname, clazz in classes.iteritems():
 
   # In addition, generate all methods of parent classes. We do not inherit in JS (how would we do multiple inheritance etc.?)
   for parent in clazz['inherits']:
+    if parent['class'] not in classes:
+      print 'Warning: parent class', parent, 'not a known class. Ignoring.'
+      continue
     generate_class(classname, parent['class'], classes[parent['class']])
 
   # TODO: Add a destructor

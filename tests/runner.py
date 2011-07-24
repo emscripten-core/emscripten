@@ -2615,6 +2615,7 @@ if 'benchmark' not in sys.argv:
           public:
             Child2() : Parent(9) { printf("Child2:%d\\n", value); };
             int getValCube() { return value*value*value; }
+            static void printStatic() { printf("*static*\\n"); }
           private:
             void doSomethingSecret() { printf("security breached!\\n"); }; // we should not be able to do this
           };
@@ -2688,6 +2689,8 @@ if 'benchmark' not in sys.argv:
           } catch(e) {}
           print(succeeded);
 
+          Child2.prototype.printStatic(); // static calls go through the prototype
+
           print('*ok*');
         '''
 
@@ -2725,6 +2728,7 @@ Child2:9
 0
 0
 1
+*static*
 *ok*
 ''', post_build=post2)
 
