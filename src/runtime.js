@@ -180,6 +180,7 @@ Runtime = {
       type = typeof Types === 'undefined' ? Runtime.typeInfo[typeName] : Types.types[typeName];
       if (!type) return null;
       if (!struct) struct = Types.structMetadata[typeName.replace(/.*\./, '')];
+      if (!struct) return null;
       assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName);
       alignment = type.flatIndexes;
     } else {
