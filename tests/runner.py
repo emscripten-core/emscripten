@@ -2608,6 +2608,7 @@ if 'benchmark' not in sys.argv:
             Child1(int val) : Parent(val*2) { value -= 1; printf("Child1:%d\\n", value); };
             int getValSqr() { return value*value; }
             int getValSqr(int more) { return value*value*more; }
+            int getValTimes(int times=1) { return value*times; }
           };
 
           class Child2 : Parent {
@@ -2622,6 +2623,7 @@ if 'benchmark' not in sys.argv:
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
         output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        #print output
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
         src = '''
@@ -2647,6 +2649,8 @@ if 'benchmark' not in sys.argv:
           print(c1.getVal());
           print(c1.getValSqr());
           print(c1.getValSqr_2(3));
+          print(c1.getValTimes()); // default argument should be 1
+          print(c1.getValTimes(2));
 
           print('c1 v2');
 
@@ -2703,6 +2707,8 @@ Child1:7
 14
 196
 588
+14
+28
 c1 v2
 Parent:16
 Child1:15

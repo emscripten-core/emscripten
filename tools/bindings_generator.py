@@ -72,66 +72,53 @@ for header in sys.argv[2:]:
 all_h.close()
 
 parsed = CppHeaderParser.CppHeader(all_h_name)
-for cname, clazz in parsed.classes.iteritems():
-  print 'zz see', cname
-  if len(clazz['methods']['public']) > 0: # Do not notice stub classes 
-    print 'zz for real', cname, clazz, dir(clazz)
-    classes[cname] = clazz
-    for sname, struct in clazz._public_structs.iteritems():
-      struct_parents[sname] = cname
-      #print 'zz seen struct %s in %s' % (sname, cname)
+for classname, clazz in parsed.classes.iteritems():
+  print 'zz see', classname
+  classes[classname] = clazz
+  for sname, struct in clazz._public_structs.iteritems():
+    struct_parents[sname] = classname
+    #print 'zz seen struct %s in %s' % (sname, classname)
 
-    # Add shadow versions of functions with default parameters
-    for method in clazz['methods']['public'][:]:
-      constructor = method['name'] == cname
-      method['constructor'] = constructor # work around cppheaderparser issue
-      args = method['parameters']
-      for i in range(len(args)):
-        if args[i].get('default'):
-          method['parameters'][i]['default'] = None
-          for j in range(i, len(args)):
-            method['parameters'][j]['default'] = None
-            print 'zz add version with default params', cname, method['name'], j, constructor
-            clazz['methods']['public'].append({
-              'name': method['name'] + '__' + str(j+1),
-              'truename': method['name'],
-              'parameters': args[:j+1],
-              'pure_virtual': False,
-              'constructor': constructor,
-              'destructor': False,
-              'rtnType': method['rtnType'],
-            })
-          method['parameters'] = method['parameters'][:i]
+  # Various precalculations
+  for method in clazz['methods']['public'][:]:
+    constructor = method['name'] == classname
+    method['constructor'] = constructor # work around cppheaderparser issue
+    args = method['parameters']
+    method['first_default_param'] = len(args)
+    for i in range(len(args)):
+      if args[i].get('default'):
+        method['first_default_param'] = i
 
 # Second pass - generate bindings
 # TODO: Bind virtual functions using dynamic binding in the C binding code
 
 funcs = {} # name -> # of copies in the original, and originalname in a copy
+c_funcs = []
 
 gen_c = open(basename + '.c', 'w')
 gen_js = open(basename + '.js', 'w')
 
 gen_c.write('extern "C" {\n')
 
-def generate_class(generating_cname, cname, clazz):
-  inherited = generating_cname != cname
+def generate_class(generating_classname, classname, clazz):
+  inherited = generating_classname != classname
 
   for method in clazz['methods']['public']:
     mname = method['name']
-    if cname + '::' + mname in ignored: continue
+    if classname + '::' + mname in ignored: continue
 
     args = method['parameters']
     constructor = method['constructor'] # we fixed this before
     destructor = method['destructor']
 
-    print "zz generating: ", generating_cname, cname, mname, constructor
+    print "zz generating: ", generating_classname, classname, mname, constructor
 
     if destructor: continue
     if constructor and inherited: continue
 
     skip = False
     for i in range(len(args)):
-      #print 'zz   arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type'], 'x', dir(args[i]), 'y', args[i].get('default'), 'z', args[i].get('defaltValue'), args[i].keys()
+      #print 'zz   arggggggg', classname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type'], 'x', dir(args[i]), 'y', args[i].get('default'), 'z', args[i].get('defaltValue'), args[i].keys()
 
       if args[i]['name'].replace(' ', '') == '':
         args[i]['name'] = 'arg' + str(i+1)
@@ -139,10 +126,8 @@ def generate_class(generating_cname, cname, clazz):
         args[i]['name'] = 'arg' + str(i+1)
         args[i]['type'] += '&'
 
-      assert not args[i].get('default')
-
       if '>' in args[i]['name']:
-        print 'WARNING: odd ">" in %s, skipping' % cname
+        print 'WARNING: odd ">" in %s, skipping' % classname
         skip = True
         break
       #print 'c1', struct_parents.keys()
@@ -154,13 +139,11 @@ def generate_class(generating_cname, cname, clazz):
         elif sname.replace('const ', '') in struct_parents:
           sname = sname.replace('const ', '')
           args[i]['type'] = 'const ' + struct_parents[sname] + '::' + sname + '&'
-      #print 'POST arggggggg', cname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type']
+      #print 'POST arggggggg', classname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type']
     if skip:
       continue
 
-    # C
-
-    ret = ((cname + ' *') if constructor else method['rtnType']).replace('virtual ', '')
+    ret = ((classname + ' *') if constructor else method['rtnType']).replace('virtual ', '')
     callprefix = 'new ' if constructor else 'self->'
 
     actualmname = ''
@@ -197,10 +180,10 @@ def generate_class(generating_cname, cname, clazz):
     else:
       actualmname = method.get('truename') or mname
 
-    typedargs = ', '.join( ([] if constructor else [cname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args) )
-    justargs = ', '.join(map(lambda arg: arg['name'], args))
-    fullname = 'emscripten_bind_' + generating_cname + '__' + mname
-    generating_cname_suffixed = generating_cname
+    typedargs = ([] if constructor else [classname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args)
+    justargs = map(lambda arg: arg['name'], args)
+    fullname = 'emscripten_bind_' + generating_classname + '__' + mname
+    generating_classname_suffixed = generating_classname
     mname_suffixed = mname
     count = funcs.setdefault(fullname, 0)
     funcs[fullname] += 1
@@ -214,39 +197,74 @@ def generate_class(generating_cname, cname, clazz):
       fullname += suffix
       mname_suffixed += suffix
       if constructor:
-        generating_cname_suffixed += suffix
+        generating_classname_suffixed += suffix
 
-    gen_c.write('''
-%s %s(%s) {
+    argfixes = map(lambda arg: '''  %s = (%s && %s.ptr) ? %s.ptr : %s;''' % (arg['name'], arg['name'], arg['name'], arg['name'], arg['name']), args)
+
+    for i in range(method['first_default_param'], len(args)+1):
+      # C
+
+      gen_c.write('''
+%s %s_p%d(%s) {
   %s%s%s(%s);
 }
-''' % (ret, fullname, typedargs, 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, justargs))
+''' % (ret, fullname, i, ', '.join(typedargs[:i+1]), 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, ', '.join(justargs[:i])))
+
+      c_funcs.append(fullname + '_p' + str(i))
 
     # JS
+    calls = ''
+    print 'js loopin', method['first_default_param'], len(args), args
+    for i in range(method['first_default_param'], len(args)+1):
+      print '    ', i, type(i)
+      if i > method['first_default_param']:
+        calls += '  else '
+      if i != len(args):
+        calls += '  if (' + justargs[i] + ' === undefined)'
+      calls += '\n  ' + ('  ' if method['first_default_param'] != len(args) else '')
+      if constructor:
+        if not dupe:
+          calls += '''this.ptr = _%s_p%d(%s);
+''' % (fullname, i, ', '.join(justargs[:i]))
+        else:
+          calls += '''this.ptr = _%s_p%d(%s);
+''' % (fullname, i, ', '.join(justargs[:i]))
+      else:
+        calls += '''%s_%s_p%d(this.ptr%s);
+''' % ('return ' if ret != 'void' else '', fullname, i, (', ' if i > 0 else '') + ', '.join(justargs[:i]))
 
+    print 'Maekin:', classname, generating_classname, mname, mname_suffixed
     if constructor:
       if not dupe:
-        gen_js.write('''
+        js_text = '''
 function %s(%s) {
-  this.ptr = _%s(%s);
+%s
+%s
 }
-''' % (generating_cname_suffixed, justargs, fullname, justargs))
+''' % (mname_suffixed, ', '.join(justargs), ', '.join(argfixes), calls)
       else:
-        gen_js.write('''
+        js_text = '''
 function %s(%s) {
-  this.ptr = _%s(%s);
+%s
+%s
 }
 %s.prototype = %s.prototype;
-''' % (generating_cname_suffixed, justargs, fullname, justargs, generating_cname_suffixed, cname))
+''' % (mname_suffixed, ', '.join(justargs), ', '.join(argfixes), calls, mname_suffixed, classname)
     else:
-      gen_js.write('''
+      js_text = '''
 %s.prototype.%s = function(%s) {
-  %s_%s(this.ptr%s);
+%s
+%s
 }
-''' % (generating_cname, mname_suffixed, justargs, 'return ' if ret != 'void' else '', fullname, (', ' if len(justargs) > 0 else '') + justargs))
+''' % (generating_classname, mname_suffixed, ', '.join(justargs), ', '.join(argfixes), calls)
 
-for cname, clazz in classes.iteritems():
-  if cname in ignored: continue
+    js_text = js_text.replace('\n\n', '\n').replace('\n\n', '\n')
+    gen_js.write(js_text)
+
+# Main loop
+
+for classname, clazz in classes.iteritems():
+  if classname in ignored: continue
 
   # Nothing to generate for pure virtual classes
 
@@ -265,7 +283,7 @@ for cname, clazz in classes.iteritems():
 
     for method in clazz['methods']['public']:
       if method['pure_virtual'] and not dirtied(method['name']):
-        print 'zz ignoring pure virtual class', cname, 'due to', method['name']
+        print 'zz ignoring pure virtual class', classname, 'due to', method['name']
         return True
 
   if check_pure_virtual(clazz, []):
@@ -275,32 +293,30 @@ for cname, clazz in classes.iteritems():
   has_constructor = False
   for method in clazz['methods']['public']:
     mname = method['name']
-    has_constructor = has_constructor or (cname == mname and not method['destructor'])
+    has_constructor = has_constructor or (classname == mname and not method['destructor'])
 
-  print 'zz ', cname, 'has constructor?', has_constructor
+  print 'zz ', classname, 'has constructor?', has_constructor
 
   if not has_constructor:
-    print 'zz no constructor for', cname, 'so ignoring'
+    print 'zz no constructor for', classname, 'so ignoring'
     continue
 
     clazz['methods']['public'] = [{
-      'name': cname,
+      'name': classname,
       'parameters': [],
       'pure_virtual': False,
       'destructor': False,
     }] + clazz['methods']['public']
 
-  generate_class(cname, cname, clazz)
+  generate_class(classname, classname, clazz)
 
   # In addition, generate all methods of parent classes. We do not inherit in JS (how would we do multiple inheritance etc.?)
   for parent in clazz['inherits']:
-    generate_class(cname, parent['class'], classes[parent['class']])
+    generate_class(classname, parent['class'], classes[parent['class']])
 
   # TODO: Add a destructor
 
 # Finish up
-
-funcs = funcs.keys()
 
 gen_c.write('''
 }
@@ -313,9 +329,9 @@ struct EmscriptenEnsurer
     // Actually use the binding functions, so DFE will not eliminate them
     int sum = 0;
     void *seen = (void*)%s;
-''' % funcs[0])
+''' % c_funcs[0])
 
-for func in funcs[1:]:
+for func in c_funcs[1:]:
   gen_c.write('''    sum += (void*)%s == seen;
 ''' % func)
 
