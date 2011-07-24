@@ -199,7 +199,7 @@ def generate_class(generating_classname, classname, clazz):
       if constructor:
         generating_classname_suffixed += suffix
 
-    argfixes = map(lambda arg: '''  %s = (%s && %s.ptr) ? %s.ptr : %s;''' % (arg['name'], arg['name'], arg['name'], arg['name'], arg['name']), args)
+    argfixes = '\n'.join(map(lambda arg: '''  %s = (%s && %s.ptr) ? %s.ptr : %s;''' % (arg['name'], arg['name'], arg['name'], arg['name'], arg['name']), args))
 
     for i in range(method['first_default_param'], len(args)+1):
       # C
@@ -208,7 +208,7 @@ def generate_class(generating_classname, classname, clazz):
 %s %s_p%d(%s) {
   %s%s%s(%s);
 }
-''' % (ret, fullname, i, ', '.join(typedargs[:i+1]), 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, ', '.join(justargs[:i])))
+''' % (ret, fullname, i, ', '.join(typedargs[:i + (0 if constructor else 1)]), 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, ', '.join(justargs[:i])))
 
       c_funcs.append(fullname + '_p' + str(i))
 
@@ -241,7 +241,7 @@ function %s(%s) {
 %s
 %s
 }
-''' % (mname_suffixed, ', '.join(justargs), ', '.join(argfixes), calls)
+''' % (mname_suffixed, ', '.join(justargs), argfixes, calls)
       else:
         js_text = '''
 function %s(%s) {
@@ -249,14 +249,14 @@ function %s(%s) {
 %s
 }
 %s.prototype = %s.prototype;
-''' % (mname_suffixed, ', '.join(justargs), ', '.join(argfixes), calls, mname_suffixed, classname)
+''' % (mname_suffixed, ', '.join(justargs), argfixes, calls, mname_suffixed, classname)
     else:
       js_text = '''
 %s.prototype.%s = function(%s) {
 %s
 %s
 }
-''' % (generating_classname, mname_suffixed, ', '.join(justargs), ', '.join(argfixes), calls)
+''' % (generating_classname, mname_suffixed, ', '.join(justargs), argfixes, calls)
 
     js_text = js_text.replace('\n\n', '\n').replace('\n\n', '\n')
     gen_js.write(js_text)
