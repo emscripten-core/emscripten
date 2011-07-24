@@ -235,8 +235,8 @@ def generate_class(generating_classname, classname, clazz):
           calls += '''this.ptr = _%s_p%d(%s);
 ''' % (fullname, i, ', '.join(justargs[:i]))
       else:
-        calls += '''%s_%s_p%d(%s%s);
-''' % ('return ' if ret != 'void' else '', fullname, i, 'this.ptr' if need_self else '', (', ' if i > 0 else '') + ', '.join(justargs[:i]))
+        calls += '''%s_%s_p%d(%s);
+''' % ('return ' if ret != 'void' else '', fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs[:i]))
 
     print 'Maekin:', classname, generating_classname, mname, mname_suffixed
     if constructor:
