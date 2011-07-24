@@ -47,7 +47,7 @@ import CppHeaderParser
 
 basename = sys.argv[1]
 
-processor = lambda line: line
+processor = lambda text: text
 ignored = []
 
 if '--' in sys.argv:
@@ -62,13 +62,14 @@ if '--' in sys.argv:
 classes = {}
 struct_parents = {}
 
+text = ''
+for header in sys.argv[2:]:
+  text += '//// ' + header + '\n'
+  text += open(header, 'r').read()
 all_h_name = basename + '.all.h'
 all_h = open(all_h_name, 'w')
 
-for header in sys.argv[2:]:
-  all_h.write('//// ' + header + '\n')
-  all_h.write(processor(open(header, 'r').read()))
-
+all_h.write(processor(text))
 all_h.close()
 
 parsed = CppHeaderParser.CppHeader(all_h_name)
