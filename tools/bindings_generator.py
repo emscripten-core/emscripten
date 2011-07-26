@@ -32,7 +32,7 @@ JS bindings do more serious work, creating class structures in JS and
 linking them to the C bindings.
 '''
 
-import os, sys, glob, re
+import os, sys, glob, re, copy
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -85,13 +85,57 @@ for classname, clazz in parsed.classes.iteritems():
     constructor = method['name'] == classname
     method['constructor'] = constructor # work around cppheaderparser issue
     args = method['parameters']
-    method['first_default_param'] = len(args)
+
+    default_param = len(args)+1
     for i in range(len(args)):
       if args[i].get('default'):
-        method['first_default_param'] = i
+        default_param = i+1
+        break
+
+    method['num_args'] = set(range(default_param-1, len(args)+1))
 
     if method['static']:
       method['rtnType'] = method['rtnType'].replace('static', '')
+
+# Explore all functions we need to generate, including parent classes, handling of overloading, etc.
+
+for classname, clazz in parsed.classes.iteritems():
+  clazz['final_methods'] = {}
+
+  def explore(subclass):
+    # Do our functions first, and do not let later classes override
+    for method in subclass['methods']['public']:
+      if method['constructor']:
+        if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
+
+      if method['name'] not in clazz['final_methods']:
+        clazz['final_methods'][method['name']] = copy.deepcopy(method)
+      else:
+        # Merge the new function in the best way we can. Shared arguments must match!
+
+        curr = clazz['final_methods'][method['name']]
+        if any([curr['parameters'][i]['type'] != method['parameters'][i]['type'] for i in range(min(len(curr['parameters']), len(method['parameters'])))]):
+          print 'Warning: Cannot mix in overloaded functions', method['name'], 'in class', classname, ', skipping'
+          continue
+        # TODO: Other compatibility checks, if any?
+
+        if len(method['parameters']) > len(curr['parameters']):
+          curr['parameters'] = method['parameters']
+
+        curr['num_args'] = curr['num_args'].union(method['num_args'])
+
+    # Recurse
+    for parent in subclass['inherits']:
+      if parent['class'] not in classes:
+        print 'Warning: parent class', parent, 'not a known class. Ignoring.'
+        return
+      explore(classes[parent['class']])
+
+  explore(clazz)
+
+  for method in clazz['final_methods'].itervalues():
+    method['num_args'] = list(method['num_args'])
+    method['num_args'].sort()
 
 # Second pass - generate bindings
 # TODO: Bind virtual functions using dynamic binding in the C binding code
@@ -104,10 +148,10 @@ gen_js = open(basename + '.js', 'w')
 
 gen_c.write('extern "C" {\n')
 
-def generate_class(generating_classname, classname, clazz):
+def generate_class(generating_classname, classname, clazz): # TODO: deprecate generating?
   inherited = generating_classname != classname
 
-  for method in clazz['methods']['public']:
+  for method in clazz['final_methods'].itervalues():
     mname = method['name']
     if classname + '::' + mname in ignored: continue
 
@@ -207,7 +251,7 @@ def generate_class(generating_classname, classname, clazz):
 
     argfixes = '\n'.join(map(lambda arg: '''  %s = (%s && %s.ptr) ? %s.ptr : %s;''' % (arg['name'], arg['name'], arg['name'], arg['name'], arg['name']), args))
 
-    for i in range(method['first_default_param'], len(args)+1):
+    for i in method['num_args']:
       # C
 
       gen_c.write('''
@@ -220,14 +264,14 @@ def generate_class(generating_classname, classname, clazz):
 
     # JS
     calls = ''
-    print 'js loopin', method['first_default_param'], len(args), args
-    for i in range(method['first_default_param'], len(args)+1):
+    print 'js loopin', method['num_args'], '|', len(args), args
+    for i in method['num_args']:
       print '    ', i, type(i)
-      if i > method['first_default_param']:
+      if i != method['num_args'][0]:
         calls += '  else '
-      if i != len(args):
+      if i != method['num_args'][-1]:
         calls += '  if (' + justargs[i] + ' === undefined)'
-      calls += '\n  ' + ('  ' if method['first_default_param'] != len(args) else '')
+      calls += '\n  ' + ('  ' if len(method['num_args']) > 0 else '')
       if constructor:
         if not dupe:
           calls += '''this.ptr = _%s_p%d(%s);
@@ -317,13 +361,6 @@ for classname, clazz in classes.iteritems():
     }] + clazz['methods']['public']
 
   generate_class(classname, classname, clazz)
-
-  # In addition, generate all methods of parent classes. We do not inherit in JS (how would we do multiple inheritance etc.?)
-  for parent in clazz['inherits']:
-    if parent['class'] not in classes:
-      print 'Warning: parent class', parent, 'not a known class. Ignoring.'
-      continue
-    generate_class(classname, parent['class'], classes[parent['class']])
 
   # TODO: Add a destructor
 

@@ -2611,7 +2611,7 @@ if 'benchmark' not in sys.argv:
             int getValTimes(int times=1) { return value*times; }
           };
 
-          class Child2 : Parent {
+          class Child2 : public Parent {
           public:
             Child2() : Parent(9) { printf("Child2:%d\\n", value); };
             int getValCube() { return value*value*value; }
@@ -2649,18 +2649,18 @@ if 'benchmark' not in sys.argv:
           c1.mulVal(2);
           print(c1.getVal());
           print(c1.getValSqr());
-          print(c1.getValSqr_2(3));
+          print(c1.getValSqr(3));
           print(c1.getValTimes()); // default argument should be 1
           print(c1.getValTimes(2));
 
           print('c1 v2');
 
-          c1 = new Child1_2(8);
+          c1 = new Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
           print(c1.getVal());
           c1.mulVal(2);
           print(c1.getVal());
           print(c1.getValSqr());
-          print(c1.getValSqr_2(3));
+          print(c1.getValSqr(3));
 
           print('c2')
 
