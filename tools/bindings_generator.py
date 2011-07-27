@@ -93,6 +93,7 @@ for classname, clazz in parsed.classes.iteritems():
         break
 
     method['num_args'] = set(range(default_param-1, len(args)+1))
+    print 'zz ', classname, 'has num_args of', method['num_args']
 
     if method['static']:
       method['rtnType'] = method['rtnType'].replace('static', '')
@@ -107,6 +108,7 @@ for classname, clazz in parsed.classes.iteritems():
     for method in subclass['methods']['public']:
       if method['constructor']:
         if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
+      if method['destructor']: continue # Nothing to do there
 
       if method['name'] not in clazz['final_methods']:
         clazz['final_methods'][method['name']] = {}
@@ -127,6 +129,7 @@ for classname, clazz in parsed.classes.iteritems():
           curr['parameters'] = method['parameters']
 
         curr['num_args'] = curr['num_args'].union(method['num_args'])
+        print 'zz ', classname, 'has an updated num_args of ', curr['num_args']
 
     # Recurse
     for parent in subclass['inherits']:
