@@ -32,7 +32,7 @@ JS bindings do more serious work, creating class structures in JS and
 linking them to the C bindings.
 '''
 
-import os, sys, glob, re, copy
+import os, sys, glob, re
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -110,8 +110,10 @@ for classname, clazz in parsed.classes.iteritems():
 
       if method['name'] not in clazz['final_methods']:
         clazz['final_methods'][method['name']] = {}
-        for key in ['name', 'parameters', 'constructor', 'static', 'num_args', 'rtnType', 'destructor', 'pure_virtual']:
-          clazz['final_methods'][method['name']][key] = copy.deepcopy(method[key])
+        for key in ['name', 'constructor', 'static', 'rtnType', 'destructor', 'pure_virtual']:
+          clazz['final_methods'][method['name']][key] = method[key]
+        clazz['final_methods'][method['name']]['num_args'] = method['num_args'].copy()
+        clazz['final_methods'][method['name']]['parameters'] = method['parameters'][:]
       else:
         # Merge the new function in the best way we can. Shared arguments must match!
 
