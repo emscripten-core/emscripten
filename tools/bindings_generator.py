@@ -109,7 +109,9 @@ for classname, clazz in parsed.classes.iteritems():
         if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
 
       if method['name'] not in clazz['final_methods']:
-        clazz['final_methods'][method['name']] = copy.deepcopy(method)
+        clazz['final_methods'][method['name']] = {}
+        for key in ['name', 'parameters', 'constructor', 'static', 'num_args', 'rtnType', 'destructor', 'pure_virtual']:
+          clazz['final_methods'][method['name']][key] = copy.deepcopy(method[key])
       else:
         # Merge the new function in the best way we can. Shared arguments must match!
 
