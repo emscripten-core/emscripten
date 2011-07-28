@@ -116,10 +116,14 @@ for classname, clazz in parsed.classes.iteritems():
           clazz['final_methods'][method['name']][key] = method[key]
         clazz['final_methods'][method['name']]['num_args'] = method['num_args'].copy()
         clazz['final_methods'][method['name']]['parameters'] = method['parameters'][:]
+        clazz['final_methods'][method['name']]['origin'] = subclass
       else:
         # Merge the new function in the best way we can. Shared arguments must match!
 
         curr = clazz['final_methods'][method['name']]
+
+        if curr['origin'] is not subclass: continue # child class functions mask/hide parent functions of the same name in C++
+
         if any([curr['parameters'][i]['type'] != method['parameters'][i]['type'] for i in range(min(len(curr['parameters']), len(method['parameters'])))]):
           print 'Warning: Cannot mix in overloaded functions', method['name'], 'in class', classname, ', skipping'
           continue
