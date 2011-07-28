@@ -534,24 +534,6 @@ function String_copy(ptr, addZero) {
 
 // Tools
 
-var PRINTBUFFER = '';
-function __print__(text) {
-  if (text === null) {
-    // Flush
-    print(PRINTBUFFER);
-    PRINTBUFFER = '';
-    return;
-  }
-  // We print only when we see a '\n', as console JS engines always add
-  // one anyhow.
-  PRINTBUFFER = PRINTBUFFER + text;
-  var endIndex;
-  while ((endIndex = PRINTBUFFER.indexOf('\n')) != -1) {
-    print(PRINTBUFFER.substr(0, endIndex));
-    PRINTBUFFER = PRINTBUFFER.substr(endIndex + 1);
-  }
-}
-
 function jrint(label, obj) { // XXX manual debugging
   if (!obj) {
     obj = label;
@@ -602,28 +584,6 @@ function intArrayToString(array) {
 
 {{{ unSign }}}
 {{{ reSign }}}
-
-// Use console read if available, otherwise we are in a browser, use an XHR
-if (!this['read']) {
-  this['read'] = function(url) {
-    // TODO: use mozResponseArrayBuffer/responseStream/etc. if available
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, false);
-    xhr.overrideMimeType('text/plain; charset=x-user-defined'); // ask for binary data
-    xhr.send(null);
-    if (xhr.status != 200 && xhr.status != 0) throw 'failed to open: ' + url;
-    return xhr.responseText;
-  };
-}
-
-function readBinary(filename) {
-  var stringy = read(filename);
-  var data = new Array(stringy.length);
-  for (var i = 0; i < stringy.length; i++) {
-    data[i] = stringy.charCodeAt(i) & 0xff;
-  }
-  return data;
-}
 
 // === Body ===
 

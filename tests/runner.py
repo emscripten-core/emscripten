@@ -1831,7 +1831,14 @@ if 'benchmark' not in sys.argv:
         }
         '''
       BUILD_AS_SHARED_LIB = 0
-      self.do_test(src, 'Constructing main object.\nConstructing lib object.\n')
+      def addPreRunAndChecks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
+      self.do_test(src, 'Constructing main object.\nConstructing lib object.\n',
+                   post_build=addPreRunAndChecks)
 
     def test_dlfcn_qsort(self):
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
@@ -1909,8 +1916,15 @@ if 'benchmark' not in sys.argv:
         '''
       BUILD_AS_SHARED_LIB = 0
       EXPORTED_FUNCTIONS = ['_main']
+      def addPreRunAndChecks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
       self.do_test(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
-                   output_nicerizer=lambda x: x.replace('\n', '*'))
+                   output_nicerizer=lambda x: x.replace('\n', '*'),
+                   post_build=addPreRunAndChecks)
 
     def test_dlfcn_data_and_fptr(self):
       global LLVM_OPTS
@@ -2000,8 +2014,15 @@ if 'benchmark' not in sys.argv:
       BUILD_AS_SHARED_LIB = 0
       EXPORTED_FUNCTIONS = ['_main']
       EXPORTED_GLOBALS = []
+      def addPreRunAndChecks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
       self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
-                   output_nicerizer=lambda x: x.replace('\n', '*'))
+                   output_nicerizer=lambda x: x.replace('\n', '*'),
+                   post_build=addPreRunAndChecks)
 
     def test_strtod(self):
       src = r'''
@@ -2065,8 +2086,14 @@ if 'benchmark' not in sys.argv:
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
-            STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]); // 200 becomes -56, since signed chars are used in memory
-            Module.stdin = function(prompt) { return 'hi there!' };
+            FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
+            FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+            FS.root.write = true;
+            var test_files_input = 'hi there!';
+            var test_files_input_index = 0;
+            FS.init(function() {
+              return test_files_input.charCodeAt(test_files_input_index++) || null;
+            });
           '''
         )
         open(filename, 'w').write(src)
@@ -2296,7 +2323,7 @@ if 'benchmark' not in sys.argv:
         f_blocks: 1000000
         f_bfree: 500000
         f_bavail: 500000
-        f_files: 2
+        f_files: 8
         f_ffree: 1000000
         f_favail: 1000000
         f_fsid: 42
@@ -2711,7 +2738,7 @@ if 'benchmark' not in sys.argv:
         # Embed the font into the document
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''STDIO.prepare('font.ttf', %s);''' % str(
+          '''FS.createDataFile('/', 'font.ttf', %s, true, false);''' % str(
             map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
           )
         )
@@ -2806,9 +2833,10 @@ if 'benchmark' not in sys.argv:
         src = open(filename, 'a')
         src.write(
           '''
-            STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
+            FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
+            FS.root.write = true;
             run();
-            print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['filename-1.ppm']].data));
+            print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents));
           '''
         )
         src.close()
@@ -2857,12 +2885,12 @@ if 'benchmark' not in sys.argv:
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''STDIO.prepare('image.j2k', %s);''' % line_splitter(str(
+          '''FS.createDataFile('/', 'image.j2k', %s, true, false);FS.root.write = true;''' % line_splitter(str(
             map(ord, open(original_j2k, 'rb').read())
           ))
         ).replace(
           '// {{POST_RUN_ADDITIONS}}',
-          '''print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['image.raw']].data));'''
+          '''print("Data: " + JSON.stringify(FS.root.contents['image.raw'].contents));'''
         )
         open(filename, 'w').write(src)
 
