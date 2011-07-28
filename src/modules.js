@@ -54,7 +54,7 @@ var Debugging = {
         return line.replace(', !dbg !' + calc[1], '');
       }
       calc = formStruct.exec(line);
-      if (calc) {
+      if (calc && !(calc[2] in structToMemberMeta)) {
         structMetaToStruct[calc[1]] = calc[2];
         structToMemberMeta[calc[2]] = calc[3];
         memberMetaToStruct[calc[3]] = calc[1];
