@@ -301,6 +301,43 @@ function assert(condition, text) {
   }
 }
 
+// Sets a value in memory in a dynamic way at run-time. Uses the
+// type data. This is the same as makeSetValue, except that
+// makeSetValue is done at compile-time and generates the needed
+// code then, whereas this function picks the right code at
+// run-time.
+
+function setValue(ptr, value, type) {
+  if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
+  switch(type) {
+    case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
+    case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
+    case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
+    case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
+    case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
+    case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
+    case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
+    default: abort('invalid type for setValue: ' + type);
+  }
+}
+
+// Parallel to setValue.
+
+function getValue(ptr, type) {
+  if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
+  switch(type) {
+    case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
+    case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
+    case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
+    case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
+    case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
+    case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
+    case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
+    default: abort('invalid type for setValue: ' + type);
+  }
+  return null;
+}
+
 // Allocates memory for some data and initializes it properly.
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
@@ -338,30 +375,8 @@ function allocate(slab, types, allocator) {
     assert(type, 'Must know what type to store in allocate!');
 #endif
 
-    if (type === 'i1') {
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'i1') }}}
-      i += {{{ getNativeFieldSize('i1', true) }}};
-    } else if (type === 'i8') {
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'i8') }}}
-      i += {{{ getNativeFieldSize('i8', true) }}};
-    } else if (type === 'i16') {
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'i16') }}}
-      i += {{{ getNativeFieldSize('i16', true) }}};
-    } else if (type === 'i32' || type[type.length-1] === '*') { // hardcoded pointers as 32-bit
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'i32') }}}
-      i += {{{ getNativeFieldSize('i32', true) }}};
-    } else if (type === 'float') {
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'float') }}}
-      i += {{{ getNativeFieldSize('float', true) }}};
-    } else if (type === 'i64') {
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'i64') }}}
-      i += {{{ getNativeFieldSize('i64', true) }}};
-    } else if (type === 'double') {
-      {{{ makeSetValue(0, 'ret+i', 'curr', 'double') }}}
-      i += {{{ getNativeFieldSize('double', true) }}};
-    } else {
-      abort('invalid type for allocate: ' + type);
-    }
+    setValue(ret+i, curr, type);
+    i += Runtime.getNativeFieldSize(type, true);
   }
 
   return ret;
