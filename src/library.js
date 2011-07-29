@@ -4256,8 +4256,9 @@ LibraryManager.library = {
     {{{ makeSetValue('_tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
+  stime__deps: ['$ERRNO_CODES', '__setErrNo'],
   stime: function(when) {
-    // TODO: Set errno.
+    ___setErrNo(ERRNO_CODES.EPERM);
     return -1;
   },
 
@@ -4542,8 +4543,9 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // ** emscripten.h **
+  // emscripten.h
   // ==========================================================================
+
   emscripten_run_script: function(ptr) {
     eval(Pointer_stringify(ptr));
   },
