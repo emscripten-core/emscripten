@@ -3513,59 +3513,75 @@ LibraryManager.library = {
   // ctype.h
   // ==========================================================================
 
+  isascii: function(chr) {
+    return chr >= 0 && (chr & 0x80) == 0;
+  },
+  toascii: function(chr) {
+    return chr & 0x7F;
+  },
+  toupper: function(chr) {
+    if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
+      return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
+    } else {
+      return chr;
+    }
+  },
+  _toupper: 'toupper',
+  tolower: function(chr) {
+    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
+      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
+    } else {
+      return chr;
+    }
+  },
+  _tolower: 'tolower',
+  // The following functions are defined as macros in glibc.
+  islower: function(chr) {
+    return chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0);
+  },
+  isupper: function(chr) {
+    return chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0);
+  },
+  isalpha: function(chr) {
+    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
+           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+  },
   isdigit: function(chr) {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
   },
-
   isxdigit: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
   },
-
-  isalpha: function(chr) {
-    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
-  },
-
   isalnum: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
   },
-
+  ispunct: function(chr) {
+    return (chr >= '!'.charCodeAt(0) && chr <= '/'.charCodeAt(0)) ||
+           (chr >= ':'.charCodeAt(0) && chr <= '@'.charCodeAt(0)) ||
+           (chr >= '['.charCodeAt(0) && chr <= '`'.charCodeAt(0)) ||
+           (chr >= '{'.charCodeAt(0) && chr <= '~'.charCodeAt(0));
+  },
   isspace: function(chr) {
     return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
   },
-
-  iscntrl: function(chr) {
-    return (chr >= 0 && chr <= 0x1f) || chr === 0x7f;
+  isblank: function(chr) {
+    return chr == ' '.charCodeAt(0) || chr == '\t'.charCodeAt(0);
   },
-
+  iscntrl: function(chr) {
+    return (chr >= 0 && chr <= 0x1F) || chr === 0x7F;
+  },
   isprint__deps: ['iscntrl'],
   isprint: function(chr) {
     return !_iscntrl(chr);
   },
-
-  toupper: function(chr) {
-    if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
-      return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
-    }
-    return chr;
-  },
-
-  tolower: function(chr) {
-    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
-      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
-    }
-    return chr;
-  },
-
-  // ==========================================================================
-  // ctype.h Linux specifics
-  // ==========================================================================
-
-  __ctype_b_loc: function() { // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
+  isgraph: 'isprint',
+  // Lookup table for glibc ctype implementation.
+  __ctype_b_loc: function() {
+    // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
     if (!me.ret) {
       var values = [
@@ -3597,7 +3613,9 @@ LibraryManager.library = {
     return me.ret;
   },
 
+  // ==========================================================================
   // LLVM specifics
+  // ==========================================================================
 
   llvm_va_copy: function(ppdest, ppsrc) {
     {{{ makeCopyValues('ppdest', 'ppsrc', QUANTUM_SIZE, 'null') }}}
