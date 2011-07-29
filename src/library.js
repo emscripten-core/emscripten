@@ -3764,6 +3764,10 @@ LibraryManager.library = {
   atanf: 'Math.atan',
   atan2: 'Math.atan2',
   atan2f: 'Math.atan2',
+  exp: 'Math.exp',
+  expf: 'Math.exp',
+  log: 'Math.log',
+  logf: 'Math.log',
   sqrt: 'Math.sqrt',
   sqrtf: 'Math.sqrt',
   fabs: 'Math.abs',
@@ -3772,6 +3776,8 @@ LibraryManager.library = {
   ceilf: 'Math.ceil',
   floor: 'Math.floor',
   floorf: 'Math.floor',
+  pow: 'Math.pow',
+  powf: 'Math.powf',
   llvm_sqrt_f32: 'Math.sqrt',
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
@@ -3779,14 +3785,23 @@ LibraryManager.library = {
   llvm_log_f32: 'Math.log',
   llvm_log_f64: 'Math.log',
   ldexp: function(x, exp_) {
-    return x*Math.pow(2, exp_);
+    return x * Math.pow(2, exp_);
   },
+  ldexpf: 'ldexp',
+  scalb: 'ldexp',
+  scalbn: 'ldexp',
+  scalbnf: 'ldexp',
+  scalbln: 'ldexp',
+  scalblnf: 'ldexp',
 
   modf: function(x, intpart) {
     {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}}
     return x - {{{ makeGetValue('intpart', 0, 'double') }}};
   },
-
+  modff: function(x, intpart) {
+    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'float') }}}
+    return x - {{{ makeGetValue('intpart', 0, 'float') }}};
+  },
   frexp: function(x, exp_addr) {
     var sig = 0, exp_ = 0;
     if (x !== 0) {
@@ -3798,63 +3813,123 @@ LibraryManager.library = {
     {{{ makeSetValue('exp_addr', 0, 'exp_', 'i32') }}}
     return sig;
   },
-
+  frexpf: 'frexp',
   finite: function(x) {
     return isFinite(x);
   },
   __finite: 'finite',
-
   isinf: function(x) {
     return !isNaN(x) && !isFinite(x);
   },
   __isinf: 'isinf',
-
   isnan: function(x) {
     return isNaN(x);
   },
   __isnan: 'isnan',
-
   copysign: function(a, b) {
-      if (a<0 === b<0) return a;
+      if (a < 0 === b < 0) return a;
       return -a;
   },
-
+  copysignf: 'copysign',
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
   },
-
+  hypotf: 'hypot',
   sinh: function(x) {
     var p = Math.pow(Math.E, x);
     return (p - (1 / p)) / 2;
   },
-
+  sinhf: 'sinh',
   cosh: function(x) {
     var p = Math.pow(Math.E, x);
     return (p + (1 / p)) / 2;
   },
-
+  coshf: 'cosh',
   tanh__deps: ['sinh', 'cosh'],
   tanh: function(x) {
     return _sinh(x) / _cosh(x);
   },
-
+  tanhf: 'tanh',
   asinh: function(x) {
     return Math.log(x + Math.sqrt(x * x + 1));
   },
-
+  asinhf: 'asinh',
   acosh: function(x) {
     return Math.log(x * 1 + Math.sqrt(x * x - 1));
   },
-
+  acoshf: 'acosh',
   atanh: function(x) {
     return Math.log((1 + x) / (1 - x)) / 2;
   },
-
-  // LLVM internal math
-
+  atanhf: 'atanh',
   exp2: function(x) {
     return Math.pow(2, x);
   },
+  exp2f: 'exp2',
+  expm1: function(x) {
+    return Math.exp(x) - 1;
+  },
+  expm1f: 'expm1',
+  round: function(x) {
+    return (x < 0) ? -Math.round(-x) : Math.round(x);
+  },
+  roundf: 'round',
+  lround: 'round',
+  lroundf: 'round',
+  llround: 'round',
+  llroundf: 'round',
+  rint: function(x) {
+    return (x > 0) ? -Math.round(-x) : Math.round(x);
+  },
+  rintf: 'rint',
+  lrint: 'rint',
+  lrintf: 'rint',
+  llrint: 'rint',
+  llrintf: 'rint',
+  nearbyint: 'rint',
+  nearbyintf: 'rint',
+  trunc: function(x) {
+    return (x < 0) ? Math.ceil(x) : Math.floor(x);
+  },
+  truncf: 'trunc',
+  fdim: function(x, y) {
+    return (x > y) ? x - y : 0;
+  },
+  fdimf: 'fdim',
+  fmax: function(x, y) {
+    return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
+  },
+  fmaxf: 'fmax',
+  fmin: function(x, y) {
+    return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
+  },
+  fminf: 'fmin',
+  fma: function(x, y, z) {
+    return x * y + z;
+  },
+  fmaf: 'fma',
+  fmod: function(x, y) {
+    return x % y;
+  },
+  fmodf: 'fmod',
+  remainder: 'fmod',
+  remainderf: 'fmod',
+  log10: function(x) {
+    return Math.log(x) / Math.LN10;
+  },
+  log10f: 'log10',
+  log1p: function(x) {
+    return Math.log(1 + x);
+  },
+  log1pf: 'log1p',
+  log2: function(x) {
+    return Math.log(x) / Math.LN2;
+  },
+  log2f: 'log2',
+  nan: function(x) {
+    return NaN;
+  },
+  nanf: 'nan',
 
   // ==========================================================================
   // dlfcn.h - Dynamic library loading
