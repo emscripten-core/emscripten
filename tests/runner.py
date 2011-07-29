@@ -3145,7 +3145,8 @@ else:
   USE_CLOSURE_COMPILER = 1
 
   if USE_CLOSURE_COMPILER:
-    SPIDERMONKEY_ENGINE = filter(lambda x: x != '-s', SPIDERMONKEY_ENGINE) # closure generates non-strict
+    index = SPIDERMONKEY_ENGINE.index("options('strict')")
+    SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
 
   COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE

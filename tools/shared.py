@@ -25,8 +25,8 @@ BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 
 # Engine tweaks
 
-if '-s' not in SPIDERMONKEY_ENGINE:
-  SPIDERMONKEY_ENGINE += ['-s'] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
+if 'strict' not in str(SPIDERMONKEY_ENGINE):
+  SPIDERMONKEY_ENGINE += ['-e', "options('strict')"] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
 
 if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
   SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
