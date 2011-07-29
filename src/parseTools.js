@@ -13,7 +13,7 @@ function processMacros(text) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global. Also replaces some constants.
 function preprocess(text, constants) {
-  for (constant in constants) {
+  for (var constant in constants) {
     text = text.replace(eval('/' + constant + '/g'), constants[constant]);
   }
   var lines = text.split('\n');
