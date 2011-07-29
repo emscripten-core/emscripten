@@ -2605,6 +2605,11 @@ if 'benchmark' not in sys.argv:
       '''
       self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
 
+    def test_env(self):
+      src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
     ### 'Big' tests
 
     def test_fannkuch(self):

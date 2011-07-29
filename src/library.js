@@ -3184,10 +3184,6 @@ LibraryManager.library = {
     return ret;
   },
 
-  getenv: function(name_) {
-    return 0; // TODO
-  },
-
   strtod__deps: ['isspace', 'isdigit'],
   strtod: function(str, endptr) {
     // Skip space.
@@ -3267,6 +3263,139 @@ LibraryManager.library = {
       _memcpy(base+i*size, temp+keys[i]*size, size);
     }
     _free(temp);
+  },
+
+  // NOTE: The global environment array is rebuilt from scratch after every
+  //       change, which is inefficient, but should not be a bottleneck unless
+  //       no malloc is used.
+  __environ: null,
+  __buildEnvironment__deps: ['__environ'],
+  __buildEnvironment: function(env) {
+    if (___environ === null) ___environ = allocate([0], "i8**", ALLOC_STATIC);
+    var ptrSize = {{{ Runtime.getNativeFieldSize('i8*') }}};
+    var envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
+    // Clear old.
+    if (envPtr !== 0) {
+      var cur = envPtr;
+      while ({{{ makeGetValue('cur', '0', 'i8*') }}} !== 0) {
+        _free({{{ makeGetValue('cur', '0', 'i8*') }}});
+        cur += ptrSize;
+      }
+      _free(envPtr);
+    }
+    // Collect key=value lines.
+    var strings = [];
+    for (var key in env) {
+      if (typeof env[key] === 'string') {
+        strings.push(key + '=' + env[key]);
+      }
+    }
+    // Make new.
+    envPtr = _malloc(ptrSize * (strings.length + 1));
+    {{{ makeSetValue('___environ', '0', 'envPtr', 'i8**') }}}
+    for (var i = 0; i < strings.length; i++) {
+      var line = strings[i];
+      var ptr = _malloc(line.length + 1);
+      for (var j = 0; j < line.length; j++) {
+        {{{ makeSetValue('ptr', 'j', 'line.charCodeAt(j)', 'i8') }}}
+      }
+      {{{ makeSetValue('ptr', 'j', '0', 'i8') }}}
+      {{{ makeSetValue('envPtr', 'i * ptrSize', 'ptr', 'i8*') }}}
+    }
+    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}}
+  },
+  $ENV__deps: ['__buildEnvironment'],
+  $ENV__postset: '___buildEnvironment(ENV);',
+  $ENV: {
+    'USER': 'root',
+    'PATH': '/',
+    'PWD': '/',
+    'HOME': '/',
+    'LANG': 'en_US.UTF-8',
+    '_': './this.program'
+  },
+  getenv__deps: ['$ENV'],
+  getenv: function(name) {
+    // char *getenv(const char *name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
+    if (name === 0) return 0;
+    name = Pointer_stringify(name);
+    if (!ENV.hasOwnProperty(name)) return 0;
+
+    if (_getenv.ret) _free(_getenv.ret);
+    _getenv.ret = allocate(intArrayFromString(ENV[name]), 'i8', ALLOC_NORMAL);
+    return _getenv.ret;
+  },
+  clearenv__deps: ['$ENV', '__buildEnvironment'],
+  clearenv: function(name) {
+    // int clearenv (void);
+    // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
+    ENV = {};
+    ___buildEnvironment(ENV);
+    return 0;
+  },
+  setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  setenv: function(envname, envval, overwrite) {
+    // int setenv(const char *envname, const char *envval, int overwrite);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
+    if (envname === 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    var name = Pointer_stringify(envname);
+    var val = Pointer_stringify(envval);
+    if (name === '' || name.indexOf('=') !== -1) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    if (ENV.hasOwnProperty(name) && !overwrite) return 0;
+    ENV[name] = val;
+    ___buildEnvironment(ENV);
+    return 0;
+  },
+  unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  unsetenv: function(name) {
+    // int unsetenv(const char *name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
+    if (name === 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    name = Pointer_stringify(name);
+    if (name === '' || name.indexOf('=') !== -1) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    if (ENV.hasOwnProperty(name)) {
+      delete ENV[name];
+      ___buildEnvironment(ENV);
+    }
+    return 0;
+  },
+  putenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  putenv: function(string) {
+    // int putenv(char *string);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/putenv.html
+    // WARNING: According to the standard (and the glibc implementation), the
+    //          string is taken by reference so future changes are reflected.
+    //          We copy it instead, possibly breaking some uses.
+    if (string === 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    string = Pointer_stringify(string);
+    var splitPoint = string.indexOf('=')
+    if (string === '' || string.indexOf('=') === -1) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    var name = string.slice(0, splitPoint);
+    var value = string.slice(splitPoint + 1);
+    if (!(name in ENV) || ENV[name] !== value) {
+      ENV[name] = value;
+      ___buildEnvironment(ENV);
+    }
+    return 0;
   },
 
   // ==========================================================================
