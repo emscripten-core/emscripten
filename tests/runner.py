@@ -2578,6 +2578,33 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
       self.do_test(src, expected)
 
+    def test_uname(self):
+      src = r'''
+        #include <stdio.h>
+        #include <sys/utsname.h>
+
+        int main() {
+          struct utsname u;
+          printf("ret: %d\n", uname(&u));
+          printf("sysname: %s\n", u.sysname);
+          printf("nodename: %s\n", u.nodename);
+          printf("release: %s\n", u.release);
+          printf("version: %s\n", u.version);
+          printf("machine: %s\n", u.machine);
+          printf("invalid: %d\n", uname(0));
+          return 0;
+        }
+        '''
+      expected = '''
+        ret: 0
+        sysname: Emscripten
+        nodename: emscripten
+        release: 1.0
+        version: #1
+        machine: x86-JS
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+
     ### 'Big' tests
 
     def test_fannkuch(self):
