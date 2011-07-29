@@ -2362,7 +2362,7 @@ if 'benchmark' not in sys.argv:
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                       args='-scale-to 512 paper.pdf filename'.split(' '),
                       post_build=post,
-                      js_engines=[SPIDERMONKEY_ENGINE]) # V8 bug 1257
+                      js_engines=[V8_ENGINE]) # XXX Moz bug 675269
                       #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):

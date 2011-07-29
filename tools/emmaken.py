@@ -87,8 +87,8 @@ try:
   CC_ARG_SKIP = ['-O1', '-O2', '-O3']
   CC_ADDITIONAL_ARGS = ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
-                       '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]  
-  DISALLOWED_LINK_ARGS = []#['rc']
+                       '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
+  TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
@@ -125,7 +125,7 @@ try:
   if '--version' in opts:
     use_linker = False
 
-  if set(sys.argv[1]).issubset(set('cru')): # ar
+  if set(sys.argv[1]).issubset(set('cruqs')): # ar
     sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
     assert use_linker, 'Linker should be used in this case'
 
@@ -133,7 +133,10 @@ try:
     call = LLVM_LINK
     newargs = []
     found_o = False
-    for arg in sys.argv[1:]:
+    i = 0
+    while i < len(sys.argv)-1:
+      i += 1
+      arg = sys.argv[i]
       if found_o:
         newargs.append('-o=%s' % arg)
         found_o = False
@@ -145,12 +148,13 @@ try:
         prefix = arg.split('=')[0]
         if prefix in ALLOWED_LINK_ARGS:
           newargs.append(arg)
+        if arg in TWO_PART_DISALLOWED_LINK_ARGS:
+          i += 1
       elif arg.endswith('.so'):
         continue # .so's do not exist yet, in many cases
       else:
         # not option, so just append
-        if arg not in DISALLOWED_LINK_ARGS:
-          newargs.append(arg)
+        newargs.append(arg)
   elif not header:
     call = CXX if use_cxx else CC
     newargs = [ arg for arg in sys.argv[1:] if arg not in CC_ARG_SKIP ] + CC_ADDITIONAL_ARGS
@@ -170,6 +174,6 @@ try:
 
   os.execvp(call, [call] + newargs)
 except Exception, e:
-  print 'Error in emmaken.py. Is the config file ~/.emscripten set up properly?', e
+  print 'Error in emmaken.py. (Is the config file ~/.emscripten set up properly?) Error:', e
   raise
 
