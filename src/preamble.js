@@ -483,7 +483,7 @@ function __shutdownRuntime__() {
     if (typeof func === 'number') {
       func = FUNCTION_TABLE[func];
     }
-    func(atexit.arg);
+    func(atexit.arg === undefined ? null : atexit.arg);
   }
 
   // allow browser to GC, set heaps to null?
@@ -553,7 +553,7 @@ function intArrayFromString(stringy, dontAddNull) {
     var chr = stringy.charCodeAt(i);
     if (chr > 0xFF) {
 #if ASSERTIONS
-        assert(false, 'String character code not inside 0 - 0xFF.');
+        assert(false, 'Character code ' + chr + ' (' + stringy[i] + ') not in 0x00-0xFF.');
 #endif
       chr &= 0xFF;
     }
@@ -573,7 +573,7 @@ function intArrayToString(array) {
     var chr = array[i];
     if (chr > 0xFF) {
 #if ASSERTIONS
-        assert(false, 'String character code not inside 0 - 0xFF.');
+        assert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ') not in 0x00-0xFF.');
 #endif
       chr &= 0xFF;
     }

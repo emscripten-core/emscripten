@@ -1831,14 +1831,14 @@ if 'benchmark' not in sys.argv:
         }
         '''
       BUILD_AS_SHARED_LIB = 0
-      def addPreRunAndChecks(filename):
+      def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
       self.do_test(src, 'Constructing main object.\nConstructing lib object.\n',
-                   post_build=addPreRunAndChecks)
+                   post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
@@ -1916,7 +1916,7 @@ if 'benchmark' not in sys.argv:
         '''
       BUILD_AS_SHARED_LIB = 0
       EXPORTED_FUNCTIONS = ['_main']
-      def addPreRunAndChecks(filename):
+      def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
@@ -1924,7 +1924,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       self.do_test(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
-                   post_build=addPreRunAndChecks)
+                   post_build=add_pre_run_and_checks)
 
     def test_dlfcn_data_and_fptr(self):
       global LLVM_OPTS
@@ -2014,7 +2014,7 @@ if 'benchmark' not in sys.argv:
       BUILD_AS_SHARED_LIB = 0
       EXPORTED_FUNCTIONS = ['_main']
       EXPORTED_GLOBALS = []
-      def addPreRunAndChecks(filename):
+      def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
@@ -2022,7 +2022,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
-                   post_build=addPreRunAndChecks)
+                   post_build=add_pre_run_and_checks)
 
     def test_strtod(self):
       src = r'''
@@ -2106,7 +2106,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n', post_build=post)
 
     def test_folders(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
@@ -2181,10 +2181,10 @@ if 'benchmark' not in sys.argv:
         --E: 20, D: 0
         --E: 9
       '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRun)
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
 
     def test_stat(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
@@ -2198,10 +2198,10 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'stat', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_fcntl(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           "FS.createDataFile('/', 'test', 'abcdef', true, true);"
@@ -2209,10 +2209,10 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_fcntl_open(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
@@ -2224,10 +2224,10 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_fcntl_misc(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           "FS.createDataFile('/', 'test', 'abcdef', true, true);"
@@ -2235,10 +2235,10 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_poll(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
@@ -2286,7 +2286,7 @@ if 'benchmark' not in sys.argv:
         multi[3].revents: 0x0
         multi[4].revents: 0x4
         '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRun)
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
 
     def test_statvfs(self):
       src = r'''
@@ -2388,7 +2388,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_utime(self):
-      def addPreRunAndChecks(filename):
+      def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
@@ -2429,7 +2429,7 @@ if 'benchmark' not in sys.argv:
         first changed: true
         second changed: false
       '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=addPreRunAndChecks)
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
     def test_fs_base(self):
       global INCLUDE_FULL_LIBRARY; INCLUDE_FULL_LIBRARY = 1
@@ -2446,7 +2446,7 @@ if 'benchmark' not in sys.argv:
         INCLUDE_FULL_LIBRARY = 0
 
     def test_unistd_access(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'access.js'), 'r').read()
@@ -2454,10 +2454,10 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_curdir(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
@@ -2465,7 +2465,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_close(self):
       src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
@@ -2478,7 +2478,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, expected)
 
     def test_unistd_ttyname(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
@@ -2486,7 +2486,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'ttyname.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_dup(self):
       src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
@@ -2499,7 +2499,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, expected)
 
     def test_unistd_truncate(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
@@ -2507,7 +2507,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_swab(self):
       src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
@@ -2515,7 +2515,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, expected)
 
     def test_unistd_isatty(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
@@ -2523,7 +2523,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'isatty.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_sysconf(self):
       src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
@@ -2536,7 +2536,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, expected)
 
     def test_unistd_unlink(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
@@ -2544,10 +2544,10 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'unlink.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_links(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'links.js'), 'r').read()
@@ -2555,7 +2555,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_sleep(self):
       src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
@@ -2563,7 +2563,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, expected)
 
     def test_unistd_io(self):
-      def addPreRun(filename):
+      def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           open(path_from_root('tests', 'unistd', 'io.js'), 'r').read()
@@ -2571,7 +2571,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
-      self.do_test(src, expected, post_build=addPreRun)
+      self.do_test(src, expected, post_build=add_pre_run)
 
     def test_unistd_misc(self):
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
