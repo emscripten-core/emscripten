@@ -549,13 +549,8 @@ function String_copy(ptr, addZero) {
 
 // Tools
 
-function jrint(label, obj) { // XXX manual debugging
-  if (!obj) {
-    obj = label;
-    label = '';
-  } else
-    label = label + ' : ';
-  print(label + JSON.stringify(obj));
+if (typeof print === 'undefined') {
+  print = console.log; // we are on the web
 }
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.
