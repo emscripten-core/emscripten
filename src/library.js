@@ -264,10 +264,15 @@ LibraryManager.library = {
         // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
         var xhr = new XMLHttpRequest();
         xhr.open('GET', obj.url, false);
-        xhr.overrideMimeType('text/plain; charset=x-user-defined');  // Binary.
+        xhr.responseType = 'arraybuffer'; // hint to the browser that we want binary data
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');  // another hint
         xhr.send(null);
         if (xhr.status != 200 && xhr.status != 0) success = false;
-        obj.contents = intArrayFromString(xhr.responseText || '', true);
+        if (xhr.response) {
+          obj.contents = new Uint8Array(xhr.response);
+        } else {
+          obj.contents = intArrayFromString(xhr.responseText || '', true);
+        }
       } else if (typeof read !== 'undefined') {
         // Command-line.
         try {
