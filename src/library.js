@@ -335,7 +335,7 @@ LibraryManager.library = {
       var stdin = FS.createDevice(devFolder, 'stdin', input);
       var stdout = FS.createDevice(devFolder, 'stdout', null, output);
       var stderr = FS.createDevice(devFolder, 'stderr', null, error);
-      FS.createDevice(devFolder, 'tty', input, error);
+      FS.createDevice(devFolder, 'tty', input, output);
 
       // Create default streams.
       FS.streams[1] = {
