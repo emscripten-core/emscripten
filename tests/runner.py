@@ -2607,6 +2607,11 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
       self.do_test(src, expected)
 
+    def test_ctype(self):
+      src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
     ### 'Big' tests
 
     def test_fannkuch(self):
