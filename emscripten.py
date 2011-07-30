@@ -219,7 +219,7 @@ if __name__ == '__main__':
   keywords, positional = parser.parse_args()
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument.')
-  keywords.infile = positional[0]
+  keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 
