@@ -150,13 +150,12 @@ def emscript(infile, settings, outfile):
       defined in src/settings.js.
     outfile: The file where the output is written.
   """
-  data = open(infile, 'r').read()
+  settings_file = get_temp_file('.txt').name # Save settings to a file to work around v8 issue 1579
+  s = open(settings_file, 'w')
+  s.write(settings)
+  s.close()
   compiler = path_from_root('src', 'compiler.js')
-  subprocess.Popen(shared.COMPILER_ENGINE + [compiler],
-                   stdin=subprocess.PIPE,
-                   stdout=outfile,
-                   cwd=path_from_root('src'),
-                   stderr=subprocess.STDOUT).communicate(settings + '\n' + data)
+  shared.run_js(shared.COMPILER_ENGINE, compiler, [settings_file, infile], stdout=outfile, stderr=subprocess.STDOUT, cwd=path_from_root('src'))
   outfile.close()
 
 
