@@ -1115,8 +1115,6 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*zzcheezzz*')
 
     def test_alloca(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g'] # This can mess up our parsing of [#uses=..]
-
       src = '''
         #include <stdio.h>
 
@@ -1627,7 +1625,6 @@ if 'benchmark' not in sys.argv:
 
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
-        global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
         global SAFE_HEAP, SAFE_HEAP_LINES
         if SAFE_HEAP:
           SAFE_HEAP = 3
@@ -2602,7 +2599,6 @@ if 'benchmark' not in sys.argv:
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def test_dlmalloc(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
@@ -2645,8 +2641,8 @@ if 'benchmark' not in sys.argv:
         ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
 
     def test_cubescript(self):
-      # XXX Warning: Running this in SpiderMonkey can lead to an extreme amount of memory being
-      #              used, see Mozilla bug 593659.
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
+
       global SAFE_HEAP; SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
       # Overflows happen in hash loop
@@ -2729,8 +2725,6 @@ if 'benchmark' not in sys.argv:
 
       if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
-      #global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-
       global CORRECT_SIGNS
       if CORRECT_SIGNS == 0: CORRECT_SIGNS = 1 # Not sure why, but needed
 
@@ -2763,7 +2757,7 @@ if 'benchmark' not in sys.argv:
                    force_c=True)
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
-      global SAFE_HEAP, SAFE_HEAP_LINES, COMPILER_TEST_OPTS, USE_TYPED_ARRAYS, LLVM_OPTS
+      global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS, LLVM_OPTS
 
       if LLVM_OPTS: SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
       if COMPILER == LLVM_GCC:
@@ -2776,7 +2770,6 @@ if 'benchmark' not in sys.argv:
         SAFE_HEAP = 3
         SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                            'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
-        COMPILER_TEST_OPTS = ['-g']
 
       self.do_test(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
@@ -2818,8 +2811,7 @@ if 'benchmark' not in sys.argv:
                              'psobjs.c:195', 'pshglob.c:165', 'ttload.c:694', 'ttmtx.c:195', 'sfobjs.c:957',
                              'sfobjs.c:958', 'ftstream.c:369', 'ftstream.c:372', 'ttobjs.c:1007'] # And many more...
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
-                                                       '-g']
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'libcxx', 'include')] # Avoid libstdc++ linking issue, see libcxx test
 
       global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
 
@@ -2868,7 +2860,6 @@ if 'benchmark' not in sys.argv:
 
     def test_openjpeg(self):
       global USE_TYPED_ARRAYS
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       global CORRECT_SIGNS
       if USE_TYPED_ARRAYS == 2:
         CORRECT_SIGNS = 1
@@ -3020,8 +3011,6 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, 'AD:', build_ll_hook=self.do_autodebug)
 
     def test_dfe(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-
       def hook(filename):
         ll = open(filename + '.o.ll').read()
         assert 'unneeded' not in ll, 'DFE should remove the unneeded function'
@@ -3305,8 +3294,6 @@ Child2:9
 
       # And we should not fail if we disable checking on that line
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-
       SAFE_HEAP = 3
       SAFE_HEAP_LINES = ["src.cpp:7"]
 
@@ -3353,7 +3340,6 @@ Child2:9
         assert 'CHECK_OVERFLOW' in str(e), str(e)
 
     def test_debug(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       src = '''
         #include <stdio.h>
         #include <assert.h>
@@ -3404,8 +3390,6 @@ Child2:9
       self.do_test(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
 
     def test_linespecific(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-
       global CHECK_SIGNS; CHECK_SIGNS = 0
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
       global CORRECT_SIGNS, CORRECT_OVERFLOWS, CORRECT_ROUNDINGS, CORRECT_SIGNS_LINES, CORRECT_OVERFLOWS_LINES, CORRECT_ROUNDINGS_LINES
@@ -3547,7 +3531,6 @@ Child2:9
 
     def test_autooptimize(self):
       global CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CHECK_SIGNS, CORRECT_SIGNS, AUTO_OPTIMIZE
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
 
       AUTO_OPTIMIZE = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = CORRECT_SIGNS = 1
 
@@ -3609,7 +3592,7 @@ class %s(T):
     RUNTIME_TYPE_INFO = 0
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
-    COMPILER_TEST_OPTS = []
+    COMPILER_TEST_OPTS = ['-g']
     shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
     self.get_dir() # make sure it exists
 TT = %s
