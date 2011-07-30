@@ -13,13 +13,11 @@ COMPILER_OPTS = ['-m32', '-g'] # Need to build as 32bit arch, for now -
                                # various errors on 64bit compilation
                                # WARNING: '-g' here will generate llvm bitcode that lli will crash on!
 
-SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/tracemonkey/js/src/js'), '-m', '-j', '-p']
+SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-j', '-p']
 V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
 
-# XXX Warning: Compiling the 'cubescript' test in SpiderMonkey can lead to an extreme amount of memory being
-#              used, see Mozilla bug 593659. Possibly also some other tests as well.
-#COMPILER_ENGINE=SPIDERMONKEY_ENGINE
-COMPILER_ENGINE=V8_ENGINE
+COMPILER_ENGINE=SPIDERMONKEY_ENGINE
+#COMPILER_ENGINE=V8_ENGINE # XXX Warning: currently appears to be broken on v8 trunk, some arguments issue
 
 JS_ENGINE=V8_ENGINE
 

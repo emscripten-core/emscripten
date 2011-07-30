@@ -2895,7 +2895,7 @@ if 'benchmark' not in sys.argv:
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                       args='-scale-to 512 paper.pdf filename'.split(' '),
                       post_build=post,
-                      js_engines=[SPIDERMONKEY_ENGINE]) # V8 bug 1257
+                      js_engines=[V8_ENGINE]) # XXX Moz bug 675269
                       #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
@@ -3141,12 +3141,14 @@ if 'benchmark' not in sys.argv:
             Child1(int val) : Parent(val*2) { value -= 1; printf("Child1:%d\\n", value); };
             int getValSqr() { return value*value; }
             int getValSqr(int more) { return value*value*more; }
+            int getValTimes(int times=1) { return value*times; }
           };
 
-          class Child2 : Parent {
+          class Child2 : public Parent {
           public:
             Child2() : Parent(9) { printf("Child2:%d\\n", value); };
             int getValCube() { return value*value*value; }
+            static void printStatic() { printf("*static*\\n"); }
           private:
             void doSomethingSecret() { printf("security breached!\\n"); }; // we should not be able to do this
           };
@@ -3155,6 +3157,7 @@ if 'benchmark' not in sys.argv:
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
         output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        #print output
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
         src = '''
@@ -3179,16 +3182,18 @@ if 'benchmark' not in sys.argv:
           c1.mulVal(2);
           print(c1.getVal());
           print(c1.getValSqr());
-          print(c1.getValSqr_2(3));
+          print(c1.getValSqr(3));
+          print(c1.getValTimes()); // default argument should be 1
+          print(c1.getValTimes(2));
 
           print('c1 v2');
 
-          c1 = new Child1_2(8);
+          c1 = new Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
           print(c1.getVal());
           c1.mulVal(2);
           print(c1.getVal());
           print(c1.getValSqr());
-          print(c1.getValSqr_2(3));
+          print(c1.getValSqr(3));
 
           print('c2')
 
@@ -3217,6 +3222,8 @@ if 'benchmark' not in sys.argv:
           } catch(e) {}
           print(succeeded);
 
+          Child2.prototype.printStatic(); // static calls go through the prototype
+
           print('*ok*');
         '''
 
@@ -3236,6 +3243,8 @@ Child1:7
 14
 196
 588
+14
+28
 c1 v2
 Parent:16
 Child1:15
@@ -3252,6 +3261,7 @@ Child2:9
 0
 0
 1
+*static*
 *ok*
 ''', post_build=post2)
 
@@ -3668,7 +3678,8 @@ else:
   USE_CLOSURE_COMPILER = 1
 
   if USE_CLOSURE_COMPILER:
-    SPIDERMONKEY_ENGINE = filter(lambda x: x != '-s', SPIDERMONKEY_ENGINE) # closure generates non-strict
+    index = SPIDERMONKEY_ENGINE.index("options('strict')")
+    SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
 
   COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE

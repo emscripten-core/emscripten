@@ -1783,7 +1783,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  getlogin: ['getlogin_r'],
+  getlogin__deps: ['getlogin_r'],
   getlogin: function() {
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html

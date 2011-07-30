@@ -30,7 +30,7 @@
 \begin{abstract}
 We present Emscripten, a compiler from LLVM (Low Level Virtual Machine) assembly to JavaScript. This
 opens up two avenues for running code written
-in languages other than JavaScript on the web: (1) Compile code directly into LLVM assemby, and
+in languages other than JavaScript on the web: (1) Compile code directly into LLVM assembly, and
 then compile that into JavaScript using Emscripten, or (2) Compile
 a language's entire runtime into LLVM and then JavaScript, as in the previous
 approach, and then use the compiled runtime to run code written in that language. For example, the
@@ -477,7 +477,7 @@ reading from memory before a value was written (somewhat similarly to tools
 like Valgrind\footnote{\url{http://valgrind.org/}}). When such problems are detected, possible solutions are to ignore the issue (if it has no actual
 consqeuences), or alter the source code.
 
-Note that it is somewhat wasteful to allocation 4 memory locations for
+Note that it is somewhat wasteful to allocate 4 memory locations for
 a 32-bit integer, and use only one of them. It is possible to change
 that behavior with the QUANTUM\_SIZE parameter to Emscripten, however,
 the difficulty is that LLVM assembly has hardcoded values that depend on
