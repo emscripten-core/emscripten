@@ -3760,6 +3760,8 @@ LibraryManager.library = {
   llvm_pow_f64: 'Math.pow',
   llvm_log_f32: 'Math.log',
   llvm_log_f64: 'Math.log',
+  llvm_exp_f32: 'Math.exp',
+  llvm_exp_f64: 'Math.exp',
   ldexp: function(x, exp_) {
     return x*Math.pow(2, exp_);
   },
