@@ -2607,6 +2607,32 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
       self.do_test(src, expected)
 
+    def test_getloadavg(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          double load[5] = {42.13, 42.13, 42.13, 42.13, 42.13};
+          printf("ret: %d\n", getloadavg(load, 5));
+          printf("load[0]: %lf\n", load[0]);
+          printf("load[1]: %lf\n", load[1]);
+          printf("load[2]: %lf\n", load[2]);
+          printf("load[3]: %lf\n", load[3]);
+          printf("load[4]: %lf\n", load[4]);
+          return 0;
+        }
+        '''
+      expected = '''
+        ret: 3
+        load[0]: 0.100000
+        load[1]: 0.100000
+        load[2]: 0.100000
+        load[3]: 42.130000
+        load[4]: 42.130000
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+
     def test_ctype(self):
       src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()

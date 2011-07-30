@@ -532,7 +532,8 @@ LibraryManager.library = {
       }
     }
   },
-  // TODO: Check if we need to link any aliases.
+  __01readdir64_: 'readdir',
+  // TODO: Check if we need to link any other aliases.
 
   // ==========================================================================
   // utime.h
@@ -823,6 +824,8 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009604499/functions/statvfs.html
     return _statvfs(0, buf);
   },
+  __01statvfs64_: 'statvfs',
+  __01fstatvfs64_: 'fstatvfs',
 
   // ==========================================================================
   // fcntl.h
@@ -1096,6 +1099,13 @@ LibraryManager.library = {
     if (target === null) return -1;
     target.timestamp = new Date();
     return 0;
+  },
+  chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
+  chroot: function(path) {
+    // int chroot(const char *path);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
+    ___setErrNo(ERRNO_CODES.EACCES);
+    return -1;
   },
   close__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   close: function(fildes) {
@@ -1746,6 +1756,16 @@ LibraryManager.library = {
   getpgrp: 'getgid',
   getpid: 'getgid',
   getppid: 'getgid',
+  getresuid: function(ruid, euid, suid) {
+    // int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
+    // http://linux.die.net/man/2/getresuid
+    // We have just one process/group/user, all with ID 0.
+    {{{ makeSetValue('ruid', '0', '0', 'i32') }}}
+    {{{ makeSetValue('euid', '0', '0', 'i32') }}}
+    {{{ makeSetValue('suid', '0', '0', 'i32') }}}
+    return 0;
+  },
+  getresgid: 'getresuid',
   getgroups__deps: ['__setErrNo', '$ERRNO_CODES'],
   getgroups: function(gidsetsize, grouplist) {
     // int getgroups(int gidsetsize, gid_t grouplist[]);
@@ -1758,6 +1778,7 @@ LibraryManager.library = {
       return 1;
     }
   },
+  // TODO: Implement initgroups, setgroups (grp.h).
   gethostid: function() {
     // long gethostid(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostid.html
@@ -1857,6 +1878,9 @@ LibraryManager.library = {
   },
   setregid: 'setpgid',
   setreuid: 'setpgid',
+  // NOTE: These do not match the signatures, but they all use the same stub.
+  setresuid: 'setpgid',
+  setresgid: 'setpgid',
   sleep__deps: ['usleep'],
   sleep: function(seconds) {
     // unsigned sleep(unsigned seconds);
@@ -2062,9 +2086,10 @@ LibraryManager.library = {
     self.DATASIZE += alignMemoryPage(bytes);
     return ret;  // Previous break location.
   },
-  // TODO: Check if these aliases are correct and if any others are needed.
   __01open64_: 'open',
   __01lseek64_: 'lseek',
+  __01ftruncate64_: 'ftruncate',
+  // TODO: Check if any other aliases are needed.
 
   // ==========================================================================
   // stdio.h
@@ -3096,10 +3121,11 @@ LibraryManager.library = {
     return _vsnprintf(s, undefined, format, ap);
   },
   // TODO: Implement v*scanf().
-  // TODO: Check if these aliases are correct and if any others are needed.
   __01fopen64_: 'fopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
+  __01tmpfile64_: 'tmpfile',
+  // TODO: Check if any other aliases are needed.
   _IO_getc: 'getc',
   _IO_putc: 'putc',
   _ZNSo3putEc: 'putchar',
@@ -3125,6 +3151,8 @@ LibraryManager.library = {
     // FIXME: Not really correct at all.
     _free(start);
   },
+
+  // TODO: Implement mremap.
 
   // ==========================================================================
   // stdlib.h
@@ -3267,7 +3295,7 @@ LibraryManager.library = {
 
   // NOTE: The global environment array is rebuilt from scratch after every
   //       change, which is inefficient, but should not be a bottleneck unless
-  //       no malloc is used.
+  //       no malloc is used, in which case it'll leak memory.
   __environ: null,
   __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
@@ -3396,6 +3424,17 @@ LibraryManager.library = {
       ___buildEnvironment(ENV);
     }
     return 0;
+  },
+
+  getloadavg: function(loadavg, nelem) {
+    // int getloadavg(double loadavg[], int nelem);
+    // http://linux.die.net/man/3/getloadavg
+    var limit = Math.min(nelem, 3);
+    var doubleSize = {{{ Runtime.getNativeFieldSize('double') }}};
+    for (var i = 0; i < limit; i++) {
+      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}}
+    }
+    return limit;
   },
 
   // ==========================================================================
@@ -3613,6 +3652,7 @@ LibraryManager.library = {
 
   // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays
   strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=HEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=HEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=HEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=HEAP[f]=0;else{c=b+-1;a:for(;;){e=HEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=HEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else HEAP[b+-1]=0; HEAP[f]=b;c=c}else if(a==7){HEAP[f]=b;HEAP[b+-1]=0;c=b+-1}}return c},
+  // TODO: Compile strtok() from source.
 
   strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],
   strerror_r: function(errnum, strerrbuf, buflen) {
@@ -4277,6 +4317,8 @@ LibraryManager.library = {
   // pwd.h
   // ==========================================================================
 
+  // TODO: Implement.
+  // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/pwd.h.html
   getpwuid: function(uid) {
     return 0; // NULL
   },
@@ -4481,6 +4523,8 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
+  // TODO: Implement remaining functions.
+  // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     // %struct.timeval = type { i32, i32 }
     var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
@@ -4489,6 +4533,41 @@ LibraryManager.library = {
     {{{ makeSetValue('ptr', 'indexes[1]', 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}} // microseconds
     return 0;
   },
+
+  // ==========================================================================
+  // sys/times.h
+  // ==========================================================================
+
+  __tms_struct_layout: Runtime.generateStructInfo(null, '%struct.tms'),
+  times__deps: ['__tms_struct_layout'],
+  times: function(buffer) {
+    // clock_t times(struct tms *buffer);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
+    // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
+    if (buffer !== 0) {
+      {{{ makeSetValues('buffer', '0', '0', 'null', '___tms_struct_layout.__size__') }}}
+    }
+    return 0;
+  },
+
+  // ==========================================================================
+  // sys/types.h
+  // ==========================================================================
+
+  // NOTE: These are fake, since we don't support the C device creation API.
+  // http://www.kernel.org/doc/man-pages/online/pages/man3/minor.3.html
+  makedev: function(maj, min) {
+    return 0;
+  },
+  gnu_dev_makedev: 'makedev',
+  major: function(dev) {
+    return 0;
+  },
+  gnu_dev_major: 'major',
+  minor: function(dev) {
+    return 0;
+  },
+  gnu_dev_minor: 'minor',
 
   // ==========================================================================
   // setjmp.h
@@ -4512,13 +4591,39 @@ LibraryManager.library = {
     // TODO
     return 0;
   },
-
   __libc_current_sigrtmin: function() {
     return 0;
   },
   __libc_current_sigrtmax: function() {
     return 0;
   },
+  kill__deps: ['$ERRNO_CODES', '__setErrNo'],
+  kill: function(pid, sig) {
+    // int kill(pid_t pid, int sig);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
+    // Makes no sense in a single-process environment.
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return -1;
+  },
+  killpg: 'kill',
+
+  // ==========================================================================
+  // sys/wait.h
+  // ==========================================================================
+
+  wait__deps: ['$ERRNO_CODES', '__setErrNo'],
+  wait: function(stat_loc) {
+    // pid_t wait(int *stat_loc);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
+    // Makes no sense in a single-process environment.
+    ___setErrNo(ERRNO_CODES.ECHILD);
+    return -1;
+  },
+  // NOTE: These aren't really the same, but we use the same stub for them all.
+  waitid: 'wait',
+  waitpid: 'wait',
+  wait3: 'wait',
+  wait4: 'wait',
 
   // ==========================================================================
   // locale.h
