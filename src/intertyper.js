@@ -19,10 +19,13 @@ function intertyper(data, parseFunctions, baseLineNum) {
   }
 
   // If the source contains debug info as LLVM metadata, process that out (and save the debugging info for later)
-  if (/!\d+ = metadata .*/.exec(data[data.length-1])) { // Fast test to see if we have metadata. If this fails when it shouldn't, we should generalize
-    data = Debugging.processMetadata(data);
-    //print(data.join('\n'));
-    //dprint(JSON.stringify(Debugging));
+  for (var i = data.length-1; i >= 0; i--) {
+    if (/^!\d+ = metadata .*/.exec(data[i])) {
+      data = Debugging.processMetadata(data);
+      //print(data.join('\n'));
+      //dprint(JSON.stringify(Debugging));
+      break;
+    }
   }
 
   substrate = new Substrate('Intertyper');

@@ -9,6 +9,8 @@ Some different radixes: 100 64 144 0x64 0144
 floats: 3.14 +3e+00 3.141600E+00
 Width trick:    10
 A string %
+Null string:  (null)
+Null pointer: (nil)
 inf
 INF
 -inf

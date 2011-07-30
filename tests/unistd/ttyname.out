@@ -1,0 +1,5 @@
+ctermid: /dev/tty
+ttyname_r(d, ..., 256): /device
+ttyname_r(d, ..., 2) errno: 34
+ttyname(d): /device
+ttyname(f) errno: 25

@@ -1,0 +1,21 @@
+gethostid: 42
+errno: 0
+
+gethostname/2 ret: -1
+gethostname/2: em------------------------
+errno: 36
+
+gethostname/256 ret: 0
+gethostname/256: emscripten
+errno: 0
+
+login: root
+errno: 0
+
+login_r/2 ret: 34
+login_r/2: --------------------------
+errno: 34
+
+login_r/256 ret: 0
+login_r/256: root
+errno: 0
