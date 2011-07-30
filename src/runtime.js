@@ -162,13 +162,18 @@ Runtime = {
   //    { field1: 0, field2: 4 } (depending on QUANTUM_SIZE)
   //
   // You can optionally provide a type name as a second parameter. In that
-  // case, you do not need to provide the types (but you do still need to
-  // provide the names, since they are not present in the .ll), for example,
-  // generateStructInfo(['field1', 'field2'], '%struct.UserStructType');
-  // (Note that you will need the full %struct.* name here at compile time,
-  // but not at runtime. The reason is that during compilation we cannot simplify
-  // the type names yet. At runtime, you can provide either the short or the
-  // full name.)
+  // case, you do not need to provide the types. If the .ll contains debugging
+  // symbols (i.e. it was compiled with the -g flag), you can leave the struct
+  // parameter entirely empty, for example:
+  //   generateStructInfo(null, '%struct.UserStructType');
+  // If the compilation was done without symbols, you will still need to provide
+  // the names, since they are not present in the .ll, for example:
+  //   generateStructInfo(['field1', 'field2'], '%struct.UserStructType');
+  //
+  // Note that you will need the full %struct.* name here at compile time,
+  // but not at runtime. The reason is that during compilation we cannot
+  // simplify the type names yet. At runtime, you can provide either the short
+  // or the full name.
   //
   // When providing a typeName, you can generate information for nested
   // structs, for example, struct = ['field1', { field2: ['sub1', 'sub2', 'sub3'] }, 'field3']
@@ -179,6 +184,8 @@ Runtime = {
       offset = offset || 0;
       type = typeof Types === 'undefined' ? Runtime.typeInfo[typeName] : Types.types[typeName];
       if (!type) return null;
+      if (!struct) struct = Types.structMetadata[typeName.replace(/.*\./, '')];
+      if (!struct) return null;
       assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName);
       alignment = type.flatIndexes;
     } else {

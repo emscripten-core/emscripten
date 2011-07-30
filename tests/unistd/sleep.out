@@ -1,0 +1,6 @@
+sleep(2) ret: 0
+after sleep(2) between 2 and 3: 1
+errno: 0
+usleep(3000000) ret: 0
+after usleep(3000000) between 3 and 4: 1
+errno: 0

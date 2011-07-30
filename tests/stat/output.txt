@@ -1,0 +1,202 @@
+--stat FOLDER--
+ret: 0
+errno: 0
+st_dev: 1
+st_ino: 2
+st_mode: 040777
+st_nlink: 1
+st_rdev: 0
+st_size: 4096
+st_atime: 1200000000
+st_mtime: 1200000000
+st_ctime: 1200000000
+st_blksize: 4096
+st_blocks: 1
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 1
+S_ISFIFO: 0
+S_ISREG: 0
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--stat FILE--
+ret: 0
+errno: 0
+st_dev: 1
+st_ino: 3
+st_mode: 0100777
+st_nlink: 1
+st_rdev: 0
+st_size: 6
+st_atime: 1200000000
+st_mtime: 1200000000
+st_ctime: 1200000000
+st_blksize: 4096
+st_blocks: 1
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 0
+S_ISFIFO: 0
+S_ISREG: 1
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--stat DEVICE--
+ret: 0
+errno: 0
+st_dev: 5
+st_ino: 5
+st_mode: 020777
+st_nlink: 1
+st_rdev: 5
+st_size: 0
+st_atime: 1200000000
+st_mtime: 1200000000
+st_ctime: 1200000000
+st_blksize: 4096
+st_blocks: 0
+S_ISBLK: 0
+S_ISCHR: 1
+S_ISDIR: 0
+S_ISFIFO: 0
+S_ISREG: 0
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--stat LINK--
+ret: 0
+errno: 0
+st_dev: 1
+st_ino: 3
+st_mode: 0100777
+st_nlink: 1
+st_rdev: 0
+st_size: 6
+st_atime: 1200000000
+st_mtime: 1200000000
+st_ctime: 1200000000
+st_blksize: 4096
+st_blocks: 1
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 0
+S_ISFIFO: 0
+S_ISREG: 1
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--lstat LINK--
+ret: 0
+errno: 0
+st_dev: 1
+st_ino: 4
+st_mode: 0120777
+st_nlink: 1
+st_rdev: 0
+st_size: 4
+st_atime: 1200000000
+st_mtime: 1200000000
+st_ctime: 1200000000
+st_blksize: 4096
+st_blocks: 1
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 0
+S_ISFIFO: 0
+S_ISREG: 0
+S_ISLNK: 1
+S_ISSOCK: 0
+
+--fstat FILE--
+ret: 0
+errno: 0
+st_dev: 1
+st_ino: 3
+st_mode: 0100777
+st_nlink: 1
+st_rdev: 0
+st_size: 6
+st_atime: 1200000000
+st_mtime: 1200000000
+st_ctime: 1200000000
+st_blksize: 4096
+st_blocks: 1
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 0
+S_ISFIFO: 0
+S_ISREG: 1
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--chmod FILE--
+ret: 0
+errno: 0
+st_mode: 0100222
+st_mtime changed: 1
+
+--fchmod FILE--
+ret: 0
+errno: 0
+st_mode: 0100777
+st_mtime changed: 1
+
+--chmod FOLDER--
+ret: 0
+errno: 0
+st_mode: 040555
+st_mtime changed: 1
+
+--chmod LINK--
+ret: 0
+errno: 0
+st_mode: 0100000
+
+--mkdir--
+ret: 0
+errno: 0
+st_mode: 040777
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 1
+S_ISFIFO: 0
+S_ISREG: 0
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--mknod FILE--
+ret: 0
+errno: 0
+st_mode: 0100777
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 0
+S_ISFIFO: 0
+S_ISREG: 1
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--mknod FOLDER--
+ret: 0
+errno: 0
+st_mode: 040777
+S_ISBLK: 0
+S_ISCHR: 0
+S_ISDIR: 1
+S_ISFIFO: 0
+S_ISREG: 0
+S_ISLNK: 0
+S_ISSOCK: 0
+
+--mknod FIFO--
+ret: -1
+errno: 22
+
+--mknod DEVICE--
+ret: -1
+errno: 22
+
+--mkfifo--
+ret: -1
+errno: 30

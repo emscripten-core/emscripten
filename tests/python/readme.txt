@@ -1,4 +1,4 @@
-This is Python 2.7.1, compiled to .ll as follows:
+This is Python 2.7.2, compiled to .ll as follows:
 
   Untar Python.
   In the Python dir, create a ./bin directory

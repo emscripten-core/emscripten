@@ -716,7 +716,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
         '''
-        self.do_test(src, '*0x0*')
+        self.do_test(src, '*(nil)*')
 
     def test_funcs(self):
         src = '''
@@ -1831,7 +1831,14 @@ if 'benchmark' not in sys.argv:
         }
         '''
       BUILD_AS_SHARED_LIB = 0
-      self.do_test(src, 'Constructing main object.\nConstructing lib object.\n')
+      def add_pre_run_and_checks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
+      self.do_test(src, 'Constructing main object.\nConstructing lib object.\n',
+                   post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
@@ -1909,8 +1916,15 @@ if 'benchmark' not in sys.argv:
         '''
       BUILD_AS_SHARED_LIB = 0
       EXPORTED_FUNCTIONS = ['_main']
+      def add_pre_run_and_checks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
       self.do_test(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
-                   output_nicerizer=lambda x: x.replace('\n', '*'))
+                   output_nicerizer=lambda x: x.replace('\n', '*'),
+                   post_build=add_pre_run_and_checks)
 
     def test_dlfcn_data_and_fptr(self):
       global LLVM_OPTS
@@ -2000,8 +2014,15 @@ if 'benchmark' not in sys.argv:
       BUILD_AS_SHARED_LIB = 0
       EXPORTED_FUNCTIONS = ['_main']
       EXPORTED_GLOBALS = []
+      def add_pre_run_and_checks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
       self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
-                   output_nicerizer=lambda x: x.replace('\n', '*'))
+                   output_nicerizer=lambda x: x.replace('\n', '*'),
+                   post_build=add_pre_run_and_checks)
 
     def test_strtod(self):
       src = r'''
@@ -2065,8 +2086,14 @@ if 'benchmark' not in sys.argv:
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
-            STDIO.prepare('somefile.binary', [100, 200, 50, 25, 10, 77, 123]); // 200 becomes -56, since signed chars are used in memory
-            Module.stdin = function(prompt) { return 'hi there!' };
+            FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
+            FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+            FS.root.write = true;
+            var test_files_input = 'hi there!';
+            var test_files_input_index = 0;
+            FS.init(function() {
+              return test_files_input.charCodeAt(test_files_input_index++) || null;
+            });
           '''
         )
         open(filename, 'w').write(src)
@@ -2077,6 +2104,479 @@ if 'benchmark' not in sys.argv:
 
       src = open(path_from_root('tests', 'files.cpp'), 'r').read()
       self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n', post_build=post)
+
+    def test_folders(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            FS.createFolder('/', 'test', true, false);
+            FS.createPath('/', 'test/hello/world/', true, false);
+            FS.createPath('/test', 'goodbye/world/', true, false);
+            FS.createPath('/test/goodbye', 'noentry', false, false);
+            FS.createDataFile('/test', 'freeforall.ext', 'abc', true, true);
+            FS.createDataFile('/test', 'restricted.ext', 'def', false, false);
+          '''
+        )
+        open(filename, 'w').write(src)
+
+      src = r'''
+        #include <stdio.h>
+        #include <dirent.h>
+        #include <errno.h>
+
+        int main() {
+          struct dirent *e;
+
+          // Basic correct behaviour.
+          DIR* d = opendir("/test");
+          printf("--E: %d\n", errno);
+          while ((e = readdir(d))) puts(e->d_name);
+          printf("--E: %d\n", errno);
+
+          // Empty folder; tell/seek.
+          puts("****");
+          d = opendir("/test/hello/world/");
+          e = readdir(d);
+          puts(e->d_name);
+          int pos = telldir(d);
+          e = readdir(d);
+          puts(e->d_name);
+          seekdir(d, pos);
+          e = readdir(d);
+          puts(e->d_name);
+
+          // Errors.
+          puts("****");
+          printf("--E: %d\n", errno);
+          d = opendir("/test/goodbye/noentry");
+          printf("--E: %d, D: %d\n", errno, d);
+          d = opendir("/i/dont/exist");
+          printf("--E: %d, D: %d\n", errno, d);
+          d = opendir("/test/freeforall.ext");
+          printf("--E: %d, D: %d\n", errno, d);
+          while ((e = readdir(d))) puts(e->d_name);
+          printf("--E: %d\n", errno);
+
+          return 0;
+        }
+        '''
+      expected = '''
+        --E: 0
+        .
+        ..
+        hello
+        goodbye
+        freeforall.ext
+        restricted.ext
+        --E: 0
+        ****
+        .
+        ..
+        ..
+        ****
+        --E: 0
+        --E: 13, D: 0
+        --E: 2, D: 0
+        --E: 20, D: 0
+        --E: 9
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
+
+    def test_stat(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            var f1 = FS.createFolder('/', 'test', true, true);
+            var f2 = FS.createDataFile(f1, 'file', 'abcdef', true, true);
+            var f3 = FS.createLink(f1, 'link', 'file', true, true);
+            var f4 = FS.createDevice(f1, 'device', function(){}, function(){});
+            f1.timestamp = f2.timestamp = f3.timestamp = f4.timestamp = new Date(1200000000000);
+          '''
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'stat', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_fcntl(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_fcntl_open(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            FS.createDataFile('/', 'test-file', 'abcdef', true, true);
+            FS.createFolder('/', 'test-folder', true, true);
+            FS.root.write = true;
+          '''
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_fcntl_misc(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_poll(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            FS.createDataFile('/', 'file', 'abcdef', true, true);
+            FS.createDevice('/', 'device', function() {}, function() {});
+          '''
+        )
+        open(filename, 'w').write(src)
+      src = r'''
+        #include <stdio.h>
+        #include <errno.h>
+        #include <fcntl.h>
+        #include <poll.h>
+
+        int main() {
+          struct pollfd multi[5];
+          multi[0].fd = open("/file", O_RDONLY, 0777);
+          multi[1].fd = open("/device", O_RDONLY, 0777);
+          multi[2].fd = 123;
+          multi[3].fd = open("/file", O_RDONLY, 0777);
+          multi[4].fd = open("/file", O_RDONLY, 0777);
+          multi[0].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
+          multi[1].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
+          multi[2].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
+          multi[3].events = 0x00;
+          multi[4].events = POLLOUT | POLLNVAL | POLLERR;
+
+          printf("ret: %d\n", poll(multi, 5, 123));
+          printf("errno: %d\n", errno);
+          printf("multi[0].revents: 0x%x\n", multi[0].revents);
+          printf("multi[1].revents: 0x%x\n", multi[1].revents);
+          printf("multi[2].revents: 0x%x\n", multi[2].revents);
+          printf("multi[3].revents: 0x%x\n", multi[3].revents);
+          printf("multi[4].revents: 0x%x\n", multi[4].revents);
+
+          return 0;
+        }
+        '''
+      expected = r'''
+        ret: 4
+        errno: 0
+        multi[0].revents: 0x5
+        multi[1].revents: 0x5
+        multi[2].revents: 0x20
+        multi[3].revents: 0x0
+        multi[4].revents: 0x4
+        '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
+
+    def test_statvfs(self):
+      src = r'''
+        #include <stdio.h>
+        #include <errno.h>
+        #include <sys/statvfs.h>
+
+        int main() {
+          struct statvfs s;
+
+          printf("result: %d\n", statvfs("/test", &s));
+          printf("errno: %d\n", errno);
+
+          printf("f_bsize: %lu\n", s.f_bsize);
+          printf("f_frsize: %lu\n", s.f_frsize);
+          printf("f_blocks: %lu\n", s.f_blocks);
+          printf("f_bfree: %lu\n", s.f_bfree);
+          printf("f_bavail: %lu\n", s.f_bavail);
+          printf("f_files: %lu\n", s.f_files);
+          printf("f_ffree: %lu\n", s.f_ffree);
+          printf("f_favail: %lu\n", s.f_favail);
+          printf("f_fsid: %lu\n", s.f_fsid);
+          printf("f_flag: %lu\n", s.f_flag);
+          printf("f_namemax: %lu\n", s.f_namemax);
+
+          return 0;
+        }
+        '''
+      expected = r'''
+        result: 0
+        errno: 0
+        f_bsize: 4096
+        f_frsize: 4096
+        f_blocks: 1000000
+        f_bfree: 500000
+        f_bavail: 500000
+        f_files: 8
+        f_ffree: 1000000
+        f_favail: 1000000
+        f_fsid: 42
+        f_flag: 2
+        f_namemax: 255
+        '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+
+    def test_libgen(self):
+      src = r'''
+        #include <stdio.h>
+        #include <libgen.h>
+
+        int main() {
+          char p1[16] = "/usr/lib", p1x[16] = "/usr/lib";
+          printf("%s -> ", p1);
+          printf("%s : %s\n", dirname(p1x), basename(p1));
+
+          char p2[16] = "/usr", p2x[16] = "/usr";
+          printf("%s -> ", p2);
+          printf("%s : %s\n", dirname(p2x), basename(p2));
+
+          char p3[16] = "/usr/", p3x[16] = "/usr/";
+          printf("%s -> ", p3);
+          printf("%s : %s\n", dirname(p3x), basename(p3));
+
+          char p4[16] = "/usr/lib///", p4x[16] = "/usr/lib///";
+          printf("%s -> ", p4);
+          printf("%s : %s\n", dirname(p4x), basename(p4));
+
+          char p5[16] = "/", p5x[16] = "/";
+          printf("%s -> ", p5);
+          printf("%s : %s\n", dirname(p5x), basename(p5));
+
+          char p6[16] = "///", p6x[16] = "///";
+          printf("%s -> ", p6);
+          printf("%s : %s\n", dirname(p6x), basename(p6));
+
+          char p7[16] = "/usr/../lib/..", p7x[16] = "/usr/../lib/..";
+          printf("%s -> ", p7);
+          printf("%s : %s\n", dirname(p7x), basename(p7));
+
+          char p8[16] = "", p8x[16] = "";
+          printf("(empty) -> %s : %s\n", dirname(p8x), basename(p8));
+
+          printf("(null) -> %s : %s\n", dirname(0), basename(0));
+
+          return 0;
+        }
+        '''
+      expected = '''
+        /usr/lib -> /usr : lib
+        /usr -> / : usr
+        /usr/ -> / : usr
+        /usr/lib/// -> /usr : lib
+        / -> / : /
+        /// -> / : /
+        /usr/../lib/.. -> /usr/../lib : ..
+        (empty) -> . : .
+        (null) -> . : .
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+
+    def test_utime(self):
+      def add_pre_run_and_checks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            var TEST_F1 = FS.createFolder('/', 'writeable', true, true);
+            var TEST_F2 = FS.createFolder('/', 'unwriteable', true, false);
+          '''
+        ).replace(
+          '// {{POST_RUN_ADDITIONS}}',
+          '''
+            print('first changed: ' + (TEST_F1.timestamp.getTime() == 1200000000000));
+            print('second changed: ' + (TEST_F2.timestamp.getTime() == 1200000000000));
+          '''
+        )
+        open(filename, 'w').write(src)
+
+      src = r'''
+        #include <stdio.h>
+        #include <errno.h>
+        #include <utime.h>
+
+        int main() {
+          struct utimbuf t = {1000000000, 1200000000};
+          char* writeable = "/writeable";
+          char* unwriteable = "/unwriteable";
+
+          utime(writeable, &t);
+          printf("writeable errno: %d\n", errno);
+
+          utime(unwriteable, &t);
+          printf("unwriteable errno: %d\n", errno);
+
+          return 0;
+        }
+        '''
+      expected = '''
+        writeable errno: 0
+        unwriteable errno: 1
+        first changed: true
+        second changed: false
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
+
+    def test_fs_base(self):
+      global INCLUDE_FULL_LIBRARY; INCLUDE_FULL_LIBRARY = 1
+      try:
+        def addJS(filename):
+          src = open(filename, 'r').read().replace(
+            '// {{PRE_RUN_ADDITIONS}}',
+            open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
+          open(filename, 'w').write(src)
+        src = 'int main() {return 0;}\n'
+        expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
+        self.do_test(src, expected, post_build=addJS)
+      finally:
+        INCLUDE_FULL_LIBRARY = 0
+
+    def test_unistd_access(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'access.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_curdir(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_close(self):
+      src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_confstr(self):
+      src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'confstr.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_ttyname(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'ttyname.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_dup(self):
+      src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_pathconf(self):
+      src = open(path_from_root('tests', 'unistd', 'pathconf.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'pathconf.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_truncate(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_swab(self):
+      src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'swab.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_isatty(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'isatty.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_sysconf(self):
+      src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'sysconf.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_login(self):
+      src = open(path_from_root('tests', 'unistd', 'login.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_unlink(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'unlink.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_links(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'links.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_sleep(self):
+      src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'sleep.out'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_unistd_io(self):
+      def add_pre_run(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          open(path_from_root('tests', 'unistd', 'io.js'), 'r').read()
+        )
+        open(filename, 'w').write(src)
+      src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
+      self.do_test(src, expected, post_build=add_pre_run)
+
+    def test_unistd_misc(self):
+      src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
+      self.do_test(src, expected)
 
     ### 'Big' tests
 
@@ -2238,7 +2738,7 @@ if 'benchmark' not in sys.argv:
         # Embed the font into the document
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''STDIO.prepare('font.ttf', %s);''' % str(
+          '''FS.createDataFile('/', 'font.ttf', %s, true, false);''' % str(
             map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
           )
         )
@@ -2333,9 +2833,10 @@ if 'benchmark' not in sys.argv:
         src = open(filename, 'a')
         src.write(
           '''
-            STDIO.prepare('paper.pdf', eval(read('paper.pdf.js')));
+            FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
+            FS.root.write = true;
             run();
-            print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['filename-1.ppm']].data));
+            print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents));
           '''
         )
         src.close()
@@ -2351,7 +2852,7 @@ if 'benchmark' not in sys.argv:
                                   os.path.join('splash', '.libs', 'libsplash.a'),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
-                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4'])
+                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms'])
 
       # Combine libraries
 
@@ -2384,12 +2885,12 @@ if 'benchmark' not in sys.argv:
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
-          '''STDIO.prepare('image.j2k', %s);''' % line_splitter(str(
+          '''FS.createDataFile('/', 'image.j2k', %s, true, false);FS.root.write = true;''' % line_splitter(str(
             map(ord, open(original_j2k, 'rb').read())
           ))
         ).replace(
           '// {{POST_RUN_ADDITIONS}}',
-          '''print("Data: " + JSON.stringify(STDIO.streams[STDIO.filenames['image.raw']].data));'''
+          '''print("Data: " + JSON.stringify(FS.root.contents['image.raw'].contents));'''
         )
         open(filename, 'w').write(src)
 
@@ -2498,7 +2999,7 @@ if 'benchmark' not in sys.argv:
 
       # Compare to each other, and to expected output
       self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'))
-      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'), 'AD:34,10\nAD:43,7008\nAD:53,7018\n')
+      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'), 'AD:38,10\nAD:47,7008\nAD:57,7018\n')
 
       # Test using build_ll_hook
       src = '''

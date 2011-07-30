@@ -498,7 +498,7 @@ function __shutdownRuntime__() {
     if (typeof func === 'number') {
       func = FUNCTION_TABLE[func];
     }
-    func(atexit.arg || null);
+    func(atexit.arg === undefined ? null : atexit.arg);
   }
 
   // allow browser to GC, set heaps to null?
@@ -549,24 +549,6 @@ function String_copy(ptr, addZero) {
 
 // Tools
 
-var PRINTBUFFER = '';
-function __print__(text) {
-  if (text === null) {
-    // Flush
-    print(PRINTBUFFER);
-    PRINTBUFFER = '';
-    return;
-  }
-  // We print only when we see a '\n', as console JS engines always add
-  // one anyhow.
-  PRINTBUFFER = PRINTBUFFER + text;
-  var endIndex;
-  while ((endIndex = PRINTBUFFER.indexOf('\n')) != -1) {
-    print(PRINTBUFFER.substr(0, endIndex));
-    PRINTBUFFER = PRINTBUFFER.substr(endIndex + 1);
-  }
-}
-
 function jrint(label, obj) { // XXX manual debugging
   if (!obj) {
     obj = label;
@@ -583,7 +565,14 @@ function intArrayFromString(stringy, dontAddNull) {
   var t;
   var i = 0;
   while (i < stringy.length) {
-    ret.push(stringy.charCodeAt(i));
+    var chr = stringy.charCodeAt(i);
+    if (chr > 0xFF) {
+#if ASSERTIONS
+        assert(false, 'Character code ' + chr + ' (' + stringy[i] + ')  at offset ' + i + ' not in 0x00-0xFF.');
+#endif
+      chr &= 0xFF;
+    }
+    ret.push(chr);
     i = i + 1;
   }
   if (!dontAddNull) {
@@ -594,37 +583,22 @@ function intArrayFromString(stringy, dontAddNull) {
 Module['intArrayFromString'] = intArrayFromString;
 
 function intArrayToString(array) {
-  var ret = '';
+  var ret = [];
   for (var i = 0; i < array.length; i++) {
-    ret += String.fromCharCode(array[i]);
+    var chr = array[i];
+    if (chr > 0xFF) {
+#if ASSERTIONS
+        assert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ')  at offset ' + i + ' not in 0x00-0xFF.');
+#endif
+      chr &= 0xFF;
+    }
+    ret.push(String.fromCharCode(chr));
   }
-  return ret;
+  return ret.join('');
 }
 
 {{{ unSign }}}
 {{{ reSign }}}
-
-// Use console read if available, otherwise we are in a browser, use an XHR
-if (!this['read']) {
-  this['read'] = function(url) {
-    // TODO: use mozResponseArrayBuffer/responseStream/etc. if available
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, false);
-    xhr.overrideMimeType('text/plain; charset=x-user-defined'); // ask for binary data
-    xhr.send(null);
-    if (xhr.status != 200 && xhr.status != 0) throw 'failed to open: ' + url;
-    return xhr.responseText;
-  };
-}
-
-function readBinary(filename) {
-  var stringy = read(filename);
-  var data = new Array(stringy.length);
-  for (var i = 0; i < stringy.length; i++) {
-    data[i] = stringy.charCodeAt(i) & 0xff;
-  }
-  return data;
-}
 
 // === Body ===
 

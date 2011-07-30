@@ -1,0 +1,8 @@
+fsync(opened): 0
+errno: 0
+close(opened): 0
+errno: 0
+fsync(closed): -1
+errno: 9
+close(closed): -1
+errno: 9

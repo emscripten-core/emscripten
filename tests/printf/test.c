@@ -14,6 +14,8 @@ int main() {
   printf("floats: %4.2f %+.0e %E\n", 3.1416, 3.1416, 3.1416);
   printf("Width trick: %*d\n", 5, 10);
   printf("%s %%\n", "A string");
+  printf("Null string: %7s\n", NULL);
+  printf("Null pointer: %p\n", NULL);
   printf("%lf\n", INFINITY);
   printf("%lF\n", INFINITY);
   printf("%lf\n", -INFINITY);

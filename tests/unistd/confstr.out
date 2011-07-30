@@ -1,0 +1,67 @@
+ret: 2
+_CS_PATH: /
+errno: 0
+
+ret: 43
+_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS: POSIX_V6_ILP32_OFF32
+POSIX_V6_ILP32_OFFBIG
+errno: 0
+
+ret: 11
+_CS_GNU_LIBC_VERSION: glibc 2.14
+errno: 0
+
+ret: 1
+_CS_GNU_LIBPTHREAD_VERSION: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_ILP32_OFF32_LIBS: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_ILP32_OFFBIG_LIBS: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_LP64_OFF64_CFLAGS: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_LP64_OFF64_LDFLAGS: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_LP64_OFF64_LIBS: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS: 
+errno: 0
+
+ret: 1
+_CS_POSIX_V6_LPBIG_OFFBIG_LIBS: 
+errno: 0
+
+ret: 5
+_CS_POSIX_V6_ILP32_OFF32_CFLAGS: -m32
+errno: 0
+
+ret: 5
+_CS_POSIX_V6_ILP32_OFF32_LDFLAGS: -m32
+errno: 0
+
+ret: 5
+_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS: -m32
+errno: 0
+
+ret: 48
+_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS: -m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+errno: 0
+
+(invalid) ret: 0
+errno: 22

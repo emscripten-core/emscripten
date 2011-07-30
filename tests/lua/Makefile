@@ -8,7 +8,7 @@ PLAT=generic # Emscripten needs |generic|!
 
 # Fix '...' with the proper absolute path
 CC = "/.../Dev/llvm-2.8/cbuild/Release/bin/clang++" # C++ compiler, so we don't use longjmp/setjmp!
-CFLAGS= -emit-llvm -U__i386__ -U__x86_64__
+CFLAGS= -m32 -emit-llvm -U__i386__ -U__x86_64__
 AR= "/.../Dev/llvm-2.8/cbuild/Release/bin/llvm-link"
 RANLIB= "/.../Dev/llvm-2.8/cbuild/Release/bin/llvm-dis"
 RM= rm -f
