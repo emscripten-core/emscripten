@@ -1467,8 +1467,11 @@ LibraryManager.library = {
           return -1;
         }
       } else {
+        var ungotSize = stream.ungotten.length;
         bytesRead = _pread(fildes, buf, nbyte, stream.position);
-        if (bytesRead != -1) stream.position += bytesRead;
+        if (bytesRead != -1) {
+          stream.position += (stream.ungotten.length - ungotSize) + bytesRead;
+        }
         return bytesRead;
       }
     }
