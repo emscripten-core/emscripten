@@ -340,7 +340,7 @@ LibraryManager.library = {
       var stdin = FS.createDevice(devFolder, 'stdin', input);
       var stdout = FS.createDevice(devFolder, 'stdout', null, output);
       var stderr = FS.createDevice(devFolder, 'stderr', null, error);
-      FS.createDevice(devFolder, 'tty', input, error);
+      FS.createDevice(devFolder, 'tty', input, output);
 
       // Create default streams.
       FS.streams[1] = {
@@ -537,7 +537,8 @@ LibraryManager.library = {
       }
     }
   },
-  // TODO: Check if we need to link any aliases.
+  __01readdir64_: 'readdir',
+  // TODO: Check if we need to link any other aliases.
 
   // ==========================================================================
   // utime.h
@@ -828,6 +829,8 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009604499/functions/statvfs.html
     return _statvfs(0, buf);
   },
+  __01statvfs64_: 'statvfs',
+  __01fstatvfs64_: 'fstatvfs',
 
   // ==========================================================================
   // fcntl.h
@@ -1101,6 +1104,13 @@ LibraryManager.library = {
     if (target === null) return -1;
     target.timestamp = new Date();
     return 0;
+  },
+  chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
+  chroot: function(path) {
+    // int chroot(const char *path);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
+    ___setErrNo(ERRNO_CODES.EACCES);
+    return -1;
   },
   close__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   close: function(fildes) {
@@ -1457,8 +1467,11 @@ LibraryManager.library = {
           return -1;
         }
       } else {
+        var ungotSize = stream.ungotten.length;
         bytesRead = _pread(fildes, buf, nbyte, stream.position);
-        if (bytesRead != -1) stream.position += bytesRead;
+        if (bytesRead != -1) {
+          stream.position += (stream.ungotten.length - ungotSize) + bytesRead;
+        }
         return bytesRead;
       }
     }
@@ -1751,6 +1764,16 @@ LibraryManager.library = {
   getpgrp: 'getgid',
   getpid: 'getgid',
   getppid: 'getgid',
+  getresuid: function(ruid, euid, suid) {
+    // int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
+    // http://linux.die.net/man/2/getresuid
+    // We have just one process/group/user, all with ID 0.
+    {{{ makeSetValue('ruid', '0', '0', 'i32') }}}
+    {{{ makeSetValue('euid', '0', '0', 'i32') }}}
+    {{{ makeSetValue('suid', '0', '0', 'i32') }}}
+    return 0;
+  },
+  getresgid: 'getresuid',
   getgroups__deps: ['__setErrNo', '$ERRNO_CODES'],
   getgroups: function(gidsetsize, grouplist) {
     // int getgroups(int gidsetsize, gid_t grouplist[]);
@@ -1763,6 +1786,7 @@ LibraryManager.library = {
       return 1;
     }
   },
+  // TODO: Implement initgroups, setgroups (grp.h).
   gethostid: function() {
     // long gethostid(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostid.html
@@ -1862,6 +1886,9 @@ LibraryManager.library = {
   },
   setregid: 'setpgid',
   setreuid: 'setpgid',
+  // NOTE: These do not match the signatures, but they all use the same stub.
+  setresuid: 'setpgid',
+  setresgid: 'setpgid',
   sleep__deps: ['usleep'],
   sleep: function(seconds) {
     // unsigned sleep(unsigned seconds);
@@ -2067,9 +2094,10 @@ LibraryManager.library = {
     self.DATASIZE += alignMemoryPage(bytes);
     return ret;  // Previous break location.
   },
-  // TODO: Check if these aliases are correct and if any others are needed.
   __01open64_: 'open',
   __01lseek64_: 'lseek',
+  __01ftruncate64_: 'ftruncate',
+  // TODO: Check if any other aliases are needed.
 
   // ==========================================================================
   // stdio.h
@@ -2625,7 +2653,7 @@ LibraryManager.library = {
       } else {
         {{{ makeSetValue('pos', '0', 'stream.position', 'i32') }}}
         var state = (stream.eof ? 1 : 0) + (stream.error ? 2 : 0);
-        {{{ makeSetValue('pos', Runtime.getNativeFieldSize('i32'), 'state', 'i32') }}}
+        {{{ makeSetValue('pos', Runtime.getNativeTypeSize('i32'), 'state', 'i32') }}}
         return 0;
       }
     } else {
@@ -2807,7 +2835,7 @@ LibraryManager.library = {
         return -1;
       } else {
         FS.streams[stream].position = {{{ makeGetValue('pos', '0', 'i32') }}};
-        var state = {{{ makeGetValue('pos', Runtime.getNativeFieldSize('i32'), 'i32') }}};
+        var state = {{{ makeGetValue('pos', Runtime.getNativeTypeSize('i32'), 'i32') }}};
         FS.streams[stream].eof = Boolean(state & 1);
         FS.streams[stream].error = Boolean(state & 2);
         return 0;
@@ -3101,10 +3129,11 @@ LibraryManager.library = {
     return _vsnprintf(s, undefined, format, ap);
   },
   // TODO: Implement v*scanf().
-  // TODO: Check if these aliases are correct and if any others are needed.
   __01fopen64_: 'fopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
+  __01tmpfile64_: 'tmpfile',
+  // TODO: Check if any other aliases are needed.
   _IO_getc: 'getc',
   _IO_putc: 'putc',
   _ZNSo3putEc: 'putchar',
@@ -3130,6 +3159,8 @@ LibraryManager.library = {
     // FIXME: Not really correct at all.
     _free(start);
   },
+
+  // TODO: Implement mremap.
 
   // ==========================================================================
   // stdlib.h
@@ -3187,10 +3218,6 @@ LibraryManager.library = {
       _free(ptr);
     }
     return ret;
-  },
-
-  getenv: function(name_) {
-    return 0; // TODO
   },
 
   strtod__deps: ['isspace', 'isdigit'],
@@ -3272,6 +3299,150 @@ LibraryManager.library = {
       _memcpy(base+i*size, temp+keys[i]*size, size);
     }
     _free(temp);
+  },
+
+  // NOTE: The global environment array is rebuilt from scratch after every
+  //       change, which is inefficient, but should not be a bottleneck unless
+  //       no malloc is used, in which case it'll leak memory.
+  __environ: null,
+  __buildEnvironment__deps: ['__environ'],
+  __buildEnvironment: function(env) {
+    if (___environ === null) ___environ = allocate([0], "i8**", ALLOC_STATIC);
+    var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
+    var envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
+    // Clear old.
+    if (envPtr !== 0) {
+      var cur = envPtr;
+      while ({{{ makeGetValue('cur', '0', 'i8*') }}} !== 0) {
+        _free({{{ makeGetValue('cur', '0', 'i8*') }}});
+        cur += ptrSize;
+      }
+      _free(envPtr);
+    }
+    // Collect key=value lines.
+    var strings = [];
+    for (var key in env) {
+      if (typeof env[key] === 'string') {
+        strings.push(key + '=' + env[key]);
+      }
+    }
+    // Make new.
+    envPtr = _malloc(ptrSize * (strings.length + 1));
+    {{{ makeSetValue('___environ', '0', 'envPtr', 'i8**') }}}
+    for (var i = 0; i < strings.length; i++) {
+      var line = strings[i];
+      var ptr = _malloc(line.length + 1);
+      for (var j = 0; j < line.length; j++) {
+        {{{ makeSetValue('ptr', 'j', 'line.charCodeAt(j)', 'i8') }}}
+      }
+      {{{ makeSetValue('ptr', 'j', '0', 'i8') }}}
+      {{{ makeSetValue('envPtr', 'i * ptrSize', 'ptr', 'i8*') }}}
+    }
+    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}}
+  },
+  $ENV__deps: ['__buildEnvironment'],
+  $ENV__postset: '___buildEnvironment(ENV);',
+  $ENV: {
+    'USER': 'root',
+    'PATH': '/',
+    'PWD': '/',
+    'HOME': '/',
+    'LANG': 'en_US.UTF-8',
+    '_': './this.program'
+  },
+  getenv__deps: ['$ENV'],
+  getenv: function(name) {
+    // char *getenv(const char *name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
+    if (name === 0) return 0;
+    name = Pointer_stringify(name);
+    if (!ENV.hasOwnProperty(name)) return 0;
+
+    if (_getenv.ret) _free(_getenv.ret);
+    _getenv.ret = allocate(intArrayFromString(ENV[name]), 'i8', ALLOC_NORMAL);
+    return _getenv.ret;
+  },
+  clearenv__deps: ['$ENV', '__buildEnvironment'],
+  clearenv: function(name) {
+    // int clearenv (void);
+    // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
+    ENV = {};
+    ___buildEnvironment(ENV);
+    return 0;
+  },
+  setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  setenv: function(envname, envval, overwrite) {
+    // int setenv(const char *envname, const char *envval, int overwrite);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
+    if (envname === 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    var name = Pointer_stringify(envname);
+    var val = Pointer_stringify(envval);
+    if (name === '' || name.indexOf('=') !== -1) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    if (ENV.hasOwnProperty(name) && !overwrite) return 0;
+    ENV[name] = val;
+    ___buildEnvironment(ENV);
+    return 0;
+  },
+  unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  unsetenv: function(name) {
+    // int unsetenv(const char *name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
+    if (name === 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    name = Pointer_stringify(name);
+    if (name === '' || name.indexOf('=') !== -1) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    if (ENV.hasOwnProperty(name)) {
+      delete ENV[name];
+      ___buildEnvironment(ENV);
+    }
+    return 0;
+  },
+  putenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  putenv: function(string) {
+    // int putenv(char *string);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/putenv.html
+    // WARNING: According to the standard (and the glibc implementation), the
+    //          string is taken by reference so future changes are reflected.
+    //          We copy it instead, possibly breaking some uses.
+    if (string === 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    string = Pointer_stringify(string);
+    var splitPoint = string.indexOf('=')
+    if (string === '' || string.indexOf('=') === -1) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+    var name = string.slice(0, splitPoint);
+    var value = string.slice(splitPoint + 1);
+    if (!(name in ENV) || ENV[name] !== value) {
+      ENV[name] = value;
+      ___buildEnvironment(ENV);
+    }
+    return 0;
+  },
+
+  getloadavg: function(loadavg, nelem) {
+    // int getloadavg(double loadavg[], int nelem);
+    // http://linux.die.net/man/3/getloadavg
+    var limit = Math.min(nelem, 3);
+    var doubleSize = {{{ Runtime.getNativeTypeSize('double') }}};
+    for (var i = 0; i < limit; i++) {
+      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}}
+    }
+    return limit;
   },
 
   // ==========================================================================
@@ -3489,6 +3660,7 @@ LibraryManager.library = {
 
   // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays
   strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=HEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=HEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=HEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=HEAP[f]=0;else{c=b+-1;a:for(;;){e=HEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=HEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else HEAP[b+-1]=0; HEAP[f]=b;c=c}else if(a==7){HEAP[f]=b;HEAP[b+-1]=0;c=b+-1}}return c},
+  // TODO: Compile strtok() from source.
 
   strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],
   strerror_r: function(errnum, strerrbuf, buflen) {
@@ -3518,99 +3690,156 @@ LibraryManager.library = {
   // ctype.h
   // ==========================================================================
 
+  isascii: function(chr) {
+    return chr >= 0 && (chr & 0x80) == 0;
+  },
+  toascii: function(chr) {
+    return chr & 0x7F;
+  },
+  toupper: function(chr) {
+    if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
+      return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
+    } else {
+      return chr;
+    }
+  },
+  _toupper: 'toupper',
+  tolower: function(chr) {
+    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
+      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
+    } else {
+      return chr;
+    }
+  },
+  _tolower: 'tolower',
+  // The following functions are defined as macros in glibc.
+  islower: function(chr) {
+    return chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0);
+  },
+  isupper: function(chr) {
+    return chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0);
+  },
+  isalpha: function(chr) {
+    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
+           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+  },
   isdigit: function(chr) {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
   },
-
   isxdigit: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
   },
-
-  isalpha: function(chr) {
-    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
-  },
-
   isalnum: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
   },
-
+  ispunct: function(chr) {
+    return (chr >= '!'.charCodeAt(0) && chr <= '/'.charCodeAt(0)) ||
+           (chr >= ':'.charCodeAt(0) && chr <= '@'.charCodeAt(0)) ||
+           (chr >= '['.charCodeAt(0) && chr <= '`'.charCodeAt(0)) ||
+           (chr >= '{'.charCodeAt(0) && chr <= '~'.charCodeAt(0));
+  },
   isspace: function(chr) {
     return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
   },
-
+  isblank: function(chr) {
+    return chr == ' '.charCodeAt(0) || chr == '\t'.charCodeAt(0);
+  },
   iscntrl: function(chr) {
-    return (chr >= 0 && chr <= 0x1f) || chr === 0x7f;
+    return (0 <= chr && chr <= 0x1F) || chr === 0x7F;
   },
-
-  isprint__deps: ['iscntrl'],
   isprint: function(chr) {
-    return !_iscntrl(chr);
+    return 0x1F < chr && chr < 0x7F;
   },
-
-  toupper: function(chr) {
-    if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
-      return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
-    }
-    return chr;
-  },
-
-  tolower: function(chr) {
-    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
-      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
-    }
-    return chr;
-  },
-
-  isupper: function(chr) {
-    return (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
-  },
-
-  islower: function(chr) {
-    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0));
-  },
-
-  // ==========================================================================
-  // ctype.h Linux specifics
-  // ==========================================================================
-
-  __ctype_b_loc: function() { // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
+  isgraph: 'isprint',
+  // Lookup tables for glibc ctype implementation.
+  __ctype_b_loc: function() {
+    // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
     if (!me.ret) {
       var values = [
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,8195,8194,8194,8194,8194,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,24577,49156,49156,49156,
+        49156,49156,49156,49156,49156,49156,49156,49156,49156,49156,49156,49156,55304,55304,55304,55304,55304,55304,55304,55304,
+        55304,55304,49156,49156,49156,49156,49156,49156,49156,54536,54536,54536,54536,54536,54536,50440,50440,50440,50440,50440,
+        50440,50440,50440,50440,50440,50440,50440,50440,50440,50440,50440,50440,50440,50440,50440,49156,49156,49156,49156,49156,
+        49156,54792,54792,54792,54792,54792,54792,50696,50696,50696,50696,50696,50696,50696,50696,50696,50696,50696,50696,50696,
+        50696,50696,50696,50696,50696,50696,50696,49156,49156,49156,49156,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,8195,0,8194,0,8194,0,8194,0,8194,0,2,0,2,
-        0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,24577,0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,
-        0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,0,55304,0,55304,0,55304,0,55304,0,55304,0,55304,
-        0,55304,0,55304,0,55304,0,55304,0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,0,54536,0,54536,0,54536,0,54536,
-        0,54536,0,54536,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,
-        0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,50440,0,49156,0,49156,0,49156,0,49156,0,49156,0,49156,0,54792,0,54792,
-        0,54792,0,54792,0,54792,0,54792,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,
-        0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,50696,0,49156,0,49156,0,49156,0,49156,0,2,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
       ];
-      me.ret = allocate([allocate(values, 'i16', ALLOC_STATIC)+256], 'void*', ALLOC_STATIC);
-#if USE_TYPED_ARRAYS == 0
-      assert(HEAP[HEAP[me.ret]] == 2);
-      assert(HEAP[HEAP[me.ret]-2] == 0);
-      assert(HEAP[HEAP[me.ret]+18] == 8195);
-#endif
+      var i16size = {{{ Runtime.getNativeTypeSize('i16') }}};
+      var arr = _malloc(values.length * i16size);
+      for (var i = 0; i < values.length; i++) {
+        {{{ makeSetValue('arr', 'i * i16size', 'values[i]', 'i16') }}}
+      }
+      me.ret = allocate([arr + 128 * i16size], 'i16*', ALLOC_STATIC);
+    }
+    return me.ret;
+  },
+  __ctype_tolower_loc: function() {
+    // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-tolower-loc.html
+    var me = ___ctype_tolower_loc;
+    if (!me.ret) {
+      var values = [
+        128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,
+        158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,
+        188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,
+        218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,
+        248,249,250,251,252,253,254,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,
+        33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,97,98,99,100,101,102,103,
+        104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,91,92,93,94,95,96,97,98,99,100,101,102,103,
+        104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,
+        134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,
+        164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,
+        194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,
+        224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,
+        254,255
+      ];
+      var i32size = {{{ Runtime.getNativeTypeSize('i32') }}};
+      var arr = _malloc(values.length * i32size);
+      for (var i = 0; i < values.length; i++) {
+        {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
+      }
+      me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_STATIC);
+    }
+    return me.ret;
+  },
+  __ctype_toupper_loc: function() {
+    // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-toupper-loc.html
+    var me = ___ctype_toupper_loc;
+    if (!me.ret) {
+      var values = [
+        128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,
+        158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,
+        188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,
+        218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,
+        248,249,250,251,252,253,254,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,
+        33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,
+        73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,
+        81,82,83,84,85,86,87,88,89,90,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,
+        145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,
+        175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,
+        205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,
+        235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255
+      ];
+      var i32size = {{{ Runtime.getNativeTypeSize('i32') }}};
+      var arr = _malloc(values.length * i32size);
+      for (var i = 0; i < values.length; i++) {
+        {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
+      }
+      me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_STATIC);
     }
     return me.ret;
   },
 
+  // ==========================================================================
   // LLVM specifics
+  // ==========================================================================
 
   llvm_va_copy: function(ppdest, ppsrc) {
     {{{ makeCopyValues('ppdest', 'ppsrc', QUANTUM_SIZE, 'null') }}}
@@ -3759,6 +3988,10 @@ LibraryManager.library = {
   atanf: 'Math.atan',
   atan2: 'Math.atan2',
   atan2f: 'Math.atan2',
+  exp: 'Math.exp',
+  expf: 'Math.exp',
+  log: 'Math.log',
+  logf: 'Math.log',
   sqrt: 'Math.sqrt',
   sqrtf: 'Math.sqrt',
   fabs: 'Math.abs',
@@ -3767,6 +4000,8 @@ LibraryManager.library = {
   ceilf: 'Math.ceil',
   floor: 'Math.floor',
   floorf: 'Math.floor',
+  pow: 'Math.pow',
+  powf: 'Math.powf',
   llvm_sqrt_f32: 'Math.sqrt',
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
@@ -3776,14 +4011,23 @@ LibraryManager.library = {
   llvm_exp_f32: 'Math.exp',
   llvm_exp_f64: 'Math.exp',
   ldexp: function(x, exp_) {
-    return x*Math.pow(2, exp_);
+    return x * Math.pow(2, exp_);
   },
+  ldexpf: 'ldexp',
+  scalb: 'ldexp',
+  scalbn: 'ldexp',
+  scalbnf: 'ldexp',
+  scalbln: 'ldexp',
+  scalblnf: 'ldexp',
 
   modf: function(x, intpart) {
     {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}}
     return x - {{{ makeGetValue('intpart', 0, 'double') }}};
   },
-
+  modff: function(x, intpart) {
+    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'float') }}}
+    return x - {{{ makeGetValue('intpart', 0, 'float') }}};
+  },
   frexp: function(x, exp_addr) {
     var sig = 0, exp_ = 0;
     if (x !== 0) {
@@ -3795,62 +4039,150 @@ LibraryManager.library = {
     {{{ makeSetValue('exp_addr', 0, 'exp_', 'i32') }}}
     return sig;
   },
-
+  frexpf: 'frexp',
   finite: function(x) {
     return isFinite(x);
   },
   __finite: 'finite',
-
   isinf: function(x) {
     return !isNaN(x) && !isFinite(x);
   },
   __isinf: 'isinf',
-
   isnan: function(x) {
     return isNaN(x);
   },
   __isnan: 'isnan',
-
   copysign: function(a, b) {
-      if (a<0 === b<0) return a;
+      if (a < 0 === b < 0) return a;
       return -a;
   },
-
+  copysignf: 'copysign',
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
   },
-
+  hypotf: 'hypot',
   sinh: function(x) {
     var p = Math.pow(Math.E, x);
     return (p - (1 / p)) / 2;
   },
-
+  sinhf: 'sinh',
   cosh: function(x) {
     var p = Math.pow(Math.E, x);
     return (p + (1 / p)) / 2;
   },
-
+  coshf: 'cosh',
   tanh__deps: ['sinh', 'cosh'],
   tanh: function(x) {
     return _sinh(x) / _cosh(x);
   },
-
+  tanhf: 'tanh',
   asinh: function(x) {
     return Math.log(x + Math.sqrt(x * x + 1));
   },
-
+  asinhf: 'asinh',
   acosh: function(x) {
     return Math.log(x * 1 + Math.sqrt(x * x - 1));
   },
-
+  acoshf: 'acosh',
   atanh: function(x) {
     return Math.log((1 + x) / (1 - x)) / 2;
   },
-
-  // LLVM internal math
-
+  atanhf: 'atanh',
   exp2: function(x) {
     return Math.pow(2, x);
+  },
+  exp2f: 'exp2',
+  expm1: function(x) {
+    return Math.exp(x) - 1;
+  },
+  expm1f: 'expm1',
+  round: function(x) {
+    return (x < 0) ? -Math.round(-x) : Math.round(x);
+  },
+  roundf: 'round',
+  lround: 'round',
+  lroundf: 'round',
+  llround: 'round',
+  llroundf: 'round',
+  rint: function(x) {
+    return (x > 0) ? -Math.round(-x) : Math.round(x);
+  },
+  rintf: 'rint',
+  lrint: 'rint',
+  lrintf: 'rint',
+  llrint: 'rint',
+  llrintf: 'rint',
+  nearbyint: 'rint',
+  nearbyintf: 'rint',
+  trunc: function(x) {
+    return (x < 0) ? Math.ceil(x) : Math.floor(x);
+  },
+  truncf: 'trunc',
+  fdim: function(x, y) {
+    return (x > y) ? x - y : 0;
+  },
+  fdimf: 'fdim',
+  fmax: function(x, y) {
+    return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
+  },
+  fmaxf: 'fmax',
+  fmin: function(x, y) {
+    return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
+  },
+  fminf: 'fmin',
+  fma: function(x, y, z) {
+    return x * y + z;
+  },
+  fmaf: 'fma',
+  fmod: function(x, y) {
+    return x % y;
+  },
+  fmodf: 'fmod',
+  remainder: 'fmod',
+  remainderf: 'fmod',
+  log10: function(x) {
+    return Math.log(x) / Math.LN10;
+  },
+  log10f: 'log10',
+  log1p: function(x) {
+    return Math.log(1 + x);
+  },
+  log1pf: 'log1p',
+  log2: function(x) {
+    return Math.log(x) / Math.LN2;
+  },
+  log2f: 'log2',
+  nan: function(x) {
+    return NaN;
+  },
+  nanf: 'nan',
+
+  // ==========================================================================
+  // sys/utsname.h
+  // ==========================================================================
+
+  __utsname_struct_layout: Runtime.generateStructInfo(null, '%struct.utsname'),
+  uname__deps: ['__utsname_struct_layout'],
+  uname: function(name) {
+    // int uname(struct utsname *name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/uname.html
+    function copyString(element, value) {
+      var offset = ___utsname_struct_layout[element];
+      for (var i = 0; i < value.length; i++) {
+        {{{ makeSetValue('name', 'offset + i', 'value.charCodeAt(i)', 'i8') }}}
+      }
+      {{{ makeSetValue('name', 'offset + i', '0', 'i8') }}}
+    }
+    if (name === 0) {
+      return -1;
+    } else {
+      copyString('sysname', 'Emscripten');
+      copyString('nodename', 'emscripten');
+      copyString('release', '1.0');
+      copyString('version', '#1');
+      copyString('machine', 'x86-JS');
+      return 0;
+    }
   },
 
   // ==========================================================================
@@ -3986,6 +4318,8 @@ LibraryManager.library = {
   // pwd.h
   // ==========================================================================
 
+  // TODO: Implement.
+  // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/pwd.h.html
   getpwuid: function(uid) {
     return 0; // NULL
   },
@@ -4178,8 +4512,9 @@ LibraryManager.library = {
     {{{ makeSetValue('_tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
+  stime__deps: ['$ERRNO_CODES', '__setErrNo'],
   stime: function(when) {
-    // TODO: Set errno.
+    ___setErrNo(ERRNO_CODES.EPERM);
     return -1;
   },
 
@@ -4189,6 +4524,8 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
+  // TODO: Implement remaining functions.
+  // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     // %struct.timeval = type { i32, i32 }
     var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
@@ -4197,6 +4534,41 @@ LibraryManager.library = {
     {{{ makeSetValue('ptr', 'indexes[1]', 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}} // microseconds
     return 0;
   },
+
+  // ==========================================================================
+  // sys/times.h
+  // ==========================================================================
+
+  __tms_struct_layout: Runtime.generateStructInfo(null, '%struct.tms'),
+  times__deps: ['__tms_struct_layout'],
+  times: function(buffer) {
+    // clock_t times(struct tms *buffer);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
+    // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
+    if (buffer !== 0) {
+      {{{ makeSetValues('buffer', '0', '0', 'null', '___tms_struct_layout.__size__') }}}
+    }
+    return 0;
+  },
+
+  // ==========================================================================
+  // sys/types.h
+  // ==========================================================================
+
+  // NOTE: These are fake, since we don't support the C device creation API.
+  // http://www.kernel.org/doc/man-pages/online/pages/man3/minor.3.html
+  makedev: function(maj, min) {
+    return 0;
+  },
+  gnu_dev_makedev: 'makedev',
+  major: function(dev) {
+    return 0;
+  },
+  gnu_dev_major: 'major',
+  minor: function(dev) {
+    return 0;
+  },
+  gnu_dev_minor: 'minor',
 
   // ==========================================================================
   // setjmp.h
@@ -4220,13 +4592,39 @@ LibraryManager.library = {
     // TODO
     return 0;
   },
-
   __libc_current_sigrtmin: function() {
     return 0;
   },
   __libc_current_sigrtmax: function() {
     return 0;
   },
+  kill__deps: ['$ERRNO_CODES', '__setErrNo'],
+  kill: function(pid, sig) {
+    // int kill(pid_t pid, int sig);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
+    // Makes no sense in a single-process environment.
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return -1;
+  },
+  killpg: 'kill',
+
+  // ==========================================================================
+  // sys/wait.h
+  // ==========================================================================
+
+  wait__deps: ['$ERRNO_CODES', '__setErrNo'],
+  wait: function(stat_loc) {
+    // pid_t wait(int *stat_loc);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
+    // Makes no sense in a single-process environment.
+    ___setErrNo(ERRNO_CODES.ECHILD);
+    return -1;
+  },
+  // NOTE: These aren't really the same, but we use the same stub for them all.
+  waitid: 'wait',
+  waitpid: 'wait',
+  wait3: 'wait',
+  wait4: 'wait',
 
   // ==========================================================================
   // locale.h
@@ -4250,6 +4648,7 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
+  // TODO: Implement for real.
   nl_langinfo: function(item) {
     var me = _nl_langinfo;
     if (!me.ret) {
@@ -4464,8 +4863,9 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // ** emscripten.h **
+  // emscripten.h
   // ==========================================================================
+
   emscripten_run_script: function(ptr) {
     eval(Pointer_stringify(ptr));
   },

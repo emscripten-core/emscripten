@@ -1,0 +1,233 @@
+ab1
+AB1
+cd2
+CD2
+
+toascii(-45): 83
+toascii( 10): 10
+toascii('a'): 97
+toascii(183): 55
+
+isascii/call(-45): 0
+isascii/call( 10): 1
+isascii/call('a'): 1
+isascii/call('A'): 1
+isascii/call('5'): 1
+isascii/call('.'): 1
+isascii/call(183): 0
+
+islower/call(-45): 0
+islower/call( 10): 0
+islower/call('a'): 1
+islower/call('A'): 0
+islower/call('5'): 0
+islower/call('.'): 0
+islower/call(183): 0
+
+isupper/call(-45): 0
+isupper/call( 10): 0
+isupper/call('a'): 0
+isupper/call('A'): 1
+isupper/call('5'): 0
+isupper/call('.'): 0
+isupper/call(183): 0
+
+isupper/call(-45): 0
+isupper/call( 10): 0
+isupper/call('a'): 0
+isupper/call('A'): 1
+isupper/call('5'): 0
+isupper/call('.'): 0
+isupper/call(183): 0
+
+isalpha/call(-45): 0
+isalpha/call( 10): 0
+isalpha/call('a'): 1
+isalpha/call('A'): 1
+isalpha/call('5'): 0
+isalpha/call('.'): 0
+isalpha/call(183): 0
+
+isdigit/call(-45): 0
+isdigit/call( 10): 0
+isdigit/call('a'): 0
+isdigit/call('A'): 0
+isdigit/call('5'): 1
+isdigit/call('.'): 0
+isdigit/call(183): 0
+
+isxdigit/call(-45): 0
+isxdigit/call( 10): 0
+isxdigit/call('a'): 1
+isxdigit/call('A'): 1
+isxdigit/call('5'): 1
+isxdigit/call('.'): 0
+isxdigit/call(183): 0
+
+isalnum/call(-45): 0
+isalnum/call( 10): 0
+isalnum/call('a'): 1
+isalnum/call('A'): 1
+isalnum/call('5'): 1
+isalnum/call('.'): 0
+isalnum/call(183): 0
+
+ispunct/call(-45): 0
+ispunct/call( 10): 0
+ispunct/call('a'): 0
+ispunct/call('A'): 0
+ispunct/call('5'): 0
+ispunct/call('.'): 1
+ispunct/call(183): 0
+
+isspace/call(-45): 0
+isspace/call( 10): 1
+isspace/call('a'): 0
+isspace/call('A'): 0
+isspace/call('5'): 0
+isspace/call('.'): 0
+isspace/call(183): 0
+
+isblank/call(-45): 0
+isblank/call( 10): 0
+isblank/call('a'): 0
+isblank/call('A'): 0
+isblank/call('5'): 0
+isblank/call('.'): 0
+isblank/call(183): 0
+
+iscntrl/call(-45): 0
+iscntrl/call( 10): 1
+iscntrl/call('a'): 0
+iscntrl/call('A'): 0
+iscntrl/call('5'): 0
+iscntrl/call('.'): 0
+iscntrl/call(183): 0
+
+isprint/call(-45): 0
+isprint/call( 10): 0
+isprint/call('a'): 1
+isprint/call('A'): 1
+isprint/call('5'): 1
+isprint/call('.'): 1
+isprint/call(183): 0
+
+isgraph/call(-45): 0
+isgraph/call( 10): 0
+isgraph/call('a'): 1
+isgraph/call('A'): 1
+isgraph/call('5'): 1
+isgraph/call('.'): 1
+isgraph/call(183): 0
+
+isascii(-45): 0
+isascii( 10): 1
+isascii('a'): 1
+isascii('A'): 1
+isascii('5'): 1
+isascii('.'): 1
+isascii(183): 0
+
+islower(-45): 0
+islower( 10): 0
+islower('a'): 1
+islower('A'): 0
+islower('5'): 0
+islower('.'): 0
+islower(183): 0
+
+isupper(-45): 0
+isupper( 10): 0
+isupper('a'): 0
+isupper('A'): 1
+isupper('5'): 0
+isupper('.'): 0
+isupper(183): 0
+
+isupper(-45): 0
+isupper( 10): 0
+isupper('a'): 0
+isupper('A'): 1
+isupper('5'): 0
+isupper('.'): 0
+isupper(183): 0
+
+isalpha(-45): 0
+isalpha( 10): 0
+isalpha('a'): 1
+isalpha('A'): 1
+isalpha('5'): 0
+isalpha('.'): 0
+isalpha(183): 0
+
+isdigit(-45): 0
+isdigit( 10): 0
+isdigit('a'): 0
+isdigit('A'): 0
+isdigit('5'): 1
+isdigit('.'): 0
+isdigit(183): 0
+
+isxdigit(-45): 0
+isxdigit( 10): 0
+isxdigit('a'): 1
+isxdigit('A'): 1
+isxdigit('5'): 1
+isxdigit('.'): 0
+isxdigit(183): 0
+
+isalnum(-45): 0
+isalnum( 10): 0
+isalnum('a'): 1
+isalnum('A'): 1
+isalnum('5'): 1
+isalnum('.'): 0
+isalnum(183): 0
+
+ispunct(-45): 0
+ispunct( 10): 0
+ispunct('a'): 0
+ispunct('A'): 0
+ispunct('5'): 0
+ispunct('.'): 1
+ispunct(183): 0
+
+isspace(-45): 0
+isspace( 10): 1
+isspace('a'): 0
+isspace('A'): 0
+isspace('5'): 0
+isspace('.'): 0
+isspace(183): 0
+
+isblank(-45): 0
+isblank( 10): 0
+isblank('a'): 0
+isblank('A'): 0
+isblank('5'): 0
+isblank('.'): 0
+isblank(183): 0
+
+iscntrl(-45): 0
+iscntrl( 10): 1
+iscntrl('a'): 0
+iscntrl('A'): 0
+iscntrl('5'): 0
+iscntrl('.'): 0
+iscntrl(183): 0
+
+isprint(-45): 0
+isprint( 10): 0
+isprint('a'): 1
+isprint('A'): 1
+isprint('5'): 1
+isprint('.'): 1
+isprint(183): 0
+
+isgraph(-45): 0
+isgraph( 10): 0
+isgraph('a'): 1
+isgraph('A'): 1
+isgraph('5'): 1
+isgraph('.'): 1
+isgraph(183): 0

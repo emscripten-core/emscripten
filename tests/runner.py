@@ -2576,6 +2576,72 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
       self.do_test(src, expected)
 
+    def test_uname(self):
+      src = r'''
+        #include <stdio.h>
+        #include <sys/utsname.h>
+
+        int main() {
+          struct utsname u;
+          printf("ret: %d\n", uname(&u));
+          printf("sysname: %s\n", u.sysname);
+          printf("nodename: %s\n", u.nodename);
+          printf("release: %s\n", u.release);
+          printf("version: %s\n", u.version);
+          printf("machine: %s\n", u.machine);
+          printf("invalid: %d\n", uname(0));
+          return 0;
+        }
+        '''
+      expected = '''
+        ret: 0
+        sysname: Emscripten
+        nodename: emscripten
+        release: 1.0
+        version: #1
+        machine: x86-JS
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+
+    def test_env(self):
+      src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_getloadavg(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          double load[5] = {42.13, 42.13, 42.13, 42.13, 42.13};
+          printf("ret: %d\n", getloadavg(load, 5));
+          printf("load[0]: %lf\n", load[0]);
+          printf("load[1]: %lf\n", load[1]);
+          printf("load[2]: %lf\n", load[2]);
+          printf("load[3]: %lf\n", load[3]);
+          printf("load[4]: %lf\n", load[4]);
+          return 0;
+        }
+        '''
+      expected = '''
+        ret: 3
+        load[0]: 0.100000
+        load[1]: 0.100000
+        load[2]: 0.100000
+        load[3]: 42.130000
+        load[4]: 42.130000
+      '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+
+    def test_ctype(self):
+      # The bit fiddling done by the macros using __ctype_b_loc requires this.
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+      CORRECT_SIGNS = 0
+
     ### 'Big' tests
 
     def test_fannkuch(self):
