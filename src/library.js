@@ -2641,14 +2641,14 @@ LibraryManager.library = {
     var streamObj = FS.streams[stream];
     if (streamObj.error || streamObj.eof) return 0;
     for (var i = 0; i < n - 1; i++) {
-      var byte = _fgetc(stream);
-      if (byte == -1) {
+      var byte_ = _fgetc(stream);
+      if (byte_ == -1) {
         if (streamObj.error) return 0;
         else if (streamObj.eof) break;
-      } else if (byte == '\n'.charCodeAt(0)) {
+      } else if (byte_ == '\n'.charCodeAt(0)) {
         break;
       }
-      {{{ makeSetValue('s', 'i', 'byte', 'i8') }}}
+      {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}}
     }
     {{{ makeSetValue('s', 'i', '0', 'i8') }}}
     return s;
