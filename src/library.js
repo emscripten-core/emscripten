@@ -4166,16 +4166,16 @@ LibraryManager.library = {
   uname: function(name) {
     // int uname(struct utsname *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/uname.html
+    function copyString(element, value) {
+      var offset = ___utsname_struct_layout[element];
+      for (var i = 0; i < value.length; i++) {
+        {{{ makeSetValue('name', 'offset + i', 'value.charCodeAt(i)', 'i8') }}}
+      }
+      {{{ makeSetValue('name', 'offset + i', '0', 'i8') }}}
+    }
     if (name === 0) {
       return -1;
     } else {
-      var copyString = function(element, value) {
-        var offset = ___utsname_struct_layout[element];
-        for (var i = 0; i < value.length; i++) {
-          {{{ makeSetValue('name', 'offset + i', 'value.charCodeAt(i)', 'i8') }}}
-        }
-        {{{ makeSetValue('name', 'offset + i', '0', 'i8') }}}
-      };
       copyString('sysname', 'Emscripten');
       copyString('nodename', 'emscripten');
       copyString('release', '1.0');
