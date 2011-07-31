@@ -12,13 +12,15 @@
 if (!this['Module']) {
   this['Module'] = {};
 }
-try {
-  Module.arguments = scriptArgs;
-} catch(e) {
+if (!Module.arguments) {
   try {
-    Module.arguments = arguments;
+    Module.arguments = scriptArgs;
   } catch(e) {
-    Module.arguments = [];
+    try {
+      Module.arguments = arguments;
+    } catch(e) {
+      Module.arguments = [];
+    }
   }
 }
 //*/

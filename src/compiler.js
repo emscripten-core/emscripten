@@ -12,6 +12,9 @@ if (!this['load']) {
 if (!this['read']) {
   read = function(f) { snarf(f) };
 }
+if (!this['arguments']) {
+  arguments = scriptArgs;
+}
 
 // Basic utilities
 
@@ -21,7 +24,10 @@ load('utility.js');
 
 load('settings.js');
 
-var settings = JSON.parse(readline());
+var settings_file = arguments[0];
+var ll_file = arguments[1];
+
+var settings = JSON.parse(read(settings_file));
 for (setting in settings) {
   this[setting] = settings[setting];
 }
@@ -64,13 +70,9 @@ eval(processMacros(preprocess(read('runtime.js'))));
 
 // Read llvm
 
-var lines = [];
-var line;
-do {
-  line = readline();
-  if (line == null) break;
-  lines.push(line);
-} while(true);
+var raw = read(ll_file);
+var lines = raw.split('\n');
+raw = null;
 
 // Do it
 
