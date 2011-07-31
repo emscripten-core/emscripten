@@ -3566,6 +3566,14 @@ LibraryManager.library = {
     return chr;
   },
 
+  isupper: function(chr) {
+    return (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+  },
+
+  islower: function(chr) {
+    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0));
+  },
+
   // ==========================================================================
   // ctype.h Linux specifics
   // ==========================================================================
