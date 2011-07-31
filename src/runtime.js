@@ -108,6 +108,7 @@ Runtime = {
   },
 
   getNativeFieldSize: getNativeFieldSize,
+  getNativeTypeSize: getNativeTypeSize,
   dedup: dedup,
 
   set: set,
@@ -123,7 +124,7 @@ Runtime = {
     type.flatIndexes = type.fields.map(function(field) {
       var size, alignSize;
       if (Runtime.isNumberType(field) || Runtime.isPointerType(field)) {
-        size = Runtime.getNativeFieldSize(field, true); // pack char; char; in structs, also char[X]s.
+        size = Runtime.getNativeTypeSize(field); // pack char; char; in structs, also char[X]s.
         alignSize = size;
       } else if (Runtime.isStructType(field)) {
         size = Types.types[field].flatSize;

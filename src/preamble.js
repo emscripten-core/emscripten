@@ -354,7 +354,7 @@ function allocate(slab, types, allocator) {
     size = slab.length;
   }
 
-  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
+  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, 1));
 
   var singleType = typeof types === 'string' ? types : null;
 
@@ -376,7 +376,7 @@ function allocate(slab, types, allocator) {
 #endif
 
     setValue(ret+i, curr, type);
-    i += Runtime.getNativeFieldSize(type, true);
+    i += Runtime.getNativeTypeSize(type);
   }
 
   return ret;

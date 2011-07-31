@@ -451,7 +451,7 @@ function analyzer(data) {
         if (fat) {
           QUANTUM_SIZE = 4;
         }
-        var ret = getNativeFieldSize(type, true);
+        var ret = getNativeTypeSize(type);
         if (fat) {
           QUANTUM_SIZE = 1;
         }
