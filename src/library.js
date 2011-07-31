@@ -2192,7 +2192,7 @@ LibraryManager.library = {
         } else {
           throw new Error('Unknown formatString argument type: ' + type);
         }
-        argIndex += Runtime.getNativeFieldSize(type);
+        argIndex += Runtime.getNativeFieldSize(type, true);
         return Number(ret);
       };
     } else {
@@ -2645,7 +2645,7 @@ LibraryManager.library = {
       } else {
         {{{ makeSetValue('pos', '0', 'stream.position', 'i32') }}}
         var state = (stream.eof ? 1 : 0) + (stream.error ? 2 : 0);
-        {{{ makeSetValue('pos', Runtime.getNativeFieldSize('i32'), 'state', 'i32') }}}
+        {{{ makeSetValue('pos', Runtime.getNativeFieldSize('i32', true), 'state', 'i32') }}}
         return 0;
       }
     } else {
@@ -2827,7 +2827,7 @@ LibraryManager.library = {
         return -1;
       } else {
         FS.streams[stream].position = {{{ makeGetValue('pos', '0', 'i32') }}};
-        var state = {{{ makeGetValue('pos', Runtime.getNativeFieldSize('i32'), 'i32') }}};
+        var state = {{{ makeGetValue('pos', Runtime.getNativeFieldSize('i32', true), 'i32') }}};
         FS.streams[stream].eof = Boolean(state & 1);
         FS.streams[stream].error = Boolean(state & 2);
         return 0;
@@ -3300,7 +3300,7 @@ LibraryManager.library = {
   __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
     if (___environ === null) ___environ = allocate([0], "i8**", ALLOC_STATIC);
-    var ptrSize = {{{ Runtime.getNativeFieldSize('i8*') }}};
+    var ptrSize = {{{ Runtime.getNativeFieldSize('i8*', true) }}};
     var envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
     // Clear old.
     if (envPtr !== 0) {
@@ -3430,7 +3430,7 @@ LibraryManager.library = {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
     var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ Runtime.getNativeFieldSize('double') }}};
+    var doubleSize = {{{ Runtime.getNativeFieldSize('double', true) }}};
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}}
     }
@@ -4640,6 +4640,7 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
+  // TODO: Implement for real.
   nl_langinfo: function(item) {
     var me = _nl_langinfo;
     if (!me.ret) {
