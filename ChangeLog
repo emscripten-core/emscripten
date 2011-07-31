@@ -1,3 +1,12 @@
+2011-07-31: Version 1.5
+
+  * eSpeak text-to-speech demo
+  * Filesystem emulation API
+  * Parse metadata type info for easier interaction with llvm structures
+  * Bindings generator improvements
+  * Many library improvements and fixes
+  * Various bug fixes
+
 2011-07-10: Version 1.4
 
   * Compiling and loading of dynamic libraries
