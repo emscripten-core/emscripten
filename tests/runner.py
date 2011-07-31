@@ -2634,9 +2634,12 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_ctype(self):
+      # The bit fiddling done by the macros using __ctype_b_loc requires this.
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
       src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
       self.do_test(src, expected)
+      CORRECT_SIGNS = 0
 
     ### 'Big' tests
 
