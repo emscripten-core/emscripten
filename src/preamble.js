@@ -354,7 +354,7 @@ function allocate(slab, types, allocator) {
     size = slab.length;
   }
 
-  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator ? allocator : ALLOC_STATIC](Math.max(size, 1));
+  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, 1));
 
   var singleType = typeof types === 'string' ? types : null;
 
@@ -549,8 +549,13 @@ function String_copy(ptr, addZero) {
 
 // Tools
 
-if (typeof print === 'undefined') {
-  print = console.log; // we are on the web
+function jrint(label, obj) { // XXX manual debugging
+  if (!obj) {
+    obj = label;
+    label = '';
+  } else
+    label = label + ' : ';
+  print(label + JSON.stringify(obj));
 }
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.
