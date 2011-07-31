@@ -537,12 +537,9 @@ function getLabelIds(labels) {
   return labels.map(function(label) { return label.ident });
 }
 
-//! Returns the size of a field, as C/C++ would have it (in 32-bit,
-//! for now).
-//! @param field The field type, by name
-//! @param alone Whether this is inside a structure (so padding is
-//!              used) or alone (line in char*, where no padding is done).
-function getNativeFieldSize(field, alone) {
+//! Returns the size of a type, as C/C++ would have it (in 32-bit, for now).
+//! @param type The type, by name.
+function getNativeTypeSize(type) {
   if (QUANTUM_SIZE == 1) return 1;
   var size = {
     '_i1': 1,
@@ -552,12 +549,18 @@ function getNativeFieldSize(field, alone) {
     '_i64': 8,
     "_float": 4,
     "_double": 8
-  }['_'+field]; // add '_' since float&double confuse closure compiler as keys
-  if (!size && field[field.length-1] == '*') {
+  }['_'+type]; // add '_' since float&double confuse Closure compiler as keys.
+  if (!size && type[type.length-1] == '*') {
     size = QUANTUM_SIZE; // A pointer
   }
-  if (!alone) size = Math.max(size, QUANTUM_SIZE);
   return size;
+}
+
+//! Returns the size of a structure field, as C/C++ would have it (in 32-bit,
+//! for now).
+//! @param type The type, by name.
+function getNativeFieldSize(type) {
+  return Math.max(Runtime.getNativeTypeSize(type), QUANTUM_SIZE);
 }
 
 function cleanLabel(label) {
@@ -572,7 +575,7 @@ function calcAllocatedSize(type) {
   if (pointingLevels(type) == 0 && isStructType(type)) {
     return Types.types[type].flatSize; // makeEmptyStruct(item.allocatedType).length;
   } else {
-    return getNativeFieldSize(type, true); // We can really get away with '1', though, at least on the stack...
+    return getNativeTypeSize(type); // We can really get away with '1', though, at least on the stack...
   }
 }
 
@@ -675,7 +678,7 @@ function getHeapOffset(offset, type) {
     if (getNativeFieldSize(type) > 4) {
       type = 'i32'; // XXX we emulate 64-bit values as 32
     }
-    return '((' + offset + ')>>' + (Math.log(getNativeFieldSize(type, true))/Math.LN2) + ')';
+    return '((' + offset + ')>>' + (Math.log(getNativeTypeSize(type))/Math.LN2) + ')';
   }
 }
 
@@ -975,7 +978,7 @@ function getGetElementPtrIndexes(item) {
     if (isStructType(type)) {
       indexes.push(getFastValue(Types.types[type].flatSize, '*', offset));
     } else {
-      indexes.push(getFastValue(getNativeFieldSize(type, true), '*', offset));
+      indexes.push(getFastValue(getNativeTypeSize(type), '*', offset));
     }
   }
   item.params.slice(2, item.params.length).forEach(function(arg) {

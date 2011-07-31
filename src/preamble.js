@@ -376,7 +376,7 @@ function allocate(slab, types, allocator) {
 #endif
 
     setValue(ret+i, curr, type);
-    i += Runtime.getNativeFieldSize(type, true);
+    i += Runtime.getNativeTypeSize(type);
   }
 
   return ret;

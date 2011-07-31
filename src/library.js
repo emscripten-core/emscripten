@@ -2200,7 +2200,7 @@ LibraryManager.library = {
         } else {
           throw new Error('Unknown formatString argument type: ' + type);
         }
-        argIndex += Runtime.getNativeFieldSize(type, true);
+        argIndex += Runtime.getNativeFieldSize(type);
         return Number(ret);
       };
     } else {
@@ -2653,7 +2653,7 @@ LibraryManager.library = {
       } else {
         {{{ makeSetValue('pos', '0', 'stream.position', 'i32') }}}
         var state = (stream.eof ? 1 : 0) + (stream.error ? 2 : 0);
-        {{{ makeSetValue('pos', Runtime.getNativeFieldSize('i32', true), 'state', 'i32') }}}
+        {{{ makeSetValue('pos', Runtime.getNativeTypeSize('i32'), 'state', 'i32') }}}
         return 0;
       }
     } else {
@@ -2835,7 +2835,7 @@ LibraryManager.library = {
         return -1;
       } else {
         FS.streams[stream].position = {{{ makeGetValue('pos', '0', 'i32') }}};
-        var state = {{{ makeGetValue('pos', Runtime.getNativeFieldSize('i32', true), 'i32') }}};
+        var state = {{{ makeGetValue('pos', Runtime.getNativeTypeSize('i32'), 'i32') }}};
         FS.streams[stream].eof = Boolean(state & 1);
         FS.streams[stream].error = Boolean(state & 2);
         return 0;
@@ -3308,7 +3308,7 @@ LibraryManager.library = {
   __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
     if (___environ === null) ___environ = allocate([0], "i8**", ALLOC_STATIC);
-    var ptrSize = {{{ Runtime.getNativeFieldSize('i8*', true) }}};
+    var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
     var envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
     // Clear old.
     if (envPtr !== 0) {
@@ -3438,7 +3438,7 @@ LibraryManager.library = {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
     var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ Runtime.getNativeFieldSize('double', true) }}};
+    var doubleSize = {{{ Runtime.getNativeTypeSize('double') }}};
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}}
     }
@@ -3772,7 +3772,7 @@ LibraryManager.library = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
       ];
-      var i16size = {{{ Runtime.getNativeFieldSize('i16', true) }}};
+      var i16size = {{{ Runtime.getNativeTypeSize('i16') }}};
       var arr = _malloc(values.length * i16size);
       for (var i = 0; i < values.length; i++) {
         {{{ makeSetValue('arr', 'i * i16size', 'values[i]', 'i16') }}}
@@ -3800,7 +3800,7 @@ LibraryManager.library = {
         224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,
         254,255
       ];
-      var i32size = {{{ Runtime.getNativeFieldSize('i32', true) }}};
+      var i32size = {{{ Runtime.getNativeTypeSize('i32') }}};
       var arr = _malloc(values.length * i32size);
       for (var i = 0; i < values.length; i++) {
         {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
@@ -3827,7 +3827,7 @@ LibraryManager.library = {
         205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,
         235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255
       ];
-      var i32size = {{{ Runtime.getNativeFieldSize('i32', true) }}};
+      var i32size = {{{ Runtime.getNativeTypeSize('i32') }}};
       var arr = _malloc(values.length * i32size);
       for (var i = 0; i < values.length; i++) {
         {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
