@@ -39,8 +39,6 @@ LibraryManager.library = {
     currentPath: '/',
     // The inode to assign to the next created object.
     nextInode: 2,
-    // The file creation mask used by the program.
-    cmask: 0x1ff,  // S_IRWXU | S_IRWXG | S_IRWXO.
     // Currently opened file or directory streams. Padded with null so the zero
     // index is unused, as the indices are used as pointers. This is not split
     // into separate fileStreams and folderStreams lists because the pointers
@@ -268,8 +266,8 @@ LibraryManager.library = {
         xhr.overrideMimeType('text/plain; charset=x-user-defined');  // another hint
         xhr.send(null);
         if (xhr.status != 200 && xhr.status != 0) success = false;
-        if (xhr.response) {
-          obj.contents = new Uint8Array(xhr.response);
+        if (xhr.response !== undefined) {
+          obj.contents = new Uint8Array(xhr.response || []);
         } else {
           obj.contents = intArrayFromString(xhr.responseText || '', true);
         }
@@ -786,11 +784,14 @@ LibraryManager.library = {
       return result;
     }
   },
-  // TODO: Test once cmask is used.
   umask__deps: ['$FS'],
   umask: function(newMask) {
-    var oldMask = FS.cmask;
-    FS.cmask = newMask;
+    // mode_t umask(mode_t cmask);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/umask.html
+    // NOTE: This value isn't actually used for anything.
+    if (_umask.cmask === undefined) _umask.cmask = 0x1FF;  // S_IRWXU | S_IRWXG | S_IRWXO.
+    var oldMask = _umask.cmask;
+    _umask.cmask = newMask;
     return oldMask;
   },
   __01fstat64_: 'fstat',
@@ -1668,15 +1669,14 @@ LibraryManager.library = {
     return 0;
   },
   ualarm: 'alarm',
-  confstr__deps: ['__setErrNo', '$ERRNO_CODES'],
+  confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
   confstr: function(name, buf, len) {
     // size_t confstr(int name, char *buf, size_t len);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
     var value;
     switch (name) {
       case 0:  // _CS_PATH.
-        // TODO: Get from environment variable.
-        value = '/';
+        value = ENV['PATH'] || '/';
         break;
       case 1:  // _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS.
         // Mimicing glibc.
@@ -2949,7 +2949,7 @@ LibraryManager.library = {
   setvbuf: function(stream, buf, type, size) {
     // int setvbuf(FILE *restrict stream, char *restrict buf, int type, size_t size);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/setvbuf.html
-    // TODO: Implement buffering.
+    // TODO: Implement custom buffering.
     return 0;
   },
   setbuf__deps: ['setvbuf'],
