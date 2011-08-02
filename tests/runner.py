@@ -1988,6 +1988,8 @@ if 'benchmark' not in sys.argv:
 
           // Test looked up function.
           func_fptr = (FUNCTYPE*) dlsym(lib_handle, "_Z4funciPFvvE");
+          // Load twice to test cache.
+          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "_Z4funciPFvvE");
           if (func_fptr == NULL) {
             printf("Could not find func.\\n");
             return 1;

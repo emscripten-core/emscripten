@@ -4211,26 +4211,27 @@ LibraryManager.library = {
   // Data for dlfcn.h.
   $DLFCN_DATA: {
     error: null,
-    isError: false,
+    errorMsg: null,
     loadedLibs: {}, // handle -> [refcount, name, lib_object]
     loadedLibNames: {}, // name -> handle
   },
   // void* dlopen(const char* filename, int flag);
-  dlopen__deps: ['$DLFCN_DATA', '$FS'],
+  dlopen__deps: ['$DLFCN_DATA', '$FS', '$ENV'],
   dlopen: function(filename, flag) {
-    // TODO: Add support for LD_LIBRARY_PATH.
-    filename = Pointer_stringify(filename);
+    // void *dlopen(const char *file, int mode);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
+    filename = (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
     if (DLFCN_DATA.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
       var handle = DLFCN_DATA.loadedLibNames[filename];
-      DLFCN_DATA.loadedLibs[handle][0]++;
+      DLFCN_DATA.loadedLibs[handle].refcount++;
       return handle;
     }
 
     var target = FS.findObject(filename);
     if (!target || target.isFolder || target.isDevice) {
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
       return 0;
     } else {
       FS.forceLoadFile(target);
@@ -4243,7 +4244,7 @@ LibraryManager.library = {
 #if ASSERTIONS
       print('Error in loading dynamic library: ' + e);
 #endif
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
       return 0;
     }
 
@@ -4253,7 +4254,12 @@ LibraryManager.library = {
       if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
     }
 
-    DLFCN_DATA.loadedLibs[handle] = [1, filename, lib_module];
+    DLFCN_DATA.loadedLibs[handle] = {
+      refcount: 1,
+      name: filename,
+      module: lib_module,
+      cached_functions: {}
+    };
     DLFCN_DATA.loadedLibNames[filename] = handle;
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
@@ -4270,13 +4276,15 @@ LibraryManager.library = {
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN_DATA'],
   dlclose: function(handle) {
+    // int dlclose(void *handle);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
     if (!DLFCN_DATA.loadedLibs[handle]) {
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
       return 1;
     } else {
       var lib_record = DLFCN_DATA.loadedLibs[handle];
-      if (lib_record[0]-- == 0) {
-        delete DLFCN_DATA.loadedLibNames[lib_record[1]];
+      if (lib_record.refcount-- == 0) {
+        delete DLFCN_DATA.loadedLibNames[lib_record.name];
         delete DLFCN_DATA.loadedLibs[handle];
       }
       return 0;
@@ -4285,40 +4293,47 @@ LibraryManager.library = {
   // void* dlsym(void* handle, const char* symbol);
   dlsym__deps: ['$DLFCN_DATA'],
   dlsym: function(handle, symbol) {
+    // void *dlsym(void *restrict handle, const char *restrict name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = '_' + Pointer_stringify(symbol);
 
     if (!DLFCN_DATA.loadedLibs[handle]) {
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     } else {
-      var lib_module = DLFCN_DATA.loadedLibs[handle][2];
-      if (!lib_module[symbol]) {
-        DLFCN_DATA.isError = true;
+      var lib = DLFCN_DATA.loadedLibs[handle];
+      if (!lib.module.hasOwnProperty(symbol)) {
+        DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                               '" in dynamic lib: ' + lib.name);
         return 0;
       } else {
-        var result = lib_module[symbol];
-        if (typeof result == 'function') {
-          // TODO: Cache functions rather than appending on every lookup.
-          FUNCTION_TABLE.push(result);
-          FUNCTION_TABLE.push(0);
-          result = FUNCTION_TABLE.length - 2;
+        if (lib.cached_functions.hasOwnProperty(symbol)) {
+          return lib.cached_functions[symbol];
+        } else {
+          var result = lib.module[symbol];
+          if (typeof result == 'function') {
+            FUNCTION_TABLE.push(result);
+            FUNCTION_TABLE.push(0);
+            result = FUNCTION_TABLE.length - 2;
+            lib.cached_functions = result;
+          }
+          return result;
         }
-        return result;
       }
     }
   },
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN_DATA'],
   dlerror: function() {
-    if (DLFCN_DATA.isError) {
+    // char *dlerror(void);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
+    if (DLFCN_DATA.errorMsg === null) {
       return 0;
     } else {
-      // TODO: Return non-generic error messages.
-      if (DLFCN_DATA.error === null) {
-        var msg = 'An error occurred while loading dynamic library.';
-        DLFCN_DATA.error = allocate(Module.intArrayFromString(msg), 'i8', 2);
-      }
-      DLFCN_DATA.isError = false;
+      if (DLFCN_DATA.error) _free(DLFCN_DATA.error);
+      var msgArr = Module.intArrayFromString(DLFCN_DATA.errorMsg);
+      DLFCN_DATA.error = allocate(msgArr, 'i8', ALLOC_NORMAL);
+      DLFCN_DATA.errorMsg = null;
       return DLFCN_DATA.error;
     }
   },
