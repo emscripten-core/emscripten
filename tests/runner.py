@@ -2396,8 +2396,8 @@ if 'benchmark' not in sys.argv:
         ).replace(
           '// {{POST_RUN_ADDITIONS}}',
           '''
-            print('first changed: ' + (TEST_F1.timestamp.getTime() == 1200000000000));
-            print('second changed: ' + (TEST_F2.timestamp.getTime() == 1200000000000));
+            print('first changed: ' + (TEST_F1.timestamp == 1200000000000));
+            print('second changed: ' + (TEST_F2.timestamp == 1200000000000));
           '''
         )
         open(filename, 'w').write(src)

@@ -31,7 +31,7 @@ LibraryManager.library = {
       write: false,
       isFolder: true,
       isDevice: false,
-      timestamp: new Date(),
+      timestamp: new Date().getTime(),
       inodeNumber: 1,
       contents: {}
     },
@@ -184,7 +184,7 @@ LibraryManager.library = {
       parent.contents[name] = {
         read: canRead === undefined ? true : canRead,
         write: canWrite === undefined ? false : canWrite,
-        timestamp: new Date(),
+        timestamp: new Date().getTime(),
         inodeNumber: FS.nextInode++
       };
       for (var key in properties) {
@@ -554,9 +554,9 @@ LibraryManager.library = {
       // NOTE: We don't keep track of access timestamps.
       var offset = ___utimbuf_struct_layout.modtime;
       time = {{{ makeGetValue('times', 'offset', 'i32') }}}
-      time = new Date(time * 1000);
+      time *= 1000;
     } else {
-      time = new Date();
+      time = new Date().getTime();
     }
     var file = FS.findObject(Pointer_stringify(path));
     if (file === null) return -1;
@@ -652,12 +652,12 @@ LibraryManager.library = {
 
     // Variables.
     {{{ makeSetValue('buf', 'offsets.st_ino', 'obj.inodeNumber', 'i32') }}}
-    var time = Math.floor(obj.timestamp.getTime() / 1000);
+    var time = Math.floor(obj.timestamp / 1000);
     if (offsets.st_atime === undefined) {
       offsets.st_atime = offsets.st_atim.tv_sec;
       offsets.st_mtime = offsets.st_mtim.tv_sec;
       offsets.st_ctime = offsets.st_ctim.tv_sec;
-      var nanosec = (obj.timestamp.getTime() % 1000) * 1000;
+      var nanosec = (obj.timestamp % 1000) * 1000;
       {{{ makeSetValue('buf', 'offsets.st_atim.tv_nsec', 'nanosec', 'i32') }}}
       {{{ makeSetValue('buf', 'offsets.st_mtim.tv_nsec', 'nanosec', 'i32') }}}
       {{{ makeSetValue('buf', 'offsets.st_ctim.tv_nsec', 'nanosec', 'i32') }}}
@@ -768,7 +768,7 @@ LibraryManager.library = {
     if (obj === null) return -1;
     obj.read = mode & 0x100;  // S_IRUSR.
     obj.write = mode & 0x80;  // S_IWUSR.
-    obj.timestamp = new Date();
+    obj.timestamp = new Date().getTime();
     return 0;
   },
   fchmod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chmod'],
@@ -1102,7 +1102,7 @@ LibraryManager.library = {
     if (typeof path !== 'string') path = Pointer_stringify(path);
     var target = FS.findObject(path, dontResolveLastLink);
     if (target === null) return -1;
-    target.timestamp = new Date();
+    target.timestamp = new Date().getTime();
     return 0;
   },
   chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -1270,7 +1270,7 @@ LibraryManager.library = {
         var contents = target.contents;
         if (length < contents.length) contents.length = length;
         else while (length > contents.length) contents.push(0);
-        target.timestamp = new Date();
+        target.timestamp = new Date().getTime();
         return 0;
       }
     }
@@ -1618,7 +1618,7 @@ LibraryManager.library = {
       for (var i = 0; i < nbyte; i++) {
         contents[offset + i] = {{{ makeGetValue('buf', 'i', 'i8') }}};
       }
-      stream.object.timestamp = new Date();
+      stream.object.timestamp = new Date().getTime();
       return i;
     }
   },
@@ -1647,7 +1647,7 @@ LibraryManager.library = {
               return -1;
             }
           }
-          stream.object.timestamp = new Date();
+          stream.object.timestamp = new Date().getTime();
           return i;
         } else {
           ___setErrNo(ERRNO_CODES.ENXIO);
