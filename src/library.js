@@ -577,7 +577,7 @@ LibraryManager.library = {
       // Null or empty results in '.'.
       var me = ___libgenSplitName;
       if (!me.ret) {
-        me.ret = allocate(['.'.charCodeAt(0), 0], 'i8', ALLOC_STATIC);
+        me.ret = allocate(['.'.charCodeAt(0), 0], 'i8', ALLOC_NORMAL);
       }
       return [me.ret, -1];
     } else {
@@ -2995,7 +2995,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpfile.html
     // TODO: Delete the created file on closing.
     if (_tmpfile.mode) {
-      _tmpfile.mode = allocate(intArrayFromString('w+'), 'i8', ALLOC_STATIC);
+      _tmpfile.mode = allocate(intArrayFromString('w+'), 'i8', ALLOC_NORMAL);
     }
     return _fopen(_tmpnam(0), _tmpfile.mode);
   },
@@ -3301,42 +3301,51 @@ LibraryManager.library = {
     _free(temp);
   },
 
-  // NOTE: The global environment array is rebuilt from scratch after every
-  //       change, which is inefficient, but should not be a bottleneck unless
-  //       no malloc is used, in which case it'll leak memory.
   __environ: null,
   __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
-    if (___environ === null) ___environ = allocate([0], "i8**", ALLOC_STATIC);
-    var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
-    var envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
-    // Clear old.
-    if (envPtr !== 0) {
-      var cur = envPtr;
-      while ({{{ makeGetValue('cur', '0', 'i8*') }}} !== 0) {
-        _free({{{ makeGetValue('cur', '0', 'i8*') }}});
-        cur += ptrSize;
-      }
-      _free(envPtr);
+    // WARNING: Arbitrary limit!
+    var MAX_ENV_VALUES = 64;
+    var TOTAL_ENV_SIZE = 1024;
+
+    // Statically allocate memory for the environment.
+    var poolPtr;
+    var envPtr;
+    if (___environ === null) {
+      poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
+      envPtr = allocate(MAX_ENV_VALUES * {{{ QUANTUM_SIZE }}},
+                        'i8*', ALLOC_STATIC);
+      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
+      ___environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
+    } else {
+      envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
+      poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
+
     // Collect key=value lines.
     var strings = [];
+    var totalSize = 0;
     for (var key in env) {
       if (typeof env[key] === 'string') {
-        strings.push(key + '=' + env[key]);
+        var line = key + '=' + env[key];
+        strings.push(line);
+        totalSize += line.length;
       }
     }
+    if (totalSize > TOTAL_ENV_SIZE) {
+      throw new Error('Environment size exceeded TOTAL_ENV_SIZE!');
+    }
+
     // Make new.
-    envPtr = _malloc(ptrSize * (strings.length + 1));
-    {{{ makeSetValue('___environ', '0', 'envPtr', 'i8**') }}}
+    var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
-      var ptr = _malloc(line.length + 1);
       for (var j = 0; j < line.length; j++) {
-        {{{ makeSetValue('ptr', 'j', 'line.charCodeAt(j)', 'i8') }}}
+        {{{ makeSetValue('poolPtr', 'j', 'line.charCodeAt(j)', 'i8') }}}
       }
-      {{{ makeSetValue('ptr', 'j', '0', 'i8') }}}
-      {{{ makeSetValue('envPtr', 'i * ptrSize', 'ptr', 'i8*') }}}
+      {{{ makeSetValue('poolPtr', 'j', '0', 'i8') }}}
+      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}}
+      poolPtr += line.length + 1;
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}}
   },
@@ -3777,7 +3786,7 @@ LibraryManager.library = {
       for (var i = 0; i < values.length; i++) {
         {{{ makeSetValue('arr', 'i * i16size', 'values[i]', 'i16') }}}
       }
-      me.ret = allocate([arr + 128 * i16size], 'i16*', ALLOC_STATIC);
+      me.ret = allocate([arr + 128 * i16size], 'i16*', ALLOC_NORMAL);
     }
     return me.ret;
   },
@@ -3805,7 +3814,7 @@ LibraryManager.library = {
       for (var i = 0; i < values.length; i++) {
         {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
       }
-      me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_STATIC);
+      me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_NORMAL);
     }
     return me.ret;
   },
@@ -3832,7 +3841,7 @@ LibraryManager.library = {
       for (var i = 0; i < values.length; i++) {
         {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
       }
-      me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_STATIC);
+      me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_NORMAL);
     }
     return me.ret;
   },
@@ -4826,7 +4835,7 @@ LibraryManager.library = {
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
     var me = ___setErrNo;
-    if (!me.ptr) me.ptr = allocate([0], 'i32', ALLOC_STATIC);
+    if (!me.ptr) me.ptr = allocate([0], 'i32', ALLOC_NORMAL);
     {{{ makeSetValue('me.ptr', '0', 'value', 'i32') }}}
     return value;
   },
