@@ -271,13 +271,13 @@ if 'benchmark' not in sys.argv:
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-    def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None):
+    def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
       if COMPILER != LLVM_GCC: return self.skip() # We use existing .ll, so which compiler is unimportant
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
       self.prep_ll_test(filename, ll_file, force_recompile, build_ll_hook)
-      self.do_emscripten(filename)
+      self.do_emscripten(filename, extra_args=extra_emscripten_args)
       self.do_test(None,
                    expected_output,
                    args,
@@ -3026,7 +3026,8 @@ if 'benchmark' not in sys.argv:
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       js_engines=[V8_ENGINE], # XXX Moz bug 675269
-                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
+                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
+                      extra_emscripten_args=['-m'])
 
     # Test cases in separate files. Note that these files may contain invalid .ll!
     # They are only valid enough for us to read for test purposes, not for llvm-as
