@@ -1903,7 +1903,9 @@ LibraryManager.library = {
     // We're single-threaded, so use a busy loop. Super-ugly.
     var msec = useconds / 1000;
     var start = new Date().getTime();
-    while (new Date().getTime() - start < msec);
+    while (new Date().getTime() - start < msec) {
+      // Do nothing.
+    }
     return 0;
   },
   swab: function(src, dest, nbytes) {
