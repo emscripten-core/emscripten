@@ -212,7 +212,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             });
             constant = '[' + constant.join(', ') + ']';
           }
-          constant = makePointer(constant, null, 'ALLOC_STATIC', item.type);
+          constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
 
           var js = item.ident + '=' + constant + ';';
           if (item.ident in EXPORTED_GLOBALS) {
