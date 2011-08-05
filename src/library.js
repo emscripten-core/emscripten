@@ -3302,8 +3302,9 @@ LibraryManager.library = {
     _free(temp);
   },
 
+  environ: null,
   __environ: null,
-  __buildEnvironment__deps: ['__environ'],
+  __buildEnvironment__deps: ['environ', '__environ'],
   __buildEnvironment: function(env) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -3312,14 +3313,17 @@ LibraryManager.library = {
     // Statically allocate memory for the environment.
     var poolPtr;
     var envPtr;
-    if (___environ === null) {
+    if (_environ === null) {
+      // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ QUANTUM_SIZE }}},
                         'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
-      ___environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
+      _environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
+      // Set up global variable alias.
+      ___environ = _environ;
     } else {
-      envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue('_environ', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 
