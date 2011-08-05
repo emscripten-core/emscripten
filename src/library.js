@@ -274,6 +274,8 @@ LibraryManager.library = {
       } else if (typeof read !== 'undefined') {
         // Command-line.
         try {
+          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
+          //          read() will try to parse UTF8.
           obj.contents = intArrayFromString(read(obj.url), true);
         } catch (e) {
           success = false;
@@ -293,7 +295,7 @@ LibraryManager.library = {
 
       // Default handlers.
       if (!input) input = function() {
-        if (!input.cache) {
+        if (!input.cache || !input.cache.length) {
           var result;
           if (window && typeof window.prompt == 'function') {
             // Browser.
@@ -2668,13 +2670,12 @@ LibraryManager.library = {
     if (!(stream in FS.streams)) return 0;
     var streamObj = FS.streams[stream];
     if (streamObj.error || streamObj.eof) return 0;
-    for (var i = 0; i < n - 1; i++) {
-      var byte_ = _fgetc(stream);
+    var byte_;
+    for (var i = 0; i < n - 1 && byte_ != '\n'.charCodeAt(0); i++) {
+      byte_ = _fgetc(stream);
       if (byte_ == -1) {
         if (streamObj.error) return 0;
         else if (streamObj.eof) break;
-      } else if (byte_ == '\n'.charCodeAt(0)) {
-        break;
       }
       {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}}
     }
