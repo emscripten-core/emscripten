@@ -96,7 +96,7 @@ for classname, clazz in parsed.classes.iteritems():
     print 'zz ', classname, 'has num_args of', method['num_args']
 
     if method['static']:
-      method['rtnType'] = method['rtnType'].replace('static', '')
+      method['returns'] = method['returns'].replace('static', '')
 
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
@@ -112,7 +112,7 @@ for classname, clazz in parsed.classes.iteritems():
 
       if method['name'] not in clazz['final_methods']:
         clazz['final_methods'][method['name']] = {}
-        for key in ['name', 'constructor', 'static', 'rtnType', 'destructor', 'pure_virtual']:
+        for key in ['name', 'constructor', 'static', 'returns', 'destructor', 'pure_virtual']:
           clazz['final_methods'][method['name']][key] = method[key]
         clazz['final_methods'][method['name']]['num_args'] = method['num_args'].copy()
         clazz['final_methods'][method['name']]['parameters'] = method['parameters'][:]
@@ -171,7 +171,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     destructor = method['destructor']
     static = method['static']
 
-    print "zz generating: ", generating_classname, classname, mname, constructor, method['rtnType']
+    print "zz generating: ", generating_classname, classname, mname, constructor, method['returns']
 
     if destructor: continue
     if constructor and inherited: continue
@@ -203,7 +203,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     if skip:
       continue
 
-    ret = ((classname + ' *') if constructor else method['rtnType']).replace('virtual ', '')
+    ret = ((classname + ' *') if constructor else method['returns']).replace('virtual ', '')
     callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
     actualmname = ''
