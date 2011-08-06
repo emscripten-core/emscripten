@@ -3197,7 +3197,7 @@ if 'benchmark' not in sys.argv:
           Parent::Parent(int val) : value(val) { printf("Parent:%d\\n", val); }
           void Parent::mulVal(int mul) { value *= mul; }
 
-          #include "bindingtest.c"
+          #include "bindingtest.cpp"
         '''
 
         script_src_2 = '''

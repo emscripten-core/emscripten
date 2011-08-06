@@ -4,7 +4,7 @@
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
 
 Usage:
-        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- "LAMBDA" ["IGNORED"]]
+        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- "IGNORED"]
 
   BASENAME is the name used for output files (with added suffixes).
   HEADER1 etc. are the C++ headers to parse
@@ -18,9 +18,6 @@ We generate the following:
 
   * BASENAME.js: JavaScript bindings file, with generated JavaScript wrapper
                  objects. This is a high-level wrapping, using native JS classes.
-
-  * LAMBDA: Optionally, provide the text of a lambda function here that will be
-            used to process the header files. This lets you manually tweak them.
 
   * IGNORED: Optionally, a list of classes and class::methods not to generate code for.
              Comma separated.
@@ -47,14 +44,11 @@ import CppHeaderParser
 
 basename = sys.argv[1]
 
-processor = lambda text: text
 ignored = []
 
 if '--' in sys.argv:
   index = sys.argv.index('--')
-  processor = eval(sys.argv[index+1])
-  if len(sys.argv) > index+2:
-    ignored = sys.argv[index+2].split(',')
+  ignored = sys.argv[index+1].split(',')
   sys.argv = sys.argv[:index]
 
 # First pass - read everything
@@ -68,8 +62,7 @@ for header in sys.argv[2:]:
   text += open(header, 'r').read()
 all_h_name = basename + '.all.h'
 all_h = open(all_h_name, 'w')
-
-all_h.write(processor(text))
+all_h.write(text)
 all_h.close()
 
 parsed = CppHeaderParser.CppHeader(all_h_name)
@@ -86,6 +79,15 @@ for classname, clazz in parsed.classes.iteritems():
     method['constructor'] = constructor # work around cppheaderparser issue
     args = method['parameters']
 
+    #if method['name'] == 'addWheel': print 'qqqq', classname, method
+
+    # Fill in some missing stuff
+    for i in range(len(args)):
+      if args[i]['pointer'] and '*' not in args[i]['type']:
+        args[i]['type'] += '*'
+      if args[i]['reference'] and '&' not in args[i]['type']:
+        args[i]['type'] += '&'
+
     default_param = len(args)+1
     for i in range(len(args)):
       if args[i].get('default'):
@@ -97,6 +99,13 @@ for classname, clazz in parsed.classes.iteritems():
 
     if method['static']:
       method['returns'] = method['returns'].replace('static', '')
+
+    # Fill in some missing stuff
+    if method.get('returns_const'): method['returns'] = 'const ' + method['returns']
+    if method.get('returns_pointer'):
+      while method['returns'].count('*') < method['returns_pointer']:
+        method['returns'] += '*'
+    if method.get('returns_reference'): method['returns'] += '&'
 
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
@@ -154,7 +163,7 @@ for classname, clazz in parsed.classes.iteritems():
 funcs = {} # name -> # of copies in the original, and originalname in a copy
 c_funcs = []
 
-gen_c = open(basename + '.c', 'w')
+gen_c = open(basename + '.cpp', 'w')
 gen_js = open(basename + '.js', 'w')
 
 gen_c.write('extern "C" {\n')
@@ -207,36 +216,8 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
     actualmname = ''
-    if mname == '__operator___assignment_':
-      callprefix = '*self = '
-      continue # TODO
-    elif mname == '__operator____mul__':
-      callprefix = '*self * '
-      continue # TODO
-    elif mname == '__operator____div__':
-      callprefix = '*self + '
-      continue # TODO
-    elif mname == '__operator____add__':
-      callprefix = '*self + '
-      continue # TODO
-    elif mname == '__operator____sub__':
-      callprefix = '*self - '
-      continue # TODO
-    elif mname == '__operator____imult__':
-      callprefix = '*self * '
-      continue # TODO
-    elif mname == '__operator____idiv__':
-      callprefix = '*self + '
-      continue # TODO
-    elif mname == '__operator____iadd__':
-      callprefix = '*self + '
-      continue # TODO
-    elif mname == '__operator____isub__':
-      callprefix = '*self - '
-      continue # TODO
-    elif mname == '__operator____eq__':
-      callprefix = '*self - '
-      continue # TODO
+    if '__operator__' in mname:
+      continue # TODO: operators
     else:
       actualmname = method.get('truename') or mname
 
@@ -275,7 +256,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
     # JS
     calls = ''
-    print 'js loopin', method['num_args'], '|', len(args), args
+    print 'js loopin', method['num_args'], '|', len(args)#, args
     for i in method['num_args']:
       print '    ', i, type(i)
       if i != method['num_args'][0]:
