@@ -633,8 +633,8 @@ function indentify(text, indent) {
 function correctSpecificSign() {
   assert(!(CORRECT_SIGNS >= 2 && !Debugging.on), 'Need debugging for line-specific corrections');
   if (!Framework.currItem) return false;
-  return (CORRECT_SIGNS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES) ||
-         (CORRECT_SIGNS === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_SIGNS_LINES));
+  return (CORRECT_SIGNS === 2 && Debugging.getIdentifier() in CORRECT_SIGNS_LINES) ||
+         (CORRECT_SIGNS === 3 && !(Debugging.getIdentifier() in CORRECT_SIGNS_LINES));
 }
 function correctSigns() {
   return CORRECT_SIGNS === 1 || correctSpecificSign();
@@ -643,8 +643,8 @@ function correctSigns() {
 function correctSpecificOverflow() {
   assert(!(CORRECT_OVERFLOWS >= 2 && !Debugging.on), 'Need debugging for line-specific corrections');
   if (!Framework.currItem) return false;
-  return (CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES) ||
-         (CORRECT_OVERFLOWS === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_OVERFLOWS_LINES));
+  return (CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier() in CORRECT_OVERFLOWS_LINES) ||
+         (CORRECT_OVERFLOWS === 3 && !(Debugging.getIdentifier() in CORRECT_OVERFLOWS_LINES));
 }
 function correctOverflows() {
   return CORRECT_OVERFLOWS === 1 || correctSpecificOverflow();
@@ -653,8 +653,8 @@ function correctOverflows() {
 function correctSpecificRounding() {
   assert(!(CORRECT_ROUNDINGS >= 2 && !Debugging.on), 'Need debugging for line-specific corrections');
   if (!Framework.currItem) return false;
-  return (CORRECT_ROUNDINGS === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES) ||
-         (CORRECT_ROUNDINGS === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in CORRECT_ROUNDINGS_LINES));
+  return (CORRECT_ROUNDINGS === 2 && Debugging.getIdentifier() in CORRECT_ROUNDINGS_LINES) ||
+         (CORRECT_ROUNDINGS === 3 && !(Debugging.getIdentifier() in CORRECT_ROUNDINGS_LINES));
 }
 function correctRoundings() {
   return CORRECT_ROUNDINGS === 1 || correctSpecificRounding();
@@ -663,8 +663,8 @@ function correctRoundings() {
 function checkSpecificSafeHeap() {
   assert(!(SAFE_HEAP >= 2 && !Debugging.on), 'Need debugging for line-specific checks');
   if (!Framework.currItem) return false;
-  return (SAFE_HEAP === 2 && Debugging.getIdentifier(Framework.currItem.lineNum) in SAFE_HEAP_LINES) ||
-         (SAFE_HEAP === 3 && !(Debugging.getIdentifier(Framework.currItem.lineNum) in SAFE_HEAP_LINES));
+  return (SAFE_HEAP === 2 && Debugging.getIdentifier() in SAFE_HEAP_LINES) ||
+         (SAFE_HEAP === 3 && !(Debugging.getIdentifier() in SAFE_HEAP_LINES));
 }
 function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
@@ -1026,7 +1026,7 @@ function handleOverflow(text, bits) {
   var correct = correctOverflows();
   warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits + ' at line ' + Framework.currItem.lineNum);
   if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !AUTO_OPTIMIZE) + (
-    AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier(Framework.currItem.lineNum) + '"' : ''
+    AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier() + '"' : ''
   ) + ')';
   if (!correct) return text;
   if (bits <= 32) {
@@ -1066,7 +1066,7 @@ function makeSignOp(value, type, op) {
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
     full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !AUTO_OPTIMIZE) + (
-      AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier(Framework.currItem.lineNum) + '"' : ''
+      AUTO_OPTIMIZE ? ', "' + Debugging.getIdentifier() + '"' : ''
     ) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {

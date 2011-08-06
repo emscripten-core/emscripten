@@ -163,9 +163,20 @@ var Debugging = {
 
   getIdentifier: function(lineNum) {
     if (!this.on) return null;
-    var sourceFile = this.llvmLineToSourceFile[lineNum];
-    if (!sourceFile) return null;
-    return sourceFile.split('/').slice(-1)[0] + ':' + this.llvmLineToSourceLine[lineNum];
+    if (lineNum === undefined) {
+      lineNum = Framework.currItem.lineNum;
+      assert(lineNum !== undefined);
+    }
+    var approx = false;
+    var sourceFile;
+    while (lineNum >= 0) {
+      var sourceFile = this.llvmLineToSourceFile[lineNum];
+      if (sourceFile) break;
+      lineNum--;
+      approx = true;
+    }
+    if (!sourceFile) return 'UNKNOWN';
+    return sourceFile.split('/').slice(-1)[0] + ':' + (approx ? '~' : '') + this.llvmLineToSourceLine[lineNum];
   }
 };
 
