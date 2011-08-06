@@ -31,7 +31,7 @@ LibraryManager.library = {
       write: false,
       isFolder: true,
       isDevice: false,
-      timestamp: new Date(),
+      timestamp: Date.now(),
       inodeNumber: 1,
       contents: {}
     },
@@ -39,8 +39,6 @@ LibraryManager.library = {
     currentPath: '/',
     // The inode to assign to the next created object.
     nextInode: 2,
-    // The file creation mask used by the program.
-    cmask: 0x1ff,  // S_IRWXU | S_IRWXG | S_IRWXO.
     // Currently opened file or directory streams. Padded with null so the zero
     // index is unused, as the indices are used as pointers. This is not split
     // into separate fileStreams and folderStreams lists because the pointers
@@ -184,7 +182,7 @@ LibraryManager.library = {
       parent.contents[name] = {
         read: canRead === undefined ? true : canRead,
         write: canWrite === undefined ? false : canWrite,
-        timestamp: new Date(),
+        timestamp: Date.now(),
         inodeNumber: FS.nextInode++
       };
       for (var key in properties) {
@@ -268,14 +266,16 @@ LibraryManager.library = {
         xhr.overrideMimeType('text/plain; charset=x-user-defined');  // another hint
         xhr.send(null);
         if (xhr.status != 200 && xhr.status != 0) success = false;
-        if (xhr.response) {
-          obj.contents = new Uint8Array(xhr.response);
+        if (xhr.response !== undefined) {
+          obj.contents = new Uint8Array(xhr.response || []);
         } else {
           obj.contents = intArrayFromString(xhr.responseText || '', true);
         }
       } else if (typeof read !== 'undefined') {
         // Command-line.
         try {
+          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
+          //          read() will try to parse UTF8.
           obj.contents = intArrayFromString(read(obj.url), true);
         } catch (e) {
           success = false;
@@ -295,7 +295,7 @@ LibraryManager.library = {
 
       // Default handlers.
       if (!input) input = function() {
-        if (!input.cache) {
+        if (!input.cache || !input.cache.length) {
           var result;
           if (window && typeof window.prompt == 'function') {
             // Browser.
@@ -554,9 +554,9 @@ LibraryManager.library = {
       // NOTE: We don't keep track of access timestamps.
       var offset = ___utimbuf_struct_layout.modtime;
       time = {{{ makeGetValue('times', 'offset', 'i32') }}}
-      time = new Date(time * 1000);
+      time *= 1000;
     } else {
-      time = new Date();
+      time = Date.now();
     }
     var file = FS.findObject(Pointer_stringify(path));
     if (file === null) return -1;
@@ -652,12 +652,12 @@ LibraryManager.library = {
 
     // Variables.
     {{{ makeSetValue('buf', 'offsets.st_ino', 'obj.inodeNumber', 'i32') }}}
-    var time = Math.floor(obj.timestamp.getTime() / 1000);
+    var time = Math.floor(obj.timestamp / 1000);
     if (offsets.st_atime === undefined) {
       offsets.st_atime = offsets.st_atim.tv_sec;
       offsets.st_mtime = offsets.st_mtim.tv_sec;
       offsets.st_ctime = offsets.st_ctim.tv_sec;
-      var nanosec = (obj.timestamp.getTime() % 1000) * 1000;
+      var nanosec = (obj.timestamp % 1000) * 1000;
       {{{ makeSetValue('buf', 'offsets.st_atim.tv_nsec', 'nanosec', 'i32') }}}
       {{{ makeSetValue('buf', 'offsets.st_mtim.tv_nsec', 'nanosec', 'i32') }}}
       {{{ makeSetValue('buf', 'offsets.st_ctim.tv_nsec', 'nanosec', 'i32') }}}
@@ -768,7 +768,7 @@ LibraryManager.library = {
     if (obj === null) return -1;
     obj.read = mode & 0x100;  // S_IRUSR.
     obj.write = mode & 0x80;  // S_IWUSR.
-    obj.timestamp = new Date();
+    obj.timestamp = Date.now();
     return 0;
   },
   fchmod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chmod'],
@@ -786,11 +786,14 @@ LibraryManager.library = {
       return result;
     }
   },
-  // TODO: Test once cmask is used.
   umask__deps: ['$FS'],
   umask: function(newMask) {
-    var oldMask = FS.cmask;
-    FS.cmask = newMask;
+    // mode_t umask(mode_t cmask);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/umask.html
+    // NOTE: This value isn't actually used for anything.
+    if (_umask.cmask === undefined) _umask.cmask = 0x1FF;  // S_IRWXU | S_IRWXG | S_IRWXO.
+    var oldMask = _umask.cmask;
+    _umask.cmask = newMask;
     return oldMask;
   },
   __01fstat64_: 'fstat',
@@ -1102,7 +1105,7 @@ LibraryManager.library = {
     if (typeof path !== 'string') path = Pointer_stringify(path);
     var target = FS.findObject(path, dontResolveLastLink);
     if (target === null) return -1;
-    target.timestamp = new Date();
+    target.timestamp = Date.now();
     return 0;
   },
   chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -1270,7 +1273,7 @@ LibraryManager.library = {
         var contents = target.contents;
         if (length < contents.length) contents.length = length;
         else while (length > contents.length) contents.push(0);
-        target.timestamp = new Date();
+        target.timestamp = Date.now();
         return 0;
       }
     }
@@ -1618,7 +1621,7 @@ LibraryManager.library = {
       for (var i = 0; i < nbyte; i++) {
         contents[offset + i] = {{{ makeGetValue('buf', 'i', 'i8') }}};
       }
-      stream.object.timestamp = new Date();
+      stream.object.timestamp = Date.now();
       return i;
     }
   },
@@ -1647,7 +1650,7 @@ LibraryManager.library = {
               return -1;
             }
           }
-          stream.object.timestamp = new Date();
+          stream.object.timestamp = Date.now();
           return i;
         } else {
           ___setErrNo(ERRNO_CODES.ENXIO);
@@ -1668,15 +1671,14 @@ LibraryManager.library = {
     return 0;
   },
   ualarm: 'alarm',
-  confstr__deps: ['__setErrNo', '$ERRNO_CODES'],
+  confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
   confstr: function(name, buf, len) {
     // size_t confstr(int name, char *buf, size_t len);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
     var value;
     switch (name) {
       case 0:  // _CS_PATH.
-        // TODO: Get from environment variable.
-        value = '/';
+        value = ENV['PATH'] || '/';
         break;
       case 1:  // _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS.
         // Mimicing glibc.
@@ -1900,8 +1902,10 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
     var msec = useconds / 1000;
-    var start = new Date().getTime();
-    while (new Date().getTime() - start < msec);
+    var start = Date.now();
+    while (Date.now() - start < msec) {
+      // Do nothing.
+    }
     return 0;
   },
   swab: function(src, dest, nbytes) {
@@ -2668,13 +2672,12 @@ LibraryManager.library = {
     if (!(stream in FS.streams)) return 0;
     var streamObj = FS.streams[stream];
     if (streamObj.error || streamObj.eof) return 0;
-    for (var i = 0; i < n - 1; i++) {
-      var byte_ = _fgetc(stream);
+    var byte_;
+    for (var i = 0; i < n - 1 && byte_ != '\n'.charCodeAt(0); i++) {
+      byte_ = _fgetc(stream);
       if (byte_ == -1) {
         if (streamObj.error) return 0;
         else if (streamObj.eof) break;
-      } else if (byte_ == '\n'.charCodeAt(0)) {
-        break;
       }
       {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}}
     }
@@ -2949,7 +2952,7 @@ LibraryManager.library = {
   setvbuf: function(stream, buf, type, size) {
     // int setvbuf(FILE *restrict stream, char *restrict buf, int type, size_t size);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/setvbuf.html
-    // TODO: Implement buffering.
+    // TODO: Implement custom buffering.
     return 0;
   },
   setbuf__deps: ['setvbuf'],
@@ -3301,8 +3304,9 @@ LibraryManager.library = {
     _free(temp);
   },
 
+  environ: null,
   __environ: null,
-  __buildEnvironment__deps: ['__environ'],
+  __buildEnvironment__deps: ['environ', '__environ'],
   __buildEnvironment: function(env) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -3311,14 +3315,17 @@ LibraryManager.library = {
     // Statically allocate memory for the environment.
     var poolPtr;
     var envPtr;
-    if (___environ === null) {
+    if (_environ === null) {
+      // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ QUANTUM_SIZE }}},
                         'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
-      ___environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
+      _environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
+      // Set up global variable alias.
+      ___environ = _environ;
     } else {
-      envPtr = {{{ makeGetValue('___environ', '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue('_environ', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 
@@ -4211,26 +4218,27 @@ LibraryManager.library = {
   // Data for dlfcn.h.
   $DLFCN_DATA: {
     error: null,
-    isError: false,
+    errorMsg: null,
     loadedLibs: {}, // handle -> [refcount, name, lib_object]
     loadedLibNames: {}, // name -> handle
   },
   // void* dlopen(const char* filename, int flag);
-  dlopen__deps: ['$DLFCN_DATA', '$FS'],
+  dlopen__deps: ['$DLFCN_DATA', '$FS', '$ENV'],
   dlopen: function(filename, flag) {
-    // TODO: Add support for LD_LIBRARY_PATH.
-    filename = Pointer_stringify(filename);
+    // void *dlopen(const char *file, int mode);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
+    filename = (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
     if (DLFCN_DATA.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
       var handle = DLFCN_DATA.loadedLibNames[filename];
-      DLFCN_DATA.loadedLibs[handle][0]++;
+      DLFCN_DATA.loadedLibs[handle].refcount++;
       return handle;
     }
 
     var target = FS.findObject(filename);
     if (!target || target.isFolder || target.isDevice) {
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
       return 0;
     } else {
       FS.forceLoadFile(target);
@@ -4243,7 +4251,7 @@ LibraryManager.library = {
 #if ASSERTIONS
       print('Error in loading dynamic library: ' + e);
 #endif
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
       return 0;
     }
 
@@ -4253,7 +4261,12 @@ LibraryManager.library = {
       if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
     }
 
-    DLFCN_DATA.loadedLibs[handle] = [1, filename, lib_module];
+    DLFCN_DATA.loadedLibs[handle] = {
+      refcount: 1,
+      name: filename,
+      module: lib_module,
+      cached_functions: {}
+    };
     DLFCN_DATA.loadedLibNames[filename] = handle;
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
@@ -4270,13 +4283,15 @@ LibraryManager.library = {
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN_DATA'],
   dlclose: function(handle) {
+    // int dlclose(void *handle);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
     if (!DLFCN_DATA.loadedLibs[handle]) {
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
       return 1;
     } else {
       var lib_record = DLFCN_DATA.loadedLibs[handle];
-      if (lib_record[0]-- == 0) {
-        delete DLFCN_DATA.loadedLibNames[lib_record[1]];
+      if (lib_record.refcount-- == 0) {
+        delete DLFCN_DATA.loadedLibNames[lib_record.name];
         delete DLFCN_DATA.loadedLibs[handle];
       }
       return 0;
@@ -4285,40 +4300,47 @@ LibraryManager.library = {
   // void* dlsym(void* handle, const char* symbol);
   dlsym__deps: ['$DLFCN_DATA'],
   dlsym: function(handle, symbol) {
+    // void *dlsym(void *restrict handle, const char *restrict name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = '_' + Pointer_stringify(symbol);
 
     if (!DLFCN_DATA.loadedLibs[handle]) {
-      DLFCN_DATA.isError = true;
+      DLFCN_DATA.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     } else {
-      var lib_module = DLFCN_DATA.loadedLibs[handle][2];
-      if (!lib_module[symbol]) {
-        DLFCN_DATA.isError = true;
+      var lib = DLFCN_DATA.loadedLibs[handle];
+      if (!lib.module.hasOwnProperty(symbol)) {
+        DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                               '" in dynamic lib: ' + lib.name);
         return 0;
       } else {
-        var result = lib_module[symbol];
-        if (typeof result == 'function') {
-          // TODO: Cache functions rather than appending on every lookup.
-          FUNCTION_TABLE.push(result);
-          FUNCTION_TABLE.push(0);
-          result = FUNCTION_TABLE.length - 2;
+        if (lib.cached_functions.hasOwnProperty(symbol)) {
+          return lib.cached_functions[symbol];
+        } else {
+          var result = lib.module[symbol];
+          if (typeof result == 'function') {
+            FUNCTION_TABLE.push(result);
+            FUNCTION_TABLE.push(0);
+            result = FUNCTION_TABLE.length - 2;
+            lib.cached_functions = result;
+          }
+          return result;
         }
-        return result;
       }
     }
   },
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN_DATA'],
   dlerror: function() {
-    if (DLFCN_DATA.isError) {
+    // char *dlerror(void);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
+    if (DLFCN_DATA.errorMsg === null) {
       return 0;
     } else {
-      // TODO: Return non-generic error messages.
-      if (DLFCN_DATA.error === null) {
-        var msg = 'An error occurred while loading dynamic library.';
-        DLFCN_DATA.error = allocate(Module.intArrayFromString(msg), 'i8', 2);
-      }
-      DLFCN_DATA.isError = false;
+      if (DLFCN_DATA.error) _free(DLFCN_DATA.error);
+      var msgArr = Module.intArrayFromString(DLFCN_DATA.errorMsg);
+      DLFCN_DATA.error = allocate(msgArr, 'i8', ALLOC_NORMAL);
+      DLFCN_DATA.errorMsg = null;
       return DLFCN_DATA.error;
     }
   },
