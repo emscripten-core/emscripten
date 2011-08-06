@@ -31,7 +31,7 @@ LibraryManager.library = {
       write: false,
       isFolder: true,
       isDevice: false,
-      timestamp: new Date().getTime(),
+      timestamp: Date.now(),
       inodeNumber: 1,
       contents: {}
     },
@@ -182,7 +182,7 @@ LibraryManager.library = {
       parent.contents[name] = {
         read: canRead === undefined ? true : canRead,
         write: canWrite === undefined ? false : canWrite,
-        timestamp: new Date().getTime(),
+        timestamp: Date.now(),
         inodeNumber: FS.nextInode++
       };
       for (var key in properties) {
@@ -556,7 +556,7 @@ LibraryManager.library = {
       time = {{{ makeGetValue('times', 'offset', 'i32') }}}
       time *= 1000;
     } else {
-      time = new Date().getTime();
+      time = Date.now();
     }
     var file = FS.findObject(Pointer_stringify(path));
     if (file === null) return -1;
@@ -768,7 +768,7 @@ LibraryManager.library = {
     if (obj === null) return -1;
     obj.read = mode & 0x100;  // S_IRUSR.
     obj.write = mode & 0x80;  // S_IWUSR.
-    obj.timestamp = new Date().getTime();
+    obj.timestamp = Date.now();
     return 0;
   },
   fchmod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chmod'],
@@ -1105,7 +1105,7 @@ LibraryManager.library = {
     if (typeof path !== 'string') path = Pointer_stringify(path);
     var target = FS.findObject(path, dontResolveLastLink);
     if (target === null) return -1;
-    target.timestamp = new Date().getTime();
+    target.timestamp = Date.now();
     return 0;
   },
   chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -1273,7 +1273,7 @@ LibraryManager.library = {
         var contents = target.contents;
         if (length < contents.length) contents.length = length;
         else while (length > contents.length) contents.push(0);
-        target.timestamp = new Date().getTime();
+        target.timestamp = Date.now();
         return 0;
       }
     }
@@ -1621,7 +1621,7 @@ LibraryManager.library = {
       for (var i = 0; i < nbyte; i++) {
         contents[offset + i] = {{{ makeGetValue('buf', 'i', 'i8') }}};
       }
-      stream.object.timestamp = new Date().getTime();
+      stream.object.timestamp = Date.now();
       return i;
     }
   },
@@ -1650,7 +1650,7 @@ LibraryManager.library = {
               return -1;
             }
           }
-          stream.object.timestamp = new Date().getTime();
+          stream.object.timestamp = Date.now();
           return i;
         } else {
           ___setErrNo(ERRNO_CODES.ENXIO);
@@ -1902,8 +1902,8 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
     var msec = useconds / 1000;
-    var start = new Date().getTime();
-    while (new Date().getTime() - start < msec) {
+    var start = Date.now();
+    while (Date.now() - start < msec) {
       // Do nothing.
     }
     return 0;

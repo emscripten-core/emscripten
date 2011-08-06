@@ -212,6 +212,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             });
             constant = '[' + constant.join(', ') + ']';
           }
+          // NOTE: This is the only place that could potentially create static
+          //       allocations in a shared library.
           constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
 
           var js = item.ident + '=' + constant + ';';
