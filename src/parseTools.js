@@ -1142,7 +1142,7 @@ function processMathop(item) { with(item) {
     case 'or': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for or: ' + bits);
-        dprint('Warning: 64 bit OR - precision limit may be hit');
+        dprint('Warning: 64 bit OR - precision limit may be hit on llvm line ' + item.lineNum);
         return 'Runtime.or64(' + ident1 + ', ' + ident2 + ')';
       }
       return ident1 + ' | ' + ident2;
@@ -1150,7 +1150,7 @@ function processMathop(item) { with(item) {
     case 'and': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for and: ' + bits);
-        dprint('Warning: 64 bit AND - precision limit may be hit');
+        dprint('Warning: 64 bit AND - precision limit may be hit on llvm line ' + item.lineNum);
         return 'Runtime.and64(' + ident1 + ', ' + ident2 + ')';
       }
       return ident1 + ' & ' + ident2;
@@ -1158,7 +1158,7 @@ function processMathop(item) { with(item) {
     case 'xor': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for xor: ' + bits);
-        dprint('Warning: 64 bit XOR - precision limit may be hit');
+        dprint('Warning: 64 bit XOR - precision limit may be hit on llvm line ' + item.lineNum);
         return 'Runtime.xor64(' + ident1 + ', ' + ident2 + ')';
       }
       return ident1 + ' ^ ' + ident2;
