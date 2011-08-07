@@ -29,6 +29,10 @@ We generate the following:
                             change all arguments of type float& to float by
                             "type_processor": "lambda t: t if t != 'float&' else 'float'"
 
+            export: If true, will export all bindings in the .js file. This allows
+                    you to run something like closure compiler advanced opts on
+                    the library+bindings, and the bindings will remain accessible.
+
           For example, JSON can be { "ignored": "class1,class2::func" }.
 
 The C bindings file is basically a tiny C wrapper around the C++ code.
@@ -55,6 +59,7 @@ basename = sys.argv[1]
 
 ignored = []
 type_processor = lambda t: t
+export = 0
 
 if '--' in sys.argv:
   index = sys.argv.index('--')
@@ -65,6 +70,8 @@ if '--' in sys.argv:
     ignored = json['ignored'].split(',')
   if json.get('type_processor'):
     type_processor = eval(json['type_processor'])
+  if json.get('export'):
+    export = json['export']
 
   print 'zz ignoring', ignored
 
@@ -339,13 +346,19 @@ function %s(%s) {
 }
 %s.prototype = %s.prototype;
 ''' % (mname_suffixed, ', '.join(justargs), argfixes, calls, mname_suffixed, classname)
+
+      if export:
+        js_text += '''
+this['%s'] = %s;
+''' % (mname_suffixed, mname_suffixed)
+
     else:
       js_text = '''
-%s.prototype.%s = function(%s) {
+%s.prototype%s = function(%s) {
 %s
 %s
 }
-''' % (generating_classname_head, mname_suffixed, ', '.join(justargs), argfixes, calls)
+''' % (generating_classname_head, ('.' + mname_suffixed) if not export else ("['" + mname_suffixed + "']"), ', '.join(justargs), argfixes, calls)
 
     js_text = js_text.replace('\n\n', '\n').replace('\n\n', '\n')
     gen_js.write(js_text)
