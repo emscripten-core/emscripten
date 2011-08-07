@@ -4,7 +4,7 @@
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
 
 Usage:
-        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- "IGNORED"]
+        bindings_generator.py BASENAME HEADER1 HEADER2 ... [-- JSON]
 
   BASENAME is the name used for output files (with added suffixes).
   HEADER1 etc. are the C++ headers to parse
@@ -19,8 +19,17 @@ We generate the following:
   * BASENAME.js: JavaScript bindings file, with generated JavaScript wrapper
                  objects. This is a high-level wrapping, using native JS classes.
 
-  * IGNORED: Optionally, a list of classes and class::methods not to generate code for.
-             Comma separated.
+  * JSON: An optional JSON object with various optional options:
+
+            ignored: A list of classes and class::methods not to generate code for.
+                     Comma separated.
+            
+            type_processor: Text that is eval()d into a lambda that is run on
+                            all arguments. For example, you can use this to
+                            change all arguments of type float& to float by
+                            "type_processor": "lambda t: t if t != 'float&' else 'float'"
+
+          For example, JSON can be { "ignored": "class1,class2::func" }.
 
 The C bindings file is basically a tiny C wrapper around the C++ code.
 It's only purpose is to make it easy to access the C++ code in the JS
@@ -45,11 +54,19 @@ import CppHeaderParser
 basename = sys.argv[1]
 
 ignored = []
+type_processor = lambda t: t
 
 if '--' in sys.argv:
   index = sys.argv.index('--')
-  ignored = sys.argv[index+1].split(',')
+  json = eval(sys.argv[index+1])
   sys.argv = sys.argv[:index]
+
+  if json.get('ignored'):
+    ignored = json['ignored'].split(',')
+  if json.get('type_processor'):
+    type_processor = eval(json['type_processor'])
+
+  print 'zz ignoring', ignored
 
 # First pass - read everything
 
@@ -96,6 +113,7 @@ for classname, clazz in classes.iteritems():
         args[i]['type'] += '*'
       if args[i]['reference'] and '&' not in args[i]['type']:
         args[i]['type'] += '&'
+      args[i]['type'] = type_processor(args[i]['type'])
       #raw = args[i]['type'].replace('&', '').replace('*', '')
       #if raw in classes:
 
@@ -118,6 +136,7 @@ for classname, clazz in classes.iteritems():
       while method['returns_text'].count('*') < method['returns_pointer']:
         method['returns_text'] += '*'
     if method.get('returns_reference'): method['returns_text'] += '&'
+    method['returns_text'] = type_processor(method['returns_text'])
 
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
