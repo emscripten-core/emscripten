@@ -69,14 +69,19 @@ parsed = CppHeaderParser.CppHeader(all_h_name)
 for classname, clazz in parsed.classes.iteritems():
   print 'zz see', classname
   classes[classname] = clazz
+  clazz['methods'] = clazz['methods']['public'] # CppHeaderParser doesn't have 'public' etc. in structs. so equalize to that
   for sname, struct in clazz._public_structs.iteritems():
     struct_parents[sname] = classname
-    #print 'zz seen struct %s in %s' % (sname, classname)
+    classes[classname + '::' + sname] = struct
+    struct['name'] = sname # Missing in CppHeaderParser
+    print 'zz seen struct %s in %s' % (sname, classname)
 
+for classname, clazz in classes.iteritems():
   # Various precalculations
-  for method in clazz['methods']['public'][:]:
-    constructor = method['name'] == classname
-    method['constructor'] = constructor # work around cppheaderparser issue
+  print 'zz precalc', classname
+  for method in clazz['methods'][:]:
+    method['constructor'] = method['constructor'] or (method['name'] == classname) # work around cppheaderparser issue
+    print 'z constructorhmm?', method['name'], method['constructor']#, constructor, method['name'], classname
     args = method['parameters']
 
     #if method['name'] == 'addWheel': print 'qqqq', classname, method
@@ -114,7 +119,7 @@ for classname, clazz in parsed.classes.iteritems():
 
   def explore(subclass):
     # Do our functions first, and do not let later classes override
-    for method in subclass['methods']['public']:
+    for method in subclass['methods']:
       if method['constructor']:
         if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
       if method['destructor']: continue # Nothing to do there
@@ -145,11 +150,12 @@ for classname, clazz in parsed.classes.iteritems():
         print 'zz ', classname, 'has an updated num_args of ', curr['num_args']
 
     # Recurse
-    for parent in subclass['inherits']:
-      if parent['class'] not in classes:
-        print 'Warning: parent class', parent, 'not a known class. Ignoring.'
-        return
-      explore(classes[parent['class']])
+    if subclass.get('inherits'):
+      for parent in subclass['inherits']:
+        if parent['class'] not in classes:
+          print 'Warning: parent class', parent, 'not a known class. Ignoring.'
+          return
+        explore(classes[parent['class']])
 
   explore(clazz)
 
@@ -169,18 +175,21 @@ gen_js = open(basename + '.js', 'w')
 gen_c.write('extern "C" {\n')
 
 def generate_class(generating_classname, classname, clazz): # TODO: deprecate generating?
-  inherited = generating_classname != classname
+  generating_classname_head = generating_classname.split('::')[-1]
+  classname_head = classname.split('::')[-1]
+
+  inherited = generating_classname_head != classname_head
 
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
-    if classname + '::' + mname in ignored: continue
+    if classname_head + '::' + mname in ignored: continue
 
     args = method['parameters']
-    constructor = method['constructor'] # we fixed this before
+    constructor = method['constructor']
     destructor = method['destructor']
     static = method['static']
 
-    print "zz generating: ", generating_classname, classname, mname, constructor, method['returns']
+    print "zz generating:", generating_classname, classname, mname, constructor, method['returns']
 
     if destructor: continue
     if constructor and inherited: continue
@@ -219,12 +228,12 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     if '__operator__' in mname:
       continue # TODO: operators
     else:
-      actualmname = method.get('truename') or mname
+      actualmname = classname if constructor else (method.get('truename') or mname)
 
     need_self = not constructor and not static
     typedargs = ([] if not need_self else [classname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args)
     justargs = map(lambda arg: arg['name'], args)
-    fullname = 'emscripten_bind_' + generating_classname + '__' + mname
+    fullname = ('emscripten_bind_' + generating_classname + '__' + mname).replace('::', '__')
     generating_classname_suffixed = generating_classname
     mname_suffixed = mname
     count = funcs.setdefault(fullname, 0)
@@ -306,11 +315,12 @@ function %s(%s) {
 # Main loop
 
 for classname, clazz in classes.iteritems():
-  if classname in ignored: continue
+  if any([name in ignored for name in classname.split('::')]): continue
 
   # Nothing to generate for pure virtual classes
 
   def check_pure_virtual(clazz, progeny):
+    #if not clazz.get('inherits'): return False # If no inheritance info, not a class, this is a CppHeaderParser struct
     print 'Checking pure virtual for', clazz['name'], clazz['inherits']
     # If we do not recognize any of the parent classes, assume this is pure virtual - ignore it
     if any([((not parent['class'] in classes) or check_pure_virtual(classes[parent['class']], [clazz] + progeny)) for parent in clazz['inherits']]): return True
@@ -318,14 +328,14 @@ for classname, clazz in classes.iteritems():
     def dirtied(mname):
       #print 'zz checking dirtiness for', mname, 'in', progeny
       for progen in progeny:
-        for method in progen['methods']['public']:
+        for method in progen['methods']:
           if method['name'] == mname and not method['pure_virtual']:
             #print 'zz dirty'
             return True
       #print 'zz not dirtied'
       return False
 
-    for method in clazz['methods']['public']:
+    for method in clazz['methods']:
       if method['pure_virtual'] and not dirtied(method['name']):
         print 'zz ignoring pure virtual class', classname, 'due to', method['name']
         return True
@@ -335,22 +345,22 @@ for classname, clazz in classes.iteritems():
 
   # Add a constructor if none exist
   has_constructor = False
-  for method in clazz['methods']['public']:
+  for method in clazz['methods']:
     mname = method['name']
-    has_constructor = has_constructor or (classname == mname and not method['destructor'])
+    has_constructor = has_constructor or (method['constructor'] and not method['destructor'])
 
-  print 'zz ', classname, 'has constructor?', has_constructor
+  print 'zz', classname, 'has constructor?', has_constructor
 
   if not has_constructor:
     print 'zz no constructor for', classname, 'so ignoring'
     continue
 
-    clazz['methods']['public'] = [{
+    clazz['methods'] = [{
       'name': classname,
       'parameters': [],
       'pure_virtual': False,
       'destructor': False,
-    }] + clazz['methods']['public']
+    }] + clazz['methods']
 
   generate_class(classname, classname, clazz)
 
