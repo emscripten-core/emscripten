@@ -54,7 +54,7 @@ if '--' in sys.argv:
 # First pass - read everything
 
 classes = {}
-struct_parents = {}
+parents = {}
 
 text = ''
 for header in sys.argv[2:]:
@@ -70,8 +70,12 @@ for classname, clazz in parsed.classes.iteritems():
   print 'zz see', classname
   classes[classname] = clazz
   clazz['methods'] = clazz['methods']['public'] # CppHeaderParser doesn't have 'public' etc. in structs. so equalize to that
+  if '::' in classname:
+    assert classname.count('::') == 1
+    parents[classname.split('::')[1]] = classname.split('::')[0]
+
   for sname, struct in clazz._public_structs.iteritems():
-    struct_parents[sname] = classname
+    parents[sname] = classname
     classes[classname + '::' + sname] = struct
     struct['name'] = sname # Missing in CppHeaderParser
     print 'zz seen struct %s in %s' % (sname, classname)
@@ -92,6 +96,8 @@ for classname, clazz in classes.iteritems():
         args[i]['type'] += '*'
       if args[i]['reference'] and '&' not in args[i]['type']:
         args[i]['type'] += '&'
+      #raw = args[i]['type'].replace('&', '').replace('*', '')
+      #if raw in classes:
 
     default_param = len(args)+1
     for i in range(len(args)):
@@ -214,15 +220,15 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         print 'WARNING: odd ">" in %s, skipping' % classname
         skip = True
         break
-      #print 'c1', struct_parents.keys()
+      #print 'c1', parents.keys()
       if args[i]['type'][-1] == '&':
         sname = args[i]['type'][:-1]
         if sname[-1] == ' ': sname = sname[:-1]
-        if sname in struct_parents:
-          args[i]['type'] = struct_parents[sname] + '::' + sname + '&'
-        elif sname.replace('const ', '') in struct_parents:
+        if sname in parents:
+          args[i]['type'] = parents[sname] + '::' + sname + '&'
+        elif sname.replace('const ', '') in parents:
           sname = sname.replace('const ', '')
-          args[i]['type'] = 'const ' + struct_parents[sname] + '::' + sname + '&'
+          args[i]['type'] = 'const ' + parents[sname] + '::' + sname + '&'
       #print 'POST arggggggg', classname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type']
     if skip:
       continue
