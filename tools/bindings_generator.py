@@ -102,15 +102,16 @@ for classname, clazz in classes.iteritems():
     method['num_args'] = set(range(default_param-1, len(args)+1))
     print 'zz ', classname, 'has num_args of', method['num_args']
 
+    method['returns_text'] = method['returns']
     if method['static']:
-      method['returns'] = method['returns'].replace('static', '')
+      method['returns_text'] = method['returns_text'].replace('static', '')
 
     # Fill in some missing stuff
-    if method.get('returns_const'): method['returns'] = 'const ' + method['returns']
+    if method.get('returns_const'): method['returns_text'] = 'const ' + method['returns_text']
     if method.get('returns_pointer'):
-      while method['returns'].count('*') < method['returns_pointer']:
-        method['returns'] += '*'
-    if method.get('returns_reference'): method['returns'] += '&'
+      while method['returns_text'].count('*') < method['returns_pointer']:
+        method['returns_text'] += '*'
+    if method.get('returns_reference'): method['returns_text'] += '&'
 
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
@@ -126,7 +127,7 @@ for classname, clazz in parsed.classes.iteritems():
 
       if method['name'] not in clazz['final_methods']:
         clazz['final_methods'][method['name']] = {}
-        for key in ['name', 'constructor', 'static', 'returns', 'destructor', 'pure_virtual']:
+        for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'destructor', 'pure_virtual']:
           clazz['final_methods'][method['name']][key] = method[key]
         clazz['final_methods'][method['name']]['num_args'] = method['num_args'].copy()
         clazz['final_methods'][method['name']]['parameters'] = method['parameters'][:]
@@ -180,6 +181,10 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
   inherited = generating_classname_head != classname_head
 
+  if clazz['abstract']:
+    # For abstract base classes, add a function definition on top. There is no constructor
+    gen_js.write('\nfunction ' + generating_classname_head + '(){}\n')
+
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
     if classname_head + '::' + mname in ignored: continue
@@ -189,10 +194,11 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     destructor = method['destructor']
     static = method['static']
 
-    print "zz generating:", generating_classname, classname, mname, constructor, method['returns']
+    print "zz generating:", generating_classname, classname, mname, constructor, method['returns'], method['returns_text']
 
     if destructor: continue
     if constructor and inherited: continue
+    if constructor and clazz['abstract']: continue # do not generate constructors for abstract base classes
 
     skip = False
     for i in range(len(args)):
@@ -221,7 +227,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     if skip:
       continue
 
-    ret = ((classname + ' *') if constructor else method['returns']).replace('virtual ', '')
+    ret = ((classname + ' *') if constructor else method['returns_text'])#.replace('virtual ', '')
     callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
     actualmname = ''
@@ -281,8 +287,15 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
           calls += '''this.ptr = _%s_p%d(%s);
 ''' % (fullname, i, ', '.join(justargs[:i]))
       else:
-        calls += '''%s_%s_p%d(%s);
-''' % ('return ' if ret != 'void' else '', fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs[:i]))
+        return_value = '''_%s_p%d(%s)''' % (fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs[:i]))
+        print 'zz making return', classname, method['name'], method['returns'], return_value
+        if method['returns'] in classes:
+          # Generate a wrapper
+          calls += '{ var ptr = ' + return_value + '; if (!ptr) return null; var ret = Object.create(' + method['returns'] + '.prototype); ret.ptr = ptr; return ret; }'
+        else:
+          # Normal return
+          calls += ('return ' if ret != 'void' else '') + return_value + ';'
+        calls += '\n'
 
     print 'Maekin:', classname, generating_classname, mname, mname_suffixed
     if constructor:
@@ -307,7 +320,7 @@ function %s(%s) {
 %s
 %s
 }
-''' % (generating_classname, mname_suffixed, ', '.join(justargs), argfixes, calls)
+''' % (generating_classname_head, mname_suffixed, ', '.join(justargs), argfixes, calls)
 
     js_text = js_text.replace('\n\n', '\n').replace('\n\n', '\n')
     gen_js.write(js_text)
@@ -317,7 +330,8 @@ function %s(%s) {
 for classname, clazz in classes.iteritems():
   if any([name in ignored for name in classname.split('::')]): continue
 
-  # Nothing to generate for pure virtual classes
+  # Nothing to generate for pure virtual classes XXX actually this is not so. We do need to generate wrappers for returned objects,
+  # they are of a concrete class of course, but an known one, so we create a wrapper for an abstract base class.
 
   def check_pure_virtual(clazz, progeny):
     #if not clazz.get('inherits'): return False # If no inheritance info, not a class, this is a CppHeaderParser struct
@@ -340,27 +354,28 @@ for classname, clazz in classes.iteritems():
         print 'zz ignoring pure virtual class', classname, 'due to', method['name']
         return True
 
-  if check_pure_virtual(clazz, []):
-    continue
+  clazz['abstract'] = check_pure_virtual(clazz, [])
+  #if check_pure_virtual(clazz, []):
+  #  continue
 
   # Add a constructor if none exist
   has_constructor = False
   for method in clazz['methods']:
-    mname = method['name']
     has_constructor = has_constructor or (method['constructor'] and not method['destructor'])
-
+  
   print 'zz', classname, 'has constructor?', has_constructor
-
+  
   if not has_constructor:
-    print 'zz no constructor for', classname, 'so ignoring'
-    continue
-
-    clazz['methods'] = [{
-      'name': classname,
-      'parameters': [],
-      'pure_virtual': False,
-      'destructor': False,
-    }] + clazz['methods']
+    if not clazz['abstract']:
+      print 'zz no constructor for', classname, 'and not abstract, so ignoring'
+      continue
+  
+    #clazz['methods'] = [{
+    #  'name': classname,
+    #  'parameters': [],
+    #  'pure_virtual': False,
+    #  'destructor': False,
+    #}] + clazz['methods']
 
   generate_class(classname, classname, clazz)
 
