@@ -25,16 +25,6 @@ LibraryManager.library = {
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.init();',
   $FS: {
-    // The main file system tree. All the contents are inside this.
-    root: {
-      read: true,
-      write: false,
-      isFolder: true,
-      isDevice: false,
-      timestamp: Date.now(),
-      inodeNumber: 1,
-      contents: {}
-    },
     // The path to the current folder.
     currentPath: '/',
     // The inode to assign to the next created object.
@@ -145,6 +135,7 @@ LibraryManager.library = {
     // set to true and the object is a symbolic link, it will be returned as is
     // instead of being resolved. Links embedded in the path as still resolved.
     findObject: function(path, dontResolveLastLink) {
+      FS.ensureRoot();
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (ret.exists) {
         return ret.object;
@@ -286,12 +277,27 @@ LibraryManager.library = {
       if (!success) ___setErrNo(ERRNO_CODES.EIO);
       return success;
     },
+    ensureRoot: function() {
+      if (FS.root) return;
+      // The main file system tree. All the contents are inside this.
+      FS.root = {
+        read: true,
+        write: false,
+        isFolder: true,
+        isDevice: false,
+        timestamp: Date.now(),
+        inodeNumber: 1,
+        contents: {}
+      };
+    },
     // Initializes the filesystems with stdin/stdout/stderr devices, given
     // optional handlers.
     init: function(input, output, error) {
       // Make sure we initialize only once.
       if (FS.init.initialized) return;
-      else FS.init.initialized = true;
+      FS.init.initialized = true;
+
+      FS.ensureRoot();
 
       // Default handlers.
       if (!input) input = function() {

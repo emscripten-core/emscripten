@@ -3343,6 +3343,28 @@ Child2:9
 
     ### Tests for tools
 
+    def test_closure_compiler(self):
+      src = '''
+        #include<stdio.h>
+        int main() {
+          printf("*closured*\\n");
+          return 0;
+        }
+      '''
+
+      def add_cc(filename):
+        Popen(['java', '-jar', CLOSURE_COMPILER,
+                       '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+                       '--formatting', 'PRETTY_PRINT',
+                       '--variable_map_output_file', filename + '.vars',
+                       '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()
+        assert not re.search('function \w\(', open(filename, 'r').read()) # closure generates this kind of stuff - functions with single letters. Normal doesn't.
+        src = open(filename + '.cc.js', 'r').read()
+        assert re.search('function \w\(', src) # see before
+        assert 'function _main()' not in src # closure should have wiped it out
+        open(filename, 'w').write(src)
+      self.do_test(src, '*closured*', post_build=add_cc)
+
     def test_safe_heap(self):
       global SAFE_HEAP, SAFE_HEAP_LINES
 
