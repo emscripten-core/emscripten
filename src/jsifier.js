@@ -793,7 +793,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 
-  makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable! Original .ll line: ' + item.lineNum + '";' });
+  makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable!"' }); // Original .ll line: ' + item.lineNum + '";' });
 
   // Final combiner
 
