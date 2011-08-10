@@ -145,6 +145,8 @@ for classname, clazz in classes.iteritems():
     if method.get('returns_reference'): method['returns_text'] += '&'
     method['returns_text'] = type_processor(method['returns_text'])
 
+    print 'zz %s::%s gets %s and returns %s' % (classname, method['name'], str([arg['type'] for arg in method['parameters']]), method['returns_text'])
+
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
 for classname, clazz in parsed.classes.iteritems():
@@ -159,7 +161,7 @@ for classname, clazz in parsed.classes.iteritems():
 
       if method['name'] not in clazz['final_methods']:
         clazz['final_methods'][method['name']] = {}
-        for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'destructor', 'pure_virtual']:
+        for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'returns_reference', 'returns_pointer', 'destructor', 'pure_virtual']:
           clazz['final_methods'][method['name']][key] = method[key]
         clazz['final_methods'][method['name']]['num_args'] = method['num_args'].copy()
         clazz['final_methods'][method['name']]['parameters'] = method['parameters'][:]
@@ -226,7 +228,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     destructor = method['destructor']
     static = method['static']
 
-    print "zz generating:", generating_classname, classname, mname, constructor, method['returns'], method['returns_text']
+    print 'zz generating %s::%s. gets %s and returns %s' % (generating_classname, method['name'], str([arg['type'] for arg in method['parameters']]), method['returns_text'])
 
     if destructor: continue
     if constructor and inherited: continue
@@ -293,11 +295,23 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     for i in method['num_args']:
       # C
 
+      # If we are returning a *copy* of an object, we return instead to a ref of a static held here. This seems the best compromise
+      staticize = not constructor and ret.replace(' ', '') != 'void' and method['returns'] in classes and (not method['returns_reference'] and not method['returns_pointer'])
       gen_c.write('''
-%s %s_p%d(%s) {
+%s %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i, ', '.join(typedargs[:i + (0 if not need_self else 1)])))
+      if not staticize:
+        gen_c.write('''
   %s%s%s(%s);
-}
-''' % (ret, fullname, i, ', '.join(typedargs[:i + (0 if not need_self else 1)]), 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, ', '.join(justargs[:i])))
+}''' % ('return ' if ret.replace(' ', '') != 'void' else '',
+        callprefix, actualmname,
+        ', '.join(justargs[:i])))
+      else:
+        gen_c.write('''
+  static %s ret = %s%s(%s);
+  return ret;
+}''' % (method['returns'],
+        callprefix, actualmname,
+        ', '.join(justargs[:i])))
 
       c_funcs.append(fullname + '_p' + str(i))
 
