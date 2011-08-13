@@ -149,6 +149,9 @@ for classname, clazz in classes.iteritems():
 
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
+def clean_type(t):
+  return t.replace('const ', '').replace('struct ', '').replace('&', '').replace('*', '').replace(' ', '')
+
 for classname, clazz in parsed.classes.iteritems():
   clazz['final_methods'] = {}
 
@@ -290,10 +293,9 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       if constructor:
         generating_classname_suffixed += suffix
 
-    argfixes = '\n'.join(map(lambda arg: '''  %s = (%s && %s.ptr) ? %s.ptr : %s;''' % (arg['name'], arg['name'], arg['name'], arg['name'], arg['name']), args))
+    # C
 
     for i in method['num_args']:
-      # C
 
       # If we are returning a *copy* of an object, we return instead to a ref of a static held here. This seems the best compromise
       staticize = not constructor and ret.replace(' ', '') != 'void' and method['returns'] in classes and (not method['returns_reference'] and not method['returns_pointer'])
@@ -316,6 +318,17 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       c_funcs.append(fullname + '_p' + str(i))
 
     # JS
+
+    print 'zz types:', map(lambda arg: arg['type'], args)
+
+    argfixes = ''
+    justargs_fixed = justargs[:]
+    for i in range(len(args)):
+      arg = args[i]
+      if clean_type(arg['type']) in classes:
+        argfixes += '  var %(arg)s__p = %(arg)s ? %(arg)s.ptr : 0;\n' % { 'arg': justargs[i] }
+        justargs_fixed[i] += '__p'
+
     calls = ''
     print 'js loopin', method['num_args'], '|', len(args)#, args
     for i in method['num_args']:
@@ -328,12 +341,12 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       if constructor:
         if not dupe:
           calls += '''this.ptr = _%s_p%d(%s);
-''' % (fullname, i, ', '.join(justargs[:i]))
+''' % (fullname, i, ', '.join(justargs_fixed[:i]))
         else:
           calls += '''this.ptr = _%s_p%d(%s);
-''' % (fullname, i, ', '.join(justargs[:i]))
+''' % (fullname, i, ', '.join(justargs_fixed[:i]))
       else:
-        return_value = '''_%s_p%d(%s)''' % (fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs[:i]))
+        return_value = '''_%s_p%d(%s)''' % (fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs_fixed[:i]))
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
