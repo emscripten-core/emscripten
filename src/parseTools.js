@@ -1278,6 +1278,13 @@ function walkInterdata(item, pre, post, obj) {
       if (walkInterdata(item.params[i], pre, post,  obj)) return true;
     }
   }
+  if (item.possibleVars) { // other attributes that might contain interesting data; here, variables
+    var box = { intertype: 'value', ident: '' };
+    for (i = 0; i <= item.possibleVars.length; i++) {
+      box.ident = item[item.possibleVars[i]];
+      if (walkInterdata(box, pre, post,  obj)) return true;
+    }
+  }
   return post(item, originalObj, obj);
 }
 
