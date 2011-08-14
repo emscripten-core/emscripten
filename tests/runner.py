@@ -60,7 +60,12 @@ class RunnerCore(unittest.TestCase):
 
   # Similar to LLVM::createStandardModulePasses()
   def pick_llvm_opts(self, optimization_level, optimize_size, allow_nonportable=False):
-    global LLVM_OPT_OPTS
+    global LLVM_OPT_OPTS, USE_TYPED_ARRAYS
+
+    #if USE_TYPED_ARRAYS == 2: # unsafe optimizations. TODO: fix all issues blocking this from being used
+    #  LLVM_OPT_OPTS = ['-O3']
+    #  return
+
     LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, optimize_size, allow_nonportable)
 
   # Emscripten optimizations that we run on the .ll file
@@ -2719,6 +2724,7 @@ if 'benchmark' not in sys.argv:
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
 
       self.do_test(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+                   #build_ll_hook=self.do_autodebug)
 
     def test_gcc_unmangler(self):
       self.do_test(path_from_root('third_party'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
