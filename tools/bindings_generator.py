@@ -212,6 +212,23 @@ gen_js = open(basename + '.js', 'w')
 
 gen_c.write('extern "C" {\n')
 
+# Use this when calling a binding function when you want to pass a null pointer.
+# Having this object saves us needing to do checks for the object being null each time in the bindings code.
+gen_js.write('''
+var NULL = { ptr: 0 };
+''')
+
+def generate_wrapping_code(classname):
+  return '''var %(classname)s__cache__ = {};
+function %(classname)s__wrap__(ptr) {
+  var ret = %(classname)s__cache__[ptr];
+  if (ret) return ret;
+  var ret = Object.create(%(classname)s.prototype);
+  ret.ptr = ptr;
+  return %(classname)s__cache__[ptr] = ret;
+}
+''' % { 'classname': classname }
+
 def generate_class(generating_classname, classname, clazz): # TODO: deprecate generating?
   generating_classname_head = generating_classname.split('::')[-1]
   classname_head = classname.split('::')[-1]
@@ -220,7 +237,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
   if clazz['abstract']:
     # For abstract base classes, add a function definition on top. There is no constructor
-    gen_js.write('\nfunction ' + generating_classname_head + '(){}\n')
+    gen_js.write('\nfunction ' + generating_classname_head + '(){}\n' + generate_wrapping_code(generating_classname_head))
 
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
@@ -350,7 +367,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
-          calls += '{ var ptr = ' + return_value + '; if (!ptr) return null; var ret = Object.create(' + method['returns'] + '.prototype); ret.ptr = ptr; return ret; }'
+          calls += 'return %s__wrap__(%s);' % (method['returns'], return_value)
         else:
           # Normal return
           calls += ('return ' if ret != 'void' else '') + return_value + ';'
@@ -364,7 +381,7 @@ function %s(%s) {
 %s
 %s
 }
-''' % (mname_suffixed, ', '.join(justargs), argfixes, calls)
+%s''' % (mname_suffixed, ', '.join(justargs), argfixes, calls, generate_wrapping_code(generating_classname_head))
       else:
         js_text = '''
 function %s(%s) {
