@@ -152,23 +152,46 @@ for classname, clazz in classes.iteritems():
 def clean_type(t):
   return t.replace('const ', '').replace('struct ', '').replace('&', '').replace('*', '').replace(' ', '')
 
+def fix_template_value(t): # Not sure why this is needed, might be a bug in CppHeaderParser
+  if t == 'unsignedshortint':
+    return 'unsigned short int'
+  elif t == 'unsignedint':
+    return 'unsigned int'
+  return t
+
 for classname, clazz in parsed.classes.iteritems():
   clazz['final_methods'] = {}
 
-  def explore(subclass):
+  def explore(subclass, template_name=None, template_value=None):
     # Do our functions first, and do not let later classes override
     for method in subclass['methods']:
+      print classname, 'exploring', subclass['name'], '::', method['name']
+
       if method['constructor']:
         if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
       if method['destructor']: continue # Nothing to do there
 
       if method['name'] not in clazz['final_methods']:
-        clazz['final_methods'][method['name']] = {}
+        copied = clazz['final_methods'][method['name']] = {}
         for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'returns_reference', 'returns_pointer', 'destructor', 'pure_virtual']:
-          clazz['final_methods'][method['name']][key] = method[key]
-        clazz['final_methods'][method['name']]['num_args'] = method['num_args'].copy()
-        clazz['final_methods'][method['name']]['parameters'] = method['parameters'][:]
-        clazz['final_methods'][method['name']]['origin'] = subclass
+          copied[key] = method[key]
+        copied['num_args'] = method['num_args'].copy()
+        copied['origin'] = subclass
+        copied['parameters'] = [];
+        # Copy the arguments, since templating may cause them to be altered
+        for arg in method['parameters'][:]:
+          copiedarg = {
+            'type': arg['type'],
+            'name': arg['name'],
+          }
+          copied['parameters'].append(copiedarg)
+        if template_name:
+          # Set template values
+          copied['returns'] = copied['returns'].replace(template_name, template_value)
+          copied['returns_text'] = copied['returns_text'].replace(template_name, template_value)
+          for arg in copied['parameters']:
+            arg['type'] = arg['type'].replace(template_name, template_value)
+
       else:
         # Merge the new function in the best way we can. Shared arguments must match!
 
@@ -190,10 +213,18 @@ for classname, clazz in parsed.classes.iteritems():
     # Recurse
     if subclass.get('inherits'):
       for parent in subclass['inherits']:
-        if parent['class'] not in classes:
+        parent = parent['class']
+        template_name = None
+        template_value = None
+        if '<' in parent:
+          parent, template = parent.split('<')
+          template_name = classes[parent]['template_typename']
+          template_value = fix_template_value(template.replace('>', ''))
+          print 'template', template_value, 'for', classname, '::', parent, ' | ', template_name
+        if parent not in classes:
           print 'Warning: parent class', parent, 'not a known class. Ignoring.'
           return
-        explore(classes[parent['class']])
+        explore(classes[parent], template_name, template_value)
 
   explore(clazz)
 
@@ -237,7 +268,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
   if clazz['abstract']:
     # For abstract base classes, add a function definition on top. There is no constructor
-    gen_js.write('\nfunction ' + generating_classname_head + '(){}\n' + generate_wrapping_code(generating_classname_head))
+    gen_js.write('\nfunction ' + generating_classname_head + ('(){ throw "%s is abstract!" }\n' % generating_classname_head) + generate_wrapping_code(generating_classname_head))
     if export:
       gen_js.write('''this['%s'] = %s;
 ''' % (generating_classname_head, generating_classname_head))
@@ -245,7 +276,9 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
-    if classname_head + '::' + mname in ignored: continue
+    if classname_head + '::' + mname in ignored:
+      print 'zz ignoring', mname
+      continue
 
     args = method['parameters']
     constructor = method['constructor']
@@ -411,7 +444,13 @@ this['%s'] = %s;
 # Main loop
 
 for classname, clazz in classes.iteritems():
-  if any([name in ignored for name in classname.split('::')]): continue
+  if any([name in ignored for name in classname.split('::')]):
+    print 'zz ignoring', classname
+    continue
+
+  if clazz.get('template_typename'):
+    print 'zz ignoring templated base class', classname
+    continue
 
   # Nothing to generate for pure virtual classes XXX actually this is not so. We do need to generate wrappers for returned objects,
   # they are of a concrete class of course, but an known one, so we create a wrapper for an abstract base class.
@@ -422,7 +461,9 @@ for classname, clazz in classes.iteritems():
     #if not clazz.get('inherits'): return False # If no inheritance info, not a class, this is a CppHeaderParser struct
     print 'Checking pure virtual for', clazz['name'], clazz['inherits']
     # If we do not recognize any of the parent classes, assume this is pure virtual - ignore it
-    parents = [parent['class'] if parent['class'] in classes else possible_prefix + parent['class'] for parent in clazz['inherits']]
+    parents = [parent['class'] for parent in clazz['inherits']]
+    parents = [parent.split('<')[0] for parent in parents] # remove template stuff
+    parents = [parent if parent in classes else possible_prefix + parent for parent in parents]
     if any([not parent in classes for parent in parents]):
       print 'zz Warning: unknown parent class', parents, 'for', classname
       return True
