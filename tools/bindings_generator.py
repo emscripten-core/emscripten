@@ -238,6 +238,10 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
   if clazz['abstract']:
     # For abstract base classes, add a function definition on top. There is no constructor
     gen_js.write('\nfunction ' + generating_classname_head + '(){}\n' + generate_wrapping_code(generating_classname_head))
+    if export:
+      gen_js.write('''this['%s'] = %s;
+''' % (generating_classname_head, generating_classname_head))
+
 
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
@@ -338,13 +342,13 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
     print 'zz types:', map(lambda arg: arg['type'], args)
 
-    argfixes = ''
+    # We can assume that NULL is passed for null pointers, so object arguments can always
+    # have .ptr done on them
     justargs_fixed = justargs[:]
     for i in range(len(args)):
       arg = args[i]
       if clean_type(arg['type']) in classes:
-        argfixes += '  var %(arg)s__p = %(arg)s ? %(arg)s.ptr : 0;\n' % { 'arg': justargs[i] }
-        justargs_fixed[i] += '__p'
+        justargs_fixed[i] += '.ptr'
 
     calls = ''
     print 'js loopin', method['num_args'], '|', len(args)#, args
@@ -379,17 +383,15 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         js_text = '''
 function %s(%s) {
 %s
-%s
 }
-%s''' % (mname_suffixed, ', '.join(justargs), argfixes, calls, generate_wrapping_code(generating_classname_head))
+%s''' % (mname_suffixed, ', '.join(justargs), calls, generate_wrapping_code(generating_classname_head))
       else:
         js_text = '''
 function %s(%s) {
 %s
-%s
 }
 %s.prototype = %s.prototype;
-''' % (mname_suffixed, ', '.join(justargs), argfixes, calls, mname_suffixed, classname)
+''' % (mname_suffixed, ', '.join(justargs), calls, mname_suffixed, classname)
 
       if export:
         js_text += '''
@@ -400,9 +402,8 @@ this['%s'] = %s;
       js_text = '''
 %s.prototype%s = function(%s) {
 %s
-%s
 }
-''' % (generating_classname_head, ('.' + mname_suffixed) if not export else ("['" + mname_suffixed + "']"), ', '.join(justargs), argfixes, calls)
+''' % (generating_classname_head, ('.' + mname_suffixed) if not export else ("['" + mname_suffixed + "']"), ', '.join(justargs), calls)
 
     js_text = js_text.replace('\n\n', '\n').replace('\n\n', '\n')
     gen_js.write(js_text)
@@ -415,11 +416,17 @@ for classname, clazz in classes.iteritems():
   # Nothing to generate for pure virtual classes XXX actually this is not so. We do need to generate wrappers for returned objects,
   # they are of a concrete class of course, but an known one, so we create a wrapper for an abstract base class.
 
+  possible_prefix = (classname.split('::')[0] + '::') if '::' in classname else ''
+
   def check_pure_virtual(clazz, progeny):
     #if not clazz.get('inherits'): return False # If no inheritance info, not a class, this is a CppHeaderParser struct
     print 'Checking pure virtual for', clazz['name'], clazz['inherits']
     # If we do not recognize any of the parent classes, assume this is pure virtual - ignore it
-    if any([((not parent['class'] in classes) or check_pure_virtual(classes[parent['class']], [clazz] + progeny)) for parent in clazz['inherits']]): return True
+    parents = [parent['class'] if parent['class'] in classes else possible_prefix + parent['class'] for parent in clazz['inherits']]
+    if any([not parent in classes for parent in parents]):
+      print 'zz Warning: unknown parent class', parents, 'for', classname
+      return True
+    if any([check_pure_virtual(classes[parent], [clazz] + progeny) for parent in parents]): return True
 
     def dirtied(mname):
       #print 'zz checking dirtiness for', mname, 'in', progeny
@@ -437,6 +444,7 @@ for classname, clazz in classes.iteritems():
         return True
 
   clazz['abstract'] = check_pure_virtual(clazz, [])
+  print 'zz', classname, 'is abstract?', clazz['abstract']
   #if check_pure_virtual(clazz, []):
   #  continue
 
