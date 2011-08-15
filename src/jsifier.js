@@ -685,12 +685,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
+    var call_ = makeFunctionCall(item.ident, item.params, item.funcData);
+    var branch = makeBranch(item.toLabel, item.currLabelId);
+    if (DISABLE_EXCEPTIONS) return call_ + '; ' + branch;
     var ret = '(function() { try { __THREW__ = false; return '
-            + makeFunctionCall(item.ident, item.params, item.funcData) + ' '
+            + call_ + ' '
             + '} catch(e) { '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
-            + 'return null } })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
+            + 'return null } })(); if (!__THREW__) { ' + branch
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
