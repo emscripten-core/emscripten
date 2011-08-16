@@ -840,6 +840,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (RUNTIME_TYPE_INFO) {
         Types.cleanForRuntime();
         print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
+        print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
       }
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
       print(Functions.generateIndexing());

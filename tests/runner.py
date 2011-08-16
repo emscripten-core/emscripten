@@ -3164,6 +3164,8 @@ if 'benchmark' not in sys.argv:
 
         # Way 2: use CppHeaderParser
 
+        global RUNTIME_TYPE_INFO; RUNTIME_TYPE_INFO = 1
+
         header = '''
           #include <stdio.h>
 
@@ -3339,13 +3341,16 @@ Child2:9
               print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
               var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
               print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
+              print('|' + JSON.stringify(Runtime.generateStructInfo(null, 'UserStruct')) + '|');
             } else {
               print('No type info.');
             }
           '''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|', post_build=post)
+      self.do_test(src,
+                   '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
+                   post_build=post)
 
       # Make sure that without the setting, we don't spam the .js with the type info
       RUNTIME_TYPE_INFO = 0
