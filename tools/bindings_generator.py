@@ -221,6 +221,8 @@ for classname, clazz in parsed.classes.iteritems():
           template_name = classes[parent]['template_typename']
           template_value = fix_template_value(template.replace('>', ''))
           print 'template', template_value, 'for', classname, '::', parent, ' | ', template_name
+        if parent not in classes and '::' in classname: # They might both be subclasses in the same parent
+          parent = classname.split('::')[0] + '::' + parent
         if parent not in classes:
           print 'Warning: parent class', parent, 'not a known class. Ignoring.'
           return
@@ -259,6 +261,7 @@ function %(classname)s__wrap__(ptr) {
   return %(classname)s__cache__[ptr] = ret;
 }
 ''' % { 'classname': classname }
+# %(classname)s.prototype['fields'] = Runtime.generateStructInfo(null, '%(classname)s'); - consider adding this
 
 def generate_class(generating_classname, classname, clazz): # TODO: deprecate generating?
   generating_classname_head = generating_classname.split('::')[-1]
