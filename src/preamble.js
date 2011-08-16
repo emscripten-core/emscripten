@@ -320,6 +320,7 @@ function setValue(ptr, value, type) {
     default: abort('invalid type for setValue: ' + type);
   }
 }
+this['setValue'] = setValue;
 
 // Parallel to setValue.
 
@@ -337,6 +338,7 @@ function getValue(ptr, type) {
   }
   return null;
 }
+this['getValue'] = getValue;
 
 // Allocates memory for some data and initializes it properly.
 
