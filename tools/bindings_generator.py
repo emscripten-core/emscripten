@@ -191,6 +191,23 @@ for classname, clazz in classes.iteritems():
         }],
       })
 
+    # Add destroyer
+    if not clazz.get('abstract'):
+      clazz['methods'].append({
+        'destroyer': True,
+        'name': '__destroy__',
+        'constructor': False,
+        'destructor': False,
+        'static': False,
+        'returns': 'void',
+        'returns_text': 'void',
+        'returns_reference': False,
+        'returns_pointer': False,
+        'pure_virtual': False,
+        'num_args': set([0]),
+        'parameters': [],
+      })
+
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
 def clean_type(t):
@@ -218,7 +235,7 @@ for classname, clazz in parsed.classes.iteritems():
       if method['name'] not in clazz['final_methods']:
         copied = clazz['final_methods'][method['name']] = {}
         for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'returns_reference', 'returns_pointer', 'destructor', 'pure_virtual',
-                    'getter', 'setter']:
+                    'getter', 'setter', 'destroyer']:
           copied[key] = method.get(key)
         copied['num_args'] = method['num_args'].copy()
         copied['origin'] = subclass
@@ -293,9 +310,17 @@ gen_c.write('extern "C" {\n')
 # Use this when calling a binding function when you want to pass a null pointer.
 # Having this object saves us needing to do checks for the object being null each time in the bindings code.
 gen_js.write('''
+// Bindings utilities
 function wrapPointer(ptr) { return { ptr: ptr } };
 this['wrapPointer'] = wrapPointer;
+
 this['NULL'] = wrapPointer(0);
+
+function destroy(obj) {
+  if (!obj['__destroy__']) throw 'Error: Cannot destroy object. (Did you create it yourself?)';
+  obj['__destroy__']();
+}
+this['destroy'] = destroy;
 ''')
 
 def generate_wrapping_code(classname):
@@ -316,13 +341,13 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
   inherited = generating_classname_head != classname_head
 
-  if clazz['abstract']:
+  abstract = clazz['abstract']
+  if abstract:
     # For abstract base classes, add a function definition on top. There is no constructor
     gen_js.write('\nfunction ' + generating_classname_head + ('(){ throw "%s is abstract!" }\n' % generating_classname_head) + generate_wrapping_code(generating_classname_head))
     if export:
       gen_js.write('''this['%s'] = %s;
 ''' % (generating_classname_head, generating_classname_head))
-
 
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
@@ -416,6 +441,10 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
           gen_c.write('''
   self->%s = value;
 ''' % actualmname)
+        elif method.get('destroyer'):
+          gen_c.write('''
+  delete self;
+''')
         else: # normal method
           gen_c.write('''
   %s%s%s(%s);
