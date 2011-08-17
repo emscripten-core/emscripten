@@ -94,6 +94,7 @@ for classname, clazz in parsed.classes.iteritems():
   print 'zz see', classname
   classes[classname] = clazz
   clazz['methods'] = clazz['methods']['public'] # CppHeaderParser doesn't have 'public' etc. in structs. so equalize to that
+
   if '::' in classname:
     assert classname.count('::') == 1
     parents[classname.split('::')[1]] = classname.split('::')[0]
@@ -147,6 +148,49 @@ for classname, clazz in classes.iteritems():
 
     print 'zz %s::%s gets %s and returns %s' % (classname, method['name'], str([arg['type'] for arg in method['parameters']]), method['returns_text'])
 
+    # Add getters/setters for public members
+    for prop in clazz['properties']['public']:
+      if classname + '::' + prop['name'] in ignored: continue
+      if prop.get('array_dimensions'):
+        print 'zz warning: ignoring getter/setter for array', classname + '::' + prop['name']
+        continue
+      type_ = prop['type'].replace('mutable ', '')#.replace(' ', '')
+      if '<' in prop['name'] or '<' in type_:
+        print 'zz warning: ignoring getter/setter for templated class', classname + '::' + prop['name']
+        continue
+      reference = type_ in classes # a raw struct or class as a prop means we need to work with a ref
+      clazz['methods'].append({
+        'getter': True,
+        'name': 'get_' + prop['name'],
+        'constructor': False,
+        'destructor': False,
+        'static': False,
+        'returns': type_.replace(' *', '').replace('*', ''),
+        'returns_text': type_ + ('&' if reference else ''),
+        'returns_reference': reference,
+        'returns_pointer': '*' in type_,
+        'pure_virtual': False,
+        'num_args': set([0]),
+        'parameters': [],
+      })
+      clazz['methods'].append({
+        'setter': True,
+        'name': 'set_' + prop['name'],
+        'constructor': False,
+        'destructor': False,
+        'static': False,
+        'returns': 'void',
+        'returns_text': 'void',
+        'returns_reference': False,
+        'returns_pointer': False,
+        'pure_virtual': False,
+        'num_args': set([1]),
+        'parameters': [{
+          'type': type_ + ('&' if reference else ''),
+          'name': 'value',
+        }],
+      })
+
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
 def clean_type(t):
@@ -173,8 +217,9 @@ for classname, clazz in parsed.classes.iteritems():
 
       if method['name'] not in clazz['final_methods']:
         copied = clazz['final_methods'][method['name']] = {}
-        for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'returns_reference', 'returns_pointer', 'destructor', 'pure_virtual']:
-          copied[key] = method[key]
+        for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'returns_reference', 'returns_pointer', 'destructor', 'pure_virtual',
+                    'getter', 'setter']:
+          copied[key] = method.get(key)
         copied['num_args'] = method['num_args'].copy()
         copied['origin'] = subclass
         copied['parameters'] = [];
@@ -248,7 +293,9 @@ gen_c.write('extern "C" {\n')
 # Use this when calling a binding function when you want to pass a null pointer.
 # Having this object saves us needing to do checks for the object being null each time in the bindings code.
 gen_js.write('''
-var NULL = { ptr: 0 };
+function wrapPointer(ptr) { return { ptr: ptr } };
+this['wrapPointer'] = wrapPointer;
+this['NULL'] = wrapPointer(0);
 ''')
 
 def generate_wrapping_code(classname):
@@ -324,11 +371,13 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     ret = ((classname + ' *') if constructor else method['returns_text'])#.replace('virtual ', '')
     callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
-    actualmname = ''
+    actualmname = '' # mname used in C
     if '__operator__' in mname:
       continue # TODO: operators
     else:
       actualmname = classname if constructor else (method.get('truename') or mname)
+    if method.get('getter') or method.get('setter'):
+      actualmname = actualmname[4:]
 
     need_self = not constructor and not static
     typedargs = ([] if not need_self else [classname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args)
@@ -353,17 +402,27 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     # C
 
     for i in method['num_args']:
-
       # If we are returning a *copy* of an object, we return instead to a ref of a static held here. This seems the best compromise
       staticize = not constructor and ret.replace(' ', '') != 'void' and method['returns'] in classes and (not method['returns_reference'] and not method['returns_pointer'])
       gen_c.write('''
-%s %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i, ', '.join(typedargs[:i + (0 if not need_self else 1)])))
+%s %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i,
+                    ', '.join(typedargs[:i + (0 if not need_self else 1)])))
       if not staticize:
-        gen_c.write('''
+        if method.get('getter'):
+          gen_c.write('''
+  return self->%s;
+''' % actualmname)
+        elif method.get('setter'):
+          gen_c.write('''
+  self->%s = value;
+''' % actualmname)
+        else: # normal method
+          gen_c.write('''
   %s%s%s(%s);
-}''' % ('return ' if ret.replace(' ', '') != 'void' else '',
-        callprefix, actualmname,
-        ', '.join(justargs[:i])))
+''' % ('return ' if ret.replace(' ', '') != 'void' else '',
+        callprefix, actualmname, ', '.join(justargs[:i])))
+
+        gen_c.write('}')
       else:
         gen_c.write('''
   static %s ret = %s%s(%s);
@@ -407,7 +466,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
-          calls += 'return %s__wrap__(%s);' % (method['returns'], return_value)
+          calls += 'return %s__wrap__(%s);' % (method['returns'].split('::')[-1], return_value)
         else:
           # Normal return
           calls += ('return ' if ret != 'void' else '') + return_value + ';'
