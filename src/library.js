@@ -133,7 +133,7 @@ LibraryManager.library = {
     },
     // Finds the file system object at a given path. If dontResolveLastLink is
     // set to true and the object is a symbolic link, it will be returned as is
-    // instead of being resolved. Links embedded in the path as still resolved.
+    // instead of being resolved. Links embedded in the path are still resolved.
     findObject: function(path, dontResolveLastLink) {
       FS.ensureRoot();
       var ret = FS.analyzePath(path, dontResolveLastLink);
@@ -4685,12 +4685,179 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
-  // TODO: Implement for real.
   nl_langinfo: function(item) {
-    var me = _nl_langinfo;
-    if (!me.ret) {
-      me.ret = allocate(intArrayFromString("eh?"), 'i8', ALLOC_NORMAL);
+    // char *nl_langinfo(nl_item item);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
+    var result;
+    switch (item) {
+      case 0xE:  // CODESET
+        result = 'ANSI_X3.4-1968';
+        break;
+      case 0x20028:  // D_T_FMT
+        result = '%a %b %e %H:%M:%S %Y';
+        break;
+      case 0x20029:  // D_FMT
+        result = '%m/%d/%y';
+        break;
+      case 0x2002A:  // T_FMT
+        result = '%H:%M:%S';
+        break;
+      case 0x2002B:  // T_FMT_AMPM
+        result = '%I:%M:%S %p';
+        break;
+      case 0x20026:  // AM_STR
+        result = 'AM';
+        break;
+      case 0x20027:  // PM_STR
+        result = 'PM';
+        break;
+      case 0x20007:  // DAY_1
+        result = 'Sunday';
+        break;
+      case 0x20008:  // DAY_2
+        result = 'Monday';
+        break;
+      case 0x20009:  // DAY_3
+        result = 'Tuesday';
+        break;
+      case 0x2000A:  // DAY_4
+        result = 'Wednesday';
+        break;
+      case 0x2000B:  // DAY_5
+        result = 'Thursday';
+        break;
+      case 0x2000C:  // DAY_6
+        result = 'Friday';
+        break;
+      case 0x2000D:  // DAY_7
+        result = 'Saturday';
+        break;
+      case 0x20000:  // ABDAY_1
+        result = 'Sun';
+        break;
+      case 0x20001:  // ABDAY_2
+        result = 'Mon';
+        break;
+      case 0x20002:  // ABDAY_3
+        result = 'Tue';
+        break;
+      case 0x20003:  // ABDAY_4
+        result = 'Wed';
+        break;
+      case 0x20004:  // ABDAY_5
+        result = 'Thu';
+        break;
+      case 0x20005:  // ABDAY_6
+        result = 'Fri';
+        break;
+      case 0x20006:  // ABDAY_7
+        result = 'Sat';
+        break;
+      case 0x2001A:  // MON_1
+        result = 'January';
+        break;
+      case 0x2001B:  // MON_2
+        result = 'February';
+        break;
+      case 0x2001C:  // MON_3
+        result = 'March';
+        break;
+      case 0x2001D:  // MON_4
+        result = 'April';
+        break;
+      case 0x2001E:  // MON_5
+        result = 'May';
+        break;
+      case 0x2001F:  // MON_6
+        result = 'June';
+        break;
+      case 0x20020:  // MON_7
+        result = 'July';
+        break;
+      case 0x20021:  // MON_8
+        result = 'August';
+        break;
+      case 0x20022:  // MON_9
+        result = 'September';
+        break;
+      case 0x20023:  // MON_10
+        result = 'October';
+        break;
+      case 0x20024:  // MON_11
+        result = 'November';
+        break;
+      case 0x20025:  // MON_12
+        result = 'December';
+        break;
+      case 0x2000E:  // ABMON_1
+        result = 'Jan';
+        break;
+      case 0x2000F:  // ABMON_2
+        result = 'Feb';
+        break;
+      case 0x20010:  // ABMON_3
+        result = 'Mar';
+        break;
+      case 0x20011:  // ABMON_4
+        result = 'Apr';
+        break;
+      case 0x20012:  // ABMON_5
+        result = 'May';
+        break;
+      case 0x20013:  // ABMON_6
+        result = 'Jun';
+        break;
+      case 0x20014:  // ABMON_7
+        result = 'Jul';
+        break;
+      case 0x20015:  // ABMON_8
+        result = 'Aug';
+        break;
+      case 0x20016:  // ABMON_9
+        result = 'Sep';
+        break;
+      case 0x20017:  // ABMON_10
+        result = 'Oct';
+        break;
+      case 0x20018:  // ABMON_11
+        result = 'Nov';
+        break;
+      case 0x20019:  // ABMON_12
+        result = 'Dec';
+        break;
+      case 0x2002F:  // ALT_DIGITS
+        result = '';
+        break;
+      case 0x10000:  // RADIXCHAR
+        result = '.';
+        break;
+      case 0x10001:  // THOUSEP
+        result = '';
+        break;
+      case 0x50000:  // YESEXPR
+        result = '^[yY]';
+        break;
+      case 0x50001:  // NOEXPR
+        result = '^[nN]';
+        break;
+      case 0x4000F:  // CRNCYSTR
+        result = '-';
+        break;
+      case 0x2002C:  // ERA
+      case 0x2002E:  // ERA_D_FMT
+      case 0x20030:  // ERA_D_T_FMT
+      case 0x20031:  // ERA_T_FMT
+      default:
+        result = '';
+        break;
     }
+
+    var me = _nl_langinfo;
+    if (!me.ret) me.ret = _malloc(32);
+    for (var i = 0; i < result.length; i++) {
+      {{{ makeSetValue('me.ret', 'i', 'result.charCodeAt(i)', 'i8') }}}
+    }
+    {{{ makeSetValue('me.ret', 'i', '0', 'i8') }}}
     return me.ret;
   },
 

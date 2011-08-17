@@ -2080,6 +2080,11 @@ if 'benchmark' not in sys.argv:
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
       self.do_test(src, expected)
 
+    def test_langinfo(self):
+      src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
+      expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
     def test_files(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       def post(filename):
