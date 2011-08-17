@@ -63,6 +63,14 @@ SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
 LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
+DISABLE_EXCEPTIONS = 0; // Disables generating code to actually catch exceptions. If the code you
+                        // are compiling does not actually rely on catching exceptions (but the
+                        // compiler generates code for it, maybe because of stdlibc++ stuff),
+                        // then this can make it much faster. If an exception actually happens,
+                        // it will not be caught and the program will halt (so this will not
+                        // introduce silent failures, which is good).
+                        // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
+                        //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
 EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
                      // There is currently not much to do to handle overflows if they occur.

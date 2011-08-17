@@ -685,12 +685,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
+    var call_ = makeFunctionCall(item.ident, item.params, item.funcData);
+    var branch = makeBranch(item.toLabel, item.currLabelId);
+    if (DISABLE_EXCEPTIONS) return call_ + '; ' + branch;
     var ret = '(function() { try { __THREW__ = false; return '
-            + makeFunctionCall(item.ident, item.params, item.funcData) + ' '
+            + call_ + ' '
             + '} catch(e) { '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
-            + 'return null } })(); if (!__THREW__) { ' + makeBranch(item.toLabel, item.currLabelId)
+            + 'return null } })(); if (!__THREW__) { ' + branch
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
@@ -793,7 +796,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 
-  makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable! Original .ll line: ' + item.lineNum + '";' });
+  makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable!"' }); // Original .ll line: ' + item.lineNum + '";' });
 
   // Final combiner
 
@@ -837,6 +840,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (RUNTIME_TYPE_INFO) {
         Types.cleanForRuntime();
         print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
+        print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
       }
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
       print(Functions.generateIndexing());

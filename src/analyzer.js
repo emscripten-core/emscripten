@@ -375,10 +375,8 @@ function analyzer(data) {
       if (USE_TYPED_ARRAYS !== 2) return;
 
       function seekIdent(item, obj) {
-//if (item.intertype === 'value') print('seeeeeeek ' + dump(item));
         if (item.ident === obj.ident) {
           obj.found++;
-//print('zz FOUNDZEY');
         }
       }
 
@@ -395,14 +393,18 @@ function analyzer(data) {
       item.functions.forEach(function(func) {
         func.lines.forEach(function(line, i) {
           if (line.intertype === 'assign' && line.value.intertype === 'load') {
-            var total = func.variables[line.ident].uses;
+            var data = func.variables[line.ident]
+            if (data.type === 'i1') {
+              line.value.unsigned = true;
+              return;
+            }
+
+            var total = data.uses;
             if (total === 0) return;
             var obj = { ident: line.ident, found: 0, unsigned: 0, signed: 0, total: total };
-//print('zz SIGNALYZE ' + line.lineNum + ' : ' + dump(obj));
             // in loops with phis, we can also be used *before* we are defined
             var j = i-1, k = i+1;
             while(1) {
-//print('        ' + [j >= 0 ? func.lines[j].lineNum : null, k < func.lines.length ? func.lines[k].lineNum : null, obj.found, obj.total]);
               assert(j >= 0 || k < func.lines.length, 'Signalyzer ran out of space to look for sign indications for line ' + line.lineNum);
               if (j >= 0 && walkInterdata(func.lines[j], seekIdent, seekMathop, obj)) break;
               if (k < func.lines.length && walkInterdata(func.lines[k], seekIdent, seekMathop, obj)) break;
@@ -410,7 +412,7 @@ function analyzer(data) {
               j -= 1;
               k += 1;
             }
-//print('zz signz: ' + dump(obj));
+
             // unsigned+signed might be < total, since the same ident can appear multiple times in the same mathop.
             // found can actually be > total, since we currently have the same ident in a GEP (see cubescript test)
             // in the GEP item, and a child item (we have the ident copied onto the GEP item as a convenience).

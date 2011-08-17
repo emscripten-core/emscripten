@@ -60,7 +60,12 @@ class RunnerCore(unittest.TestCase):
 
   # Similar to LLVM::createStandardModulePasses()
   def pick_llvm_opts(self, optimization_level, optimize_size, allow_nonportable=False):
-    global LLVM_OPT_OPTS
+    global LLVM_OPT_OPTS, USE_TYPED_ARRAYS
+
+    #if USE_TYPED_ARRAYS == 2: # unsafe optimizations. TODO: fix all issues blocking this from being used
+    #  LLVM_OPT_OPTS = ['-O3']
+    #  return
+
     LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, optimize_size, allow_nonportable)
 
   # Emscripten optimizations that we run on the .ll file
@@ -173,7 +178,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTIONS']:
       try:
         value = eval(setting)
         exported_settings[setting] = value
@@ -949,6 +954,10 @@ if 'benchmark' not in sys.argv:
           }
         '''
         self.do_test(src, '*throw...caught!infunc...done!*')
+
+        global DISABLE_EXCEPTIONS
+        DISABLE_EXCEPTIONS = 1
+        self.do_test(src, 'Compiled code throwing an exception')
 
     def test_class(self):
         src = '''
@@ -2724,6 +2733,7 @@ if 'benchmark' not in sys.argv:
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
 
       self.do_test(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+                   #build_ll_hook=self.do_autodebug)
 
     def test_gcc_unmangler(self):
       self.do_test(path_from_root('third_party'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
@@ -3159,6 +3169,8 @@ if 'benchmark' not in sys.argv:
 
         # Way 2: use CppHeaderParser
 
+        global RUNTIME_TYPE_INFO; RUNTIME_TYPE_INFO = 1
+
         header = '''
           #include <stdio.h>
 
@@ -3334,13 +3346,16 @@ Child2:9
               print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
               var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
               print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
+              print('|' + JSON.stringify(Runtime.generateStructInfo(null, 'UserStruct')) + '|');
             } else {
               print('No type info.');
             }
           '''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|', post_build=post)
+      self.do_test(src,
+                   '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
+                   post_build=post)
 
       # Make sure that without the setting, we don't spam the .js with the type info
       RUNTIME_TYPE_INFO = 0
@@ -3668,7 +3683,7 @@ Child2:9
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTIONS
 
     COMPILER = '%s'
     llvm_opts = %d
@@ -3691,6 +3706,7 @@ class %s(T):
     CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
     INIT_STACK = 0
     RUNTIME_TYPE_INFO = 0
+    DISABLE_EXCEPTIONS = 0
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = ['-g']
@@ -3742,7 +3758,7 @@ else:
   QUANTUM_SIZE = 1
   RELOOP = OPTIMIZE = 1
   USE_TYPED_ARRAYS = 0
-  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = RUNTIME_TYPE_INFO = 0
+  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = RUNTIME_TYPE_INFO = DISABLE_EXCEPTIONS = 0
   INVOKE_RUN = 1
   CORRECT_SIGNS = 0
   CORRECT_ROUNDINGS = 0

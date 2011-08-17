@@ -632,11 +632,17 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
   });
   // 'alloca'
+  var allocaPossibleVars = ['allocatedNum'];
   substrate.addActor('Alloca', {
     processItem: function(item) {
       item.intertype = 'alloca';
       item.allocatedType = item.tokens[1].text;
-      item.allocatedNum = (item.tokens.length > 3 && Runtime.isNumberType(item.tokens[3].text)) ? toNiceIdent(item.tokens[4].text) : 1;
+      if (item.tokens.length > 3 && Runtime.isNumberType(item.tokens[3].text)) {
+        item.allocatedNum = toNiceIdent(item.tokens[4].text);
+        item.possibleVars = allocaPossibleVars;
+      } else {
+        item.allocatedNum = 1;
+      }
       item.type = addPointing(item.tokens[1].text); // type of pointer we will get
       Types.needAnalysis[item.type] = 0;
       item.type2 = item.tokens[1].text; // value we will create, and get a pointer to

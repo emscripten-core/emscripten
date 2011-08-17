@@ -730,6 +730,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
+    // We can receive either an object - an object literal that was in the .ll - or a string,
+    // which is the ident of an aggregate struct
+    if (typeof value === 'string') {
+      value = range(typeData.fields.length).map(function(i) { return value + '.f' + i });
+    }
     for (var i = 0; i < typeData.fields.length; i++) {
       ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
     }
@@ -1276,6 +1281,13 @@ function walkInterdata(item, pre, post, obj) {
   if (item.params) {
     for (i = 0; i <= item.params.length; i++) {
       if (walkInterdata(item.params[i], pre, post,  obj)) return true;
+    }
+  }
+  if (item.possibleVars) { // other attributes that might contain interesting data; here, variables
+    var box = { intertype: 'value', ident: '' };
+    for (i = 0; i <= item.possibleVars.length; i++) {
+      box.ident = item[item.possibleVars[i]];
+      if (walkInterdata(box, pre, post,  obj)) return true;
     }
   }
   return post(item, originalObj, obj);

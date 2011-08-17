@@ -183,11 +183,11 @@ Runtime = {
     var type, alignment;
     if (typeName) {
       offset = offset || 0;
-      type = typeof Types === 'undefined' ? Runtime.typeInfo[typeName] : Types.types[typeName];
+      type = (typeof Types === 'undefined' ? Runtime.typeInfo : Types.types)[typeName];
       if (!type) return null;
-      if (!struct) struct = Types.structMetadata[typeName.replace(/.*\./, '')];
+      if (!struct) struct = (typeof Types === 'undefined' ? Runtime : Types).structMetadata[typeName.replace(/.*\./, '')];
       if (!struct) return null;
-      assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName);
+      assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName + '. Perhaps due to inheritance, which is not supported yet?');
       alignment = type.flatIndexes;
     } else {
       var type = { fields: struct.map(function(item) { return item[0] }) };

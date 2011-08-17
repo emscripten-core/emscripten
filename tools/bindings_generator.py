@@ -94,6 +94,7 @@ for classname, clazz in parsed.classes.iteritems():
   print 'zz see', classname
   classes[classname] = clazz
   clazz['methods'] = clazz['methods']['public'] # CppHeaderParser doesn't have 'public' etc. in structs. so equalize to that
+
   if '::' in classname:
     assert classname.count('::') == 1
     parents[classname.split('::')[1]] = classname.split('::')[0]
@@ -145,25 +146,97 @@ for classname, clazz in classes.iteritems():
     if method.get('returns_reference'): method['returns_text'] += '&'
     method['returns_text'] = type_processor(method['returns_text'])
 
+    print 'zz %s::%s gets %s and returns %s' % (classname, method['name'], str([arg['type'] for arg in method['parameters']]), method['returns_text'])
+
+    # Add getters/setters for public members
+    for prop in clazz['properties']['public']:
+      if classname + '::' + prop['name'] in ignored: continue
+      if prop.get('array_dimensions'):
+        print 'zz warning: ignoring getter/setter for array', classname + '::' + prop['name']
+        continue
+      type_ = prop['type'].replace('mutable ', '')#.replace(' ', '')
+      if '<' in prop['name'] or '<' in type_:
+        print 'zz warning: ignoring getter/setter for templated class', classname + '::' + prop['name']
+        continue
+      reference = type_ in classes # a raw struct or class as a prop means we need to work with a ref
+      clazz['methods'].append({
+        'getter': True,
+        'name': 'get_' + prop['name'],
+        'constructor': False,
+        'destructor': False,
+        'static': False,
+        'returns': type_.replace(' *', '').replace('*', ''),
+        'returns_text': type_ + ('&' if reference else ''),
+        'returns_reference': reference,
+        'returns_pointer': '*' in type_,
+        'pure_virtual': False,
+        'num_args': set([0]),
+        'parameters': [],
+      })
+      clazz['methods'].append({
+        'setter': True,
+        'name': 'set_' + prop['name'],
+        'constructor': False,
+        'destructor': False,
+        'static': False,
+        'returns': 'void',
+        'returns_text': 'void',
+        'returns_reference': False,
+        'returns_pointer': False,
+        'pure_virtual': False,
+        'num_args': set([1]),
+        'parameters': [{
+          'type': type_ + ('&' if reference else ''),
+          'name': 'value',
+        }],
+      })
+
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
+
+def clean_type(t):
+  return t.replace('const ', '').replace('struct ', '').replace('&', '').replace('*', '').replace(' ', '')
+
+def fix_template_value(t): # Not sure why this is needed, might be a bug in CppHeaderParser
+  if t == 'unsignedshortint':
+    return 'unsigned short int'
+  elif t == 'unsignedint':
+    return 'unsigned int'
+  return t
 
 for classname, clazz in parsed.classes.iteritems():
   clazz['final_methods'] = {}
 
-  def explore(subclass):
+  def explore(subclass, template_name=None, template_value=None):
     # Do our functions first, and do not let later classes override
     for method in subclass['methods']:
+      print classname, 'exploring', subclass['name'], '::', method['name']
+
       if method['constructor']:
         if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
       if method['destructor']: continue # Nothing to do there
 
       if method['name'] not in clazz['final_methods']:
-        clazz['final_methods'][method['name']] = {}
-        for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'destructor', 'pure_virtual']:
-          clazz['final_methods'][method['name']][key] = method[key]
-        clazz['final_methods'][method['name']]['num_args'] = method['num_args'].copy()
-        clazz['final_methods'][method['name']]['parameters'] = method['parameters'][:]
-        clazz['final_methods'][method['name']]['origin'] = subclass
+        copied = clazz['final_methods'][method['name']] = {}
+        for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'returns_reference', 'returns_pointer', 'destructor', 'pure_virtual',
+                    'getter', 'setter']:
+          copied[key] = method.get(key)
+        copied['num_args'] = method['num_args'].copy()
+        copied['origin'] = subclass
+        copied['parameters'] = [];
+        # Copy the arguments, since templating may cause them to be altered
+        for arg in method['parameters'][:]:
+          copiedarg = {
+            'type': arg['type'],
+            'name': arg['name'],
+          }
+          copied['parameters'].append(copiedarg)
+        if template_name:
+          # Set template values
+          copied['returns'] = copied['returns'].replace(template_name, template_value)
+          copied['returns_text'] = copied['returns_text'].replace(template_name, template_value)
+          for arg in copied['parameters']:
+            arg['type'] = arg['type'].replace(template_name, template_value)
+
       else:
         # Merge the new function in the best way we can. Shared arguments must match!
 
@@ -185,10 +258,20 @@ for classname, clazz in parsed.classes.iteritems():
     # Recurse
     if subclass.get('inherits'):
       for parent in subclass['inherits']:
-        if parent['class'] not in classes:
+        parent = parent['class']
+        template_name = None
+        template_value = None
+        if '<' in parent:
+          parent, template = parent.split('<')
+          template_name = classes[parent]['template_typename']
+          template_value = fix_template_value(template.replace('>', ''))
+          print 'template', template_value, 'for', classname, '::', parent, ' | ', template_name
+        if parent not in classes and '::' in classname: # They might both be subclasses in the same parent
+          parent = classname.split('::')[0] + '::' + parent
+        if parent not in classes:
           print 'Warning: parent class', parent, 'not a known class. Ignoring.'
           return
-        explore(classes[parent['class']])
+        explore(classes[parent], template_name, template_value)
 
   explore(clazz)
 
@@ -207,6 +290,26 @@ gen_js = open(basename + '.js', 'w')
 
 gen_c.write('extern "C" {\n')
 
+# Use this when calling a binding function when you want to pass a null pointer.
+# Having this object saves us needing to do checks for the object being null each time in the bindings code.
+gen_js.write('''
+function wrapPointer(ptr) { return { ptr: ptr } };
+this['wrapPointer'] = wrapPointer;
+this['NULL'] = wrapPointer(0);
+''')
+
+def generate_wrapping_code(classname):
+  return '''var %(classname)s__cache__ = {};
+function %(classname)s__wrap__(ptr) {
+  var ret = %(classname)s__cache__[ptr];
+  if (ret) return ret;
+  var ret = Object.create(%(classname)s.prototype);
+  ret.ptr = ptr;
+  return %(classname)s__cache__[ptr] = ret;
+}
+''' % { 'classname': classname }
+# %(classname)s.prototype['fields'] = Runtime.generateStructInfo(null, '%(classname)s'); - consider adding this
+
 def generate_class(generating_classname, classname, clazz): # TODO: deprecate generating?
   generating_classname_head = generating_classname.split('::')[-1]
   classname_head = classname.split('::')[-1]
@@ -215,18 +318,24 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
   if clazz['abstract']:
     # For abstract base classes, add a function definition on top. There is no constructor
-    gen_js.write('\nfunction ' + generating_classname_head + '(){}\n')
+    gen_js.write('\nfunction ' + generating_classname_head + ('(){ throw "%s is abstract!" }\n' % generating_classname_head) + generate_wrapping_code(generating_classname_head))
+    if export:
+      gen_js.write('''this['%s'] = %s;
+''' % (generating_classname_head, generating_classname_head))
+
 
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
-    if classname_head + '::' + mname in ignored: continue
+    if classname_head + '::' + mname in ignored:
+      print 'zz ignoring', mname
+      continue
 
     args = method['parameters']
     constructor = method['constructor']
     destructor = method['destructor']
     static = method['static']
 
-    print "zz generating:", generating_classname, classname, mname, constructor, method['returns'], method['returns_text']
+    print 'zz generating %s::%s. gets %s and returns %s' % (generating_classname, method['name'], str([arg['type'] for arg in method['parameters']]), method['returns_text'])
 
     if destructor: continue
     if constructor and inherited: continue
@@ -262,11 +371,13 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     ret = ((classname + ' *') if constructor else method['returns_text'])#.replace('virtual ', '')
     callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
-    actualmname = ''
+    actualmname = '' # mname used in C
     if '__operator__' in mname:
       continue # TODO: operators
     else:
       actualmname = classname if constructor else (method.get('truename') or mname)
+    if method.get('getter') or method.get('setter'):
+      actualmname = actualmname[4:]
 
     need_self = not constructor and not static
     typedargs = ([] if not need_self else [classname + ' * self']) + map(lambda arg: arg['type'] + ' ' + arg['name'], args)
@@ -288,20 +399,52 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       if constructor:
         generating_classname_suffixed += suffix
 
-    argfixes = '\n'.join(map(lambda arg: '''  %s = (%s && %s.ptr) ? %s.ptr : %s;''' % (arg['name'], arg['name'], arg['name'], arg['name'], arg['name']), args))
+    # C
 
     for i in method['num_args']:
-      # C
-
+      # If we are returning a *copy* of an object, we return instead to a ref of a static held here. This seems the best compromise
+      staticize = not constructor and ret.replace(' ', '') != 'void' and method['returns'] in classes and (not method['returns_reference'] and not method['returns_pointer'])
       gen_c.write('''
-%s %s_p%d(%s) {
+%s %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i,
+                    ', '.join(typedargs[:i + (0 if not need_self else 1)])))
+      if not staticize:
+        if method.get('getter'):
+          gen_c.write('''
+  return self->%s;
+''' % actualmname)
+        elif method.get('setter'):
+          gen_c.write('''
+  self->%s = value;
+''' % actualmname)
+        else: # normal method
+          gen_c.write('''
   %s%s%s(%s);
-}
-''' % (ret, fullname, i, ', '.join(typedargs[:i + (0 if not need_self else 1)]), 'return ' if ret.replace(' ', '') != 'void' else '', callprefix, actualmname, ', '.join(justargs[:i])))
+''' % ('return ' if ret.replace(' ', '') != 'void' else '',
+        callprefix, actualmname, ', '.join(justargs[:i])))
+
+        gen_c.write('}')
+      else:
+        gen_c.write('''
+  static %s ret = %s%s(%s);
+  return ret;
+}''' % (method['returns'],
+        callprefix, actualmname,
+        ', '.join(justargs[:i])))
 
       c_funcs.append(fullname + '_p' + str(i))
 
     # JS
+
+    print 'zz types:', map(lambda arg: arg['type'], args)
+
+    # We can assume that NULL is passed for null pointers, so object arguments can always
+    # have .ptr done on them
+    justargs_fixed = justargs[:]
+    for i in range(len(args)):
+      arg = args[i]
+      if clean_type(arg['type']) in classes:
+        justargs_fixed[i] += '.ptr'
+
     calls = ''
     print 'js loopin', method['num_args'], '|', len(args)#, args
     for i in method['num_args']:
@@ -314,16 +457,16 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       if constructor:
         if not dupe:
           calls += '''this.ptr = _%s_p%d(%s);
-''' % (fullname, i, ', '.join(justargs[:i]))
+''' % (fullname, i, ', '.join(justargs_fixed[:i]))
         else:
           calls += '''this.ptr = _%s_p%d(%s);
-''' % (fullname, i, ', '.join(justargs[:i]))
+''' % (fullname, i, ', '.join(justargs_fixed[:i]))
       else:
-        return_value = '''_%s_p%d(%s)''' % (fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs[:i]))
+        return_value = '''_%s_p%d(%s)''' % (fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs_fixed[:i]))
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
-          calls += '{ var ptr = ' + return_value + '; if (!ptr) return null; var ret = Object.create(' + method['returns'] + '.prototype); ret.ptr = ptr; return ret; }'
+          calls += 'return %s__wrap__(%s);' % (method['returns'].split('::')[-1], return_value)
         else:
           # Normal return
           calls += ('return ' if ret != 'void' else '') + return_value + ';'
@@ -335,17 +478,15 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         js_text = '''
 function %s(%s) {
 %s
-%s
 }
-''' % (mname_suffixed, ', '.join(justargs), argfixes, calls)
+%s''' % (mname_suffixed, ', '.join(justargs), calls, generate_wrapping_code(generating_classname_head))
       else:
         js_text = '''
 function %s(%s) {
 %s
-%s
 }
 %s.prototype = %s.prototype;
-''' % (mname_suffixed, ', '.join(justargs), argfixes, calls, mname_suffixed, classname)
+''' % (mname_suffixed, ', '.join(justargs), calls, mname_suffixed, classname)
 
       if export:
         js_text += '''
@@ -356,9 +497,8 @@ this['%s'] = %s;
       js_text = '''
 %s.prototype%s = function(%s) {
 %s
-%s
 }
-''' % (generating_classname_head, ('.' + mname_suffixed) if not export else ("['" + mname_suffixed + "']"), ', '.join(justargs), argfixes, calls)
+''' % (generating_classname_head, ('.' + mname_suffixed) if not export else ("['" + mname_suffixed + "']"), ', '.join(justargs), calls)
 
     js_text = js_text.replace('\n\n', '\n').replace('\n\n', '\n')
     gen_js.write(js_text)
@@ -366,16 +506,30 @@ this['%s'] = %s;
 # Main loop
 
 for classname, clazz in classes.iteritems():
-  if any([name in ignored for name in classname.split('::')]): continue
+  if any([name in ignored for name in classname.split('::')]):
+    print 'zz ignoring', classname
+    continue
+
+  if clazz.get('template_typename'):
+    print 'zz ignoring templated base class', classname
+    continue
 
   # Nothing to generate for pure virtual classes XXX actually this is not so. We do need to generate wrappers for returned objects,
   # they are of a concrete class of course, but an known one, so we create a wrapper for an abstract base class.
+
+  possible_prefix = (classname.split('::')[0] + '::') if '::' in classname else ''
 
   def check_pure_virtual(clazz, progeny):
     #if not clazz.get('inherits'): return False # If no inheritance info, not a class, this is a CppHeaderParser struct
     print 'Checking pure virtual for', clazz['name'], clazz['inherits']
     # If we do not recognize any of the parent classes, assume this is pure virtual - ignore it
-    if any([((not parent['class'] in classes) or check_pure_virtual(classes[parent['class']], [clazz] + progeny)) for parent in clazz['inherits']]): return True
+    parents = [parent['class'] for parent in clazz['inherits']]
+    parents = [parent.split('<')[0] for parent in parents] # remove template stuff
+    parents = [parent if parent in classes else possible_prefix + parent for parent in parents]
+    if any([not parent in classes for parent in parents]):
+      print 'zz Warning: unknown parent class', parents, 'for', classname
+      return True
+    if any([check_pure_virtual(classes[parent], [clazz] + progeny) for parent in parents]): return True
 
     def dirtied(mname):
       #print 'zz checking dirtiness for', mname, 'in', progeny
@@ -393,6 +547,7 @@ for classname, clazz in classes.iteritems():
         return True
 
   clazz['abstract'] = check_pure_virtual(clazz, [])
+  print 'zz', classname, 'is abstract?', clazz['abstract']
   #if check_pure_virtual(clazz, []):
   #  continue
 
