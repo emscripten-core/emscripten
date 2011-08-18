@@ -311,7 +311,16 @@ gen_c.write('extern "C" {\n')
 # Having this object saves us needing to do checks for the object being null each time in the bindings code.
 gen_js.write('''
 // Bindings utilities
-function wrapPointer(ptr) { return { ptr: ptr } };
+var Object__cache = {};
+function wrapPointer(ptr, class_) {
+  var cache = class_ ? class_.prototype.__cache__ : Object__cache;
+  var ret = cache[ptr];
+  if (ret) return ret;
+  class_ = class_ || Object;
+  ret = Object.create(class_.prototype);
+  ret.ptr = ptr;
+  return cache[ptr] = ret;
+};
 this['wrapPointer'] = wrapPointer;
 
 this['NULL'] = wrapPointer(0);
@@ -321,17 +330,15 @@ function destroy(obj) {
   obj['__destroy__']();
 }
 this['destroy'] = destroy;
+
+function compare(obj1, obj2) {
+  return obj1.ptr === obj2.ptr;
+}
+this['compare'] = compare;
 ''')
 
 def generate_wrapping_code(classname):
-  return '''var %(classname)s__cache__ = {};
-function %(classname)s__wrap__(ptr) {
-  var ret = %(classname)s__cache__[ptr];
-  if (ret) return ret;
-  var ret = Object.create(%(classname)s.prototype);
-  ret.ptr = ptr;
-  return %(classname)s__cache__[ptr] = ret;
-}
+  return '''%(classname)s.prototype.__cache__ = {};
 ''' % { 'classname': classname }
 # %(classname)s.prototype['fields'] = Runtime.generateStructInfo(null, '%(classname)s'); - consider adding this
 
@@ -495,7 +502,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
-          calls += 'return %s__wrap__(%s);' % (method['returns'].split('::')[-1], return_value)
+          calls += 'return wrapPointer(%s, %s);' % (return_value, method['returns'].split('::')[-1])
         else:
           # Normal return
           calls += ('return ' if ret != 'void' else '') + return_value + ';'
