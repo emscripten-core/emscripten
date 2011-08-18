@@ -4562,7 +4562,26 @@ LibraryManager.library = {
     return -1;
   },
 
-  // TODO: Implement strftime(), strptime() and getdate().
+  strftime: function(s, maxsize, format, timeptr) {
+    // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
+    // TODO: Implement.
+    return 0;
+  },
+
+  strptime: function(buf, format, tm) {
+    // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
+    // TODO: Implement.
+    return 0;
+  },
+
+  getdate: function(string) {
+    // struct tm *getdate(const char *string);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
+    // TODO: Implement.
+    return 0;
+  },
 
   // ==========================================================================
   // sys/time.h
