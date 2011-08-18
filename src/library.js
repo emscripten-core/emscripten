@@ -3668,7 +3668,14 @@ LibraryManager.library = {
   },
 
   strdup: function(ptr) {
-    return allocate(String_copy(ptr, true), 'i8', ALLOC_NORMAL);
+    var len = String_len(ptr);
+    var end = ptr + len;
+    var newStr = _malloc(len + 1);
+    for (var src = ptr, dst = newStr; src < end; src++, dst++) {
+      {{{ makeSetValue('dst', 0, 'src', 'i8') }}}
+    }
+    {{{ makeSetValue('dst', 0, 0, 'i8') }}}
+    return newStr;
   },
 
   strpbrk: function(ptr1, ptr2) {
