@@ -253,8 +253,13 @@ LibraryManager.library = {
         // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
         var xhr = new XMLHttpRequest();
         xhr.open('GET', obj.url, false);
-        xhr.responseType = 'arraybuffer'; // hint to the browser that we want binary data
-        xhr.overrideMimeType('text/plain; charset=x-user-defined');  // another hint
+
+        // Some hints to the browser that we want binary data.
+        xhr.responseType = 'arraybuffer';
+        if (xhr.overrideMimeType) {
+          xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        }
+
         xhr.send(null);
         if (xhr.status != 200 && xhr.status != 0) success = false;
         if (xhr.response !== undefined) {
