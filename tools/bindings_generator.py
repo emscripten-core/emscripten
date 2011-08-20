@@ -138,6 +138,44 @@ for classname, clazz in classes.iteritems():
     if method['static']:
       method['returns_text'] = method['returns_text'].replace('static', '')
 
+    # Implement operators
+    if '__operator__' in method['name']:
+      if 'assignment' in method['name']:
+        method['name'] = 'op_set'
+        method['operator'] = '  return *self = arg0;'
+      elif 'add' in method['name']:
+        method['name'] = 'op_add'
+        method['operator'] = '  return *self += arg0;'
+      elif 'sub' in method['name']:
+        print 'zz subsubsub ', classname, method['name'], method['parameters'][0]
+        method['name'] = 'op_sub'
+        if len(method['parameters'][0]) == 0:
+          method['operator'] = '  return -*self; // %d' % len(method['parameters'][0])
+        else:
+          method['operator'] = '  return *self -= arg0; // %d : %s' % (len(method['parameters'][0]), method['parameters'][0][0]['name'])
+      elif 'imul' in method['name']:
+        method['name'] = 'op_mul'
+        method['operator'] = '  return *self *= arg0;'
+      elif 'mul' in method['name']:
+        method['name'] = 'op_mul'
+        method['operator'] = '  static %s ret = *self * arg0; return ret;' % method['returns']
+      elif 'div' in method['name']:
+        method['name'] = 'op_div'
+        method['operator'] = '  return *self /= arg0;'
+      elif 'getitem' in method['name']:
+        method['name'] = 'op_get'
+        method['operator'] = '  return (*self)[arg0];'
+      elif 'delete' in method['name']:
+        method['ignore'] = True
+      elif 'new' in method['name']:
+        method['ignore'] = True
+      elif 'eq' in method['name']:
+        method['name'] = 'op_comp'
+        method['operator'] = '  return arg0 == arg1;' if len(method['parameters'][0]) == 2 else '  return *self == arg0;'
+      else:
+        print 'zz unknown operator:', method['name']
+        1/0.
+
     # Fill in some missing stuff
     if method.get('returns_const'): method['returns_text'] = 'const ' + method['returns_text']
     if method.get('returns_pointer'):
@@ -205,6 +243,8 @@ for classname, clazz in classes.iteritems():
         'parameters': [[]],
       })
 
+  clazz['methods'] = filter(lambda method: not method.get('ignore'), clazz['methods'])
+
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
 def clean_type(t):
@@ -239,10 +279,12 @@ for classname, clazz in parsed.classes.iteritems():
         if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
       if method['destructor']: continue # Nothing to do there
 
+      if method.get('operator') and subclass is not clazz: continue # Do not use parent class operators. Cast to that class if you need those operators (castObject)
+
       if method['name'] not in clazz['final_methods']:
         copied = clazz['final_methods'][method['name']] = {}
         for key in ['name', 'constructor', 'static', 'returns', 'returns_text', 'returns_reference', 'returns_pointer', 'destructor', 'pure_virtual',
-                    'getter', 'setter', 'destroyer']:
+                    'getter', 'setter', 'destroyer', 'operator']:
           copied[key] = method.get(key)
         copied['origin'] = subclass
         copied['parameters'] = [];
@@ -258,6 +300,8 @@ for classname, clazz in parsed.classes.iteritems():
               arg['type'] = arg['type'].replace(template_name, template_value)
       else:
         # Merge the new function in the best way we can. Two signatures (args) must differ in their number
+
+        if method.get('operator'): continue # do not merge operators
 
         curr = clazz['final_methods'][method['name']]
 
@@ -324,8 +368,13 @@ function wrapPointer(ptr, class_) {
   ret = Object.create(class_.prototype);
   ret.ptr = ptr;
   return cache[ptr] = ret;
-};
+}
 this['wrapPointer'] = wrapPointer;
+
+function castObject(obj, class_) {
+  return wrapPointer(obj.ptr, class_);
+}
+this['castObject'] = castObject;
 
 this['NULL'] = wrapPointer(0);
 
@@ -406,11 +455,8 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     ret = ((classname + ' *') if constructor else method['returns_text'])#.replace('virtual ', '')
     callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
-    actualmname = '' # mname used in C
-    if '__operator__' in mname:
-      continue # TODO: operators
-    else:
-      actualmname = classname if constructor else (method.get('truename') or mname)
+    '' # mname used in C
+    actualmname = classname if constructor else (method.get('truename') or mname)
     if method.get('getter') or method.get('setter'):
       actualmname = actualmname[4:]
 
@@ -448,33 +494,31 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 %s %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i,
                     ', '.join(typedargs(args)[:i + (0 if not need_self else 1)])))
       if not staticize:
+        gen_c.write('\n')
         if method.get('getter'):
-          gen_c.write('''
-  return self->%s;
-''' % actualmname)
+          gen_c.write('''  return self->%s;''' % actualmname)
         elif method.get('setter'):
-          gen_c.write('''
-  self->%s = arg0;
-''' % actualmname)
+          gen_c.write('''  self->%s = arg0;''' % actualmname)
         elif method.get('destroyer'):
-          gen_c.write('''
-  delete self;
-''')
+          gen_c.write('''  delete self;''')
+        elif method.get('operator'):
+          gen_c.write(method['operator'])
         else: # normal method
-          gen_c.write('''
-  %s%s%s(%s);
-''' % ('return ' if ret.replace(' ', '') != 'void' else '',
+          gen_c.write('''  %s%s%s(%s);''' % ('return ' if ret.replace(' ', '') != 'void' else '',
         callprefix, actualmname, ', '.join(justargs(args)[:i])))
 
+        gen_c.write('\n')
         gen_c.write('}')
       else:
-        gen_c.write('''
-  static %s ret = %s%s(%s);
-  return ret;
-}''' % (method['returns'],
+        gen_c.write('\n')
+        if method.get('operator'):
+          gen_c.write(method['operator'])
+        else:
+          gen_c.write('''  static %s ret = %s%s(%s);
+  return ret;''' % (method['returns'],
         callprefix, actualmname,
         ', '.join(justargs(args)[:i])))
-
+        gen_c.write('\n}')
       c_funcs.append(fullname + '_p' + str(i))
 
     # JS
