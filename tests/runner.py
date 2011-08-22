@@ -3803,8 +3803,8 @@ else:
           os.remove(filename + '.cc.js')
         except:
           pass
-        # Something like this:
-        #   java -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+        # Something like this (adjust memory as needed):
+        #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
 
         cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
                            '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
