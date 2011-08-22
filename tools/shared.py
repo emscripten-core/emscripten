@@ -71,15 +71,16 @@ def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
   return string[0:MAX] + '...'
 
-def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False):
+def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, use_aa=False):
   opts = []
   if optimization_level > 0:
     if allow_nonportable:
       opts.append('-O%d' % optimization_level)
     else:
       # createStandardAliasAnalysisPasses
-      #opts.append('-tbaa')
-      #opts.append('-basicaa') # makes fannkuch slow but primes fast
+      if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
+        opts.append('-tbaa')
+        opts.append('-basicaa') # makes fannkuch slow but primes fast
 
       opts.append('-globalopt')
       opts.append('-ipsccp')
@@ -88,7 +89,7 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False):
       opts.append('-simplifycfg')
 
       opts.append('-prune-eh')
-      opts.append('-inline')
+      if not optimize_size: opts.append('-inline') # The condition here is a difference with LLVM's createStandardAliasAnalysisPasses
       opts.append('-functionattrs')
       if optimization_level > 2:
         opts.append('-argpromotion')
