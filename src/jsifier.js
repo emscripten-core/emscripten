@@ -277,19 +277,18 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               snippet = '_' + snippet;
             }
           } else if (typeof snippet === 'object') {
-            // JSON.stringify removes functions, so we need to make sure they are added
-            var funcs = [];
-            var hasNonFunc = false;
-            for (var x in snippet) {
-              if (typeof snippet[x] === 'function') {
-                funcs.push(x + ': ' + snippet[x].toString());
-              } else {
-                hasNonFunc = true;
+            if (snippet === null) {
+              snippet = 'null';
+            } else {
+              var members = [];
+              for (var property in snippet) {
+                if (typeof snippet[property] === 'function') {
+                  members.push(property + ': ' + snippet[property].toString());
+                } else {
+                  members.push(property + ': ' + JSON.stringify(snippet[property]));
+                }
               }
-            }
-            snippet = JSON.stringify(snippet);
-            if (funcs.length > 0) {
-              snippet = snippet.replace(/}$/, (hasNonFunc ? ', ' : '') + funcs.join(', ') + ' }');
+              snippet = '{' + members.join(', ') + ' }';
             }
           } else if (typeof snippet === 'function') {
             snippet = snippet.toString();
