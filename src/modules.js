@@ -8,7 +8,7 @@ var LLVM = {
                 'weak_odr', 'externally_visible', 'dllimport', 'dllexport', 'unnamed_addr'),
   VISIBILITIES: set('default', 'hidden', 'protected'),
   PARAM_ATTR: set('noalias', 'signext', 'zeroext', 'inreg', 'sret', 'nocapture', 'nest'),
-  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10')
+  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10', 'x86_fastcallcc')
 };
 LLVM.GLOBAL_MODIFIERS = set(keys(LLVM.LINKAGES).concat(['constant', 'global', 'hidden']));
 

@@ -3746,8 +3746,11 @@ else:
   USE_CLOSURE_COMPILER = 1
 
   if USE_CLOSURE_COMPILER:
-    index = SPIDERMONKEY_ENGINE.index("options('strict')")
-    SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
+    try:
+      index = SPIDERMONKEY_ENGINE.index("options('strict')")
+      SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
+    except:
+      pass
 
   COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE
@@ -3758,12 +3761,13 @@ else:
   QUANTUM_SIZE = 1
   RELOOP = OPTIMIZE = 1
   USE_TYPED_ARRAYS = 0
-  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = RUNTIME_TYPE_INFO = DISABLE_EXCEPTIONS = 0
+  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = RUNTIME_TYPE_INFO = 0
   INVOKE_RUN = 1
   CORRECT_SIGNS = 0
   CORRECT_ROUNDINGS = 0
   CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
   LLVM_OPTS = 1
+  DISABLE_EXCEPTIONS = 1
 
   TEST_REPS = 4
   TOTAL_TESTS = 6
@@ -3804,8 +3808,8 @@ else:
           os.remove(filename + '.cc.js')
         except:
           pass
-        # Something like this:
-        #   java -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+        # Something like this (adjust memory as needed):
+        #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
 
         cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
                            '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
