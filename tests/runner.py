@@ -1623,10 +1623,20 @@ if 'benchmark' not in sys.argv:
 
             printf("*%.1f*\\n", strtod("66", NULL)); // checks dependency system, as our strtod needs _isspace etc.
 
+            printf("*%ld*\\n", strtol("10", NULL, 0));
+            printf("*%ld*\\n", strtol("0", NULL, 0));
+            printf("*%ld*\\n", strtol("-10", NULL, 0));
+            printf("*%ld*\\n", strtol("12", NULL, 16));
+
+            printf("*%lu*\\n", strtoul("10", NULL, 0));
+            printf("*%lu*\\n", strtoul("0", NULL, 0));
+            printf("*%lu*\\n", strtoul("-10", NULL, 0));
+
             return 0;
           }
           '''
-        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*cleaned*')
+
+        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
 
     def test_time(self):
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
