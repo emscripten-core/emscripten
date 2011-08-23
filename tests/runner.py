@@ -2043,6 +2043,48 @@ if 'benchmark' not in sys.argv:
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
+    def test_rand(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          printf("%d\n", rand());
+          printf("%d\n", rand());
+
+          srand(123);
+          printf("%d\n", rand());
+          printf("%d\n", rand());
+          srand(123);
+          printf("%d\n", rand());
+          printf("%d\n", rand());
+
+          unsigned state = 0;
+          int r;
+          r = rand_r(&state);
+          printf("%d, %u\n", r, state);
+          r = rand_r(&state);
+          printf("%d, %u\n", r, state);
+          state = 0;
+          r = rand_r(&state);
+          printf("%d, %u\n", r, state);
+
+          return 0;
+        }
+        '''
+      expected = '''
+        1250496027
+        1116302336
+        440917656
+        1476150784
+        440917656
+        1476150784
+        12345, 12345
+        1406932606, 3554416254
+        12345, 12345
+        '''
+      self.do_test(src, re.sub(r'(^|\n)\s+', r'\1', expected))
+
     def test_strtod(self):
       src = r'''
         #include <stdio.h>

@@ -3472,6 +3472,28 @@ LibraryManager.library = {
     return limit;
   },
 
+  // A glibc-like implementation of the C random number generation functions:
+  //   http://pubs.opengroup.org/onlinepubs/000095399/functions/rand.html
+  __rand_state: 42,
+  srand__deps: ['__rand_state'],
+  srand: function(seed) {
+    // void srand(unsigned seed);
+    ___rand_state = seed;
+  },
+  rand__deps: ['__rand_state'],
+  rand: function() {
+    // int rand(void);
+    ___rand_state = (1103515245 * ___rand_state + 12345) % 0x100000000;
+    return ___rand_state & 0x7FFFFFFF;
+  },
+  rand_r: function(seed) {
+    // int rand_r(unsigned *seed);
+    var state = {{{ makeGetValue('seed', 0, 'i32') }}};
+    state = (1103515245 * state + 12345) % 0x100000000;
+    {{{ makeSetValue('seed', 0, 'state', 'i32') }}}
+    return state & 0x7FFFFFFF;
+  },
+
   // ==========================================================================
   // string.h
   // ==========================================================================
