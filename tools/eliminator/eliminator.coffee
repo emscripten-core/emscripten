@@ -9,7 +9,7 @@
         Uses only local, single-def names
           *
         Uses non-local or non-single-def names
-          No flow-controlling statements
+          No flow-controlling statements between def and use
             No references to any deps between def and use
               *
     Multi-use
@@ -17,9 +17,6 @@
         Uses only single-def names
           *
 
-  WARNING(max99x): A round trip through UglifyJS breaks Closure's
-                   ADVANCED_OPTIMIZATIONS, probably due to lack of
-                   differentiation between quoted and unquoted keys.
   TODO(max99x): Eliminate single-def undefined-initialized vars with no uses
                 between declaration and definition.
 ###
@@ -41,7 +38,6 @@ SIMPLE_NODES =
 MAX_USES = 3
 
 # The UglifyJs code generator settings to use.
-# TODO(max99x): Fix whatever is causing quote_keys=true to fail inside uglify.
 GEN_OPTIONS =
   ascii_only: true
   beautify: true

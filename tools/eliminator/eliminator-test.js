@@ -32,4 +32,10 @@ var g = function (a1, a2) {
   var sadijn = new asd;
   sadijn2 = "qwe%sert";
   this.Module || (this.Module = {});
+  var obj = {
+    'quoted': 1,
+    "doublequoted": 2,
+    unquoted: 3,
+    4: 5
+  };
 }
