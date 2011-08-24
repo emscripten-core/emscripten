@@ -393,6 +393,10 @@ LibraryManager.library = {
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
+
+      // Allocate some necessary buffers now
+      FS.buffer1 = allocate([0], 'i8', ALLOC_STATIC);
+      FS.errno = allocate([0], 'i32', ALLOC_STATIC)
     }
   },
 
@@ -728,9 +732,8 @@ LibraryManager.library = {
       return -1;
     } else {
       var pathArray = intArrayFromString(FS.streams[fildes].path);
-      var pathPtr = allocate(pathArray, 'i8', ALLOC_NORMAL);
+      var pathPtr = allocate(pathArray, 'i8', ALLOC_STACK);
       var result = _stat(pathPtr, buf);
-      _free(pathPtr);
       return result;
     }
   },
@@ -791,9 +794,8 @@ LibraryManager.library = {
       return -1;
     } else {
       var pathArray = intArrayFromString(FS.streams[fildes].path);
-      var pathPtr = allocate(pathArray, 'i8', ALLOC_NORMAL);
+      var pathPtr = allocate(pathArray, 'i8', ALLOC_STACK);
       var result = _chmod(pathPtr, mode);
-      _free(pathPtr);
       return result;
     }
   },
@@ -2634,10 +2636,9 @@ LibraryManager.library = {
     // int fgetc(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetc.html
     if (!(stream in FS.streams)) return -1;
-    if (!_fgetc.buffer) _fgetc.buffer = _malloc(1);
     var streamObj = FS.streams[stream];
     if (streamObj.eof || streamObj.error) return -1;
-    var ret = _read(stream, _fgetc.buffer, 1);
+    var ret = _read(stream, FS.buffer1, 1);
     if (ret == 0) {
       streamObj.eof = true;
       return -1;
@@ -2645,7 +2646,7 @@ LibraryManager.library = {
       streamObj.error = true;
       return -1;
     } else {
-      return {{{ makeGetValue('_fgetc.buffer', '0', 'i8') }}};
+      return {{{ makeGetValue('FS.buffer1', '0', 'i8') }}};
     }
   },
   getc: 'fgetc',
@@ -2750,14 +2751,13 @@ LibraryManager.library = {
     var ret = _open(filename, flags, 0x1FF);  // All creation permissions.
     return (ret == -1) ? 0 : ret;
   },
-  fputc__deps: ['write'],
+  fputc__deps: ['$FS', 'write'],
   fputc: function(c, stream) {
     // int fputc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputc.html
-    if (!_fputc.buffer) _fputc.buffer = _malloc(1);
     var chr = unSign(c & 0xFF);
-    {{{ makeSetValue('_fputc.buffer', '0', 'chr', 'i8') }}}
-    var ret = _write(stream, _fputc.buffer, 1);
+    {{{ makeSetValue('FS.buffer1', '0', 'chr', 'i8') }}}
+    var ret = _write(stream, FS.buffer1, 1);
     if (ret == -1) {
       if (stream in FS.streams) FS.streams[stream].error = true;
       return -1;
@@ -3087,9 +3087,8 @@ LibraryManager.library = {
     var args = Array.prototype.slice.call(arguments, 1);
     args.unshift(false);
     var result = __formatString.apply(null, args);
-    var buffer = allocate(result, 'i8', ALLOC_NORMAL);
+    var buffer = allocate(result, 'i8', ALLOC_STACK);
     var ret = _fwrite(buffer, 1, result.length, stream);
-    _free(buffer);
     return ret;
   },
   printf__deps: ['fprintf'],
@@ -3112,9 +3111,8 @@ LibraryManager.library = {
     // int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/vprintf.html
     var result = __formatString(true, format, ap);
-    var buffer = allocate(result, 'i8', ALLOC_NORMAL);
+    var buffer = allocate(result, 'i8', ALLOC_STACK);
     var ret = _fwrite(buffer, 1, result.length, stream);
-    _free(buffer);
     return ret;
   },
   vsnprintf__deps: ['_formatString'],
@@ -5087,17 +5085,16 @@ LibraryManager.library = {
     26: 'Text file busy',
     18: 'Invalid cross-device link'
   },
+  __setErrNo__deps: ['$FS'],
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
     var me = ___setErrNo;
-    if (!me.ptr) me.ptr = allocate([0], 'i32', ALLOC_NORMAL);
-    {{{ makeSetValue('me.ptr', '0', 'value', 'i32') }}}
+    {{{ makeSetValue('FS.errno', '0', 'value', 'i32') }}}
     return value;
   },
   __errno_location__deps: ['__setErrNo'],
   __errno_location: function() {
-    if (!___setErrNo.ptr) ___setErrNo(0);
-    return ___setErrNo.ptr;
+    return FS.errno;
   },
 
   // ==========================================================================
