@@ -37,6 +37,7 @@ var g = function(a1, a2) {
   var obj = {
     "quoted": 1,
     "doublequoted": 2,
-    unquoted: 3
+    unquoted: 3,
+    4: 5
   };
 };
