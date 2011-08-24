@@ -1623,10 +1623,20 @@ if 'benchmark' not in sys.argv:
 
             printf("*%.1f*\\n", strtod("66", NULL)); // checks dependency system, as our strtod needs _isspace etc.
 
+            printf("*%ld*\\n", strtol("10", NULL, 0));
+            printf("*%ld*\\n", strtol("0", NULL, 0));
+            printf("*%ld*\\n", strtol("-10", NULL, 0));
+            printf("*%ld*\\n", strtol("12", NULL, 16));
+
+            printf("*%lu*\\n", strtoul("10", NULL, 0));
+            printf("*%lu*\\n", strtoul("0", NULL, 0));
+            printf("*%lu*\\n", strtoul("-10", NULL, 0));
+
             return 0;
           }
           '''
-        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*cleaned*')
+
+        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
 
     def test_time(self):
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
@@ -2033,6 +2043,48 @@ if 'benchmark' not in sys.argv:
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
+    def test_rand(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          printf("%d\n", rand());
+          printf("%d\n", rand());
+
+          srand(123);
+          printf("%d\n", rand());
+          printf("%d\n", rand());
+          srand(123);
+          printf("%d\n", rand());
+          printf("%d\n", rand());
+
+          unsigned state = 0;
+          int r;
+          r = rand_r(&state);
+          printf("%d, %u\n", r, state);
+          r = rand_r(&state);
+          printf("%d, %u\n", r, state);
+          state = 0;
+          r = rand_r(&state);
+          printf("%d, %u\n", r, state);
+
+          return 0;
+        }
+        '''
+      expected = '''
+        1250496027
+        1116302336
+        440917656
+        1476150784
+        440917656
+        1476150784
+        12345, 12345
+        1406932606, 3554416254
+        12345, 12345
+        '''
+      self.do_test(src, re.sub(r'(^|\n)\s+', r'\1', expected))
+
     def test_strtod(self):
       src = r'''
         #include <stdio.h>
@@ -2087,6 +2139,11 @@ if 'benchmark' not in sys.argv:
     def test_printf(self):
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
+
+    def test_langinfo(self):
+      src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
+      expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
       self.do_test(src, expected)
 
     def test_files(self):
@@ -3728,6 +3785,15 @@ TT = %s
       exec('%s = make_test("%s","%s",%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
+
+  class OtherTests(RunnerCore):
+    def test_eliminator(self):
+      coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
+      eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
+      input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
+      expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
+      output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+      self.assertEquals(output, expected)
 
 else:
   # Benchmarks

@@ -389,9 +389,10 @@ function Pointer_stringify(ptr) {
   var ret = "";
   var i = 0;
   var t;
+  var nullByte = String.fromCharCode(0);
   while (1) {
     t = String.fromCharCode({{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}});
-    if (t == "\0") { break; } else {}
+    if (t == nullByte) { break; } else {}
     ret += t;
     i += 1;
   }
