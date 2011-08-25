@@ -387,6 +387,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, output, force_c=True)
 
     def test_bigint(self):
+        if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
         src = '''
           #include <stdio.h>
           int main()
@@ -2239,9 +2240,35 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_printf(self):
+      if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
       self.do_test(src, expected)
+
+    def test_vprintf(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdarg.h>
+
+        void print(char* format, ...) {
+          va_list args;
+          va_start (args, format);
+          vprintf (format, args);
+          va_end (args);
+        }
+
+        int main () {
+           print("Call with %d variable argument.\n", 1);
+           print("Call with %d variable %s.\n", 2, "arguments");
+
+           return 0;
+        }
+        '''
+      expected = '''
+        Call with 1 variable argument.
+        Call with 2 variable arguments.
+        '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
