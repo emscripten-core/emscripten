@@ -1070,6 +1070,7 @@ function finalizeLLVMParameter(param) {
 }
 
 function makeSignOp(value, type, op) {
+  if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
   if (!value) return value;
   var bits, full;
   if (type in Runtime.INT_TYPES) {
