@@ -2739,6 +2739,7 @@ if 'benchmark' not in sys.argv:
 
       src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
       self.do_test(src, '*1,0*', ['200', '1'])
+      self.do_test(src, '*400,0*', ['400', '400'], no_build=True)
 
     def zzztest_gl(self):
       # Switch to gcc from g++ - we don't compile properly otherwise (why?)

@@ -1070,6 +1070,7 @@ function finalizeLLVMParameter(param) {
 }
 
 function makeSignOp(value, type, op) {
+  if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
   if (!value) return value;
   var bits, full;
   if (type in Runtime.INT_TYPES) {
@@ -1216,6 +1217,7 @@ function processMathop(item) { with(item) {
           // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
           // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
           ident1 = makeSignOp(ident1, type, 're');
+
           ident2 = makeSignOp(ident2, type, 're');
           return ident1 + (variant === 'eq' ? '==' : '!=') + ident2;
         }
