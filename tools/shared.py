@@ -44,7 +44,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 def run_js(engine, filename, args, check_timeout=False, stdout=PIPE, stderr=STDOUT, cwd=None):
-  return timeout_run(Popen(engine + [filename] + (['--'] if 'v8' in engine[0] else []) + args,
+  return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
                      stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
 def to_cc(cxx):

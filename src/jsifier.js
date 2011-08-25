@@ -41,7 +41,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   var GLOBAL_VARIABLES = !mainPass ? givenGlobalVariables : data.globalVariables;
 
-  Functions.currFunctions = !mainPass ? givenFunctions : {};
+  Functions.currFunctions = !mainPass ? givenFunctions.currFunctions : {};
+  Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
 
   // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
   (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
@@ -53,11 +54,22 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
    };
   });
 
+  data.functionStubs.forEach(function(func) {
+    // Don't overwrite stubs that have more info.
+    if (!Functions.currExternalFunctions.hasOwnProperty(func.ident) ||
+        !Functions.currExternalFunctions[func.ident].numParams === undefined) {
+      Functions.currExternalFunctions[func.ident] = {
+        hasVarArgs: func.hasVarArgs,
+        numParams: func.params && func.params.length
+      };
+    }
+  });
+
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
     dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
     //var t = Date.now();
-    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions.currFunctions, GLOBAL_VARIABLES);
+    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
     //t = (Date.now()-t)/1000;
     //dprint('unparsedFunctions', 'unparsedFunction took ' + t + ' seconds.');
     delete func.lines; // clean up memory as much as possible
@@ -186,7 +198,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
                   '\n}\n';
         return ret;
       } else {
-        item.JS = 'var ' + item.ident + ';';
+        if (item.external && BUILD_AS_SHARED_LIB) {
+          // External variables in shared libraries should not be declared as
+          // they would shadow similarly-named globals in the parent.
+          item.JS = '';
+        } else {
+          item.JS = 'var ' + item.ident + ';';
+        }
         var constant = null;
         if (item.external) {
           return ret;
@@ -267,6 +285,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           var snippet = LibraryManager.library[ident];
           var redirectedIdent = null;
           var deps = LibraryManager.library[ident + '__deps'] || [];
+          var isFunction = false;
 
           if (typeof snippet === 'string') {
             if (LibraryManager.library[snippet]) {
@@ -277,25 +296,24 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               snippet = '_' + snippet;
             }
           } else if (typeof snippet === 'object') {
-            // JSON.stringify removes functions, so we need to make sure they are added
-            var funcs = [];
-            var hasNonFunc = false;
-            for (var x in snippet) {
-              if (typeof snippet[x] === 'function') {
-                funcs.push(x + ': ' + snippet[x].toString());
-              } else {
-                hasNonFunc = true;
+            if (snippet === null) {
+              snippet = 'null';
+            } else {
+              var members = [];
+              for (var property in snippet) {
+                if (typeof snippet[property] === 'function') {
+                  members.push(property + ': ' + snippet[property].toString());
+                } else {
+                  members.push(property + ': ' + JSON.stringify(snippet[property]));
+                }
               }
-            }
-            snippet = JSON.stringify(snippet);
-            if (funcs.length > 0) {
-              snippet = snippet.replace(/}$/, (hasNonFunc ? ', ' : '') + funcs.join(', ') + ' }');
+              snippet = '{' + members.join(', ') + ' }';
             }
           } else if (typeof snippet === 'function') {
+            isFunction = true;
             snippet = snippet.toString();
-            if (/function ?\(/.exec(snippet)) { // name the function, if not already named
-              snippet = snippet.replace('function', 'function _' + ident);
-            }
+            // name the function; overwrite if it's already named
+            snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           }
 
           var postsetId = ident + '__postset';
@@ -317,7 +335,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else {
             ident = '_' + ident;
           }
-          var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '') + 'var ' + ident + '=' + snippet + ';';
+          var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+          text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
           if (ident in EXPORTED_FUNCTIONS) {
             text += '\nModule["' + ident + '"] = ' + ident + ';';
           }
@@ -755,7 +774,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       return ';';
     }
 
-    var func = Functions.currFunctions[ident];
+    var func = Functions.currFunctions[ident] || Functions.currExternalFunctions[ident];
+
     var args = [];
     var argsTypes = [];
     var varargs = [];
@@ -763,7 +783,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
-      if (!func || !func.hasVarArgs || i < func.numParams-1) { // unrecognized functions (like library ones) cannot have varargs
+      if (!func || !func.hasVarArgs || i < func.numParams-1) {
         args.push(val);
         argsTypes.push(param.type);
       } else {

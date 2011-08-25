@@ -5,7 +5,7 @@ target triple = "i386-pc-linux-gnu"
 @.str = private constant [8 x i8] c"*%d,%d*\0A\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
-declare i32 @printf(i8*)
+declare i32 @printf(i8* noalias, ...)
 
 ; [#uses=0]
 define i32 @main() {
