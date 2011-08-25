@@ -798,13 +798,24 @@ function intertyper(data, parseFunctions, baseLineNum) {
       if (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR) {
         item.tokens.splice(1, 1);
       }
-      return [{
+
+      var ret = {
         intertype: 'functionStub',
         ident: toNiceIdent(item.tokens[2].text),
         returnType: item.tokens[1],
-        params: item.tokens[3],
+        params: item.tokens[3].item.tokens,
+        hasVarArgs: false,
         lineNum: item.lineNum
-      }];
+      };
+
+      for (var i = 0; i < ret.params.length; i++) {
+        if (ret.params[i].text == '...') {
+          ret.hasVarArgs = true;
+          break;
+        }
+      }
+
+      return [ret];
     }
   });
   // 'unreachable'
