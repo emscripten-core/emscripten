@@ -2210,7 +2210,12 @@ LibraryManager.library = {
     var getNextArg = function(type) {
       // NOTE: Explicitly ignoring type safety. Otherwise this fails:
       //       int x = 4; printf("%c\n", (char)x);
-      var ret = {{{ makeGetValue('varargs', 'argIndex', 'null', undefined, undefined, true) }}};
+      var ret;
+      if (type === 'float' || type === 'double') {
+        ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
+      } else {
+        ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
+      }
       argIndex += Runtime.getNativeFieldSize(type);
       return Number(ret);
     };
