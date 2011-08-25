@@ -1217,7 +1217,6 @@ function processMathop(item) { with(item) {
           // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
           // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
           ident1 = makeSignOp(ident1, type, 're');
-
           ident2 = makeSignOp(ident2, type, 're');
           return ident1 + (variant === 'eq' ? '==' : '!=') + ident2;
         }
