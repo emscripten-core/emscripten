@@ -2089,6 +2089,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, 'Parent global: 123.*Parent global: 456.*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
+      INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
@@ -2140,7 +2141,7 @@ if 'benchmark' not in sys.argv:
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, 'Parent global: 123.*Parent global: 456.*',
+      self.do_test(src, '100*200*13*42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
