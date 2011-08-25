@@ -396,7 +396,6 @@ LibraryManager.library = {
 
       // Allocate some necessary buffers now
       FS.buffer1 = allocate([0], 'i8', ALLOC_STATIC);
-      FS.errno = allocate([0], 'i32', ALLOC_STATIC)
     }
   },
 
@@ -5040,16 +5039,16 @@ LibraryManager.library = {
     26: 'Text file busy',
     18: 'Invalid cross-device link'
   },
-  __setErrNo__deps: ['$FS'],
+  __setErrNo__postset: '___setErrNo(0);',
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
-    var me = ___setErrNo;
-    {{{ makeSetValue('FS.errno', '0', 'value', 'i32') }}}
+    if (!___setErrNo.ret) ___setErrNo.ret = allocate([0], 'i32', ALLOC_STATIC);
+    {{{ makeSetValue('___setErrNo.ret', '0', 'value', 'i32') }}}
     return value;
   },
   __errno_location__deps: ['__setErrNo'],
   __errno_location: function() {
-    return FS.errno;
+    return ___setErrNo.ret;
   },
 
   // ==========================================================================
