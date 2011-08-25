@@ -285,6 +285,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           var snippet = LibraryManager.library[ident];
           var redirectedIdent = null;
           var deps = LibraryManager.library[ident + '__deps'] || [];
+          var isFunction = false;
 
           if (typeof snippet === 'string') {
             if (LibraryManager.library[snippet]) {
@@ -309,10 +310,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               snippet = '{' + members.join(', ') + ' }';
             }
           } else if (typeof snippet === 'function') {
+            isFunction = true;
             snippet = snippet.toString();
-            if (/function ?\(/.exec(snippet)) { // name the function, if not already named
-              snippet = snippet.replace('function', 'function _' + ident);
-            }
+            // name the function; overwrite if it's already named
+            snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           }
 
           var postsetId = ident + '__postset';
@@ -334,7 +335,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else {
             ident = '_' + ident;
           }
-          var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '') + 'var ' + ident + '=' + snippet + ';';
+          var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+          text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
           if (ident in EXPORTED_FUNCTIONS) {
             text += '\nModule["' + ident + '"] = ' + ident + ';';
           }
