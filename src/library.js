@@ -728,9 +728,7 @@ LibraryManager.library = {
       return -1;
     } else {
       var pathArray = intArrayFromString(FS.streams[fildes].path);
-      var pathPtr = allocate(pathArray, 'i8', ALLOC_STACK);
-      var result = _stat(pathPtr, buf);
-      return result;
+      return _stat(allocate(pathArray, 'i8', ALLOC_STACK), buf);
     }
   },
   mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -790,9 +788,7 @@ LibraryManager.library = {
       return -1;
     } else {
       var pathArray = intArrayFromString(FS.streams[fildes].path);
-      var pathPtr = allocate(pathArray, 'i8', ALLOC_STACK);
-      var result = _chmod(pathPtr, mode);
-      return result;
+      return _chmod(allocate(pathArray, 'i8', ALLOC_STACK), mode);
     }
   },
   umask__deps: ['$FS'],
@@ -956,9 +952,7 @@ LibraryManager.library = {
   creat: function(path, mode) {
     // int creat(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
-    var modePtr = allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK);
-    var ret = _open(path, 0x241, modePtr);  // O_WRONLY | O_CREAT | O_TRUNC.
-    return ret;
+    return _open(path, 0x241, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));  // O_WRONLY | O_CREAT | O_TRUNC.
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
   fcntl: function(fildes, cmd, varargs) {
@@ -1150,9 +1144,7 @@ LibraryManager.library = {
   dup: function(fildes) {
     // int dup(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
-    var fildes2Ptr = allocate([0, 0, 0, 0], 'i32', ALLOC_STACK);
-    var ret = _fcntl(fildes, 0, fildes2Ptr);  // F_DUPFD.
-    return ret;
+    return _fcntl(fildes, 0, allocate([0, 0, 0, 0], 'i32', ALLOC_STACK));  // F_DUPFD.
   },
   dup2__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'fcntl', 'close'],
   dup2: function(fildes, fildes2) {
@@ -1165,9 +1157,7 @@ LibraryManager.library = {
       return fildes;
     } else {
       _close(fildes2);
-      var fildes2Ptr = allocate([fildes2, 0, 0, 0], 'i32', ALLOC_STACK);
-      var ret = _fcntl(fildes, 0, fildes2Ptr);  // F_DUPFD.
-      return ret
+      return _fcntl(fildes, 0, allocate([fildes2, 0, 0, 0], 'i32', ALLOC_STACK));  // F_DUPFD.
     }
   },
   fchown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chown'],
@@ -2621,14 +2611,14 @@ LibraryManager.library = {
     }
   },
   fgetc__deps: ['$FS', 'read'],
+  fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
   fgetc: function(stream) {
     // int fgetc(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetc.html
     if (!(stream in FS.streams)) return -1;
     var streamObj = FS.streams[stream];
     if (streamObj.eof || streamObj.error) return -1;
-    var buffer = allocate([0], 'i8', ALLOC_STACK);
-    var ret = _read(stream, buffer, 1);
+    var ret = _read(stream, _fgetc.ret, 1);
     if (ret == 0) {
       streamObj.eof = true;
       return -1;
@@ -2636,7 +2626,7 @@ LibraryManager.library = {
       streamObj.error = true;
       return -1;
     } else {
-      return {{{ makeGetValue('buffer', '0', 'i8') }}};
+      return {{{ makeGetValue('_fgetc.ret', '0', 'i8') }}};
     }
   },
   getc: 'fgetc',
@@ -2738,18 +2728,17 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
     }
-    var modePtr = allocate([0x1FF, 0, 0, 0], 'i32', ALLOC_STACK)  // All creation permissions.
-    var ret = _open(filename, flags, modePtr);
+    var ret = _open(filename, flags, allocate([0x1FF, 0, 0, 0], 'i32', ALLOC_STACK));  // All creation permissions.
     return (ret == -1) ? 0 : ret;
   },
   fputc__deps: ['$FS', 'write'],
+  fputc__postset: '_fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
   fputc: function(c, stream) {
     // int fputc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputc.html
     var chr = unSign(c & 0xFF);
-    var buffer = allocate([0], 'i8', ALLOC_STACK);
-    {{{ makeSetValue('buffer', '0', 'chr', 'i8') }}}
-    var ret = _write(stream, buffer, 1);
+    {{{ makeSetValue('_fputc.ret', '0', 'chr', 'i8') }}}
+    var ret = _write(stream, _fputc.ret, 1);
     if (ret == -1) {
       if (stream in FS.streams) FS.streams[stream].error = true;
       return -1;
@@ -3072,9 +3061,7 @@ LibraryManager.library = {
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
-    var buffer = allocate(result, 'i8', ALLOC_STACK);
-    var ret = _fwrite(buffer, 1, result.length, stream);
-    return ret;
+    return _fwrite(allocate(result, 'i8', ALLOC_STACK), 1, result.length, stream);
   },
   printf__deps: ['fprintf'],
   printf: function(format, varargs) {
