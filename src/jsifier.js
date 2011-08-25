@@ -41,7 +41,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   var GLOBAL_VARIABLES = !mainPass ? givenGlobalVariables : data.globalVariables;
 
-  Functions.currFunctions = !mainPass ? givenFunctions : {};
+  Functions.currFunctions = !mainPass ? givenFunctions.currFunctions : {};
+  Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
 
   // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
   (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
@@ -53,11 +54,18 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
    };
   });
 
+  data.functionStubs.forEach(function(func) {
+    Functions.currExternalFunctions[func.ident] = {
+      hasVarArgs: func.hasVarArgs,
+      numParams: func.params && func.params.length
+   };
+  });
+
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
     dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
     //var t = Date.now();
-    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions.currFunctions, GLOBAL_VARIABLES);
+    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
     //t = (Date.now()-t)/1000;
     //dprint('unparsedFunctions', 'unparsedFunction took ' + t + ' seconds.');
     delete func.lines; // clean up memory as much as possible
@@ -759,7 +767,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       return ';';
     }
 
-    var func = Functions.currFunctions[ident];
+    var func = Functions.currFunctions[ident] || Functions.currExternalFunctions[ident];
+
     var args = [];
     var argsTypes = [];
     var varargs = [];
@@ -767,7 +776,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
-      if (!func || !func.hasVarArgs || i < func.numParams-1) { // unrecognized functions (like library ones) cannot have varargs
+      if (!func || !func.hasVarArgs || i < func.numParams-1) {
         args.push(val);
         argsTypes.push(param.type);
       } else {

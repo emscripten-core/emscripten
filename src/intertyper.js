@@ -803,13 +803,13 @@ function intertyper(data, parseFunctions, baseLineNum) {
         intertype: 'functionStub',
         ident: toNiceIdent(item.tokens[2].text),
         returnType: item.tokens[1],
-        params: item.tokens[3].item.tokens,
+        params: parseParamTokens(item.tokens[3].item.tokens),
         hasVarArgs: false,
         lineNum: item.lineNum
       };
 
       for (var i = 0; i < ret.params.length; i++) {
-        if (ret.params[i].text == '...') {
+        if (ret.params[i].intertype == 'varargs') {
           ret.hasVarArgs = true;
           break;
         }
