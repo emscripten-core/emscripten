@@ -71,7 +71,7 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
 #endif
 
-  if (!ignore && !value && value !== 0 && value !== false) { // false can be the result of a mathop comparator
+  if (!ignore && !value && value !== 0 && value !== false && !isNaN(value)) { // false can be the result of a mathop comparator; NaN can be the result of a math function
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
   SAFE_HEAP_ACCESS(dest, type, true, ignore);
@@ -398,6 +398,7 @@ function Pointer_stringify(ptr) {
   }
   return ret;
 }
+Module['Pointer_stringify'] = Pointer_stringify;
 
 function Array_stringify(array) {
   var ret = "";
@@ -406,6 +407,7 @@ function Array_stringify(array) {
   }
   return ret;
 }
+Module['Array_stringify'] = Array_stringify;
 
 // Memory management
 
@@ -537,12 +539,14 @@ function Array_copy(ptr, num) {
 #endif
   return HEAP.slice(ptr, ptr+num);
 }
+Module['Array_copy'] = Array_copy;
 
 function String_len(ptr) {
   var i = 0;
   while ({{{ makeGetValue('ptr', 'i', 'i8') }}}) i++; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
   return i;
 }
+Module['String_len'] = String_len;
 
 // Copies a C-style string, terminated by a zero, from the HEAP into
 // a normal JavaScript array of numbers
@@ -553,6 +557,7 @@ function String_copy(ptr, addZero) {
   if (addZero) ret[len-1] = 0;
   return ret;
 }
+Module['String_copy'] = String_copy;
 
 // Tools
 
@@ -598,6 +603,7 @@ function intArrayToString(array) {
   }
   return ret.join('');
 }
+Module['intArrayToString'] = intArrayToString;
 
 {{{ unSign }}}
 {{{ reSign }}}

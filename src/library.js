@@ -393,10 +393,6 @@ LibraryManager.library = {
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
-
-      // Allocate some necessary buffers now
-      FS.buffer1 = allocate([0], 'i8', ALLOC_STATIC);
-      FS.errno = allocate([0], 'i32', ALLOC_STATIC)
     }
   },
 
@@ -732,9 +728,7 @@ LibraryManager.library = {
       return -1;
     } else {
       var pathArray = intArrayFromString(FS.streams[fildes].path);
-      var pathPtr = allocate(pathArray, 'i8', ALLOC_STACK);
-      var result = _stat(pathPtr, buf);
-      return result;
+      return _stat(allocate(pathArray, 'i8', ALLOC_STACK), buf);
     }
   },
   mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -794,9 +788,7 @@ LibraryManager.library = {
       return -1;
     } else {
       var pathArray = intArrayFromString(FS.streams[fildes].path);
-      var pathPtr = allocate(pathArray, 'i8', ALLOC_STACK);
-      var result = _chmod(pathPtr, mode);
-      return result;
+      return _chmod(allocate(pathArray, 'i8', ALLOC_STACK), mode);
     }
   },
   umask__deps: ['$FS'],
@@ -854,11 +846,13 @@ LibraryManager.library = {
 
   __flock_struct_layout: Runtime.generateStructInfo(null, '%struct.flock'),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
-  open: function(path, oflag, mode) {
+  open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
     // NOTE: This implementation tries to mimic glibc rather that strictly
     // following the POSIX standard.
+
+    var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
 
     // Simplify flags.
     var accessMode = oflag & 0x3;  // O_ACCMODE.
@@ -958,10 +952,10 @@ LibraryManager.library = {
   creat: function(path, mode) {
     // int creat(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
-    return _open(path, 0x241, mode);  // O_WRONLY | O_CREAT | O_TRUNC.
+    return _open(path, 0x241, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));  // O_WRONLY | O_CREAT | O_TRUNC.
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
-  fcntl: function(fildes, cmd, arg) {
+  fcntl: function(fildes, cmd, varargs) {
     // int fcntl(int fildes, int cmd, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/fcntl.html
     if (!(fildes in FS.streams)) {
@@ -971,6 +965,7 @@ LibraryManager.library = {
     var stream = FS.streams[fildes];
     switch (cmd) {
       case 0:  // F_DUPFD.
+        var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         if (arg < 0) {
           ___setErrNo(ERRNO_CODES.EINVAL);
           return -1;
@@ -994,10 +989,12 @@ LibraryManager.library = {
         // Synchronization and blocking flags are irrelevant to us.
         return flags;
       case 4:  // F_SETFL.
+        var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         stream.isAppend = Boolean(arg | 0x400);  // O_APPEND.
         // Synchronization and blocking flags are irrelevant to us.
         return 0;
       case 5:  // F_GETLK.
+        var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         var offset = ___flock_struct_layout.l_type;
         // We're always unlocked.
         {{{ makeSetValue('arg', 'offset', '2', 'i16') }}}  // F_UNLCK.
@@ -1147,7 +1144,7 @@ LibraryManager.library = {
   dup: function(fildes) {
     // int dup(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
-    return _fcntl(fildes, 0, 0);  // F_DUPFD.
+    return _fcntl(fildes, 0, allocate([0, 0, 0, 0], 'i32', ALLOC_STACK));  // F_DUPFD.
   },
   dup2__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'fcntl', 'close'],
   dup2: function(fildes, fildes2) {
@@ -1160,7 +1157,7 @@ LibraryManager.library = {
       return fildes;
     } else {
       _close(fildes2);
-      return _fcntl(fildes, 0, fildes2);  // F_DUPFD.
+      return _fcntl(fildes, 0, allocate([fildes2, 0, 0, 0], 'i32', ALLOC_STACK));  // F_DUPFD.
     }
   },
   fchown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chown'],
@@ -2121,13 +2118,14 @@ LibraryManager.library = {
   // ==========================================================================
 
   // TODO: Document.
-  _scanString: function(format, get, unget, args) {
+  _scanString: function(format, get, unget, varargs) {
     // Supports %x, %4x, %d.%d, %s.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
     var formatIndex = 0;
     var argsi = 0;
     var fields = 0;
+    var argIndex = 0;
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
       var next = get();
       if (next <= 0) return fields;  // End of input.
@@ -2161,18 +2159,19 @@ LibraryManager.library = {
         }
         if (buffer.length === 0) return 0;  // Failure.
         var text = buffer.join('');
+        var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+        argIndex += Runtime.getNativeFieldSize('void*');
         switch (type) {
           case 'd':
-            {{{ makeSetValue('args.shift()', '0', 'parseInt(text, 10)', 'i32') }}}
+            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}}
             break;
           case 'x':
-            {{{ makeSetValue('args.shift()', '0', 'parseInt(text, 16)', 'i32') }}}
+            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
             break;
           case 's':
             var array = intArrayFromString(text);
-            var buf = args.shift();
             for (var j = 0; j < array.length; j++) {
-              {{{ makeSetValue('buf', 'j', 'array[j]', 'i8') }}}
+              {{{ makeSetValue('argPtr', 'j', 'array[j]', 'i8') }}}
             }
             break;
         }
@@ -2188,44 +2187,24 @@ LibraryManager.library = {
     return fields;
   },
   // Performs prtinf-style formatting.
-  //   isVarArgs: Whether the arguments are passed in varargs style, i.e. the
-  //     third parameter is an address of the start of the argument list.
   //   format: A pointer to the format string.
+  //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString: function(isVarArgs, format/*, ...*/) {
+  _formatString: function(format, varargs) {
     var textIndex = format;
     var argIndex = 0;
-    var getNextArg;
-    if (isVarArgs) {
-      var varArgStart = arguments[2];
-      getNextArg = function(type) {
-        var ret;
-        if (type === 'double') {
-          ret = {{{ makeGetValue('varArgStart', 'argIndex', 'double') }}};
-        } else if (type === 'float') {
-          ret = {{{ makeGetValue('varArgStart', 'argIndex', 'float') }}};
-        } else if (type === 'i64') {
-          ret = {{{ makeGetValue('varArgStart', 'argIndex', 'i64') }}};
-        } else if (type === 'i32') {
-          ret = {{{ makeGetValue('varArgStart', 'argIndex', 'i32') }}};
-        } else if (type === 'i16') {
-          ret = {{{ makeGetValue('varArgStart', 'argIndex', 'i16') }}};
-        } else if (type === 'i8') {
-          ret = {{{ makeGetValue('varArgStart', 'argIndex', 'i8') }}};
-        } else if (type[type.length - 1] === '*') {
-          ret = {{{ makeGetValue('varArgStart', 'argIndex', 'void*') }}};
-        } else {
-          throw new Error('Unknown formatString argument type: ' + type);
-        }
-        argIndex += Runtime.getNativeFieldSize(type);
-        return Number(ret);
-      };
-    } else {
-      var args = arguments;
-      getNextArg = function() {
-        return Number(args[2 + argIndex++]);
-      };
-    }
+    var getNextArg = function(type) {
+      // NOTE: Explicitly ignoring type safety. Otherwise this fails:
+      //       int x = 4; printf("%c\n", (char)x);
+      var ret;
+      if (type === 'float' || type === 'double') {
+        ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
+      } else {
+        ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
+      }
+      argIndex += Runtime.getNativeFieldSize(type);
+      return Number(ret);
+    };
 
     var ret = [];
     var curr, next, currArg;
@@ -2632,13 +2611,14 @@ LibraryManager.library = {
     }
   },
   fgetc__deps: ['$FS', 'read'],
+  fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
   fgetc: function(stream) {
     // int fgetc(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetc.html
     if (!(stream in FS.streams)) return -1;
     var streamObj = FS.streams[stream];
     if (streamObj.eof || streamObj.error) return -1;
-    var ret = _read(stream, FS.buffer1, 1);
+    var ret = _read(stream, _fgetc.ret, 1);
     if (ret == 0) {
       streamObj.eof = true;
       return -1;
@@ -2646,7 +2626,7 @@ LibraryManager.library = {
       streamObj.error = true;
       return -1;
     } else {
-      return {{{ makeGetValue('FS.buffer1', '0', 'i8') }}};
+      return {{{ makeGetValue('_fgetc.ret', '0', 'i8') }}};
     }
   },
   getc: 'fgetc',
@@ -2748,16 +2728,17 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
     }
-    var ret = _open(filename, flags, 0x1FF);  // All creation permissions.
+    var ret = _open(filename, flags, allocate([0x1FF, 0, 0, 0], 'i32', ALLOC_STACK));  // All creation permissions.
     return (ret == -1) ? 0 : ret;
   },
   fputc__deps: ['$FS', 'write'],
+  fputc__postset: '_fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
   fputc: function(c, stream) {
     // int fputc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputc.html
     var chr = unSign(c & 0xFF);
-    {{{ makeSetValue('FS.buffer1', '0', 'chr', 'i8') }}}
-    var ret = _write(stream, FS.buffer1, 1);
+    {{{ makeSetValue('_fputc.ret', '0', 'chr', 'i8') }}}
+    var ret = _write(stream, _fputc.ret, 1);
     if (ret == -1) {
       if (stream in FS.streams) FS.streams[stream].error = true;
       return -1;
@@ -3035,43 +3016,38 @@ LibraryManager.library = {
   },
   fscanf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
                  '_scanString', 'getc', 'ungetc'],
-  fscanf: function(stream, format/*, ...*/) {
+  fscanf: function(stream, format, varargs) {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (stream in FS.streams) {
-      var args = Array.prototype.slice.call(arguments, 2);
       var get = function() { return _fgetc(stream); };
       var unget = function(c) { return _ungetc(c, stream); };
-      return __scanString(format, get, unget, args);
+      return __scanString(format, get, unget, varargs);
     } else {
       return -1;
     }
   },
   scanf__deps: ['fscanf'],
-  scanf: function(format/*, ...*/) {
+  scanf: function(format, varargs) {
     // int scanf(const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
-    var args = Array.prototype.slice.call(arguments, 0);
-    args.unshift({{{ makeGetValue('_stdin', '0', 'void*') }}});
-    return _fscanf.apply(null, args);
+    var stdin = {{{ makeGetValue('_stdin', '0', 'void*') }}};
+    return _fscanf(stdin, format, varargs);
   },
   sscanf__deps: ['_scanString'],
-  sscanf: function(s, format/*, ...*/) {
+  sscanf: function(s, format, varargs) {
     // int sscanf(const char *restrict s, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     var index = 0;
     var get = function() { return {{{ makeGetValue('s', 'index++', 'i8') }}}; };
     var unget = function() { index--; };
-    var args = Array.prototype.slice.call(arguments, 2);
-    return __scanString(format, get, unget, args);
+    return __scanString(format, get, unget, varargs);
   },
   snprintf__deps: ['_formatString'],
-  snprintf: function(s, n, format/*, ... */) {
+  snprintf: function(s, n, format, varargs) {
     // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var args = Array.prototype.slice.call(arguments, 2);
-    args.unshift(false);
-    var result = __formatString.apply(null, args);
+    var result = __formatString(format, varargs);
     var limit = (n === undefined) ? result.length
                                   : Math.min(result.length, n - 1);
     for (var i = 0; i < limit; i++) {
@@ -3081,65 +3057,29 @@ LibraryManager.library = {
     return result.length;
   },
   fprintf__deps: ['fwrite', '_formatString'],
-  fprintf: function(stream, format/*, ... */) {
+  fprintf: function(stream, format, varargs) {
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var args = Array.prototype.slice.call(arguments, 1);
-    args.unshift(false);
-    var result = __formatString.apply(null, args);
-    var buffer = allocate(result, 'i8', ALLOC_STACK);
-    var ret = _fwrite(buffer, 1, result.length, stream);
-    return ret;
+    var result = __formatString(format, varargs);
+    return _fwrite(allocate(result, 'i8', ALLOC_STACK), 1, result.length, stream);
   },
   printf__deps: ['fprintf'],
-  printf: function(format/*, ... */) {
+  printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var args = Array.prototype.slice.call(arguments, 0);
-    args.unshift({{{ makeGetValue('_stdout', '0', 'void*') }}});
-    return _fprintf.apply(null, args);
+    var stdout = {{{ makeGetValue('_stdout', '0', 'void*') }}};
+    return _fprintf(stdout, format, varargs);
   },
   sprintf__deps: ['snprintf'],
-  sprintf: function(s, format/*, ... */) {
+  sprintf: function(s, format, varargs) {
     // int sprintf(char *restrict s, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var args = [s, undefined].concat(Array.prototype.slice.call(arguments, 1));
-    return _snprintf.apply(null, args);
+    return _snprintf(s, undefined, format, varargs);
   },
-  vfprintf__deps: ['fwrite', '_formatString'],
-  vfprintf: function(stream, format, ap) {
-    // int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/vprintf.html
-    var result = __formatString(true, format, ap);
-    var buffer = allocate(result, 'i8', ALLOC_STACK);
-    var ret = _fwrite(buffer, 1, result.length, stream);
-    return ret;
-  },
-  vsnprintf__deps: ['_formatString'],
-  vsnprintf: function(s, n, format, ap) {
-    // int vsnprintf(char *restrict s, size_t n, const char *restrict format, va_list ap);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/vprintf.html
-    var result = __formatString(true, format, ap);
-    var limit = (n === undefined) ? result.length
-                                  : Math.min(result.length, n - 1);
-    for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
-    }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
-    return result.length;
-  },
-  vprintf__deps: ['vfprintf'],
-  vprintf: function(format, ap) {
-    // int vprintf(const char *restrict format, va_list ap);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/vprintf.html
-    return _vfprintf({{{ makeGetValue('_stdout', '0', 'void*') }}}, format, ap);
-  },
-  vsprintf__deps: ['vsnprintf'],
-  vsprintf: function(s, format, ap) {
-    // int vsprintf(char *restrict s, const char *restrict format, va_list ap);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/vprintf.html
-    return _vsnprintf(s, undefined, format, ap);
-  },
+  vfprintf: 'fprintf',
+  vsnprintf: 'snprintf',
+  vprintf: 'printf',
+  vsprintf: 'sprintf',
   // TODO: Implement v*scanf().
   __01fopen64_: 'fopen',
   __01fseeko64_: 'fseek',
@@ -5085,16 +5025,16 @@ LibraryManager.library = {
     26: 'Text file busy',
     18: 'Invalid cross-device link'
   },
-  __setErrNo__deps: ['$FS'],
+  __setErrNo__postset: '___setErrNo(0);',
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
-    var me = ___setErrNo;
-    {{{ makeSetValue('FS.errno', '0', 'value', 'i32') }}}
+    if (!___setErrNo.ret) ___setErrNo.ret = allocate([0], 'i32', ALLOC_STATIC);
+    {{{ makeSetValue('___setErrNo.ret', '0', 'value', 'i32') }}}
     return value;
   },
   __errno_location__deps: ['__setErrNo'],
   __errno_location: function() {
-    return FS.errno;
+    return ___setErrNo.ret;
   },
 
   // ==========================================================================

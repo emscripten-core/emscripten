@@ -333,6 +333,15 @@ function parseParamTokens(params) {
   return ret;
 }
 
+function hasVarArgs(params) {
+  for (var i = 0; i < params.length; i++) {
+    if (params[i].intertype == 'varargs') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function finalizeParam(param) {
   if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
     return finalizeLLVMFunctionCall(param);
@@ -687,7 +696,7 @@ function getHeapOffset(offset, type) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -701,7 +710,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned) {
   if (SAFE_HEAP) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
-    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + (!checkSafeHeap()+0) + ')';
+    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
     return makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
   }

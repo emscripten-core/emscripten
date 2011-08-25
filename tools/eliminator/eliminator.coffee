@@ -4,17 +4,17 @@
   A variable is eliminateable if it matches a leaf of this condition tree:
 
   Single-def
-    Single-use
-      Uses only simple nodes
+    Uses only side-effect-free nodes
+      Single-use
         Uses only local, single-def names
           *
         Uses non-local or non-single-def names
           No flow-controlling statements between def and use
             No references to any deps between def and use
-              *
-    Multi-use
-      Uses only simple nodes
-        Uses only single-def names
+              No indirect accesses (subscript, dot notation) between def and use
+                *
+      Multi-use
+        Uses only local, single-def names
           *
 
   TODO(max99x): Eliminate single-def undefined-initialized vars with no uses
@@ -25,15 +25,6 @@
 uglify = require 'uglify-js'
 fs = require 'fs'
 
-# Node types which can be evaluated without side effects.
-SIMPLE_NODES =
-  name: true
-  num: true
-  string: true
-  binary: true
-  sub: true
-  string: true
-
 # Maximum number of uses to consider a variable not worth eliminating.
 MAX_USES = 3
 
@@ -43,15 +34,32 @@ GEN_OPTIONS =
   beautify: true
   indent_level: 2
 
+# Node types which can be evaluated without side effects.
+NODES_WITHOUT_SIDE_EFFECTS =
+  name: true
+  num: true
+  string: true
+  binary: true
+  sub: true
+
+# Nodes which may alter control flow.
+CONTROL_FLOW_NODES =
+  return: true
+  break: true
+  continue: true
+  new: true
+  call: true
+  label: true
+
 # Traverses a JavaScript syntax tree rooted at the given node calling the given
 # callback for each node.
 #   @arg node: The root of the AST.
 #   @arg callback: The callback to call for each node. This will be called with
-#     the node as the first argument and its type as the second. If a
-#     non-undefined value is returned, it replaces the passed node in the tree.
-#     If false is returned, the traversal is stopped.
-#   @returns: If the root node was replaced, the new root node. Otherwise
-#     undefined.
+#     the node as the first argument and its type as the second. If false is
+#     returned, the traversal is stopped. If a non-undefined value is returned,
+#     it replaces the passed node in the tree.
+#   @returns: If the root node was replaced, the new root node. If the traversal
+#     was stopped, false. Otherwise undefined.
 traverse = (node, callback) ->
   type = node[0]
   if type
@@ -60,7 +68,7 @@ traverse = (node, callback) ->
 
   for subnode, index in node
     if typeof subnode is 'object' and subnode?.length
-      # NOTE: For-in nodes have unspecified var mutations. Leave them alone.
+      # NOTE: For-in nodes have unspecified var mutations. Skip them.
       if type == 'for-in' and subnode?[0] == 'var' then continue
       subresult = traverse subnode, callback
       if subresult is false
@@ -75,6 +83,8 @@ class Eliminator
   constructor: (func) ->
     # The statements of the function to analyze.
     @body = func[3]
+
+    # Identifier stats. Each of these objects is indexed by the identifier name.
     # Whether the identifier is never modified after initialization.
     @isSingleDef = {}
     # How many times the identifier is used.
@@ -147,8 +157,7 @@ class Eliminator
         if varName of @useCount then @useCount[varName]++
       else if type in ['assign', 'unary-prefix', 'unary-postfix']
         varName = node[2][1]
-        if @isSingleDef.hasOwnProperty varName
-          @isSingleDef[varName] = false
+        if @isSingleDef[varName] then @isSingleDef[varName] = false
       return undefined
     return undefined
 
@@ -163,7 +172,7 @@ class Eliminator
       @usesOnlySimpleNodes[varName] = true
       @usesOnlySingleDefs[varName] = true
       traverse @initialValue[varName], (node, type) =>
-        if type not of SIMPLE_NODES
+        if type not of NODES_WITHOUT_SIDE_EFFECTS
           @usesOnlySimpleNodes[varName] = false
         else if type is 'name'
           reference = node[1]
@@ -193,12 +202,11 @@ class Eliminator
   # Analyzes the live ranges of single-def single-use variables. Requires
   # dependencies to have been calculated. Fills the following member variables:
   #   depsMutatedInLiveRange
-  # TODO: Refactor.
   analyzeLiveRanges: ->
     isLive = {}
 
     checkForMutations = (node, type) =>
-      if type in ['label', 'return', 'break', 'continue', 'call', 'new']
+      if type of CONTROL_FLOW_NODES
         for varName of isLive
           @depsMutatedInLiveRange[varName] = true
         isLive = {}
@@ -227,7 +235,7 @@ class Eliminator
             usedInThisStatement[node[1]] = true
           else if type in ['sub', 'dot']
             hasIndirectAccess = true
-          undefined
+          return undefined
         if hasIndirectAccess
           for varName of isLive
             if not usedInThisStatement[varName]
@@ -242,15 +250,14 @@ class Eliminator
   # Determines whether a given variable can be safely eliminated. Requires all
   # analysis passes to have been run.
   isEliminateable: (varName) ->
-    if @isSingleDef[varName]
+    if @isSingleDef[varName] and @usesOnlySimpleNodes[varName]
       if @useCount[varName] == 0
-        return @usesOnlySimpleNodes[varName]
+        return true
       else if @useCount[varName] == 1
-        if @usesOnlySimpleNodes[varName]
-          return (@usesOnlySingleDefs[varName] or
-                  not @depsMutatedInLiveRange[varName])
+        return (@usesOnlySingleDefs[varName] or
+                not @depsMutatedInLiveRange[varName])
       else if @useCount[varName] <= MAX_USES
-        return @usesOnlySimpleNodes[varName] and @usesOnlySingleDefs[varName]
+        return @usesOnlySingleDefs[varName]
     return false
 
   # Removes all var declarations for the specified variables.
@@ -276,10 +283,9 @@ class Eliminator
       incomplete = false
       for varName, varValue of values
         result = traverse varValue, (node, type) ->
-          if type == 'name' and node[1] of values
-            if node[1] != varName
-              incomplete = true
-              return values[node[1]]
+          if type == 'name' and node[1] of values and node[1] != varName
+            incomplete = true
+            return values[node[1]]
           return undefined
         if result? then values[varName] = result
     return undefined
@@ -291,7 +297,7 @@ class Eliminator
     traverse @body, (node, type) ->
       if type is 'name' and node[1] of replacements
         return replacements[node[1]]
-      undefined
+      return undefined
     return undefined
 
 

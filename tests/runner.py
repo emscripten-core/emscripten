@@ -387,6 +387,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, output, force_c=True)
 
     def test_bigint(self):
+        if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
         src = '''
           #include <stdio.h>
           int main()
@@ -1870,14 +1871,14 @@ if 'benchmark' not in sys.argv:
 
         typedef int (*CMP_TYPE)(const void*, const void*);
 
-        CMP_TYPE get_cmp() {
+        extern "C" CMP_TYPE get_cmp() {
           return lib_cmp;
         }
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['__Z7get_cmpv']
+      EXPORTED_FUNCTIONS = ['_get_cmp']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -1907,7 +1908,7 @@ if 'benchmark' not in sys.argv:
             printf("Could not load lib.\\n");
             return 1;
           }
-          getter_ptr = (CMP_TYPE (*)()) dlsym(lib_handle, "_Z7get_cmpv");
+          getter_ptr = (CMP_TYPE (*)()) dlsym(lib_handle, "get_cmp");
           if (getter_ptr == NULL) {
             printf("Could not find func.\\n");
             return 1;
@@ -1964,7 +1965,7 @@ if 'benchmark' not in sys.argv:
           p_f();
         }
 
-        void (*func(int x, void(*fptr)()))() {
+        extern "C" void (*func(int x, void(*fptr)()))() {
           printf("In func: %d\\n", x);
           fptr();
           return lib_fptr;
@@ -1973,7 +1974,7 @@ if 'benchmark' not in sys.argv:
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['__Z4funciPFvvE']
+      EXPORTED_FUNCTIONS = ['_func']
       EXPORTED_GLOBALS = ['_global']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
@@ -2006,9 +2007,9 @@ if 'benchmark' not in sys.argv:
           }
 
           // Test looked up function.
-          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "_Z4funciPFvvE");
+          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
           // Load twice to test cache.
-          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "_Z4funciPFvvE");
+          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
           if (func_fptr == NULL) {
             printf("Could not find func.\\n");
             return 1;
@@ -2040,6 +2041,108 @@ if 'benchmark' not in sys.argv:
         )
         open(filename, 'w').write(src)
       self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
+                   output_nicerizer=lambda x: x.replace('\n', '*'),
+                   post_build=add_pre_run_and_checks)
+
+    def test_dlfcn_alias(self):
+      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS, INCLUDE_FULL_LIBRARY
+      lib_src = r'''
+        #include <stdio.h>
+        extern int parent_global;
+        extern "C" void func() {
+          printf("Parent global: %d.\n", parent_global);
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'liblib.cpp')
+      BUILD_AS_SHARED_LIB = 1
+      EXPORTED_FUNCTIONS = ['_func']
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+      src = r'''
+        #include <dlfcn.h>
+
+        int parent_global = 123;
+
+        int main() {
+          void* lib_handle;
+          void (*fptr)();
+
+          lib_handle = dlopen("liblib.so", RTLD_NOW);
+          fptr = (void (*)())dlsym(lib_handle, "func");
+          fptr();
+          parent_global = 456;
+          fptr();
+
+          return 0;
+        }
+        '''
+      BUILD_AS_SHARED_LIB = 0
+      INCLUDE_FULL_LIBRARY = 1
+      EXPORTED_FUNCTIONS = ['_main']
+      def add_pre_run_and_checks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
+      self.do_test(src, 'Parent global: 123.*Parent global: 456.*',
+                   output_nicerizer=lambda x: x.replace('\n', '*'),
+                   post_build=add_pre_run_and_checks)
+      INCLUDE_FULL_LIBRARY = 0
+
+    def test_dlfcn_varargs(self):
+      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
+      lib_src = r'''
+        void print_ints(int n, ...);
+        extern "C" void func() {
+          print_ints(2, 13, 42);
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'liblib.cpp')
+      BUILD_AS_SHARED_LIB = 1
+      EXPORTED_FUNCTIONS = ['_func']
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+      src = r'''
+        #include <stdarg.h>
+        #include <stdio.h>
+        #include <dlfcn.h>
+
+        void print_ints(int n, ...) {
+          va_list args;
+          va_start(args, n);
+          for (int i = 0; i < n; i++) {
+            printf("%d\n", va_arg(args, int));
+          }
+          va_end(args);
+        }
+
+        int main() {
+          void* lib_handle;
+          void (*fptr)();
+
+          print_ints(2, 100, 200);
+
+          lib_handle = dlopen("liblib.so", RTLD_NOW);
+          fptr = (void (*)())dlsym(lib_handle, "func");
+          fptr();
+
+          return 0;
+        }
+        '''
+      BUILD_AS_SHARED_LIB = 0
+      EXPORTED_FUNCTIONS = ['_main']
+      def add_pre_run_and_checks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
+      self.do_test(src, '100*200*13*42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
@@ -2137,9 +2240,54 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_printf(self):
+      if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
       self.do_test(src, expected)
+
+    def test_printf_types(self):
+      src = r'''
+        #include <stdio.h>
+
+        int main() {
+          char c = '1';
+          short s = 2;
+          int i = 3;
+          long long l = 4;
+          float f = 5.5;
+          double d = 6.6;
+
+          printf("%c,%hd,%d,%lld,%.1f,%.1llf\n", c, s, i, l, f, d);
+
+          return 0;
+        }
+        '''
+      self.do_test(src, '1,2,3,4,5.5,6.6\n')
+
+    def test_vprintf(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdarg.h>
+
+        void print(char* format, ...) {
+          va_list args;
+          va_start (args, format);
+          vprintf (format, args);
+          va_end (args);
+        }
+
+        int main () {
+           print("Call with %d variable argument.\n", 1);
+           print("Call with %d variable %s.\n", 2, "arguments");
+
+           return 0;
+        }
+        '''
+      expected = '''
+        Call with 1 variable argument.
+        Call with 2 variable arguments.
+        '''
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
@@ -3526,9 +3674,11 @@ Child2:9
       try:
         def post(filename):
           lines = open(filename, 'r').readlines()
-          line = filter(lambda line: '___assert_fail(' in line, lines)[0]
-          assert '//@line 7 "' in line, 'Must have debug info with the line number'
-          assert 'src.cpp"\n' in line, 'Must have debug info with the filename'
+          lines = filter(lambda line: '___assert_fail(' in line, lines)
+          found_line_num = any(('//@line 7 "' in line) for line in lines)
+          found_filename = any(('src.cpp"\n' in line) for line in lines)
+          assert found_line_num, 'Must have debug info with the line number'
+          assert found_filename, 'Must have debug info with the filename'
         self.do_test(src, '*nothingatall*', post_build=post)
       except Exception, e:
         # This test *should* fail
