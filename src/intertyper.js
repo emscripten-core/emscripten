@@ -461,22 +461,18 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.tokens = item.tokens.filter(function(token) {
         return !(token.text in LLVM.LINKAGES || token.text in LLVM.PARAM_ATTR || token.text in set('hidden', 'nounwind', 'define', 'inlinehint', '{') || token.text in LLVM.CALLING_CONVENTIONS);
       });
-      var ret = {
+      var params = parseParamTokens(item.tokens[2].item.tokens);
+      return [{
         intertype: 'function',
         ident: toNiceIdent(item.tokens[1].text),
         returnType: item.tokens[0].text,
-        params: parseParamTokens(item.tokens[2].item.tokens),
-        lineNum: item.lineNum
-      };
-      ret.hasVarArgs = false;
-      ret.paramIdents = ret.params.map(function(param) {
-        if (param.intertype == 'varargs') {
-          ret.hasVarArgs = true;
-          return null;
-        }
-        return toNiceIdent(param.ident);
-      }).filter(function(param) { return param != null });;
-      return [ret];
+        params: params,
+        hasVarArgs: hasVarArgs(params),
+        lineNum: item.lineNum,
+        paramIdents: params.map(function(param) {
+          return (param.intertype == 'varargs') ? null : toNiceIdent(param.ident);
+        }).filter(function(param) { return param != null; })
+      }];
     }
   });
   // label
@@ -799,23 +795,15 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.tokens.splice(1, 1);
       }
 
-      var ret = {
+      var params = parseParamTokens(item.tokens[3].item.tokens);
+      return [{
         intertype: 'functionStub',
         ident: toNiceIdent(item.tokens[2].text),
         returnType: item.tokens[1],
-        params: parseParamTokens(item.tokens[3].item.tokens),
-        hasVarArgs: false,
+        params: params,
+        hasVarArgs: hasVarArgs(params),
         lineNum: item.lineNum
-      };
-
-      for (var i = 0; i < ret.params.length; i++) {
-        if (ret.params[i].intertype == 'varargs') {
-          ret.hasVarArgs = true;
-          break;
-        }
-      }
-
-      return [ret];
+      }];
     }
   });
   // 'unreachable'

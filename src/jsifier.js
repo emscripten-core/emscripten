@@ -199,7 +199,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         return ret;
       } else {
         if (item.external && BUILD_AS_SHARED_LIB) {
-          // External variables in shared libraries should not be declared.
+          // External variables in shared libraries should not be declared as
+          // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
           item.JS = 'var ' + item.ident + ';';

@@ -1871,14 +1871,14 @@ if 'benchmark' not in sys.argv:
 
         typedef int (*CMP_TYPE)(const void*, const void*);
 
-        CMP_TYPE get_cmp() {
+        extern "C" CMP_TYPE get_cmp() {
           return lib_cmp;
         }
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['__Z7get_cmpv']
+      EXPORTED_FUNCTIONS = ['_get_cmp']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -1908,7 +1908,7 @@ if 'benchmark' not in sys.argv:
             printf("Could not load lib.\\n");
             return 1;
           }
-          getter_ptr = (CMP_TYPE (*)()) dlsym(lib_handle, "_Z7get_cmpv");
+          getter_ptr = (CMP_TYPE (*)()) dlsym(lib_handle, "get_cmp");
           if (getter_ptr == NULL) {
             printf("Could not find func.\\n");
             return 1;
@@ -1965,7 +1965,7 @@ if 'benchmark' not in sys.argv:
           p_f();
         }
 
-        void (*func(int x, void(*fptr)()))() {
+        extern "C" void (*func(int x, void(*fptr)()))() {
           printf("In func: %d\\n", x);
           fptr();
           return lib_fptr;
@@ -1974,7 +1974,7 @@ if 'benchmark' not in sys.argv:
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['__Z4funciPFvvE']
+      EXPORTED_FUNCTIONS = ['_func']
       EXPORTED_GLOBALS = ['_global']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
@@ -2007,9 +2007,9 @@ if 'benchmark' not in sys.argv:
           }
 
           // Test looked up function.
-          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "_Z4funciPFvvE");
+          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
           // Load twice to test cache.
-          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "_Z4funciPFvvE");
+          func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
           if (func_fptr == NULL) {
             printf("Could not find func.\\n");
             return 1;
@@ -2049,14 +2049,14 @@ if 'benchmark' not in sys.argv:
       lib_src = r'''
         #include <stdio.h>
         extern int parent_global;
-        void func() {
+        extern "C" void func() {
           printf("Parent global: %d.\n", parent_global);
         }
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['__Z4funcv']
+      EXPORTED_FUNCTIONS = ['_func']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -2070,7 +2070,7 @@ if 'benchmark' not in sys.argv:
           void (*fptr)();
 
           lib_handle = dlopen("liblib.so", RTLD_NOW);
-          fptr = (void (*)())dlsym(lib_handle, "_Z4funcv");
+          fptr = (void (*)())dlsym(lib_handle, "func");
           fptr();
           parent_global = 456;
           fptr();
@@ -2096,14 +2096,14 @@ if 'benchmark' not in sys.argv:
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
       lib_src = r'''
         void print_ints(int n, ...);
-        void func() {
+        extern "C" void func() {
           print_ints(2, 13, 42);
         }
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
       BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['__Z4funcv']
+      EXPORTED_FUNCTIONS = ['_func']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -2128,7 +2128,7 @@ if 'benchmark' not in sys.argv:
           print_ints(2, 100, 200);
 
           lib_handle = dlopen("liblib.so", RTLD_NOW);
-          fptr = (void (*)())dlsym(lib_handle, "_Z4funcv");
+          fptr = (void (*)())dlsym(lib_handle, "func");
           fptr();
 
           return 0;

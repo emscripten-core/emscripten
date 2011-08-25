@@ -333,6 +333,15 @@ function parseParamTokens(params) {
   return ret;
 }
 
+function hasVarArgs(params) {
+  for (var i = 0; i < params.length; i++) {
+    if (params[i].intertype == 'varargs') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function finalizeParam(param) {
   if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
     return finalizeLLVMFunctionCall(param);
