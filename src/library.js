@@ -393,9 +393,6 @@ LibraryManager.library = {
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
-
-      // Allocate some necessary buffers now
-      FS.buffer1 = allocate([0], 'i8', ALLOC_STATIC);
     }
   },
 
@@ -2630,7 +2627,8 @@ LibraryManager.library = {
     if (!(stream in FS.streams)) return -1;
     var streamObj = FS.streams[stream];
     if (streamObj.eof || streamObj.error) return -1;
-    var ret = _read(stream, FS.buffer1, 1);
+    var buffer = allocate([0], 'i8', ALLOC_STACK);
+    var ret = _read(stream, buffer, 1);
     if (ret == 0) {
       streamObj.eof = true;
       return -1;
@@ -2638,7 +2636,7 @@ LibraryManager.library = {
       streamObj.error = true;
       return -1;
     } else {
-      return {{{ makeGetValue('FS.buffer1', '0', 'i8') }}};
+      return {{{ makeGetValue('buffer', '0', 'i8') }}};
     }
   },
   getc: 'fgetc',
@@ -2749,8 +2747,9 @@ LibraryManager.library = {
     // int fputc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputc.html
     var chr = unSign(c & 0xFF);
-    {{{ makeSetValue('FS.buffer1', '0', 'chr', 'i8') }}}
-    var ret = _write(stream, FS.buffer1, 1);
+    var buffer = allocate([0], 'i8', ALLOC_STACK);
+    {{{ makeSetValue('buffer', '0', 'chr', 'i8') }}}
+    var ret = _write(stream, buffer, 1);
     if (ret == -1) {
       if (stream in FS.streams) FS.streams[stream].error = true;
       return -1;
