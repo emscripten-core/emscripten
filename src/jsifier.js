@@ -55,10 +55,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
 
   data.functionStubs.forEach(function(func) {
-    Functions.currExternalFunctions[func.ident] = {
-      hasVarArgs: func.hasVarArgs,
-      numParams: func.params && func.params.length
-   };
+    // Don't overwrite stubs that have more info.
+    if (!Functions.currExternalFunctions.hasOwnProperty(func.ident) ||
+        !Functions.currExternalFunctions[func.ident].numParams === undefined) {
+      Functions.currExternalFunctions[func.ident] = {
+        hasVarArgs: func.hasVarArgs,
+        numParams: func.params && func.params.length
+      };
+    }
   });
 
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
