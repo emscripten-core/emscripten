@@ -2043,6 +2043,53 @@ if 'benchmark' not in sys.argv:
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
+    def test_dlfcn_alias(self):
+      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS, INCLUDE_FULL_LIBRARY
+      lib_src = r'''
+        #include <stdio.h>
+        extern int parent_global;
+        void func() {
+          printf("Parent global: %d.\n", parent_global);
+        }
+        '''
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'liblib.cpp')
+      BUILD_AS_SHARED_LIB = 1
+      EXPORTED_FUNCTIONS = ['__Z4funcv']
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+      src = r'''
+        #include <dlfcn.h>
+
+        int parent_global = 123;
+
+        int main() {
+          void* lib_handle;
+          void (*fptr)();
+
+          lib_handle = dlopen("liblib.so", RTLD_NOW);
+          fptr = (void (*)())dlsym(lib_handle, "_Z4funcv");
+          fptr();
+          parent_global = 456;
+          fptr();
+
+          return 0;
+        }
+        '''
+      BUILD_AS_SHARED_LIB = 0
+      INCLUDE_FULL_LIBRARY = 1
+      EXPORTED_FUNCTIONS = ['_main']
+      def add_pre_run_and_checks(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
+        )
+        open(filename, 'w').write(src)
+      self.do_test(src, 'Parent global: 123.*Parent global: 456.*',
+                   output_nicerizer=lambda x: x.replace('\n', '*'),
+                   post_build=add_pre_run_and_checks)
+
     def test_rand(self):
       src = r'''
         #include <stdio.h>
