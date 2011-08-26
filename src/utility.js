@@ -196,16 +196,32 @@ function isArray(x) {
   }
 }
 
+// Flattens something like [5, 6, 'hi', [1, 'bye'], 44] into
+// [5, 6, 'hi', 1, bye, 44].
 function flatten(x) {
-  if (typeof x !== 'object') return x;
-  var ret = [];
-  for (var i = 0; i < x.length; i++) {
-    if (typeof x[i] === 'number') {
-      ret.push(x[i]);
+  if (typeof x !== 'object') return [x];
+  // Avoid multiple concats by finding the size first. This is much faster
+  function getSize(y) {
+    if (typeof y !== 'object') {
+      return 1;
     } else {
-      ret = ret.concat(flatten(x[i]));
+      return sum(y.map(getSize));
     }
   }
+  var size = getSize(x);
+  var ret = new Array(size);
+  var index = 0;
+  function add(y) {
+    for (var i = 0; i < y.length; i++) {
+      if (typeof y[i] !== 'object') {
+        ret[index++] = y[i];
+      } else {
+        add(y[i]);
+      }
+    }
+  }
+  add(x);
+  assert(index == size);
   return ret;
 }
 

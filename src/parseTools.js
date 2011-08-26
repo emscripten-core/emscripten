@@ -597,19 +597,32 @@ function calcAllocatedSize(type) {
 function generateStructTypes(type) {
   if (isArray(type)) return type; // already in the form of [type, type,...]
   if (Runtime.isNumberType(type) || isPointerType(type)) {
-    return [type];//.concat(zeros(getNativeFieldSize(type)));
+    return [type].concat(zeros(getNativeFieldSize(type)));
   }
+
+  // Avoid multiple concats by finding the size first. This is much faster
   var typeData = Types.types[type];
-  assert(typeData, 'invalid type in generateStructTypes: ' + type);
-  var fields = typeData.fields;
-  var ret = [];
-  for (var i = 0; i < fields.length; i++) {
-    ret = ret.concat(generateStructTypes(fields[i]));
-    if (i < fields.length-1) {
-      ret = ret.concat(zeros(typeData.flatIndexes[i+1] - ret.length));
+  var size = typeData.flatSize;
+  var ret = new Array(size);
+  var index = 0;
+  function add(typeData) {
+    var start = index;
+    for (var i = 0; i < typeData.fields.length; i++) {
+      var type = typeData.fields[i];
+      if (Runtime.isNumberType(type) || isPointerType(type)) {
+        ret[index++] = type;
+      } else {
+        add(Types.types[type]);
+      }
+      var more = (i+1 < typeData.fields.length ? typeData.flatIndexes[i+1] : typeData.flatSize) - (index - start);
+      for (var j = 0; j < more; j++) {
+        ret[index++] = 0;
+      }
     }
   }
-  return ret.concat(zeros(typeData.flatSize - ret.length));
+  add(typeData);
+  assert(index == size);
+  return ret;
 }
 
 // Flow blocks
@@ -891,7 +904,6 @@ function makePointer(slab, pos, allocator, type) {
   assert(type, 'makePointer requires type info');
   if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in set('IHEAP', 'FHEAP'))) return pos;
   var types = generateStructTypes(type);
-
   // compress type info and data if possible
   var de;
   try {
@@ -915,7 +927,6 @@ function makePointer(slab, pos, allocator, type) {
       types = de[0];
     }
   }
-
   return 'allocate(' + slab + ', ' + JSON.stringify(types) + (allocator ? ', ' + allocator : '') + ')';
 }
 
