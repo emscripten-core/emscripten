@@ -143,6 +143,7 @@ function isFunctionDef(token) {
 }
 
 function isFunctionType(type) {
+  type = type.replace(/"[^"]+"/g, '".."');
   var parts = type.split(' ');
   if (pointingLevels(type) !== 1) return false;
   var text = removeAllPointing(parts.slice(1).join(' '));

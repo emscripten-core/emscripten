@@ -585,7 +585,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('store', function(item) {
     var value = finalizeLLVMParameter(item.value);
     if (pointingLevels(item.pointerType) == 1) {
-      value = parseNumerical(value, removePointing(item.pointerType));
+      value = parseNumerical(value, item.valueType);
     }
     var impl = VAR_EMULATED;
     if (item.pointer.intertype == 'value') {
