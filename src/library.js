@@ -1334,20 +1334,9 @@ LibraryManager.library = {
   isatty: function(fildes) {
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
-    if (FS.streams[fildes]) {
-      var object = FS.streams[fildes].object;
-      if (object.isDevice && object.input && object.output) {
-        // As far as we're concerned, a TTY is any device which supports both
-        // input and output.
-        return 0;
-      } else {
-        ___setErrNo(ERRNO_CODES.ENOTTY);
-        return -1;
-      }
-    } else {
-      ___setErrNo(ERRNO_CODES.EBADF);
-      return -1;
-    }
+    // For now it's easier to pretend we have no terminals.
+    ___setErrNo(FS.streams[fildes] ? ERRNO_CODES.ENOTTY : ERRNO_CODES.EBADF);
+    return -1;
   },
   lchown__deps: ['chown'],
   lchown: function(path, owner, group) {
