@@ -308,7 +308,8 @@ LibraryManager.library = {
       if (!input) input = function() {
         if (!input.cache || !input.cache.length) {
           var result;
-          if (window && typeof window.prompt == 'function') {
+          if (typeof window != 'undefined' &&
+              typeof window.prompt == 'function') {
             // Browser.
             result = window.prompt('Input: ');
           } else if (typeof readline == 'function') {
