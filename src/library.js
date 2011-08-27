@@ -872,6 +872,7 @@ LibraryManager.library = {
       return -1;
     }
     var target = path.object || null;
+    var finalPath;
 
     // Verify the file exists, create if needed and allowed.
     if (target) {
@@ -895,6 +896,7 @@ LibraryManager.library = {
           return -1;
         }
       }
+      finalPath = path.path;
     } else {
       if (!isCreate) {
         ___setErrNo(ERRNO_CODES.ENOENT);
@@ -906,6 +908,7 @@ LibraryManager.library = {
       }
       target = FS.createDataFile(path.parentObject, path.name, [],
                                  mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+      finalPath = path.parentPath + '/' + path.name;
     }
     // Actually create an open stream.
     var id = FS.streams.length;
@@ -917,7 +920,7 @@ LibraryManager.library = {
       var contents = [];
       for (var key in target.contents) contents.push(key);
       FS.streams[id] = {
-        path: path.path,
+        path: finalPath,
         object: target,
         // An index into contents. Special values: -2 is ".", -1 is "..".
         position: -2,
@@ -936,7 +939,7 @@ LibraryManager.library = {
       };
     } else {
       FS.streams[id] = {
-        path: path.path,
+        path: finalPath,
         object: target,
         position: 0,
         isRead: isRead,
