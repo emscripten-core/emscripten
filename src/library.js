@@ -3425,6 +3425,24 @@ LibraryManager.library = {
     return state & 0x7FFFFFFF;
   },
 
+  realpath__deps: ['$FS', '__setErrNo'],
+  realpath: function(file_name, resolved_name) {
+    // char *realpath(const char *restrict file_name, char *restrict resolved_name);
+    // http://pubs.opengroup.org/onlinepubs/009604499/functions/realpath.html
+    var absolute = FS.analyzePath(Pointer_stringify(file_name));
+    if (absolute.error) {
+      ___setErrNo(absolute.error);
+      return 0;
+    } else {
+      var size = Math.min(4095, absolute.path.length);  // PATH_MAX - 1.
+      for (var i = 0; i < size; i++) {
+        {{{ makeSetValue('resolved_name', 'i', 'absolute.path.charCodeAt(i)', 'i8') }}}
+      }
+      {{{ makeSetValue('resolved_name', 'size', '0', 'i8') }}}
+      return resolved_name;
+    }
+  },
+
   // ==========================================================================
   // string.h
   // ==========================================================================
