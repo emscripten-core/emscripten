@@ -4678,7 +4678,8 @@ LibraryManager.library = {
   // ==========================================================================
 
   setlocale: function(category, locale) {
-    return 0;
+    if (!_setlocale.ret) _setlocale.ret = allocate([0], 'i8', ALLOC_NORMAL);
+    return _setlocale.ret;
   },
 
   localeconv: function() {
