@@ -3652,13 +3652,8 @@ LibraryManager.library = {
 
   strdup: function(ptr) {
     var len = String_len(ptr);
-    var end = ptr + len;
     var newStr = _malloc(len + 1);
-    for (var src = ptr, dst = newStr; src < end; src++, dst++) {
-      var srcVal = {{{ makeGetValue('src', 0, 'i8') }}};
-      {{{ makeSetValue('dst', 0, 'srcVal', 'i8') }}}
-    }
-    {{{ makeSetValue('dst', 0, 0, 'i8') }}}
+    {{{ makeCopyValues('newStr', 'ptr', 'len + 1', 'null', ' || 0') }}};
     return newStr;
   },
 

@@ -679,10 +679,15 @@ if 'benchmark' not in sys.argv:
             printf("%s\\n", NULL); // Should print '(null)', not the string at address 0, which is a real address for us!
             printf("/* a comment */\\n"); // Should not break the generated code!
             printf("// another\\n"); // Should not break the generated code!
+
+            char* strdup_val = strdup("test");
+            printf("%s\\n", strdup_val);
+            free(strdup_val);
+
             return 0;
           }
         '''
-        self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another', ['wowie', 'too', '74'])
+        self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
     def test_error(self):
         src = r'''
