@@ -679,10 +679,15 @@ if 'benchmark' not in sys.argv:
             printf("%s\\n", NULL); // Should print '(null)', not the string at address 0, which is a real address for us!
             printf("/* a comment */\\n"); // Should not break the generated code!
             printf("// another\\n"); // Should not break the generated code!
+
+            char* strdup_val = strdup("test");
+            printf("%s\\n", strdup_val);
+            free(strdup_val);
+
             return 0;
           }
         '''
-        self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another', ['wowie', 'too', '74'])
+        self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
     def test_error(self):
         src = r'''
@@ -1588,6 +1593,9 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
 
     def test_stdlibs(self):
+        if USE_TYPED_ARRAYS == 2:
+            # Typed arrays = 2 + safe heap prints a warning that messes up our output.
+            global SAFE_HEAP; SAFE_HEAP = 0
         src = '''
           #include <stdio.h>
           #include <stdlib.h>
@@ -1640,6 +1648,7 @@ if 'benchmark' not in sys.argv:
         self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
 
     def test_time(self):
+      if USE_TYPED_ARRAYS == 2: return self.skip() # Typed arrays = 2 truncate i64s.
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
       self.do_test(src, expected)
@@ -2093,6 +2102,7 @@ if 'benchmark' not in sys.argv:
       INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
+      if QUANTUM_SIZE == 1: return self.skip() # FIXME: Add support for this
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
       lib_src = r'''
         void print_ints(int n, ...);
@@ -2189,6 +2199,7 @@ if 'benchmark' not in sys.argv:
       self.do_test(src, re.sub(r'(^|\n)\s+', r'\1', expected))
 
     def test_strtod(self):
+      if USE_TYPED_ARRAYS == 2: return self.skip() # Typed arrays = 2 truncate doubles.
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>

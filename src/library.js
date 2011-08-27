@@ -308,7 +308,8 @@ LibraryManager.library = {
       if (!input) input = function() {
         if (!input.cache || !input.cache.length) {
           var result;
-          if (window && typeof window.prompt == 'function') {
+          if (typeof window != 'undefined' &&
+              typeof window.prompt == 'function') {
             // Browser.
             result = window.prompt('Input: ');
           } else if (typeof readline == 'function') {
@@ -871,6 +872,7 @@ LibraryManager.library = {
       return -1;
     }
     var target = path.object || null;
+    var finalPath;
 
     // Verify the file exists, create if needed and allowed.
     if (target) {
@@ -894,6 +896,7 @@ LibraryManager.library = {
           return -1;
         }
       }
+      finalPath = path.path;
     } else {
       if (!isCreate) {
         ___setErrNo(ERRNO_CODES.ENOENT);
@@ -905,6 +908,7 @@ LibraryManager.library = {
       }
       target = FS.createDataFile(path.parentObject, path.name, [],
                                  mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+      finalPath = path.parentPath + '/' + path.name;
     }
     // Actually create an open stream.
     var id = FS.streams.length;
@@ -916,7 +920,7 @@ LibraryManager.library = {
       var contents = [];
       for (var key in target.contents) contents.push(key);
       FS.streams[id] = {
-        path: path.path,
+        path: finalPath,
         object: target,
         // An index into contents. Special values: -2 is ".", -1 is "..".
         position: -2,
@@ -935,7 +939,7 @@ LibraryManager.library = {
       };
     } else {
       FS.streams[id] = {
-        path: path.path,
+        path: finalPath,
         object: target,
         position: 0,
         isRead: isRead,
@@ -1330,20 +1334,9 @@ LibraryManager.library = {
   isatty: function(fildes) {
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
-    if (FS.streams[fildes]) {
-      var object = FS.streams[fildes].object;
-      if (object.isDevice && object.input && object.output) {
-        // As far as we're concerned, a TTY is any device which supports both
-        // input and output.
-        return 0;
-      } else {
-        ___setErrNo(ERRNO_CODES.ENOTTY);
-        return -1;
-      }
-    } else {
-      ___setErrNo(ERRNO_CODES.EBADF);
-      return -1;
-    }
+    // For now it's easier to pretend we have no terminals.
+    ___setErrNo(FS.streams[fildes] ? ERRNO_CODES.ENOTTY : ERRNO_CODES.EBADF);
+    return -1;
   },
   lchown__deps: ['chown'],
   lchown: function(path, owner, group) {
@@ -3432,6 +3425,24 @@ LibraryManager.library = {
     return state & 0x7FFFFFFF;
   },
 
+  realpath__deps: ['$FS', '__setErrNo'],
+  realpath: function(file_name, resolved_name) {
+    // char *realpath(const char *restrict file_name, char *restrict resolved_name);
+    // http://pubs.opengroup.org/onlinepubs/009604499/functions/realpath.html
+    var absolute = FS.analyzePath(Pointer_stringify(file_name));
+    if (absolute.error) {
+      ___setErrNo(absolute.error);
+      return 0;
+    } else {
+      var size = Math.min(4095, absolute.path.length);  // PATH_MAX - 1.
+      for (var i = 0; i < size; i++) {
+        {{{ makeSetValue('resolved_name', 'i', 'absolute.path.charCodeAt(i)', 'i8') }}}
+      }
+      {{{ makeSetValue('resolved_name', 'size', '0', 'i8') }}}
+      return resolved_name;
+    }
+  },
+
   // ==========================================================================
   // string.h
   // ==========================================================================
@@ -3641,12 +3652,8 @@ LibraryManager.library = {
 
   strdup: function(ptr) {
     var len = String_len(ptr);
-    var end = ptr + len;
     var newStr = _malloc(len + 1);
-    for (var src = ptr, dst = newStr; src < end; src++, dst++) {
-      {{{ makeSetValue('dst', 0, 'src', 'i8') }}}
-    }
-    {{{ makeSetValue('dst', 0, 0, 'i8') }}}
+    {{{ makeCopyValues('newStr', 'ptr', 'len + 1', 'null', ' || 0') }}};
     return newStr;
   },
 
@@ -4666,7 +4673,8 @@ LibraryManager.library = {
   // ==========================================================================
 
   setlocale: function(category, locale) {
-    return 0;
+    if (!_setlocale.ret) _setlocale.ret = allocate([0], 'i8', ALLOC_NORMAL);
+    return _setlocale.ret;
   },
 
   localeconv: function() {
