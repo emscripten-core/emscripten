@@ -3655,7 +3655,8 @@ LibraryManager.library = {
     var end = ptr + len;
     var newStr = _malloc(len + 1);
     for (var src = ptr, dst = newStr; src < end; src++, dst++) {
-      {{{ makeSetValue('dst', 0, 'src', 'i8') }}}
+      var srcVal = {{{ makeGetValue('src', 0, 'i8') }}};
+      {{{ makeSetValue('dst', 0, 'srcVal', 'i8') }}}
     }
     {{{ makeSetValue('dst', 0, 0, 'i8') }}}
     return newStr;
