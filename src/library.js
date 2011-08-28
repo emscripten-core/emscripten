@@ -3641,16 +3641,6 @@ LibraryManager.library = {
     return pdest;
   },
 
-  strtol: function(ptr, endptr, base) {
-    assert(!endptr, "We don't support all strtol params yet");
-    return parseInt(Pointer_stringify(ptr), base);
-  },
-  strtoul__deps: ['strtol'],
-  strtoul: function(ptr, endptr, base) {
-    var result = _strtol(ptr, endptr, base);
-    return unSign(result, 32);
-  },
-
   strcmp__deps: ['strncmp'],
   strcmp: function(px, py) {
     return _strncmp(px, py, TOTAL_MEMORY);
