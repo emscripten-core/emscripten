@@ -3948,6 +3948,14 @@ LibraryManager.library = {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
 
+  llvm_memory_barrier: function(){},
+
+  llvm_atomic_load_add_i32_p0i32: function(ptr, delta) {
+    var ret = {{{ makeGetValue('ptr', '0', 'i32') }}};
+    {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
+    return ret;
+  },
+
   // ==========================================================================
   // iostream.h
   // ==========================================================================
@@ -5054,6 +5062,7 @@ LibraryManager.library = {
   pthread_mutex_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
+  pthread_cond_broadcast: function() {},
 
   // ==========================================================================
   // malloc.h
