@@ -3100,6 +3100,7 @@ LibraryManager.library = {
     return allocate(info.object.contents.slice(offset, offset+num),
                     'i8', ALLOC_NORMAL);
   },
+  __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
     // FIXME: Not really correct at all.
