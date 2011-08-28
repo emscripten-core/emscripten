@@ -4415,7 +4415,7 @@ LibraryManager.library = {
       return 0;
     } else {
       if (DLFCN_DATA.error) _free(DLFCN_DATA.error);
-      var msgArr = Module.intArrayFromString(DLFCN_DATA.errorMsg);
+      var msgArr = intArrayFromString(DLFCN_DATA.errorMsg);
       DLFCN_DATA.error = allocate(msgArr, 'i8', ALLOC_NORMAL);
       DLFCN_DATA.errorMsg = null;
       return DLFCN_DATA.error;
