@@ -10,7 +10,7 @@ var g = function (a1, a2) {
   var b = a * 2;
   var c = b - 1;
   var qqq = "qwe";
-  a++;
+  a = c;
   foo(c);
   var ww = 1, www, zzz = 2;
   foo(zzz);
@@ -61,6 +61,16 @@ function h() {
   for (var it = 0; it < 5; it++) {
     x = y ? x + 1 : 7;
     var x = -5;
+  }
+  var oneUse = glob;
+  if (1) {
+    otherGlob = oneUse;
+    breakMe();
+  }
+  var oneUse2 = glob2;
+  while (1) {
+    otherGlob2 = oneUse2;
+    breakMe();
   }
   return out;
 }

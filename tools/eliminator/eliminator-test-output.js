@@ -10,7 +10,7 @@ var g = function(a1, a2) {
   
   var c = a * 2 - 1;
   
-  a++;
+  a = c;
   foo(c);
   
   foo(2);
@@ -62,6 +62,16 @@ function h() {
     x = y ? x + 1 : 7;
     var x = -5;
   }
+  
+  if (1) {
+    otherGlob = glob;
+    breakMe();
+  }
+  var oneUse2 = glob2;
+  while (1) {
+    otherGlob2 = oneUse2;
+    breakMe();
+  }
   return out;
 }
 function strtok_part(b, j, f) {
@@ -77,7 +87,7 @@ function strtok_part(b, j, f) {
 function py() {
   
   
-  
-  
-  HEAP[HEAP[__PyThreadState_Current] + 12] = HEAP[HEAP[__PyThreadState_Current] + 12] + 1;
+  var $7 = HEAP[HEAP[__PyThreadState_Current] + 12] + 1;
+  var $8 = HEAP[__PyThreadState_Current] + 12;
+  HEAP[$8] = $7;
 }

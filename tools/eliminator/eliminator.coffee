@@ -204,10 +204,8 @@ class Eliminator
   #   depsMutatedInLiveRange
   analyzeLiveRanges: ->
     isLive = {}
-    isDead = {}
 
-    # Checks if a given note may mutate any of the currently live variables, and
-    # if so, adds them to isDead.
+    # Checks if a given node may mutate any of the currently live variables.
     checkForMutations = (node, type) =>
       usedInThisStatement = {}
       if type in ['assign', 'call']
@@ -223,34 +221,51 @@ class Eliminator
           reference = reference[1]
           if @dependsOn[reference]?
             for varName of @dependsOn[reference]
-              if isLive[varName] and not usedInThisStatement[varName]
-                isDead[varName] = true
+              if isLive[varName]
+                isLive[varName] = false
 
       if type of CONTROL_FLOW_NODES
         for varName of isLive
           if @dependsOnAGlobal[varName] or not usedInThisStatement[varName]
-            isDead[varName] = true
+            isLive[varName] = false
       else if type is 'assign'
         for varName of isLive
           if @dependsOnAGlobal[varName] and not usedInThisStatement[varName]
-            isDead[varName] = true
+            isLive[varName] = false
       else if type is 'name'
         reference = node[1]
         if @isSingleDef[reference]
-          if isDead[reference] or not isLive[reference]
+          if not isLive[reference]
             @depsMutatedInLiveRange[reference] = true
       return undefined
 
     # Analyzes a block and all its children for variable ranges. Makes sure to
     # account for the worst case of possible mutations.
     analyzeBlock = (node, type) =>
-      if type in ['if', 'do', 'while', 'for', 'for-in', 'try']
-        for child in node
+      if type in ['switch', 'if', 'try', 'do', 'while', 'for', 'for-in']
+        traverseChild = (child) ->
           if typeof child == 'object' and child?.length
             savedLive = {}
             for name of isLive then savedLive[name] = true
             traverse child, analyzeBlock
+            for name of isLive
+              if not isLive[name] then savedLive[name] = false
             isLive = savedLive
+        if type is 'switch'
+          traverseChild node[1]
+          for child in node[2]
+            traverseChild child
+        else if type in ['if', 'try']
+          for child in node
+            traverseChild child
+        else
+          # Don't put anything from outside into the body of a loop.
+          savedLive = isLive
+          isLive = {}
+          for child in node then traverseChild child
+          for name of isLive
+            if not isLive[name] then savedLive[name] = false
+          isLive = savedLive
         return node
       else if type is 'var'
         for [varName, varValue] in node[1]
