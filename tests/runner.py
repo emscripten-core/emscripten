@@ -667,8 +667,9 @@ if 'benchmark' not in sys.argv:
             memmove(&x, &y, magic-7); // 0 should not crash us
 
             int xx, yy, zz;
-            int cc = sscanf("abc_10.b1_xyz_543", "abc_%d.%2x_xyz_%3d", &xx, &yy, &zz);
-            printf("%d:%d,%d,%d\\n", cc, xx, yy, zz);
+            char s[32];
+            int cc = sscanf("abc_10.b1_xyz_543_defg", "abc_%d.%2x_xyz_%3d_%3s", &xx, &yy, &zz, s);
+            printf("%d:%d,%d,%d,%s\\n", cc, xx, yy, zz, s);
 
             printf("%d\\n", argc);
             puts(argv[1]);
@@ -687,7 +688,7 @@ if 'benchmark' not in sys.argv:
             return 0;
           }
         '''
-        self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+        self.do_test(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
     def test_error(self):
         src = r'''

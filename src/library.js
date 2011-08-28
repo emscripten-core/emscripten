@@ -2146,6 +2146,7 @@ LibraryManager.library = {
               (type === 's')) {
             buffer.push(String.fromCharCode(next));
             next = get();
+            curr++;
           } else {
             break;
           }
