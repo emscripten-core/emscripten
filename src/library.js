@@ -3168,7 +3168,16 @@ LibraryManager.library = {
   strtod__deps: ['isspace', 'isdigit'],
   strtod: function(str, endptr) {
     // Skip space.
-    while (_isspace(str)) str++;
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    var multiplier = 1;
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      multiplier = -1;
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
 
     var chr;
     var ret = 0;
@@ -3223,7 +3232,93 @@ LibraryManager.library = {
       {{{ makeSetValue('endptr', 0, 'str', '*') }}}
     }
 
+    return ret * multiplier;
+  },
+
+  _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
+  _parseInt: function(str, endptr, base, min, max, unsignBits) {
+    // Skip space.
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    var multiplier = 1;
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      multiplier = -1;
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
+
+    // Find base.
+    var finalBase = base;
+    if (!finalBase) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+          finalBase = 16;
+          str += 2;
+        } else {
+          finalBase = 8;
+          str++;
+        }
+      }
+    }
+    if (!finalBase) finalBase = 10;
+
+    // Get digits.
+    var chr;
+    var ret = 0;
+    while ((chr = {{{ makeGetValue('str', 0, 'i8') }}}) != 0) {
+      var digit = parseInt(String.fromCharCode(chr), finalBase);
+      if (isNaN(digit)) {
+        break;
+      } else {
+        ret = ret * finalBase + digit;
+        str++;
+      }
+    }
+
+    // Apply sign.
+    ret *= multiplier;
+
+    // Set end pointer.
+    if (endptr) {
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+    }
+
+    // Unsign if needed.
+    if (unsignBits) {
+      if (Math.abs(ret) > max) {
+        ret = max;
+        ___setErrNo(ERRNO_CODES.ERANGE);
+      } else {
+        ret = unSign(ret, unsignBits);
+      }
+    }
+
+    // Validate range.
+    if (ret > max || ret < min) {
+      ret = ret > max ? max : min;
+      ___setErrNo(ERRNO_CODES.ERANGE);
+    }
+
     return ret;
+  },
+  strtoll__deps: ['_parseInt'],
+  strtoll: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, -9223372036854775808, 9223372036854775807);  // LLONG_MIN, LLONG_MAX; imprecise.
+  },
+  strtol__deps: ['_parseInt'],
+  strtol: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, -2147483648, 2147483647);  // LONG_MIN, LONG_MAX.
+  },
+  strtoul__deps: ['_parseInt'],
+  strtoul: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, 0, 4294967295, 32);  // ULONG_MAX.
+  },
+  strtoull__deps: ['_parseInt'],
+  strtoull: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64);  // ULONG_MAX; imprecise.
   },
 
   qsort__deps: ['memcpy'],

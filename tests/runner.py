@@ -2216,6 +2216,7 @@ if 'benchmark' not in sys.argv:
           printf("%g\n", strtod("1.0", &endptr));
           printf("%g\n", strtod("123", &endptr));
           printf("%g\n", strtod("123.456", &endptr));
+          printf("%g\n", strtod("-123.456", &endptr));
           printf("%g\n", strtod("1234567891234567890", &endptr));
           printf("%g\n", strtod("1234567891234567890e+50", &endptr));
           printf("%g\n", strtod("84e+220", &endptr));
@@ -2224,8 +2225,8 @@ if 'benchmark' not in sys.argv:
           printf("%g\n", strtod("123e-250", &endptr));
           printf("%g\n", strtod("123e-450", &endptr));
 
-          char str[] = "12.34e56end";
-          strtod(str, &endptr);
+          char str[] = "  12.34e56end";
+          printf("%g\n", strtod(str, &endptr));
           printf("%d\n", endptr - str);
           return 0;
         }
@@ -2239,6 +2240,7 @@ if 'benchmark' not in sys.argv:
         1
         123
         123.456
+        -123.456
         1.23457e+18
         1.23457e+68
         8.4e+221
@@ -2246,9 +2248,16 @@ if 'benchmark' not in sys.argv:
         1.23e-48
         1.23e-248
         0
-        8
+        1.234e+57
+        10
         '''
       self.do_test(src, re.sub(r'\n\s+', '\n', expected))
+
+    def test_parseInt(self):
+      if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
+      src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
 
     def test_printf(self):
       if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
