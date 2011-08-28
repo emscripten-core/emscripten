@@ -71,6 +71,9 @@ eval(processMacros(preprocess(read('runtime.js'))));
 // Read llvm
 
 var raw = read(ll_file);
+if (FAKE_X86_FP80) {
+  raw = raw.replace(/x86_fp80/g, 'double');
+}
 var lines = raw.split('\n');
 raw = null;
 

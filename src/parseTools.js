@@ -74,7 +74,7 @@ function toNiceIdent(ident) {
   assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
-  return ident.replace('%', '$').replace(/["&\\ \.@:<>,\*\[\]-]/g, '_');
+  return ident.replace('%', '$').replace(/["&\\ \.@:<>,\*\[\]\(\)-]/g, '_');
 }
 
 // Kind of a hack. In some cases we have strings that we do not want
@@ -431,6 +431,9 @@ function parseLLVMFunctionCall(segment) {
   if (type === '?') {
     if (intertype === 'getelementptr') {
       type = '*'; // a pointer, we can easily say, this is
+    } else if (intertype === 'bitcast') {
+      assert(segment[2].item.tokens.slice(-2)[0].text === 'to');
+      type = segment[2].item.tokens.slice(-1)[0].text;
     }
   }
   var ret = {
@@ -487,7 +490,15 @@ function IEEEUnHex(stringy) {
   stringy = stringy.substr(2); // leading '0x';
   if (stringy.replace(/0/g, '') === '') return 0;
   while (stringy.length < 16) stringy = '0' + stringy;
-  assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific');
+  if (FAKE_X86_FP80 && stringy.length > 16) {
+    stringy = stringy.substr(stringy.length-16, 16);
+    if (!Debugging.shownIEEEUnHexWarning) {
+      dprint('WARNING: .ll contains floating-point values with more than 64 bits. Faking values for them.');
+      dprint('         If they are used, this will almost certainly fail!');
+      Debugging.shownIEEEUnHexWarning = true;
+    }
+  }
+  assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific'); // |long double| can cause x86_fp80 which causes this
   var top = eval('0x' + stringy[0]);
   var neg = !!(top & 8); // sign
   if (neg) {

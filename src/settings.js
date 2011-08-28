@@ -129,6 +129,10 @@ RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time.
                        // to more easily perform operations from handwritten JS on
                        // objects with structures etc.
 
+FAKE_X86_FP80 = 0; // Replaces x86_fp80 with double. This loses precision. It is better,
+                   // if you can, to get the original source code to build without x86_fp80
+                   // (which is nonportable anyhow).
+
 // Compiler debugging options
 DEBUG_TAGS_SHOWING = [];
   // Some useful items:

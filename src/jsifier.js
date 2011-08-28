@@ -758,7 +758,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('mathop', processMathop);
 
   makeFuncLineActor('bitcast', function(item) {
-    return item.ident;
+    return finalizeLLVMParameter(item.params[0]);
   });
 
   function makeFunctionCall(ident, params, funcData) {
