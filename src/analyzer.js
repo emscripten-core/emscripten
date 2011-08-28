@@ -275,25 +275,27 @@ function analyzer(data) {
           }
         });
 
-        // Second pass over variables - notice when types are crossed by bitcast
+        if (QUANTUM_SIZE === 1) {
+          // Second pass over variables - notice when types are crossed by bitcast
 
-        func.lines.forEach(function(item) {
-          if (item.intertype === 'assign' && item.value.intertype === 'bitcast') {
-            // bitcasts are unique in that they convert one pointer to another. We
-            // sometimes need to know the original type of a pointer, so we save that.
-            //
-            // originalType is the type this variable is created from
-            // derivedTypes are the types that this variable is cast into
-            func.variables[item.ident].originalType = item.value.type2;
+          func.lines.forEach(function(item) {
+            if (item.intertype === 'assign' && item.value.intertype === 'bitcast') {
+              // bitcasts are unique in that they convert one pointer to another. We
+              // sometimes need to know the original type of a pointer, so we save that.
+              //
+              // originalType is the type this variable is created from
+              // derivedTypes are the types that this variable is cast into
+              func.variables[item.ident].originalType = item.value.type2;
 
-            if (!isNumber(item.value.ident)) {
-              if (!func.variables[item.value.ident].derivedTypes) {
-                func.variables[item.value.ident].derivedTypes = [];
+              if (!isNumber(item.value.ident)) {
+                if (!func.variables[item.value.ident].derivedTypes) {
+                  func.variables[item.value.ident].derivedTypes = [];
+                }
+                func.variables[item.value.ident].derivedTypes.push(item.value.type);
               }
-              func.variables[item.value.ident].derivedTypes.push(item.value.type);
             }
-          }
-        });
+          });
+        }
 
         for (vname in func.variables) {
           var variable = func.variables[vname];
