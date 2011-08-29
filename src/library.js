@@ -3074,7 +3074,9 @@ LibraryManager.library = {
   vsnprintf: 'snprintf',
   vprintf: 'printf',
   vsprintf: 'sprintf',
-  // TODO: Implement v*scanf().
+  vscanf: 'scanf',
+  vfscanf: 'fscanf',
+  vsscanf: 'fsscanf',
   __01fopen64_: 'fopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
