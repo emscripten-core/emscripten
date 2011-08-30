@@ -5,7 +5,7 @@ function f() {
   
   HEAP[123] = (GLOB[1] + 1) / 2;
 }
-var g = function(a1, a2) {
+var g = (function(a1, a2) {
   var a = 1;
   
   var c = a * 2 - 1;
@@ -39,7 +39,7 @@ var g = function(a1, a2) {
     unquoted: 3,
     4: 5
   };
-};
+});
 function h() {
   var out;
   bar(hello);
