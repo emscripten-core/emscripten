@@ -4706,15 +4706,17 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
-  _setjmp: function(env) {
+  setjmp: function(env) {
     // XXX print('WARNING: setjmp() not really implemented, will fail if longjmp() is actually called');
     return 0;
   },
+  _setjmp: 'setjmp',
 
-  _longjmp: function(env, val) {
+  longjmp: function(env, val) {
     // not really working...
     assert(0);
   },
+  _longjmp: 'longjmp',
 
   // ==========================================================================
   // signal.h
