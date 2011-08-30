@@ -2970,7 +2970,6 @@ if 'benchmark' not in sys.argv:
 
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17\n1\n2\n3\n4\n7',
-                      js_engines=[V8_ENGINE], # XXX Moz bug 675269
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -3151,15 +3150,13 @@ if 'benchmark' not in sys.argv:
       self.do_ll_test(combined,
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                       args='-scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post,
-                      js_engines=[V8_ENGINE]) # XXX Moz bug 675269
+                      post_build=post)
                       #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
       global USE_TYPED_ARRAYS
       global CORRECT_SIGNS
       if USE_TYPED_ARRAYS == 2:
-        return self.skip() # XXX Moz bug 675269
         CORRECT_SIGNS = 1
       else:
         CORRECT_SIGNS = 2
@@ -3240,7 +3237,6 @@ if 'benchmark' not in sys.argv:
                              os.path.join(self.get_building_dir(), 'openjpeg')],
                    force_c=True,
                    post_build=post,
-                   js_engines=[V8_ENGINE], # XXX Moz bug 675269
                    output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
 
     def test_python(self):
@@ -3254,7 +3250,6 @@ if 'benchmark' not in sys.argv:
 
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
-                      js_engines=[V8_ENGINE], # XXX Moz bug 675269
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
                       extra_emscripten_args=['-m'])
 
