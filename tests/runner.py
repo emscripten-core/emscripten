@@ -667,8 +667,9 @@ if 'benchmark' not in str(sys.argv):
             memmove(&x, &y, magic-7); // 0 should not crash us
 
             int xx, yy, zz;
-            int cc = sscanf("abc_10.b1_xyz_543", "abc_%d.%2x_xyz_%3d", &xx, &yy, &zz);
-            printf("%d:%d,%d,%d\\n", cc, xx, yy, zz);
+            char s[32];
+            int cc = sscanf("abc_10.b1_xyz_543_defg", "abc_%d.%2x_xyz_%3d_%3s", &xx, &yy, &zz, s);
+            printf("%d:%d,%d,%d,%s\\n", cc, xx, yy, zz, s);
 
             printf("%d\\n", argc);
             puts(argv[1]);
@@ -687,7 +688,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '3:10,177,543\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+        self.do_test(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
     def test_error(self):
         src = r'''
@@ -2216,6 +2217,7 @@ if 'benchmark' not in str(sys.argv):
           printf("%g\n", strtod("1.0", &endptr));
           printf("%g\n", strtod("123", &endptr));
           printf("%g\n", strtod("123.456", &endptr));
+          printf("%g\n", strtod("-123.456", &endptr));
           printf("%g\n", strtod("1234567891234567890", &endptr));
           printf("%g\n", strtod("1234567891234567890e+50", &endptr));
           printf("%g\n", strtod("84e+220", &endptr));
@@ -2224,8 +2226,8 @@ if 'benchmark' not in str(sys.argv):
           printf("%g\n", strtod("123e-250", &endptr));
           printf("%g\n", strtod("123e-450", &endptr));
 
-          char str[] = "12.34e56end";
-          strtod(str, &endptr);
+          char str[] = "  12.34e56end";
+          printf("%g\n", strtod(str, &endptr));
           printf("%d\n", endptr - str);
           return 0;
         }
@@ -2239,6 +2241,7 @@ if 'benchmark' not in str(sys.argv):
         1
         123
         123.456
+        -123.456
         1.23457e+18
         1.23457e+68
         8.4e+221
@@ -2246,9 +2249,16 @@ if 'benchmark' not in str(sys.argv):
         1.23e-48
         1.23e-248
         0
-        8
+        1.234e+57
+        10
         '''
       self.do_test(src, re.sub(r'\n\s+', '\n', expected))
+
+    def test_parseInt(self):
+      if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
+      src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
+      self.do_test(src, expected)
 
     def test_printf(self):
       if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
