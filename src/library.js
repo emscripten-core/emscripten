@@ -3076,11 +3076,12 @@ LibraryManager.library = {
   vsprintf: 'sprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
-  vsscanf: 'fsscanf',
+  vsscanf: 'sscanf',
   __01fopen64_: 'fopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
   __01tmpfile64_: 'tmpfile',
+  __isoc99_fscanf: 'fscanf',
   // TODO: Check if any other aliases are needed.
   _IO_getc: 'getc',
   _IO_putc: 'putc',
