@@ -233,7 +233,7 @@ class RunnerCore(unittest.TestCase):
 
 ###################################################################################################
 
-if 'benchmark' not in sys.argv:
+if 'benchmark' not in str(sys.argv):
   # Tests
 
   print "Running Emscripten tests..."
@@ -3953,7 +3953,8 @@ TT = %s
       self.assertEquals(output, expected)
 
 else:
-  # Benchmarks
+  # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
+  # |benchmark.test_X|.
 
   print "Running Emscripten benchmarks..."
 
@@ -3995,7 +3996,7 @@ else:
   total_times = map(lambda x: 0., range(TEST_REPS))
   total_native_times = map(lambda x: 0., range(TEST_REPS))
 
-  class Benchmark(RunnerCore):
+  class benchmark(RunnerCore):
     def print_stats(self, times, native_times):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
@@ -4135,7 +4136,7 @@ else:
       old_quantum = QUANTUM_SIZE
       old_use_typed_arrays = USE_TYPED_ARRAYS
       QUANTUM_SIZE = 1
-      USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code
+      USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code. However, TA2 is much faster (2X)
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['7', '256'], '256 256')
