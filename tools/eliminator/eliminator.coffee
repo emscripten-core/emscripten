@@ -5,17 +5,12 @@
 
   Single-def
     Uses only side-effect-free nodes
-      Single-use
-        Uses only local, single-def names
-          *
-        Uses non-local or non-single-def names
-          No flow-controlling statements between def and use
-            No references to any deps between def and use
-              No indirect accesses (subscript, dot notation) between def and use
-                *
-      Multi-use
-        Uses only local, single-def names
-          *
+      Unused
+        *
+      Has at most MAX_USES uses
+        No mutations to any dependencies between def and last use
+          No global dependencies or no indirect accesses between def and use
+            *
 
   TODO(max99x): Eliminate single-def undefined-initialized vars with no uses
                 between declaration and definition.
@@ -42,14 +37,17 @@ NODES_WITHOUT_SIDE_EFFECTS =
   binary: true
   sub: true
 
-# Nodes which may alter control flow.
+# Nodes which may break control flow. Moving a variable beyond them may have
+# side effects.
 CONTROL_FLOW_NODES =
   return: true
   break: true
   continue: true
   new: true
+  throw: true
   call: true
   label: true
+  debugger: true
 
 # Traverses a JavaScript syntax tree rooted at the given node calling the given
 # callback for each node.
@@ -62,7 +60,7 @@ CONTROL_FLOW_NODES =
 #     was stopped, false. Otherwise undefined.
 traverse = (node, callback) ->
   type = node[0]
-  if type
+  if typeof type == 'string'
     result = callback node, type
     if result? then return result
 
@@ -85,6 +83,8 @@ class Eliminator
     @body = func[3]
 
     # Identifier stats. Each of these objects is indexed by the identifier name.
+    # Whether the identifier is a local variable.
+    @isLocal = {}
     # Whether the identifier is never modified after initialization.
     @isSingleDef = {}
     # How many times the identifier is used.
@@ -92,9 +92,8 @@ class Eliminator
     # Whether the initial value of a single-def identifier uses only nodes
     # evaluating which has no side effects.
     @usesOnlySimpleNodes = {}
-    # Whether the initial value of a single-def identifier uses only other
-    # local single-def identifiers and/or literals.
-    @usesOnlySingleDefs = {}
+    # Whether the identifier depends on any non-local name, perhaps indirectly.
+    @dependsOnAGlobal = {}
     # Whether the dependencies of the single-def identifier may be mutated
     # within its live range.
     @depsMutatedInLiveRange = {}
@@ -133,7 +132,7 @@ class Eliminator
     closureFound = false
 
     traverse @body, (node, type) ->
-      if type in ['defun', 'function']
+      if type in ['defun', 'function', 'with']
         closureFound = true
         return false
       return undefined
@@ -141,6 +140,7 @@ class Eliminator
     return closureFound
 
   # Runs the basic variable scan pass. Fills the following member variables:
+  #   isLocal
   #   isSingleDef
   #   useCount
   #   initialValue
@@ -148,13 +148,15 @@ class Eliminator
     traverse @body, (node, type) =>
       if type is 'var'
         for [varName, varValue] in node[1]
+          @isLocal[varName] = true
           if not varValue? then varValue = ['name', 'undefined']
           @isSingleDef[varName] = not @isSingleDef.hasOwnProperty varName
           @initialValue[varName] = varValue
           @useCount[varName] = 0
       else if type is 'name'
         varName = node[1]
-        if varName of @useCount then @useCount[varName]++
+        if @useCount.hasOwnProperty varName then @useCount[varName]++
+        else @isSingleDef[varName] = false
       else if type in ['assign', 'unary-prefix', 'unary-postfix']
         varName = node[2][1]
         if @isSingleDef[varName] then @isSingleDef[varName] = false
@@ -164,13 +166,12 @@ class Eliminator
   # Analyzes the initial values of single-def variables. Requires basic variable
   # stats to have been calculated. Fills the following member variables:
   #   dependsOn
+  #   dependsOnAGlobal
   #   usesOnlySimpleNodes
-  #   usesOnlySingleDefs
   analyzeInitialValues: ->
     for varName of @isSingleDef
       if not @isSingleDef[varName] then continue
       @usesOnlySimpleNodes[varName] = true
-      @usesOnlySingleDefs[varName] = true
       traverse @initialValue[varName], (node, type) =>
         if type not of NODES_WITHOUT_SIDE_EFFECTS
           @usesOnlySimpleNodes[varName] = false
@@ -178,13 +179,13 @@ class Eliminator
           reference = node[1]
           if reference != 'undefined'
             if not @dependsOn[reference]? then @dependsOn[reference] = {}
+            if not @isLocal[reference] then @dependsOnAGlobal[varName] = true
             @dependsOn[reference][varName] = true
-            if not @isSingleDef[reference]
-              @usesOnlySingleDefs[varName] = false
         return undefined
     return undefined
 
-  # Updates the dependency graph (@dependsOn) to its transitive closure.
+  # Updates the dependency graph (@dependsOn) to its transitive closure and 
+  # synchronizes @dependsOnAGlobal to the new dependencies.
   calculateTransitiveDependencies: ->
     incomplete = true
     while incomplete
@@ -193,57 +194,90 @@ class Eliminator
         for source of sources
           for source2 of @dependsOn[source]
             if not @dependsOn[target][source2]
-              if not @isSingleDef[target]
-                @usesOnlySingleDefs[source2] = false
+              if not @isLocal[target] then @dependsOnAGlobal[source2] = true
               @dependsOn[target][source2] = true
               incomplete = true
     return undefined
 
-  # Analyzes the live ranges of single-def single-use variables. Requires
-  # dependencies to have been calculated. Fills the following member variables:
+  # Analyzes the live ranges of single-def variables. Requires dependencies to
+  # have been calculated. Fills the following member variables:
   #   depsMutatedInLiveRange
   analyzeLiveRanges: ->
     isLive = {}
 
+    # Checks if a given node may mutate any of the currently live variables.
     checkForMutations = (node, type) =>
+      usedInThisStatement = {}
+      if type in ['assign', 'call']
+        traverse node.slice(2, 4), (node, type) =>
+          if type is 'name' then usedInThisStatement[node[1]] = true
+          return undefined
+
+      if type in ['assign', 'unary-prefix', 'unary-postfix']
+        if type is 'assign' or node[1] in ['--', '++']
+          reference = node[2]
+          while reference[0] != 'name'
+            reference = reference[1]
+          reference = reference[1]
+          if @dependsOn[reference]?
+            for varName of @dependsOn[reference]
+              if isLive[varName]
+                isLive[varName] = false
+
       if type of CONTROL_FLOW_NODES
         for varName of isLive
-          @depsMutatedInLiveRange[varName] = true
-        isLive = {}
+          if @dependsOnAGlobal[varName] or not usedInThisStatement[varName]
+            isLive[varName] = false
+      else if type is 'assign'
+        for varName of isLive
+          if @dependsOnAGlobal[varName] and not usedInThisStatement[varName]
+            isLive[varName] = false
       else if type is 'name'
         reference = node[1]
-        if @dependsOn[reference]?
-          for varName of @dependsOn[reference]
-            if isLive[varName]
-              @depsMutatedInLiveRange[varName] = true
-        if isLive[reference]
-          delete isLive[reference]
+        if @isSingleDef[reference]
+          if not isLive[reference]
+            @depsMutatedInLiveRange[reference] = true
       return undefined
 
-    traverse @body, (node, type) =>
-      if type is 'var'
+    # Analyzes a block and all its children for variable ranges. Makes sure to
+    # account for the worst case of possible mutations.
+    analyzeBlock = (node, type) =>
+      if type in ['switch', 'if', 'try', 'do', 'while', 'for', 'for-in']
+        traverseChild = (child) ->
+          if typeof child == 'object' and child?.length
+            savedLive = {}
+            for name of isLive then savedLive[name] = true
+            traverse child, analyzeBlock
+            for name of isLive
+              if not isLive[name] then savedLive[name] = false
+            isLive = savedLive
+        if type is 'switch'
+          traverseChild node[1]
+          for child in node[2]
+            traverseChild child
+        else if type in ['if', 'try']
+          for child in node
+            traverseChild child
+        else
+          # Don't put anything from outside into the body of a loop.
+          savedLive = isLive
+          isLive = {}
+          for child in node then traverseChild child
+          for name of isLive
+            if not isLive[name] then savedLive[name] = false
+          isLive = savedLive
+        return node
+      else if type is 'var'
         for [varName, varValue] in node[1]
           if varValue? then traverse varValue, checkForMutations
-          if @isSingleDef[varName] and @useCount[varName] == 1
+          if @isSingleDef[varName]
             isLive[varName] = true
         return node
-      else if type is 'stat'
-        usedInThisStatement = {}
-        hasIndirectAccess = false
-        traverse node, (node, type) =>
-          if type is 'name'
-            usedInThisStatement[node[1]] = true
-          else if type in ['sub', 'dot']
-            hasIndirectAccess = true
-          return undefined
-        if hasIndirectAccess
-          for varName of isLive
-            if not usedInThisStatement[varName]
-              @depsMutatedInLiveRange[varName] = true
-              delete isLive[varName]
       else
         checkForMutations node, type
       return undefined
+
+    traverse @body, analyzeBlock
 
     return undefined
 
@@ -253,11 +287,8 @@ class Eliminator
     if @isSingleDef[varName] and @usesOnlySimpleNodes[varName]
       if @useCount[varName] == 0
         return true
-      else if @useCount[varName] == 1
-        return (@usesOnlySingleDefs[varName] or
-                not @depsMutatedInLiveRange[varName])
       else if @useCount[varName] <= MAX_USES
-        return @usesOnlySingleDefs[varName]
+        return not @depsMutatedInLiveRange[varName]
     return false
 
   # Removes all var declarations for the specified variables.
@@ -265,7 +296,7 @@ class Eliminator
   removeDeclarations: (toRemove) ->
     traverse @body, (node, type) ->
       if type is 'var'
-        intactVars = (i for i in node[1] when i[0] not of toRemove)
+        intactVars = (i for i in node[1] when not toRemove.hasOwnProperty i[0])
         if intactVars.length
           node[1] = intactVars
           return node
@@ -283,7 +314,7 @@ class Eliminator
       incomplete = false
       for varName, varValue of values
         result = traverse varValue, (node, type) ->
-          if type == 'name' and node[1] of values and node[1] != varName
+          if type == 'name' and values.hasOwnProperty(node[1]) and node[1] != varName
             incomplete = true
             return values[node[1]]
           return undefined
@@ -295,7 +326,7 @@ class Eliminator
   #   @arg replacements: A map from variable names to AST expressions.
   updateUses: (replacements) ->
     traverse @body, (node, type) ->
-      if type is 'name' and node[1] of replacements
+      if type is 'name' and replacements.hasOwnProperty node[1]
         return replacements[node[1]]
       return undefined
     return undefined

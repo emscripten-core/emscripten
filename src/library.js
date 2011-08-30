@@ -2146,6 +2146,7 @@ LibraryManager.library = {
               (type === 's')) {
             buffer.push(String.fromCharCode(next));
             next = get();
+            curr++;
           } else {
             break;
           }
@@ -3073,11 +3074,14 @@ LibraryManager.library = {
   vsnprintf: 'snprintf',
   vprintf: 'printf',
   vsprintf: 'sprintf',
-  // TODO: Implement v*scanf().
+  vscanf: 'scanf',
+  vfscanf: 'fscanf',
+  vsscanf: 'sscanf',
   __01fopen64_: 'fopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
   __01tmpfile64_: 'tmpfile',
+  __isoc99_fscanf: 'fscanf',
   // TODO: Check if any other aliases are needed.
   _IO_getc: 'getc',
   _IO_putc: 'putc',
@@ -3099,6 +3103,7 @@ LibraryManager.library = {
     return allocate(info.object.contents.slice(offset, offset+num),
                     'i8', ALLOC_NORMAL);
   },
+  __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
     // FIXME: Not really correct at all.
@@ -3168,7 +3173,16 @@ LibraryManager.library = {
   strtod__deps: ['isspace', 'isdigit'],
   strtod: function(str, endptr) {
     // Skip space.
-    while (_isspace(str)) str++;
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    var multiplier = 1;
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      multiplier = -1;
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
 
     var chr;
     var ret = 0;
@@ -3223,7 +3237,93 @@ LibraryManager.library = {
       {{{ makeSetValue('endptr', 0, 'str', '*') }}}
     }
 
+    return ret * multiplier;
+  },
+
+  _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
+  _parseInt: function(str, endptr, base, min, max, unsignBits) {
+    // Skip space.
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    var multiplier = 1;
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      multiplier = -1;
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
+
+    // Find base.
+    var finalBase = base;
+    if (!finalBase) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+          finalBase = 16;
+          str += 2;
+        } else {
+          finalBase = 8;
+          str++;
+        }
+      }
+    }
+    if (!finalBase) finalBase = 10;
+
+    // Get digits.
+    var chr;
+    var ret = 0;
+    while ((chr = {{{ makeGetValue('str', 0, 'i8') }}}) != 0) {
+      var digit = parseInt(String.fromCharCode(chr), finalBase);
+      if (isNaN(digit)) {
+        break;
+      } else {
+        ret = ret * finalBase + digit;
+        str++;
+      }
+    }
+
+    // Apply sign.
+    ret *= multiplier;
+
+    // Set end pointer.
+    if (endptr) {
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+    }
+
+    // Unsign if needed.
+    if (unsignBits) {
+      if (Math.abs(ret) > max) {
+        ret = max;
+        ___setErrNo(ERRNO_CODES.ERANGE);
+      } else {
+        ret = unSign(ret, unsignBits);
+      }
+    }
+
+    // Validate range.
+    if (ret > max || ret < min) {
+      ret = ret > max ? max : min;
+      ___setErrNo(ERRNO_CODES.ERANGE);
+    }
+
     return ret;
+  },
+  strtoll__deps: ['_parseInt'],
+  strtoll: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, -9223372036854775808, 9223372036854775807);  // LLONG_MIN, LLONG_MAX; imprecise.
+  },
+  strtol__deps: ['_parseInt'],
+  strtol: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, -2147483648, 2147483647);  // LONG_MIN, LONG_MAX.
+  },
+  strtoul__deps: ['_parseInt'],
+  strtoul: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, 0, 4294967295, 32);  // ULONG_MAX.
+  },
+  strtoull__deps: ['_parseInt'],
+  strtoull: function(str, endptr, base) {
+    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64);  // ULONG_MAX; imprecise.
   },
 
   qsort__deps: ['memcpy'],
@@ -3258,6 +3358,13 @@ LibraryManager.library = {
     var poolPtr;
     var envPtr;
     if (_environ === null) {
+      // Set default values. Use string keys for Closure Compiler compatibility.
+      ENV['USER'] = 'root';
+      ENV['PATH'] = '/';
+      ENV['PWD'] = '/';
+      ENV['HOME'] = '/';
+      ENV['LANG'] = 'en_US.UTF-8';
+      ENV['_'] = './this.program';
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ QUANTUM_SIZE }}},
@@ -3300,14 +3407,7 @@ LibraryManager.library = {
   },
   $ENV__deps: ['__buildEnvironment'],
   $ENV__postset: '___buildEnvironment(ENV);',
-  $ENV: {
-    'USER': 'root',
-    'PATH': '/',
-    'PWD': '/',
-    'HOME': '/',
-    'LANG': 'en_US.UTF-8',
-    '_': './this.program'
-  },
+  $ENV: {},
   getenv__deps: ['$ENV'],
   getenv: function(name) {
     // char *getenv(const char *name);
@@ -3544,16 +3644,6 @@ LibraryManager.library = {
       }
     }
     return pdest;
-  },
-
-  strtol: function(ptr, endptr, base) {
-    assert(!endptr, "We don't support all strtol params yet");
-    return parseInt(Pointer_stringify(ptr), base);
-  },
-  strtoul__deps: ['strtol'],
-  strtoul: function(ptr, endptr, base) {
-    var result = _strtol(ptr, endptr, base);
-    return unSign(result, 32);
   },
 
   strcmp__deps: ['strncmp'],
@@ -4339,7 +4429,7 @@ LibraryManager.library = {
       return 0;
     } else {
       if (DLFCN_DATA.error) _free(DLFCN_DATA.error);
-      var msgArr = Module.intArrayFromString(DLFCN_DATA.errorMsg);
+      var msgArr = intArrayFromString(DLFCN_DATA.errorMsg);
       DLFCN_DATA.error = allocate(msgArr, 'i8', ALLOC_NORMAL);
       DLFCN_DATA.errorMsg = null;
       return DLFCN_DATA.error;
@@ -4625,15 +4715,17 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
-  _setjmp: function(env) {
+  setjmp: function(env) {
     // XXX print('WARNING: setjmp() not really implemented, will fail if longjmp() is actually called');
     return 0;
   },
+  _setjmp: 'setjmp',
 
-  _longjmp: function(env, val) {
+  longjmp: function(env, val) {
     // not really working...
     assert(0);
   },
+  _longjmp: 'longjmp',
 
   // ==========================================================================
   // signal.h
