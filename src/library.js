@@ -3358,6 +3358,13 @@ LibraryManager.library = {
     var poolPtr;
     var envPtr;
     if (_environ === null) {
+      // Set default values. Use string keys for Closure Compiler compatibility.
+      ENV['USER'] = 'root';
+      ENV['PATH'] = '/';
+      ENV['PWD'] = '/';
+      ENV['HOME'] = '/';
+      ENV['LANG'] = 'en_US.UTF-8';
+      ENV['_'] = './this.program';
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ QUANTUM_SIZE }}},
@@ -3400,14 +3407,7 @@ LibraryManager.library = {
   },
   $ENV__deps: ['__buildEnvironment'],
   $ENV__postset: '___buildEnvironment(ENV);',
-  $ENV: {
-    'USER': 'root',
-    'PATH': '/',
-    'PWD': '/',
-    'HOME': '/',
-    'LANG': 'en_US.UTF-8',
-    '_': './this.program'
-  },
+  $ENV: {},
   getenv__deps: ['$ENV'],
   getenv: function(name) {
     // char *getenv(const char *name);
