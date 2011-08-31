@@ -107,6 +107,8 @@ function analyzer(data) {
                               // check that we never allocate with this (either as a child structure
                               // in the analyzer, or in calcSize in alloca).
       var subType = check[2];
+      addTypeInternal(subType, data); // needed for anonymous structure definitions (see below)
+
       Types.types[nonPointing] = {
         name_: nonPointing,
         fields: range(num).map(function() { return subType }),
@@ -121,6 +123,18 @@ function analyzer(data) {
           lineNum: '?'
         };
       }
+      return;
+    }
+
+    // anonymous structure definition, for example |{ i32, i8*, void ()*, i32 }|
+    if (type[0] == '{') {
+      Types.types[type] = {
+        name_: type,
+        fields: splitTokenList(tokenize(type.substr(2, type.length-4)).tokens).map(function(segment) {
+          return segment[0].text;
+        }),
+        lineNum: '?'
+      };
       return;
     }
 

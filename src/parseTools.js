@@ -114,6 +114,7 @@ function isStructPointerType(type) {
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
+  if (new RegExp(/{ [^}]* }/g).test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return !Runtime.isNumberType(type) && type[0] == '%';
 }
@@ -148,7 +149,7 @@ function isFunctionType(type) {
   if (pointingLevels(type) !== 1) return false;
   var text = removeAllPointing(parts.slice(1).join(' '));
   if (!text) return false;
-  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenizer.processItem({ lineText: text.substr(1, text.length-2) }, true) });
+  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) });
 }
 
 function isType(type) { // TODO!

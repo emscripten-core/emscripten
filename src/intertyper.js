@@ -2,6 +2,9 @@
 // to be processed by the later stages.
 
 var tokenizer; // TODO: Clean this up/out
+function tokenize(text) {
+  return tokenizer.processItem({ lineText: text }, true);
+}
 
 //! @param parseFunctions We parse functions only on later passes, since we do not
 //!                       want to parse all of them at once, and have all their
