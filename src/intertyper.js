@@ -142,7 +142,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         // merge certain tokens
         if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
           lastToken.text += ' ' + text;
-        } else if (lastToken && text[text.length-1] == '}') {
+        } else if (lastToken && /^}\**$/.exec(text)) { // }, }*, etc.
           var openBrace = tokens.length-1;
           while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
           token = combineTokens(tokens.slice(openBrace+1));
