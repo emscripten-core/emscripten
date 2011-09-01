@@ -741,12 +741,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
   makeFuncLineActor('insertvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: see extractvalue
-    var ret, ident;
+    var ret = '(', ident;
     if (item.ident === 'undef') {
-      ident = 'tempValue';
-      ret += ident + ' = ' + makeEmptyStruct(item.type) + ', ';
+      item.ident = 'tempValue';
+      ret += item.ident + ' = [' + makeEmptyStruct(item.type) + '], ';
     }
-    return item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident;
+    return ret + item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
   });
   makeFuncLineActor('indirectbr', function(item) {
     return makeBranch(finalizeLLVMParameter(item.pointer), item.currLabelId, true);
