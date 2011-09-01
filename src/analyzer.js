@@ -49,6 +49,7 @@ function analyzer(data) {
       item.items.sort(function(a, b) { return a.lineNum - b.lineNum });
       for (var i = 0; i < item.items.length; i++) {
         var subItem = item.items[i];
+        assert(subItem.lineNum);
         if (subItem.intertype == 'function') {
           item.functions.push(subItem);
           subItem.endLineNum = null;
@@ -78,7 +79,7 @@ function analyzer(data) {
               currLabelFinished = true;
             }
           } else {
-            print('// WARNING: content after a branch in a label, line: ' + subItem.lineNum);
+            print('// WARNING: content after a branch in a label, line: ' + subItem.lineNum + '::' + dump(subItem));
           }
         } else {
           throw "ERROR: what is this? " + JSON.stringify(subItem);

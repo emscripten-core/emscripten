@@ -149,6 +149,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           tokens.splice(openBrace, tokens.length-openBrace+1);
           tokens.push(token);
           token.type = '{';
+          token.text = '{ ' + token.text + ' }';
           lastToken = token;
         } else {
           tokens.push(token);
@@ -791,7 +792,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // 'resume' - partial implementation
   substrate.addActor('Resume', {
     processItem: function(item) {
-      return [{ intertype: 'resume' }];
+      return [{
+        intertype: 'resume',
+        lineNum: item.lineNum
+      }];
     }
   });
   // 'switch'
