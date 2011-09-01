@@ -410,7 +410,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         } else if (item.tokens[3].text != 'opaque') {
           if (item.tokens[3].type == '<') {
             packed = true;
-            item.tokens[3] = tokenizer.processItem({ lineText: '{ ' + item.tokens[3].item.tokens[0].text + ' }' }, true).tokens[0];
+            item.tokens[3] = item.tokens[3].item.tokens[0];
           }
           var subTokens = item.tokens[3].tokens;
           subTokens.push({text:','});
