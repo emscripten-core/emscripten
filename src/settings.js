@@ -140,7 +140,7 @@ FAKE_X86_FP80 = 0; // Replaces x86_fp80 with double. This loses precision. It is
                    // (which is nonportable anyhow).
 
 // Compiler debugging options
-DEBUG_TAGS_SHOWING = [];
+DEBUG_TAGS_SHOWING = ['framework', 'frameworkLines'];
   // Some useful items:
   //    framework
   //    frameworkLines

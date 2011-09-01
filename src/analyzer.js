@@ -46,6 +46,7 @@ function analyzer(data) {
       // Functions & labels
       item.functions = [];
       var currLabelFinished; // Sometimes LLVM puts a branch in the middle of a label. We need to ignore all lines after that.
+      item.items.sort(function(a, b) { return a.lineNum - b.lineNum });
       for (var i = 0; i < item.items.length; i++) {
         var subItem = item.items[i];
         if (subItem.intertype == 'function') {
@@ -80,7 +81,7 @@ function analyzer(data) {
             print('// WARNING: content after a branch in a label, line: ' + subItem.lineNum);
           }
         } else {
-          print("ERROR: what is this? " + JSON.stringify(subItem));
+          throw "ERROR: what is this? " + JSON.stringify(subItem);
         }
       }
       delete item.items;

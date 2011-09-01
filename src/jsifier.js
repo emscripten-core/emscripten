@@ -701,6 +701,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
     return ret + ';';
   });
+  makeFuncLineActor('resume', function(item) {
+    return (EXCEPTION_DEBUG ? 'print("Resuming exception");' : '') + 'throw [0,0];';
+  });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
@@ -715,6 +718,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             + 'return null } })(); if (!__THREW__) { ' + branch
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
+  });
+  makeFuncLineActor('landingpad', function(item) {
+    // Just a stub
+    return '{ f0: 0, f1: 0 }';
   });
   makeFuncLineActor('load', function(item) {
     var value = finalizeLLVMParameter(item.pointer);
@@ -731,6 +738,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
     return item.ident + '.f' + item.indexes[0][0].text;
+  });
+  makeFuncLineActor('insertvalue', function(item) {
+    assert(item.indexes.length == 1); // TODO: see extractvalue
+    var ret, ident;
+    if (item.ident === 'undef') {
+      ident = 'tempValue';
+      ret += ident + ' = ' + makeEmptyStruct(item.type) + ', ';
+    }
+    return item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident;
   });
   makeFuncLineActor('indirectbr', function(item) {
     return makeBranch(finalizeLLVMParameter(item.pointer), item.currLabelId, true);

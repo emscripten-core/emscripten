@@ -51,8 +51,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
           currFunctionLineNum = i + 1;
         }
         if (!inFunction || parseFunctions) {
-          if (inContinual || new RegExp(/^\ +to.*/g).test(line)) {
-            // to after invoke
+          if (inContinual || new RegExp(/^\ +to.*/g).test(line)
+                          || new RegExp(/^\ +catch .*/g).test(line)
+                          || new RegExp(/^\ +cleanup .*/g).test(line)) {
+            // to after invoke or landingpad second line
             ret.slice(-1)[0].lineText += line;
             if (new RegExp(/^\ +\]/g).test(line)) { // end of llvm switch
               inContinual = false;
@@ -142,7 +144,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           lastToken.text += ' ' + text;
         } else if (lastToken && text[text.length-1] == '}') {
           var openBrace = tokens.length-1;
-          while (tokens[openBrace].text != '{') openBrace --;
+          while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
           token = combineTokens(tokens.slice(openBrace+1));
           tokens.splice(openBrace, tokens.length-openBrace+1);
           tokens.push(token);
@@ -268,6 +270,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
               return 'Unreachable';
             if (tokensLength >= 3 && token0Text == 'indirectbr')
               return 'IndirectBr';
+            if (tokensLength >= 2 && token0Text == 'resume')
+              return 'Resume';
           } else if (item.indent === -1) {
             if (tokensLength >= 3 &&
                 (token0Text == 'load' || token1Text == 'load'))
@@ -283,8 +287,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
               return 'Alloca';
             if (tokensLength >= 3 && token0Text == 'extractvalue')
               return 'ExtractValue';
+            if (tokensLength >= 3 && token0Text == 'insertvalue')
+              return 'InsertValue';
             if (tokensLength >= 3 && token0Text == 'phi')
               return 'Phi';
+            if (tokensLength >= 3 && token0Text == 'landingpad')
+              return 'Landingpad';
           } else if (item.indent === 0) {
             if ((tokensLength >= 1 && token0Text.substr(-1) == ':') || // LLVM 2.7 format, or llvm-gcc in 2.8
                 (tokensLength >= 3 && token1Text == '<label>'))
@@ -540,6 +548,20 @@ function intertyper(data, parseFunctions, baseLineNum) {
       this.forwardItem(item, 'Reintegrator');
     }
   });
+  // 'insertvalue'
+  substrate.addActor('InsertValue', {
+    processItem: function(item) {
+      var last = getTokenIndexByText(item.tokens, ';');
+      item.intertype = 'insertvalue';
+      item.type = item.tokens[1].text; // Of the origin aggregate, as well as the result
+      Types.needAnalysis[item.type] = 0;
+      item.ident = toNiceIdent(item.tokens[2].text);
+      var segments = splitTokenList(item.tokens.slice(4, last));
+      item.value = parseLLVMSegment(segments[0]);
+      item.indexes = segments.slice(1);
+      this.forwardItem(item, 'Reintegrator');
+    }
+  });
   // 'bitcast'
   substrate.addActor('Bitcast', {
     processItem: function(item) {
@@ -630,6 +652,15 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Invoke', {
     processItem: function(item) {
       return makeCall.call(this, item, 'invoke');
+    }
+  });
+  // 'landingpad' - just a stub implementation
+  substrate.addActor('Landingpad', {
+    processItem: function(item) {
+      item.intertype = 'landingpad';
+      item.type = item.tokens[1].text;
+      Types.needAnalysis[item.type] = 0;
+      this.forwardItem(item, 'Reintegrator');
     }
   });
   // 'alloca'
@@ -755,6 +786,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
         value: (item.tokens[2] && type !== 'void') ? parseLLVMSegment(item.tokens.slice(1)) : null,
         lineNum: item.lineNum
       }];
+    }
+  });
+  // 'resume' - partial implementation
+  substrate.addActor('Resume', {
+    processItem: function(item) {
+      return [{ intertype: 'resume' }];
     }
   });
   // 'switch'
