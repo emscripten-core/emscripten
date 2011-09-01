@@ -37,7 +37,7 @@ var Debugging = {
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
-    var formStruct = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
+    var formStruct = /^!(\d+) = metadata !\{i32 \d+, (metadata !\d+|null), metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
     var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
     var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
 
@@ -55,10 +55,10 @@ var Debugging = {
         return line.replace(', !dbg !' + calc[1], '');
       }
       calc = formStruct.exec(line);
-      if (calc && !(calc[2] in structToMemberMeta)) {
-        structMetaToStruct[calc[1]] = calc[2];
-        structToMemberMeta[calc[2]] = calc[3];
-        memberMetaToStruct[calc[3]] = calc[1];
+      if (calc && !(calc[3] in structToMemberMeta)) {
+        structMetaToStruct[calc[1]] = calc[3];
+        structToMemberMeta[calc[3]] = calc[4];
+        memberMetaToStruct[calc[4]] = calc[1];
         skipLine = true;
       }
       calc = formStructMembers.exec(line);
