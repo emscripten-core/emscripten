@@ -53,7 +53,7 @@ function preprocess(text, constants) {
 function addPointing(type) { return type + '*' }
 function removePointing(type, num) {
   if (num === 0) return type;
-  assert(type.substr(type.length-(num ? num : 1)).replace(/\*/g, '') === '');
+  assert(type.substr(type.length-(num ? num : 1)).replace(/\*/g, '') === ''); //, 'Error in removePointing with ' + [type, num, type.substr(type.length-(num ? num : 1))]);
   return type.substr(0, type.length-(num ? num : 1));
 }
 
@@ -467,15 +467,13 @@ function eatLLVMIdent(tokens) {
   return ret;
 }
 
-function cleanOutTokens(filterOut, tokens, index) {
-  while (filterOut.indexOf(tokens[index].text) != -1) {
-    tokens.splice(index, 1);
-  }
-}
-
-function cleanOutTokensSet(filterOut, tokens, index) {
-  while (tokens[index].text in filterOut) {
-    tokens.splice(index, 1);
+function cleanOutTokens(filterOut, tokens, indexes) {
+  if (typeof indexes !== 'object') indexes = [indexes];
+  for (var i = indexes.length-1; i >=0; i--) {
+    var index = indexes[i];
+    while (tokens[index].text in filterOut) {
+      tokens.splice(index, 1);
+    }
   }
 }
 

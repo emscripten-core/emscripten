@@ -53,6 +53,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         if (!inFunction || parseFunctions) {
           if (inContinual || new RegExp(/^\ +to.*/g).test(line)
                           || new RegExp(/^\ +catch .*/g).test(line)
+                          || new RegExp(/^\ +filter .*/g).test(line)
                           || new RegExp(/^\ +cleanup .*/g).test(line)) {
             // to after invoke or landingpad second line
             ret.slice(-1)[0].lineText += line;
@@ -391,8 +392,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
 
       if (item.tokens[2].text == 'alias') {
-        cleanOutTokensSet(LLVM.LINKAGES, item.tokens, 3);
-        cleanOutTokensSet(LLVM.VISIBILITIES, item.tokens, 3);
+        cleanOutTokens(LLVM.LINKAGES, item.tokens, 3);
+        cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 3);
         return [{
           intertype: 'alias',
           ident: toNiceIdent(item.tokens[0].text),
@@ -431,8 +432,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        cleanOutTokensSet(LLVM.GLOBAL_MODIFIERS, item.tokens, 3);
-        cleanOutTokensSet(LLVM.GLOBAL_MODIFIERS, item.tokens, 2);
+        cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [2, 3]);
         var external = false;
         if (item.tokens[2].text === 'external') {
           external = true;
@@ -528,7 +528,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Load', {
     processItem: function(item) {
       item.intertype = 'load';
-      if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
+      cleanOutTokens(LLVM.ACCESS_OPTIONS, item.tokens, [0, 1]);
       item.pointerType = item.tokens[1].text;
       item.valueType = item.type = removePointing(item.pointerType);
       Types.needAnalysis[item.type] = 0;
@@ -634,7 +634,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
     item.ident = toNiceIdent(item.ident);
     if (type === 'invoke') {
-      cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
+      cleanOutTokens(LLVM.INVOKE_MODIFIERS, item.tokens, 4);
       item.toLabel = toNiceIdent(item.tokens[6].text);
       item.unwindLabel = toNiceIdent(item.tokens[9].text);
     }
@@ -740,7 +740,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // 'store'
   substrate.addActor('Store', {
     processItem: function(item) {
-      if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
+      cleanOutTokens(LLVM.ACCESS_OPTIONS, item.tokens, [0, 1]);
       var segments = splitTokenList(item.tokens.slice(1));
       var ret = {
         intertype: 'store',
