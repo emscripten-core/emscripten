@@ -53,6 +53,7 @@ function preprocess(text, constants) {
 function addPointing(type) { return type + '*' }
 function removePointing(type, num) {
   if (num === 0) return type;
+  assert(type.substr(type.length-(num ? num : 1)).replace(/\*/g, '') === '');
   return type.substr(0, type.length-(num ? num : 1));
 }
 

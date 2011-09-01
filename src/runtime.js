@@ -130,7 +130,7 @@ Runtime = {
         size = Types.types[field].flatSize;
         alignSize = Types.types[field].alignSize;
       } else {
-        dprint('Unclear type in struct: ' + field + ', in ' + type.name_);
+        dprint('Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]));
         assert(0);
       }
       alignSize = type.packed ? 1 : Math.min(alignSize, QUANTUM_SIZE);

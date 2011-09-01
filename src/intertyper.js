@@ -150,6 +150,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           tokens.push(token);
           token.type = '{';
           token.text = '{ ' + token.text + ' }';
+          while (pointingLevels(text) > pointingLevels(token.text)) token.text += '*'; // TODO: optimize
           lastToken = token;
         } else {
           tokens.push(token);

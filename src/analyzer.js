@@ -349,7 +349,7 @@ function analyzer(data) {
  
           // Decision time
 
-          var pointedType = removePointing(variable.type);
+          var pointedType = pointingLevels(variable.type) > 0 ? removePointing(variable.type) : null;
           if (variable.origin == 'getelementptr') {
             // Use our implementation that emulates pointers etc.
             // TODO Can we perhaps nativize some of these? However to do so, we need to discover their
