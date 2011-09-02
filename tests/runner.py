@@ -277,7 +277,6 @@ if 'benchmark' not in str(sys.argv):
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
     def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
-      if COMPILER != LLVM_GCC: return self.skip() # We use existing .ll, so which compiler is unimportant
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
@@ -2903,6 +2902,7 @@ if 'benchmark' not in str(sys.argv):
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def test_dlmalloc(self):
+      #global DISABLE_EXCEPTIONS; DISABLE_EXCEPTIONS = 1
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
@@ -2913,8 +2913,7 @@ if 'benchmark' not in str(sys.argv):
     def zzztest_gl(self):
       # Switch to gcc from g++ - we don't compile properly otherwise (why?)
       global COMPILER
-      if COMPILER != LLVM_GCC: return self.skip()
-      COMPILER = LLVM_GCC.replace('g++', 'gcc')
+      COMPILER = COMPILER.replace('++', '')
 
       def post(filename):
         src = open(filename, 'r').read().replace(
@@ -3029,7 +3028,7 @@ if 'benchmark' not in str(sys.argv):
     def test_freetype(self):
       if QUANTUM_SIZE == 1: return self.skip() # TODO: Figure out and try to fix
 
-      if LLVM_OPTS or COMPILER == CLANG: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      if LLVM_OPTS: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
       global CORRECT_SIGNS
       if CORRECT_SIGNS == 0: CORRECT_SIGNS = 1 # Not sure why, but needed
@@ -3066,8 +3065,6 @@ if 'benchmark' not in str(sys.argv):
       global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS, LLVM_OPTS
 
       if LLVM_OPTS: SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
-      if COMPILER == LLVM_GCC:
-        global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       if USE_TYPED_ARRAYS == 2: return self.skip() # We have slightly different rounding here for some reason. TODO: activate this
 
@@ -3087,7 +3084,7 @@ if 'benchmark' not in str(sys.argv):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      if COMPILER != LLVM_GCC: return self.skip() # llvm-link failure when using clang, LLVM bug 9498
+      # llvm-link failure when using clang, LLVM bug 9498, still relevant?
       if RELOOP or LLVM_OPTS: return self.skip() # TODO
       if QUANTUM_SIZE == 1: return self.skip() # TODO: Figure out and try to fix
 
@@ -3171,10 +3168,7 @@ if 'benchmark' not in str(sys.argv):
       else:
         CORRECT_SIGNS = 2
         global CORRECT_SIGNS_LINES
-        if COMPILER == CLANG:
-          CORRECT_SIGNS_LINES = ["mqc.c:566"]
-        else:
-          CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
+        CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
 
       original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
 
@@ -3939,12 +3933,9 @@ TT = %s
     for name, compiler, quantum, embetter, typed_arrays in [
       ('clang', CLANG, 1, 0, 0),
       ('clang', CLANG, 4, 0, 0),
-      ('llvm_gcc', LLVM_GCC, 4, 0, 0),
       ('clang', CLANG, 1, 1, 1),
       ('clang', CLANG, 4, 1, 1),
-      ('llvm_gcc', LLVM_GCC, 4, 1, 1),
       ('clang', CLANG, 4, 1, 2),
-      #('llvm_gcc', LLVM_GCC, 4, 1, 2),
     ]:
       fullname = '%s_%d_%d%s%s' % (
         name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
@@ -4164,7 +4155,7 @@ else:
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
-  for cmd in [CLANG, LLVM_GCC, LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
+  for cmd in [CLANG, LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
     if not os.path.exists(cmd):
       print 'WARNING: Cannot find', cmd
   unittest.main()

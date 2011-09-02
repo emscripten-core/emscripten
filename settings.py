@@ -7,8 +7,6 @@ TEMP_DIR='/dev/shm'
 
 LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.9/cbuild/bin')
 
-LLVM_GCC=os.path.expanduser('~/Dev/llvm-gcc-2.9/cbuild/install/bin/llvm-g++')
-
 COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
                          # various errors on 64bit compilation
                          # WARNING: '-g' here will generate llvm bitcode that lli will crash on!
