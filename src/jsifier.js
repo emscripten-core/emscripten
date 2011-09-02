@@ -314,6 +314,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             snippet = snippet.toString();
             // name the function; overwrite if it's already named
             snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
+            if (LIBRARY_DEBUG) {
+              snippet = snippet.replace('{', '{ print("[library call:' + ident + ']"); ');
+            }
           }
 
           var postsetId = ident + '__postset';
