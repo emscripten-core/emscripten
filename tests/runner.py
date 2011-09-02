@@ -3290,7 +3290,6 @@ if 'benchmark' not in str(sys.argv):
 
       # Compare to each other, and to expected output
       self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'))
-      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'), 'AD:38,10\nAD:47,7008\nAD:57,7018\n')
 
       # Test using build_ll_hook
       src = '''
