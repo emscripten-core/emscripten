@@ -634,9 +634,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
     item.ident = toNiceIdent(item.ident);
     if (type === 'invoke') {
-      cleanOutTokens(LLVM.INVOKE_MODIFIERS, item.tokens, 4);
-      item.toLabel = toNiceIdent(item.tokens[6].text);
-      item.unwindLabel = toNiceIdent(item.tokens[9].text);
+      var toIndex = findTokenText(item, 'to');
+      item.toLabel = toNiceIdent(item.tokens[toIndex+2].text);
+      item.unwindLabel = toNiceIdent(item.tokens[toIndex+5].text);
+      assert(item.toLabel && item.unwindLabel);
     }
     if (item.indent == 2) {
       // standalone call - not in assign
