@@ -32,16 +32,16 @@ var Debugging = {
     var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), (?:i32 \d+|null), metadata !(\d+), .*}$/);
     var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, (?:i32 \d+|null), (?:i32 \d+|null), metadata !(\d+), (?:i32 \d+|null)}.*/);
     var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), metadata !(\d+), .*$/);
-    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|null), metadata !"[^"]+", metadata !(\d+)[^\[]* ; \[ DW_TAG_.*$/);
+    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|null), metadata !"[^"]+", metadata !(\d+)[^\[]*.*$/);
     var form3ad = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), (?:i32 \d+|null), metadata !"[^"]*", metadata !"[^"]*", metadata !"[^"]*", metadata !(\d+),.*$/);
     var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]+)", (metadata !\d+|null)}.*$/);
     var form3c = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
-    var formStruct = /^!(\d+) = metadata !\{i32 \d+, (metadata !\d+|null), metadata !"([^"]+)", metadata !(\d+), (?:i32 \d+|null), i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
+    var formStruct = /^!(\d+) = metadata !\{i32 \d+, (metadata !\d+|null), metadata !"([^"]+)", metadata !(\d+), (?:i32 \d+|null), i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*}.*$/;
     var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
-    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, (?:i32 \d+|null), i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
+    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, (?:i32 \d+|null), i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)}.*$/;
 
     var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
 
