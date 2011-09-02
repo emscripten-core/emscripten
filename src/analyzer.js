@@ -60,7 +60,7 @@ function analyzer(data) {
           if (LLVM_STYLE == 'new' && item.items[i+1].intertype !== 'label') {
             item.items.splice(i+1, 0, {
               intertype: 'label',
-              ident: '_entry',
+              ident: toNiceIdent('%0'),
               lineNum: subItem.lineNum + '.5'
             });
           }
@@ -579,7 +579,7 @@ function analyzer(data) {
           func.labelsDict[label.ident] = label;
           func.labelIds[label.ident] = func.labelIdCounter++;
         });
-        func.labelIds[toNiceIdent('%entry')] = -1; // entry is always -1
+        func.labelIds[toNiceIdent('%0')] = -1; // entry is always -1
 
         func.hasPhi = false;
         func.hasIndirectBr = false;
@@ -591,6 +591,7 @@ function analyzer(data) {
                 var remarkableLabelId = line.value.params[i].label;
                 func.remarkableLabels.push(remarkableLabelId);
                 var remarkableLabel = func.labelsDict[remarkableLabelId];
+                assert(remarkableLabel);
                 var lastLine = remarkableLabel.lines.slice(-1)[0];
                 if (lastLine.value) {
                   lastLine.value.currLabelId = remarkableLabelId;
