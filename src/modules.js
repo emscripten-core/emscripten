@@ -29,19 +29,19 @@ var Debugging = {
 
     var form1 = new RegExp(/^  .*, !dbg !(\d+) *$/);
     var form2 = new RegExp(/^  .*, !dbg !(\d+) *; .*$/);
-    var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), i32 \d+, metadata !(\d+), .*}$/);
-    var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, i32 \d+, i32 \d+, metadata !(\d+), i32 \d+} ; \[ DW_TAG_lexical_block \]$/);
-    var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, i32 \d+, metadata !(\d+), .*$/);
-    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, metadata !"[^"]+", metadata !(\d+)[^\[]* ; \[ DW_TAG_.*$/);
-    var form3ad = new RegExp(/^!(\d+) = metadata !{i32 \d+, i32 \d+, null, metadata !"[^"]*", metadata !"[^"]*", metadata !"[^"]*", metadata !(\d+),.*$/);
+    var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), (?:i32 \d+|null), metadata !(\d+), .*}$/);
+    var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, (?:i32 \d+|null), (?:i32 \d+|null), metadata !(\d+), (?:i32 \d+|null)} ; \[ DW_TAG_lexical_block \]$/);
+    var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), metadata !(\d+), .*$/);
+    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|null), metadata !"[^"]+", metadata !(\d+)[^\[]* ; \[ DW_TAG_.*$/);
+    var form3ad = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), (?:i32 \d+|null), metadata !"[^"]*", metadata !"[^"]*", metadata !"[^"]*", metadata !(\d+),.*$/);
     var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]+)", (metadata !\d+|null)} ; \[ DW_TAG_file_type \]$/);
     var form3c = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
-    var formStruct = /^!(\d+) = metadata !\{i32 \d+, (metadata !\d+|null), metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
+    var formStruct = /^!(\d+) = metadata !\{i32 \d+, (metadata !\d+|null), metadata !"([^"]+)", metadata !(\d+), (?:i32 \d+|null), i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
     var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
-    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
+    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, (?:i32 \d+|null), i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
 
     var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
 
@@ -57,10 +57,13 @@ var Debugging = {
         return line.replace(', !dbg !' + calc[1], '');
       }
       calc = formStruct.exec(line);
-      if (calc && !(calc[3] in structToMemberMeta)) {
-        structMetaToStruct[calc[1]] = calc[3];
-        structToMemberMeta[calc[3]] = calc[4];
-        memberMetaToStruct[calc[4]] = calc[1];
+      if (calc) {
+        metadataToParentMetadata[calc[1]] = calc[4];
+        if (!(calc[3] in structToMemberMeta)) {
+          structMetaToStruct[calc[1]] = calc[3];
+          structToMemberMeta[calc[3]] = calc[5];
+          memberMetaToStruct[calc[5]] = calc[1];
+        }
         skipLine = true;
       }
       calc = formStructMembers.exec(line);
