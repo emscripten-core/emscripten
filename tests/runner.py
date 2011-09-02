@@ -49,8 +49,8 @@ class RunnerCore(unittest.TestCase):
           shutil.copy(os.path.join(self.get_dir(), name),
                       os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
 
-  def skip(self):
-    print >> sys.stderr, '<skip> ',
+  def skip(self, why):
+    print >> sys.stderr, '<skipping: %s> ' % why,
 
   def get_dir(self):
     dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
@@ -95,8 +95,8 @@ class RunnerCore(unittest.TestCase):
       os.remove(target)
     except:
       pass
-    Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(target), 'Could not create bc file'
+    output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(target), 'Could not create bc file: ' + output
 
   def do_link(self, files, target):
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
@@ -386,7 +386,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_test(src, output, force_c=True)
 
     def test_bigint(self):
-        if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
+        if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
         src = '''
           #include <stdio.h>
           int main()
@@ -1526,7 +1526,7 @@ if 'benchmark' not in str(sys.argv):
           self.do_test(src, '*4,3,4*\n*6,4,6*')
 
     def test_varargs(self):
-        if QUANTUM_SIZE == 1: return self.skip() # FIXME: Add support for this
+        if QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
 
         src = '''
           #include <stdio.h>
@@ -1648,7 +1648,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
 
     def test_time(self):
-      if USE_TYPED_ARRAYS == 2: return self.skip() # Typed arrays = 2 truncate i64s.
+      if USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
       self.do_test(src, expected)
@@ -1955,7 +1955,7 @@ if 'benchmark' not in str(sys.argv):
 
     def test_dlfcn_data_and_fptr(self):
       global LLVM_OPTS
-      if LLVM_OPTS: return self.skip() # LLVM opts will optimize out parent_func
+      if LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS, EXPORTED_GLOBALS
       lib_src = '''
@@ -2102,7 +2102,7 @@ if 'benchmark' not in str(sys.argv):
       INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
-      if QUANTUM_SIZE == 1: return self.skip() # FIXME: Add support for this
+      if QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
       global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
       lib_src = r'''
         void print_ints(int n, ...);
@@ -2199,7 +2199,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_test(src, re.sub(r'(^|\n)\s+', r'\1', expected))
 
     def test_strtod(self):
-      if USE_TYPED_ARRAYS == 2: return self.skip() # Typed arrays = 2 truncate doubles.
+      if USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -2254,13 +2254,13 @@ if 'benchmark' not in str(sys.argv):
       self.do_test(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_parseInt(self):
-      if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
+      if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_test(src, expected)
 
     def test_printf(self):
-      if USE_TYPED_ARRAYS != 0: return self.skip() # Typed arrays truncate i64.
+      if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
       self.do_test(src, expected)
@@ -2888,7 +2888,7 @@ if 'benchmark' not in str(sys.argv):
 
     def test_raytrace(self):
         global USE_TYPED_ARRAYS
-        if USE_TYPED_ARRAYS == 2: return self.skip() # relies on double values
+        if USE_TYPED_ARRAYS == 2: return self.skip('Relies on double values')
 
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
@@ -2926,6 +2926,8 @@ if 'benchmark' not in str(sys.argv):
       self.do_test(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
 
     def test_libcxx(self):
+      return self.skip('Fails to run llvm-as due to llvm bug 10850')
+
       self.do_test(path_from_root('tests', 'libcxx'),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
                    main_file='main.cpp', additional_files=['hash.cpp'])
@@ -3026,7 +3028,7 @@ if 'benchmark' not in str(sys.argv):
       return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))
 
     def test_freetype(self):
-      if QUANTUM_SIZE == 1: return self.skip() # TODO: Figure out and try to fix
+      if QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
       if LLVM_OPTS: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
@@ -3066,7 +3068,7 @@ if 'benchmark' not in str(sys.argv):
 
       if LLVM_OPTS: SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
-      if USE_TYPED_ARRAYS == 2: return self.skip() # We have slightly different rounding here for some reason. TODO: activate this
+      if USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
 
       if SAFE_HEAP:
         # Ignore bitfield warnings
@@ -3085,8 +3087,8 @@ if 'benchmark' not in str(sys.argv):
 
     def test_poppler(self):
       # llvm-link failure when using clang, LLVM bug 9498, still relevant?
-      if RELOOP or LLVM_OPTS: return self.skip() # TODO
-      if QUANTUM_SIZE == 1: return self.skip() # TODO: Figure out and try to fix
+      if RELOOP or LLVM_OPTS: return self.skip('TODO')
+      if QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
       global USE_TYPED_ARRAYS; USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
 
@@ -3262,7 +3264,7 @@ if 'benchmark' not in str(sys.argv):
     # to process.
     def test_cases(self):
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
-      if LLVM_OPTS: return self.skip() # Our code is not exactly 'normal' llvm assembly
+      if LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         print "Testing case '%s'..." % shortname
@@ -3280,7 +3282,7 @@ if 'benchmark' not in str(sys.argv):
       self.prep_ll_test(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc
 
     def test_autodebug(self):
-      if LLVM_OPTS: return self.skip() # They mess us up
+      if LLVM_OPTS: return self.skip('LLVM opts mess us up')
 
       # Run a test that should work, generating some code
       self.test_structs()
@@ -3526,7 +3528,7 @@ Child2:9
     def test_typeinfo(self):
       global RUNTIME_TYPE_INFO; RUNTIME_TYPE_INFO = 1
       global QUANTUM_SIZE
-      if QUANTUM_SIZE != 4: return self.skip()
+      if QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
 
       src = '''
         #include<stdio.h>
@@ -3598,8 +3600,8 @@ Child2:9
     def test_safe_heap(self):
       global SAFE_HEAP, SAFE_HEAP_LINES
 
-      if not SAFE_HEAP: return self.skip()
-      if LLVM_OPTS: return self.skip() # LLVM can optimize away the intermediate |x|...
+      if not SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
+      if LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
       src = '''
         #include<stdio.h>
         int main() {
