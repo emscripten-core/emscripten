@@ -221,6 +221,9 @@ var Functions = {
   // The list of function datas which are being processed in the jsifier, currently
   currFunctions: [],
 
+  // All functions that will be implemented in this file
+  implementedFunctions: null,
+
   indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
 
   // Mark a function as needing indexing, and returns the index
@@ -273,7 +276,8 @@ var LibraryManager = {
 
   isStubFunction: function(ident) {
     var libCall = LibraryManager.library[ident.substr(1)];
-    return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}';
+    return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
+                                         && !(ident in Functions.implementedFunctions);
   }
 };
 

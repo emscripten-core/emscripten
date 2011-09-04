@@ -26,6 +26,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         ident: '_' + ident
       });
     });
+
+    Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
   }
 
   // Does simple 'macro' substitution, using Django-like syntax,
@@ -262,8 +264,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
   });
 
-  var moduleFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
-
   var addedLibraryItems = {};
 
   // functionStub
@@ -279,7 +279,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           if (ident in addedLibraryItems) return '';
           // Don't replace implemented functions with library ones (which can happen when we add dependencies).
           // Note: We don't return the dependencies here. Be careful not to end up where this matters
-          if (('_' + ident) in moduleFunctions) return '';
+          if (('_' + ident) in Functions.implementedFunctions) return '';
 
           addedLibraryItems[ident] = true;
           var snippet = LibraryManager.library[ident];
