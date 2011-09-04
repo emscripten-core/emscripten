@@ -78,7 +78,7 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, u
     if allow_nonportable:
       opts.append('-O%d' % optimization_level)
     else:
-      # createStandardAliasAnalysisPasses
+      # PassManagerBuilder::populateModulePassManager
       if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
         opts.append('-tbaa')
         opts.append('-basicaa') # makes fannkuch slow but primes fast
@@ -118,7 +118,8 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, u
       if allow_nonportable: opts.append('-loop-idiom') # ?
       opts.append('-loop-deletion')
       opts.append('-loop-unroll')
-      if allow_nonportable: opts.append('-instcombine')
+
+      ##### not in llvm-3.0. but have |      #addExtensionsToPM(EP_LoopOptimizerEnd, MPM);| if allow_nonportable: opts.append('-instcombine')
 
       # XXX Danger: Messes up Lua output for unknown reasons
       #             Note: this opt is of minor importance for raytrace...
@@ -131,11 +132,13 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, u
       opts.append('-jump-threading')
       opts.append('-correlated-propagation')
       opts.append('-dse')
+      #addExtensionsToPM(EP_ScalarOptimizerLate, MPM);
+
       opts.append('-adce')
       opts.append('-simplifycfg')
+      if allow_nonportable: opts.append('-instcombine')
 
       opts.append('-strip-dead-prototypes')
-      opts.append('-deadtypeelim')
 
       if optimization_level > 2: opts.append('-globaldce')
 

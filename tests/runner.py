@@ -79,6 +79,7 @@ class RunnerCore(unittest.TestCase):
     if LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
       output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   def do_llvm_dis(self, filename):
     # LLVM binary ==> LLVM assembly
@@ -86,8 +87,8 @@ class RunnerCore(unittest.TestCase):
       os.remove(filename + '.o.ll')
     except:
       pass
-    Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file'
+    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
 
   def do_llvm_as(self, source, target):
     # LLVM assembly ==> LLVM binary
@@ -145,6 +146,7 @@ class RunnerCore(unittest.TestCase):
     # C++ => LLVM binary
     os.chdir(dirname)
     cwd = os.getcwd()
+
     for f in [filename] + additional_files:
       try:
         # Make sure we notice if compilation steps failed
