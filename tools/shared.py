@@ -72,7 +72,7 @@ def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
   return string[0:MAX] + '...'
 
-def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, use_aa=False):
+def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, quantum_size=4, use_aa=False):
   opts = []
   if optimization_level > 0:
     if allow_nonportable:
@@ -114,7 +114,7 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, u
       opts.append('-licm')
       opts.append('-loop-unswitch') # XXX should depend on optimize_size
       if allow_nonportable: opts.append('-instcombine')
-      opts.append('-indvars')
+      if quantum_size == 4: opts.append('-indvars') # XXX this infinite-loops raytrace on q1 (loop in |new node_t[count]| has 68 hardcoded &not fixed)
       if allow_nonportable: opts.append('-loop-idiom') # ?
       opts.append('-loop-deletion')
       opts.append('-loop-unroll')

@@ -60,13 +60,13 @@ class RunnerCore(unittest.TestCase):
 
   # Similar to LLVM::createStandardModulePasses()
   def pick_llvm_opts(self, optimization_level, optimize_size, allow_nonportable=False):
-    global LLVM_OPT_OPTS, USE_TYPED_ARRAYS
+    global LLVM_OPT_OPTS, USE_TYPED_ARRAYS, QUANTUM_SIZE
 
     #if USE_TYPED_ARRAYS == 2: # unsafe optimizations. TODO: fix all issues blocking this from being used
     #  LLVM_OPT_OPTS = ['-O3']
     #  return
 
-    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, optimize_size, allow_nonportable)
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, optimize_size, allow_nonportable, quantum_size=QUANTUM_SIZE)
 
   # Emscripten optimizations that we run on the .ll file
   def do_ll_opts(self, filename):
@@ -2894,7 +2894,7 @@ if 'benchmark' not in str(sys.argv):
 
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
-        self.do_test(src, output, ['3', '16'])
+        self.do_test(src, output, ['3', '16'])#, build_ll_hook=self.do_autodebug)
 
     def test_fasta(self):
         results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
@@ -4053,7 +4053,7 @@ else:
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
       global USE_TYPED_ARRAYS
-      self.pick_llvm_opts(3, True, USE_TYPED_ARRAYS == 2)
+      self.pick_llvm_opts(3, True, allow_nonportable=USE_TYPED_ARRAYS == 2)
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')
