@@ -2902,7 +2902,6 @@ if 'benchmark' not in str(sys.argv):
           self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def test_dlmalloc(self):
-      #global DISABLE_EXCEPTIONS; DISABLE_EXCEPTIONS = 1
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 

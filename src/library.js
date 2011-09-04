@@ -4047,7 +4047,7 @@ LibraryManager.library = {
   },
 
   llvm_expect_i32: function(x, y) {
-    assert(x == y, 'Expect failed!');
+    return x == y;
   },
 
   // ==========================================================================

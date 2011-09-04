@@ -5737,3 +5737,28 @@ int main(int ac, char **av)
   printf("*%d,%d*\n", c1, c2);
 }
 
+/* Some debugging tools: Make JS and native code work exactly the same */
+/*
+time_t time ( time_t * timer )
+{
+  if (timer) *timer = 1;
+  return 1;
+}
+
+long sysconf(int name)
+{
+  printf("sysconf: %d (30 is page size)\n", name);
+  return 4096;
+}
+
+void *sbrk(intptr_t increment)
+{
+  static char spaace[1024*1024*1];
+  static intptr_t where = 0;
+  printf("sbrk! spaace=%d  (%d,%d)\n", (int)&spaace[0], where, increment); // copy the value printed at runtime here in native code into your js
+  void *ret = &spaace[where];
+  where += increment;
+  return ret;
+}
+*/
+
