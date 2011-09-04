@@ -11,11 +11,6 @@ from tools import shared
 
 # Temporary files that should be deleted once the program is finished.
 TEMP_FILES_TO_CLEAN = []
-# The data layout used by llvm-gcc (as opposed to clang, which doesn't have the
-# f128:128:128 part).
-GCC_DATA_LAYOUT = ('target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16'
-                   '-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64'
-                   '-v128:128:128-a0:0:64-f80:32:32-f128:128:128-n8:16:32"')
 
 
 def path_from_root(*target):
@@ -98,35 +93,18 @@ def link(*objects):
   return out.name
 
 
-def compile_malloc(compiler):
+def compile_malloc():
   """Compiles dlmalloc to LLVM bitcode.
-
-  Args:
-    compiler: The compiler command to use, a path to either clang or llvm-gcc.
 
   Returns:
     The path to the compiled dlmalloc as an LLVM bitcode (.bc) file.
   """
   src = path_from_root('src', 'dlmalloc.c')
   includes = '-I' + path_from_root('src', 'include')
-  command = [compiler, '-c', '-g', '-emit-llvm', '-m32', '-o-', includes, src]
+  command = [shared.CLANG, '-c', '-g', '-emit-llvm', '-m32', '-o-', includes, src]
   with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
-
-
-def determine_compiler(filepath):
-  """Determines whether a given file uses llvm-gcc or clang data layout.
-
-  Args:
-    filepath: The .bc or .ll file containing the bitcode/assembly to test.
-
-  Returns:
-    The path to the compiler, either llvm-gcc or clang.
-  """
-  assembly = open(disassemble(filepath)).read()
-  is_gcc = GCC_DATA_LAYOUT in assembly
-  return shared.to_cc(shared.LLVM_GCC if is_gcc else shared.CLANG)
 
 
 def has_annotations(filepath):
@@ -164,7 +142,7 @@ def main(args):
   if args.dlmalloc or args.optimize or not has_annotations(args.infile):
     args.infile = assemble(args.infile)
     if args.dlmalloc:
-      malloc = compile_malloc(determine_compiler(args.infile))
+      malloc = compile_malloc()
       args.infile = link(args.infile, malloc)
     if args.optimize: args.infile = optimize(args.infile)
   args.infile = disassemble(args.infile)
