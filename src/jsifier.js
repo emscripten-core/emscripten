@@ -832,6 +832,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   }
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
+    if (LibraryManager.isStubFunction(item.ident)) return ';';
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 

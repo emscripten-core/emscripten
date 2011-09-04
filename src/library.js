@@ -4047,8 +4047,11 @@ LibraryManager.library = {
   },
 
   llvm_expect_i32: function(x, y) {
-    return x == y;
+    return x == y; // TODO: inline this
   },
+
+  llvm_lifetime_start: function() {},
+  llvm_lifetime_end: function() {},
 
   // ==========================================================================
   // iostream.h

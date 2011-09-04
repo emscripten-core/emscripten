@@ -2925,8 +2925,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_test(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
 
     def test_libcxx(self):
-      return self.skip('Fails to run llvm-as due to llvm bug 10850')
-
       self.do_test(path_from_root('tests', 'libcxx'),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
                    main_file='main.cpp', additional_files=['hash.cpp'])

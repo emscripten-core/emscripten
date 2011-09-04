@@ -269,6 +269,11 @@ var LibraryManager = {
       ret = LibraryManager.library[ret];
     }
     return last;
+  },
+
+  isStubFunction: function(ident) {
+    var libCall = LibraryManager.library[ident.substr(1)];
+    return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}';
   }
 };
 
