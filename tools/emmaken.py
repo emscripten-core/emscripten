@@ -17,9 +17,13 @@ Example uses:
 
  * With configure, do something like
 
-    RANLIB=PATH/emmaken.py AR=PATH/emmaken.py CXX=PATH/emmaken.py CC=PATH/emmaken.py ./configure [options]
+    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emmaken.py AR=PATH/emmaken.py CXX=PATH/emmaken.py CC=PATH/emmaken.py ./configure [options]
 
    where PATH is the path to this file.
+
+   EMMAKEN_JUST_CONFIGURE tells emmaken that it is being run in ./configure,
+   so it should relay everything to gcc/g++. You should not define that when
+   running make, of course.
 
  * With CMake, the same command will work (with cmake instead of ./configure). You may also be
    able to do the following in your CMakeLists.txt:
@@ -53,20 +57,21 @@ import sys
 import os
 import subprocess
 
+print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
+
 abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
   return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
-# If this is a CMake config, just do that
+# If this is a configure-type thing, just do that
+CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
-if CMAKE_CONFIG:
+if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) else 'gcc'
   exit(os.execvp(compiler, [compiler] + sys.argv[1:]))
 
 try:
-  print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
-
   #f=open('/dev/shm/tmp/waka.txt', 'a')
   #f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
   #f.close()
@@ -97,7 +102,6 @@ try:
 
   if len(sys.argv) == 2 and 'conftest' not in ' '.join(sys.argv): # Avoid messing with configure, see below too
     # ranlib
-    os.execvp(LLVM_DIS, ['-show-annotations', sys.argv[1]])
     sys.exit(0)
   if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
     # noop ar
@@ -116,7 +120,7 @@ try:
       files.append(arg)
       if arg.endswith('.c'):
         use_cxx = False
-      if arg.endswith(('.c', '.cc', '.cpp')):
+      if arg.endswith(('.c', '.cc', '.cpp', '.dT')):
         use_linker = False
       if arg.endswith('.h'):
         header = True
@@ -130,8 +134,8 @@ try:
     assert use_linker, 'Linker should be used in this case'
 
   if use_linker:
-    call = LLVM_LINK
-    newargs = []
+    call = LLVM_LD
+    newargs = ['-disable-opt']
     found_o = False
     i = 0
     while i < len(sys.argv)-1:
@@ -163,6 +167,7 @@ try:
       if not use_linker:
         newargs.append('-c') 
   else:
+    print >> sys.stderr, 'Just copy.'
     shutil.copy(sys.argv[-1], sys.argv[-2])
     exit(0)
 

@@ -2990,8 +2990,10 @@ if 'benchmark' not in str(sys.argv):
     # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
     # memory since the test directory is destroyed and recreated for each test. Note that we cache separately
     # for different compilers)
-    def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
+    def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, build_subdir=None):
       if type(generated_libs) is not list: generated_libs = [generated_libs]
+      if build_subdir and configure.startswith('./'):
+        configure = '.' + configure
 
       if GlobalCache is not None:
         cache_name = name + '|' + COMPILER
@@ -3007,16 +3009,24 @@ if 'benchmark' not in str(sys.argv):
       project_dir = os.path.join(temp_dir, name)
       shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
       os.chdir(project_dir)
+      if build_subdir:
+        try:
+          os.mkdir('cbuild')
+        except:
+          pass
+        os.chdir(os.path.join(project_dir, 'cbuild'))
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
       env['EMMAKEN_COMPILER'] = COMPILER
       env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
-      if configure: # Useful in debugging sometimes to comment this out (and 2 lines below)
+      if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
+        env['EMMAKEN_JUST_CONFIGURE'] = '1'
         Popen(configure + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+        del env['EMMAKEN_JUST_CONFIGURE']
       Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
-      self.do_link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
+      self.do_link(map(lambda lib: os.path.join(project_dir, 'cbuild', lib) if build_subdir else os.path.join(project_dir, lib), generated_libs), bc_file)
       if cache and GlobalCache is not None:
         print >> sys.stderr, '<save build into cache> ',
         GlobalCache[cache_name] = open(bc_file, 'rb').read()
@@ -3025,7 +3035,7 @@ if 'benchmark' not in str(sys.argv):
     def get_freetype(self):
       global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
-      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))
+      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a.bc'))
 
     def test_freetype(self):
       if QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
@@ -3059,9 +3069,24 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
+                   libraries=[self.get_library('zlib', os.path.join('libz.a.bc'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
+
+    def zzztest_glibc(self):
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 1
+
+      self.do_test(r'''
+                      #include <stdio.h>
+                      int main() { printf("hai\n"); return 1; }
+                   ''',
+                   libraries=[self.get_library('glibc', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
+                                                         os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
+                                                         os.path.join('src', '.libs', 'libLinearMath.a.bc')],
+                                               configure_args=['--disable-sanity-checks'])],
+                   includes=[path_from_root('tests', 'glibc', 'include')])
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS, LLVM_OPTS
@@ -3078,9 +3103,9 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_test(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
-                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                                          os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                                          os.path.join('src', '.libs', 'libLinearMath.a')],
+                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
+                                                          os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
+                                                          os.path.join('src', '.libs', 'libLinearMath.a.bc')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking'])],
                    includes=[path_from_root('tests', 'bullet', 'src')],
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
@@ -3143,10 +3168,10 @@ if 'benchmark' not in str(sys.argv):
       freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
-                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
-                                  os.path.join('goo', '.libs', 'libgoo.a'),
-                                  os.path.join('fofi', '.libs', 'libfofi.a'),
-                                  os.path.join('splash', '.libs', 'libsplash.a'),
+                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0.bc'),
+                                  os.path.join('goo', '.libs', 'libgoo.a.bc'),
+                                  os.path.join('fofi', '.libs', 'libfofi.a.bc'),
+                                  os.path.join('splash', '.libs', 'libsplash.a.bc'),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
                                  configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms'])
@@ -3187,7 +3212,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
 
       lib = self.get_library('openjpeg',
-                             [os.path.join('bin', 'libopenjpeg.so'),
+                             [os.path.join('bin', 'libopenjpeg.so.1.4.0.bc'),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),

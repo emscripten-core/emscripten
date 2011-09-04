@@ -359,20 +359,21 @@ gen_c.write('extern "C" {\n')
 # Having this object saves us needing to do checks for the object being null each time in the bindings code.
 gen_js.write('''
 // Bindings utilities
-var Object__cache = {};
-function wrapPointer(ptr, class_) {
-  var cache = class_ ? class_.prototype.__cache__ : Object__cache;
+var Object__cache = {}; // we do it this way so we do not modify |Object|
+function wrapPointer(ptr, __class__) {
+  var cache = __class__ ? __class__.prototype.__cache__ : Object__cache;
   var ret = cache[ptr];
   if (ret) return ret;
-  class_ = class_ || Object;
-  ret = Object.create(class_.prototype);
+  __class__ = __class__ || Object;
+  ret = Object.create(__class__.prototype);
   ret.ptr = ptr;
+  ret.__class__ = __class__;
   return cache[ptr] = ret;
 }
 this['wrapPointer'] = wrapPointer;
 
-function castObject(obj, class_) {
-  return wrapPointer(obj.ptr, class_);
+function castObject(obj, __class__) {
+  return wrapPointer(obj.ptr, __class__);
 }
 this['castObject'] = castObject;
 
@@ -381,6 +382,12 @@ this['NULL'] = wrapPointer(0);
 function destroy(obj) {
   if (!obj['__destroy__']) throw 'Error: Cannot destroy object. (Did you create it yourself?)';
   obj['__destroy__']();
+  // Remove from cache, so the object can be GC'd and refs added onto it released
+  if (obj.__class__ !== Object) {
+    delete obj.__class__.prototype.__cache__[obj.ptr];
+  } else {
+    delete Object__cache[obj.ptr];
+  }
 }
 this['destroy'] = destroy;
 
@@ -393,6 +400,11 @@ function getPointer(obj) {
   return obj.ptr;
 }
 this['getPointer'] = getPointer;
+
+function getClass(obj) {
+  return obj.__class__;
+}
+this['getClass'] = getClass;
 ''')
 
 def generate_wrapping_code(classname):
@@ -564,6 +576,9 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
     print 'Maekin:', classname, generating_classname, mname, mname_suffixed
     if constructor:
+      calls += '''
+  %s.prototype.__cache__[this.ptr] = this;
+  this.__class__ = %s;''' % (mname_suffixed, mname_suffixed)
       if not dupe:
         js_text = '''
 function %s(%s) {
