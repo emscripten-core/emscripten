@@ -105,6 +105,8 @@ for classname, clazz in parsed.classes.iteritems():
     struct['name'] = sname # Missing in CppHeaderParser
     print 'zz seen struct %s in %s' % (sname, classname)
 
+print 'zz parents: ', parents
+
 for classname, clazz in classes.iteritems():
   # Various precalculations
   print 'zz precalc', classname
@@ -177,6 +179,9 @@ for classname, clazz in classes.iteritems():
         1/0.
 
     # Fill in some missing stuff
+    method['returns_text'] = method['returns_text'].replace('&', '').replace('*', '')
+    if method['returns_text'] in parents:
+      method['returns_text'] = parents[method['returns_text']] + '::' + method['returns_text']
     if method.get('returns_const'): method['returns_text'] = 'const ' + method['returns_text']
     if method.get('returns_pointer'):
       while method['returns_text'].count('*') < method['returns_pointer']:
