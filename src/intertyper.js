@@ -400,14 +400,16 @@ function intertyper(data, parseFunctions, baseLineNum) {
       if (item.tokens[2].text == 'alias') {
         cleanOutTokens(LLVM.LINKAGES, item.tokens, 3);
         cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 3);
-        Types.needAnalysis[item.tokens[3].text] = 0;
-        return [{
+        var last = getTokenIndexByText(item.tokens, ';');
+        var ret = {
           intertype: 'alias',
           ident: toNiceIdent(item.tokens[0].text),
-          aliasee: toNiceIdent(item.tokens[4].text),
-          type: item.tokens[3].text,
+          value: parseLLVMSegment(item.tokens.slice(3, last)),
           lineNum: item.lineNum
-        }];
+        };
+        ret.type = ret.value.type;
+        Types.needAnalysis[ret.type] = 0;
+        return [ret];
       }
       if (item.tokens[2].text == 'type') {
         var fields = [];
