@@ -805,6 +805,8 @@ LibraryManager.library = {
   __01fstat64_: 'fstat',
   __01stat64_: 'stat',
   __01lstat64_: 'lstat',
+  stat64: 'stat',
+
   // TODO: Check if other aliases are needed.
 
   // ==========================================================================
@@ -3077,6 +3079,7 @@ LibraryManager.library = {
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
+  fopen64: 'fopen',
   __01fopen64_: 'fopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
