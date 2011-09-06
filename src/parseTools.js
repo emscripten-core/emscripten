@@ -1078,7 +1078,7 @@ function handleOverflow(text, bits) {
 }
 
 // From parseLLVMSegment
-function finalizeLLVMParameter(param) {
+function finalizeLLVMParameter(param, noIndexizeFunctions) {
   var ret;
   if (isNumber(param)) {
     return param;
@@ -1098,7 +1098,8 @@ function finalizeLLVMParameter(param) {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
   assert(param.type || (typeof param === 'string' && param.substr(0, 6) === 'CHECK_'), 'Missing type for param: ' + dump(param));
-  return indexizeFunctions(ret, param.type);
+  if (!noIndexizeFunctions) ret = indexizeFunctions(ret, param.type);
+  return ret;
 }
 
 function makeSignOp(value, type, op) {

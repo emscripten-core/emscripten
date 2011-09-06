@@ -258,7 +258,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       // Set the actual value in a postset, since it may be a global variable. TODO: handle alias of alias (needs ordering)
       ret.push({
         intertype: 'GlobalVariablePostSet',
-        JS: item.ident + ' = ' + finalizeLLVMParameter(item.value) + ';'
+        JS: item.ident + ' = ' + finalizeLLVMParameter(item.value, true) + ';' // do *not* indexize functions here
       });
       return ret;
     }
