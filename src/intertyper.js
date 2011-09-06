@@ -334,6 +334,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       function scanConst(value, type) {
         //dprint('inter-const: ' + item.lineNum + ' : ' + JSON.stringify(value) + ',' + type + '\n');
+        Types.needAnalysis[type] = 0;
         if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
           return { value: toNiceIdent(value.text), type: type };
         } else if (value.text in set('zeroinitializer', 'undef')) { // undef doesn't really need initting, but why not
@@ -348,16 +349,21 @@ function intertyper(data, parseFunctions, baseLineNum) {
               if (segment[1].text == 'null') {
                 return { intertype: 'value', value: 0, type: 'i32' };
               } else if (segment[1].text == 'zeroinitializer') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'emptystruct', type: segment[0].text };
               } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
                 return parseLLVMFunctionCall(segment);
               } else if (segment[1].type && segment[1].type == '{') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].tokens) };
               } else if (segment[1].type && segment[1].type == '<') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].item.tokens[0].tokens) };
               } else if (segment[1].type && segment[1].type == '[') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
               } else if (segment.length == 2) {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'value', type: segment[0].text, value: toNiceIdent(segment[1].text) };
               } else if (segment[1].text === 'c') {
                 // string
@@ -394,6 +400,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       if (item.tokens[2].text == 'alias') {
         cleanOutTokens(LLVM.LINKAGES, item.tokens, 3);
         cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 3);
+        Types.needAnalysis[item.tokens[3].text] = 0;
         return [{
           intertype: 'alias',
           ident: toNiceIdent(item.tokens[0].text),
@@ -438,6 +445,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           external = true;
           item.tokens.splice(2, 1);
         }
+        Types.needAnalysis[item.tokens[2].text] = 0;
         var ret = {
           intertype: 'globalVariable',
           ident: toNiceIdent(ident),
