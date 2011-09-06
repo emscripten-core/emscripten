@@ -684,9 +684,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       ret += '  ' + makeBranch(switchLabel.label, item.currLabelId || null) + '\n';
       ret += '}\n';
     });
-    ret += 'else {\n';
+    if (item.switchLabels.length > 0) ret += 'else {\n';
     ret += makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-    ret += '}\n';
+    if (item.switchLabels.length > 0) ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
     }
@@ -832,7 +832,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   }
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
-    if (LibraryManager.isStubFunction(item.ident)) return ';';
+    if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 
