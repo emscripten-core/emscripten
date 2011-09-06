@@ -115,7 +115,7 @@ function isStructPointerType(type) {
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
-  if (new RegExp(/{ [^}]* }/g).test(type)) return true; // { i32, i8 } etc. - anonymous struct types
+  if (new RegExp(/<?{ [^}]* }>?/g).test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return !Runtime.isNumberType(type) && type[0] == '%';
 }

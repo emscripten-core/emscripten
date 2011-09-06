@@ -129,12 +129,14 @@ function analyzer(data) {
     }
 
     // anonymous structure definition, for example |{ i32, i8*, void ()*, i32 }|
-    if (type[0] == '{') {
+    if (type[0] == '{' || type[0] == '<') {
+      var packed = type[0] == '<';
       Types.types[type] = {
         name_: type,
-        fields: splitTokenList(tokenize(type.substr(2, type.length-4)).tokens).map(function(segment) {
+        fields: splitTokenList(tokenize(type.substr(2 + packed, type.length - 4 - 2*packed)).tokens).map(function(segment) {
           return segment[0].text;
         }),
+        packed: packed,
         lineNum: '?'
       };
       return;
