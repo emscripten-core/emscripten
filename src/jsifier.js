@@ -255,10 +255,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       item.intertype = 'GlobalVariableStub';
       var ret = [item];
       item.JS = 'var ' + item.ident + ';';
-      // Set the actual value in a postset, since it may be a global variable. TODO: handle alias of alias (needs ordering)
+      // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
+      var value = finalizeLLVMParameter(item.value, true); // do *not* indexize functions here
       ret.push({
         intertype: 'GlobalVariablePostSet',
-        JS: item.ident + ' = ' + finalizeLLVMParameter(item.value, true) + ';' // do *not* indexize functions here
+        ident: item.ident,
+        dependencies: set([value]),
+        JS: item.ident + ' = ' + value + ';';
       });
       return ret;
     }
@@ -845,10 +848,33 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
     items.forEach(function(item) {
       item.lines = null;
-      var small = { intertype: item.intertype, JS: item.JS }; // Release memory
+      var small = { intertype: item.intertype, JS: item.JS, ident: item.ident, dependencies: item.dependencies }; // Release memory
       itemsDict[small.intertype].push(small);
     });
     items = null;
+
+    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, function(x) { return x.ident && x.dependencies });
+    itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
+    var orderedPostSets = splitPostSets.splitOut;
+
+    var limit = orderedPostSets.length * orderedPostSets.length;
+    for (var i = 0; i < orderedPostSets.length; i++) {
+      for (var j = i+1; j < orderedPostSets.length; j++) {
+        if (orderedPostSets[j].ident in orderedPostSets[i].dependencies) {
+          var temp = orderedPostSets[i];
+          orderedPostSets[i] = orderedPostSets[j];
+          orderedPostSets[j] = temp;
+          i--;
+          limit--;
+          assert(limit > 0, 'Could not sort postsets!');
+          break;
+        }
+      }
+    }
+
+    itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.concat(orderedPostSets);
+
+    //
 
     var generated = [];
     if (mainPass) {

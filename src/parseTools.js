@@ -979,14 +979,14 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   return [];
 }
 
-function finalizeLLVMFunctionCall(item) {
+function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
   switch(item.intertype) {
     case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
       return makePointer(makeGetSlabs(item.ident, item.type)[0], getGetElementPtrIndexes(item), null, item.type);
     case 'bitcast':
     case 'inttoptr':
     case 'ptrtoint':
-      return finalizeLLVMParameter(item.params[0]);
+      return finalizeLLVMParameter(item.params[0], noIndexizeFunctions);
     case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div':
       var temp = {
         op: item.intertype,
@@ -1085,11 +1085,11 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else if (typeof param === 'string') {
     return toNiceIdentCarefully(param);
   } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
-    ret = finalizeLLVMFunctionCall(param);
+    ret = finalizeLLVMFunctionCall(param, noIndexizeFunctions);
   } else if (param.intertype == 'value') {
     ret = parseNumerical(param.ident);
   } else if (param.intertype == 'structvalue') {
-    ret = param.values.map(finalizeLLVMParameter);
+    ret = param.values.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) });
   } else if (param.intertype === 'blockaddress') {
     return finalizeBlockAddress(param);
   } else if (param.intertype === 'type') {
