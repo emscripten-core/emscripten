@@ -70,7 +70,7 @@ def line_splitter(data):
 
 def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
-  return string[0:MAX] + '...'
+  return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
 def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, use_aa=False):
   opts = []
