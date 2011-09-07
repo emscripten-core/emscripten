@@ -261,7 +261,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         intertype: 'GlobalVariablePostSet',
         ident: item.ident,
         dependencies: set([value]),
-        JS: item.ident + ' = ' + value + ';';
+        JS: item.ident + ' = ' + value + ';'
       });
       return ret;
     }
