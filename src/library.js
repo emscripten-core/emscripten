@@ -255,7 +255,7 @@ LibraryManager.library = {
         xhr.open('GET', obj.url, false);
 
         // Some hints to the browser that we want binary data.
-        xhr.responseType = 'arraybuffer';
+        if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
         if (xhr.overrideMimeType) {
           xhr.overrideMimeType('text/plain; charset=x-user-defined');
         }
