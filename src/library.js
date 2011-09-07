@@ -316,7 +316,7 @@ LibraryManager.library = {
             // Command line.
             result = readline();
           }
-          if (!result) return null;
+          if (!result) result = '';
           input.cache = intArrayFromString(result + '\n', true);
         }
         return input.cache.shift();
