@@ -187,6 +187,10 @@ class RunnerCore(unittest.TestCase):
       except:
         pass
     settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
+    try:
+      os.getcwd()
+    except OSError:
+      os.chdir(self.get_dir()) # ensure the current working directory is valid
     compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
     #print compiler_output
 
