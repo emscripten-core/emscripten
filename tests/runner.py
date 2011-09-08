@@ -3117,11 +3117,13 @@ if 'benchmark' not in str(sys.argv):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
+      global RELOOP, LLVM_OPTS, USE_TYPED_ARRAYS, QUANTUM_SIZE
+
       # llvm-link failure when using clang, LLVM bug 9498, still relevant?
       if RELOOP or LLVM_OPTS: return self.skip('TODO')
-      if QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+      if USE_TYPED_ARRAYS == 2 or QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      global USE_TYPED_ARRAYS; USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
+      USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
 
       global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
 
@@ -3277,8 +3279,8 @@ if 'benchmark' not in str(sys.argv):
                    output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
 
     def test_python(self):
-      global QUANTUM_SIZE
-      if QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
+      global QUANTUM_SIZE, USE_TYPED_ARRAYS
+      if QUANTUM_SIZE == 1 or USE_TYPED_ARRAYS == 2: return self.skip('TODO: make this work')
 
       # Overflows in string_hash
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
