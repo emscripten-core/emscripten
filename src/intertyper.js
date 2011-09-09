@@ -780,7 +780,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         var commaIndex = findTokenText(item, ',');
         return [{
           intertype: 'branch',
-          condition: parseLLVMSegment(item.tokens.slice(1, commaIndex)),
+          value: parseLLVMSegment(item.tokens.slice(1, commaIndex)),
           labelTrue: toNiceIdent(item.tokens[commaIndex+2].text),
           labelFalse: toNiceIdent(item.tokens[commaIndex+5].text),
           lineNum: item.lineNum

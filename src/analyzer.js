@@ -595,7 +595,7 @@ function analyzer(data) {
                 var remarkableLabel = func.labelsDict[remarkableLabelId];
                 assert(remarkableLabel);
                 var lastLine = remarkableLabel.lines.slice(-1)[0];
-                if (lastLine.value) {
+                if (lastLine.intertype === 'assign') {
                   lastLine.value.currLabelId = remarkableLabelId;
                 } else {
                   lastLine.currLabelId = remarkableLabelId;

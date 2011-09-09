@@ -654,10 +654,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   makeFuncLineActor('branch', function(item) {
     if (item.stolen) return ';'; // We will appear where we were stolen to
-    if (!item.condition) {
+    if (!item.value) {
       return makeBranch(item.label, item.currLabelId);
     } else {
-      var condition = finalizeLLVMParameter(item.condition);
+      var condition = finalizeLLVMParameter(item.value);
       var labelTrue = makeBranch(item.labelTrue, item.currLabelId);
       var labelFalse = makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
