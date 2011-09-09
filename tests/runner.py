@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json, difflib
 
 # Setup
 
@@ -229,13 +229,19 @@ class RunnerCore(unittest.TestCase):
     if type(value) is not str: value = value() # lazy loading
     if type(string) is not str: string = string()
     if value not in string:
-      raise Exception("Expected to find '%s' in '%s'" % (limit_size(value), limit_size(string)))
+      raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
+        limit_size(value), limit_size(string),
+        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
+      ))
 
   def assertNotContained(self, value, string):
     if type(value) is not str: value = value() # lazy loading
     if type(string) is not str: string = string()
     if value in string:
-      raise Exception("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
+      raise Exception("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
+        limit_size(value), limit_size(string),
+        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
+      ))
 
 ###################################################################################################
 
@@ -3452,6 +3458,10 @@ if 'benchmark' not in str(sys.argv):
             Child2() : Parent(9) { printf("Child2:%d\\n", value); };
             int getValCube() { return value*value*value; }
             static void printStatic() { printf("*static*\\n"); }
+
+            virtual void virtualFunc() { printf("*virtualf*\\n"); }
+            virtual void virtualFunc2() { printf("*virtualf2*\\n"); }
+            static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
           private:
             void doSomethingSecret() { printf("security breached!\\n"); }; // we should not be able to do this
           };
@@ -3527,6 +3537,32 @@ if 'benchmark' not in str(sys.argv):
 
           Child2.prototype.printStatic(); // static calls go through the prototype
 
+          // virtual function
+          c2.virtualFunc();
+          Child2.prototype.runVirtualFunc(c2);
+          c2.virtualFunc2();
+
+          // extend the class from JS
+          var c3 = new Child2;
+          customizeVTable(c3, [{
+            original: Child2.prototype.virtualFunc,
+            replacement: function() {
+              print('*js virtualf replacement*');
+            }
+          }, {
+            original: Child2.prototype.virtualFunc2,
+            replacement: function() {
+              print('*js virtualf2 replacement*');
+            }
+          }]);
+          c3.virtualFunc();
+          Child2.prototype.runVirtualFunc(c3);
+          c3.virtualFunc2();
+
+          c2.virtualFunc(); // original should remain the same
+          Child2.prototype.runVirtualFunc(c2);
+          c2.virtualFunc2();
+
           print('*ok*');
         '''
 
@@ -3565,6 +3601,17 @@ Child2:9
 0
 1
 *static*
+*virtualf*
+*virtualf*
+*virtualf2*
+Parent:9
+Child2:9
+*js virtualf replacement*
+*js virtualf replacement*
+*js virtualf2 replacement*
+*virtualf*
+*virtualf*
+*virtualf2*
 *ok*
 ''', post_build=post2)
 

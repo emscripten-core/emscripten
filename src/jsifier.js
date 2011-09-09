@@ -237,6 +237,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
 
           var js = item.ident + '=' + constant + ';';
+          // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
+          if (item.ident.substr(0, 5) == '__ZTV') {
+            js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
+          }
           if (item.ident in EXPORTED_GLOBALS) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
           }
@@ -903,6 +907,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
       print(pre);
+      print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
       if (RUNTIME_TYPE_INFO) {
         Types.cleanForRuntime();
         print('Runtime.typeInfo = ' + JSON.stringify(Types.types));

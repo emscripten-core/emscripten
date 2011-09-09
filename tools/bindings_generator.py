@@ -40,6 +40,9 @@ It's only purpose is to make it easy to access the C++ code in the JS
 bindings, and to prevent DFE from removing the code we care about. The
 JS bindings do more serious work, creating class structures in JS and
 linking them to the C bindings.
+
+NOTE: ammo.js is currently the biggest consumer of this code. For some
+      more docs you can see that project's README
 '''
 
 import os, sys, glob, re
@@ -104,6 +107,8 @@ for classname, clazz in parsed.classes.iteritems():
     classes[classname + '::' + sname] = struct
     struct['name'] = sname # Missing in CppHeaderParser
     print 'zz seen struct %s in %s' % (sname, classname)
+
+print 'zz parents: ', parents
 
 for classname, clazz in classes.iteritems():
   # Various precalculations
@@ -177,6 +182,9 @@ for classname, clazz in classes.iteritems():
         1/0.
 
     # Fill in some missing stuff
+    method['returns_text'] = method['returns_text'].replace('&', '').replace('*', '')
+    if method['returns_text'] in parents:
+      method['returns_text'] = parents[method['returns_text']] + '::' + method['returns_text']
     if method.get('returns_const'): method['returns_text'] = 'const ' + method['returns_text']
     if method.get('returns_pointer'):
       while method['returns_text'].count('*') < method['returns_pointer']:
@@ -355,10 +363,9 @@ gen_js = open(basename + '.js', 'w')
 
 gen_c.write('extern "C" {\n')
 
-# Use this when calling a binding function when you want to pass a null pointer.
-# Having this object saves us needing to do checks for the object being null each time in the bindings code.
 gen_js.write('''
 // Bindings utilities
+
 var Object__cache = {}; // we do it this way so we do not modify |Object|
 function wrapPointer(ptr, __class__) {
   var cache = __class__ ? __class__.prototype.__cache__ : Object__cache;
@@ -370,14 +377,14 @@ function wrapPointer(ptr, __class__) {
   ret.__class__ = __class__;
   return cache[ptr] = ret;
 }
-this['wrapPointer'] = wrapPointer;
+Module['wrapPointer'] = wrapPointer;
 
 function castObject(obj, __class__) {
   return wrapPointer(obj.ptr, __class__);
 }
-this['castObject'] = castObject;
+Module['castObject'] = castObject;
 
-this['NULL'] = wrapPointer(0);
+Module['NULL'] = wrapPointer(0);
 
 function destroy(obj) {
   if (!obj['__destroy__']) throw 'Error: Cannot destroy object. (Did you create it yourself?)';
@@ -389,22 +396,77 @@ function destroy(obj) {
     delete Object__cache[obj.ptr];
   }
 }
-this['destroy'] = destroy;
+Module['destroy'] = destroy;
 
 function compare(obj1, obj2) {
   return obj1.ptr === obj2.ptr;
 }
-this['compare'] = compare;
+Module['compare'] = compare;
 
 function getPointer(obj) {
   return obj.ptr;
 }
-this['getPointer'] = getPointer;
+Module['getPointer'] = getPointer;
 
 function getClass(obj) {
   return obj.__class__;
 }
-this['getClass'] = getClass;
+Module['getClass'] = getClass;
+
+function customizeVTable(object, replacementPairs) {
+  // Does not handle multiple inheritance
+
+  // Find out vtable size
+  var vTable = getValue(object.ptr, 'void*');
+  // This assumes our modification where we null-terminate vtables
+  var size = 0;
+  while (getValue(vTable + Runtime.QUANTUM_SIZE*size, 'void*')) {
+    size++;
+  }
+
+  // Prepare replacement lookup table and add replacements to FUNCTION_TABLE
+  // There is actually no good way to do this! So we do the following hack:
+  // We create a fake vtable with canary functions, to detect which actual
+  // function is being called
+  var vTable2 = _malloc(size*Runtime.QUANTUM_SIZE);
+  setValue(object.ptr, vTable2, 'void*');
+  var canaryValue;
+  var functions = FUNCTION_TABLE.length;
+  for (var i = 0; i < size; i++) {
+    var index = FUNCTION_TABLE.length;
+    (function(j) {
+      FUNCTION_TABLE.push(function() {
+        canaryValue = j;
+      });
+    })(i);
+    FUNCTION_TABLE.push(0);
+    setValue(vTable2 + Runtime.QUANTUM_SIZE*i, index, 'void*');
+  }
+  replacementPairs.forEach(function(pair) {
+    pair.original.call(object);
+    pair.originalIndex = getValue(vTable + canaryValue*Runtime.QUANTUM_SIZE, 'void*');
+  });
+  FUNCTION_TABLE = FUNCTION_TABLE.slice(0, functions);
+
+  // Do the replacements
+
+  var replacements = {};
+  replacementPairs.forEach(function(pair) {
+    var replacementIndex = FUNCTION_TABLE.length;
+    FUNCTION_TABLE.push(pair.replacement);
+    FUNCTION_TABLE.push(0);
+    replacements[pair.originalIndex] = replacementIndex;
+  });
+
+  // Copy and modify vtable
+  for (var i = 0; i < size; i++) {
+    var value = getValue(vTable + Runtime.QUANTUM_SIZE*i, 'void*');
+    if (value in replacements) value = replacements[value];
+    setValue(vTable2 + Runtime.QUANTUM_SIZE*i, value, 'void*');
+  }
+  return object;
+}
+Module['customizeVTable'] = customizeVTable;
 ''')
 
 def generate_wrapping_code(classname):
@@ -478,6 +540,8 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       return ([] if not need_self else [classname + ' * self']) + map(lambda i: args[i]['type'] + ' arg' + str(i), range(len(args)))
     def justargs(args):
       return map(lambda i: 'arg' + str(i), range(len(args)))
+    def justtypes(args): # note: this ignores 'self'
+      return map(lambda i: args[i]['type'], range(len(args)))
 
     fullname = ('emscripten_bind_' + generating_classname + '__' + mname).replace('::', '__')
     generating_classname_suffixed = generating_classname
@@ -517,8 +581,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
           gen_c.write(method['operator'])
         else: # normal method
           gen_c.write('''  %s%s%s(%s);''' % ('return ' if ret.replace(' ', '') != 'void' else '',
-        callprefix, actualmname, ', '.join(justargs(args)[:i])))
-
+                                             callprefix, actualmname, ', '.join(justargs(args)[:i])))
         gen_c.write('\n')
         gen_c.write('}')
       else:
@@ -690,6 +753,7 @@ struct EmscriptenEnsurer
 {
   EmscriptenEnsurer() {
     // Actually use the binding functions, so DFE will not eliminate them
+    // FIXME: A negative side effect of this is that they take up space in FUNCTION_TABLE
     int sum = 0;
     void *seen = (void*)%s;
 ''' % c_funcs[0])
