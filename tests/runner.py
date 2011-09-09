@@ -701,7 +701,7 @@ if 'benchmark' not in str(sys.argv):
         '''
         self.do_test(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
-    def test_error(self):
+    def test_errar(self):
         src = r'''
           #include <stdio.h>
           #include <errno.h>
