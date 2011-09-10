@@ -802,10 +802,11 @@ LibraryManager.library = {
     _umask.cmask = newMask;
     return oldMask;
   },
+  stat64: 'stat',
+  fstat64: 'fstat',
   __01fstat64_: 'fstat',
   __01stat64_: 'stat',
   __01lstat64_: 'lstat',
-  stat64: 'stat',
 
   // TODO: Check if other aliases are needed.
 
@@ -1000,6 +1001,7 @@ LibraryManager.library = {
         // Synchronization and blocking flags are irrelevant to us.
         return 0;
       case 5:  // F_GETLK.
+      case 12: // F_GETLK64.
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         var offset = ___flock_struct_layout.l_type;
         // We're always unlocked.
@@ -1007,6 +1009,8 @@ LibraryManager.library = {
         return 0;
       case 6:  // F_SETLK.
       case 7:  // F_SETLKW.
+      case 13: // F_SETLK64.
+      case 14: // F_SETLKW64.
         // Pretend that the locking is successful.
         return 0;
       case 8:  // F_SETOWN.
@@ -2103,6 +2107,9 @@ LibraryManager.library = {
     self.DATASIZE += alignMemoryPage(bytes);
     return ret;  // Previous break location.
   },
+  open64: 'open',
+  lseek64: 'lseek',
+  ftruncate64: 'ftruncate',
   __01open64_: 'open',
   __01lseek64_: 'lseek',
   __01ftruncate64_: 'ftruncate',
@@ -5164,6 +5171,9 @@ LibraryManager.library = {
 
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
+  pthread_mutexattr_init: function() {},
+  pthread_mutexattr_settype: function() {},
+  pthread_mutexattr_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
   pthread_cond_broadcast: function() {},
