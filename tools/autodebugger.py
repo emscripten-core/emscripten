@@ -11,12 +11,13 @@ ALLOW_POINTERS = False
 
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
+@.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
 entry:
   %0 = sitofp i64 %value to double ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -59,7 +60,7 @@ return:                                           ; preds = %entry
 define void @emscripten_autodebug_float(i32 %line, float %value) {
 entry:
   %0 = fpext float %value to double ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -69,7 +70,7 @@ return:                                           ; preds = %entry
 ; [#uses=1]
 define void @emscripten_autodebug_double(i32 %line, double %value) {
 entry:
-  %0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
+  %0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -79,11 +80,12 @@ return:                                           ; preds = %entry
 
 POSTAMBLE_NEW = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
+@.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
   %1 = sitofp i64 %value to double
-  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
   ret void
 }
 
@@ -110,13 +112,13 @@ define void @emscripten_autodebug_i8(i32 %line, i8 %value) {
 ; [#uses=1]
 define void @emscripten_autodebug_float(i32 %line, float %value) {
   %1 = fpext float %value to double ; [#uses=1]
-  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
+  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
   ret void
 }
 
 ; [#uses=1]
 define void @emscripten_autodebug_double(i32 %line, double %value) {
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.emscripten.autodebug.str, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
+  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %value) ; [#uses=0]
   ret void
 }
 '''
@@ -140,11 +142,11 @@ if not LLVM_STYLE_OLD:
 lines_added = 0
 lines = data.split('\n')
 for i in range(len(lines)):
-  m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) %(?P<var>[\w.]+), .*', lines[i])
+  m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
   if m:
     index = i+1+lines_added
     if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
-      lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+      lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
       lines_added += 1
     elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
       lines[i] += '\n  %%ead.%d = ptrtoint %s %%%s to i32' % (index, m.group('type'), m.group('var'))

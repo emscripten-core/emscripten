@@ -3353,7 +3353,8 @@ if 'benchmark' not in str(sys.argv):
             cache[10] = 25;
             next[20] = 51;
             int x = cache[10];
-            printf("*%d,%d*\\n", x, cache[20]);
+            double y = 11.52;
+            printf("*%d,%d,%.2f*\\n", x, cache[20], y);
             return 0;
           }
         '''
