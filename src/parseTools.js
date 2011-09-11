@@ -1175,6 +1175,10 @@ function processMathop(item) { with(item) {
   }
   var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
 
+  function integerizeBignum(value) {
+    return '(tempNumber=(' + value + '), tempNumber-tempNumber%1)';
+  }
+
   switch (op) {
     // basic integer ops
     case 'add': return handleOverflow(ident1 + ' + ' + ident2, bits);
@@ -1218,15 +1222,15 @@ function processMathop(item) { with(item) {
         }
       }
       */
-      if (bits > 32) return ident1 + '*Math.pow(2,' + ident2 + ')';
+      if (bits > 32) return ident1 + '*Math.pow(2,' + ident2 + ')'; // TODO: calculate Math.pow at runtime for consts, and below too
       return ident1 + ' << ' + ident2;
     }
     case 'ashr': {
-      if (bits > 32) return ident1 + '/Math.pow(2,' + ident2 + ')';
+      if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
       return ident1 + ' >> ' + ident2;
     }
     case 'lshr': {
-      if (bits > 32) return ident1 + '/Math.pow(2,' + ident2 + ')';
+      if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
       return ident1 + ' >>> ' + ident2;
     }
     // basic float ops

@@ -289,6 +289,7 @@ var ABORT = false;
 
 var undef = 0;
 var tempValue;
+var tempNumber;
 
 function abort(text) {
   print(text + ':\n' + (new Error).stack);

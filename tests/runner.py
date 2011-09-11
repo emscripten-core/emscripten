@@ -406,10 +406,20 @@ if 'benchmark' not in str(sys.argv):
             long long x = 0x0000def123450789ULL; // any bigger than this, and we
             long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
             printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
+
+            printf("*");
+            long long z = 13;
+            int n = 0;
+            while (z > 1) {
+              printf("%.2f,", (float)z); // these must be integers!
+              z = z >> 1;
+              n++;
+            }
+            printf("*%d*\\n", n);
             return 0;
           }
         '''
-        self.do_test(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*')
+        self.do_test(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
     def test_unsigned(self):
         global CORRECT_SIGNS; CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
