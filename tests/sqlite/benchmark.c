@@ -11,6 +11,38 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
   return 0;
 }
 
+int test(){
+  sqlite3 *db;
+  char *zErrMsg = 0;
+  int rc;
+  int i;
+  const char *commands[] = {
+    "CREATE TABLE t2(a INTEGER, b INTEGER, c VARCHAR(100));",
+    "INSERT INTO t2 VALUES(1,13153,'thirteen thousand one hundred fifty three');",
+    "INSERT INTO t2 VALUES(1,987,'some other number');",
+    "SELECT count(*) FROM t2;",
+    "SELECT a, b, c FROM t2;",
+    NULL
+  };
+
+  rc = sqlite3_open(":memory:", &db);
+  if( rc ){
+    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    exit(1);
+  }
+  for (i = 0; commands[i]; i++) {
+    rc = sqlite3_exec(db, commands[i], callback, 0, &zErrMsg);
+    if( rc!=SQLITE_OK ){
+      fprintf(stderr, "SQL error on %d: %s\n", i, zErrMsg);
+      sqlite3_free(zErrMsg);
+      exit(1);
+    }
+  }
+  sqlite3_close(db);
+  return 0;
+}
+
 int main(){
   sqlite3 *db;
   char *zErrMsg = 0;
@@ -41,6 +73,7 @@ int main(){
     }
 
   t = clock();
+  TIME("'startup'");
 
   RUN("CREATE TABLE t1(a INTEGER, b INTEGER, c VARCHAR(100));");
   TIME("create table");
@@ -48,7 +81,7 @@ int main(){
   RUN("BEGIN;");
 
   // 25000 INSERTs in a transaction
-  for (i = 0; i < 5000; i++) {
+  for (i = 0; i < 5; i++) {
     RUN("INSERT INTO t1 VALUES(1,12345,'one 1 one 1 one 1');");
     RUN("INSERT INTO t1 VALUES(2,23422,'two two two two');");
     RUN("INSERT INTO t1 VALUES(3,31233,'three three 33333333333 three');");
@@ -77,6 +110,7 @@ int main(){
   TIME("selects with indexes");
 
   sqlite3_close(db);
-  return 0;
+
+  return test();
 }
 
