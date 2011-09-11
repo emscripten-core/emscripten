@@ -153,7 +153,7 @@ for i in range(len(lines)):
       lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
       lines_added += 2
     continue
-  m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* .*.*', lines[i])
+  m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
   if m:
     index = i+1+lines_added
     lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
