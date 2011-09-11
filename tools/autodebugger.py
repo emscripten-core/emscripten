@@ -152,6 +152,12 @@ for i in range(len(lines)):
       lines[i] += '\n  %%ead.%d = ptrtoint %s %%%s to i32' % (index, m.group('type'), m.group('var'))
       lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
       lines_added += 2
+    continue
+  m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* .*.*', lines[i])
+  if m:
+    index = i+1+lines_added
+    lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+    lines_added += 1
 
 f = open(ofilename, 'w')
 f.write('\n'.join(lines) + '\n' + POSTAMBLE + '\n')
