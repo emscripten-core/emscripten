@@ -3086,6 +3086,92 @@ if 'benchmark' not in str(sys.argv):
                    post_build=post)
                    #build_ll_hook=self.do_autodebug)
 
+    def test_sqlite(self):
+      global QUANTUM_SIZE, OPTIMIZE, RELOOP
+      if QUANTUM_SIZE == 1 or OPTIMIZE or RELOOP: return self.skip('TODO FIXME')
+
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 1
+      global SAFE_HEAP; SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
+
+      global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
+
+      def post(filename):
+        src = open(filename, 'a')
+        src.write('''
+          FS.init();
+          FS.root.write = true;
+          FS.ignorePermissions = true; // /dev is read-only
+          FS.createPath('/', 'dev/shm/tmp', true, true);
+          FS.ignorePermissions = false;
+          FS.currentPath = '/dev/shm/tmp';
+          run();
+        ''')
+        src.close()
+
+      self.do_test(r'''
+                        #define SQLITE_DISABLE_LFS
+                        #define LONGDOUBLE_TYPE double
+                        #define SQLITE_INT64_TYPE int
+                   ''' + open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + r'''
+                        #include <stdio.h>
+                        #include <sqlite3.h>
+
+                        static int callback(void *NotUsed, int argc, char **argv, char **azColName){
+                          int i;
+                          for(i=0; i<argc; i++){
+                            printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+                          }
+                          printf("\n");
+                          return 0;
+                        }
+
+                        int main(){
+                          sqlite3 *db;
+                          char *zErrMsg = 0;
+                          int rc;
+                          int i;
+                          const char *commands[] = {
+                            "CREATE TABLE t1(a INTEGER, b INTEGER, c VARCHAR(100));",
+                            "INSERT INTO t1 VALUES(1,13153,'thirteen thousand one hundred fifty three');",
+                            "INSERT INTO t1 VALUES(1,987,'some other number');",
+                            "SELECT count(*) FROM t1;",
+                            "SELECT a, b, c FROM t1;",
+                            NULL
+                          };
+
+                          rc = sqlite3_open(":memory:", &db);
+                          if( rc ){
+                            fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                            sqlite3_close(db);
+                            exit(1);
+                          }
+                          for (i = 0; commands[i]; i++) {
+                            rc = sqlite3_exec(db, commands[i], callback, 0, &zErrMsg);
+                            if( rc!=SQLITE_OK ){
+                              fprintf(stderr, "SQL error on %d: %s\n", i, zErrMsg);
+                              sqlite3_free(zErrMsg);
+                              exit(1);
+                            }
+                          }
+                          sqlite3_close(db);
+                          return 0;
+                        }
+                                      ''',
+                   '''count(*) = 2
+
+a = 1
+b = 13153
+c = thirteen thousand one hundred fifty three
+
+a = 1
+b = 987
+c = some other number''',
+                   includes=[path_from_root('tests', 'sqlite')],
+                   force_c=True,
+                   post_build=post)# ,build_ll_hook=self.do_autodebug)
+
     def test_zlib(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1
 
