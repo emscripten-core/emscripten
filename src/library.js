@@ -3610,6 +3610,14 @@ LibraryManager.library = {
     } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
     return pdest;
   },
+  stpcpy: function(pdest, psrc) {
+    var i = 0;
+    do {
+      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8') }}}
+      i ++;
+    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
+    return pdest + i - 1;
+  },
 
   strncpy: function(pdest, psrc, num) {
     var padding = false, curr;
