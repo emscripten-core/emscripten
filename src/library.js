@@ -2103,6 +2103,7 @@ LibraryManager.library = {
   },
   __01open64_: 'open',
   __01lseek64_: 'lseek',
+  __01truncate64_: 'truncate',
   __01ftruncate64_: 'ftruncate',
   // TODO: Check if any other aliases are needed.
 
@@ -3078,6 +3079,7 @@ LibraryManager.library = {
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
   __01fopen64_: 'fopen',
+  __01freopen64_: 'freopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
   __01tmpfile64_: 'tmpfile',
