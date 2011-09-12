@@ -4666,6 +4666,28 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
+  __timespec_struct_layout: Runtime.generateStructInfo(null, '%struct.timespec'),
+  // TODO: Implement these for real.
+  clock_gettime__deps: ['__timespec_struct_layout'],
+  clock_gettime: function(clk_id, tp) {
+    // int clock_gettime(clockid_t clk_id, struct timespec *tp);
+    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_sec', '0', 'i32') }}}
+    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return 0;
+  },
+  clock_settime: function(clk_id, tp) {
+    // int clock_settime(clockid_t clk_id, const struct timespec *tp);
+    // Nothing.
+    return 0;
+  },
+  clock_getres__deps: ['__timespec_struct_layout'],
+  clock_getres: function(clk_id, res) {
+    // int clock_getres(clockid_t clk_id, struct timespec *res);
+    {{{ makeSetValue('res', '___timespec_struct_layout.tv_sec', '1', 'i32') }}}
+    {{{ makeSetValue('res', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return 0;
+  },
+
   // TODO: Implement remaining functions.
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
