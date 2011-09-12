@@ -4758,6 +4758,23 @@ LibraryManager.library = {
     // TODO
     return 0;
   },
+  sigemptyset: function(set) {
+    // int sigemptyset(sigset_t *set);
+    // TODO: Implement for real; don't hardcode offsets.
+    {{{ makeSetValue('set', '0', '0', 'i32') }}}
+    {{{ makeSetValue('set', '4', '0', 'i32') }}}
+    {{{ makeSetValue('set', '8', '0', 'i32') }}}
+    {{{ makeSetValue('set', '12', '0', 'i32') }}}
+    return 0;
+  },
+  sigfillset: 'sigemptyset',
+  sigdelset: 'sigemptyset',
+  sigaction: function(set) {
+    // int sigemptyset(sigset_t *set);
+    // TODO: Implement for real.
+    return 0;
+  },
+  sigprocmask: 'sigaction',
   __libc_current_sigrtmin: function() {
     return 0;
   },
