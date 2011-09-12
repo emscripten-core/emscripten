@@ -3992,25 +3992,73 @@ LibraryManager.library = {
     return 1;
   },
 
-  // Exceptions - minimal support, only (...) for now (no actual exception objects can be caught)
+  // Exceptions
   __cxa_allocate_exception: function(size) {
-    return _malloc(size); // warning: leaked
+    return _malloc(size);
   },
-  __cxa_throw: function(ptr, data, dunno) {
+  __cxa_free_exception: function(ptr) {
+    return _free(ptr);
+  },
+  __cxa_throw__deps: ['llvm_eh_exception'],
+  __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
-    print('Compiled code throwing an exception, ' + [ptr,data,dunno] + ', at ' + new Error().stack);
+    print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
 #endif
+    {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', '4', 'type', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', '8', 'destructor', 'void*') }}}
     throw ptr;
   },
-  llvm_eh_exception: function() {
-    return 'code-generated exception: ' + (new Error().stack);
+  __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
+  __cxa_rethrow: function() {
+    ___cxa_end_catch.rethrown = true;
+    throw {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
   },
-  llvm_eh_selector: function(exception, personality, num) {
+  llvm_eh_exception__postset: '_llvm_eh_exception.buf = allocate(12, "void*", ALLOC_STATIC);',
+  llvm_eh_exception: function() {
+    return {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+  },
+  llvm_eh_selector__jsargs: true,
+  llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
+    var type = {{{ makeGetValue('_llvm_eh_exception.buf', '4', 'void*') }}}
+    for (var i = 2; i < arguments.length; i++) {
+      if (arguments[i] ==  type) return type;
+    }
     return 0;
   },
-  __cxa_begin_catch: function(ptr) {
+  llvm_eh_typeid_for: function(type) {
+    return type;
   },
-  __cxa_end_catch: function(ptr) {
+  _Unwind_Resume_or_Rethrow: function(ptr) {
+    throw ptr;
+  },
+  __cxa_begin_catch: function(ptr) {
+    return ptr;
+  },
+  __cxa_end_catch__deps: ['llvm_eh_exception', '__cxa_free_exception'],
+  __cxa_end_catch: function() {
+    if (___cxa_end_catch.rethrown) {
+      ___cxa_end_catch.rethrown = false;
+      return;
+    }
+    // Clear state flag.
+    __THREW__ = false;
+    // Free ptr if it isn't null.
+    if ({{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}}) {
+      ___cxa_free_exception({{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}});
+      {{{ makeSetValue('_llvm_eh_exception.buf', '0', '0', 'void*') }}}
+    }
+    // Clear type.
+    {{{ makeSetValue('_llvm_eh_exception.buf', '4', '0', 'void*') }}}
+    // Call destructor if one is registered then clear it.
+    if ({{{ makeGetValue('_llvm_eh_exception.buf', '8', 'void*') }}}) {
+      FUNCTION_TABLE[{{{ makeGetValue('_llvm_eh_exception.buf', '8', 'void*') }}}]();
+      {{{ makeSetValue('_llvm_eh_exception.buf', '8', '0', 'i32') }}}
+    }
+  },
+  __cxa_get_exception_ptr__deps: ['llvm_eh_exception'],
+  __cxa_get_exception_ptr: function(ptr) {
+    return ptr;
   },
 
   __cxa_call_unexpected: function(exception) {
@@ -4018,8 +4066,28 @@ LibraryManager.library = {
     throw exception;
   },
 
+  terminate: '__cxa_call_unexpected',
+
   __gxx_personality_v0: function() {
   },
+
+  // RTTI hacks for exception handling, defining type_infos for common types.
+  // The values are dummies. We simply use the addresses of these statically
+  // allocated variables as unique identifiers.
+  // type_info for int.
+  _ZTIi: [0],
+  // type_info for long.
+  _ZTIl: [0],
+  // type_info for long long.
+  _ZTIx: [0],
+  // type_info for float.
+  _ZTIf: [0],
+  // type_info for double.
+  _ZTId: [0],
+  // type_info for char.
+  _ZTIc: [0],
+  // type_info for void.
+  _ZTIv: [0],
 
   llvm_umul_with_overflow_i32: function(x, y) {
     return {
