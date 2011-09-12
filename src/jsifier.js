@@ -253,6 +253,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
 
           var js = item.ident + '=' + constant + ';';
+          // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
+          if (item.ident.substr(0, 5) == '__ZTV') {
+            js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
+          }
           if (item.ident in EXPORTED_GLOBALS) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
           }
@@ -603,7 +607,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('store', function(item) {
     var value = finalizeLLVMParameter(item.value);
     if (pointingLevels(item.pointerType) == 1) {
-      value = parseNumerical(value, removePointing(item.pointerType));
+      value = parseNumerical(value, item.valueType);
     }
     var impl = VAR_EMULATED;
     if (item.pointer.intertype == 'value') {
@@ -776,7 +780,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('mathop', processMathop);
 
   makeFuncLineActor('bitcast', function(item) {
-    return item.ident;
+    return finalizeLLVMParameter(item.params[0]);
   });
 
   function makeFunctionCall(ident, params, funcData) {
@@ -876,6 +880,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
       print(pre);
+      print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
       if (RUNTIME_TYPE_INFO) {
         Types.cleanForRuntime();
         print('Runtime.typeInfo = ' + JSON.stringify(Types.types));

@@ -13,7 +13,7 @@ COMPILER_OPTS = ['-m32'] # Need to build as 32bit arch, for now -
                          # various errors on 64bit compilation
                          # WARNING: '-g' here will generate llvm bitcode that lli will crash on!
 
-SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-j', '-p']
+SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n']
 V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
 
 #COMPILER_ENGINE=SPIDERMONKEY_ENGINE # XXX Warning: currently appears to be broken on trunk, some file reading issue

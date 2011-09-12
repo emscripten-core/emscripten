@@ -543,7 +543,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.intertype = 'bitcast';
       item.type = item.tokens[4].text; // The final type
       Types.needAnalysis[item.type] = 0;
-      item.ident = toNiceIdent(item.tokens[2].text);
+      var to = getTokenIndexByText(item.tokens, 'to');
+      item.params = [parseLLVMSegment(item.tokens.slice(2, to))];
+      item.ident = item.params[0].ident;
       item.type2 = item.tokens[1].text; // The original type
       Types.needAnalysis[item.type2] = 0;
       this.forwardItem(item, 'Reintegrator');
@@ -791,13 +793,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // external function stub
   substrate.addActor('External', {
     processItem: function(item) {
-      if (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR) {
+      if (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.VISIBILITIES) {
         item.tokens.splice(1, 1);
       }
 
-      if (item.tokens[1].text == 'hidden') {
-        item.tokens = [item.tokens[0]].concat(item.tokens.slice(2));
-      }
       var params = parseParamTokens(item.tokens[3].item.tokens);
       return [{
         intertype: 'functionStub',

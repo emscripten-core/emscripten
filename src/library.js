@@ -3758,7 +3758,8 @@ LibraryManager.library = {
   strdup: function(ptr) {
     var len = String_len(ptr);
     var newStr = _malloc(len + 1);
-    {{{ makeCopyValues('newStr', 'ptr', 'len + 1', 'null', ' || 0') }}};
+    {{{ makeCopyValues('newStr', 'ptr', 'len', 'null') }}};
+    {{{ makeSetValue('newStr', 'len', '0', 'i8') }}};
     return newStr;
   },
 
@@ -4118,6 +4119,14 @@ LibraryManager.library = {
 
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
+  },
+
+  llvm_memory_barrier: function(){},
+
+  llvm_atomic_load_add_i32_p0i32: function(ptr, delta) {
+    var ret = {{{ makeGetValue('ptr', '0', 'i32') }}};
+    {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
+    return ret;
   },
 
   // ==========================================================================
@@ -5285,6 +5294,7 @@ LibraryManager.library = {
   pthread_mutex_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
+  pthread_cond_broadcast: function() {},
 
   // ==========================================================================
   // malloc.h

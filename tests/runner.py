@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json, difflib
 
 # Setup
 
@@ -178,7 +178,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTIONS', 'EXCEPTION_DEBUG']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTIONS', 'FAST_MEMORY', 'EXCEPTION_DEBUG']:
       try:
         value = eval(setting)
         exported_settings[setting] = value
@@ -223,17 +223,23 @@ class RunnerCore(unittest.TestCase):
     if type(value) is not str: value = value() # lazy loading
     if type(string) is not str: string = string()
     if value not in string:
-      raise Exception("Expected to find '%s' in '%s'" % (limit_size(value), limit_size(string)))
+      raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
+        limit_size(value), limit_size(string),
+        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
+      ))
 
   def assertNotContained(self, value, string):
     if type(value) is not str: value = value() # lazy loading
     if type(string) is not str: string = string()
     if value in string:
-      raise Exception("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
+      raise Exception("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
+        limit_size(value), limit_size(string),
+        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
+      ))
 
 ###################################################################################################
 
-if 'benchmark' not in sys.argv:
+if 'benchmark' not in str(sys.argv):
   # Tests
 
   print "Running Emscripten tests..."
@@ -2987,7 +2993,6 @@ if 'benchmark' not in sys.argv:
 
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17\n1\n2\n3\n4\n7',
-                      js_engines=[V8_ENGINE], # XXX Moz bug 675269
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -2997,8 +3002,10 @@ if 'benchmark' not in sys.argv:
     # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
     # memory since the test directory is destroyed and recreated for each test. Note that we cache separately
     # for different compilers)
-    def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
+    def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, build_subdir=None):
       if type(generated_libs) is not list: generated_libs = [generated_libs]
+      if build_subdir and configure.startswith('./'):
+        configure = '.' + configure
 
       if GlobalCache is not None:
         cache_name = name + '|' + COMPILER
@@ -3014,16 +3021,24 @@ if 'benchmark' not in sys.argv:
       project_dir = os.path.join(temp_dir, name)
       shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
       os.chdir(project_dir)
+      if build_subdir:
+        try:
+          os.mkdir('cbuild')
+        except:
+          pass
+        os.chdir(os.path.join(project_dir, 'cbuild'))
       env = os.environ.copy()
       env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
       env['EMMAKEN_COMPILER'] = COMPILER
       env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
-      if configure: # Useful in debugging sometimes to comment this out (and 2 lines below)
+      if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
+        env['EMMAKEN_JUST_CONFIGURE'] = '1'
         Popen(configure + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+        del env['EMMAKEN_JUST_CONFIGURE']
       Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
-      self.do_link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
+      self.do_link(map(lambda lib: os.path.join(project_dir, 'cbuild', lib) if build_subdir else os.path.join(project_dir, lib), generated_libs), bc_file)
       if cache and GlobalCache is not None:
         print >> sys.stderr, '<save build into cache> ',
         GlobalCache[cache_name] = open(bc_file, 'rb').read()
@@ -3032,7 +3047,7 @@ if 'benchmark' not in sys.argv:
     def get_freetype(self):
       global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
-      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.so'))
+      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a.bc'))
 
     def test_freetype(self):
       if QUANTUM_SIZE == 1: return self.skip() # TODO: Figure out and try to fix
@@ -3066,9 +3081,24 @@ if 'benchmark' not in sys.argv:
 
       self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
+                   libraries=[self.get_library('zlib', os.path.join('libz.a.bc'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
+
+    def zzztest_glibc(self):
+      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 1
+
+      self.do_test(r'''
+                      #include <stdio.h>
+                      int main() { printf("hai\n"); return 1; }
+                   ''',
+                   libraries=[self.get_library('glibc', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
+                                                         os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
+                                                         os.path.join('src', '.libs', 'libLinearMath.a.bc')],
+                                               configure_args=['--disable-sanity-checks'])],
+                   includes=[path_from_root('tests', 'glibc', 'include')])
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS, LLVM_OPTS
@@ -3087,9 +3117,9 @@ if 'benchmark' not in sys.argv:
 
       self.do_test(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
-                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                                          os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                                          os.path.join('src', '.libs', 'libLinearMath.a')],
+                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
+                                                          os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
+                                                          os.path.join('src', '.libs', 'libLinearMath.a.bc')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking'])],
                    includes=[path_from_root('tests', 'bullet', 'src')],
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
@@ -3152,10 +3182,10 @@ if 'benchmark' not in sys.argv:
       freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
-                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
-                                  os.path.join('goo', '.libs', 'libgoo.a'),
-                                  os.path.join('fofi', '.libs', 'libfofi.a'),
-                                  os.path.join('splash', '.libs', 'libsplash.a'),
+                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0.bc'),
+                                  os.path.join('goo', '.libs', 'libgoo.a.bc'),
+                                  os.path.join('fofi', '.libs', 'libfofi.a.bc'),
+                                  os.path.join('splash', '.libs', 'libsplash.a.bc'),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
                                  configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms'])
@@ -3168,15 +3198,13 @@ if 'benchmark' not in sys.argv:
       self.do_ll_test(combined,
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                       args='-scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post,
-                      js_engines=[V8_ENGINE]) # XXX Moz bug 675269
+                      post_build=post)
                       #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
       global USE_TYPED_ARRAYS
       global CORRECT_SIGNS
       if USE_TYPED_ARRAYS == 2:
-        return self.skip() # XXX Moz bug 675269
         CORRECT_SIGNS = 1
       else:
         CORRECT_SIGNS = 2
@@ -3201,7 +3229,7 @@ if 'benchmark' not in sys.argv:
         open(filename, 'w').write(src)
 
       lib = self.get_library('openjpeg',
-                             [os.path.join('bin', 'libopenjpeg.so'),
+                             [os.path.join('bin', 'libopenjpeg.so.1.4.0.bc'),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
@@ -3257,7 +3285,6 @@ if 'benchmark' not in sys.argv:
                              os.path.join(self.get_building_dir(), 'openjpeg')],
                    force_c=True,
                    post_build=post,
-                   js_engines=[V8_ENGINE], # XXX Moz bug 675269
                    output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
 
     def test_python(self):
@@ -3271,7 +3298,6 @@ if 'benchmark' not in sys.argv:
 
       self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
-                      js_engines=[V8_ENGINE], # XXX Moz bug 675269
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
                       extra_emscripten_args=['-m'])
 
@@ -3426,6 +3452,10 @@ if 'benchmark' not in sys.argv:
             Child2() : Parent(9) { printf("Child2:%d\\n", value); };
             int getValCube() { return value*value*value; }
             static void printStatic() { printf("*static*\\n"); }
+
+            virtual void virtualFunc() { printf("*virtualf*\\n"); }
+            virtual void virtualFunc2() { printf("*virtualf2*\\n"); }
+            static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
           private:
             void doSomethingSecret() { printf("security breached!\\n"); }; // we should not be able to do this
           };
@@ -3501,6 +3531,32 @@ if 'benchmark' not in sys.argv:
 
           Child2.prototype.printStatic(); // static calls go through the prototype
 
+          // virtual function
+          c2.virtualFunc();
+          Child2.prototype.runVirtualFunc(c2);
+          c2.virtualFunc2();
+
+          // extend the class from JS
+          var c3 = new Child2;
+          customizeVTable(c3, [{
+            original: Child2.prototype.virtualFunc,
+            replacement: function() {
+              print('*js virtualf replacement*');
+            }
+          }, {
+            original: Child2.prototype.virtualFunc2,
+            replacement: function() {
+              print('*js virtualf2 replacement*');
+            }
+          }]);
+          c3.virtualFunc();
+          Child2.prototype.runVirtualFunc(c3);
+          c3.virtualFunc2();
+
+          c2.virtualFunc(); // original should remain the same
+          Child2.prototype.runVirtualFunc(c2);
+          c2.virtualFunc2();
+
           print('*ok*');
         '''
 
@@ -3539,6 +3595,17 @@ Child2:9
 0
 1
 *static*
+*virtualf*
+*virtualf*
+*virtualf2*
+Parent:9
+Child2:9
+*js virtualf replacement*
+*js virtualf replacement*
+*js virtualf2 replacement*
+*virtualf*
+*virtualf*
+*virtualf2*
 *ok*
 ''', post_build=post2)
 
@@ -3975,7 +4042,8 @@ TT = %s
       self.assertEquals(output, expected)
 
 else:
-  # Benchmarks
+  # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
+  # |benchmark.test_X|.
 
   print "Running Emscripten benchmarks..."
 
@@ -4008,6 +4076,7 @@ else:
   CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
   LLVM_OPTS = 1
   DISABLE_EXCEPTIONS = 1
+  FAST_MEMORY = 10*1024*1024
 
   TEST_REPS = 4
   TOTAL_TESTS = 6
@@ -4016,7 +4085,7 @@ else:
   total_times = map(lambda x: 0., range(TEST_REPS))
   total_native_times = map(lambda x: 0., range(TEST_REPS))
 
-  class Benchmark(RunnerCore):
+  class benchmark(RunnerCore):
     def print_stats(self, times, native_times):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
@@ -4156,7 +4225,7 @@ else:
       old_quantum = QUANTUM_SIZE
       old_use_typed_arrays = USE_TYPED_ARRAYS
       QUANTUM_SIZE = 1
-      USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code
+      USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code. However, TA2 is much faster (2X)
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['7', '256'], '256 256')

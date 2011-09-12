@@ -320,7 +320,7 @@ function setValue(ptr, value, type) {
     default: abort('invalid type for setValue: ' + type);
   }
 }
-this['setValue'] = setValue;
+Module['setValue'] = setValue;
 
 // Parallel to setValue.
 
@@ -338,7 +338,7 @@ function getValue(ptr, type) {
   }
   return null;
 }
-this['getValue'] = getValue;
+Module['getValue'] = getValue;
 
 // Allocates memory for some data and initializes it properly.
 
@@ -428,7 +428,8 @@ var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
 
 var HAS_TYPED_ARRAYS = false;
-var TOTAL_MEMORY = 50*1024*1024;
+var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
+var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
@@ -459,9 +460,8 @@ if (HAS_TYPED_ARRAYS) {
 } else
 #endif
 {
-  // Without this optimization, Chrome is slow. Sadly, the constant here needs to be tweaked depending on the code being run...
-  var FAST_MEMORY = TOTAL_MEMORY/32;
-  HEAP = new Array(FAST_MEMORY);
+  // Make sure that our HEAP is implemented as a flat array.
+  HEAP = new Array(TOTAL_MEMORY);
   for (var i = 0; i < FAST_MEMORY; i++) {
     HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
   }
