@@ -3586,6 +3586,11 @@ LibraryManager.library = {
     return String_len(ptr);
   },
 
+  // TODO: Implement when we have real unicode support.
+  mblen: function() {
+    return 1;
+  },
+
   strspn: function(pstr, pset) {
     var str = String_copy(pstr, true);
     var set = String_copy(pset);
