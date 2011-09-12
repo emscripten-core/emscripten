@@ -780,10 +780,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
+    var useJSArgs = (ident.slice(1) + '__jsargs') in LibraryManager.library;
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
-      if (!func || !func.hasVarArgs || i < func.numParams-1) {
+      if (!func || !func.hasVarArgs || i < func.numParams-1 || useJSArgs) {
         args.push(val);
         argsTypes.push(param.type);
       } else {
@@ -797,7 +798,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     varargs = varargs.map(function(vararg, i) { return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i]) });
 
-    if (func && func.hasVarArgs) {
+    if (func && func.hasVarArgs && !useJSArgs) {
       if (varargs.length === 0) {
         varargs = [0];
         varargsTypes = ['i32'];
