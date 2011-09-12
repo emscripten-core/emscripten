@@ -207,6 +207,24 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         }
         var constant = null;
         if (item.external) {
+          // Import external global variables from the library if available.
+          if (LibraryManager.library[item.ident.slice(1)] &&
+              LibraryManager.library[item.ident.slice(1)].length &&
+              !BUILD_AS_SHARED_LIB) {
+            var val = LibraryManager.library[item.ident.slice(1)];
+            val = val.concat(zeros(generateStructTypes(item.type).length-1));
+            val = JSON.stringify(val);
+            ret.push({
+              intertype: 'GlobalVariablePostSet',
+              JS: item.ident + '=' + makePointer(val, null, 'ALLOC_STATIC', item.type) + ';'
+            });
+            if (LibraryManager.library[item.ident.slice(1) + '__postset']) {
+            ret.push({
+              intertype: 'GlobalVariablePostSet',
+              JS: LibraryManager.library[item.ident.slice(1) + '__postset']
+            });
+            }
+          }
           return ret;
         } else {
           function needsPostSet(value) {
