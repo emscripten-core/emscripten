@@ -795,6 +795,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.tokens.splice(1, 1);
       }
 
+      if (item.tokens[1].text == 'hidden') {
+        item.tokens = [item.tokens[0]].concat(item.tokens.slice(2));
+      }
       var params = parseParamTokens(item.tokens[3].item.tokens);
       return [{
         intertype: 'functionStub',
