@@ -5185,6 +5185,24 @@ LibraryManager.library = {
   __errno_location: function() {
     return ___setErrNo.ret;
   },
+  // ==========================================================================
+  // sys/resource.h
+  // ==========================================================================
+
+  // TODO: Implement for real.
+  __rlimit_struct_layout: Runtime.generateStructInfo(null, '%struct.rlimit'),
+  getrlimit__deps: ['__rlimit_struct_layout'],
+  getrlimit: function(resource, rlp) {
+    // int getrlimit(int resource, struct rlimit *rlp);
+    {{{ makeSetValue('rlp', '___rlimit_struct_layout.rlim_cur', '-1', 'i32') }}}  // RLIM_INFINITY
+    {{{ makeSetValue('rlp', '___rlimit_struct_layout.rlim_max', '-1', 'i32') }}}  // RLIM_INFINITY
+    return 0;
+  },
+  setrlimit: function(resource, rlp) {
+    // int setrlimit(int resource, const struct rlimit *rlp)
+    return 0;
+  },
+  __01getrlimit64_: 'getrlimit',
 
   // ==========================================================================
   // pthread.h (stubs for mutexes only - no thread support yet!)
