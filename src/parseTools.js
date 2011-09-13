@@ -1162,6 +1162,8 @@ function processMathop(item) { with(item) {
       item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
     }
   }
+  var originalIdent1 = ident1;
+  var originalIdent2 = ident2;
   if (isUnsignedOp(op, variant)) {
     ident1 = makeSignOp(ident1, paramTypes[0], 'un');
     ident2 = makeSignOp(ident2, paramTypes[1], 'un');
@@ -1227,10 +1229,12 @@ function processMathop(item) { with(item) {
     }
     case 'ashr': {
       if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
+      if (bits === 32) return originalIdent1 + ' >> ' + ident2; // No need to reSign in this case
       return ident1 + ' >> ' + ident2;
     }
     case 'lshr': {
       if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
+      if (bits === 32) return originalIdent1 + ' >>> ' + ident2; // No need to unSign in this case
       return ident1 + ' >>> ' + ident2;
     }
     // basic float ops
