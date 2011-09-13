@@ -145,3 +145,26 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, q
       if optimization_level > 1: opts.append('-constmerge')
 
   return opts
+
+def read_auto_optimize_data(filename):
+  '''
+    Reads the output of AUTO_OPTIMIZE and generates proper information for CORRECT_* == 2 's *_LINES options
+  '''
+  signs_lines = []
+  overflows_lines = []
+  
+  for line in open(filename, 'r'):
+    if line.rstrip() == '': continue
+    if '%0 failures' in line: continue
+    left, right = line.split(' : ')
+    signature = left.split('|')[1]
+    if 'Sign' in left:
+      signs_lines.append(signature)
+    elif 'Overflow' in left:
+      overflows_lines.append(signature)
+
+  return {
+    'signs_lines': signs_lines,
+    'overflows_lines': overflows_lines
+  }
+
