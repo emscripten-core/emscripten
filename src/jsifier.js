@@ -732,6 +732,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var ret = '(function() { try { __THREW__ = false; return '
             + call_ + ' '
             + '} catch(e) { '
+            + 'if (typeof e != "number") throw e; '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
             + 'return null } })(); if (!__THREW__) { ' + branch
