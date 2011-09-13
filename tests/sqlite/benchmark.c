@@ -81,7 +81,7 @@ int main(){
   RUN("BEGIN;");
 
   // 25000 INSERTs in a transaction
-  for (i = 0; i < 5; i++) {
+  for (i = 0; i < 78; i++) {
     RUN("INSERT INTO t1 VALUES(1,12345,'one 1 one 1 one 1');");
     RUN("INSERT INTO t1 VALUES(2,23422,'two two two two');");
     RUN("INSERT INTO t1 VALUES(3,31233,'three three 33333333333 three');");
