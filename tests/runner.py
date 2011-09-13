@@ -3091,11 +3091,14 @@ if 'benchmark' not in str(sys.argv):
       if QUANTUM_SIZE == 1 or USE_TYPED_ARRAYS == 2: return self.skip('TODO FIXME')
       RELOOP = 0 # too slow
 
-      #global AUTO_OPTIMIZE; AUTO_OPTIMIZE = 1
+      auto_optimize_data = read_auto_optimize_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
+
       global CORRECT_SIGNS; CORRECT_SIGNS = 1
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
+      #global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = auto_optimize_data['signs_lines']
+      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0
       global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 1
       global SAFE_HEAP; SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
+      global DISABLE_EXCEPTIONS; DISABLE_EXCEPTIONS = 1
 
       global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
 
@@ -3123,6 +3126,7 @@ if 'benchmark' not in str(sys.argv):
                    includes=[path_from_root('tests', 'sqlite')],
                    force_c=True,
                    extra_emscripten_args=['-m'],
+                   js_engines=[SPIDERMONKEY_ENGINE], # V8 is slow
                    post_build=post)#,build_ll_hook=self.do_autodebug)
 
     def test_zlib(self):
