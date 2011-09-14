@@ -3087,6 +3087,7 @@ if 'benchmark' not in str(sys.argv):
                    #build_ll_hook=self.do_autodebug)
 
     def test_sqlite(self):
+      # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
       global QUANTUM_SIZE, OPTIMIZE, RELOOP, USE_TYPED_ARRAYS
       if QUANTUM_SIZE == 1 or USE_TYPED_ARRAYS == 2: return self.skip('TODO FIXME')
       RELOOP = 0 # too slow
@@ -3099,6 +3100,7 @@ if 'benchmark' not in str(sys.argv):
       global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 0
       global SAFE_HEAP; SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
       global DISABLE_EXCEPTIONS; DISABLE_EXCEPTIONS = 1
+      global FAST_MEMORY; FAST_MEMORY = 4*1024*1024
 
       global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
 
