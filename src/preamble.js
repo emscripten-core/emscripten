@@ -216,7 +216,7 @@ var CorrectionsMonitor = {
     items.sort(function(x, y) { return y.total - x.total; });
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      print(item.sig + ' : ' + item.total + ' hits, %' + (Math.floor(100*item.fails/item.total)) + ' failures');
+      print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
     }
   }
 };
