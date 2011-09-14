@@ -288,8 +288,7 @@ var __ATEXIT__ = [];
 var ABORT = false;
 
 var undef = 0;
-var tempValue;
-var tempNumber;
+var tempValue, tempInt, tempBigInt;
 
 function abort(text) {
   print(text + ':\n' + (new Error).stack);

@@ -1118,12 +1118,20 @@ function makeSignOp(value, type, op) {
   }
   if (!correctSigns() && !CHECK_SIGNS) return value;
   if (type in Runtime.INT_TYPES) {
-    // shortcuts for 32-bit case
-    if (bits === 32 && !CHECK_SIGNS) {
-      if (op === 're') {
-        return '((' + value + ')|0)';
-      } else {
-        return '((' + value + ')>>>0)';
+    // shortcuts
+    if (!CHECK_SIGNS) {
+      if (bits === 32) {
+        if (op === 're') {
+          return '((' + value + ')|0)';
+        } else {
+          return '((' + value + ')>>>0)';
+        }
+      } else if (bits < 32) {
+        if (op === 'un') {
+          return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
+        } else {
+          return '(tempInt=(' + value + '),(tempInt>=' + Math.pow(2, bits-1) + '?tempInt-' + Math.pow(2, bits) + ':tempInt))';
+        }
       }
     }
     return full;
@@ -1178,7 +1186,7 @@ function processMathop(item) { with(item) {
   var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
 
   function integerizeBignum(value) {
-    return '(tempNumber=(' + value + '), tempNumber-tempNumber%1)';
+    return '(tempBigInt=(' + value + '), tempBigInt-tempBigInt%1)';
   }
 
   switch (op) {
