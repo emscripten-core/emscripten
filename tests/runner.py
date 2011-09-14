@@ -3093,8 +3093,9 @@ if 'benchmark' not in str(sys.argv):
 
       auto_optimize_data = read_auto_optimize_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
 
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1
-      #global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = auto_optimize_data['signs_lines']
+      global CORRECT_SIGNS; CORRECT_SIGNS = 2
+      global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = auto_optimize_data['signs_lines']
+      # TODO: Fast unSign for 8-bit values!
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0
       global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 1
       global SAFE_HEAP; SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
