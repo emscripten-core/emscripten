@@ -4031,7 +4031,7 @@ Child2:9
       def check(output):
         # TODO: check the line #
         assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections'
-        assert 'UnSign|src.cpp:13 : 6 hits, %16 failures' in output, 'no indication of Sign corrections'
+        assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections'
         return output
 
       self.do_test(src, '*186854335,63*\n', output_nicerizer=check)
