@@ -207,8 +207,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         }
         var constant = null;
         if (item.external) {
-          var shortident = item.ident.slice(1);
           // Import external global variables from the library if available.
+          var shortident = item.ident.slice(1);
           if (LibraryManager.library[shortident] &&
               LibraryManager.library[shortident].length &&
               !BUILD_AS_SHARED_LIB) {
