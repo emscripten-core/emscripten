@@ -207,23 +207,21 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         }
         var constant = null;
         if (item.external) {
+          var shortident = item.ident.slice(1);
           // Import external global variables from the library if available.
-          if (LibraryManager.library[item.ident.slice(1)] &&
-              LibraryManager.library[item.ident.slice(1)].length &&
+          if (LibraryManager.library[shortident] &&
+              LibraryManager.library[shortident].length &&
               !BUILD_AS_SHARED_LIB) {
-            var val = LibraryManager.library[item.ident.slice(1)];
-            val = val.concat(zeros(generateStructTypes(item.type).length-1));
-            val = JSON.stringify(val);
-            ret.push({
-              intertype: 'GlobalVariablePostSet',
-              JS: item.ident + '=' + makePointer(val, null, 'ALLOC_STATIC', item.type) + ';'
-            });
-            if (LibraryManager.library[item.ident.slice(1) + '__postset']) {
-            ret.push({
-              intertype: 'GlobalVariablePostSet',
-              JS: LibraryManager.library[item.ident.slice(1) + '__postset']
-            });
+            var val = LibraryManager.library[shortident];
+            var padded = val.concat(makeEmptyStruct(item.type).slice(val.length));
+            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, 'ALLOC_STATIC', item.type) + ';'
+            if (LibraryManager.library[shortident + '__postset']) {
+              js += '\n' + LibraryManager.library[shortident + '__postset'];
             }
+            ret.push({
+              intertype: 'GlobalVariablePostSet',
+              JS: js
+            });
           }
           return ret;
         } else {
