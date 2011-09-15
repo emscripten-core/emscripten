@@ -1,0 +1,50 @@
+*CREATING A FOO
+*CREATING A BAR
+*CREATING A QUUX
+start
+
+
+  throwing ExFooInstance
+*COPYING A FOO
+*COPYING A FOO
+outer catch foo: 11
+*DESTROYING A FOO (11)
+*DESTROYING A FOO (11)
+
+
+  throwing ExBarInstance
+*COPYING A BAR
+*COPYING A BAR
+inner re-throw: 22
+*DESTROYING A BAR (22)
+outer catch bar-ref: 22
+*DESTROYING A BAR (22)
+
+
+  throwing ExQuuxInstance
+*COPYING A QUUX
+*COPYING A QUUX
+inner catch quux: 33
+*DESTROYING A QUUX (33)
+*DESTROYING A QUUX (33)
+
+
+
+
+
+
+  throwing 42
+outer catch int: 42
+
+
+  throwing NULL
+outer catch-all
+
+
+  not throwing
+
+
+end
+*DESTROYING A QUUX (33)
+*DESTROYING A BAR (22)
+*DESTROYING A FOO (11)

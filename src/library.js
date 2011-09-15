@@ -255,7 +255,7 @@ LibraryManager.library = {
         xhr.open('GET', obj.url, false);
 
         // Some hints to the browser that we want binary data.
-        xhr.responseType = 'arraybuffer';
+        if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
         if (xhr.overrideMimeType) {
           xhr.overrideMimeType('text/plain; charset=x-user-defined');
         }
@@ -316,7 +316,7 @@ LibraryManager.library = {
             // Command line.
             result = readline();
           }
-          if (!result) return null;
+          if (!result) result = '';
           input.cache = intArrayFromString(result + '\n', true);
         }
         return input.cache.shift();
@@ -2103,6 +2103,7 @@ LibraryManager.library = {
   },
   __01open64_: 'open',
   __01lseek64_: 'lseek',
+  __01truncate64_: 'truncate',
   __01ftruncate64_: 'ftruncate',
   // TODO: Check if any other aliases are needed.
 
@@ -3078,6 +3079,7 @@ LibraryManager.library = {
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
   __01fopen64_: 'fopen',
+  __01freopen64_: 'freopen',
   __01fseeko64_: 'fseek',
   __01ftello64_: 'ftell',
   __01tmpfile64_: 'tmpfile',
@@ -3584,6 +3586,11 @@ LibraryManager.library = {
     return String_len(ptr);
   },
 
+  // TODO: Implement when we have real unicode support.
+  mblen: function() {
+    return 1;
+  },
+
   strspn: function(pstr, pset) {
     var str = String_copy(pstr, true);
     var set = String_copy(pset);
@@ -3607,6 +3614,14 @@ LibraryManager.library = {
       i ++;
     } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
     return pdest;
+  },
+  stpcpy: function(pdest, psrc) {
+    var i = 0;
+    do {
+      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8') }}}
+      i ++;
+    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
+    return pdest + i - 1;
   },
 
   strncpy: function(pdest, psrc, num) {
@@ -3978,25 +3993,75 @@ LibraryManager.library = {
     return 1;
   },
 
-  // Exceptions - minimal support, only (...) for now (no actual exception objects can be caught)
+  // Exceptions
   __cxa_allocate_exception: function(size) {
-    return _malloc(size); // warning: leaked
+    return _malloc(size);
   },
-  __cxa_throw: function(ptr, data, dunno) {
+  __cxa_free_exception: function(ptr) {
+    return _free(ptr);
+  },
+  __cxa_throw__deps: ['llvm_eh_exception'],
+  __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
-    print('Compiled code throwing an exception, ' + [ptr,data,dunno] + ', at ' + new Error().stack);
+    print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
 #endif
+    {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', '4', 'type', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', '8', 'destructor', 'void*') }}}
     throw ptr;
   },
-  llvm_eh_exception: function() {
-    return 'code-generated exception: ' + (new Error().stack);
+  __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
+  __cxa_rethrow: function() {
+    ___cxa_end_catch.rethrown = true;
+    throw {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
   },
-  llvm_eh_selector: function(exception, personality, num) {
+  llvm_eh_exception__postset: '_llvm_eh_exception.buf = allocate(12, "void*", ALLOC_STATIC);',
+  llvm_eh_exception: function() {
+    return {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+  },
+  llvm_eh_selector__jsargs: true,
+  llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
+    var type = {{{ makeGetValue('_llvm_eh_exception.buf', '4', 'void*') }}}
+    for (var i = 2; i < arguments.length; i++) {
+      if (arguments[i] ==  type) return type;
+    }
     return 0;
   },
-  __cxa_begin_catch: function(ptr) {
+  llvm_eh_typeid_for: function(type) {
+    return type;
   },
-  __cxa_end_catch: function(ptr) {
+  _Unwind_Resume_or_Rethrow: function(ptr) {
+    throw ptr;
+  },
+  __cxa_begin_catch: function(ptr) {
+    return ptr;
+  },
+  __cxa_end_catch__deps: ['llvm_eh_exception', '__cxa_free_exception'],
+  __cxa_end_catch: function() {
+    if (___cxa_end_catch.rethrown) {
+      ___cxa_end_catch.rethrown = false;
+      return;
+    }
+    // Clear state flag.
+    __THREW__ = false;
+    // Clear type.
+    {{{ makeSetValue('_llvm_eh_exception.buf', '4', '0', 'void*') }}}
+    // Call destructor if one is registered then clear it.
+    var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', '8', 'void*') }}};
+    if (destructor) {
+      FUNCTION_TABLE[destructor](ptr);
+      {{{ makeSetValue('_llvm_eh_exception.buf', '8', '0', 'i32') }}}
+    }
+    // Free ptr if it isn't null.
+    if (ptr) {
+      ___cxa_free_exception(ptr);
+      {{{ makeSetValue('_llvm_eh_exception.buf', '0', '0', 'void*') }}}
+    }
+  },
+  __cxa_get_exception_ptr__deps: ['llvm_eh_exception'],
+  __cxa_get_exception_ptr: function(ptr) {
+    return ptr;
   },
 
   __cxa_call_unexpected: function(exception) {
@@ -4004,8 +4069,28 @@ LibraryManager.library = {
     throw exception;
   },
 
+  terminate: '__cxa_call_unexpected',
+
   __gxx_personality_v0: function() {
   },
+
+  // RTTI hacks for exception handling, defining type_infos for common types.
+  // The values are dummies. We simply use the addresses of these statically
+  // allocated variables as unique identifiers.
+  // type_info for int.
+  _ZTIi: [0],
+  // type_info for long.
+  _ZTIl: [0],
+  // type_info for long long.
+  _ZTIx: [0],
+  // type_info for float.
+  _ZTIf: [0],
+  // type_info for double.
+  _ZTId: [0],
+  // type_info for char.
+  _ZTIc: [0],
+  // type_info for void.
+  _ZTIv: [0],
 
   llvm_umul_with_overflow_i32: function(x, y) {
     return {
@@ -4665,6 +4750,28 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
+  __timespec_struct_layout: Runtime.generateStructInfo(null, '%struct.timespec'),
+  // TODO: Implement these for real.
+  clock_gettime__deps: ['__timespec_struct_layout'],
+  clock_gettime: function(clk_id, tp) {
+    // int clock_gettime(clockid_t clk_id, struct timespec *tp);
+    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_sec', '0', 'i32') }}}
+    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return 0;
+  },
+  clock_settime: function(clk_id, tp) {
+    // int clock_settime(clockid_t clk_id, const struct timespec *tp);
+    // Nothing.
+    return 0;
+  },
+  clock_getres__deps: ['__timespec_struct_layout'],
+  clock_getres: function(clk_id, res) {
+    // int clock_getres(clockid_t clk_id, struct timespec *res);
+    {{{ makeSetValue('res', '___timespec_struct_layout.tv_sec', '1', 'i32') }}}
+    {{{ makeSetValue('res', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return 0;
+  },
+
   // TODO: Implement remaining functions.
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
@@ -4735,6 +4842,23 @@ LibraryManager.library = {
     // TODO
     return 0;
   },
+  sigemptyset: function(set) {
+    // int sigemptyset(sigset_t *set);
+    // TODO: Implement for real; don't hardcode offsets.
+    {{{ makeSetValue('set', '0', '0', 'i32') }}}
+    {{{ makeSetValue('set', '4', '0', 'i32') }}}
+    {{{ makeSetValue('set', '8', '0', 'i32') }}}
+    {{{ makeSetValue('set', '12', '0', 'i32') }}}
+    return 0;
+  },
+  sigfillset: 'sigemptyset',
+  sigdelset: 'sigemptyset',
+  sigaction: function(set) {
+    // int sigemptyset(sigset_t *set);
+    // TODO: Implement for real.
+    return 0;
+  },
+  sigprocmask: 'sigaction',
   __libc_current_sigrtmin: function() {
     return 0;
   },
@@ -5145,6 +5269,24 @@ LibraryManager.library = {
   __errno_location: function() {
     return ___setErrNo.ret;
   },
+  // ==========================================================================
+  // sys/resource.h
+  // ==========================================================================
+
+  // TODO: Implement for real.
+  __rlimit_struct_layout: Runtime.generateStructInfo(null, '%struct.rlimit'),
+  getrlimit__deps: ['__rlimit_struct_layout'],
+  getrlimit: function(resource, rlp) {
+    // int getrlimit(int resource, struct rlimit *rlp);
+    {{{ makeSetValue('rlp', '___rlimit_struct_layout.rlim_cur', '-1', 'i32') }}}  // RLIM_INFINITY
+    {{{ makeSetValue('rlp', '___rlimit_struct_layout.rlim_max', '-1', 'i32') }}}  // RLIM_INFINITY
+    return 0;
+  },
+  setrlimit: function(resource, rlp) {
+    // int setrlimit(int resource, const struct rlimit *rlp)
+    return 0;
+  },
+  __01getrlimit64_: 'getrlimit',
 
   // ==========================================================================
   // pthread.h (stubs for mutexes only - no thread support yet!)
