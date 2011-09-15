@@ -5,29 +5,29 @@ public:
   int x;
   ExFoo(int x) { this->x = x; printf("*CREATING A FOO\n"); }
   ExFoo(const ExFoo& other)  { x=other.x; printf("*COPYING A FOO\n"); }
-  ~ExFoo() { printf("*DESTROYING A FOO\n"); }
+  ~ExFoo() { printf("*DESTROYING A FOO (%d)\n", x); }
 } ExFooInstance(11);
 class ExBar {
 public:
   int x;
   ExBar(int x) { this->x = x; printf("*CREATING A BAR\n"); }
   ExBar(const ExBar& other)  { x=other.x; printf("*COPYING A BAR\n"); }
-  ~ExBar() { printf("*DESTROYING A BAR\n"); }
+  ~ExBar() { printf("*DESTROYING A BAR (%d)\n", x); }
 } ExBarInstance(22);
 class ExQuux {
 public:
   int x;
   ExQuux(int x) { this->x = x; printf("*CREATING A QUUX\n"); }
   ExQuux(const ExQuux& other)  { x=other.x; printf("*COPYING A QUUX\n"); }
-  ~ExQuux() { printf("*DESTROYING A QUUX\n"); }
+  ~ExQuux() { printf("*DESTROYING A QUUX (%d)\n", x); }
 } ExQuuxInstance(33);
-class ExChild : public ExQuux {
-public:
-  int x;
-  ExChild(int x) : ExQuux(x) { this->x = x; printf("*CREATING A CHILD\n"); }
-  ExChild(const ExChild& other) : ExQuux(x)  { x=other.x; printf("*COPYING CHILD\n"); }
-  ~ExChild() { printf("*DESTROYING A CHILD\n"); }
-} ExChildInstance(44);
+// NOTE: Throwing pointers and polymorphic matching not supported.
+// class ExChild : public ExQuux {
+// public:
+//   ExChild(int x) : ExQuux(x) { printf("*CREATING A CHILD\n"); }
+//   ExChild(const ExChild& other) : ExQuux(x)  { x=other.x; printf("*COPYING CHILD\n"); }
+//   ~ExChild() { printf("*DESTROYING A CHILD (%d)\n", x); }
+// } ExChildInstance(44);
 
 void magic(int which) {
   try {

@@ -4044,17 +4044,19 @@ LibraryManager.library = {
     }
     // Clear state flag.
     __THREW__ = false;
-    // Free ptr if it isn't null.
-    if ({{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}}) {
-      ___cxa_free_exception({{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}});
-      {{{ makeSetValue('_llvm_eh_exception.buf', '0', '0', 'void*') }}}
-    }
     // Clear type.
     {{{ makeSetValue('_llvm_eh_exception.buf', '4', '0', 'void*') }}}
     // Call destructor if one is registered then clear it.
-    if ({{{ makeGetValue('_llvm_eh_exception.buf', '8', 'void*') }}}) {
-      FUNCTION_TABLE[{{{ makeGetValue('_llvm_eh_exception.buf', '8', 'void*') }}}]();
+    var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', '8', 'void*') }}};
+    if (destructor) {
+      FUNCTION_TABLE[destructor](ptr);
       {{{ makeSetValue('_llvm_eh_exception.buf', '8', '0', 'i32') }}}
+    }
+    // Free ptr if it isn't null.
+    if (ptr) {
+      ___cxa_free_exception(ptr);
+      {{{ makeSetValue('_llvm_eh_exception.buf', '0', '0', 'void*') }}}
     }
   },
   __cxa_get_exception_ptr__deps: ['llvm_eh_exception'],
