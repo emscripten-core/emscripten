@@ -268,7 +268,7 @@ function reSign(value, bits, ignore, sig) {
 #if CHECK_SIGNS
   var noted = false;
 #endif
-  if (value >= half) {
+  if (value >= half && (bits <= 32 || value > half)) { // for huge values, we can hit the precision limit and always get true here. so don't do that
 #if CHECK_SIGNS
     if (!ignore) {
       CorrectionsMonitor.note('ReSign', 0, sig);

@@ -2338,9 +2338,9 @@ LibraryManager.library = {
           var argText;
           var prefix = '';
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
-            argText = currAbsArg.toString(10);
+            argText = reSign(currArg, 8 * argSize, 1).toString(10);
           } else if (next == 'u'.charCodeAt(0)) {
-            argText = unSign(currArg, 8 * argSize).toString(10);
+            argText = unSign(currArg, 8 * argSize, 1).toString(10);
             currArg = Math.abs(currArg);
           } else if (next == 'o'.charCodeAt(0)) {
             argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
@@ -2377,11 +2377,13 @@ LibraryManager.library = {
             }
           }
 
-          // Add sign.
-          if (currArg < 0) {
-            prefix = '-' + prefix;
-          } else if (flagAlwaysSigned) {
-            prefix = '+' + prefix;
+          // Add sign if needed
+          if (flagAlwaysSigned) {
+            if (currArg < 0) {
+              prefix = '-' + prefix;
+            } else {
+              prefix = '+' + prefix;
+            }
           }
 
           // Add padding.

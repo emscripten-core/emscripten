@@ -23,6 +23,7 @@ LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
 
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
+EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 
 # Engine tweaks
 

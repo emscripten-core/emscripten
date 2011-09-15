@@ -217,7 +217,7 @@ class RunnerCore(unittest.TestCase):
     return ret
 
   def run_llvm_interpreter(self, args):
-    return Popen([LLVM_INTERPRETER] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
+    return Popen([EXEC_LLVM] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
   def build_native(self, filename, compiler='g++'):
     Popen([compiler, '-O3', filename, '-o', filename+'.native'], stdout=PIPE, stderr=STDOUT).communicate()[0]
@@ -429,6 +429,13 @@ if 'benchmark' not in str(sys.argv):
           const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
           int main()
           {
+            {
+              unsigned char x = 200;
+              printf("*%d*\\n", x);
+              unsigned char y = -22;
+              printf("*%d*\\n", y);
+            }
+
             int varey = 100;
             unsigned int MAXEY = -1, MAXEY2 = -77;
             printf("*%u,%d,%u*\\n", MAXEY, varey >= MAXEY, MAXEY2); // 100 >= -1? not in unsigned!
@@ -453,7 +460,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
+        self.do_test(src)#, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
 
         # Now let's see some code that should just work in USE_TYPED_ARRAYS == 2, but requires
         # corrections otherwise

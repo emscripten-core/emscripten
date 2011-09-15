@@ -41,8 +41,6 @@ def path_from_root(*pathelems):
   return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
-print '// EXEC_LLVM: ', sys.argv
-
 Popen([LLVM_OPT, sys.argv[1], '-strip-debug', '-o=' + sys.argv[1]+'.clean.bc']).communicate()[0]
 
 # Execute with empty environment - just like the JS script will have
