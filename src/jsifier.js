@@ -213,7 +213,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               LibraryManager.library[shortident].length &&
               !BUILD_AS_SHARED_LIB) {
             var val = LibraryManager.library[shortident];
-            var padded = val.concat(makeEmptyStruct(item.type).slice(val.length));
+            var padding;
+            if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+              padding = [item.type].concat(zeros(getNativeFieldSize(item.type)));
+            } else {
+              padding = makeEmptyStruct(item.type);
+            }
+            var padded = val.concat(padding.slice(val.length));
             var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, 'ALLOC_STATIC', item.type) + ';'
             if (LibraryManager.library[shortident + '__postset']) {
               js += '\n' + LibraryManager.library[shortident + '__postset'];
