@@ -209,6 +209,28 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         }
         var constant = null;
         if (item.external) {
+          // Import external global variables from the library if available.
+          var shortident = item.ident.slice(1);
+          if (LibraryManager.library[shortident] &&
+              LibraryManager.library[shortident].length &&
+              !BUILD_AS_SHARED_LIB) {
+            var val = LibraryManager.library[shortident];
+            var padding;
+            if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+              padding = [item.type].concat(zeros(getNativeFieldSize(item.type)));
+            } else {
+              padding = makeEmptyStruct(item.type);
+            }
+            var padded = val.concat(padding.slice(val.length));
+            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, 'ALLOC_STATIC', item.type) + ';'
+            if (LibraryManager.library[shortident + '__postset']) {
+              js += '\n' + LibraryManager.library[shortident + '__postset'];
+            }
+            ret.push({
+              intertype: 'GlobalVariablePostSet',
+              JS: js
+            });
+          }
           return ret;
         } else {
           function needsPostSet(value) {
@@ -723,6 +745,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var ret = '(function() { try { __THREW__ = false; return '
             + call_ + ' '
             + '} catch(e) { '
+            + 'if (typeof e != "number") throw e; '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
             + 'return null } })(); if (!__THREW__) { ' + branch
@@ -806,10 +829,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
+    var useJSArgs = (ident.slice(1) + '__jsargs') in LibraryManager.library;
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
-      if (!func || !func.hasVarArgs || i < func.numParams-1) {
+      if (!func || !func.hasVarArgs || i < func.numParams-1 || useJSArgs) {
         args.push(val);
         argsTypes.push(param.type);
       } else {
@@ -823,7 +847,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     varargs = varargs.map(function(vararg, i) { return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i]) });
 
-    if (func && func.hasVarArgs) {
+    if (func && func.hasVarArgs && !useJSArgs) {
       if (varargs.length === 0) {
         varargs = [0];
         varargsTypes = ['i32'];
