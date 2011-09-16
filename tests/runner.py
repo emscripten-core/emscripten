@@ -180,7 +180,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTIONS', 'FAST_MEMORY']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTIONS', 'FAST_MEMORY', 'EXCEPTION_DEBUG']:
       try:
         value = eval(setting)
         exported_settings[setting] = value
@@ -993,6 +993,13 @@ if 'benchmark' not in str(sys.argv):
         global DISABLE_EXCEPTIONS
         DISABLE_EXCEPTIONS = 1
         self.do_test(src, 'Compiled code throwing an exception')
+
+    def test_typed_exceptions(self):
+        global SAFE_HEAP; SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
+        global EXCEPTION_DEBUG; EXCEPTION_DEBUG = 0  # Messes up expected output.
+        src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
+        expected = open(path_from_root('tests', 'exceptions', 'output.txt'), 'r').read()
+        self.do_test(src, expected)
 
     def test_class(self):
         src = '''

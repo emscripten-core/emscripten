@@ -442,8 +442,17 @@ function customizeVTable(object, replacementPairs) {
     FUNCTION_TABLE.push(0);
     setValue(vTable2 + Runtime.QUANTUM_SIZE*i, index, 'void*');
   }
+  var args = [{ptr: 0}];
   replacementPairs.forEach(function(pair) {
-    pair.original.call(object);
+    // We need the wrapper function that converts arguments to not fail. Keep adding arguments til it works.
+    while(1) {
+      try {
+        pair['original'].apply(object, args);
+        break;
+      } catch(e) {
+        args.push(args[0]);
+      }
+    }
     pair.originalIndex = getValue(vTable + canaryValue*Runtime.QUANTUM_SIZE, 'void*');
   });
   FUNCTION_TABLE = FUNCTION_TABLE.slice(0, functions);
@@ -453,7 +462,7 @@ function customizeVTable(object, replacementPairs) {
   var replacements = {};
   replacementPairs.forEach(function(pair) {
     var replacementIndex = FUNCTION_TABLE.length;
-    FUNCTION_TABLE.push(pair.replacement);
+    FUNCTION_TABLE.push(pair['replacement']);
     FUNCTION_TABLE.push(0);
     replacements[pair.originalIndex] = replacementIndex;
   });
@@ -485,7 +494,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     # For abstract base classes, add a function definition on top. There is no constructor
     gen_js.write('\nfunction ' + generating_classname_head + ('(){ throw "%s is abstract!" }\n' % generating_classname_head) + generate_wrapping_code(generating_classname_head))
     if export:
-      gen_js.write('''this['%s'] = %s;
+      gen_js.write('''Module['%s'] = %s;
 ''' % (generating_classname_head, generating_classname_head))
 
   for method in clazz['final_methods'].itervalues():
@@ -658,7 +667,7 @@ function %s(%s) {
 
       if export:
         js_text += '''
-this['%s'] = %s;
+Module['%s'] = %s;
 ''' % (mname_suffixed, mname_suffixed)
 
     else:

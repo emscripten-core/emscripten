@@ -321,7 +321,7 @@ function setValue(ptr, value, type) {
     default: abort('invalid type for setValue: ' + type);
   }
 }
-this['setValue'] = setValue;
+Module['setValue'] = setValue;
 
 // Parallel to setValue.
 
@@ -339,7 +339,7 @@ function getValue(ptr, type) {
   }
   return null;
 }
-this['getValue'] = getValue;
+Module['getValue'] = getValue;
 
 // Allocates memory for some data and initializes it properly.
 

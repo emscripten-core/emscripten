@@ -1051,7 +1051,7 @@ function getGetElementPtrIndexes(item) {
       }
       curr = 0;
     }
-    type = typeData ? typeData.fields[curr] : '';
+    type = typeData && typeData.fields[curr] ? typeData.fields[curr] : '';
   });
   var ret = indexes[0];
   for (var i = 1; i < indexes.length; i++) {
