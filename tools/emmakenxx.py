@@ -12,5 +12,6 @@ def path_from_root(*pathelems):
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 emmaken = path_from_root('tools', 'emmaken.py')
-exit(os.execvp('python', ['python', emmaken] + sys.argv[1:] + ['-EMMAKEN_CXX']))
+os.environ['EMMAKEN_CXX'] = '1'
+exit(os.execvp('python', ['python', emmaken] + sys.argv[1:]))
 
