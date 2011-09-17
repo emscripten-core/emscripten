@@ -412,6 +412,8 @@ Module['Array_stringify'] = Array_stringify;
 
 // Memory management
 
+var FUNCTION_TABLE;
+
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
   return Math.ceil(x/PAGE_SIZE)*PAGE_SIZE;

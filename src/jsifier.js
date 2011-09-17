@@ -938,13 +938,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
       }
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
-      print(Functions.generateIndexing());
-
       var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
       var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
       print(postParts[0]);
         itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
         itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });
+        print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
       print(postParts[1]);
     print(shellParts[1]);
     return null;
