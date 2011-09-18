@@ -114,6 +114,8 @@ AUTO_OPTIMIZE = 0; // When run with the CHECK_* options, will not fail on errors
                    // checking enabled and which do not, that is, this is a way to automate the
                    // generation of line data for CORRECT_*_LINES options
 
+PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
+
 EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
                                 // be accessible outside of the generated code.
 

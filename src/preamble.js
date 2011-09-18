@@ -274,6 +274,36 @@ var INDENT = '';
 var START_TIME = Date.now();
 #endif
 
+#if PROFILE
+var PROFILING = 0;
+var PROFILING_ROOT = { time: 0, children: {}, calls: 0 };
+var PROFILING_NODE;
+
+function startProfiling() {
+  PROFILING_NODE = PROFILING_ROOT;
+  PROFILING = 1;
+}
+
+function stopProfiling() {
+  PROFILING = 0;
+  assert(PROFILING_NODE === PROFILING_ROOT, 'Must have popped all the profiling call stack');
+}
+
+function printProfiling() {
+  function dumpData(name_, node, indent) {
+    print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
+    var children = [];
+    for (var child in node.children) {
+      children.push(node.children[child]);
+      children[children.length-1].name_ = child;
+    }
+    children.sort(function(x, y) { return y.time - x.time });
+    children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
+  }
+  dumpData('root', PROFILING_ROOT, ' ');
+}
+#endif
+
 //========================================
 // Runtime essentials
 //========================================

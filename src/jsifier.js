@@ -431,6 +431,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
       func.JS = '\nfunction ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
 
+      if (PROFILE) {
+        func.JS += '  if (PROFILING) { '
+                +      'var __parentProfilingNode__ = PROFILING_NODE; PROFILING_NODE = PROFILING_NODE.children["' + func.ident + '"]; '
+                +      'if (!PROFILING_NODE) __parentProfilingNode__.children["' + func.ident + '"] = PROFILING_NODE = { time: 0, children: {}, calls: 0 };'
+                +      'PROFILING_NODE.calls++; '
+                +      'var __profilingStartTime__ = Date.now() '
+                +    '}\n';
+      }
+
       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack) + ';\n';
 
       if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
@@ -723,6 +732,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
   makeFuncLineActor('return', function(item) {
     var ret = RuntimeGenerator.stackExit(item.funcData.initialStack) + ';\n';
+    if (PROFILE) {
+      ret += 'if (PROFILING) { '
+          +    'PROFILING_NODE.time += Date.now() - __profilingStartTime__; '
+          +    'PROFILING_NODE = __parentProfilingNode__ '
+          +  '}\n';
+    }
     if (LABEL_DEBUG) {
       ret += "print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";

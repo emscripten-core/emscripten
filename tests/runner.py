@@ -180,7 +180,7 @@ class RunnerCore(unittest.TestCase):
   def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTIONS', 'FAST_MEMORY', 'EXCEPTION_DEBUG']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTIONS', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
       try:
         value = eval(setting)
         exported_settings[setting] = value
@@ -3486,6 +3486,56 @@ if 'benchmark' not in str(sys.argv):
       # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
       self.do_test(src, '*hello slim world*', build_ll_hook=hook)
 
+    def test_profiling(self):
+      global PROFILE; PROFILE = 1
+      global INVOKE_RUN; INVOKE_RUN = 0
+
+      src = '''
+          #include <stdio.h>
+
+          int inner1(int x) {
+            for (int i = 0; i < 20; i++)
+              x += x/3;
+            return x;
+          }
+          int inner2(int x) {
+            for (int i = 0; i < 10; i++)
+              x -= x/4;
+            return x;
+          }
+          int inner3(int x) {
+            for (int i = 0; i < 5; i++)
+              x += x/2;
+            x = inner1(x) - inner2(x);
+            for (int i = 0; i < 5; i++)
+              x -= x/2;
+            return x;
+          }
+
+          int main()
+          {
+            int total = 0;
+            for (int i = 0; i < 5000; i++)
+              total += inner1(i) - 4*inner3(i);
+            printf("*%d*\\n", total);
+            return 0;
+          }
+        '''
+
+      def post(filename):
+        src = open(filename, 'a')
+        src.write('''
+          startProfiling();
+          run();
+          stopProfiling();
+          printProfiling();
+          print('*ok*');
+        ''')
+        src.close()
+
+      # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
+      self.do_test(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
+
     ### Integration tests
 
     def test_scriptaclass(self):
@@ -4091,7 +4141,7 @@ Child2:9
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTIONS
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTIONS, PROFILE
 
     COMPILER = '%s'
     llvm_opts = %d
@@ -4115,6 +4165,7 @@ class %s(T):
     INIT_STACK = 0
     RUNTIME_TYPE_INFO = 0
     DISABLE_EXCEPTIONS = 0
+    PROFILE = 0
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = ['-g']
