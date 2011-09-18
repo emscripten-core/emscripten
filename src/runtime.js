@@ -72,6 +72,13 @@ function unInline(name_, params) {
 }
 
 Runtime = {
+  stackSave: function() {
+    return STACKTOP;
+  },
+  stackRestore: function(stackTop) {
+    STACKTOP = stackTop;
+  },
+
   forceAlign: function(target, quantum) {
     quantum = quantum || QUANTUM_SIZE;
     if (isNumber(target) && isNumber(quantum)) {

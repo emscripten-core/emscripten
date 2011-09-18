@@ -3069,7 +3069,10 @@ LibraryManager.library = {
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
-    return _fwrite(allocate(result, 'i8', ALLOC_STACK), 1, result.length, stream);
+    var stack = Runtime.stackSave();
+    var ret = _fwrite(allocate(result, 'i8', ALLOC_STACK), 1, result.length, stream);
+    Runtime.stackRestore(stack);
+    return ret;
   },
   printf__deps: ['fprintf'],
   printf: function(format, varargs) {
@@ -4118,14 +4121,14 @@ LibraryManager.library = {
     if (!self.LLVM_SAVEDSTACKS) {
       self.LLVM_SAVEDSTACKS = [];
     }
-    self.LLVM_SAVEDSTACKS.push(STACKTOP);
+    self.LLVM_SAVEDSTACKS.push(Runtime.stackSave());
     return self.LLVM_SAVEDSTACKS.length-1;
   },
   llvm_stackrestore: function(p) {
     var self = _llvm_stacksave;
     var ret = self.LLVM_SAVEDSTACKS[p];
     self.LLVM_SAVEDSTACKS.splice(p, 1);
-    return ret;
+    Runtime.stackRestore(ret);
   },
 
   __cxa_pure_virtual: function() {
