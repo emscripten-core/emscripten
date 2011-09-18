@@ -843,21 +843,15 @@ function makeCopyValues(dest, src, num, type, modifier) {
                         }).join('; ') + '; ' + safety()
       ) + '\n' + '}';
   } else { // USE_TYPED_ARRAYS == 2
-/*
-    return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
-           '  HEAP8[' + dest + '+$mcpi$] = HEAP8[' + src + '+$mcpi$]; ' + safety() + ';\n' +
-           '}';
-*/
     return '' +
       'var $src$, $dest$, $stop$, $stop4$, $fast$;\n' +
       '$src$ = ' + src + ';\n' +
       '$dest$ = ' + dest + ';\n' +
       '$stop$ = $src$ + ' + num + ';\n' +
-      '$fast$ = ($dest$%4) === ($src$%4);\n' +
-      'while ($src$%4 !== 0 && $src$ < $stop$) {\n' +
-      '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
-      '}\n' +
-      'if ($fast$) {\n' +
+      'if (($dest$%4) == ($src$%4) && ' + num + ' > 8) {\n' +
+      '  while ($src$%4 !== 0 && $src$ < $stop$) {\n' +
+      '    ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
+      '  }\n' +
       '  $src$ >>= 2;\n' +
       '  $dest$ >>= 2;\n' +
       '  $stop4$ = $stop$ >> 2;\n' +
@@ -868,10 +862,10 @@ function makeCopyValues(dest, src, num, type, modifier) {
       '  }\n' +
       '  $src$ <<= 2;\n' +
       '  $dest$ <<= 2;\n' +
-      '}\n' +
+      '}' +
       'while ($src$ < $stop$) {\n' +
       '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
-      '}'
+      '}';
   }
   return null;
 }

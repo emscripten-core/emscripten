@@ -1779,6 +1779,38 @@ if 'benchmark' not in str(sys.argv):
           '''
         self.do_test(src, '*0.00,0.00,0.00*\n*0,77,0*\n*0,77,0*\n*0,77,0*')
 
+    def test_memcpy(self):
+        src = '''
+          #include <stdio.h>
+          #include <string.h>
+          #define MAXX 48
+          void reset(unsigned char *buffer) {
+            for (int i = 0; i < MAXX; i++) buffer[i] = i+1;
+          }
+          void dump(unsigned char *buffer) {
+            for (int i = 0; i < MAXX-1; i++) printf("%2d,", buffer[i]);
+            printf("%d\\n", buffer[MAXX-1]);
+          }
+          int main() {
+            unsigned char buffer[MAXX];
+            for (int i = MAXX/4; i < MAXX-MAXX/4; i++) {
+              for (int j = MAXX/4; j < MAXX-MAXX/4; j++) {
+                for (int k = 1; k < MAXX/4; k++) {
+                  if (i == j) continue;
+                  if (i < j && i+k > j) continue;
+                  if (j < i && j+k > i) continue;
+                  printf("[%d,%d,%d]\\n", i, j, k);
+                  reset(buffer);
+                  memcpy(buffer+i, buffer+j, k);
+                  dump(buffer);
+                }
+              }
+            }
+            return 0;
+          }
+          '''
+        self.do_test(src)
+
     def test_nestedstructs(self):
         src = '''
           #include <stdio.h>
@@ -3105,7 +3137,7 @@ if 'benchmark' not in str(sys.argv):
     def test_sqlite(self):
       # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
       global QUANTUM_SIZE, OPTIMIZE, RELOOP, USE_TYPED_ARRAYS
-      if QUANTUM_SIZE == 1 or USE_TYPED_ARRAYS == 2: return self.skip('TODO FIXME')
+      if QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
       RELOOP = 0 # too slow
 
       auto_optimize_data = read_auto_optimize_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
@@ -4178,7 +4210,7 @@ else:
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
       global USE_TYPED_ARRAYS
-      self.pick_llvm_opts(3, True, allow_nonportable=USE_TYPED_ARRAYS == 2)
+      self.pick_llvm_opts(3, True) # XXX nonportable fails with dlmalloc #, allow_nonportable=USE_TYPED_ARRAYS == 2)
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')
