@@ -31,9 +31,9 @@ data = open(sys.argv[1], 'r').readlines()
 SEEN = {}
 for line in data:
   if len(line) < 4: continue
-  if line[:2] != '  ': continue
-  if line[2] != 'f': continue
-  m = re.match('^  function (?P<func>[^(]+)\(.*', line)
+  m = re.match('^  function (?P<func>[^(]+)\(.*', line) # generated code
+  if not m:
+    m = re.match('^ + _*\d+: (?P<func>[^ ]+) \(\d+.*', line) # profiling output
   if not m: continue
   func = m.groups('func')[0]
   if func in SEEN: continue
