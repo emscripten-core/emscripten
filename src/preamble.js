@@ -283,11 +283,13 @@ function startProfiling() {
   PROFILING_NODE = PROFILING_ROOT;
   PROFILING = 1;
 }
+Module['startProfiling'] = startProfiling;
 
 function stopProfiling() {
   PROFILING = 0;
   assert(PROFILING_NODE === PROFILING_ROOT, 'Must have popped all the profiling call stack');
 }
+Module['stopProfiling'] = stopProfiling;
 
 function printProfiling() {
   function dumpData(name_, node, indent) {
@@ -302,6 +304,58 @@ function printProfiling() {
   }
   dumpData('root', PROFILING_ROOT, ' ');
 }
+Module['printProfiling'] = printProfiling;
+
+function printXULProfiling() {
+  function dumpData(name_, node, indent) {
+    var children = [];
+    for (var child in node.children) {
+      children.push(node.children[child]);
+      children[children.length-1].name_ = child;
+    }
+    print('<treeitem' + (children.length > 0 ? ' container="true"' : '') + '>');
+    print('  <treerow>');
+    print('    <treecell label="' + name_ + '"/>');
+    print('    <treecell label="' + node.time + '"/>');
+    print('    <treecell label="' + node.calls + '"/>');
+    print('  </treerow>');
+
+    if (children.length > 0) {
+      print('  <treechildren>');
+      children.sort(function(x, y) { return y.time - x.time });
+      children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
+      print('  </treechildren>');
+    }
+
+    print('</treeitem>');
+  }
+
+  print('<?xml version="1.0"?>');
+  print('<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>  ');
+  print('<?xml-stylesheet href="file://C:/main.css" type="text/css"?>        ');
+  print('<window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">  ');
+  print('<tree id="myTree" flex="1" hidecolumnpicker="false" seltype="single" class="tree"');
+  print('      rows="5">');
+  print('  <treecols id="myTree2-treeCols">');
+  print('    <treecol id="myTree2-treeCol0" primary="true" flex="2" label="Name"');
+  print('             persist="width" ordinal="1"/>');
+  print('    <splitter class="tree-splitter" ordinal="2"/>');
+  print('    <treecol id="myTree2-treeCol1" flex="1" label="Milliseconds"');
+  print('             persist="width" ordinal="3"/>');
+  print('    <treecol id="myTree2-treeCol2" flex="1" label="Calls"');
+  print('             persist="width" ordinal="4"/>');
+  print('  </treecols>');
+  print('  <treechildren>');
+
+  dumpData('root', PROFILING_ROOT, ' ');
+
+  print('  </treechildren>');
+  print('</tree>');
+  print('</window>');
+
+  // This requires    dom.allow_XUL_XBL_for_file
+}
+Module['printXULProfiling'] = printXULProfiling;
 #endif
 
 //========================================
