@@ -36,9 +36,9 @@ the .ll into native code. This can be done as follows:
 import os, sys
 from subprocess import Popen, PIPE, STDOUT
 
-abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
-  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+  return os.path.join(rootpath, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 print '// EXEC_LLVM: ', sys.argv
