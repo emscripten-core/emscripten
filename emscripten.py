@@ -18,10 +18,12 @@ GCC_DATA_LAYOUT = ('target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16'
                    '-v128:128:128-a0:0:64-f80:32:32-f128:128:128-n8:16:32"')
 
 
-def path_from_root(*target):
-  """Returns the absolute path to the target from the emscripten root."""
-  abspath = os.path.abspath(os.path.dirname(__file__))
-  return os.path.join(os.path.sep, *(abspath.split(os.sep) + list(target)))
+def path_from_root(*pathelems):
+  """Returns the absolute path for which the given path elements are
+  relative to the emscripten root.
+  """
+  rootpath = os.path.abspath(os.path.dirname(__file__))
+  return os.path.join(rootpath, *pathelems)
 
 
 def get_temp_file(suffix):
