@@ -1,0 +1,197 @@
+diff --git a/src/jsifier.js b/src/jsifier.js
+index da8c4db..2d606be 100644
+--- a/src/jsifier.js
++++ b/src/jsifier.js
+@@ -432,12 +432,16 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+       func.JS = '\nfunction ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
+ 
+       if (PROFILE) {
+-        func.JS += '  if (PROFILING) { '
+-                +      'var __parentProfilingNode__ = PROFILING_NODE; PROFILING_NODE = PROFILING_NODE.children["' + func.ident + '"]; '
+-                +      'if (!PROFILING_NODE) __parentProfilingNode__.children["' + func.ident + '"] = PROFILING_NODE = { time: 0, children: {}, calls: 0 };'
+-                +      'PROFILING_NODE.calls++; '
+-                +      'var __profilingStartTime__ = Date.now() '
+-                +    '}\n';
++        if (PROFILE_CALLGRAPH) {
++          func.JS += '  if (PROFILING) { '
++                  +      'var __parentProfilingNode__ = PROFILING_NODE; PROFILING_NODE = PROFILING_NODE.children["' + func.ident + '"]; '
++                  +      'if (!PROFILING_NODE) __parentProfilingNode__.children["' + func.ident + '"] = PROFILING_NODE = { time: 0, children: {}, calls: 0 };'
++                  +      'PROFILING_NODE.calls++; '
++                  +      'var __profilingStartTime__ = Date.now() '
++                  +    '}\n';
++        } else {
++          func.JS += '  PROFILING_DATA[' + Profiling.getIndex(func.ident) + '] -= Date.now();';
++        }
+       }
+ 
+       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack) + ';\n';
+@@ -733,10 +737,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+   makeFuncLineActor('return', function(item) {
+     var ret = RuntimeGenerator.stackExit(item.funcData.initialStack) + ';\n';
+     if (PROFILE) {
+-      ret += 'if (PROFILING) { '
+-          +    'PROFILING_NODE.time += Date.now() - __profilingStartTime__; '
+-          +    'PROFILING_NODE = __parentProfilingNode__ '
+-          +  '}\n';
++      if (PROFILE_CALLGRAPH) {
++        ret += 'if (PROFILING) { '
++            +    'PROFILING_NODE.time += Date.now() - __profilingStartTime__; '
++            +    'PROFILING_NODE = __parentProfilingNode__ '
++            +  '}\n';
++      } else {
++        ret += 'PROFILING_DATA[' + Profiling.getIndex(item.funcData.ident) + '] += Date.now();'
++      }
+     }
+     if (LABEL_DEBUG) {
+       ret += "print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
+@@ -945,6 +953,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+     print(shellParts[0]);
+       var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
+       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
++      if (PROFILE && !PROFILE_CALLGRAPH) {
++        pre = pre.replace('{{PROFILING_DATA}}', Profiling.generateIndexing());
++      }
+       print(pre);
+       print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
+       if (RUNTIME_TYPE_INFO) {
+diff --git a/src/modules.js b/src/modules.js
+index 20f42f9..624c5ae 100644
+--- a/src/modules.js
++++ b/src/modules.js
+@@ -226,13 +226,15 @@ var Functions = {
+ 
+   indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
+ 
++  skip: true,
++
+   // Mark a function as needing indexing, and returns the index
+   getIndex: function(ident) {
+     var key = this.indexedFunctions.indexOf(ident);
+     if (key < 0) {
+       key = this.indexedFunctions.length;
+       this.indexedFunctions[key] = ident;
+-      this.indexedFunctions[key+1] = 0; // Need to have keys be even numbers, see |polymorph| test
++      if (this.skip) this.indexedFunctions[key+1] = 0; // Need to have keys be even numbers, see |polymorph| test
+     }
+     return key.toString();
+   },
+@@ -281,3 +283,19 @@ var LibraryManager = {
+   }
+ };
+ 
++var Profiling = { // We use the same principle of function hashing as in Functions
++  currFunctions: [],
++  implementedFunctions: null,
++  indexedFunctions: [],
++  getIndex: Functions.getIndex,
++
++  generateIndexing: function() {
++    var ret = 'var PROFILING_DATA = new Array(' + this.indexedFunctions.length + ');\n'
++            + 'for (var i = 0; i < ' + this.indexedFunctions.length + '; i++) {\n'
++            + '  PROFILING_DATA[i] = 0;\n'
++            + '}\n'
++            + 'var PROFILING_NAMES = ' + JSON.stringify(this.indexedFunctions) + ';\n';
++    return ret;
++  }
++};
++
+diff --git a/src/preamble.js b/src/preamble.js
+index 1c1ec91..1bda448 100644
+--- a/src/preamble.js
++++ b/src/preamble.js
+@@ -276,22 +276,26 @@ var START_TIME = Date.now();
+ 
+ #if PROFILE
+ var PROFILING = 0;
++
++#if PROFILE_CALLGRAPH
+ var PROFILING_ROOT = { time: 0, children: {}, calls: 0 };
+ var PROFILING_NODE;
+-
+ function startProfiling() {
+   PROFILING_NODE = PROFILING_ROOT;
+   PROFILING = 1;
+ }
+ Module['startProfiling'] = startProfiling;
+-
+ function stopProfiling() {
+   PROFILING = 0;
+   assert(PROFILING_NODE === PROFILING_ROOT, 'Must have popped all the profiling call stack');
+ }
+ Module['stopProfiling'] = stopProfiling;
++#else
++{{PROFILING_DATA}}
++#endif
+ 
+ function printProfiling() {
++#if PROFILE_CALLGRAPH
+   function dumpData(name_, node, indent) {
+     print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
+     var children = [];
+@@ -303,9 +307,20 @@ function printProfiling() {
+     children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
+   }
+   dumpData('root', PROFILING_ROOT, ' ');
++#else
++  var items = [];
++  for (var i = 0; i < PROFILING_NAMES.length; i++) {
++    items.push({ name_: PROFILING_NAMES[i], time: PROFILING_DATA[i] });
++  }
++  items.sort(function(x, y) { return y.time - x.time });
++  items.forEach(function(item) {
++    print(('________' + item.time).substr(-8) + ': ' + item.name_);
++  });
++#endif
+ }
+ Module['printProfiling'] = printProfiling;
+ 
++#if PROFILE_CALLGRAPH
+ function printXULProfiling() {
+   function dumpData(name_, node, indent) {
+     var children = [];
+@@ -357,6 +372,7 @@ function printXULProfiling() {
+ }
+ Module['printXULProfiling'] = printXULProfiling;
+ #endif
++#endif
+ 
+ //========================================
+ // Runtime essentials
+diff --git a/src/settings.js b/src/settings.js
+index ef8b399..749468b 100644
+--- a/src/settings.js
++++ b/src/settings.js
+@@ -114,7 +114,8 @@ AUTO_OPTIMIZE = 0; // When run with the CHECK_* options, will not fail on errors
+                    // checking enabled and which do not, that is, this is a way to automate the
+                    // generation of line data for CORRECT_*_LINES options
+ 
+-PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
++PROFILE = 1; // Enables runtime profiling. As lightweight as possible.
++PROFILE_CALLGRAPH = 0; // Much heavier profiling, of entire callgraphs.
+ 
+ EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
+                                 // be accessible outside of the generated code.
+diff --git a/tests/runner.py b/tests/runner.py
+index f7ae9b0..3caedad 100644
+--- a/tests/runner.py
++++ b/tests/runner.py
+@@ -3525,16 +3525,16 @@ if 'benchmark' not in str(sys.argv):
+       def post(filename):
+         src = open(filename, 'a')
+         src.write('''
+-          startProfiling();
++          //startProfiling();
+           run();
+-          stopProfiling();
++          //stopProfiling();
+           printProfiling();
+           print('*ok*');
+         ''')
+         src.close()
+ 
+       # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
+-      self.do_test(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
++      self.do_test(src, ': __Z6inner2i\n*ok*', post_build=post)
+ 
+     ### Integration tests
+ 
