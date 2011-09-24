@@ -611,7 +611,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
     if (['tail'].indexOf(item.tokens[0].text) != -1) {
       item.tokens.splice(0, 1);
     }
-    assertEq(item.tokens[0].text, type);
     while (item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
       item.tokens.splice(1, 1);
     }
@@ -652,19 +651,30 @@ function intertyper(data, parseFunctions, baseLineNum) {
     if (item.indent == 2) {
       // standalone call - not in assign
       item.standalone = true;
-      return [item];
+      return { forward: null, ret: [item], item: item };
     }
-    this.forwardItem(item, 'Reintegrator');
-    return null;
+    return { forward: item, ret: [], item: item };
   }
   substrate.addActor('Call', {
     processItem: function(item) {
-      return makeCall.call(this, item, 'call');
+      var result = makeCall.call(this, item, 'call');
+      if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
+      return result.ret;
     }
   });
   substrate.addActor('Invoke', {
     processItem: function(item) {
-      return makeCall.call(this, item, 'invoke');
+      var result = makeCall.call(this, item, 'invoke');
+      if (DISABLE_EXCEPTION_CATCHING) {
+        result.item.intertype = 'call';
+        result.ret.push({
+          intertype: 'branch',
+          label: result.item.toLabel,
+          lineNum: (result.forward ? item.parentLineNum : item.lineNum) + 0.5
+        });
+      }
+      if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
+      return result.ret;
     }
   });
   // 'landingpad' - just a stub implementation

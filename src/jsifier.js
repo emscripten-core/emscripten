@@ -756,7 +756,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     // in an assignment
     var call_ = makeFunctionCall(item.ident, item.params, item.funcData);
     var branch = makeBranch(item.toLabel, item.currLabelId);
-    if (DISABLE_EXCEPTIONS) return call_ + '; ' + branch;
     var ret = '(function() { try { __THREW__ = false; return '
             + call_ + ' '
             + '} catch(e) { '
