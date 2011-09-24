@@ -101,7 +101,7 @@ def compile_malloc():
   """
   src = path_from_root('src', 'dlmalloc.c')
   includes = '-I' + path_from_root('src', 'include')
-  command = [shared.CLANG, '-c', '-g', '-emit-llvm', '-m32', '-o-', includes, src]
+  command = [shared.CLANG, '-c', '-g', '-emit-llvm', '-m32'] + shared.COMPILER_OPTS + ['-o-', includes, src]
   with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
