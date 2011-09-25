@@ -140,9 +140,6 @@ class RunnerCore(unittest.TestCase):
       # the additional files were copied; alter additional_files to point to their full paths now
       additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
 
-    # Copy Emscripten C++ API
-    shutil.copy(path_from_root('src', 'include', 'emscripten.h'), dirname)
-
     # C++ => LLVM binary
     os.chdir(dirname)
     cwd = os.getcwd()

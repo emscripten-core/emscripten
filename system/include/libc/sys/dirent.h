@@ -7,7 +7,23 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#error "<dirent.h> not supported"
+
+struct DIR;
+
+/* XXX Emscripten */
+struct dirent {
+  ino_t d_ino;
+  char  d_name[MAXNAMLEN];
+  int   d_off;
+  int   d_reclen;
+  char  d_type;
+};
+
+DIR           *opendir(const char *);
+void           seekdir(DIR *, long);
+long           telldir(DIR *);
+struct dirent *readdir(DIR *);
+
 #ifdef __cplusplus
 }
 #endif

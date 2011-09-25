@@ -34,9 +34,9 @@ COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-v', '-U__i386__', '-U__x86_64__', '-U
 if USE_EMSDK:
   COMPILER_OPTS += [ '-nostdinc',
   '-I' + path_from_root('system', 'include'),
+  '-I' + path_from_root('system', 'include', 'freebsd'), # posix stuff
   '-I' + path_from_root('system', 'include', 'libc'),
   '-I' + path_from_root('system', 'include', 'libcxx'),
-  '-I' + path_from_root('system', 'include', 'freebsd'), # sys/mman.h
 ]
 
 # Engine tweaks
