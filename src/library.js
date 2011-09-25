@@ -21,8 +21,9 @@ LibraryManager.library = {
   stdin: 0,
   stdout: 0,
   stderr: 0,
+  _impure_ptr: 0,
 
-  $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr'],
+  $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: 'FS.init();',
   $FS: {
     // The path to the current folder.
@@ -391,6 +392,16 @@ LibraryManager.library = {
       _stdin = allocate([1], 'void*', ALLOC_STATIC);
       _stdout = allocate([2], 'void*', ALLOC_STATIC);
       _stderr = allocate([3], 'void*', ALLOC_STATIC);
+
+      // Newlib initialization
+      FS.streams[_stdin] = FS.streams[1];
+      FS.streams[_stdout] = FS.streams[2];
+      FS.streams[_stderr] = FS.streams[3];
+      __impure_ptr = allocate(5, "void*", ALLOC_STATIC);
+      var impure = getValue(__impure_ptr, "void*");
+      setValue(impure + {{{ QUANTUM_SIZE }}},    _stdin, "void*");
+      setValue(impure + {{{ QUANTUM_SIZE }}}*2, _stdout, "void*");
+      setValue(impure + {{{ QUANTUM_SIZE }}}*3, _stderr, "void*");
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
