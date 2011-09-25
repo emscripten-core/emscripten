@@ -168,7 +168,7 @@ def main(args):
   # Add header defines to settings
   defines = {}
   include_root = path_from_root('system', 'include')
-  headers = args.headers[0].split(',')
+  headers = args.headers[0].split(',') if len(args.headers) > 0 else []
   while len(headers) > 0:
     header = headers.pop(0)
     if not os.path.isabs(header):
