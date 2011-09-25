@@ -15,6 +15,8 @@ struct utimbuf
   time_t modtime; 
 };
 
+int utime(const char *path, const struct utimbuf *times); /* XXX Emscripten */
+
 #ifdef __cplusplus
 };
 #endif
