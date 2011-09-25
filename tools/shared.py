@@ -25,6 +25,10 @@ LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 
+# Additional compiler options
+
+COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-nostdinc', '-I' + path_from_root('system', 'include'), '-v', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
+
 # Engine tweaks
 
 #if 'strict' not in str(SPIDERMONKEY_ENGINE): # XXX temporarily disable strict mode until we sort out some stuff
