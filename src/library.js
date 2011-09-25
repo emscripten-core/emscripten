@@ -4003,6 +4003,10 @@ LibraryManager.library = {
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
   },
 
+  __assert_func: function(filename, line, func, condition) {
+    throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [Pointer_stringify(filename), line, Pointer_stringify(func)];
+  },
+
   __cxa_guard_acquire: function() {
     return 1;
   },
