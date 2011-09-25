@@ -13,13 +13,13 @@ errno: 0
 F_SETFD: 0
 errno: 0
 
-F_GETFL: 2
+F_GETFL: 0
 errno: 0
 
 F_SETFL: 0
 errno: 0
 
-F_GETFL/2: 0x402
+F_GETFL/2: 0x8
 errno: 0
 
 F_GETLK: 0

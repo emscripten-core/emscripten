@@ -175,8 +175,9 @@ def main(args):
       header = os.path.join(include_root, header)
     for line in open(header, 'r'):
       line = line.replace('\t', ' ')
-      m = re.match('^ *#define +(?P<name>[\w_]+) +(?P<value>\d+).*', line)
+      m = re.match('^ *#define +(?P<name>[-\w_.]+) +(?P<value>[-\w_.]+).*', line)
       if m:
+        #print 'define!', m.groups()
         defines[m.group('name')] = m.group('value')
       m = re.match('^ *#include *["<](?P<name>[\w_.-/]+)[">].*', line)
       if m:
@@ -192,6 +193,25 @@ def main(args):
           if found: break
         #assert found, 'Could not find header: ' + m.group('name')
   if len(defines) > 0:
+    #print 'zz defines pre: ', defines
+    def lookup(value):
+      try:
+        while not unicode(value).isnumeric():
+          value = defines[value]
+        return value
+      except:
+        try:
+          value = eval(value)
+          return value
+        except:
+          return None
+    for key, value in defines.items():
+      value = lookup(value)
+      if value is not None:
+        defines[key] = str(value)
+      else:
+        del defines[key]
+    #print 'zz defines post: ', defines
     settings['C_DEFINES'] = defines
 
   # Compile the assembly to Javascript.

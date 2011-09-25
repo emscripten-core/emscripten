@@ -859,13 +859,13 @@ LibraryManager.library = {
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
 
     // Simplify flags.
-    var accessMode = oflag & 0x3;  // O_ACCMODE.
-    var isWrite = accessMode != 0x0;  // O_RDONLY.
-    var isRead = accessMode != 0x1;  // O_WRONLY.
-    var isCreate = Boolean(oflag & 0x40);  // O_CREAT.
-    var isExistCheck = Boolean(oflag & 0x80);  // O_EXCL.
-    var isTruncate = Boolean(oflag & 0x200);  // O_TRUNC.
-    var isAppend = Boolean(oflag & 0x400);  // O_APPEND.
+    var accessMode = oflag & {{{ C_DEFINES['O_ACCMODE'] }}};
+    var isWrite = accessMode != {{{ C_DEFINES['O_RDONLY'] }}};
+    var isRead = accessMode != {{{ C_DEFINES['O_WRONLY'] }}};
+    var isCreate = Boolean(oflag & {{{ C_DEFINES['O_CREAT'] }}});
+    var isExistCheck = Boolean(oflag & {{{ C_DEFINES['O_EXCL'] }}});
+    var isTruncate = Boolean(oflag & {{{ C_DEFINES['O_TRUNC'] }}});
+    var isAppend = Boolean(oflag & {{{ C_DEFINES['O_APPEND'] }}});
 
     // Verify path.
     var origPath = path;
@@ -959,7 +959,7 @@ LibraryManager.library = {
   creat: function(path, mode) {
     // int creat(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
-    return _open(path, 0x241, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));  // O_WRONLY | O_CREAT | O_TRUNC.
+    return _open(path, {{{ C_DEFINES['O_WRONLY'] }}} | {{{ C_DEFINES['O_CREAT'] }}} | {{{ C_DEFINES['O_TRUNC'] }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
   fcntl: function(fildes, cmd, varargs) {
@@ -989,15 +989,15 @@ LibraryManager.library = {
         return 0;  // FD_CLOEXEC makes no sense for a single process.
       case {{{ C_DEFINES['F_GETFL'] }}}:
         var flags = 0;
-        if (stream.isRead && stream.isWrite) flags = 0x2;  // O_RDWR.
-        else if (!stream.isRead && stream.isWrite) flags = 0x1;  // O_WRONLY.
-        else if (stream.isRead && !stream.isWrite) flags = 0x0;  // O_RDONLY.
-        if (stream.isAppend) flags |= 0x400;  // O_APPEND.
+        if (stream.isRead && stream.isWrite) flags = {{{ C_DEFINES['O_RDWR'] }}};
+        else if (!stream.isRead && stream.isWrite) flags = {{{ C_DEFINES['O_WRONLY'] }}};
+        else if (stream.isRead && !stream.isWrite) flags = {{{ C_DEFINES['O_RDONLY'] }}};
+        if (stream.isAppend) flags |= {{{ C_DEFINES['O_APPEND'] }}};
         // Synchronization and blocking flags are irrelevant to us.
         return flags;
       case {{{ C_DEFINES['F_SETFL'] }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
-        stream.isAppend = Boolean(arg | 0x400);  // O_APPEND.
+        stream.isAppend = Boolean(arg | {{{ C_DEFINES['O_APPEND'] }}});
         // Synchronization and blocking flags are irrelevant to us.
         return 0;
       case {{{ C_DEFINES['F_GETLK'] }}}:
@@ -2710,26 +2710,26 @@ LibraryManager.library = {
     mode = Pointer_stringify(mode);
     if (mode[0] == 'r') {
       if (mode.indexOf('+') != -1) {
-        flags = 0x2;  // O_RDWR
+        flags = {{{ C_DEFINES['O_RDWR'] }}};
       } else {
-        flags = 0x0;  // O_RDONLY
+        flags = {{{ C_DEFINES['O_RDONLY'] }}};
       }
     } else if (mode[0] == 'w') {
       if (mode.indexOf('+') != -1) {
-        flags = 0x2;  // O_RDWR
+        flags = {{{ C_DEFINES['O_RDWR'] }}};
       } else {
-        flags = 0x1;  // O_WRONLY
+        flags = {{{ C_DEFINES['O_WRONLY'] }}};
       }
-      flags |= 0x40;  // O_CREAT
-      flags |= 0x200;  // O_TRUNC
+      flags |= {{{ C_DEFINES['O_CREAT'] }}};
+      flags |= {{{ C_DEFINES['O_TRUNK'] }}};
     } else if (mode[0] == 'a') {
       if (mode.indexOf('+') != -1) {
-        flags = 0x2;  // O_RDWR
+        flags = {{{ C_DEFINES['O_RDWR'] }}};
       } else {
-        flags = 0x1;  // O_WRONLY
+        flags = {{{ C_DEFINES['O_WRONLY'] }}};
       }
-      flags |= 0x40;  // O_CREAT
-      flags |= 0x400;  // O_APPEND
+      flags |= {{{ C_DEFINES['O_CREAT'] }}};
+      flags |= {{{ C_DEFINES['O_APPEND'] }}};
     } else {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;

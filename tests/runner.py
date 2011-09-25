@@ -2531,6 +2531,8 @@ if 'benchmark' not in str(sys.argv):
       self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_misc(self):
+      return self.skip('TODO: add fadvise.h')
+
       def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
