@@ -5297,6 +5297,8 @@ LibraryManager.library = {
   __errno_location: function() {
     return ___setErrNo.ret;
   },
+  __errno: '__errno_location',
+
   // ==========================================================================
   // sys/resource.h
   // ==========================================================================
