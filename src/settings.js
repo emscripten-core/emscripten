@@ -123,6 +123,9 @@ INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather than ju
                           // dynamically loading modules that make use of runtime
                           // library functions that are not used in the main module.
 
+C_DEFINES = {}; // A set of defines, for example generated from your header files.
+                // This lets the emscripten libc see the right values
+
 SHOW_LABELS = 0; // Show labels in the generated code
 
 BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which

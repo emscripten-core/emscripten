@@ -4,6 +4,7 @@ import json
 import optparse
 import os
 import subprocess
+import re
 import sys
 import tempfile
 from tools import shared
@@ -164,13 +165,42 @@ def main(args):
       settings['CORRECT_SIGNS'] = 2
       settings['CORRECT_SIGNS_LINES'] = lines
 
+  # Add header defines to settings
+  defines = {}
+  include_root = path_from_root('system', 'include')
+  headers = args.headers[0].split(',')
+  while len(headers) > 0:
+    header = headers.pop(0)
+    if not os.path.isabs(header):
+      header = os.path.join(include_root, header)
+    for line in open(header, 'r'):
+      line = line.replace('\t', ' ')
+      m = re.match('^ *#define +(?P<name>[\w_]+) +(?P<value>\d+).*', line)
+      if m:
+        defines[m.group('name')] = m.group('value')
+      m = re.match('^ *#include *["<](?P<name>[\w_.-/]+)[">].*', line)
+      if m:
+        # Find this file
+        found = False
+        for w in [w for w in os.walk(include_root)]:
+          for f in w[2]:
+            curr = os.path.join(w[0], f)
+            if curr.endswith(m.group('name')):
+              headers.append(curr)
+              found = True
+              break
+          if found: break
+        #assert found, 'Could not find header: ' + m.group('name')
+  if len(defines) > 0:
+    settings['C_DEFINES'] = defines
+
   # Compile the assembly to Javascript.
   emscript(args.infile, json.dumps(settings), args.outfile)
 
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-O] [-m] [-o OUTFILE] [-s FOO=BAR]* infile',
+      usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
       description=('Compile an LLVM assembly file to Javascript. Accepts both '
                    'human-readable (*.ll) and bitcode (*.bc) formats.'),
       epilog='You should have an ~/.emscripten file set up; see settings.py.')
@@ -182,6 +212,10 @@ if __name__ == '__main__':
                     default=False,
                     action='store_true',
                     help='Use dlmalloc. Without, uses a dummy allocator.')
+  parser.add_option('-H', '--headers',
+                    default=[],
+                    action='append',
+                    help='System headers (comma separated) whose #defines should be exposed to the compiled code.')
   parser.add_option('-o', '--outfile',
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')

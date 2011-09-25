@@ -6,7 +6,9 @@
 function processMacros(text) {
   return text.replace(/{{{[^}]+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
-    return eval(str).toString();
+    var ret = eval(str);
+    if (ret !== undefined) ret = ret.toString();
+    return ret;
   });
 }
 

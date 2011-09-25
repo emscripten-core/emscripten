@@ -971,7 +971,7 @@ LibraryManager.library = {
     }
     var stream = FS.streams[fildes];
     switch (cmd) {
-      case 0:  // F_DUPFD.
+      case {{{ C_DEFINES['F_DUPFD'] }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         if (arg < 0) {
           ___setErrNo(ERRNO_CODES.EINVAL);
@@ -984,10 +984,10 @@ LibraryManager.library = {
         if (arg in FS.streams) arg = FS.streams.length;
         FS.streams[arg] = newStream;
         return arg;
-      case 1:  // F_GETFD.
-      case 2:  // F_SETFD.
+      case {{{ C_DEFINES['F_GETFD'] }}}:
+      case {{{ C_DEFINES['F_SETFD'] }}}:
         return 0;  // FD_CLOEXEC makes no sense for a single process.
-      case 3:  // F_GETFL.
+      case {{{ C_DEFINES['F_GETFL'] }}}:
         var flags = 0;
         if (stream.isRead && stream.isWrite) flags = 0x2;  // O_RDWR.
         else if (!stream.isRead && stream.isWrite) flags = 0x1;  // O_WRONLY.
@@ -995,26 +995,26 @@ LibraryManager.library = {
         if (stream.isAppend) flags |= 0x400;  // O_APPEND.
         // Synchronization and blocking flags are irrelevant to us.
         return flags;
-      case 4:  // F_SETFL.
+      case {{{ C_DEFINES['F_SETFL'] }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         stream.isAppend = Boolean(arg | 0x400);  // O_APPEND.
         // Synchronization and blocking flags are irrelevant to us.
         return 0;
-      case 5:  // F_GETLK.
-      case 12: // F_GETLK64.
+      case {{{ C_DEFINES['F_GETLK'] }}}:
+      case {{{ C_DEFINES['F_GETLK64'] }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         var offset = ___flock_struct_layout.l_type;
         // We're always unlocked.
-        {{{ makeSetValue('arg', 'offset', '2', 'i16') }}}  // F_UNLCK.
+        {{{ makeSetValue('arg', 'offset', C_DEFINES['F_UNLCK'], 'i16') }}}
         return 0;
-      case 6:  // F_SETLK.
-      case 7:  // F_SETLKW.
-      case 13: // F_SETLK64.
-      case 14: // F_SETLKW64.
+      case {{{ C_DEFINES['F_SETLK'] }}}:
+      case {{{ C_DEFINES['F_SETLKW'] }}}:
+      case {{{ C_DEFINES['F_SETLK64'] }}}:
+      case {{{ C_DEFINES['F_SETLKW64'] }}}:
         // Pretend that the locking is successful.
         return 0;
-      case 8:  // F_SETOWN.
-      case 9:  // F_GETOWN.
+      case {{{ C_DEFINES['F_SETOWN'] }}}:
+      case {{{ C_DEFINES['F_GETOWN'] }}}:
         // These are for sockets. We don't have them implemented (yet?).
         ___setErrNo(ERRNO_CODES.EINVAL);
         return -1;

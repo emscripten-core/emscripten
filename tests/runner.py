@@ -2513,7 +2513,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_open(self):
       def add_pre_run(filename):
@@ -2528,7 +2528,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_misc(self):
       def add_pre_run(filename):
@@ -2539,7 +2539,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_poll(self):
       def add_pre_run(filename):
