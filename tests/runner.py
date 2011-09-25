@@ -3929,7 +3929,7 @@ Child2:9
       try:
         def post(filename):
           lines = open(filename, 'r').readlines()
-          lines = filter(lambda line: '___assert_fail(' in line, lines)
+          lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
           found_line_num = any(('//@line 7 "' in line) for line in lines)
           found_filename = any(('src.cpp"\n' in line) for line in lines)
           assert found_line_num, 'Must have debug info with the line number'
