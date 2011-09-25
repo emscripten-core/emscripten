@@ -30,6 +30,7 @@ int _EXFUN(toascii, (int __c));
 #define _toupper(__c) ((unsigned char)(__c) - 'a' + 'A')
 #endif
 
+/* XXX Emscripten - these confuse libc++
 #define	_U	01
 #define	_L	02
 #define	_N	04
@@ -38,6 +39,7 @@ int _EXFUN(toascii, (int __c));
 #define _C	040
 #define _X	0100
 #define	_B	0200
+*/
 
 #ifndef _MB_CAPABLE
 _CONST
