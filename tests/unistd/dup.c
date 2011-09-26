@@ -11,9 +11,8 @@ int main() {
   f2 = open("/", O_RDONLY);
   f3 = dup(f);
   printf("errno: %d\n", errno);
-  printf("f: %d\n", f);
-  printf("f2: %d\n", f2);
-  printf("f3: %d\n", f3);
+  printf("f: %d\n", f != f2 && f != f3);
+  printf("f2,f3: %d\n", f2 != f3);
   printf("close(f1): %d\n", close(f));
   printf("close(f2): %d\n", close(f2));
   printf("close(f3): %d\n", close(f3));
@@ -25,9 +24,8 @@ int main() {
   f2 = open("/", O_RDONLY);
   f3 = dup2(f, f2);
   printf("errno: %d\n", errno);
-  printf("f: %d\n", f);
-  printf("f2: %d\n", f2);
-  printf("f3: %d\n", f3);
+  printf("f: %d\n", f != f2 && f != f3);
+  printf("f2,f3: %d\n", f2 == f3);
   printf("close(f1): %d\n", close(f));
   printf("close(f2): %d\n", close(f2));
   printf("close(f3): %d\n", close(f3));

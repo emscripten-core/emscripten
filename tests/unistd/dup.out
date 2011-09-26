@@ -1,17 +1,15 @@
 DUP
 errno: 0
-f: 4
-f2: 5
-f3: 6
+f: 1
+f2,f3: 1
 close(f1): 0
 close(f2): 0
 close(f3): 0
 
 DUP2
 errno: 0
-f: 7
-f2: 8
-f3: 8
+f: 1
+f2,f3: 1
 close(f1): 0
 close(f2): 0
 close(f3): -1
