@@ -81,7 +81,7 @@ int sched_rr_get_interval(
 );
 #endif /* _POSIX_PRIORITY_SCHEDULING */
 
-#if defined(_POSIX_THREADS) || defined(_POSIX_PRIORITY_SCHEDULING)
+#if defined(_POSIX_THREADS) || defined(_POSIX_PRIORITY_SCHEDULING) || defined(EMSCRIPTEN)
 
 /*
  *  XBD 13 - Yield Processor, P1003.1b-2008, p. 1807

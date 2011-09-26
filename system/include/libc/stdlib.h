@@ -216,7 +216,7 @@ int	_EXFUN(_system_r,(struct _reent *, const char *));
 _VOID	_EXFUN(__eprintf,(const char *, const char *, unsigned int, const char *));
 
 /* On platforms where long double equals double.  */
-#ifdef _LDBL_EQ_DBL
+#if defined(_LDBL_EQ_DBL) || defined(EMSCRIPTEN)
 extern long double strtold (const char *, char **);
 extern long double wcstold (const wchar_t *, wchar_t **);
 #endif /* _LDBL_EQ_DBL */

@@ -27,7 +27,7 @@ extern "C" {
 
 #include <unistd.h>
 
-#if defined(_POSIX_THREADS)
+#if defined(_POSIX_THREADS) || defined(EMSCRIPTEN)
 
 #include <sys/types.h>
 #include <time.h>

@@ -272,7 +272,7 @@ typedef long suseconds_t;
  * This means that we don't use the types defined here, but rather in
  * <cygwin/types.h>
  */
-#if defined(_POSIX_THREADS) && !defined(__CYGWIN__)
+#if defined(_POSIX_THREADS) && !defined(__CYGWIN__) || defined(EMSCRIPTEN)
 
 #include <sys/sched.h>
 

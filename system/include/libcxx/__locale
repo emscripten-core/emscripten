@@ -22,7 +22,7 @@
 #if _WIN32
 # include <support/win32/locale.h>
 #else  // _WIN32
-# include <xlocale.h>
+/* XXX EMSCRIPTEN # include <xlocale.h> */
 #endif  // _WIN32
 
 #pragma GCC system_header
