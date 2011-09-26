@@ -128,6 +128,12 @@ extern "C" {
 #define	F_DUPFD_CLOEXEC	14	/* As F_DUPFD, but set close-on-exec flag */
 #endif
 
+/* XXX Emscripten: 3 more not really needed ones */
+#define F_GETLK64 20
+#define F_SETLK64 21
+#define F_SETLKW64 22
+
+
 /* fcntl(2) flags (l_type field of flock structure) */
 #define	F_RDLCK		1	/* read lock */
 #define	F_WRLCK		2	/* write lock */
