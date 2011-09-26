@@ -341,6 +341,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else if (typeof snippet === 'function') {
             isFunction = true;
             snippet = snippet.toString();
+            assert(snippet.indexOf('XXX missing C define') == -1,
+                   'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
+
             // name the function; overwrite if it's already named
             snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
             if (LIBRARY_DEBUG) {

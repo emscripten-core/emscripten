@@ -2777,7 +2777,7 @@ if 'benchmark' not in str(sys.argv):
     def test_unistd_confstr(self):
       src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'confstr.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_test(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
 
     def test_unistd_ttyname(self):
       def add_pre_run(filename):

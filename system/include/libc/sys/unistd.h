@@ -27,7 +27,7 @@ int     _EXFUN(chown, (const char *__path, uid_t __owner, gid_t __group ));
 int     _EXFUN(chroot, (const char *__path ));
 #endif
 int     _EXFUN(close, (int __fildes ));
-#if defined(__CYGWIN__)
+#if 1 /* XXX Emscripten defined(__CYGWIN__) */
 size_t	_EXFUN(confstr, (int __name, char *__buf, size_t __len));
 #endif
 char *  _EXFUN(ctermid, (char *__s ));
@@ -443,7 +443,7 @@ int	_EXFUN(unlinkat, (int, const char *, int));
  *  confstr values per IEEE Std 1003.1, 2004 Edition
  */
 
-#ifdef __CYGWIN__	/* Only defined on Cygwin for now. */
+#if 1 /* XXX Emscripten: Enable these def __CYGWIN__	/ * Only defined on Cygwin for now. */
 #define _CS_PATH                               0
 #define _CS_POSIX_V7_ILP32_OFF32_CFLAGS        1
 #define _CS_POSIX_V6_ILP32_OFF32_CFLAGS       _CS_POSIX_V7_ILP32_OFF32_CFLAGS
@@ -491,6 +491,11 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 #define _CS_POSIX_V7_THREADS_LDFLAGS          19
 #define _CS_V7_ENV                            20
 #define _CS_V6_ENV                           _CS_V6_ENV
+
+/* XXX Emscripten: two additional ones */
+#define _CS_GNU_LIBC_VERSION 42
+#define _CS_GNU_LIBPTHREAD_VERSION 42
+
 #endif
 
 #ifndef __CYGWIN__

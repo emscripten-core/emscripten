@@ -870,13 +870,13 @@ LibraryManager.library = {
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
 
     // Simplify flags.
-    var accessMode = oflag & {{{ C_DEFINES['O_ACCMODE'] }}};
-    var isWrite = accessMode != {{{ C_DEFINES['O_RDONLY'] }}};
-    var isRead = accessMode != {{{ C_DEFINES['O_WRONLY'] }}};
-    var isCreate = Boolean(oflag & {{{ C_DEFINES['O_CREAT'] }}});
-    var isExistCheck = Boolean(oflag & {{{ C_DEFINES['O_EXCL'] }}});
-    var isTruncate = Boolean(oflag & {{{ C_DEFINES['O_TRUNC'] }}});
-    var isAppend = Boolean(oflag & {{{ C_DEFINES['O_APPEND'] }}});
+    var accessMode = oflag & {{{ cDefine('O_ACCMODE') }}};
+    var isWrite = accessMode != {{{ cDefine('O_RDONLY') }}};
+    var isRead = accessMode != {{{ cDefine('O_WRONLY') }}};
+    var isCreate = Boolean(oflag & {{{ cDefine('O_CREAT') }}});
+    var isExistCheck = Boolean(oflag & {{{ cDefine('O_EXCL') }}});
+    var isTruncate = Boolean(oflag & {{{ cDefine('O_TRUNC') }}});
+    var isAppend = Boolean(oflag & {{{ cDefine('O_APPEND') }}});
 
     // Verify path.
     var origPath = path;
@@ -970,7 +970,7 @@ LibraryManager.library = {
   creat: function(path, mode) {
     // int creat(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
-    return _open(path, {{{ C_DEFINES['O_WRONLY'] }}} | {{{ C_DEFINES['O_CREAT'] }}} | {{{ C_DEFINES['O_TRUNC'] }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
+    return _open(path, {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_TRUNC') }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
   fcntl: function(fildes, cmd, varargs) {
@@ -982,7 +982,7 @@ LibraryManager.library = {
     }
     var stream = FS.streams[fildes];
     switch (cmd) {
-      case {{{ C_DEFINES['F_DUPFD'] }}}:
+      case {{{ cDefine('F_DUPFD') }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         if (arg < 0) {
           ___setErrNo(ERRNO_CODES.EINVAL);
@@ -995,37 +995,37 @@ LibraryManager.library = {
         if (arg in FS.streams) arg = FS.streams.length;
         FS.streams[arg] = newStream;
         return arg;
-      case {{{ C_DEFINES['F_GETFD'] }}}:
-      case {{{ C_DEFINES['F_SETFD'] }}}:
+      case {{{ cDefine('F_GETFD') }}}:
+      case {{{ cDefine('F_SETFD') }}}:
         return 0;  // FD_CLOEXEC makes no sense for a single process.
-      case {{{ C_DEFINES['F_GETFL'] }}}:
+      case {{{ cDefine('F_GETFL') }}}:
         var flags = 0;
-        if (stream.isRead && stream.isWrite) flags = {{{ C_DEFINES['O_RDWR'] }}};
-        else if (!stream.isRead && stream.isWrite) flags = {{{ C_DEFINES['O_WRONLY'] }}};
-        else if (stream.isRead && !stream.isWrite) flags = {{{ C_DEFINES['O_RDONLY'] }}};
-        if (stream.isAppend) flags |= {{{ C_DEFINES['O_APPEND'] }}};
+        if (stream.isRead && stream.isWrite) flags = {{{ cDefine('O_RDWR') }}};
+        else if (!stream.isRead && stream.isWrite) flags = {{{ cDefine('O_WRONLY') }}};
+        else if (stream.isRead && !stream.isWrite) flags = {{{ cDefine('O_RDONLY') }}};
+        if (stream.isAppend) flags |= {{{ cDefine('O_APPEND') }}};
         // Synchronization and blocking flags are irrelevant to us.
         return flags;
-      case {{{ C_DEFINES['F_SETFL'] }}}:
+      case {{{ cDefine('F_SETFL') }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
-        stream.isAppend = Boolean(arg | {{{ C_DEFINES['O_APPEND'] }}});
+        stream.isAppend = Boolean(arg | {{{ cDefine('O_APPEND') }}});
         // Synchronization and blocking flags are irrelevant to us.
         return 0;
-      case {{{ C_DEFINES['F_GETLK'] }}}:
-      case {{{ C_DEFINES['F_GETLK64'] }}}:
+      case {{{ cDefine('F_GETLK') }}}:
+      case {{{ cDefine('F_GETLK64') }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         var offset = ___flock_struct_layout.l_type;
         // We're always unlocked.
-        {{{ makeSetValue('arg', 'offset', C_DEFINES['F_UNLCK'], 'i16') }}}
+        {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16') }}}
         return 0;
-      case {{{ C_DEFINES['F_SETLK'] }}}:
-      case {{{ C_DEFINES['F_SETLKW'] }}}:
-      case {{{ C_DEFINES['F_SETLK64'] }}}:
-      case {{{ C_DEFINES['F_SETLKW64'] }}}:
+      case {{{ cDefine('F_SETLK') }}}:
+      case {{{ cDefine('F_SETLKW') }}}:
+      case {{{ cDefine('F_SETLK64') }}}:
+      case {{{ cDefine('F_SETLKW64') }}}:
         // Pretend that the locking is successful.
         return 0;
-      case {{{ C_DEFINES['F_SETOWN'] }}}:
-      case {{{ C_DEFINES['F_GETOWN'] }}}:
+      case {{{ cDefine('F_SETOWN') }}}:
+      case {{{ cDefine('F_GETOWN') }}}:
         // These are for sockets. We don't have them implemented (yet?).
         ___setErrNo(ERRNO_CODES.EINVAL);
         return -1;
@@ -1697,37 +1697,37 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
     var value;
     switch (name) {
-      case 0:  // _CS_PATH.
+      case {{{ cDefine('_CS_PATH') }}}:
         value = ENV['PATH'] || '/';
         break;
-      case 1:  // _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS.
+      case {{{ cDefine('_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS') }}}:
         // Mimicing glibc.
         value = 'POSIX_V6_ILP32_OFF32\nPOSIX_V6_ILP32_OFFBIG';
         break;
-      case 2:  // _CS_GNU_LIBC_VERSION.
+      case {{{ cDefine('_CS_GNU_LIBC_VERSION') }}}:
         // This JS implementation was tested against this glibc version.
         value = 'glibc 2.14';
         break;
-      case 3:  // _CS_GNU_LIBPTHREAD_VERSION.
-        // We don't support pthread.
+      case {{{ cDefine('_CS_GNU_LIBPTHREAD_VERSION') }}}:
+        // We don't support pthreads.
         value = '';
         break;
-      case 1118:  // _CS_POSIX_V6_ILP32_OFF32_LIBS.
-      case 1122:  // _CS_POSIX_V6_ILP32_OFFBIG_LIBS.
-      case 1124:  // _CS_POSIX_V6_LP64_OFF64_CFLAGS.
-      case 1125:  // _CS_POSIX_V6_LP64_OFF64_LDFLAGS.
-      case 1126:  // _CS_POSIX_V6_LP64_OFF64_LIBS.
-      case 1128:  // _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS.
-      case 1129:  // _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS.
-      case 1130:  // _CS_POSIX_V6_LPBIG_OFFBIG_LIBS.
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LIBS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LIBS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_CFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LDFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LIBS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LIBS') }}}:
         value = '';
         break;
-      case 1116:  // _CS_POSIX_V6_ILP32_OFF32_CFLAGS.
-      case 1117:  // _CS_POSIX_V6_ILP32_OFF32_LDFLAGS.
-      case 1121:  // _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS.
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_CFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LDFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS') }}}:
         value = '-m32';
         break;
-      case 1120:  // _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS.
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS') }}}:
         value = '-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64';
         break;
       default:
@@ -2721,26 +2721,26 @@ LibraryManager.library = {
     mode = Pointer_stringify(mode);
     if (mode[0] == 'r') {
       if (mode.indexOf('+') != -1) {
-        flags = {{{ C_DEFINES['O_RDWR'] }}};
+        flags = {{{ cDefine('O_RDWR') }}};
       } else {
-        flags = {{{ C_DEFINES['O_RDONLY'] }}};
+        flags = {{{ cDefine('O_RDONLY') }}};
       }
     } else if (mode[0] == 'w') {
       if (mode.indexOf('+') != -1) {
-        flags = {{{ C_DEFINES['O_RDWR'] }}};
+        flags = {{{ cDefine('O_RDWR') }}};
       } else {
-        flags = {{{ C_DEFINES['O_WRONLY'] }}};
+        flags = {{{ cDefine('O_WRONLY') }}};
       }
-      flags |= {{{ C_DEFINES['O_CREAT'] }}};
-      flags |= {{{ C_DEFINES['O_TRUNK'] }}};
+      flags |= {{{ cDefine('O_CREAT') }}};
+      flags |= {{{ cDefine('O_TRUNK') }}};
     } else if (mode[0] == 'a') {
       if (mode.indexOf('+') != -1) {
-        flags = {{{ C_DEFINES['O_RDWR'] }}};
+        flags = {{{ cDefine('O_RDWR') }}};
       } else {
-        flags = {{{ C_DEFINES['O_WRONLY'] }}};
+        flags = {{{ cDefine('O_WRONLY') }}};
       }
-      flags |= {{{ C_DEFINES['O_CREAT'] }}};
-      flags |= {{{ C_DEFINES['O_APPEND'] }}};
+      flags |= {{{ cDefine('O_CREAT') }}};
+      flags |= {{{ cDefine('O_APPEND') }}};
     } else {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
