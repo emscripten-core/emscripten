@@ -362,7 +362,7 @@ extern float hypotf _PARAMS((float, float));
 #endif /* ! defined (_REENT_ONLY) */
 
 /* On platforms where long double equals double.  */
-#ifdef _LDBL_EQ_DBL
+#if defined(_LDBL_EQ_DBL) || defined(EMSCRIPTEN)
 /* Reentrant ANSI C functions.  */
 #ifndef __math_68881
 extern long double atanl _PARAMS((long double));
@@ -379,8 +379,10 @@ extern long double log1pl _PARAMS((long double));
 extern long double expm1l _PARAMS((long double));
 #endif /* ! defined (__math_68881) */
 /* Non reentrant ANSI C functions.  */
+
 #ifndef _REENT_ONLY
 #ifndef __math_68881
+
 extern long double acosl _PARAMS((long double));
 extern long double asinl _PARAMS((long double));
 extern long double atan2l _PARAMS((long double, long double));
@@ -426,6 +428,14 @@ extern long double remainderl _PARAMS((long double, long double));
 extern long double lgammal _PARAMS((long double));
 extern long double erfl _PARAMS((long double));
 extern long double erfcl _PARAMS((long double));
+
+/* XXX Emscripten: 5 more */
+extern long double log2l _PARAMS((long double));
+extern long double logbl _PARAMS((long double));
+double nexttoward(double x, long double y);
+float nexttowardf(float x, long double y);
+long double nexttowardl(long double x, long double y);
+
 #endif /* ! defined (_REENT_ONLY) */
 #else /* !_LDBL_EQ_DBL */
 #ifdef __i386__

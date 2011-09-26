@@ -177,6 +177,8 @@ int	_EXFUN(_vswscanf_r, (struct _reent *, const wchar_t *, const wchar_t *, __VA
 int	_EXFUN(_vwscanf_r, (struct _reent *, const wchar_t *, __VALIST));
 int	_EXFUN(_wscanf_r, (struct _reent *, const wchar_t *, ...));
 
+long double _EXFUN(wcstold, (const wchar_t *nptr, wchar_t **endptr)); /* XXX Emscripten */
+
 #define getwc(fp)	fgetwc(fp)
 #define putwc(wc,fp)	fputwc((wc), (fp))
 #ifndef _REENT_ONLY
