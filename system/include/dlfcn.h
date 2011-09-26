@@ -1,5 +1,7 @@
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 #define RTLD_LAZY   1
 #define RTLD_NOW    2
@@ -11,5 +13,7 @@ void  *dlsym(void *, const char *);
 int    dlclose(void *);
 char  *dlerror(void);
 
+#ifdef __cplusplus
 }
+#endif
 

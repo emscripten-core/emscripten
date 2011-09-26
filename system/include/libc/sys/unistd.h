@@ -216,7 +216,7 @@ _READ_WRITE_RETURN_TYPE _EXFUN(_write, (int __fd, const void *__buf, size_t __nb
 int     _EXFUN(_execve, (const char *__path, char * const __argv[], char * const __envp[] ));
 #endif
 
-#if defined(__CYGWIN__) || defined(__rtems__) || defined(__sh__) || defined(__SPU__)
+#if defined(__CYGWIN__) || defined(__rtems__) || defined(__sh__) || defined(__SPU__) || defined(EMSCRIPTEN)
 #if !defined(__INSIDE_CYGWIN__)
 int     _EXFUN(ftruncate, (int __fd, off_t __length));
 int     _EXFUN(truncate, (const char *, off_t __length));
