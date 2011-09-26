@@ -169,23 +169,25 @@ def main(args):
   defines = {}
   include_root = path_from_root('system', 'include')
   headers = args.headers[0].split(',') if len(args.headers) > 0 else []
+  seen_headers = set()
   while len(headers) > 0:
     header = headers.pop(0)
     if not os.path.isabs(header):
       header = os.path.join(include_root, header)
+    seen_headers.add(header)
     for line in open(header, 'r'):
       line = line.replace('\t', ' ')
-      m = re.match('^ *#define +(?P<name>[-\w_.]+) +\(?(?P<value>[-\w_.|]+)\)?.*', line)
+      m = re.match('^ *# *define +(?P<name>[-\w_.]+) +\(?(?P<value>[-\w_.|]+)\)?.*', line)
       if m:
         defines[m.group('name')] = m.group('value')
-      m = re.match('^ *#include *["<](?P<name>[\w_.-/]+)[">].*', line)
+      m = re.match('^ *# *include *["<](?P<name>[\w_.-/]+)[">].*', line)
       if m:
         # Find this file
         found = False
         for w in [w for w in os.walk(include_root)]:
           for f in w[2]:
             curr = os.path.join(w[0], f)
-            if curr.endswith(m.group('name')):
+            if curr.endswith(m.group('name')) and curr not in seen_headers:
               headers.append(curr)
               found = True
               break

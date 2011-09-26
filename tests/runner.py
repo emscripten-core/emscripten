@@ -189,6 +189,7 @@ class RunnerCore(unittest.TestCase):
     except OSError:
       os.chdir(self.get_dir()) # ensure the current working directory is valid
     compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    #print compiler_output
 
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0

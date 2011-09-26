@@ -490,11 +490,11 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 #define _CS_POSIX_V7_THREADS_CFLAGS           18
 #define _CS_POSIX_V7_THREADS_LDFLAGS          19
 #define _CS_V7_ENV                            20
-#define _CS_V6_ENV                           _CS_V6_ENV
 
-/* XXX Emscripten: two additional ones */
-#define _CS_GNU_LIBC_VERSION 42
-#define _CS_GNU_LIBPTHREAD_VERSION 42
+/* XXX Emscripten: remove self-ref, and add two additional ones */
+/* #define _CS_V6_ENV                           _CS_V6_ENV */
+#define _CS_GNU_LIBC_VERSION                  42
+#define _CS_GNU_LIBPTHREAD_VERSION            43
 
 #endif
 
