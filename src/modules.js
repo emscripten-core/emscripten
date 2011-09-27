@@ -244,7 +244,7 @@ var Functions = {
       // Shared libraries reuse the parent's function table.
       return 'FUNCTION_TABLE = FUNCTION_TABLE.concat([' + indices + ']);';
     } else {
-      return 'FUNCTION_TABLE = [' + indices + '];';
+      return 'FUNCTION_TABLE = [' + indices + ']; Module["FUNCTION_TABLE"] = FUNCTION_TABLE;';
     }
   }
 };
