@@ -60,6 +60,12 @@ struct _reent;
 char *_EXFUN(_setlocale_r,(struct _reent *, int category, const char *locale));
 struct lconv *_EXFUN(_localeconv_r,(struct _reent *));
 
+/* XXX Emscripten */
+typedef void* locale_t;
+locale_t newlocale(int category_mask, const char *locale, locale_t base);
+void freelocale(locale_t locobj);
+locale_t uselocale(locale_t newloc);
+
 _END_STD_C
 
 #endif /* _LOCALE_H_ */

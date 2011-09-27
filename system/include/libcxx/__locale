@@ -8,6 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+//class locale; // XXX Emscripten
+
 #ifndef _LIBCPP___LOCALE
 #define _LIBCPP___LOCALE
 
@@ -42,6 +44,7 @@ public:
     class id;
 
     typedef int category;
+    /* XXX Emscripten
     static const category // values assigned here are for exposition only
         none     = 0,
         collate  = LC_COLLATE_MASK,
@@ -51,6 +54,7 @@ public:
         time     = LC_TIME_MASK,
         messages = LC_MESSAGES_MASK,
         all = collate | ctype | monetary | numeric | time | messages;
+    */
 
     // construct/copy/destroy:
     locale()  _NOEXCEPT;
@@ -333,7 +337,7 @@ public:
 #else  // __GLIBC__ || _WIN32
 #if __APPLE__
     typedef __uint32_t mask;
-#elif __FreeBSD__
+#elif defined(__FreeBSD__) or defined(EMSCRIPTEN)
     typedef unsigned long mask;
 #endif
     static const mask space  = _CTYPE_S;

@@ -189,7 +189,7 @@ template <class charT> class messages_byname;
 #if _WIN32
 #include <support/win32/support.h> // vasprintf
 #else // _WIN32
-#include <nl_types.h>
+// XXX Emscripten #include <nl_types.h>
 #endif  // !_WIN32
 
 #pragma GCC system_header
@@ -800,6 +800,7 @@ template <class _CharT, class _InputIterator>
 locale::id
 num_get<_CharT, _InputIterator>::id;
 
+/* XXX Emscripten
 template <class _Tp>
 _Tp
 __num_get_signed_integral(const char* __a, const char* __a_end,
@@ -1307,6 +1308,8 @@ num_get<_CharT, _InputIterator>::do_get(iter_type __b, iter_type __e,
     return __b;
 }
 
+*/
+
 extern template class num_get<char>;
 extern template class num_get<wchar_t>;
 
@@ -1389,7 +1392,7 @@ void
 __num_put<_CharT>::__widen_and_group_float(char* __nb, char* __np, char* __ne,
                                            _CharT* __ob, _CharT*& __op, _CharT*& __oe,
                                            const locale& __loc)
-{
+;/* XXX Emscripten {
     const ctype<_CharT>&    __ct = use_facet<ctype<_CharT> >   (__loc);
     const numpunct<_CharT>& __npt = use_facet<numpunct<_CharT> >(__loc);
     string __grouping = __npt.grouping();
@@ -1464,6 +1467,7 @@ __num_put<_CharT>::__widen_and_group_float(char* __nb, char* __np, char* __ne,
     else
         __op = __ob + (__np - __nb);
 }
+*/
 
 extern template class __num_put<char>;
 extern template class __num_put<wchar_t>;
@@ -3713,7 +3717,7 @@ template <class _CharT>
 typename messages<_CharT>::catalog
 messages<_CharT>::do_open(const basic_string<char>& __nm, const locale&) const
 {
-#if _WIN32
+#if defined(_WIN32) || defined(EMSCRIPTEN)
     return -1;
 #else // _WIN32
     catalog __cat = reinterpret_cast<catalog>(catopen(__nm.c_str(), NL_CAT_LOCALE));
@@ -3728,7 +3732,7 @@ typename messages<_CharT>::string_type
 messages<_CharT>::do_get(catalog __c, int __set, int __msgid,
                          const string_type& __dflt) const
 {
-#if _WIN32
+#if defined(_WIN32) || defined(EMSCRIPTEN)
     return __dflt;
 #else // _WIN32
     string __ndflt;
@@ -3750,7 +3754,7 @@ template <class _CharT>
 void
 messages<_CharT>::do_close(catalog __c) const
 {
-#if !_WIN32
+#if !defined(_WIN32) && !defined(EMSCRIPTEN)
     if (__c != -1)
         __c <<= 1;
     nl_catd __cat = reinterpret_cast<nl_catd>(__c);

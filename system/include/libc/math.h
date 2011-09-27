@@ -232,7 +232,7 @@ extern int __signbitd (double x);
 
 /* Non ANSI double precision functions.  */
 
-extern double infinity _PARAMS((void));
+/* XXX Emscripten extern double infinity _PARAMS((void)); */
 extern double nan _PARAMS((const char *));
 extern int finite _PARAMS((double));
 extern double copysign _PARAMS((double, double));
