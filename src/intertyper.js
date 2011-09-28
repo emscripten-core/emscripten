@@ -54,7 +54,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           if (inContinual || new RegExp(/^\ +to.*/g).test(line)
                           || new RegExp(/^\ +catch .*/g).test(line)
                           || new RegExp(/^\ +filter .*/g).test(line)
-                          || new RegExp(/^\ +cleanup .*/g).test(line)) {
+                          || new RegExp(/^\ +cleanup.*/g).test(line)) {
             // to after invoke or landingpad second line
             ret.slice(-1)[0].lineText += line;
             if (new RegExp(/^\ +\]/g).test(line)) { // end of llvm switch
