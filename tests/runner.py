@@ -3148,6 +3148,7 @@ if 'benchmark' not in str(sys.argv):
       global SAFE_HEAP; SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
       global DISABLE_EXCEPTION_CATCHING; DISABLE_EXCEPTION_CATCHING = 1
       global FAST_MEMORY; FAST_MEMORY = 4*1024*1024
+      global EXPORTED_FUNCTIONS; EXPORTED_FUNCTIONS = ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
 
       global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
 

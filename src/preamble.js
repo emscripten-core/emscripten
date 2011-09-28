@@ -430,6 +430,9 @@ Module['getValue'] = getValue;
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
+Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
+Module['ALLOC_STACK'] = ALLOC_STACK;
+Module['ALLOC_STATIC'] = ALLOC_STATIC;
 
 function allocate(slab, types, allocator) {
   var zeroinit, size;
