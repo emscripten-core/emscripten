@@ -7,9 +7,6 @@
  * http://emscripten.org
  */
 
-#undef __i386__
-#undef __x86_64__
-
 // Interface to the underlying JS engine. This function will
 // eval() the given script.
 extern void emscripten_run_script(const char *script);
