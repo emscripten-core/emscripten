@@ -4388,6 +4388,15 @@ LibraryManager.library = {
   },
   nanf: 'nan',
 
+  __fpclassifyf: function(x) {
+    if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
+    if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
+    if (x == 0) return {{{ cDefine('FP_ZERO') }}};
+    // FP_SUBNORMAL..?  
+    return {{{ cDefine('FP_NORMAL') }}};
+  },
+  __fpclassifyd: '__fpclassifyf',
+
   // ==========================================================================
   // sys/utsname.h
   // ==========================================================================

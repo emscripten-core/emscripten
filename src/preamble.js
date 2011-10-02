@@ -31,7 +31,11 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   } else {
 #if USE_TYPED_ARRAYS == 0
     if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false) { // false can be the result of a mathop comparator
-      throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
+      var error = true;
+      try {
+        if (HEAP[dest].toString() === 'NaN') error = false; // NaN is acceptable, as a double value
+      } catch(e){}
+      if (error) throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
     }
 #endif
     if (type === null) return;
