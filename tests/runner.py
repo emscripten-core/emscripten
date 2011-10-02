@@ -2572,11 +2572,11 @@ if 'benchmark' not in str(sys.argv):
 
           printf("ret: %d\n", poll(multi, 5, 123));
           printf("errno: %d\n", errno);
-          printf("multi[0].revents: 0x%x\n", multi[0].revents);
-          printf("multi[1].revents: 0x%x\n", multi[1].revents);
-          printf("multi[2].revents: 0x%x\n", multi[2].revents);
-          printf("multi[3].revents: 0x%x\n", multi[3].revents);
-          printf("multi[4].revents: 0x%x\n", multi[4].revents);
+          printf("multi[0].revents: %d\n", multi[0].revents == (POLLIN | POLLOUT));
+          printf("multi[1].revents: %d\n", multi[1].revents == (POLLIN | POLLOUT));
+          printf("multi[2].revents: %d\n", multi[2].revents == POLLNVAL);
+          printf("multi[3].revents: %d\n", multi[3].revents == 0);
+          printf("multi[4].revents: %d\n", multi[4].revents == POLLOUT);
 
           return 0;
         }
@@ -2584,13 +2584,13 @@ if 'benchmark' not in str(sys.argv):
       expected = r'''
         ret: 4
         errno: 0
-        multi[0].revents: 0x5
-        multi[1].revents: 0x5
-        multi[2].revents: 0x20
-        multi[3].revents: 0x0
-        multi[4].revents: 0x4
+        multi[0].revents: 1
+        multi[1].revents: 1
+        multi[2].revents: 1
+        multi[3].revents: 1
+        multi[4].revents: 1
         '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
+      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
 
     def test_statvfs(self):
       src = r'''

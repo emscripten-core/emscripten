@@ -1077,10 +1077,10 @@ LibraryManager.library = {
       var revents = 0;
       if (fd in FS.streams) {
         var stream = FS.streams[fd];
-        if (events & 0x1) revents |= 0x1;  // POLLIN.
-        if (events & 0x4) revents |= 0x4;  // POLLOUT.
+        if (events & {{{ cDefine('POLLIN') }}}) revents |= {{{ cDefine('POLLIN') }}};
+        if (events & {{{ cDefine('POLLOUT') }}}) revents |= {{{ cDefine('POLLOUT') }}};
       } else {
-        if (events & 0x20) revents |= 0x20;  // POLLNVAL.
+        if (events & {{{ cDefine('POLLNVAL') }}}) revents |= {{{ cDefine('POLLNVAL') }}};
       }
       if (revents) nonzero++;
       {{{ makeSetValue('pollfd', 'offsets.revents', 'revents', 'i16') }}}
