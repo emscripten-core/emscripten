@@ -221,6 +221,8 @@ extern long double strtold (const char *, char **);
 extern long double wcstold (const wchar_t *, wchar_t **);
 #endif /* _LDBL_EQ_DBL */
 
+int getloadavg(double loadavg[], int nelem); /* XXX Emscripten */
+
 _END_STD_C
 
 #endif /* _STDLIB_H_ */
