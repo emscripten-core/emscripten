@@ -178,8 +178,14 @@ def main(args):
     for line in open(header, 'r'):
       line = line.replace('\t', ' ')
       m = re.match('^ *# *define +(?P<name>[-\w_.]+) +\(?(?P<value>[-\w_.|]+)\)?.*', line)
+      if not m:
+        # Catch enum defines of a very limited sort
+        m = re.match('^ +(?P<name>[A-Z_\d]+) += +(?P<value>\d+).*', line)
       if m:
-        defines[m.group('name')] = m.group('value')
+        if m.group('name') != m.group('value'):
+          defines[m.group('name')] = m.group('value')
+        #else:
+        #  print 'Warning: %s #defined to itself' % m.group('name') # XXX this can happen if we are set to be equal to an enum (with the same name)
       m = re.match('^ *# *include *["<](?P<name>[\w_.-/]+)[">].*', line)
       if m:
         # Find this file

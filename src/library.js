@@ -4960,163 +4960,163 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
     var result;
     switch (item) {
-      case 0xE:  // CODESET
+      case {{{ cDefine('CODESET') }}}:
         result = 'ANSI_X3.4-1968';
         break;
-      case 0x20028:  // D_T_FMT
+      case {{{ cDefine('D_T_FMT') }}}:
         result = '%a %b %e %H:%M:%S %Y';
         break;
-      case 0x20029:  // D_FMT
+      case {{{ cDefine('D_FMT') }}}:
         result = '%m/%d/%y';
         break;
-      case 0x2002A:  // T_FMT
+      case {{{ cDefine('T_FMT') }}}:
         result = '%H:%M:%S';
         break;
-      case 0x2002B:  // T_FMT_AMPM
+      case {{{ cDefine('T_FMT_AMPM') }}}:
         result = '%I:%M:%S %p';
         break;
-      case 0x20026:  // AM_STR
+      case {{{ cDefine('AM_STR') }}}:
         result = 'AM';
         break;
-      case 0x20027:  // PM_STR
+      case {{{ cDefine('PM_STR') }}}:
         result = 'PM';
         break;
-      case 0x20007:  // DAY_1
+      case {{{ cDefine('DAY_1') }}}:
         result = 'Sunday';
         break;
-      case 0x20008:  // DAY_2
+      case {{{ cDefine('DAY_2') }}}:
         result = 'Monday';
         break;
-      case 0x20009:  // DAY_3
+      case {{{ cDefine('DAY_3') }}}:
         result = 'Tuesday';
         break;
-      case 0x2000A:  // DAY_4
+      case {{{ cDefine('DAY_4') }}}:
         result = 'Wednesday';
         break;
-      case 0x2000B:  // DAY_5
+      case {{{ cDefine('DAY_5') }}}:
         result = 'Thursday';
         break;
-      case 0x2000C:  // DAY_6
+      case {{{ cDefine('DAY_6') }}}:
         result = 'Friday';
         break;
-      case 0x2000D:  // DAY_7
+      case {{{ cDefine('DAY_7') }}}:
         result = 'Saturday';
         break;
-      case 0x20000:  // ABDAY_1
+      case {{{ cDefine('ABDAY_1') }}}:
         result = 'Sun';
         break;
-      case 0x20001:  // ABDAY_2
+      case {{{ cDefine('ABDAY_2') }}}:
         result = 'Mon';
         break;
-      case 0x20002:  // ABDAY_3
+      case {{{ cDefine('ABDAY_3') }}}:
         result = 'Tue';
         break;
-      case 0x20003:  // ABDAY_4
+      case {{{ cDefine('ABDAY_4') }}}:
         result = 'Wed';
         break;
-      case 0x20004:  // ABDAY_5
+      case {{{ cDefine('ABDAY_5') }}}:
         result = 'Thu';
         break;
-      case 0x20005:  // ABDAY_6
+      case {{{ cDefine('ABDAY_6') }}}:
         result = 'Fri';
         break;
-      case 0x20006:  // ABDAY_7
+      case {{{ cDefine('ABDAY_7') }}}:
         result = 'Sat';
         break;
-      case 0x2001A:  // MON_1
+      case {{{ cDefine('MON_1') }}}:
         result = 'January';
         break;
-      case 0x2001B:  // MON_2
+      case {{{ cDefine('MON_2') }}}:
         result = 'February';
         break;
-      case 0x2001C:  // MON_3
+      case {{{ cDefine('MON_3') }}}:
         result = 'March';
         break;
-      case 0x2001D:  // MON_4
+      case {{{ cDefine('MON_4') }}}:
         result = 'April';
         break;
-      case 0x2001E:  // MON_5
+      case {{{ cDefine('MON_5') }}}:
         result = 'May';
         break;
-      case 0x2001F:  // MON_6
+      case {{{ cDefine('MON_6') }}}:
         result = 'June';
         break;
-      case 0x20020:  // MON_7
+      case {{{ cDefine('MON_7') }}}:
         result = 'July';
         break;
-      case 0x20021:  // MON_8
+      case {{{ cDefine('MON_8') }}}:
         result = 'August';
         break;
-      case 0x20022:  // MON_9
+      case {{{ cDefine('MON_9') }}}:
         result = 'September';
         break;
-      case 0x20023:  // MON_10
+      case {{{ cDefine('MON_10') }}}:
         result = 'October';
         break;
-      case 0x20024:  // MON_11
+      case {{{ cDefine('MON_11') }}}:
         result = 'November';
         break;
-      case 0x20025:  // MON_12
+      case {{{ cDefine('MON_12') }}}:
         result = 'December';
         break;
-      case 0x2000E:  // ABMON_1
+      case {{{ cDefine('ABMON_1') }}}:
         result = 'Jan';
         break;
-      case 0x2000F:  // ABMON_2
+      case {{{ cDefine('ABMON_2') }}}:
         result = 'Feb';
         break;
-      case 0x20010:  // ABMON_3
+      case {{{ cDefine('ABMON_3') }}}:
         result = 'Mar';
         break;
-      case 0x20011:  // ABMON_4
+      case {{{ cDefine('ABMON_4') }}}:
         result = 'Apr';
         break;
-      case 0x20012:  // ABMON_5
+      case {{{ cDefine('ABMON_5') }}}:
         result = 'May';
         break;
-      case 0x20013:  // ABMON_6
+      case {{{ cDefine('ABMON_6') }}}:
         result = 'Jun';
         break;
-      case 0x20014:  // ABMON_7
+      case {{{ cDefine('ABMON_7') }}}:
         result = 'Jul';
         break;
-      case 0x20015:  // ABMON_8
+      case {{{ cDefine('ABMON_8') }}}:
         result = 'Aug';
         break;
-      case 0x20016:  // ABMON_9
+      case {{{ cDefine('ABMON_9') }}}:
         result = 'Sep';
         break;
-      case 0x20017:  // ABMON_10
+      case {{{ cDefine('ABMON_10') }}}:
         result = 'Oct';
         break;
-      case 0x20018:  // ABMON_11
+      case {{{ cDefine('ABMON_11') }}}:
         result = 'Nov';
         break;
-      case 0x20019:  // ABMON_12
+      case {{{ cDefine('ABMON_12') }}}:
         result = 'Dec';
         break;
-      case 0x2002F:  // ALT_DIGITS
+      case {{{ cDefine('ALT_DIGITS') }}}:
         result = '';
         break;
-      case 0x10000:  // RADIXCHAR
+      case {{{ cDefine('RADIXCHAR') }}}:
         result = '.';
         break;
-      case 0x10001:  // THOUSEP
+      case {{{ cDefine('THOUSEP') }}}:
         result = '';
         break;
-      case 0x50000:  // YESEXPR
+      case {{{ cDefine('YESEXPR') }}}:
         result = '^[yY]';
         break;
-      case 0x50001:  // NOEXPR
+      case {{{ cDefine('NOEXPR') }}}:
         result = '^[nN]';
         break;
-      case 0x4000F:  // CRNCYSTR
+      case {{{ cDefine('CRNCYSTR') }}}:
         result = '-';
         break;
-      case 0x2002C:  // ERA
-      case 0x2002E:  // ERA_D_FMT
-      case 0x20030:  // ERA_D_T_FMT
-      case 0x20031:  // ERA_T_FMT
+      case {{{ cDefine('ERA') }}}:
+      case {{{ cDefine('ERA_D_FMT') }}}:
+      case {{{ cDefine('ERA_D_T_FMT') }}}:
+      case {{{ cDefine('ERA_T_FMT') }}}:
       default:
         result = '';
         break;

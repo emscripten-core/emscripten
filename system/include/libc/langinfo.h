@@ -41,140 +41,140 @@ enum __nl_item
      to maintain backward compatibility. */
   _NL_CTYPE_CODESET_NAME = 0,	/* codeset name */
 #define CODESET _NL_CTYPE_CODESET_NAME
-  D_T_FMT,			/* string for formatting date and time */
+  D_T_FMT = 1,			/* string for formatting date and time */
 #define D_T_FMT D_T_FMT
-  D_FMT,			/* date format string */
+  D_FMT = 2,			/* date format string */
 #define D_FMT D_FMT
-  T_FMT,			/* time format string */
+  T_FMT = 3,			/* time format string */
 #define T_FMT T_FMT
-  T_FMT_AMPM,			/* a.m. or p.m. time formatting string */
+  T_FMT_AMPM = 4,			/* a.m. or p.m. time formatting string */
 #define T_FMT_AMPM T_FMT_AMPM
-  AM_STR,			/* Ante Meridian affix */
+  AM_STR = 5,			/* Ante Meridian affix */
 #define AM_STR AM_STR
-  PM_STR,			/* Post Meridian affix */
+  PM_STR = 6,			/* Post Meridian affix */
 #define PM_STR PM_STR
 
 /* week day names */
-  DAY_1,
+  DAY_1 = 7,
 #define DAY_1 DAY_1
-  DAY_2,
+  DAY_2 = 8,
 #define DAY_2 DAY_2
-  DAY_3,
+  DAY_3 = 9,
 #define DAY_3 DAY_3
-  DAY_4,
+  DAY_4 = 10,
 #define DAY_4 DAY_4
-  DAY_5,
+  DAY_5 = 11,
 #define DAY_5 DAY_5
-  DAY_6,
+  DAY_6 = 12,
 #define DAY_6 DAY_6
-  DAY_7,
+  DAY_7 = 13,
 #define DAY_7 DAY_7
 
 /* abbreviated week day names */
-  ABDAY_1,
+  ABDAY_1 = 14,
 #define ABDAY_1 ABDAY_1
-  ABDAY_2,
+  ABDAY_2 = 15,
 #define ABDAY_2 ABDAY_2
-  ABDAY_3,
+  ABDAY_3 = 16,
 #define ABDAY_3 ABDAY_3
-  ABDAY_4,
+  ABDAY_4 = 17,
 #define ABDAY_4 ABDAY_4
-  ABDAY_5,
+  ABDAY_5 = 18,
 #define ABDAY_5 ABDAY_5
-  ABDAY_6,
+  ABDAY_6 = 19,
 #define ABDAY_6 ABDAY_6
-  ABDAY_7,
+  ABDAY_7 = 20,
 #define ABDAY_7 ABDAY_7
 
 /* month names */
-  MON_1,
+  MON_1 = 21,
 #define MON_1 MON_1
-  MON_2,
+  MON_2 = 22,
 #define MON_2 MON_2
-  MON_3,
+  MON_3 = 23,
 #define MON_3 MON_3
-  MON_4,
+  MON_4 = 24,
 #define MON_4 MON_4
-  MON_5,
+  MON_5 = 25,
 #define MON_5 MON_5
-  MON_6,
+  MON_6 = 26,
 #define MON_6 MON_6
-  MON_7,
+  MON_7 = 27,
 #define MON_7 MON_7
-  MON_8,
+  MON_8 = 28,
 #define MON_8 MON_8
-  MON_9,
+  MON_9 = 29,
 #define MON_9 MON_9
-  MON_10,
+  MON_10 = 30,
 #define MON_10 MON_10
-  MON_11,
+  MON_11 = 31,
 #define MON_11 MON_11
-  MON_12,
+  MON_12 = 32,
 #define MON_12 MON_12
 
 /* abbreviated month names */
-  ABMON_1,
+  ABMON_1 = 33,
 #define ABMON_1 ABMON_1
-  ABMON_2,
+  ABMON_2 = 34,
 #define ABMON_2 ABMON_2
-  ABMON_3,
+  ABMON_3 = 35,
 #define ABMON_3 ABMON_3
-  ABMON_4,
+  ABMON_4 = 36,
 #define ABMON_4 ABMON_4
-  ABMON_5,
+  ABMON_5 = 37,
 #define ABMON_5 ABMON_5
-  ABMON_6,
+  ABMON_6 = 38,
 #define ABMON_6 ABMON_6
-  ABMON_7,
+  ABMON_7 = 39,
 #define ABMON_7 ABMON_7
-  ABMON_8,
+  ABMON_8 = 40,
 #define ABMON_8 ABMON_8
-  ABMON_9,
+  ABMON_9 = 41,
 #define ABMON_9 ABMON_9
-  ABMON_10,
+  ABMON_10 = 42,
 #define ABMON_10 ABMON_10
-  ABMON_11,
+  ABMON_11 = 43,
 #define ABMON_11 ABMON_11
-  ABMON_12,
+  ABMON_12 = 44,
 #define ABMON_12 ABMON_12
 
-  ERA,				/* era description segments */
+  ERA = 45,				/* era description segments */
 #define ERA ERA
-  ERA_D_FMT,			/* era date format string */
+  ERA_D_FMT = 46,			/* era date format string */
 #define ERA_D_FMT ERA_D_FMT
-  ERA_D_T_FMT,			/* era date and time format string */
+  ERA_D_T_FMT = 47,			/* era date and time format string */
 #define ERA_D_T_FMT ERA_D_T_FMT
-  ERA_T_FMT,			/* era time format string */
+  ERA_T_FMT = 48,			/* era time format string */
 #define ERA_T_FMT ERA_T_FMT
-  ALT_DIGITS,			/* alternative symbols for digits */
+  ALT_DIGITS = 49,			/* alternative symbols for digits */
 #define ALT_DIGITS ALT_DIGITS
 
-  RADIXCHAR,			/* radix char */
+  RADIXCHAR = 50,			/* radix char */
 #define RADIXCHAR RADIXCHAR
-  THOUSEP,			/* separator for thousands */
+  THOUSEP = 51,			/* separator for thousands */
 #define THOUSEP THOUSEP
 
-  YESEXPR,			/* affirmative response expression */
+  YESEXPR = 52,			/* affirmative response expression */
 #define YESEXPR YESEXPR
-  NOEXPR,			/* negative response expression */
+  NOEXPR = 53,			/* negative response expression */
 #define NOEXPR NOEXPR
-  YESSTR,			/* affirmative response for yes/no queries */
+  YESSTR = 54,			/* affirmative response for yes/no queries */
 #define YESSTR YESSTR
-  NOSTR,			/* negative response for yes/no queries */
+  NOSTR = 55,			/* negative response for yes/no queries */
 #define NOSTR NOSTR
 
-  CRNCYSTR,			/* currency symbol */
+  CRNCYSTR = 56,			/* currency symbol */
 #define CRNCYSTR CRNCYSTR
 
-  D_MD_ORDER,			/* month/day order (BSD extension) */
+  D_MD_ORDER = 57,			/* month/day order (BSD extension) */
 #define D_MD_ORDER D_MD_ORDER
 
   _NL_TIME_DATE_FMT = 84,	/* date fmt used by date(1) (GNU extension) */
 #define _DATE_FMT _NL_TIME_DATE_FMT
 
 #ifdef __HAVE_LOCALE_INFO__
-  _NL_CTYPE_MB_CUR_MAX,
-  _NL_MESSAGES_CODESET,
+  _NL_CTYPE_MB_CUR_MAX = 85,
+  _NL_MESSAGES_CODESET = 86,
 
 #ifdef __HAVE_LOCALE_INFO_EXTENDED__
 
