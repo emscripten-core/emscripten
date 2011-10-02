@@ -2732,7 +2732,7 @@ LibraryManager.library = {
         flags = {{{ cDefine('O_WRONLY') }}};
       }
       flags |= {{{ cDefine('O_CREAT') }}};
-      flags |= {{{ cDefine('O_TRUNK') }}};
+      flags |= {{{ cDefine('O_TRUNC') }}};
     } else if (mode[0] == 'a') {
       if (mode.indexOf('+') != -1) {
         flags = {{{ cDefine('O_RDWR') }}};
