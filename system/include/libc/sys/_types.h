@@ -21,7 +21,7 @@ typedef long _off_t;
 typedef unsigned long long __dev_t;
 #else
 #ifndef __dev_t_defined
-typedef short __dev_t;
+typedef unsigned long long __dev_t; /* XXX Emscripten */
 #endif
 #endif
 

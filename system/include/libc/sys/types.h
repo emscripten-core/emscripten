@@ -130,7 +130,7 @@ typedef	char *	caddr_t;
     defined(__sparc__) || defined(__SPU__)
 typedef	unsigned long	ino_t;
 #else
-typedef	unsigned short	ino_t;
+typedef	unsigned long ino_t; /* XXX Emscripten */
 #endif
 #endif /*__CYGWIN__*/
 
@@ -197,7 +197,7 @@ typedef unsigned int mode_t _ST_INT32;
 #endif /* ! __MS_types__ */
 #endif /*__CYGWIN__*/
 
-typedef unsigned short nlink_t;
+typedef unsigned long nlink_t; /* XXX Emscripten */
 
 /* We don't define fd_set and friends if we are compiling POSIX
    source, or if we have included (or may include as indicated

@@ -2500,7 +2500,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'stat', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl(self):
       def add_pre_run(filename):
