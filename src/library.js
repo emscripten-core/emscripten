@@ -4584,8 +4584,8 @@ LibraryManager.library = {
   // ==========================================================================
 
   clock: function() {
-    if (_clock.start === undefined) _clock.start = new Date();
-    return (Date.now() - _clock.start.getTime()) * 1000;
+    if (_clock.start === undefined) _clock.start = Date.now();
+    return Math.floor((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}}/1000));
   },
 
   time: function(ptr) {
@@ -4663,8 +4663,8 @@ LibraryManager.library = {
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
-    var offset = {{{ makeGetValue('_timezone', 0, 'i32') }}};
-    var daylight = {{{ makeGetValue('_daylight', 0, 'i32') }}};
+    var offset = {{{ makeGetValue('__timezone', 0, 'i32') }}};
+    var daylight = {{{ makeGetValue('__daylight', 0, 'i32') }}};
     daylight = (daylight == 1) ? 60 * 60 : 0;
     var ret = _mktime(tmPtr) + offset - daylight;
     return ret;
@@ -4742,29 +4742,30 @@ LibraryManager.library = {
   },
 
   // TODO: Initialize these to defaults on startup from system settings.
-  tzname: null,
-  daylight: null,
-  timezone: null,
-  tzset__deps: ['malloc', 'tzname', 'daylight', 'timezone'],
+  // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
+  _tzname: null,
+  _daylight: null,
+  _timezone: null,
+  tzset__deps: ['_tzname', '_daylight', '_timezone'],
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (_tzname !== null) return;
+    if (__tzname) return; // glibc does not need the double __
 
-    _timezone = _malloc(QUANTUM_SIZE);
-    {{{ makeSetValue('_timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+    __timezone = _malloc(QUANTUM_SIZE);
+    {{{ makeSetValue('__timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
-    _daylight = _malloc(QUANTUM_SIZE);
+    __daylight = _malloc(QUANTUM_SIZE);
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue('_daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
+    {{{ makeSetValue('__daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
 
     var winterName = winter.toString().match(/\(([A-Z]+)\)/)[1];
     var summerName = summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    _tzname = _malloc(2 * QUANTUM_SIZE);
-    {{{ makeSetValue('_tzname', '0', 'winterNamePtr', 'i32') }}}
-    {{{ makeSetValue('_tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+    __tzname = _malloc(2 * QUANTUM_SIZE); // glibc does not need the double __
+    {{{ makeSetValue('__tzname', '0', 'winterNamePtr', 'i32') }}}
+    {{{ makeSetValue('__tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],

@@ -1686,7 +1686,7 @@ if 'benchmark' not in str(sys.argv):
       if USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
-      self.do_test(src, expected)
+      self.do_test(src, expected, extra_emscripten_args=['-H', 'libc/time.h'])
 
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason

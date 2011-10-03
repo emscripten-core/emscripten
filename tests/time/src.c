@@ -45,8 +45,8 @@ int main() {
   time_t t2 = xmas2002 - 60 * 60 * 24 * 30 * 6;
   tm_ptr = localtime(&t2);
   time_t dst_diff = (tm_ptr->tm_isdst == 1) ? tm_ptr->tm_isdst * 60 * 60 : 0;
-  printf("localtime timezone: %d\n", (timezone + tm_ptr->tm_gmtoff == dst_diff));
-  printf("localtime daylight: %d\n", daylight == tm_ptr->tm_isdst);
+  printf("localtime timezone: %d\n", (_timezone + tm_ptr->tm_gmtoff == dst_diff)); // glibc needs
+  printf("localtime daylight: %d\n", _daylight == tm_ptr->tm_isdst);               // no prefix "_"s
   printf("localtime tzname: %d\n", (!strcmp(tzname[0], tm_ptr->tm_zone) ||
                                     !strcmp(tzname[1], tm_ptr->tm_zone)));
 

@@ -41,6 +41,9 @@ struct tm
   int	tm_wday;
   int	tm_yday;
   int	tm_isdst;
+  /* XXX Emscripten */
+  int tm_gmtoff;
+  char *tm_zone;
 };
 
 clock_t	   _EXFUN(clock,    (void));
@@ -252,6 +255,12 @@ int _EXFUN(clock_setenable_attr, (clockid_t clock_id, int attr));
 int _EXFUN(clock_getenable_attr, (clockid_t clock_id, int *attr));
 
 #endif /* _POSIX_CPUTIME or _POSIX_THREAD_CPUTIME */
+
+/* XXX Emscripten */
+
+int _EXFUN(stime, (time_t *t));
+time_t _EXFUN(timegm, (struct tm *t));
+int _EXFUN(dysize, (int year));
 
 #ifdef __cplusplus
 }
