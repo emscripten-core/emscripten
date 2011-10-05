@@ -2162,7 +2162,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_test(src, 'Parent global: 123.*Parent global: 456.*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks,
-                   extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h'])
+                   extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
       INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
