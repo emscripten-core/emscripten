@@ -21,9 +21,9 @@ JS_ENGINE_PARAMS=[]
 
 import os, sys, subprocess, re
 
-abspath = os.path.abspath(os.path.dirname(__file__))
+__rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
-  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+  return os.path.join(os.path.sep, *(__rootpath__.split(os.sep)[:-1] + list(pathelems)))
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 data = open(sys.argv[1], 'r').readlines()

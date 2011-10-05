@@ -14,12 +14,12 @@ from tools import shared
 TEMP_FILES_TO_CLEAN = []
 
 
+__rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
   """Returns the absolute path for which the given path elements are
   relative to the emscripten root.
   """
-  rootpath = os.path.abspath(os.path.dirname(__file__))
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 
 
 def get_temp_file(suffix):
