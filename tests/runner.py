@@ -184,10 +184,6 @@ class RunnerCore(unittest.TestCase):
       except:
         pass
     settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
-    try:
-      os.getcwd()
-    except OSError:
-      os.chdir(self.get_dir()) # ensure the current working directory is valid
     compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
     #print compiler_output
 
@@ -4171,7 +4167,7 @@ class %s(T):
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = ['-g']
     shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
-    self.get_dir() # make sure it exists
+    os.chdir(self.get_dir()) # Ensure the directory exists and go there
 TT = %s
 ''' % (fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
