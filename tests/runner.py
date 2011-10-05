@@ -9,9 +9,9 @@ import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile,
 
 # Setup
 
-abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
-  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+  return os.path.join(rootpath, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 # Sanity check for config
@@ -188,7 +188,7 @@ class RunnerCore(unittest.TestCase):
       os.getcwd()
     except OSError:
       os.chdir(self.get_dir()) # ensure the current working directory is valid
-    compiler_output = timeout_run(Popen([EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
@@ -4144,7 +4144,7 @@ class %s(T):
   def setUp(self):
     global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTION_CATCHING, PROFILE
 
-    COMPILER = '%s'
+    COMPILER = %r
     llvm_opts = %d
     embetter = %d
     quantum_size = %d
@@ -4187,7 +4187,7 @@ TT = %s
       fullname = '%s_%d_%d%s%s' % (
         name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
       )
-      exec('%s = make_test("%s","%s",%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
+      exec('%s = make_test(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
@@ -4403,7 +4403,7 @@ else:
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
   for cmd in [CLANG, LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
-    if not os.path.exists(cmd):
+    if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
       print 'WARNING: Cannot find', cmd
   unittest.main()
 

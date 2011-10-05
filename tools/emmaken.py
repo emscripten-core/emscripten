@@ -59,9 +59,9 @@ import subprocess
 
 print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
 
-abspath = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
-  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+  return os.path.join(rootpath, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 # If this is a configure-type thing, just do that
