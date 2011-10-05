@@ -1,9 +1,9 @@
 import shutil, time, os
 from subprocess import Popen, PIPE, STDOUT
 
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
-  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 
 CONFIG_FILE = os.path.expanduser('~/.emscripten')
 if not os.path.exists(CONFIG_FILE):

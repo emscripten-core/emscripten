@@ -9,9 +9,9 @@ import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile,
 
 # Setup
 
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
-  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 # Sanity check for config
