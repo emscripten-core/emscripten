@@ -175,6 +175,10 @@ class RunnerCore(unittest.TestCase):
     self.do_emscripten(filename, output_processor, extra_args=extra_emscripten_args)
 
   def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
+    # Add some headers by default. TODO: remove manually adding these in each test
+    if '-H' not in extra_args:
+      extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
+
     # Run Emscripten
     exported_settings = {}
     for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
@@ -3049,7 +3053,8 @@ if 'benchmark' not in str(sys.argv):
       self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17\n1\n2\n3\n4\n7',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                      output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'))
+                      output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'),
+                      extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
     def get_building_dir(self):
       return os.path.join(self.get_dir(), 'building')
