@@ -223,7 +223,7 @@ int     _EXFUN(truncate, (const char *, off_t __length));
 #endif
 #endif
 
-#if defined(__CYGWIN__) || defined(__rtems__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) || defined(__rtems__)
 int	_EXFUN(getdtablesize, (void));
 int	_EXFUN(setdtablesize, (int));
 useconds_t _EXFUN(ualarm, (useconds_t __useconds, useconds_t __interval));
