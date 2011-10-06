@@ -29,7 +29,7 @@ EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 
 USE_EMSDK = True
 
-COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-v', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
+COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-v', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN']
 
 if USE_EMSDK:
   COMPILER_OPTS += [ '-nostdinc',

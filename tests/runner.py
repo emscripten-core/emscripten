@@ -151,7 +151,7 @@ class RunnerCore(unittest.TestCase):
         os.remove(f + '.o.ll')
       except:
         pass
-      output = Popen([COMPILER, '-DEMSCRIPTEN', '-emit-llvm'] + COMPILER_OPTS + COMPILER_TEST_OPTS +
+      output = Popen([COMPILER, '-emit-llvm'] + COMPILER_OPTS + COMPILER_TEST_OPTS +
                      ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
                      map(lambda include: '-I' + include, includes) + 
                      ['-c', f, '-o', f + '.o'],
