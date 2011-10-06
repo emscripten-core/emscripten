@@ -7,6 +7,7 @@ extern "C" {
 #define POLLOUT  2
 #define POLLNVAL 4
 #define POLLERR  8
+#define POLLHUP 16
 
 struct pollfd {
   int fd;
@@ -14,7 +15,7 @@ struct pollfd {
   short revents;
 };
 
-int poll(pollfd *data, int num, int extra);
+int poll(struct pollfd *data, int num, int extra);
 
 #ifdef __cplusplus
 }
