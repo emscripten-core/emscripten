@@ -397,6 +397,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         }
       }
 
+      cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 2);
       if (item.tokens[2].text == 'alias') {
         cleanOutTokens(LLVM.LINKAGES, item.tokens, 3);
         cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 3);
