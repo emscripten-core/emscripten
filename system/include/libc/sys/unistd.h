@@ -406,6 +406,8 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 #define _SC_THREAD_ROBUST_PRIO_INHERIT  122
 #define _SC_THREAD_ROBUST_PRIO_PROTECT  123
 #define _SC_XOPEN_UUCP                  124
+/* XXX Emscripten */
+#define _SC_SHARED_MEMORY_OBJECTS       199
 
 /*
  *  pathconf values per IEEE Std 1003.1, 2008 Edition
