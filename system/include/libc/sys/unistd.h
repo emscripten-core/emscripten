@@ -440,6 +440,8 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 /* Ask for full POSIX permission support including uid/gid settings. */
 #define _PC_POSIX_SECURITY               91
 #endif
+/* XXX Emscripten */
+#define _PC_SOCK_MAXBUF                 100
 
 /*
  *  confstr values per IEEE Std 1003.1, 2004 Edition

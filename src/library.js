@@ -1233,33 +1233,33 @@ LibraryManager.library = {
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
     // The constants here aren't real values. Just mimicing glibc.
     switch (name) {
-      case 0:  // _PC_LINK_MAX.
+      case {{{ cDefine('_PC_LINK_MAX') }}}:
         return 32000;
-      case 1:  // _PC_MAX_CANON.
-      case 2:  // _PC_MAX_INPUT.
-      case 3:  // _PC_NAME_MAX.
+      case {{{ cDefine('_PC_MAX_CANON') }}}:
+      case {{{ cDefine('_PC_MAX_INPUT') }}}:
+      case {{{ cDefine('_PC_NAME_MAX') }}}:
         return 255;
-      case 4:  // _PC_PATH_MAX.
-      case 5:  // _PC_PIPE_BUF.
-      case 16:  // _PC_REC_MIN_XFER_SIZE.
-      case 17:  // _PC_REC_XFER_ALIGN.
-      case 18:  // _PC_ALLOC_SIZE_MIN.
+      case {{{ cDefine('_PC_PATH_MAX') }}}:
+      case {{{ cDefine('_PC_PIPE_BUF') }}}:
+      case {{{ cDefine('_PC_REC_MIN_XFER_SIZE') }}}:
+      case {{{ cDefine('_PC_REC_XFER_ALIGN') }}}:
+      case {{{ cDefine('_PC_ALLOC_SIZE_MIN') }}}:
         return 4096;
-      case 6:  // _PC_CHOWN_RESTRICTED.
-      case 7:  // _PC_NO_TRUNC.
-      case 20:  // _PC_2_SYMLINKS.
+      case {{{ cDefine('_PC_CHOWN_RESTRICTED') }}}:
+      case {{{ cDefine('_PC_NO_TRUNC') }}}:
+      case {{{ cDefine('_PC_2_SYMLINKS') }}}:
         return 1;
-      case 8:  // _PC_VDISABLE.
+      case {{{ cDefine('_PC_VDISABLE') }}}:
         return 0;
-      case 9:  // _PC_SYNC_IO.
-      case 10:  // _PC_ASYNC_IO.
-      case 11:  // _PC_PRIO_IO.
-      case 12:  // _PC_SOCK_MAXBUF.
-      case 14:  // _PC_REC_INCR_XFER_SIZE.
-      case 15:  // _PC_REC_MAX_XFER_SIZE.
-      case 19:  // _PC_SYMLINK_MAX.
+      case {{{ cDefine('_PC_SYNC_IO') }}}:
+      case {{{ cDefine('_PC_ASYNC_IO') }}}:
+      case {{{ cDefine('_PC_PRIO_IO') }}}:
+      case {{{ cDefine('_PC_SOCK_MAXBUF') }}}:
+      case {{{ cDefine('_PC_REC_INCR_XFER_SIZE') }}}:
+      case {{{ cDefine('_PC_REC_MAX_XFER_SIZE') }}}:
+      case {{{ cDefine('_PC_SYMLINK_MAX') }}}:
         return -1;
-      case 13:  // _PC_FILESIZEBITS.
+      case {{{ cDefine('_PC_FILESIZEBITS') }}}:
         return 64;
     }
     ___setErrNo(ERRNO_CODES.EINVAL);
