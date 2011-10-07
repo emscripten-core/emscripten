@@ -95,6 +95,7 @@ function analyzer(data) {
     if (Types.types[type]) return;
     if (['internal', 'hidden', 'inbounds', 'void'].indexOf(type) != -1) return;
     if (Runtime.isNumberType(type)) return;
+    dprint('types', 'Adding type: ' + type);
 
     // 'blocks': [14 x %struct.X] etc. If this is a pointer, we need
     // to look at the underlying type - it was not defined explicitly
@@ -130,6 +131,7 @@ function analyzer(data) {
 
     // anonymous structure definition, for example |{ i32, i8*, void ()*, i32 }|
     if (type[0] == '{' || type[0] == '<') {
+      type = nonPointing;
       var packed = type[0] == '<';
       Types.types[type] = {
         name_: type,
