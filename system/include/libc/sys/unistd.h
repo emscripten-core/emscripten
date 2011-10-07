@@ -174,7 +174,7 @@ long    _EXFUN(sysconf, (int __name ));
 pid_t   _EXFUN(tcgetpgrp, (int __fildes ));
 int     _EXFUN(tcsetpgrp, (int __fildes, pid_t __pgrp_id ));
 char *  _EXFUN(ttyname, (int __fildes ));
-#if defined(__CYGWIN__) || defined(__rtems__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) || defined(__rtems__)
 int     _EXFUN(ttyname_r, (int, char *, size_t)); 
 #endif
 int     _EXFUN(unlink, (const char *__path ));
