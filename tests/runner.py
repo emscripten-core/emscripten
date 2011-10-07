@@ -2978,7 +2978,7 @@ if 'benchmark' not in str(sys.argv):
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
-      src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
+      src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
       self.do_test(src, '*1,0*', ['200', '1'])
       self.do_test(src, '*400,0*', ['400', '400'], no_build=True)
 
