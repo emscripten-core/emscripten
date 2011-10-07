@@ -94,10 +94,10 @@ pid_t   _EXFUN(getpgid, (pid_t));
 pid_t   _EXFUN(getpgrp, (void ));
 pid_t   _EXFUN(getpid, (void ));
 pid_t   _EXFUN(getppid, (void ));
-#if defined(__CYGWIN__) || defined(__rtems__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) || defined(__rtems__)
 pid_t   _EXFUN(getsid, (pid_t));
 #endif
-#if !defined(__INSIDE_CYGWIN__)
+#if defined(EMSCRIPTEN) || !defined(__INSIDE_CYGWIN__)
 uid_t   _EXFUN(getuid, (void ));
 #endif
 #ifdef __CYGWIN__
@@ -117,7 +117,7 @@ int	_EXFUN(nice, (int __nice_value ));
 #if !defined(__INSIDE_CYGWIN__)
 off_t   _EXFUN(lseek, (int __fildes, off_t __offset, int __whence ));
 #endif
-#if defined(__SPU__) || defined(__CYGWIN__)
+#if defined(EMSCRIPTEN) || defined(__SPU__) || defined(__CYGWIN__)
 #define F_ULOCK	0
 #define F_LOCK	1
 #define F_TLOCK	2
@@ -146,7 +146,7 @@ int	_EXFUN(ruserok, (const char *rhost, int superuser, const char *ruser, const 
 #endif
 void *  _EXFUN(sbrk,  (ptrdiff_t __incr));
 #if !defined(__INSIDE_CYGWIN__)
-#if defined(__CYGWIN__) || defined(__rtems__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) || defined(__rtems__)
 int     _EXFUN(setegid, (gid_t __gid ));
 int     _EXFUN(seteuid, (uid_t __uid ));
 #endif
@@ -157,7 +157,7 @@ int	_EXFUN(setgroups, (int ngroups, const gid_t *grouplist ));
 #endif
 int     _EXFUN(setpgid, (pid_t __pid, pid_t __pgid ));
 int     _EXFUN(setpgrp, (void ));
-#if defined(__CYGWIN__) && !defined(__INSIDE_CYGWIN__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) && !defined(__INSIDE_CYGWIN__)
 int	_EXFUN(setregid, (gid_t __rgid, gid_t __egid));
 int	_EXFUN(setreuid, (uid_t __ruid, uid_t __euid));
 #endif
@@ -234,7 +234,7 @@ useconds_t _EXFUN(ualarm, (useconds_t __useconds, useconds_t __interval));
 char *	_EXFUN(mktemp, (char *));
 #endif
 
-#if defined(__CYGWIN__) || defined(__SPU__) || defined(__rtems__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) || defined(__SPU__) || defined(__rtems__)
 void    _EXFUN(sync, (void));
 #endif
 
@@ -499,6 +499,8 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 /* #define _CS_V6_ENV                           _CS_V6_ENV */
 #define _CS_GNU_LIBC_VERSION                  42
 #define _CS_GNU_LIBPTHREAD_VERSION            43
+char *crypt(const char *key, const char *salt);
+void encrypt(char block[64], int edflag);
 
 #endif
 
