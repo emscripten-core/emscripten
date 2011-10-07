@@ -558,7 +558,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   }
 
   function getVarImpl(funcData, ident) {
-    if (ident === 'null') return VAR_NATIVIZED; // like nativized, in that we have the actual value right here
+    if (ident === 'null' || isNumber(ident)) return VAR_NATIVIZED; // like nativized, in that we have the actual value right here
     var data = getVarData(funcData, ident);
     assert(data, 'What variable is this? |' + ident + '|');
     return data.impl;
