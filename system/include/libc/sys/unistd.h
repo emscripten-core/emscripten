@@ -53,7 +53,7 @@ int     _EXFUN(execvp, (const char *__file, char * const __argv[] ));
 int     _EXFUN(execvpe, (const char *__file, char * const __argv[], char * const __envp[] ));
 int	_EXFUN(faccessat, (int __dirfd, const char *__path, int __mode, int __flags));
 #endif
-#if defined(__CYGWIN__) || defined(__rtems__) || defined(__SPU__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) || defined(__rtems__) || defined(__SPU__)
 int     _EXFUN(fchdir, (int __fildes));
 #endif
 int     _EXFUN(fchmod, (int __fildes, mode_t __mode ));
@@ -100,7 +100,7 @@ pid_t   _EXFUN(getsid, (pid_t));
 #if defined(EMSCRIPTEN) || !defined(__INSIDE_CYGWIN__)
 uid_t   _EXFUN(getuid, (void ));
 #endif
-#ifdef __CYGWIN__
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__)
 char *	_EXFUN(getusershell, (void));
 char *  _EXFUN(getwd, (char *__buf ));
 int	_EXFUN(iruserok, (unsigned long raddr, int superuser, const char *ruser, const char *luser));
