@@ -37,6 +37,7 @@ if USE_EMSDK:
   '-I' + path_from_root('system', 'include', 'bsd'), # posix stuff
   '-I' + path_from_root('system', 'include', 'libc'),
   '-I' + path_from_root('system', 'include', 'libcxx'),
+  '-I' + path_from_root('system', 'include', 'gfx'),
   '-I' + path_from_root('system', 'include', 'net'),
   '-I' + path_from_root('system', 'include', 'SDL'),
 ]

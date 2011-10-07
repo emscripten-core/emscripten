@@ -117,6 +117,12 @@ extern "C"
 
   };
 
+  /* XXX Emscripten */
+  #define NO_ARG  0
+  #define REQ_ARG 1
+  #define OPT_ARG 2
+  typedef struct option option_t;
+
 /* While getopt.h is a glibc extension, the following are newlib extensions.
  * They are optionally included via the __need_getopt_newlib flag.  */
 

@@ -269,6 +269,11 @@ _BEGIN_STD_C
 #define _JBLEN 0x44
 #endif
 
+#ifdef EMSCRIPTEN /* Not that this can actually work... */
+#define _JBLEN 20
+#define _JBTYPE unsigned short
+#endif
+
 #ifdef _JBLEN
 #ifdef _JBTYPE
 typedef	_JBTYPE jmp_buf[_JBLEN];
