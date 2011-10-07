@@ -78,11 +78,11 @@ uid_t   _EXFUN(geteuid, (void ));
 gid_t   _EXFUN(getgid, (void ));
 #endif
 int     _EXFUN(getgroups, (int __gidsetsize, gid_t __grouplist[] ));
-#if defined(__CYGWIN__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__)
 long    _EXFUN(gethostid, (void));
 #endif
 char *  _EXFUN(getlogin, (void ));
-#if defined(_POSIX_THREAD_SAFE_FUNCTIONS)
+#if defined(EMSCRIPTEN) || defined(_POSIX_THREAD_SAFE_FUNCTIONS)
 int _EXFUN(getlogin_r, (char *name, size_t namesize) );
 #endif
 char *  _EXFUN(getpass, (const char *__prompt));
