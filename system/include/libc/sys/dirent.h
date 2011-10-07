@@ -8,8 +8,6 @@
 extern "C" {
 #endif
 
-struct DIR;
-
 /* XXX Emscripten */
 struct dirent {
   ino_t d_ino;
@@ -19,10 +17,12 @@ struct dirent {
   char  d_type;
 };
 
-DIR           *opendir(const char *);
-void           seekdir(DIR *, long);
-long           telldir(DIR *);
-struct dirent *readdir(DIR *);
+#define DIR struct dirent
+
+DIR  *opendir(const char *);
+void  seekdir(DIR *, long);
+long  telldir(DIR *);
+DIR  *readdir(DIR *);
 
 #ifdef __cplusplus
 }
