@@ -594,6 +594,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       var first = 0;
       while (!isType(item.tokens[first].text)) first++;
+      Types.needAnalysis[item.tokens[first].text] = 0;
       var last = getTokenIndexByText(item.tokens, ';');
       var segment = [ item.tokens[first], { text: 'getelementptr' }, null, { item: {
         tokens: item.tokens.slice(first, last)
