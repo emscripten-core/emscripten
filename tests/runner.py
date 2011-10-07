@@ -3096,9 +3096,11 @@ if 'benchmark' not in str(sys.argv):
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
       if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
         env['EMMAKEN_JUST_CONFIGURE'] = '1'
-        Popen(configure + configure_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+        Popen(configure + configure_args, stdout=open(os.path.join(self.get_dir(), 'configure'), 'w'),
+                                          stderr=open(os.path.join(self.get_dir(), 'configure_err'), 'w'), env=env).communicate()[0]
         del env['EMMAKEN_JUST_CONFIGURE']
-      Popen(make + make_args, stdout=PIPE, stderr=STDOUT, env=env).communicate()[0]
+      Popen(make + make_args, stdout=open(os.path.join(self.get_dir(), 'make'), 'w'),
+                              stderr=open(os.path.join(self.get_dir(), 'make_err'), 'w'), env=env).communicate()[0]
       bc_file = os.path.join(project_dir, 'bc.bc')
       self.do_link(map(lambda lib: os.path.join(project_dir, 'cbuild', lib) if build_subdir else os.path.join(project_dir, lib), generated_libs), bc_file)
       if cache and GlobalCache is not None:
