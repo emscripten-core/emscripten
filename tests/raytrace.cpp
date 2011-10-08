@@ -4,6 +4,7 @@
 
 #include <cmath>       // see http://ompf.org/ray/sphereflake/
 #include <iostream>    // compile with ie g++ -O2 -ffast-math sphereflake.cc
+#include <stdio.h>
 #include <stdlib.h>
 
 //#include "emscripten.h"
@@ -120,7 +121,7 @@ static void trace_rgss(const int width,const int height) {
 				g+=ray_trace(pool,ray); /*trace*/
 			}
       if (outputLeft) {
-  		  std::cout << int(scale*g)<< " ";
+  		  printf("%d ", int(scale*g)); // std::cout << int(scale*g)<< " ";
         outputLeft--;
       }
 			scan.x+=1; /*next pixel*/
@@ -128,7 +129,7 @@ static void trace_rgss(const int width,const int height) {
 		scan.x=0;scan.y-=1; /*next line*/
 	}
   if (outputLeft) {
-    std::cout << "\n"; // XXX Emscripten: std::endl crashes...
+    printf("\n"); // std::cout << "\n"; // XXX Emscripten: std::endl crashes...
     outputLeft--;
   }
 }
@@ -184,7 +185,7 @@ int main(int argc,char*argv[]){
 	pool=new node_t[count];  /* raw */
 	end=pool+count;
 	create(pool,lvl,count,v_t(0,0,0),v_t(+.25,+1,-.5).norm(),1.); /* cooked */
-	std::cout << "P2\n" << size << " " << size << "\n" << size << "\n";
+	printf("P2\n%d %d\n%d\n", size, size, size); // std::cout << "P2\n" << size << " " << size << "\n" << size << "\n";
 	trace_rgss(size, size); /* served */
 	return 0;
 }
