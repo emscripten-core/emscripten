@@ -204,6 +204,11 @@ extern int _open64 _PARAMS ((const char *, int, ...));
 #endif
 #endif
 
+/* XXX Emscripten */
+#define POSIX_FADV_DONTNEED 135
+int posix_fadvise(int fd, off_t offset, off_t len, int advice);
+int posix_fallocate(int fd, off_t offset, off_t len);
+
 #ifdef __cplusplus
 }
 #endif
