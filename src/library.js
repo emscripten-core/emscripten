@@ -397,7 +397,9 @@ LibraryManager.library = {
       FS.streams[_stdin] = FS.streams[1];
       FS.streams[_stdout] = FS.streams[2];
       FS.streams[_stderr] = FS.streams[3];
-      __impure_ptr = allocate([ allocate([0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0], 'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
+      __impure_ptr = allocate([ allocate(
+        {{{ QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
+        'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
