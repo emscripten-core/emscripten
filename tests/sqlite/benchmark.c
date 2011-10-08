@@ -68,7 +68,7 @@ int main(){
 
   #define TIME(msg) \
     { \
-      printf(msg " : took %d ms\n", (clock()-t)/1000); \
+      printf(msg " : took %d ms\n", (1000*(clock()-t))/CLOCKS_PER_SEC); \
       t = clock(); \
     }
 
