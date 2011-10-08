@@ -1,4 +1,3 @@
-#include "emscripten.h"
 #define __THROW
 #define __attribute_malloc__
 #define __wur

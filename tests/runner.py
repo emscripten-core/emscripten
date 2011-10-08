@@ -181,10 +181,11 @@ class RunnerCore(unittest.TestCase):
 
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
       try:
         value = eval(setting)
-        exported_settings[setting] = value
+        if value is not None:
+          exported_settings[setting] = value
       except:
         pass
     settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
@@ -2975,10 +2976,16 @@ if 'benchmark' not in str(sys.argv):
     def test_dlmalloc(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
+      global TOTAL_MEMORY; TOTAL_MEMORY = 100*1024*1024 # needed with typed arrays
 
-      src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
+      src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_test(src, '*1,0*', ['200', '1'])
       self.do_test(src, '*400,0*', ['400', '400'], no_build=True)
+
+      # Linked version
+      src = open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
+      self.do_test(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
+      self.do_test(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
 
     def zzztest_gl(self):
       # Switch to gcc from g++ - we don't compile properly otherwise (why?)
@@ -3968,10 +3975,6 @@ Child2:9
       shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
       self.do_test(None, 'test\n', basename='new.cpp', no_build=True)
 
-    def test_dlmalloc_linked(self):
-      src = open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_test(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
-
     def test_linespecific(self):
       global CHECK_SIGNS; CHECK_SIGNS = 0
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
@@ -4150,7 +4153,7 @@ Child2:9
     exec('''
 class %s(T):
   def setUp(self):
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTION_CATCHING, PROFILE
+    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTION_CATCHING, PROFILE, TOTAL_MEMORY, FAST_MEMORY
 
     COMPILER = %r
     llvm_opts = %d
@@ -4175,6 +4178,8 @@ class %s(T):
     RUNTIME_TYPE_INFO = 0
     DISABLE_EXCEPTION_CATCHING = 0
     PROFILE = 0
+    TOTAL_MEMORY = FAST_MEMORY = None
+
     if LLVM_OPTS:
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = ['-g']
@@ -4243,6 +4248,8 @@ else:
   CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
   LLVM_OPTS = 1
   DISABLE_EXCEPTION_CATCHING = 1
+  if USE_TYPED_ARRAYS:
+    TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
   FAST_MEMORY = 10*1024*1024
 
   TEST_REPS = 4
@@ -4405,7 +4412,7 @@ else:
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
-      src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
+      src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_benchmark(src, ['400', '400'], '*400,0*')
 
 if __name__ == '__main__':
