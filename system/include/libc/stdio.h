@@ -657,7 +657,7 @@ _ELIDABLE_INLINE int __sputc_r(struct _reent *_ptr, int _c, FILE *_p) {
 #define	fileno(p)	__sfileno(p)
 #endif
 
-#ifndef __CYGWIN__
+#if !defined(__CYGWIN__) && !defined(EMSCRIPTEN)
 #ifndef lint
 #define	getc(fp)	__sgetc_r(_REENT, fp)
 #define putc(x, fp)	__sputc_r(_REENT, x, fp)

@@ -397,11 +397,7 @@ LibraryManager.library = {
       FS.streams[_stdin] = FS.streams[1];
       FS.streams[_stdout] = FS.streams[2];
       FS.streams[_stderr] = FS.streams[3];
-      __impure_ptr = allocate(5, "void*", ALLOC_STATIC);
-      var impure = getValue(__impure_ptr, "void*");
-      setValue(impure + {{{ QUANTUM_SIZE }}},    _stdin, "void*");
-      setValue(impure + {{{ QUANTUM_SIZE }}}*2, _stdout, "void*");
-      setValue(impure + {{{ QUANTUM_SIZE }}}*3, _stderr, "void*");
+      __impure_ptr = allocate([ allocate([0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0], 'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
