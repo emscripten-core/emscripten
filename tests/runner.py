@@ -3265,7 +3265,11 @@ if 'benchmark' not in str(sys.argv):
                              'psobjs.c:195', 'pshglob.c:165', 'ttload.c:694', 'ttmtx.c:195', 'sfobjs.c:957',
                              'sfobjs.c:958', 'ftstream.c:369', 'ftstream.c:372', 'ttobjs.c:1007'] # And many more...
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'libcxx', 'include')] # Avoid libstdc++ linking issue, see libcxx test
+      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS += [
+        '-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
+        '-I' + path_from_root('tests', 'freetype', 'include'),
+        '-I' + path_from_root('tests', 'poppler', 'include'),
+      ]
 
       global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
 

@@ -23,6 +23,8 @@ DIR  *opendir(const char *);
 void  seekdir(DIR *, long);
 long  telldir(DIR *);
 DIR  *readdir(DIR *);
+int   closedir(DIR *dirp);
+void  rewinddir(DIR *dirp);
 
 #ifdef __cplusplus
 }
