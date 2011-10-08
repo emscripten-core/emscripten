@@ -98,11 +98,11 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
     case 'i1': case 'i8': HEAP8[dest] = value; break;
-    case 'i16': assert(dest % 2 === 0, type + ' loads must be aligned'); HEAP16[dest>>1] = value; break;
-    case 'i32': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAP32[dest>>2] = value; break;
-    case 'i64': assert(dest % 4 === 0, type + ' loads must be aligned'); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
-    case 'float': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAPF32[dest>>2] = value; break;
-    case 'double': assert(dest % 4 === 0, type + ' loads must be aligned'); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
+    case 'i16': assert(dest % 2 === 0, type + ' stores must be aligned'); HEAP16[dest>>1] = value; break;
+    case 'i32': assert(dest % 4 === 0, type + ' stores must be aligned'); HEAP32[dest>>2] = value; break;
+    case 'i64': assert(dest % 4 === 0, type + ' stores must be aligned'); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
+    case 'float': assert(dest % 4 === 0, type + ' stores must be aligned'); HEAPF32[dest>>2] = value; break;
+    case 'double': assert(dest % 4 === 0, type + ' stores must be aligned'); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
     default: throw 'weird type for typed array II: ' + type + new Error().stack;
   }
 #else
