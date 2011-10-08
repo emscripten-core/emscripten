@@ -26,10 +26,10 @@ typedef unsigned long long __dev_t; /* XXX Emscripten */
 #endif
 
 #ifndef __uid_t_defined
-typedef unsigned short __uid_t;
+typedef unsigned __uid_t; /* XXX Emscripten */
 #endif
 #ifndef __gid_t_defined
-typedef unsigned short __gid_t;
+typedef unsigned __gid_t; /* XXX Emscripten */
 #endif
 
 #ifndef __off64_t_defined
