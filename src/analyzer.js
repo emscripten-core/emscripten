@@ -46,8 +46,10 @@ function analyzer(data) {
       // Functions & labels
       item.functions = [];
       var currLabelFinished; // Sometimes LLVM puts a branch in the middle of a label. We need to ignore all lines after that.
+      item.items.sort(function(a, b) { return a.lineNum - b.lineNum });
       for (var i = 0; i < item.items.length; i++) {
         var subItem = item.items[i];
+        assert(subItem.lineNum);
         if (subItem.intertype == 'function') {
           item.functions.push(subItem);
           subItem.endLineNum = null;
@@ -58,7 +60,7 @@ function analyzer(data) {
           if (LLVM_STYLE == 'new' && item.items[i+1].intertype !== 'label') {
             item.items.splice(i+1, 0, {
               intertype: 'label',
-              ident: '_entry',
+              ident: toNiceIdent('%0'),
               lineNum: subItem.lineNum + '.5'
             });
           }
@@ -77,10 +79,10 @@ function analyzer(data) {
               currLabelFinished = true;
             }
           } else {
-            print('// WARNING: content after a branch in a label, line: ' + subItem.lineNum);
+            print('// WARNING: content after a branch in a label, line: ' + subItem.lineNum + '::' + dump(subItem));
           }
         } else {
-          print("ERROR: what is this? " + JSON.stringify(subItem));
+          throw "ERROR: what is this? " + JSON.stringify(subItem);
         }
       }
       delete item.items;
@@ -93,6 +95,7 @@ function analyzer(data) {
     if (Types.types[type]) return;
     if (['internal', 'hidden', 'inbounds', 'void'].indexOf(type) != -1) return;
     if (Runtime.isNumberType(type)) return;
+    dprint('types', 'Adding type: ' + type);
 
     // 'blocks': [14 x %struct.X] etc. If this is a pointer, we need
     // to look at the underlying type - it was not defined explicitly
@@ -107,6 +110,8 @@ function analyzer(data) {
                               // check that we never allocate with this (either as a child structure
                               // in the analyzer, or in calcSize in alloca).
       var subType = check[2];
+      addTypeInternal(subType, data); // needed for anonymous structure definitions (see below)
+
       Types.types[nonPointing] = {
         name_: nonPointing,
         fields: range(num).map(function() { return subType }),
@@ -121,6 +126,21 @@ function analyzer(data) {
           lineNum: '?'
         };
       }
+      return;
+    }
+
+    // anonymous structure definition, for example |{ i32, i8*, void ()*, i32 }|
+    if (type[0] == '{' || type[0] == '<') {
+      type = nonPointing;
+      var packed = type[0] == '<';
+      Types.types[type] = {
+        name_: type,
+        fields: splitTokenList(tokenize(type.substr(2 + packed, type.length - 4 - 2*packed)).tokens).map(function(segment) {
+          return segment[0].text;
+        }),
+        packed: packed,
+        lineNum: '?'
+      };
       return;
     }
 
@@ -333,7 +353,7 @@ function analyzer(data) {
  
           // Decision time
 
-          var pointedType = removePointing(variable.type);
+          var pointedType = pointingLevels(variable.type) > 0 ? removePointing(variable.type) : null;
           if (variable.origin == 'getelementptr') {
             // Use our implementation that emulates pointers etc.
             // TODO Can we perhaps nativize some of these? However to do so, we need to discover their
@@ -563,7 +583,7 @@ function analyzer(data) {
           func.labelsDict[label.ident] = label;
           func.labelIds[label.ident] = func.labelIdCounter++;
         });
-        func.labelIds[toNiceIdent('%entry')] = -1; // entry is always -1
+        func.labelIds[toNiceIdent('%0')] = -1; // entry is always -1
 
         func.hasPhi = false;
         func.hasIndirectBr = false;
@@ -575,8 +595,9 @@ function analyzer(data) {
                 var remarkableLabelId = line.value.params[i].label;
                 func.remarkableLabels.push(remarkableLabelId);
                 var remarkableLabel = func.labelsDict[remarkableLabelId];
+                assert(remarkableLabel);
                 var lastLine = remarkableLabel.lines.slice(-1)[0];
-                if (lastLine.value) {
+                if (lastLine.intertype === 'assign') {
                   lastLine.value.currLabelId = remarkableLabelId;
                 } else {
                   lastLine.currLabelId = remarkableLabelId;

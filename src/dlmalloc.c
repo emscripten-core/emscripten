@@ -2,7 +2,7 @@
 #define __THROW
 #define __attribute_malloc__
 #define __wur
-#include "emscripten.h"
+
 
 /*
   This is a version (aka dlmalloc) of malloc/free/realloc written by

@@ -17,7 +17,7 @@ Example uses:
 
  * With configure, do something like
 
-    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emmaken.py AR=PATH/emmaken.py CXX=PATH/emmaken.py CC=PATH/emmaken.py ./configure [options]
+    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emmaken.py AR=PATH/emmaken.py CXX=PATH/emmakenxx.py CC=PATH/emmaken.py ./configure [options]
 
    where PATH is the path to this file.
 
@@ -59,16 +59,16 @@ import subprocess
 
 print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
 
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
-  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 # If this is a configure-type thing, just do that
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
-  compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) else 'gcc'
+  compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
   exit(os.execvp(compiler, [compiler] + sys.argv[1:]))
 
 try:
@@ -85,12 +85,11 @@ try:
   CC = to_cc(CXX)
 
   # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
-  if sys.argv[-1] == '-EMMAKEN_CXX':
+  if os.environ.get('EMMAKEN_CXX'):
     CC = CXX
-    sys.argv = sys.argv[:-1]
 
   CC_ARG_SKIP = ['-O1', '-O2', '-O3']
-  CC_ADDITIONAL_ARGS = ['-m32', '-g', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87']
+  CC_ADDITIONAL_ARGS = COMPILER_OPTS # + ['-g']?
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
                        '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
   TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
@@ -113,7 +112,8 @@ try:
 
   opts = []
   files = []
-  for arg in sys.argv[1:]:
+  for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
     if arg.startswith('-'):
       opts.append(arg)
     else:
@@ -122,7 +122,7 @@ try:
         use_cxx = False
       if arg.endswith(('.c', '.cc', '.cpp', '.dT')):
         use_linker = False
-      if arg.endswith('.h'):
+      if arg.endswith('.h') and sys.argv[i-1] != '-include':
         header = True
         use_linker = False
 

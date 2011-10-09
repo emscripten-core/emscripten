@@ -36,12 +36,10 @@ the .ll into native code. This can be done as follows:
 import os, sys
 from subprocess import Popen, PIPE, STDOUT
 
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
-  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
-
-print '// EXEC_LLVM: ', sys.argv
 
 Popen([LLVM_OPT, sys.argv[1], '-strip-debug', '-o=' + sys.argv[1]+'.clean.bc']).communicate()[0]
 

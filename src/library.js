@@ -21,8 +21,9 @@ LibraryManager.library = {
   stdin: 0,
   stdout: 0,
   stderr: 0,
+  _impure_ptr: 0,
 
-  $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr'],
+  $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: 'FS.init();',
   $FS: {
     // The path to the current folder.
@@ -391,6 +392,14 @@ LibraryManager.library = {
       _stdin = allocate([1], 'void*', ALLOC_STATIC);
       _stdout = allocate([2], 'void*', ALLOC_STATIC);
       _stderr = allocate([3], 'void*', ALLOC_STATIC);
+
+      // Newlib initialization
+      FS.streams[_stdin] = FS.streams[1];
+      FS.streams[_stdout] = FS.streams[2];
+      FS.streams[_stderr] = FS.streams[3];
+      __impure_ptr = allocate([ allocate(
+        {{{ QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
+        'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
@@ -802,9 +811,12 @@ LibraryManager.library = {
     _umask.cmask = newMask;
     return oldMask;
   },
+  stat64: 'stat',
+  fstat64: 'fstat',
   __01fstat64_: 'fstat',
   __01stat64_: 'stat',
   __01lstat64_: 'lstat',
+
   // TODO: Check if other aliases are needed.
 
   // ==========================================================================
@@ -856,13 +868,13 @@ LibraryManager.library = {
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
 
     // Simplify flags.
-    var accessMode = oflag & 0x3;  // O_ACCMODE.
-    var isWrite = accessMode != 0x0;  // O_RDONLY.
-    var isRead = accessMode != 0x1;  // O_WRONLY.
-    var isCreate = Boolean(oflag & 0x40);  // O_CREAT.
-    var isExistCheck = Boolean(oflag & 0x80);  // O_EXCL.
-    var isTruncate = Boolean(oflag & 0x200);  // O_TRUNC.
-    var isAppend = Boolean(oflag & 0x400);  // O_APPEND.
+    var accessMode = oflag & {{{ cDefine('O_ACCMODE') }}};
+    var isWrite = accessMode != {{{ cDefine('O_RDONLY') }}};
+    var isRead = accessMode != {{{ cDefine('O_WRONLY') }}};
+    var isCreate = Boolean(oflag & {{{ cDefine('O_CREAT') }}});
+    var isExistCheck = Boolean(oflag & {{{ cDefine('O_EXCL') }}});
+    var isTruncate = Boolean(oflag & {{{ cDefine('O_TRUNC') }}});
+    var isAppend = Boolean(oflag & {{{ cDefine('O_APPEND') }}});
 
     // Verify path.
     var origPath = path;
@@ -956,7 +968,7 @@ LibraryManager.library = {
   creat: function(path, mode) {
     // int creat(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
-    return _open(path, 0x241, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));  // O_WRONLY | O_CREAT | O_TRUNC.
+    return _open(path, {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_TRUNC') }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
   fcntl: function(fildes, cmd, varargs) {
@@ -968,7 +980,7 @@ LibraryManager.library = {
     }
     var stream = FS.streams[fildes];
     switch (cmd) {
-      case 0:  // F_DUPFD.
+      case {{{ cDefine('F_DUPFD') }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         if (arg < 0) {
           ___setErrNo(ERRNO_CODES.EINVAL);
@@ -981,34 +993,37 @@ LibraryManager.library = {
         if (arg in FS.streams) arg = FS.streams.length;
         FS.streams[arg] = newStream;
         return arg;
-      case 1:  // F_GETFD.
-      case 2:  // F_SETFD.
+      case {{{ cDefine('F_GETFD') }}}:
+      case {{{ cDefine('F_SETFD') }}}:
         return 0;  // FD_CLOEXEC makes no sense for a single process.
-      case 3:  // F_GETFL.
+      case {{{ cDefine('F_GETFL') }}}:
         var flags = 0;
-        if (stream.isRead && stream.isWrite) flags = 0x2;  // O_RDWR.
-        else if (!stream.isRead && stream.isWrite) flags = 0x1;  // O_WRONLY.
-        else if (stream.isRead && !stream.isWrite) flags = 0x0;  // O_RDONLY.
-        if (stream.isAppend) flags |= 0x400;  // O_APPEND.
+        if (stream.isRead && stream.isWrite) flags = {{{ cDefine('O_RDWR') }}};
+        else if (!stream.isRead && stream.isWrite) flags = {{{ cDefine('O_WRONLY') }}};
+        else if (stream.isRead && !stream.isWrite) flags = {{{ cDefine('O_RDONLY') }}};
+        if (stream.isAppend) flags |= {{{ cDefine('O_APPEND') }}};
         // Synchronization and blocking flags are irrelevant to us.
         return flags;
-      case 4:  // F_SETFL.
+      case {{{ cDefine('F_SETFL') }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
-        stream.isAppend = Boolean(arg | 0x400);  // O_APPEND.
+        stream.isAppend = Boolean(arg | {{{ cDefine('O_APPEND') }}});
         // Synchronization and blocking flags are irrelevant to us.
         return 0;
-      case 5:  // F_GETLK.
+      case {{{ cDefine('F_GETLK') }}}:
+      case {{{ cDefine('F_GETLK64') }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         var offset = ___flock_struct_layout.l_type;
         // We're always unlocked.
-        {{{ makeSetValue('arg', 'offset', '2', 'i16') }}}  // F_UNLCK.
+        {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16') }}}
         return 0;
-      case 6:  // F_SETLK.
-      case 7:  // F_SETLKW.
+      case {{{ cDefine('F_SETLK') }}}:
+      case {{{ cDefine('F_SETLKW') }}}:
+      case {{{ cDefine('F_SETLK64') }}}:
+      case {{{ cDefine('F_SETLKW64') }}}:
         // Pretend that the locking is successful.
         return 0;
-      case 8:  // F_SETOWN.
-      case 9:  // F_GETOWN.
+      case {{{ cDefine('F_SETOWN') }}}:
+      case {{{ cDefine('F_GETOWN') }}}:
         // These are for sockets. We don't have them implemented (yet?).
         ___setErrNo(ERRNO_CODES.EINVAL);
         return -1;
@@ -1060,10 +1075,10 @@ LibraryManager.library = {
       var revents = 0;
       if (fd in FS.streams) {
         var stream = FS.streams[fd];
-        if (events & 0x1) revents |= 0x1;  // POLLIN.
-        if (events & 0x4) revents |= 0x4;  // POLLOUT.
+        if (events & {{{ cDefine('POLLIN') }}}) revents |= {{{ cDefine('POLLIN') }}};
+        if (events & {{{ cDefine('POLLOUT') }}}) revents |= {{{ cDefine('POLLOUT') }}};
       } else {
-        if (events & 0x20) revents |= 0x20;  // POLLNVAL.
+        if (events & {{{ cDefine('POLLNVAL') }}}) revents |= {{{ cDefine('POLLNVAL') }}};
       }
       if (revents) nonzero++;
       {{{ makeSetValue('pollfd', 'offsets.revents', 'revents', 'i16') }}}
@@ -1216,33 +1231,33 @@ LibraryManager.library = {
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
     // The constants here aren't real values. Just mimicing glibc.
     switch (name) {
-      case 0:  // _PC_LINK_MAX.
+      case {{{ cDefine('_PC_LINK_MAX') }}}:
         return 32000;
-      case 1:  // _PC_MAX_CANON.
-      case 2:  // _PC_MAX_INPUT.
-      case 3:  // _PC_NAME_MAX.
+      case {{{ cDefine('_PC_MAX_CANON') }}}:
+      case {{{ cDefine('_PC_MAX_INPUT') }}}:
+      case {{{ cDefine('_PC_NAME_MAX') }}}:
         return 255;
-      case 4:  // _PC_PATH_MAX.
-      case 5:  // _PC_PIPE_BUF.
-      case 16:  // _PC_REC_MIN_XFER_SIZE.
-      case 17:  // _PC_REC_XFER_ALIGN.
-      case 18:  // _PC_ALLOC_SIZE_MIN.
+      case {{{ cDefine('_PC_PATH_MAX') }}}:
+      case {{{ cDefine('_PC_PIPE_BUF') }}}:
+      case {{{ cDefine('_PC_REC_MIN_XFER_SIZE') }}}:
+      case {{{ cDefine('_PC_REC_XFER_ALIGN') }}}:
+      case {{{ cDefine('_PC_ALLOC_SIZE_MIN') }}}:
         return 4096;
-      case 6:  // _PC_CHOWN_RESTRICTED.
-      case 7:  // _PC_NO_TRUNC.
-      case 20:  // _PC_2_SYMLINKS.
+      case {{{ cDefine('_PC_CHOWN_RESTRICTED') }}}:
+      case {{{ cDefine('_PC_NO_TRUNC') }}}:
+      case {{{ cDefine('_PC_2_SYMLINKS') }}}:
         return 1;
-      case 8:  // _PC_VDISABLE.
+      case {{{ cDefine('_PC_VDISABLE') }}}:
         return 0;
-      case 9:  // _PC_SYNC_IO.
-      case 10:  // _PC_ASYNC_IO.
-      case 11:  // _PC_PRIO_IO.
-      case 12:  // _PC_SOCK_MAXBUF.
-      case 14:  // _PC_REC_INCR_XFER_SIZE.
-      case 15:  // _PC_REC_MAX_XFER_SIZE.
-      case 19:  // _PC_SYMLINK_MAX.
+      case {{{ cDefine('_PC_SYNC_IO') }}}:
+      case {{{ cDefine('_PC_ASYNC_IO') }}}:
+      case {{{ cDefine('_PC_PRIO_IO') }}}:
+      case {{{ cDefine('_PC_SOCK_MAXBUF') }}}:
+      case {{{ cDefine('_PC_REC_INCR_XFER_SIZE') }}}:
+      case {{{ cDefine('_PC_REC_MAX_XFER_SIZE') }}}:
+      case {{{ cDefine('_PC_SYMLINK_MAX') }}}:
         return -1;
-      case 13:  // _PC_FILESIZEBITS.
+      case {{{ cDefine('_PC_FILESIZEBITS') }}}:
         return 64;
     }
     ___setErrNo(ERRNO_CODES.EINVAL);
@@ -1680,37 +1695,37 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
     var value;
     switch (name) {
-      case 0:  // _CS_PATH.
+      case {{{ cDefine('_CS_PATH') }}}:
         value = ENV['PATH'] || '/';
         break;
-      case 1:  // _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS.
+      case {{{ cDefine('_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS') }}}:
         // Mimicing glibc.
         value = 'POSIX_V6_ILP32_OFF32\nPOSIX_V6_ILP32_OFFBIG';
         break;
-      case 2:  // _CS_GNU_LIBC_VERSION.
+      case {{{ cDefine('_CS_GNU_LIBC_VERSION') }}}:
         // This JS implementation was tested against this glibc version.
         value = 'glibc 2.14';
         break;
-      case 3:  // _CS_GNU_LIBPTHREAD_VERSION.
-        // We don't support pthread.
+      case {{{ cDefine('_CS_GNU_LIBPTHREAD_VERSION') }}}:
+        // We don't support pthreads.
         value = '';
         break;
-      case 1118:  // _CS_POSIX_V6_ILP32_OFF32_LIBS.
-      case 1122:  // _CS_POSIX_V6_ILP32_OFFBIG_LIBS.
-      case 1124:  // _CS_POSIX_V6_LP64_OFF64_CFLAGS.
-      case 1125:  // _CS_POSIX_V6_LP64_OFF64_LDFLAGS.
-      case 1126:  // _CS_POSIX_V6_LP64_OFF64_LIBS.
-      case 1128:  // _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS.
-      case 1129:  // _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS.
-      case 1130:  // _CS_POSIX_V6_LPBIG_OFFBIG_LIBS.
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LIBS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LIBS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_CFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LDFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LIBS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LIBS') }}}:
         value = '';
         break;
-      case 1116:  // _CS_POSIX_V6_ILP32_OFF32_CFLAGS.
-      case 1117:  // _CS_POSIX_V6_ILP32_OFF32_LDFLAGS.
-      case 1121:  // _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS.
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_CFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LDFLAGS') }}}:
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS') }}}:
         value = '-m32';
         break;
-      case 1120:  // _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS.
+      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS') }}}:
         value = '-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64';
         break;
       default:
@@ -1941,140 +1956,137 @@ LibraryManager.library = {
   sysconf: function(name) {
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
-    // WARNING: Except for PAGE_SIZE, this is generated by a C program using
-    //          glibc. All the constants depend on values provided by glibc, and
-    //          code compiled with other C libraries is not guaranteed to work.
     switch(name) {
-      case 30: return PAGE_SIZE;   // _SC_PAGE_SIZE / _SC_PAGESIZE
-      case 132:                    // _SC_ADVISORY_INFO
-      case 133:                    // _SC_BARRIERS
-      case 12:                     // _SC_ASYNCHRONOUS_IO
-      case 137:                    // _SC_CLOCK_SELECTION
-      case 138:                    // _SC_CPUTIME
-      case 15:                     // _SC_FSYNC
-      case 235:                    // _SC_IPV6
-      case 16:                     // _SC_MAPPED_FILES
-      case 17:                     // _SC_MEMLOCK
-      case 18:                     // _SC_MEMLOCK_RANGE
-      case 19:                     // _SC_MEMORY_PROTECTION
-      case 20:                     // _SC_MESSAGE_PASSING
-      case 149:                    // _SC_MONOTONIC_CLOCK
-      case 13:                     // _SC_PRIORITIZED_IO
-      case 10:                     // _SC_PRIORITY_SCHEDULING
-      case 236:                    // _SC_RAW_SOCKETS
-      case 153:                    // _SC_READER_WRITER_LOCKS
-      case 9:                      // _SC_REALTIME_SIGNALS
-      case 21:                     // _SC_SEMAPHORES
-      case 22:                     // _SC_SHARED_MEMORY_OBJECTS
-      case 159:                    // _SC_SPAWN
-      case 154:                    // _SC_SPIN_LOCKS
-      case 14:                     // _SC_SYNCHRONIZED_IO
-      case 77:                     // _SC_THREAD_ATTR_STACKADDR
-      case 78:                     // _SC_THREAD_ATTR_STACKSIZE
-      case 139:                    // _SC_THREAD_CPUTIME
-      case 80:                     // _SC_THREAD_PRIO_INHERIT
-      case 81:                     // _SC_THREAD_PRIO_PROTECT
-      case 79:                     // _SC_THREAD_PRIORITY_SCHEDULING
-      case 82:                     // _SC_THREAD_PROCESS_SHARED
-      case 68:                     // _SC_THREAD_SAFE_FUNCTIONS
-      case 67:                     // _SC_THREADS
-      case 164:                    // _SC_TIMEOUTS
-      case 11:                     // _SC_TIMERS
-      case 29:                     // _SC_VERSION
-      case 47:                     // _SC_2_C_BIND
-      case 48:                     // _SC_2_C_DEV
-      case 95:                     // _SC_2_CHAR_TERM
-      case 52:                     // _SC_2_LOCALEDEF
-      case 51:                     // _SC_2_SW_DEV
-      case 46:                     // _SC_2_VERSION
+      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
+      case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
+      case {{{ cDefine('_SC_BARRIERS') }}}:
+      case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
+      case {{{ cDefine('_SC_CLOCK_SELECTION') }}}:
+      case {{{ cDefine('_SC_CPUTIME') }}}:
+      case {{{ cDefine('_SC_FSYNC') }}}:
+      case {{{ cDefine('_SC_IPV6') }}}:
+      case {{{ cDefine('_SC_MAPPED_FILES') }}}:
+      case {{{ cDefine('_SC_MEMLOCK') }}}:
+      case {{{ cDefine('_SC_MEMLOCK_RANGE') }}}:
+      case {{{ cDefine('_SC_MEMORY_PROTECTION') }}}:
+      case {{{ cDefine('_SC_MESSAGE_PASSING') }}}:
+      case {{{ cDefine('_SC_MONOTONIC_CLOCK') }}}:
+      case {{{ cDefine('_SC_PRIORITIZED_IO') }}}:
+      case {{{ cDefine('_SC_PRIORITY_SCHEDULING') }}}:
+      case {{{ cDefine('_SC_RAW_SOCKETS') }}}:
+      case {{{ cDefine('_SC_READER_WRITER_LOCKS') }}}:
+      case {{{ cDefine('_SC_REALTIME_SIGNALS') }}}:
+      case {{{ cDefine('_SC_SEMAPHORES') }}}:
+      case {{{ cDefine('_SC_SHARED_MEMORY_OBJECTS') }}}:
+      case {{{ cDefine('_SC_SPAWN') }}}:
+      case {{{ cDefine('_SC_SPIN_LOCKS') }}}:
+      case {{{ cDefine('_SC_SYNCHRONIZED_IO') }}}:
+      case {{{ cDefine('_SC_THREAD_ATTR_STACKADDR') }}}:
+      case {{{ cDefine('_SC_THREAD_ATTR_STACKSIZE') }}}:
+      case {{{ cDefine('_SC_THREAD_CPUTIME') }}}:
+      case {{{ cDefine('_SC_THREAD_PRIO_INHERIT') }}}:
+      case {{{ cDefine('_SC_THREAD_PRIO_PROTECT') }}}:
+      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
+      case {{{ cDefine('_SC_THREAD_PROCESS_SHARED') }}}:
+      case {{{ cDefine('_SC_THREAD_SAFE_FUNCTIONS') }}}:
+      case {{{ cDefine('_SC_THREADS') }}}:
+      case {{{ cDefine('_SC_TIMEOUTS') }}}:
+      case {{{ cDefine('_SC_TIMERS') }}}:
+      case {{{ cDefine('_SC_VERSION') }}}:
+      case {{{ cDefine('_SC_2_C_BIND') }}}:
+      case {{{ cDefine('_SC_2_C_DEV') }}}:
+      case {{{ cDefine('_SC_2_CHAR_TERM') }}}:
+      case {{{ cDefine('_SC_2_LOCALEDEF') }}}:
+      case {{{ cDefine('_SC_2_SW_DEV') }}}:
+      case {{{ cDefine('_SC_2_VERSION') }}}:
         return 200809;
-      case 27:                     // _SC_MQ_OPEN_MAX
-      case 246:                    // _SC_XOPEN_STREAMS
-      case 127:                    // _SC_XBS5_LP64_OFF64
-      case 128:                    // _SC_XBS5_LPBIG_OFFBIG
-      case 23:                     // _SC_AIO_LISTIO_MAX
-      case 24:                     // _SC_AIO_MAX
-      case 160:                    // _SC_SPORADIC_SERVER
-      case 161:                    // _SC_THREAD_SPORADIC_SERVER
-      case 181:                    // _SC_TRACE
-      case 182:                    // _SC_TRACE_EVENT_FILTER
-      case 242:                    // _SC_TRACE_EVENT_NAME_MAX
-      case 183:                    // _SC_TRACE_INHERIT
-      case 184:                    // _SC_TRACE_LOG
-      case 243:                    // _SC_TRACE_NAME_MAX
-      case 244:                    // _SC_TRACE_SYS_MAX
-      case 245:                    // _SC_TRACE_USER_EVENT_MAX
-      case 165:                    // _SC_TYPED_MEMORY_OBJECTS
-      case 178:                    // _SC_V6_LP64_OFF64
-      case 179:                    // _SC_V6_LPBIG_OFFBIG
-      case 49:                     // _SC_2_FORT_DEV
-      case 50:                     // _SC_2_FORT_RUN
-      case 168:                    // _SC_2_PBS
-      case 169:                    // _SC_2_PBS_ACCOUNTING
-      case 175:                    // _SC_2_PBS_CHECKPOINT
-      case 170:                    // _SC_2_PBS_LOCATE
-      case 171:                    // _SC_2_PBS_MESSAGE
-      case 172:                    // _SC_2_PBS_TRACK
-      case 97:                     // _SC_2_UPE
-      case 76:                     // _SC_THREAD_THREADS_MAX
-      case 32:                     // _SC_SEM_NSEMS_MAX
-      case 173:                    // _SC_SYMLOOP_MAX
-      case 35:                     // _SC_TIMER_MAX
+      case {{{ cDefine('_SC_MQ_OPEN_MAX') }}}:
+      case {{{ cDefine('_SC_XOPEN_STREAMS') }}}:
+      case {{{ cDefine('_SC_XBS5_LP64_OFF64') }}}:
+      case {{{ cDefine('_SC_XBS5_LPBIG_OFFBIG') }}}:
+      case {{{ cDefine('_SC_AIO_LISTIO_MAX') }}}:
+      case {{{ cDefine('_SC_AIO_MAX') }}}:
+      case {{{ cDefine('_SC_SPORADIC_SERVER') }}}:
+      case {{{ cDefine('_SC_THREAD_SPORADIC_SERVER') }}}:
+      case {{{ cDefine('_SC_TRACE') }}}:
+      case {{{ cDefine('_SC_TRACE_EVENT_FILTER') }}}:
+      case {{{ cDefine('_SC_TRACE_EVENT_NAME_MAX') }}}:
+      case {{{ cDefine('_SC_TRACE_INHERIT') }}}:
+      case {{{ cDefine('_SC_TRACE_LOG') }}}:
+      case {{{ cDefine('_SC_TRACE_NAME_MAX') }}}:
+      case {{{ cDefine('_SC_TRACE_SYS_MAX') }}}:
+      case {{{ cDefine('_SC_TRACE_USER_EVENT_MAX') }}}:
+      case {{{ cDefine('_SC_TYPED_MEMORY_OBJECTS') }}}:
+      case {{{ cDefine('_SC_V6_LP64_OFF64') }}}:
+      case {{{ cDefine('_SC_V6_LPBIG_OFFBIG') }}}:
+      case {{{ cDefine('_SC_2_FORT_DEV') }}}:
+      case {{{ cDefine('_SC_2_FORT_RUN') }}}:
+      case {{{ cDefine('_SC_2_PBS') }}}:
+      case {{{ cDefine('_SC_2_PBS_ACCOUNTING') }}}:
+      case {{{ cDefine('_SC_2_PBS_CHECKPOINT') }}}:
+      case {{{ cDefine('_SC_2_PBS_LOCATE') }}}:
+      case {{{ cDefine('_SC_2_PBS_MESSAGE') }}}:
+      case {{{ cDefine('_SC_2_PBS_TRACK') }}}:
+      case {{{ cDefine('_SC_2_UPE') }}}:
+      case {{{ cDefine('_SC_THREAD_THREADS_MAX') }}}:
+      case {{{ cDefine('_SC_SEM_NSEMS_MAX') }}}:
+      case {{{ cDefine('_SC_SYMLOOP_MAX') }}}:
+      case {{{ cDefine('_SC_TIMER_MAX') }}}:
         return -1;
-      case 176:                    // _SC_V6_ILP32_OFF32
-      case 177:                    // _SC_V6_ILP32_OFFBIG
-      case 7:                      // _SC_JOB_CONTROL
-      case 155:                    // _SC_REGEXP
-      case 8:                      // _SC_SAVED_IDS
-      case 157:                    // _SC_SHELL
-      case 125:                    // _SC_XBS5_ILP32_OFF32
-      case 126:                    // _SC_XBS5_ILP32_OFFBIG
-      case 92:                     // _SC_XOPEN_CRYPT
-      case 93:                     // _SC_XOPEN_ENH_I18N
-      case 129:                    // _SC_XOPEN_LEGACY
-      case 130:                    // _SC_XOPEN_REALTIME
-      case 131:                    // _SC_XOPEN_REALTIME_THREADS
-      case 94:                     // _SC_XOPEN_SHM
-      case 91:                     // _SC_XOPEN_UNIX
+      case {{{ cDefine('_SC_V6_ILP32_OFF32') }}}:
+      case {{{ cDefine('_SC_V6_ILP32_OFFBIG') }}}:
+      case {{{ cDefine('_SC_JOB_CONTROL') }}}:
+      case {{{ cDefine('_SC_REGEXP') }}}:
+      case {{{ cDefine('_SC_SAVED_IDS') }}}:
+      case {{{ cDefine('_SC_SHELL') }}}:
+      case {{{ cDefine('_SC_XBS5_ILP32_OFF32') }}}:
+      case {{{ cDefine('_SC_XBS5_ILP32_OFFBIG') }}}:
+      case {{{ cDefine('_SC_XOPEN_CRYPT') }}}:
+      case {{{ cDefine('_SC_XOPEN_ENH_I18N') }}}:
+      case {{{ cDefine('_SC_XOPEN_LEGACY') }}}:
+      case {{{ cDefine('_SC_XOPEN_REALTIME') }}}:
+      case {{{ cDefine('_SC_XOPEN_REALTIME_THREADS') }}}:
+      case {{{ cDefine('_SC_XOPEN_SHM') }}}:
+      case {{{ cDefine('_SC_XOPEN_UNIX') }}}:
         return 1;
-      case 74:                     // _SC_THREAD_KEYS_MAX
-      case 60:                     // _SC_IOV_MAX
-      case 69:                     // _SC_GETGR_R_SIZE_MAX
-      case 70:                     // _SC_GETPW_R_SIZE_MAX
-      case 4:                      // _SC_OPEN_MAX
+      case {{{ cDefine('_SC_THREAD_KEYS_MAX') }}}:
+      case {{{ cDefine('_SC_IOV_MAX') }}}:
+      case {{{ cDefine('_SC_GETGR_R_SIZE_MAX') }}}:
+      case {{{ cDefine('_SC_GETPW_R_SIZE_MAX') }}}:
+      case {{{ cDefine('_SC_OPEN_MAX') }}}:
         return 1024;
-      case 31:                     // _SC_RTSIG_MAX
-      case 42:                     // _SC_EXPR_NEST_MAX
-      case 72:                     // _SC_TTY_NAME_MAX
+      case {{{ cDefine('_SC_RTSIG_MAX') }}}:
+      case {{{ cDefine('_SC_EXPR_NEST_MAX') }}}:
+      case {{{ cDefine('_SC_TTY_NAME_MAX') }}}:
         return 32;
-      case 87:                     // _SC_ATEXIT_MAX
-      case 26:                     // _SC_DELAYTIMER_MAX
-      case 33:                     // _SC_SEM_VALUE_MAX
+      case {{{ cDefine('_SC_ATEXIT_MAX') }}}:
+      case {{{ cDefine('_SC_DELAYTIMER_MAX') }}}:
+      case {{{ cDefine('_SC_SEM_VALUE_MAX') }}}:
         return 2147483647;
-      case 34:                     // _SC_SIGQUEUE_MAX
-      case 1:                      // _SC_CHILD_MAX
+      case {{{ cDefine('_SC_SIGQUEUE_MAX') }}}:
+      case {{{ cDefine('_SC_CHILD_MAX') }}}:
         return 47839;
-      case 38:                     // _SC_BC_SCALE_MAX
-      case 36:                     // _SC_BC_BASE_MAX
+      case {{{ cDefine('_SC_BC_SCALE_MAX') }}}:
+      case {{{ cDefine('_SC_BC_BASE_MAX') }}}:
         return 99;
-      case 43:                     // _SC_LINE_MAX
-      case 37:                     // _SC_BC_DIM_MAX
+      case {{{ cDefine('_SC_LINE_MAX') }}}:
+      case {{{ cDefine('_SC_BC_DIM_MAX') }}}:
         return 2048;
-      case 0: return 2097152;      // _SC_ARG_MAX
-      case 3: return 65536;        // _SC_NGROUPS_MAX
-      case 28: return 32768;       // _SC_MQ_PRIO_MAX
-      case 44: return 32767;       // _SC_RE_DUP_MAX
-      case 75: return 16384;       // _SC_THREAD_STACK_MIN
-      case 39: return 1000;        // _SC_BC_STRING_MAX
-      case 89: return 700;         // _SC_XOPEN_VERSION
-      case 71: return 256;         // _SC_LOGIN_NAME_MAX
-      case 40: return 255;         // _SC_COLL_WEIGHTS_MAX
-      case 2: return 100;          // _SC_CLK_TCK
-      case 180: return 64;         // _SC_HOST_NAME_MAX
-      case 25: return 20;          // _SC_AIO_PRIO_DELTA_MAX
-      case 5: return 16;           // _SC_STREAM_MAX
-      case 6: return 6;            // _SC_TZNAME_MAX
-      case 73: return 4;           // _SC_THREAD_DESTRUCTOR_ITERATIONS
+      case {{{ cDefine('_SC_ARG_MAX') }}}: return 2097152;
+      case {{{ cDefine('_SC_NGROUPS_MAX') }}}: return 65536;
+      case {{{ cDefine('_SC_MQ_PRIO_MAX') }}}: return 32768;
+      case {{{ cDefine('_SC_RE_DUP_MAX') }}}: return 32767;
+      case {{{ cDefine('_SC_THREAD_STACK_MIN') }}}: return 16384;
+      case {{{ cDefine('_SC_BC_STRING_MAX') }}}: return 1000;
+      case {{{ cDefine('_SC_XOPEN_VERSION') }}}: return 700;
+      case {{{ cDefine('_SC_LOGIN_NAME_MAX') }}}: return 256;
+      case {{{ cDefine('_SC_COLL_WEIGHTS_MAX') }}}: return 255;
+      case {{{ cDefine('_SC_CLK_TCK') }}}: return 100;
+      case {{{ cDefine('_SC_HOST_NAME_MAX') }}}: return 64;
+      case {{{ cDefine('_SC_AIO_PRIO_DELTA_MAX') }}}: return 20;
+      case {{{ cDefine('_SC_STREAM_MAX') }}}: return 16;
+      case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
+      case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
     }
     ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
@@ -2101,6 +2113,9 @@ LibraryManager.library = {
     self.DATASIZE += alignMemoryPage(bytes);
     return ret;  // Previous break location.
   },
+  open64: 'open',
+  lseek64: 'lseek',
+  ftruncate64: 'ftruncate',
   __01open64_: 'open',
   __01lseek64_: 'lseek',
   __01truncate64_: 'truncate',
@@ -2330,9 +2345,9 @@ LibraryManager.library = {
           var argText;
           var prefix = '';
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
-            argText = currAbsArg.toString(10);
+            argText = reSign(currArg, 8 * argSize, 1).toString(10);
           } else if (next == 'u'.charCodeAt(0)) {
-            argText = unSign(currArg, 8 * argSize).toString(10);
+            argText = unSign(currArg, 8 * argSize, 1).toString(10);
             currArg = Math.abs(currArg);
           } else if (next == 'o'.charCodeAt(0)) {
             argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
@@ -2369,11 +2384,13 @@ LibraryManager.library = {
             }
           }
 
-          // Add sign.
-          if (currArg < 0) {
-            prefix = '-' + prefix;
-          } else if (flagAlwaysSigned) {
-            prefix = '+' + prefix;
+          // Add sign if needed
+          if (flagAlwaysSigned) {
+            if (currArg < 0) {
+              prefix = '-' + prefix;
+            } else {
+              prefix = '+' + prefix;
+            }
           }
 
           // Add padding.
@@ -2699,26 +2716,26 @@ LibraryManager.library = {
     mode = Pointer_stringify(mode);
     if (mode[0] == 'r') {
       if (mode.indexOf('+') != -1) {
-        flags = 0x2;  // O_RDWR
+        flags = {{{ cDefine('O_RDWR') }}};
       } else {
-        flags = 0x0;  // O_RDONLY
+        flags = {{{ cDefine('O_RDONLY') }}};
       }
     } else if (mode[0] == 'w') {
       if (mode.indexOf('+') != -1) {
-        flags = 0x2;  // O_RDWR
+        flags = {{{ cDefine('O_RDWR') }}};
       } else {
-        flags = 0x1;  // O_WRONLY
+        flags = {{{ cDefine('O_WRONLY') }}};
       }
-      flags |= 0x40;  // O_CREAT
-      flags |= 0x200;  // O_TRUNC
+      flags |= {{{ cDefine('O_CREAT') }}};
+      flags |= {{{ cDefine('O_TRUNC') }}};
     } else if (mode[0] == 'a') {
       if (mode.indexOf('+') != -1) {
-        flags = 0x2;  // O_RDWR
+        flags = {{{ cDefine('O_RDWR') }}};
       } else {
-        flags = 0x1;  // O_WRONLY
+        flags = {{{ cDefine('O_WRONLY') }}};
       }
-      flags |= 0x40;  // O_CREAT
-      flags |= 0x400;  // O_APPEND
+      flags |= {{{ cDefine('O_CREAT') }}};
+      flags |= {{{ cDefine('O_APPEND') }}};
     } else {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
@@ -2815,6 +2832,7 @@ LibraryManager.library = {
     }
   },
   fseeko: 'fseek',
+  fseeko64: 'fseek',
   fsetpos__deps: ['$FS', 'lseek', '__setErrNo', '$ERRNO_CODES'],
   fsetpos: function(stream, pos) {
     // int fsetpos(FILE *stream, const fpos_t *pos);
@@ -2853,6 +2871,7 @@ LibraryManager.library = {
     }
   },
   ftello: 'ftell',
+  ftello64: 'ftell',
   fwrite__deps: ['$FS', 'write'],
   fwrite: function(ptr, size, nitems, stream) {
     // size_t fwrite(const void *restrict ptr, size_t size, size_t nitems, FILE *restrict stream);
@@ -3056,7 +3075,10 @@ LibraryManager.library = {
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
-    return _fwrite(allocate(result, 'i8', ALLOC_STACK), 1, result.length, stream);
+    var stack = Runtime.stackSave();
+    var ret = _fwrite(allocate(result, 'i8', ALLOC_STACK), 1, result.length, stream);
+    Runtime.stackRestore(stack);
+    return ret;
   },
   printf__deps: ['fprintf'],
   printf: function(format, varargs) {
@@ -3078,6 +3100,7 @@ LibraryManager.library = {
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
+  fopen64: 'fopen',
   __01fopen64_: 'fopen',
   __01freopen64_: 'freopen',
   __01fseeko64_: 'fseek',
@@ -3986,6 +4009,10 @@ LibraryManager.library = {
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
   },
 
+  __assert_func: function(filename, line, func, condition) {
+    throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [Pointer_stringify(filename), line, Pointer_stringify(func)];
+  },
+
   __cxa_guard_acquire: function() {
     return 1;
   },
@@ -4104,14 +4131,14 @@ LibraryManager.library = {
     if (!self.LLVM_SAVEDSTACKS) {
       self.LLVM_SAVEDSTACKS = [];
     }
-    self.LLVM_SAVEDSTACKS.push(STACKTOP);
+    self.LLVM_SAVEDSTACKS.push(Runtime.stackSave());
     return self.LLVM_SAVEDSTACKS.length-1;
   },
   llvm_stackrestore: function(p) {
     var self = _llvm_stacksave;
     var ret = self.LLVM_SAVEDSTACKS[p];
     self.LLVM_SAVEDSTACKS.splice(p, 1);
-    return ret;
+    Runtime.stackRestore(ret);
   },
 
   __cxa_pure_virtual: function() {
@@ -4130,6 +4157,13 @@ LibraryManager.library = {
     {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
     return ret;
   },
+
+  llvm_expect_i32: function(x, y) {
+    return x == y; // TODO: inline this
+  },
+
+  llvm_lifetime_start: function() {},
+  llvm_lifetime_end: function() {},
 
   // ==========================================================================
   // iostream.h
@@ -4349,6 +4383,15 @@ LibraryManager.library = {
   },
   nanf: 'nan',
 
+  __fpclassifyf: function(x) {
+    if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
+    if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
+    if (x == 0) return {{{ cDefine('FP_ZERO') }}};
+    // FP_SUBNORMAL..?  
+    return {{{ cDefine('FP_NORMAL') }}};
+  },
+  __fpclassifyd: '__fpclassifyf',
+
   // ==========================================================================
   // sys/utsname.h
   // ==========================================================================
@@ -4536,8 +4579,8 @@ LibraryManager.library = {
   // ==========================================================================
 
   clock: function() {
-    if (_clock.start === undefined) _clock.start = new Date();
-    return (Date.now() - _clock.start.getTime()) * 1000;
+    if (_clock.start === undefined) _clock.start = Date.now();
+    return Math.floor((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}}/1000));
   },
 
   time: function(ptr) {
@@ -4615,8 +4658,8 @@ LibraryManager.library = {
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
-    var offset = {{{ makeGetValue('_timezone', 0, 'i32') }}};
-    var daylight = {{{ makeGetValue('_daylight', 0, 'i32') }}};
+    var offset = {{{ makeGetValue('__timezone', 0, 'i32') }}};
+    var daylight = {{{ makeGetValue('__daylight', 0, 'i32') }}};
     daylight = (daylight == 1) ? 60 * 60 : 0;
     var ret = _mktime(tmPtr) + offset - daylight;
     return ret;
@@ -4694,29 +4737,30 @@ LibraryManager.library = {
   },
 
   // TODO: Initialize these to defaults on startup from system settings.
-  tzname: null,
-  daylight: null,
-  timezone: null,
-  tzset__deps: ['malloc', 'tzname', 'daylight', 'timezone'],
+  // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
+  _tzname: null,
+  _daylight: null,
+  _timezone: null,
+  tzset__deps: ['_tzname', '_daylight', '_timezone'],
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (_tzname !== null) return;
+    if (__tzname) return; // glibc does not need the double __
 
-    _timezone = _malloc(QUANTUM_SIZE);
-    {{{ makeSetValue('_timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+    __timezone = _malloc(QUANTUM_SIZE);
+    {{{ makeSetValue('__timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
-    _daylight = _malloc(QUANTUM_SIZE);
+    __daylight = _malloc(QUANTUM_SIZE);
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue('_daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
+    {{{ makeSetValue('__daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
 
     var winterName = winter.toString().match(/\(([A-Z]+)\)/)[1];
     var summerName = summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    _tzname = _malloc(2 * QUANTUM_SIZE);
-    {{{ makeSetValue('_tzname', '0', 'winterNamePtr', 'i32') }}}
-    {{{ makeSetValue('_tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+    __tzname = _malloc(2 * QUANTUM_SIZE); // glibc does not need the double __
+    {{{ makeSetValue('__tzname', '0', 'winterNamePtr', 'i32') }}}
+    {{{ makeSetValue('__tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],
@@ -4921,163 +4965,163 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
     var result;
     switch (item) {
-      case 0xE:  // CODESET
+      case {{{ cDefine('CODESET') }}}:
         result = 'ANSI_X3.4-1968';
         break;
-      case 0x20028:  // D_T_FMT
+      case {{{ cDefine('D_T_FMT') }}}:
         result = '%a %b %e %H:%M:%S %Y';
         break;
-      case 0x20029:  // D_FMT
+      case {{{ cDefine('D_FMT') }}}:
         result = '%m/%d/%y';
         break;
-      case 0x2002A:  // T_FMT
+      case {{{ cDefine('T_FMT') }}}:
         result = '%H:%M:%S';
         break;
-      case 0x2002B:  // T_FMT_AMPM
+      case {{{ cDefine('T_FMT_AMPM') }}}:
         result = '%I:%M:%S %p';
         break;
-      case 0x20026:  // AM_STR
+      case {{{ cDefine('AM_STR') }}}:
         result = 'AM';
         break;
-      case 0x20027:  // PM_STR
+      case {{{ cDefine('PM_STR') }}}:
         result = 'PM';
         break;
-      case 0x20007:  // DAY_1
+      case {{{ cDefine('DAY_1') }}}:
         result = 'Sunday';
         break;
-      case 0x20008:  // DAY_2
+      case {{{ cDefine('DAY_2') }}}:
         result = 'Monday';
         break;
-      case 0x20009:  // DAY_3
+      case {{{ cDefine('DAY_3') }}}:
         result = 'Tuesday';
         break;
-      case 0x2000A:  // DAY_4
+      case {{{ cDefine('DAY_4') }}}:
         result = 'Wednesday';
         break;
-      case 0x2000B:  // DAY_5
+      case {{{ cDefine('DAY_5') }}}:
         result = 'Thursday';
         break;
-      case 0x2000C:  // DAY_6
+      case {{{ cDefine('DAY_6') }}}:
         result = 'Friday';
         break;
-      case 0x2000D:  // DAY_7
+      case {{{ cDefine('DAY_7') }}}:
         result = 'Saturday';
         break;
-      case 0x20000:  // ABDAY_1
+      case {{{ cDefine('ABDAY_1') }}}:
         result = 'Sun';
         break;
-      case 0x20001:  // ABDAY_2
+      case {{{ cDefine('ABDAY_2') }}}:
         result = 'Mon';
         break;
-      case 0x20002:  // ABDAY_3
+      case {{{ cDefine('ABDAY_3') }}}:
         result = 'Tue';
         break;
-      case 0x20003:  // ABDAY_4
+      case {{{ cDefine('ABDAY_4') }}}:
         result = 'Wed';
         break;
-      case 0x20004:  // ABDAY_5
+      case {{{ cDefine('ABDAY_5') }}}:
         result = 'Thu';
         break;
-      case 0x20005:  // ABDAY_6
+      case {{{ cDefine('ABDAY_6') }}}:
         result = 'Fri';
         break;
-      case 0x20006:  // ABDAY_7
+      case {{{ cDefine('ABDAY_7') }}}:
         result = 'Sat';
         break;
-      case 0x2001A:  // MON_1
+      case {{{ cDefine('MON_1') }}}:
         result = 'January';
         break;
-      case 0x2001B:  // MON_2
+      case {{{ cDefine('MON_2') }}}:
         result = 'February';
         break;
-      case 0x2001C:  // MON_3
+      case {{{ cDefine('MON_3') }}}:
         result = 'March';
         break;
-      case 0x2001D:  // MON_4
+      case {{{ cDefine('MON_4') }}}:
         result = 'April';
         break;
-      case 0x2001E:  // MON_5
+      case {{{ cDefine('MON_5') }}}:
         result = 'May';
         break;
-      case 0x2001F:  // MON_6
+      case {{{ cDefine('MON_6') }}}:
         result = 'June';
         break;
-      case 0x20020:  // MON_7
+      case {{{ cDefine('MON_7') }}}:
         result = 'July';
         break;
-      case 0x20021:  // MON_8
+      case {{{ cDefine('MON_8') }}}:
         result = 'August';
         break;
-      case 0x20022:  // MON_9
+      case {{{ cDefine('MON_9') }}}:
         result = 'September';
         break;
-      case 0x20023:  // MON_10
+      case {{{ cDefine('MON_10') }}}:
         result = 'October';
         break;
-      case 0x20024:  // MON_11
+      case {{{ cDefine('MON_11') }}}:
         result = 'November';
         break;
-      case 0x20025:  // MON_12
+      case {{{ cDefine('MON_12') }}}:
         result = 'December';
         break;
-      case 0x2000E:  // ABMON_1
+      case {{{ cDefine('ABMON_1') }}}:
         result = 'Jan';
         break;
-      case 0x2000F:  // ABMON_2
+      case {{{ cDefine('ABMON_2') }}}:
         result = 'Feb';
         break;
-      case 0x20010:  // ABMON_3
+      case {{{ cDefine('ABMON_3') }}}:
         result = 'Mar';
         break;
-      case 0x20011:  // ABMON_4
+      case {{{ cDefine('ABMON_4') }}}:
         result = 'Apr';
         break;
-      case 0x20012:  // ABMON_5
+      case {{{ cDefine('ABMON_5') }}}:
         result = 'May';
         break;
-      case 0x20013:  // ABMON_6
+      case {{{ cDefine('ABMON_6') }}}:
         result = 'Jun';
         break;
-      case 0x20014:  // ABMON_7
+      case {{{ cDefine('ABMON_7') }}}:
         result = 'Jul';
         break;
-      case 0x20015:  // ABMON_8
+      case {{{ cDefine('ABMON_8') }}}:
         result = 'Aug';
         break;
-      case 0x20016:  // ABMON_9
+      case {{{ cDefine('ABMON_9') }}}:
         result = 'Sep';
         break;
-      case 0x20017:  // ABMON_10
+      case {{{ cDefine('ABMON_10') }}}:
         result = 'Oct';
         break;
-      case 0x20018:  // ABMON_11
+      case {{{ cDefine('ABMON_11') }}}:
         result = 'Nov';
         break;
-      case 0x20019:  // ABMON_12
+      case {{{ cDefine('ABMON_12') }}}:
         result = 'Dec';
         break;
-      case 0x2002F:  // ALT_DIGITS
+      case {{{ cDefine('ALT_DIGITS') }}}:
         result = '';
         break;
-      case 0x10000:  // RADIXCHAR
+      case {{{ cDefine('RADIXCHAR') }}}:
         result = '.';
         break;
-      case 0x10001:  // THOUSEP
+      case {{{ cDefine('THOUSEP') }}}:
         result = '';
         break;
-      case 0x50000:  // YESEXPR
+      case {{{ cDefine('YESEXPR') }}}:
         result = '^[yY]';
         break;
-      case 0x50001:  // NOEXPR
+      case {{{ cDefine('NOEXPR') }}}:
         result = '^[nN]';
         break;
-      case 0x4000F:  // CRNCYSTR
+      case {{{ cDefine('CRNCYSTR') }}}:
         result = '-';
         break;
-      case 0x2002C:  // ERA
-      case 0x2002E:  // ERA_D_FMT
-      case 0x20030:  // ERA_D_T_FMT
-      case 0x20031:  // ERA_T_FMT
+      case {{{ cDefine('ERA') }}}:
+      case {{{ cDefine('ERA_D_FMT') }}}:
+      case {{{ cDefine('ERA_D_T_FMT') }}}:
+      case {{{ cDefine('ERA_T_FMT') }}}:
       default:
         result = '';
         break;
@@ -5269,6 +5313,8 @@ LibraryManager.library = {
   __errno_location: function() {
     return ___setErrNo.ret;
   },
+  __errno: '__errno_location',
+
   // ==========================================================================
   // sys/resource.h
   // ==========================================================================
@@ -5294,6 +5340,9 @@ LibraryManager.library = {
 
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
+  pthread_mutexattr_init: function() {},
+  pthread_mutexattr_settype: function() {},
+  pthread_mutexattr_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
   pthread_cond_broadcast: function() {},

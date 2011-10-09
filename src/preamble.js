@@ -31,7 +31,11 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   } else {
 #if USE_TYPED_ARRAYS == 0
     if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false) { // false can be the result of a mathop comparator
-      throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
+      var error = true;
+      try {
+        if (HEAP[dest].toString() === 'NaN') error = false; // NaN is acceptable, as a double value
+      } catch(e){}
+      if (error) throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
     }
 #endif
     if (type === null) return;
@@ -94,11 +98,11 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
     case 'i1': case 'i8': HEAP8[dest] = value; break;
-    case 'i16': assert(dest % 2 === 0, type + ' loads must be aligned'); HEAP16[dest>>1] = value; break;
-    case 'i32': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAP32[dest>>2] = value; break;
-    case 'i64': assert(dest % 4 === 0, type + ' loads must be aligned'); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
-    case 'float': assert(dest % 4 === 0, type + ' loads must be aligned'); HEAPF32[dest>>2] = value; break;
-    case 'double': assert(dest % 4 === 0, type + ' loads must be aligned'); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
+    case 'i16': assert(dest % 2 === 0, type + ' stores must be aligned'); HEAP16[dest>>1] = value; break;
+    case 'i32': assert(dest % 4 === 0, type + ' stores must be aligned'); HEAP32[dest>>2] = value; break;
+    case 'i64': assert(dest % 4 === 0, type + ' stores must be aligned'); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
+    case 'float': assert(dest % 4 === 0, type + ' stores must be aligned'); HEAPF32[dest>>2] = value; break;
+    case 'double': assert(dest % 4 === 0, type + ' stores must be aligned'); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
     default: throw 'weird type for typed array II: ' + type + new Error().stack;
   }
 #else
@@ -216,7 +220,7 @@ var CorrectionsMonitor = {
     items.sort(function(x, y) { return y.total - x.total; });
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      print(item.sig + ' : ' + item.total + ' hits, %' + (Math.floor(100*item.fails/item.total)) + ' failures');
+      print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
     }
   }
 };
@@ -274,6 +278,90 @@ var INDENT = '';
 var START_TIME = Date.now();
 #endif
 
+#if PROFILE
+var PROFILING = 0;
+var PROFILING_ROOT = { time: 0, children: {}, calls: 0 };
+var PROFILING_NODE;
+
+function startProfiling() {
+  PROFILING_NODE = PROFILING_ROOT;
+  PROFILING = 1;
+}
+Module['startProfiling'] = startProfiling;
+
+function stopProfiling() {
+  PROFILING = 0;
+  assert(PROFILING_NODE === PROFILING_ROOT, 'Must have popped all the profiling call stack');
+}
+Module['stopProfiling'] = stopProfiling;
+
+function printProfiling() {
+  function dumpData(name_, node, indent) {
+    print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
+    var children = [];
+    for (var child in node.children) {
+      children.push(node.children[child]);
+      children[children.length-1].name_ = child;
+    }
+    children.sort(function(x, y) { return y.time - x.time });
+    children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
+  }
+  dumpData('root', PROFILING_ROOT, ' ');
+}
+Module['printProfiling'] = printProfiling;
+
+function printXULProfiling() {
+  function dumpData(name_, node, indent) {
+    var children = [];
+    for (var child in node.children) {
+      children.push(node.children[child]);
+      children[children.length-1].name_ = child;
+    }
+    print('<treeitem' + (children.length > 0 ? ' container="true"' : '') + '>');
+    print('  <treerow>');
+    print('    <treecell label="' + name_ + '"/>');
+    print('    <treecell label="' + node.time + '"/>');
+    print('    <treecell label="' + node.calls + '"/>');
+    print('  </treerow>');
+
+    if (children.length > 0) {
+      print('  <treechildren>');
+      children.sort(function(x, y) { return y.time - x.time });
+      children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
+      print('  </treechildren>');
+    }
+
+    print('</treeitem>');
+  }
+
+  print('<?xml version="1.0"?>');
+  print('<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>  ');
+  print('<?xml-stylesheet href="file://C:/main.css" type="text/css"?>        ');
+  print('<window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">  ');
+  print('<tree id="myTree" flex="1" hidecolumnpicker="false" seltype="single" class="tree"');
+  print('      rows="5">');
+  print('  <treecols id="myTree2-treeCols">');
+  print('    <treecol id="myTree2-treeCol0" primary="true" flex="2" label="Name"');
+  print('             persist="width" ordinal="1"/>');
+  print('    <splitter class="tree-splitter" ordinal="2"/>');
+  print('    <treecol id="myTree2-treeCol1" flex="1" label="Milliseconds"');
+  print('             persist="width" ordinal="3"/>');
+  print('    <treecol id="myTree2-treeCol2" flex="1" label="Calls"');
+  print('             persist="width" ordinal="4"/>');
+  print('  </treecols>');
+  print('  <treechildren>');
+
+  dumpData('root', PROFILING_ROOT, ' ');
+
+  print('  </treechildren>');
+  print('</tree>');
+  print('</window>');
+
+  // This requires    dom.allow_XUL_XBL_for_file
+}
+Module['printXULProfiling'] = printXULProfiling;
+#endif
+
 //========================================
 // Runtime essentials
 //========================================
@@ -288,6 +376,7 @@ var __ATEXIT__ = [];
 var ABORT = false;
 
 var undef = 0;
+var tempValue, tempInt, tempBigInt;
 
 function abort(text) {
   print(text + ':\n' + (new Error).stack);
@@ -345,6 +434,9 @@ Module['getValue'] = getValue;
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
+Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
+Module['ALLOC_STACK'] = ALLOC_STACK;
+Module['ALLOC_STATIC'] = ALLOC_STATIC;
 
 function allocate(slab, types, allocator) {
   var zeroinit, size;
@@ -410,6 +502,8 @@ function Array_stringify(array) {
 Module['Array_stringify'] = Array_stringify;
 
 // Memory management
+
+var FUNCTION_TABLE;
 
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {

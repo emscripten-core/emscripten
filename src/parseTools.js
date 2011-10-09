@@ -6,7 +6,9 @@
 function processMacros(text) {
   return text.replace(/{{{[^}]+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
-    return eval(str).toString();
+    var ret = eval(str);
+    if (ret !== undefined) ret = ret.toString();
+    return ret;
   });
 }
 
@@ -53,6 +55,7 @@ function preprocess(text, constants) {
 function addPointing(type) { return type + '*' }
 function removePointing(type, num) {
   if (num === 0) return type;
+  assert(type.substr(type.length-(num ? num : 1)).replace(/\*/g, '') === ''); //, 'Error in removePointing with ' + [type, num, type.substr(type.length-(num ? num : 1))]);
   return type.substr(0, type.length-(num ? num : 1));
 }
 
@@ -114,6 +117,7 @@ function isStructPointerType(type) {
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
+  if (new RegExp(/<?{ [^}]* }>?/g).test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return !Runtime.isNumberType(type) && type[0] == '%';
 }
@@ -148,7 +152,7 @@ function isFunctionType(type) {
   if (pointingLevels(type) !== 1) return false;
   var text = removeAllPointing(parts.slice(1).join(' '));
   if (!text) return false;
-  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenizer.processItem({ lineText: text.substr(1, text.length-2) }, true) });
+  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) });
 }
 
 function isType(type) { // TODO!
@@ -465,15 +469,13 @@ function eatLLVMIdent(tokens) {
   return ret;
 }
 
-function cleanOutTokens(filterOut, tokens, index) {
-  while (filterOut.indexOf(tokens[index].text) != -1) {
-    tokens.splice(index, 1);
-  }
-}
-
-function cleanOutTokensSet(filterOut, tokens, index) {
-  while (tokens[index].text in filterOut) {
-    tokens.splice(index, 1);
+function cleanOutTokens(filterOut, tokens, indexes) {
+  if (typeof indexes !== 'object') indexes = [indexes];
+  for (var i = indexes.length-1; i >=0; i--) {
+    var index = indexes[i];
+    while (tokens[index].text in filterOut) {
+      tokens.splice(index, 1);
+    }
   }
 }
 
@@ -671,6 +673,7 @@ function indentify(text, indent) {
 function correctSpecificSign() {
   assert(!(CORRECT_SIGNS >= 2 && !Debugging.on), 'Need debugging for line-specific corrections');
   if (!Framework.currItem) return false;
+  if (Framework.currItem.funcData.ident.indexOf('emscripten_autodebug') >= 0) return 1; // always correct in the autodebugger code!
   return (CORRECT_SIGNS === 2 && Debugging.getIdentifier() in CORRECT_SIGNS_LINES) ||
          (CORRECT_SIGNS === 3 && !(Debugging.getIdentifier() in CORRECT_SIGNS_LINES));
 }
@@ -842,21 +845,15 @@ function makeCopyValues(dest, src, num, type, modifier) {
                         }).join('; ') + '; ' + safety()
       ) + '\n' + '}';
   } else { // USE_TYPED_ARRAYS == 2
-/*
-    return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
-           '  HEAP8[' + dest + '+$mcpi$] = HEAP8[' + src + '+$mcpi$]; ' + safety() + ';\n' +
-           '}';
-*/
     return '' +
       'var $src$, $dest$, $stop$, $stop4$, $fast$;\n' +
       '$src$ = ' + src + ';\n' +
       '$dest$ = ' + dest + ';\n' +
       '$stop$ = $src$ + ' + num + ';\n' +
-      '$fast$ = ($dest$%4) === ($src$%4);\n' +
-      'while ($src$%4 !== 0 && $src$ < $stop$) {\n' +
-      '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
-      '}\n' +
-      'if ($fast$) {\n' +
+      'if (($dest$%4) == ($src$%4) && ' + num + ' > 8) {\n' +
+      '  while ($src$%4 !== 0 && $src$ < $stop$) {\n' +
+      '    ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
+      '  }\n' +
       '  $src$ >>= 2;\n' +
       '  $dest$ >>= 2;\n' +
       '  $stop4$ = $stop$ >> 2;\n' +
@@ -867,10 +864,10 @@ function makeCopyValues(dest, src, num, type, modifier) {
       '  }\n' +
       '  $src$ <<= 2;\n' +
       '  $dest$ <<= 2;\n' +
-      '}\n' +
+      '}' +
       'while ($src$ < $stop$) {\n' +
       '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
-      '}'
+      '}';
   }
   return null;
 }
@@ -979,14 +976,14 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   return [];
 }
 
-function finalizeLLVMFunctionCall(item) {
+function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
   switch(item.intertype) {
     case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
       return makePointer(makeGetSlabs(item.ident, item.type)[0], getGetElementPtrIndexes(item), null, item.type);
     case 'bitcast':
     case 'inttoptr':
     case 'ptrtoint':
-      return finalizeLLVMParameter(item.params[0]);
+      return finalizeLLVMParameter(item.params[0], noIndexizeFunctions);
     case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div':
       var temp = {
         op: item.intertype,
@@ -1078,18 +1075,18 @@ function handleOverflow(text, bits) {
 }
 
 // From parseLLVMSegment
-function finalizeLLVMParameter(param) {
+function finalizeLLVMParameter(param, noIndexizeFunctions) {
   var ret;
   if (isNumber(param)) {
     return param;
   } else if (typeof param === 'string') {
     return toNiceIdentCarefully(param);
   } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
-    ret = finalizeLLVMFunctionCall(param);
+    ret = finalizeLLVMFunctionCall(param, noIndexizeFunctions);
   } else if (param.intertype == 'value') {
     ret = parseNumerical(param.ident);
   } else if (param.intertype == 'structvalue') {
-    ret = param.values.map(finalizeLLVMParameter);
+    ret = param.values.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) });
   } else if (param.intertype === 'blockaddress') {
     return finalizeBlockAddress(param);
   } else if (param.intertype === 'type') {
@@ -1098,7 +1095,8 @@ function finalizeLLVMParameter(param) {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
   assert(param.type || (typeof param === 'string' && param.substr(0, 6) === 'CHECK_'), 'Missing type for param: ' + dump(param));
-  return indexizeFunctions(ret, param.type);
+  if (!noIndexizeFunctions) ret = indexizeFunctions(ret, param.type);
+  return ret;
 }
 
 function makeSignOp(value, type, op) {
@@ -1117,12 +1115,20 @@ function makeSignOp(value, type, op) {
   }
   if (!correctSigns() && !CHECK_SIGNS) return value;
   if (type in Runtime.INT_TYPES) {
-    // shortcuts for 32-bit case
-    if (bits === 32 && !CHECK_SIGNS) {
-      if (op === 're') {
-        return '((' + value + ')|0)';
-      } else {
-        return '((' + value + ')>>>0)';
+    // shortcuts
+    if (!CHECK_SIGNS) {
+      if (bits === 32) {
+        if (op === 're') {
+          return '((' + value + ')|0)';
+        } else {
+          return '((' + value + ')>>>0)';
+        }
+      } else if (bits < 32) {
+        if (op === 'un') {
+          return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
+        } else {
+          return '(tempInt=(' + value + '),(tempInt>=' + Math.pow(2, bits-1) + '?tempInt-' + Math.pow(2, bits) + ':tempInt))';
+        }
       }
     }
     return full;
@@ -1161,6 +1167,8 @@ function processMathop(item) { with(item) {
       item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
     }
   }
+  var originalIdent1 = ident1;
+  var originalIdent2 = ident2;
   if (isUnsignedOp(op, variant)) {
     ident1 = makeSignOp(ident1, paramTypes[0], 'un');
     ident2 = makeSignOp(ident2, paramTypes[1], 'un');
@@ -1173,6 +1181,10 @@ function processMathop(item) { with(item) {
     bits = parseInt(item.type.substr(1));
   }
   var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
+
+  function integerizeBignum(value) {
+    return '(tempBigInt=(' + value + '), tempBigInt-tempBigInt%1)';
+  }
 
   switch (op) {
     // basic integer ops
@@ -1217,15 +1229,17 @@ function processMathop(item) { with(item) {
         }
       }
       */
-      if (bits > 32) return ident1 + '*Math.pow(2,' + ident2 + ')';
+      if (bits > 32) return ident1 + '*Math.pow(2,' + ident2 + ')'; // TODO: calculate Math.pow at runtime for consts, and below too
       return ident1 + ' << ' + ident2;
     }
     case 'ashr': {
-      if (bits > 32) return ident1 + '/Math.pow(2,' + ident2 + ')';
+      if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
+      if (bits === 32) return originalIdent1 + ' >> ' + ident2; // No need to reSign in this case
       return ident1 + ' >> ' + ident2;
     }
     case 'lshr': {
-      if (bits > 32) return ident1 + '/Math.pow(2,' + ident2 + ')';
+      if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
+      if (bits === 32) return originalIdent1 + ' >>> ' + ident2; // No need to unSign in this case
       return ident1 + ' >>> ' + ident2;
     }
     // basic float ops

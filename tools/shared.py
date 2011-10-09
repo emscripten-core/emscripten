@@ -1,9 +1,9 @@
 import shutil, time, os
 from subprocess import Popen, PIPE, STDOUT
 
-rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 
 CONFIG_FILE = os.path.expanduser('~/.emscripten')
 if not os.path.exists(CONFIG_FILE):
@@ -23,6 +23,25 @@ LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
 
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
+EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
+
+# Additional compiler options
+
+USE_EMSDK = True
+
+COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-v', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
+                                 '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__']
+
+if USE_EMSDK:
+  COMPILER_OPTS += [ '-nostdinc',
+  '-I' + path_from_root('system', 'include'),
+  '-I' + path_from_root('system', 'include', 'bsd'), # posix stuff
+  '-I' + path_from_root('system', 'include', 'libc'),
+  '-I' + path_from_root('system', 'include', 'libcxx'),
+  '-I' + path_from_root('system', 'include', 'gfx'),
+  '-I' + path_from_root('system', 'include', 'net'),
+  '-I' + path_from_root('system', 'include', 'SDL'),
+]
 
 # Engine tweaks
 
@@ -68,17 +87,17 @@ def line_splitter(data):
 
   return out
 
-def limit_size(string, MAX=80*20):
+def limit_size(string, MAX=800*20):
   if len(string) < MAX: return string
   return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
-def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, use_aa=False):
+def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, quantum_size=4, use_aa=False):
   opts = []
   if optimization_level > 0:
     if allow_nonportable:
       opts.append('-O%d' % optimization_level)
     else:
-      # createStandardAliasAnalysisPasses
+      # PassManagerBuilder::populateModulePassManager
       if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
         opts.append('-tbaa')
         opts.append('-basicaa') # makes fannkuch slow but primes fast
@@ -114,11 +133,12 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, u
       opts.append('-licm')
       opts.append('-loop-unswitch') # XXX should depend on optimize_size
       if allow_nonportable: opts.append('-instcombine')
-      opts.append('-indvars')
+      if quantum_size == 4: opts.append('-indvars') # XXX this infinite-loops raytrace on q1 (loop in |new node_t[count]| has 68 hardcoded &not fixed)
       if allow_nonportable: opts.append('-loop-idiom') # ?
       opts.append('-loop-deletion')
       opts.append('-loop-unroll')
-      if allow_nonportable: opts.append('-instcombine')
+
+      ##### not in llvm-3.0. but have |      #addExtensionsToPM(EP_LoopOptimizerEnd, MPM);| if allow_nonportable: opts.append('-instcombine')
 
       # XXX Danger: Messes up Lua output for unknown reasons
       #             Note: this opt is of minor importance for raytrace...
@@ -131,14 +151,39 @@ def pick_llvm_opts(optimization_level, optimize_size, allow_nonportable=False, u
       opts.append('-jump-threading')
       opts.append('-correlated-propagation')
       opts.append('-dse')
+      #addExtensionsToPM(EP_ScalarOptimizerLate, MPM);
+
       opts.append('-adce')
       opts.append('-simplifycfg')
+      if allow_nonportable: opts.append('-instcombine')
 
       opts.append('-strip-dead-prototypes')
-      opts.append('-deadtypeelim')
 
       if optimization_level > 2: opts.append('-globaldce')
 
       if optimization_level > 1: opts.append('-constmerge')
 
   return opts
+
+def read_auto_optimize_data(filename):
+  '''
+    Reads the output of AUTO_OPTIMIZE and generates proper information for CORRECT_* == 2 's *_LINES options
+  '''
+  signs_lines = []
+  overflows_lines = []
+  
+  for line in open(filename, 'r'):
+    if line.rstrip() == '': continue
+    if '%0 failures' in line: continue
+    left, right = line.split(' : ')
+    signature = left.split('|')[1]
+    if 'Sign' in left:
+      signs_lines.append(signature)
+    elif 'Overflow' in left:
+      overflows_lines.append(signature)
+
+  return {
+    'signs_lines': signs_lines,
+    'overflows_lines': overflows_lines
+  }
+

@@ -72,6 +72,13 @@ function unInline(name_, params) {
 }
 
 Runtime = {
+  stackSave: function() {
+    return STACKTOP;
+  },
+  stackRestore: function(stackTop) {
+    STACKTOP = stackTop;
+  },
+
   forceAlign: function(target, quantum) {
     quantum = quantum || QUANTUM_SIZE;
     if (isNumber(target) && isNumber(quantum)) {
@@ -130,7 +137,7 @@ Runtime = {
         size = Types.types[field].flatSize;
         alignSize = Types.types[field].alignSize;
       } else {
-        dprint('Unclear type in struct: ' + field + ', in ' + type.name_);
+        dprint('Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]));
         assert(0);
       }
       alignSize = type.packed ? 1 : Math.min(alignSize, QUANTUM_SIZE);
@@ -268,7 +275,7 @@ function reSign(value, bits, ignore, sig) {
 #if CHECK_SIGNS
   var noted = false;
 #endif
-  if (value >= half) {
+  if (value >= half && (bits <= 32 || value > half)) { // for huge values, we can hit the precision limit and always get true here. so don't do that
 #if CHECK_SIGNS
     if (!ignore) {
       CorrectionsMonitor.note('ReSign', 0, sig);

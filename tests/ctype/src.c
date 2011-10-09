@@ -6,10 +6,12 @@ int main() {
   printf("%c%c%c\n", tolower('a'), tolower('B'), tolower('1'));
   printf("%c%c%c\n", toupper('a'), toupper('B'), toupper('1'));
 
+  /* These appear to require glibc headers and fail with newlib
   const int* tl = *__ctype_tolower_loc();
   printf("%c%c%c\n", (char)tl['c'], (char)tl['D'], (char)tl['2']);
   const int* tu = *__ctype_toupper_loc();
   printf("%c%c%c\n", (char)tu['c'], (char)tu['D'], (char)tu['2']);
+  */
 
   printf("\n");
 
@@ -70,6 +72,8 @@ int main() {
   printf("isascii('5'): %d\n", isascii('5') != 0);
   printf("isascii('.'): %d\n", isascii('.') != 0);
   printf("isascii(183): %d\n", isascii(183) != 0);
+
+  /* These appear to require glibc headers and fail with newlib
 
   // These are manually preprocessed to use __ctype_b_loc. The flags combination
   // that the test runner uses seems to cause the macro to be ignored.
@@ -189,6 +193,7 @@ int main() {
   printf("isgraph('5'): %d\n", ((*__ctype_b_loc ())[(int) (('5'))] & (unsigned short int) _ISgraph) != 0);
   printf("isgraph('.'): %d\n", ((*__ctype_b_loc ())[(int) (('.'))] & (unsigned short int) _ISgraph) != 0);
   printf("isgraph(183): %d\n", ((*__ctype_b_loc ())[(int) ((183))] & (unsigned short int) _ISgraph) != 0);
+  */
 
   return 0;
 }

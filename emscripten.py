@@ -4,6 +4,7 @@ import json
 import optparse
 import os
 import subprocess
+import re
 import sys
 import tempfile
 from tools import shared
@@ -11,19 +12,14 @@ from tools import shared
 
 # Temporary files that should be deleted once the program is finished.
 TEMP_FILES_TO_CLEAN = []
-# The data layout used by llvm-gcc (as opposed to clang, which doesn't have the
-# f128:128:128 part).
-GCC_DATA_LAYOUT = ('target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16'
-                   '-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64'
-                   '-v128:128:128-a0:0:64-f80:32:32-f128:128:128-n8:16:32"')
 
 
+__rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
   """Returns the absolute path for which the given path elements are
   relative to the emscripten root.
   """
-  rootpath = os.path.abspath(os.path.dirname(__file__))
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 
 
 def get_temp_file(suffix):
@@ -100,35 +96,18 @@ def link(*objects):
   return out.name
 
 
-def compile_malloc(compiler):
+def compile_malloc():
   """Compiles dlmalloc to LLVM bitcode.
-
-  Args:
-    compiler: The compiler command to use, a path to either clang or llvm-gcc.
 
   Returns:
     The path to the compiled dlmalloc as an LLVM bitcode (.bc) file.
   """
   src = path_from_root('src', 'dlmalloc.c')
   includes = '-I' + path_from_root('src', 'include')
-  command = [compiler, '-c', '-g', '-emit-llvm', '-m32', '-o-', includes, src]
+  command = [shared.CLANG, '-c', '-g', '-emit-llvm'] + shared.COMPILER_OPTS + ['-o-', includes, src]
   with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
-
-
-def determine_compiler(filepath):
-  """Determines whether a given file uses llvm-gcc or clang data layout.
-
-  Args:
-    filepath: The .bc or .ll file containing the bitcode/assembly to test.
-
-  Returns:
-    The path to the compiler, either llvm-gcc or clang.
-  """
-  assembly = open(disassemble(filepath)).read()
-  is_gcc = GCC_DATA_LAYOUT in assembly
-  return shared.to_cc(shared.LLVM_GCC if is_gcc else shared.CLANG)
 
 
 def has_annotations(filepath):
@@ -166,7 +145,7 @@ def main(args):
   if args.dlmalloc or args.optimize or not has_annotations(args.infile):
     args.infile = assemble(args.infile)
     if args.dlmalloc:
-      malloc = compile_malloc(determine_compiler(args.infile))
+      malloc = compile_malloc()
       args.infile = link(args.infile, malloc)
     if args.optimize: args.infile = optimize(args.infile)
   args.infile = disassemble(args.infile)
@@ -188,13 +167,75 @@ def main(args):
       settings['CORRECT_SIGNS'] = 2
       settings['CORRECT_SIGNS_LINES'] = lines
 
+  # Add header defines to settings
+  defines = {}
+  include_root = path_from_root('system', 'include')
+  headers = args.headers[0].split(',') if len(args.headers) > 0 else []
+  seen_headers = set()
+  while len(headers) > 0:
+    header = headers.pop(0)
+    if not os.path.isabs(header):
+      header = os.path.join(include_root, header)
+    seen_headers.add(header)
+    for line in open(header, 'r'):
+      line = line.replace('\t', ' ')
+      m = re.match('^ *# *define +(?P<name>[-\w_.]+) +\(?(?P<value>[-\w_.|]+)\)?.*', line)
+      if not m:
+        # Catch enum defines of a very limited sort
+        m = re.match('^ +(?P<name>[A-Z_\d]+) += +(?P<value>\d+).*', line)
+      if m:
+        if m.group('name') != m.group('value'):
+          defines[m.group('name')] = m.group('value')
+        #else:
+        #  print 'Warning: %s #defined to itself' % m.group('name') # XXX this can happen if we are set to be equal to an enum (with the same name)
+      m = re.match('^ *# *include *["<](?P<name>[\w_.-/]+)[">].*', line)
+      if m:
+        # Find this file
+        found = False
+        for w in [w for w in os.walk(include_root)]:
+          for f in w[2]:
+            curr = os.path.join(w[0], f)
+            if curr.endswith(m.group('name')) and curr not in seen_headers:
+              headers.append(curr)
+              found = True
+              break
+          if found: break
+        #assert found, 'Could not find header: ' + m.group('name')
+  if len(defines) > 0:
+    def lookup(value):
+      try:
+        while not unicode(value).isnumeric():
+          value = defines[value]
+        return value
+      except:
+        pass
+      try: # 0x300 etc.
+        value = eval(value)
+        return value
+      except:
+        pass
+      try: # CONST1|CONST2
+        parts = map(lookup, value.split('|'))
+        value = reduce(lambda a, b: a|b, map(eval, parts))
+        return value
+      except:
+        pass
+      return None
+    for key, value in defines.items():
+      value = lookup(value)
+      if value is not None:
+        defines[key] = str(value)
+      else:
+        del defines[key]
+    settings['C_DEFINES'] = defines
+
   # Compile the assembly to Javascript.
   emscript(args.infile, json.dumps(settings), args.outfile)
 
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-O] [-m] [-o OUTFILE] [-s FOO=BAR]* infile',
+      usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
       description=('Compile an LLVM assembly file to Javascript. Accepts both '
                    'human-readable (*.ll) and bitcode (*.bc) formats.'),
       epilog='You should have an ~/.emscripten file set up; see settings.py.')
@@ -206,6 +247,10 @@ if __name__ == '__main__':
                     default=False,
                     action='store_true',
                     help='Use dlmalloc. Without, uses a dummy allocator.')
+  parser.add_option('-H', '--headers',
+                    default=[],
+                    action='append',
+                    help='System headers (comma separated) whose #defines should be exposed to the compiled code.')
   parser.add_option('-o', '--outfile',
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')

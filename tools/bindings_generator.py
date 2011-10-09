@@ -47,9 +47,9 @@ NOTE: ammo.js is currently the biggest consumer of this code. For some
 
 import os, sys, glob, re
 
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
-  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-  return os.path.join(rootpath, *pathelems)
+  return os.path.join(__rootpath__, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 # Find ply and CppHeaderParser

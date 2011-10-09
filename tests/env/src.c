@@ -4,7 +4,7 @@
 
 int main() {
   printf("List:\n");
-  for (char** str = __environ; *str; str++) {
+  for (char** str = environ; *str; str++) {
     printf("%s\n", *str);
   }
   printf("\n");

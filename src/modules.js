@@ -8,7 +8,9 @@ var LLVM = {
                 'weak_odr', 'externally_visible', 'dllimport', 'dllexport', 'unnamed_addr'),
   VISIBILITIES: set('default', 'hidden', 'protected'),
   PARAM_ATTR: set('noalias', 'signext', 'zeroext', 'inreg', 'sret', 'nocapture', 'nest'),
-  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10', 'x86_fastcallcc')
+  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10', 'x86_fastcallcc', 'x86_stdcallcc'),
+  ACCESS_OPTIONS: set('volatile', 'atomic'),
+  INVOKE_MODIFIERS: set('alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq')
 };
 LLVM.GLOBAL_MODIFIERS = set(keys(LLVM.LINKAGES).concat(['constant', 'global', 'hidden']));
 
@@ -27,18 +29,19 @@ var Debugging = {
 
     var form1 = new RegExp(/^  .*, !dbg !(\d+) *$/);
     var form2 = new RegExp(/^  .*, !dbg !(\d+) *; .*$/);
-    var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), i32 \d+, metadata !(\d+), .*}$/);
-    var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, i32 \d+, i32 \d+, metadata !(\d+), i32 \d+} ; \[ DW_TAG_lexical_block \]$/);
-    var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, i32 \d+, metadata !(\d+), .*$/);
-    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !\d+, metadata !"[^"]+", metadata !(\d+)[^\[]* ; \[ DW_TAG_.*$/);
-    var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]+)", metadata !\d+} ; \[ DW_TAG_file_type \]$/);
+    var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), (?:i32 \d+|null), metadata !(\d+), .*}$/);
+    var form3a = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|metadata !\d+), (?:i32 \d+|null), (?:i32 \d+|null), metadata !(\d+), (?:i32 \d+|null)}.*/);
+    var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), metadata !(\d+), .*$/);
+    var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|null), metadata !"[^"]+", metadata !(\d+)[^\[]*.*$/);
+    var form3ad = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), (?:i32 \d+|null), metadata !"[^"]*", metadata !"[^"]*", metadata !"[^"]*", metadata !(\d+),.*$/);
+    var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]+)", (metadata !\d+|null)}.*$/);
     var form3c = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
-    var formStruct = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*} ; \[ DW_TAG_(?:structure|class)_type \]$/;
+    var formStruct = /^!(\d+) = metadata !\{i32 \d+, (metadata !\d+|null), metadata !"([^"]+)", metadata !(\d+), (?:i32 \d+|null), i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*}.*$/;
     var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
-    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, i32 \d+, i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)} ; \[ DW_TAG_member \]$/;
+    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, (?:i32 \d+|null), i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)}.*$/;
 
     var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
 
@@ -54,10 +57,13 @@ var Debugging = {
         return line.replace(', !dbg !' + calc[1], '');
       }
       calc = formStruct.exec(line);
-      if (calc && !(calc[2] in structToMemberMeta)) {
-        structMetaToStruct[calc[1]] = calc[2];
-        structToMemberMeta[calc[2]] = calc[3];
-        memberMetaToStruct[calc[3]] = calc[1];
+      if (calc) {
+        metadataToParentMetadata[calc[1]] = calc[4];
+        if (!(calc[3] in structToMemberMeta)) {
+          structMetaToStruct[calc[1]] = calc[3];
+          structToMemberMeta[calc[3]] = calc[5];
+          memberMetaToStruct[calc[5]] = calc[1];
+        }
         skipLine = true;
       }
       calc = formStructMembers.exec(line);
@@ -79,7 +85,7 @@ var Debugging = {
         metadataToParentMetadata[calc[1]] = calc[3];
         return ';'; // return an empty line, to keep line numbers of subsequent lines the same
       }
-      calc = form3a.exec(line) || form3ab.exec(line) || form3ac.exec(line);
+      calc = form3a.exec(line) || form3ab.exec(line) || form3ac.exec(line) || form3ad.exec(line);
       if (calc) {
         metadataToParentMetadata[calc[1]] = calc[2];
         return ';';
@@ -106,9 +112,9 @@ var Debugging = {
     for (var l in llvmLineToMetadata) {
       var m = llvmLineToMetadata[l];
       this.llvmLineToSourceLine[l] = metadataToSourceLine[m];
-      //dprint('starting to recurse metadata for: ' + m);
+      dprint('metadata', 'starting to recurse metadata for: ' + m);
       while (!metadataToFilename[m]) {
-        //dprint('recursing metadata, at: ' + m);
+        dprint('metadata', 'recursing metadata, at: ' + m);
         m = metadataToParentMetadata[m];
         assert(m, 'Confused as to parent metadata for llvm #' + l + ', metadata !' + m);
       }
@@ -215,6 +221,9 @@ var Functions = {
   // The list of function datas which are being processed in the jsifier, currently
   currFunctions: [],
 
+  // All functions that will be implemented in this file
+  implementedFunctions: null,
+
   indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
 
   // Mark a function as needing indexing, and returns the index
@@ -235,7 +244,7 @@ var Functions = {
       // Shared libraries reuse the parent's function table.
       return 'FUNCTION_TABLE = FUNCTION_TABLE.concat([' + indices + ']);';
     } else {
-      return 'var FUNCTION_TABLE = [' + indices + '];';
+      return 'FUNCTION_TABLE = [' + indices + ']; Module["FUNCTION_TABLE"] = FUNCTION_TABLE;';
     }
   }
 };
@@ -263,6 +272,17 @@ var LibraryManager = {
       ret = LibraryManager.library[ret];
     }
     return last;
+  },
+
+  isStubFunction: function(ident) {
+    var libCall = LibraryManager.library[ident.substr(1)];
+    return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
+                                         && !(ident in Functions.implementedFunctions);
   }
 };
+
+// Safe way to access a C define. We check that we don't add library functions with missing defines.
+function cDefine(key) {
+  return key in C_DEFINES ? C_DEFINES[key] : ('0 /* XXX missing C define ' + key + ' */');
+}
 

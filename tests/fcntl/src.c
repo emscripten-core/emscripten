@@ -30,7 +30,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_GETFL: %d\n", fcntl(f, F_GETFL));
+  printf("F_GETFL: %d\n", fcntl(f, F_GETFL) == O_RDWR);
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;
@@ -40,7 +40,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_GETFL/2: %#x\n", fcntl(f, F_GETFL));
+  printf("F_GETFL/2: %d\n", fcntl(f, F_GETFL) == (O_RDWR | O_APPEND));
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;

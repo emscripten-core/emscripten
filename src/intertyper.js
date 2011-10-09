@@ -2,6 +2,9 @@
 // to be processed by the later stages.
 
 var tokenizer; // TODO: Clean this up/out
+function tokenize(text) {
+  return tokenizer.processItem({ lineText: text }, true);
+}
 
 //! @param parseFunctions We parse functions only on later passes, since we do not
 //!                       want to parse all of them at once, and have all their
@@ -48,8 +51,11 @@ function intertyper(data, parseFunctions, baseLineNum) {
           currFunctionLineNum = i + 1;
         }
         if (!inFunction || parseFunctions) {
-          if (inContinual || new RegExp(/^\ +to.*/g).test(line)) {
-            // to after invoke
+          if (inContinual || new RegExp(/^\ +to.*/g).test(line)
+                          || new RegExp(/^\ +catch .*/g).test(line)
+                          || new RegExp(/^\ +filter .*/g).test(line)
+                          || new RegExp(/^\ +cleanup.*/g).test(line)) {
+            // to after invoke or landingpad second line
             ret.slice(-1)[0].lineText += line;
             if (new RegExp(/^\ +\]/g).test(line)) { // end of llvm switch
               inContinual = false;
@@ -137,13 +143,15 @@ function intertyper(data, parseFunctions, baseLineNum) {
         // merge certain tokens
         if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
           lastToken.text += ' ' + text;
-        } else if (lastToken && text[text.length-1] == '}') {
+        } else if (lastToken && /^}\**$/.exec(text)) { // }, }*, etc.
           var openBrace = tokens.length-1;
-          while (tokens[openBrace].text != '{') openBrace --;
+          while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
           token = combineTokens(tokens.slice(openBrace+1));
           tokens.splice(openBrace, tokens.length-openBrace+1);
           tokens.push(token);
           token.type = '{';
+          token.text = '{ ' + token.text + ' }';
+          while (pointingLevels(text) > pointingLevels(token.text)) token.text += '*'; // TODO: optimize
           lastToken = token;
         } else {
           tokens.push(token);
@@ -265,6 +273,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
               return 'Unreachable';
             if (tokensLength >= 3 && token0Text == 'indirectbr')
               return 'IndirectBr';
+            if (tokensLength >= 2 && token0Text == 'resume')
+              return 'Resume';
           } else if (item.indent === -1) {
             if (tokensLength >= 3 &&
                 (token0Text == 'load' || token1Text == 'load'))
@@ -280,8 +290,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
               return 'Alloca';
             if (tokensLength >= 3 && token0Text == 'extractvalue')
               return 'ExtractValue';
+            if (tokensLength >= 3 && token0Text == 'insertvalue')
+              return 'InsertValue';
             if (tokensLength >= 3 && token0Text == 'phi')
               return 'Phi';
+            if (tokensLength >= 3 && token0Text == 'landingpad')
+              return 'Landingpad';
           } else if (item.indent === 0) {
             if ((tokensLength >= 1 && token0Text.substr(-1) == ':') || // LLVM 2.7 format, or llvm-gcc in 2.8
                 (tokensLength >= 3 && token1Text == '<label>'))
@@ -320,6 +334,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       function scanConst(value, type) {
         //dprint('inter-const: ' + item.lineNum + ' : ' + JSON.stringify(value) + ',' + type + '\n');
+        Types.needAnalysis[type] = 0;
         if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
           return { value: toNiceIdent(value.text), type: type };
         } else if (value.text in set('zeroinitializer', 'undef')) { // undef doesn't really need initting, but why not
@@ -334,16 +349,21 @@ function intertyper(data, parseFunctions, baseLineNum) {
               if (segment[1].text == 'null') {
                 return { intertype: 'value', value: 0, type: 'i32' };
               } else if (segment[1].text == 'zeroinitializer') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'emptystruct', type: segment[0].text };
               } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
                 return parseLLVMFunctionCall(segment);
               } else if (segment[1].type && segment[1].type == '{') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].tokens) };
               } else if (segment[1].type && segment[1].type == '<') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].item.tokens[0].tokens) };
               } else if (segment[1].type && segment[1].type == '[') {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
               } else if (segment.length == 2) {
+                Types.needAnalysis[segment[0].text] = 0;
                 return { intertype: 'value', type: segment[0].text, value: toNiceIdent(segment[1].text) };
               } else if (segment[1].text === 'c') {
                 // string
@@ -377,16 +397,20 @@ function intertyper(data, parseFunctions, baseLineNum) {
         }
       }
 
+      cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 2);
       if (item.tokens[2].text == 'alias') {
-        cleanOutTokensSet(LLVM.LINKAGES, item.tokens, 3);
-        cleanOutTokensSet(LLVM.VISIBILITIES, item.tokens, 3);
-        return [{
+        cleanOutTokens(LLVM.LINKAGES, item.tokens, 3);
+        cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 3);
+        var last = getTokenIndexByText(item.tokens, ';');
+        var ret = {
           intertype: 'alias',
           ident: toNiceIdent(item.tokens[0].text),
-          aliasee: toNiceIdent(item.tokens[4].text),
-          type: item.tokens[3].text,
+          value: parseLLVMSegment(item.tokens.slice(3, last)),
           lineNum: item.lineNum
-        }];
+        };
+        ret.type = ret.value.type;
+        Types.needAnalysis[ret.type] = 0;
+        return [ret];
       }
       if (item.tokens[2].text == 'type') {
         var fields = [];
@@ -397,7 +421,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         } else if (item.tokens[3].text != 'opaque') {
           if (item.tokens[3].type == '<') {
             packed = true;
-            item.tokens[3] = tokenizer.processItem({ lineText: '{ ' + item.tokens[3].item.tokens[0].text + ' }' }, true).tokens[0];
+            item.tokens[3] = item.tokens[3].item.tokens[0];
           }
           var subTokens = item.tokens[3].tokens;
           subTokens.push({text:','});
@@ -418,13 +442,13 @@ function intertyper(data, parseFunctions, baseLineNum) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        cleanOutTokensSet(LLVM.GLOBAL_MODIFIERS, item.tokens, 3);
-        cleanOutTokensSet(LLVM.GLOBAL_MODIFIERS, item.tokens, 2);
+        cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [2, 3]);
         var external = false;
         if (item.tokens[2].text === 'external') {
           external = true;
           item.tokens.splice(2, 1);
         }
+        Types.needAnalysis[item.tokens[2].text] = 0;
         var ret = {
           intertype: 'globalVariable',
           ident: toNiceIdent(ident),
@@ -515,7 +539,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Load', {
     processItem: function(item) {
       item.intertype = 'load';
-      if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
+      cleanOutTokens(LLVM.ACCESS_OPTIONS, item.tokens, [0, 1]);
       item.pointerType = item.tokens[1].text;
       item.valueType = item.type = removePointing(item.pointerType);
       Types.needAnalysis[item.type] = 0;
@@ -534,6 +558,20 @@ function intertyper(data, parseFunctions, baseLineNum) {
       Types.needAnalysis[item.type] = 0;
       item.ident = toNiceIdent(item.tokens[2].text);
       item.indexes = splitTokenList(item.tokens.slice(4, last));
+      this.forwardItem(item, 'Reintegrator');
+    }
+  });
+  // 'insertvalue'
+  substrate.addActor('InsertValue', {
+    processItem: function(item) {
+      var last = getTokenIndexByText(item.tokens, ';');
+      item.intertype = 'insertvalue';
+      item.type = item.tokens[1].text; // Of the origin aggregate, as well as the result
+      Types.needAnalysis[item.type] = 0;
+      item.ident = toNiceIdent(item.tokens[2].text);
+      var segments = splitTokenList(item.tokens.slice(4, last));
+      item.value = parseLLVMSegment(segments[0]);
+      item.indexes = segments.slice(1);
       this.forwardItem(item, 'Reintegrator');
     }
   });
@@ -556,6 +594,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
     processItem: function(item) {
       var first = 0;
       while (!isType(item.tokens[first].text)) first++;
+      Types.needAnalysis[item.tokens[first].text] = 0;
       var last = getTokenIndexByText(item.tokens, ';');
       var segment = [ item.tokens[first], { text: 'getelementptr' }, null, { item: {
         tokens: item.tokens.slice(first, last)
@@ -574,7 +613,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
     if (['tail'].indexOf(item.tokens[0].text) != -1) {
       item.tokens.splice(0, 1);
     }
-    assertEq(item.tokens[0].text, type);
     while (item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
       item.tokens.splice(1, 1);
     }
@@ -607,26 +645,47 @@ function intertyper(data, parseFunctions, baseLineNum) {
     }
     item.ident = toNiceIdent(item.ident);
     if (type === 'invoke') {
-      cleanOutTokens(['alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'], item.tokens, 4);
-      item.toLabel = toNiceIdent(item.tokens[6].text);
-      item.unwindLabel = toNiceIdent(item.tokens[9].text);
+      var toIndex = findTokenText(item, 'to');
+      item.toLabel = toNiceIdent(item.tokens[toIndex+2].text);
+      item.unwindLabel = toNiceIdent(item.tokens[toIndex+5].text);
+      assert(item.toLabel && item.unwindLabel);
     }
     if (item.indent == 2) {
       // standalone call - not in assign
       item.standalone = true;
-      return [item];
+      return { forward: null, ret: [item], item: item };
     }
-    this.forwardItem(item, 'Reintegrator');
-    return null;
+    return { forward: item, ret: [], item: item };
   }
   substrate.addActor('Call', {
     processItem: function(item) {
-      return makeCall.call(this, item, 'call');
+      var result = makeCall.call(this, item, 'call');
+      if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
+      return result.ret;
     }
   });
   substrate.addActor('Invoke', {
     processItem: function(item) {
-      return makeCall.call(this, item, 'invoke');
+      var result = makeCall.call(this, item, 'invoke');
+      if (DISABLE_EXCEPTION_CATCHING) {
+        result.item.intertype = 'call';
+        result.ret.push({
+          intertype: 'branch',
+          label: result.item.toLabel,
+          lineNum: (result.forward ? item.parentLineNum : item.lineNum) + 0.5
+        });
+      }
+      if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
+      return result.ret;
+    }
+  });
+  // 'landingpad' - just a stub implementation
+  substrate.addActor('Landingpad', {
+    processItem: function(item) {
+      item.intertype = 'landingpad';
+      item.type = item.tokens[1].text;
+      Types.needAnalysis[item.type] = 0;
+      this.forwardItem(item, 'Reintegrator');
     }
   });
   // 'alloca'
@@ -704,7 +763,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // 'store'
   substrate.addActor('Store', {
     processItem: function(item) {
-      if (item.tokens[0].text == 'volatile') item.tokens.shift(0);
+      cleanOutTokens(LLVM.ACCESS_OPTIONS, item.tokens, [0, 1]);
       var segments = splitTokenList(item.tokens.slice(1));
       var ret = {
         intertype: 'store',
@@ -733,7 +792,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
         var commaIndex = findTokenText(item, ',');
         return [{
           intertype: 'branch',
-          condition: parseLLVMSegment(item.tokens.slice(1, commaIndex)),
+          value: parseLLVMSegment(item.tokens.slice(1, commaIndex)),
           labelTrue: toNiceIdent(item.tokens[commaIndex+2].text),
           labelFalse: toNiceIdent(item.tokens[commaIndex+5].text),
           lineNum: item.lineNum
@@ -750,6 +809,15 @@ function intertyper(data, parseFunctions, baseLineNum) {
         intertype: 'return',
         type: type,
         value: (item.tokens[2] && type !== 'void') ? parseLLVMSegment(item.tokens.slice(1)) : null,
+        lineNum: item.lineNum
+      }];
+    }
+  });
+  // 'resume' - partial implementation
+  substrate.addActor('Resume', {
+    processItem: function(item) {
+      return [{
+        intertype: 'resume',
         lineNum: item.lineNum
       }];
     }

@@ -26,6 +26,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         ident: '_' + ident
       });
     });
+
+    Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
   }
 
   // Does simple 'macro' substitution, using Django-like syntax,
@@ -279,16 +281,17 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       item.intertype = 'GlobalVariableStub';
       var ret = [item];
       item.JS = 'var ' + item.ident + ';';
-      // Set the actual value in a postset, since it may be a global variable. TODO: handle alias of alias (needs ordering)
+      // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
+      var value = finalizeLLVMParameter(item.value, true); // do *not* indexize functions here
       ret.push({
         intertype: 'GlobalVariablePostSet',
-        JS: item.ident + ' = ' + item.aliasee + ';'
+        ident: item.ident,
+        dependencies: set([value]),
+        JS: item.ident + ' = ' + value + ';'
       });
       return ret;
     }
   });
-
-  var moduleFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
 
   var addedLibraryItems = {};
 
@@ -305,7 +308,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           if (ident in addedLibraryItems) return '';
           // Don't replace implemented functions with library ones (which can happen when we add dependencies).
           // Note: We don't return the dependencies here. Be careful not to end up where this matters
-          if (('_' + ident) in moduleFunctions) return '';
+          if (('_' + ident) in Functions.implementedFunctions) return '';
 
           addedLibraryItems[ident] = true;
           var snippet = LibraryManager.library[ident];
@@ -338,8 +341,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           } else if (typeof snippet === 'function') {
             isFunction = true;
             snippet = snippet.toString();
+            assert(snippet.indexOf('XXX missing C define') == -1,
+                   'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
+
             // name the function; overwrite if it's already named
             snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
+            if (LIBRARY_DEBUG) {
+              snippet = snippet.replace('{', '{ print("[library call:' + ident + ']"); ');
+            }
           }
 
           var postsetId = ident + '__postset';
@@ -424,6 +433,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       // We have this function all reconstructed, go and finalize it's JS!
 
       func.JS = '\nfunction ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
+
+      if (PROFILE) {
+        func.JS += '  if (PROFILING) { '
+                +      'var __parentProfilingNode__ = PROFILING_NODE; PROFILING_NODE = PROFILING_NODE.children["' + func.ident + '"]; '
+                +      'if (!PROFILING_NODE) __parentProfilingNode__.children["' + func.ident + '"] = PROFILING_NODE = { time: 0, children: {}, calls: 0 };'
+                +      'PROFILING_NODE.calls++; '
+                +      'var __profilingStartTime__ = Date.now() '
+                +    '}\n';
+      }
 
       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack) + ';\n';
 
@@ -540,7 +558,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   }
 
   function getVarImpl(funcData, ident) {
-    if (ident === 'null') return VAR_NATIVIZED; // like nativized, in that we have the actual value right here
+    if (ident === 'null' || isNumber(ident)) return VAR_NATIVIZED; // like nativized, in that we have the actual value right here
     var data = getVarData(funcData, ident);
     assert(data, 'What variable is this? |' + ident + '|');
     return data.impl;
@@ -674,10 +692,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   makeFuncLineActor('branch', function(item) {
     if (item.stolen) return ';'; // We will appear where we were stolen to
-    if (!item.condition) {
+    if (!item.value) {
       return makeBranch(item.label, item.currLabelId);
     } else {
-      var condition = finalizeLLVMParameter(item.condition);
+      var condition = finalizeLLVMParameter(item.value);
       var labelTrue = makeBranch(item.labelTrue, item.currLabelId);
       var labelFalse = makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
@@ -707,9 +725,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       ret += '  ' + makeBranch(switchLabel.label, item.currLabelId || null) + '\n';
       ret += '}\n';
     });
-    ret += 'else {\n';
+    if (item.switchLabels.length > 0) ret += 'else {\n';
     ret += makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-    ret += '}\n';
+    if (item.switchLabels.length > 0) ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
     }
@@ -717,6 +735,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
   makeFuncLineActor('return', function(item) {
     var ret = RuntimeGenerator.stackExit(item.funcData.initialStack) + ';\n';
+    if (PROFILE) {
+      ret += 'if (PROFILING) { '
+          +    'PROFILING_NODE.time += Date.now() - __profilingStartTime__; '
+          +    'PROFILING_NODE = __parentProfilingNode__ '
+          +  '}\n';
+    }
     if (LABEL_DEBUG) {
       ret += "print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
@@ -727,12 +751,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
     return ret + ';';
   });
+  makeFuncLineActor('resume', function(item) {
+    return (EXCEPTION_DEBUG ? 'print("Resuming exception");' : '') + 'throw [0,0];';
+  });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
     var call_ = makeFunctionCall(item.ident, item.params, item.funcData);
     var branch = makeBranch(item.toLabel, item.currLabelId);
-    if (DISABLE_EXCEPTIONS) return call_ + '; ' + branch;
     var ret = '(function() { try { __THREW__ = false; return '
             + call_ + ' '
             + '} catch(e) { '
@@ -742,6 +768,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             + 'return null } })(); if (!__THREW__) { ' + branch
             + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
+  });
+  makeFuncLineActor('landingpad', function(item) {
+    // Just a stub
+    return '{ f0: 0, f1: 0 }';
   });
   makeFuncLineActor('load', function(item) {
     var value = finalizeLLVMParameter(item.pointer);
@@ -758,6 +788,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
     return item.ident + '.f' + item.indexes[0][0].text;
+  });
+  makeFuncLineActor('insertvalue', function(item) {
+    assert(item.indexes.length == 1); // TODO: see extractvalue
+    var ret = '(', ident;
+    if (item.ident === 'undef') {
+      item.ident = 'tempValue';
+      ret += item.ident + ' = [' + makeEmptyStruct(item.type) + '], ';
+    }
+    return ret + item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
   });
   makeFuncLineActor('indirectbr', function(item) {
     return makeBranch(finalizeLLVMParameter(item.pointer), item.currLabelId, true);
@@ -841,6 +880,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   }
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
+    if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
     return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
   });
 
@@ -853,10 +893,33 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
     items.forEach(function(item) {
       item.lines = null;
-      var small = { intertype: item.intertype, JS: item.JS }; // Release memory
+      var small = { intertype: item.intertype, JS: item.JS, ident: item.ident, dependencies: item.dependencies }; // Release memory
       itemsDict[small.intertype].push(small);
     });
     items = null;
+
+    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, function(x) { return x.ident && x.dependencies });
+    itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
+    var orderedPostSets = splitPostSets.splitOut;
+
+    var limit = orderedPostSets.length * orderedPostSets.length;
+    for (var i = 0; i < orderedPostSets.length; i++) {
+      for (var j = i+1; j < orderedPostSets.length; j++) {
+        if (orderedPostSets[j].ident in orderedPostSets[i].dependencies) {
+          var temp = orderedPostSets[i];
+          orderedPostSets[i] = orderedPostSets[j];
+          orderedPostSets[j] = temp;
+          i--;
+          limit--;
+          assert(limit > 0, 'Could not sort postsets!');
+          break;
+        }
+      }
+    }
+
+    itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.concat(orderedPostSets);
+
+    //
 
     var generated = [];
     if (mainPass) {
@@ -892,13 +955,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
       }
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
-      print(Functions.generateIndexing());
-
       var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
       var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
       print(postParts[0]);
         itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
         itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });
+        print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
       print(postParts[1]);
     print(shellParts[1]);
     return null;

@@ -1,0 +1,2 @@
+#define SDL_REVISION "hg-5603:e1ca92e7f2ff"
+#define SDL_REVISION_NUMBER 5603

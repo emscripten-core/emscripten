@@ -79,5 +79,7 @@ raw = null;
 
 // Do it
 
+//dprint(JSON.stringify(C_DEFINES));
+
 JSify(analyzer(intertyper(lines)));
 

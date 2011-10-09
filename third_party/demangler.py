@@ -21,9 +21,9 @@ JS_ENGINE_PARAMS=[]
 
 import os, sys, subprocess, re
 
-abspath = os.path.abspath(os.path.dirname(__file__))
+__rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
-  return os.path.join(os.path.sep, *(abspath.split(os.sep)[:-1] + list(pathelems)))
+  return os.path.join(os.path.sep, *(__rootpath__.split(os.sep)[:-1] + list(pathelems)))
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 data = open(sys.argv[1], 'r').readlines()
@@ -31,9 +31,9 @@ data = open(sys.argv[1], 'r').readlines()
 SEEN = {}
 for line in data:
   if len(line) < 4: continue
-  if line[:2] != '  ': continue
-  if line[2] != 'f': continue
-  m = re.match('^  function (?P<func>[^(]+)\(.*', line)
+  m = re.match('^  function (?P<func>[^(]+)\(.*', line) # generated code
+  if not m:
+    m = re.match('^ + _*\d+: (?P<func>[^ ]+) \(\d+.*', line) # profiling output
   if not m: continue
   func = m.groups('func')[0]
   if func in SEEN: continue
