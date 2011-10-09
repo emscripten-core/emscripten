@@ -155,6 +155,10 @@ int	madvise __P((void *, size_t, int));
 int	mincore __P((const void *, size_t, char *));
 int	minherit __P((void *, size_t, int));
 #endif
+
+/* XXX Emscripten */
+void *mremap(void *old_address, size_t old_size , size_t new_size, unsigned long flags);
+
 __END_DECLS
 
 #endif /* !_KERNEL */
