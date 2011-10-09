@@ -1,6 +1,8 @@
+
 #define __THROW
 #define __attribute_malloc__
 #define __wur
+
 
 /*
   This is a version (aka dlmalloc) of malloc/free/realloc written by
@@ -592,7 +594,7 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #define MMAP_CLEARS 1
 #endif  /* MMAP_CLEARS */
 #ifndef HAVE_MREMAP
-#if linux
+#ifdef linux
 #define HAVE_MREMAP 1
 #else   /* linux */
 #define HAVE_MREMAP 0
