@@ -4236,7 +4236,7 @@ else:
     def test_dlmalloc(self):
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
-      global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
+      global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
       src = open(path_from_root('tests', 'dlmalloc.c'), 'r').read()
       self.do_benchmark(src, ['400', '400'], '*400,0*')
