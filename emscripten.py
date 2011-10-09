@@ -246,7 +246,7 @@ if __name__ == '__main__':
   parser.add_option('-m', '--dlmalloc',
                     default=False,
                     action='store_true',
-                    help='Use dlmalloc. Without, uses a dummy allocator.')
+                    help='Use dlmalloc. Without, uses a dummy allocator. Warning: This will force a re-disassembly, so .ll line numbers will change.')
   parser.add_option('-H', '--headers',
                     default=[],
                     action='append',
