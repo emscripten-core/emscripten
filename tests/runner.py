@@ -9,8 +9,8 @@ import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile,
 
 # Setup
 
+rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
-  rootpath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
   return os.path.join(rootpath, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
@@ -4009,7 +4009,7 @@ class %s(T):
       self.pick_llvm_opts(3, True)
     COMPILER_TEST_OPTS = ['-g']
     shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
-    self.get_dir() # make sure it exists
+    os.chdir(self.get_dir()) # make sure it exists
 TT = %s
 ''' % (fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
