@@ -482,6 +482,11 @@ function analyzer(data) {
         return ret;
       }
 
+      function getFlatIndexes(types, type) {
+        if (types[type]) return types[type].flatIndexes;
+        return [0];
+      }
+
       item.functions.forEach(function(func) {
         function getOriginalType(param) {
           function get() {
@@ -533,10 +538,27 @@ function analyzer(data) {
             var size = Math.min.apply(null, sizes);
             var fatSize = Math.min.apply(null, fatSizes);
             if (isNumber(bytes)) {
-              assert(bytes % fatSize === 0,
-                     'The bytes copied must be a multiple of the full size, or else we are wrong about the type! ' +
-                     [bytes, size, fatSize, originalTypes, line.lineNum]);
-              line.params[fixData.bytes].ident = size*(bytes/fatSize);
+              // Figure out how much to copy.
+              var fixedBytes;
+              if (bytes % fatSize === 0) {
+                fixedBytes = size*(bytes/fatSize);
+              } else if (fatSize % bytes === 0 && size % (fatSize/bytes) === 0) {
+                // Assume this is a simple array. XXX We can be wrong though! See next TODO
+                fixedBytes = size/(fatSize/bytes);
+              } else {
+                // Just part of a structure. Align them to see how many fields. Err on copying more.
+                // TODO: properly generate a complete structure, including nesteds, and calculate on that
+                var flatIndexes = getFlatIndexes(Types.types, originalTypes[0]).concat(size);
+                var fatFlatIndexes = getFlatIndexes(Types.fatTypes, originalTypes[0]).concat(fatSize);
+                var index = 0;
+                var left = bytes;
+                fixedBytes = 0;
+                while (left > 0) {
+                  left -= fatFlatIndexes[index+1] - fatFlatIndexes[index]; // note: we copy the alignment bytes too, which is unneeded
+                  fixedBytes += flatIndexes[index+1] - flatIndexes[index];
+                }
+              }
+              line.params[fixData.bytes].ident = fixedBytes;
             } else {
               line.params[fixData.bytes].intertype = 'jsvalue';
               // We have an assertion in library::memcpy() that this is round
