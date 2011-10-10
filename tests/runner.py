@@ -59,18 +59,22 @@ class RunnerCore(unittest.TestCase):
     return dirname
 
   # Similar to LLVM::createStandardModulePasses()
-  def pick_llvm_opts(self, optimization_level, optimize_size, allow_nonportable=False):
-    global LLVM_OPT_OPTS, USE_TYPED_ARRAYS, QUANTUM_SIZE
+  def pick_llvm_opts(self, optimization_level, handpicked=None):
+    global LLVM_OPT_OPTS, QUANTUM_SIZE, USE_TYPED_ARRAYS
 
-    #if USE_TYPED_ARRAYS == 2: # unsafe optimizations. TODO: fix all issues blocking this from being used
-    #  LLVM_OPT_OPTS = ['-O3']
-    #  return
+    if handpicked is None:
+      handpicked = True # Not even TA2 can withstand instruction combining
 
-    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, optimize_size, allow_nonportable, quantum_size=QUANTUM_SIZE)
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, handpicked, quantum_size=QUANTUM_SIZE)
 
   # Emscripten optimizations that we run on the .ll file
   def do_ll_opts(self, filename):
-    shutil.move(filename + '.o.ll', filename + '.o.ll.orig')
+    # Remove target info. This helps LLVM opts, if we run them later
+    cleaned = filter(lambda line: not line.startswith('target datalayout = ') and not line.startswith('target triple = '),
+                     open(filename + '.o.ll', 'r').readlines())
+    os.unlink(filename + '.o.ll')
+    open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
+
     output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
     assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
 
@@ -4162,7 +4166,6 @@ class %s(T):
     USE_TYPED_ARRAYS = %d
     INVOKE_RUN = 1
     RELOOP = OPTIMIZE = embetter
-    if USE_TYPED_ARRAYS == 2: RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in this case, and is very slow
     QUANTUM_SIZE = quantum_size
     ASSERTIONS = 1-embetter
     SAFE_HEAP = 1-(embetter and llvm_opts)
@@ -4180,11 +4183,17 @@ class %s(T):
     PROFILE = 0
     TOTAL_MEMORY = FAST_MEMORY = None
 
+    if QUANTUM_SIZE == 1 or USE_TYPED_ARRAYS == 2:
+      RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
+
     if LLVM_OPTS:
-      self.pick_llvm_opts(3, True)
+      self.pick_llvm_opts(3)
+
     COMPILER_TEST_OPTS = ['-g']
+
     shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
+
 TT = %s
 ''' % (fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
@@ -4240,13 +4249,12 @@ else:
 
   QUANTUM_SIZE = 1
   RELOOP = OPTIMIZE = 1
-  USE_TYPED_ARRAYS = 0
+  USE_TYPED_ARRAYS = 1
   ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = RUNTIME_TYPE_INFO = 0
   INVOKE_RUN = 1
   CORRECT_SIGNS = 0
   CORRECT_ROUNDINGS = 0
   CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
-  LLVM_OPTS = 1
   DISABLE_EXCEPTION_CATCHING = 1
   if USE_TYPED_ARRAYS:
     TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
@@ -4275,9 +4283,12 @@ else:
       print '   JavaScript  : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
       print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f times slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, mean/mean_native)
 
-    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
-      global USE_TYPED_ARRAYS
-      self.pick_llvm_opts(3, True) # XXX nonportable fails with dlmalloc #, allow_nonportable=USE_TYPED_ARRAYS == 2)
+    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False, handpicked=False):
+      global USE_TYPED_ARRAYS, LLVM_OPTS
+
+      LLVM_OPTS = llvm_opts
+      if LLVM_OPTS:
+        self.pick_llvm_opts(3, handpicked)
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')
@@ -4360,7 +4371,7 @@ else:
           return 1;
         }
       '''
-      self.do_benchmark(src, [], 'lastprime: 1297001.')
+      self.do_benchmark(src, [], 'lastprime: 1297001.', llvm_opts=True, handpicked=False)
 
     def test_memops(self):
       # memcpy would also be interesting, however native code uses SSE/NEON/etc. and is much, much faster than JS can be
@@ -4384,15 +4395,16 @@ else:
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 720.')
+      self.do_benchmark(src, [], 'final: 720.', llvm_opts=True, handpicked=True)
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.')
+      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.', llvm_opts=True, handpicked=True)
 
     def test_fasta(self):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
-      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
+      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
+        llvm_opts=True, handpicked=False)
 
     def test_raytrace(self):
       global QUANTUM_SIZE, USE_TYPED_ARRAYS
@@ -4402,7 +4414,7 @@ else:
       USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code. However, TA2 is much faster (2X)
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
-      self.do_benchmark(src, ['7', '256'], '256 256')
+      self.do_benchmark(src, ['7', '256'], '256 256', llvm_opts=True, handpicked=False)
 
       QUANTUM_SIZE = old_quantum
       USE_TYPED_ARRAYS = old_use_typed_arrays
@@ -4413,7 +4425,7 @@ else:
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark(src, ['400', '400'], '*400,0*')
+      self.do_benchmark(src, ['400', '400'], '*400,0*', llvm_opts=True, handpicked=True)
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
