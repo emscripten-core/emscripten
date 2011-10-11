@@ -1430,11 +1430,17 @@ if 'benchmark' not in str(sys.argv):
           #include "emscripten.h"
 
           int main() {
+            EMSCRIPTEN_COMMENT("hello from the source");
             emscripten_run_script("print('hello world' + '!')");
             return 0;
           }
           '''
-        self.do_test(src, 'hello world!')
+
+        def check(filename):
+          src = open(filename, 'r').read()
+          assert '// hello from the source' in src
+
+        self.do_test(src, 'hello world!', post_build=check)
 
     def test_ssr(self): # struct self-ref
         src = '''
