@@ -41,22 +41,28 @@ Settings.saveJS = 0
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
+  def setUp(self):
+    dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
+    if not os.path.exists(dirname):
+      os.makedirs(dirname)
+    self.working_dir = dirname
+    
   def tearDown(self):
+    print 'teardown'
     if Settings.saveJS:
       for name in os.listdir(self.get_dir()):
         if name.endswith(('.o.js', '.cc.js')):
           suff = '.'.join(name.split('.')[-2:])
           shutil.copy(os.path.join(self.get_dir(), name),
                       os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
+    print 'rmtree', self.get_dir()
+    shutil.rmtree(self.get_dir())
 
   def skip(self, why):
     print >> sys.stderr, '<skipping: %s> ' % why,
 
   def get_dir(self):
-    dirname = TEMP_DIR + '/tmp' # tempfile.mkdtemp(dir=TEMP_DIR)
-    if not os.path.exists(dirname):
-      os.makedirs(dirname)
-    return dirname
+    return self.working_dir
 
   # Similar to LLVM::createStandardModulePasses()
   def pick_llvm_opts(self, optimization_level, handpicked=None):
@@ -4162,7 +4168,12 @@ Child2:9
   def make_test(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
     exec('''
 class %s(T):
+  def tearDown(self):
+    super(%s, self).tearDown()
+    
   def setUp(self):
+    super(%s, self).setUp()
+  
     global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTION_CATCHING, PROFILE, TOTAL_MEMORY, FAST_MEMORY
 
     COMPILER = %r
@@ -4197,11 +4208,10 @@ class %s(T):
 
     COMPILER_TEST_OPTS = ['-g']
 
-    shutil.rmtree(self.get_dir()) # Useful in debugging sometimes to comment this out
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
 TT = %s
-''' % (fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
+''' % (fullname, fullname, fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
   for llvm_opts in [0,1]:
