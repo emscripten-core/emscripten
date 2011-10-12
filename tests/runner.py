@@ -4270,11 +4270,11 @@ else:
   TOTAL_TESTS = 6
 
   tests_done = 0
-  total_times = map(lambda x: 0., range(TEST_REPS))
-  total_native_times = map(lambda x: 0., range(TEST_REPS))
+  total_times = map(lambda x: 0., range(TOTAL_TESTS))
+  total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
-    def print_stats(self, times, native_times):
+    def print_stats(self, times, native_times, normalize_by_native=False):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
@@ -4285,9 +4285,17 @@ else:
       mean_of_squared_native = sum(squared_native_times)/len(native_times)
       std_native = math.sqrt(mean_of_squared_native - mean_native*mean_native)
 
+      if not normalize_by_native:
+        final = mean / mean_native
+      else:
+        final = 0
+        for i in range(len(times)):
+          final += times[i]/native_times[i]
+        final /= len(times)
+
       print
       print '   JavaScript  : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
-      print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f times slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, mean/mean_native)
+      print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False, handpicked=False):
       global USE_TYPED_ARRAYS, LLVM_OPTS
@@ -4322,14 +4330,14 @@ else:
         final_filename = filename + '.cc.js'
 
       # Run JS
-      global total_times
+      global total_times, tests_done
       times = []
       for i in range(TEST_REPS):
         start = time.time()
         js_output = self.run_generated_code(JS_ENGINE, final_filename, args, check_timeout=False)
         curr = time.time()-start
         times.append(curr)
-        total_times[i] += curr
+        total_times[tests_done] += curr
         if i == 0:
           # Sanity check on output
           self.assertContained(expected_output, js_output)
@@ -4343,16 +4351,15 @@ else:
         self.run_native(filename, args)
         curr = time.time()-start
         native_times.append(curr)
-        total_native_times[i] += curr
+        total_native_times[tests_done] += curr
 
       self.print_stats(times, native_times)
 
-      global tests_done
       tests_done += 1
       if tests_done == TOTAL_TESTS:
         print
         print 'Total stats:'
-        self.print_stats(total_times, total_native_times)
+        self.print_stats(total_times, total_native_times, True)
 
     def test_primes(self):
       src = '''
