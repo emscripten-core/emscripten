@@ -48,14 +48,12 @@ class RunnerCore(unittest.TestCase):
     self.working_dir = dirname
     
   def tearDown(self):
-    print 'teardown'
     if Settings.saveJS:
       for name in os.listdir(self.get_dir()):
         if name.endswith(('.o.js', '.cc.js')):
           suff = '.'.join(name.split('.')[-2:])
           shutil.copy(os.path.join(self.get_dir(), name),
                       os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
-    print 'rmtree', self.get_dir()
     shutil.rmtree(self.get_dir())
 
   def skip(self, why):
