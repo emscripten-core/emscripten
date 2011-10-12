@@ -4238,14 +4238,11 @@ else:
 
   assert(os.path.exists(CLOSURE_COMPILER))
 
-  USE_CLOSURE_COMPILER = 1
-
-  if USE_CLOSURE_COMPILER:
-    try:
-      index = SPIDERMONKEY_ENGINE.index("options('strict')")
-      SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
-    except:
-      pass
+  try:
+    index = SPIDERMONKEY_ENGINE.index("options('strict')")
+    SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
+  except:
+    pass
 
   COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE
@@ -4310,24 +4307,30 @@ else:
 
       final_filename = filename + '.o.js'
 
-      if USE_CLOSURE_COMPILER:
-        # Optimize using closure compiler
-        try:
-          os.remove(filename + '.cc.js')
-        except:
-          pass
-        # Something like this (adjust memory as needed):
-        #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+      for post in POST_OPTIMIZATIONS:
+        if post == 'closure':
+          # Something like this (adjust memory as needed):
+          #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
 
-        cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
-                           '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                           '--formatting', 'PRETTY_PRINT',
-                           '--variable_map_output_file', filename + '.vars',
-                           '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-        if 'ERROR' in cc_output:
-          raise Exception('Error in cc output: ' + cc_output)
-
-        final_filename = filename + '.cc.js'
+          cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
+                             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+                             '--formatting', 'PRETTY_PRINT',
+                             '--variable_map_output_file', final_filename + '.vars',
+                             '--js', final_filename, '--js_output_file', final_filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+          if 'ERROR' in cc_output:
+            raise Exception('Error in cc output: ' + cc_output)
+          final_filename += '.cc.js'
+        elif post == 'eliminator':
+          coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
+          eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
+          input = open(final_filename, 'r').read()
+          output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+          final_filename += '.el.js'
+          f = open(final_filename, 'w')
+          f.write(output)
+          f.close()
+        else:
+          raise Exception('Unknown post-optimization: ' + post)
 
       # Run JS
       global total_times, tests_done
@@ -4362,6 +4365,8 @@ else:
         self.print_stats(total_times, total_native_times, True)
 
     def test_primes(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
+
       src = '''
         #include<stdio.h>
         #include<math.h>
@@ -4387,6 +4392,8 @@ else:
       self.do_benchmark(src, [], 'lastprime: 1297001.', llvm_opts=True, handpicked=False)
 
     def test_memops(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
+
       # memcpy would also be interesting, however native code uses SSE/NEON/etc. and is much, much faster than JS can be
       src = '''
         #include<stdio.h>
@@ -4411,15 +4418,21 @@ else:
       self.do_benchmark(src, [], 'final: 720.', llvm_opts=True, handpicked=True)
 
     def test_fannkuch(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
+
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
       self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.', llvm_opts=True, handpicked=True)
 
     def test_fasta(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
+
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
       self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
         llvm_opts=True, handpicked=False)
 
     def test_raytrace(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['closure']
+
       global QUANTUM_SIZE, USE_TYPED_ARRAYS
       old_quantum = QUANTUM_SIZE
       old_use_typed_arrays = USE_TYPED_ARRAYS
@@ -4433,6 +4446,8 @@ else:
       USE_TYPED_ARRAYS = old_use_typed_arrays
 
     def test_dlmalloc(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
+
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
