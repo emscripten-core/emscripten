@@ -4,6 +4,8 @@ target triple = "i386-unknown-linux-gnu"
 
 @.str = private unnamed_addr constant [6 x i8] c"test\0A\00"
 
+declare hidden zeroext i1 @_OptionParser(i8*, i8) ; separate test: check that we can compile this line (zeroext confused us)
+
 define i32 @main() nounwind {
   %1 = alloca i32, align 4
   store i32 0, i32* %1

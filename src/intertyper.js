@@ -864,7 +864,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // external function stub
   substrate.addActor('External', {
     processItem: function(item) {
-      if (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.VISIBILITIES || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
+      while (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.VISIBILITIES || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
         item.tokens.splice(1, 1);
       }
       var params = parseParamTokens(item.tokens[3].item.tokens);
