@@ -1,5 +1,19 @@
 #!/usr/bin/python
 
+'''
+Run with -h to see usage options.
+
+Notes:
+
+  * Emscripten expects the .ll input to be formatted and annotated the way
+
+      llvm-dis -show-annotations
+
+    does. So if you get .ll from something else, you should run it through
+    llvm-as (to generate LLVM bitcode) and then llvm-dis -show-annotations
+    (to get properly formatted and annotated .ll).
+'''
+
 import json
 import optparse
 import os
