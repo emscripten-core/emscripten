@@ -424,12 +424,14 @@ function intertyper(data, parseFunctions, baseLineNum) {
             item.tokens[3] = item.tokens[3].item.tokens[0];
           }
           var subTokens = item.tokens[3].tokens;
-          subTokens.push({text:','});
-          while (subTokens[0]) {
-            var stop = 1;
-            while ([','].indexOf(subTokens[stop].text) == -1) stop ++;
-            fields.push(combineTokens(subTokens.slice(0, stop)).text);
-            subTokens.splice(0, stop+1);
+          if (subTokens) {
+            subTokens.push({text:','});
+            while (subTokens[0]) {
+              var stop = 1;
+              while ([','].indexOf(subTokens[stop].text) == -1) stop ++;
+              fields.push(combineTokens(subTokens.slice(0, stop)).text);
+              subTokens.splice(0, stop+1);
+            }
           }
         }
         return [{
@@ -862,7 +864,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
   // external function stub
   substrate.addActor('External', {
     processItem: function(item) {
-      if (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.VISIBILITIES) {
+      if (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.VISIBILITIES || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
         item.tokens.splice(1, 1);
       }
       var params = parseParamTokens(item.tokens[3].item.tokens);
