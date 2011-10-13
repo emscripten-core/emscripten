@@ -135,7 +135,7 @@ int _EXFUN(pthread_sigmask, (int how, const sigset_t *set, sigset_t *oset));
 #endif
 
 /* protos for functions found in winsup sources for CYGWIN */
-#if defined(__CYGWIN__) || defined(__rtems__)
+#if defined(EMSCRIPTEN) || defined(__CYGWIN__) || defined(__rtems__)
 #undef sigaddset
 #undef sigdelset
 #undef sigemptyset

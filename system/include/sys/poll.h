@@ -18,7 +18,9 @@ struct pollfd {
   short revents;
 };
 
-int poll(struct pollfd *data, int num, int extra);
+typedef unsigned int nfds_t;
+
+int poll(struct pollfd *data, nfds_t num, int extra);
 
 #ifdef __cplusplus
 }

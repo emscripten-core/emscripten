@@ -138,7 +138,7 @@ extern __IMPORT char *_tzname[2];
 #include <cygwin/time.h>
 #endif /*__CYGWIN__*/
 
-#if defined(_POSIX_TIMERS)
+#if defined(EMSCRIPTEN) || defined(_POSIX_TIMERS)
 
 #include <signal.h>
 
