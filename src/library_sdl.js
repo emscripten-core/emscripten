@@ -105,6 +105,9 @@ mergeInto(LibraryManager.library, {
     },
 
     structs: {
+      Rect: Runtime.generateStructInfo([
+        ['i16', 'x'], ['i16', 'y'], ['i16', 'w'], ['i16', 'h'], 
+      ]),
       PixelFormat: Runtime.generateStructInfo([
         ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
         ['i8', 'Rloss'], ['i8', 'Gloss'], ['i8', 'Bloss'], ['i8', 'Aloss'],
@@ -377,6 +380,28 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
+  SDL_FillRect: function(surf, rect, color) {
+    var surfData = SDL.surfaces[surf];
+    var c1 = color & 0xff;
+    var c2 = (color >> 8) & 0xff;
+    var c3 = (color >> 16) & 0xff;
+    var rx = {{{ makeGetValue('rect + SDL.structs.Rect.x', '0', 'i16') }}};
+    var ry = {{{ makeGetValue('rect + SDL.structs.Rect.y', '0', 'i16') }}};
+    var rw = {{{ makeGetValue('rect + SDL.structs.Rect.w', '0', 'i16') }}};
+    var rh = {{{ makeGetValue('rect + SDL.structs.Rect.h', '0', 'i16') }}};
+    var data = surfData.image.data;
+    var width = surfData.width;
+    for (var y = ry; y < ry + rh; y++) {
+      var base = y*width*4;
+      for (var x = rx; x < rx + rw; x++) {
+        var start = x*4 + base;
+        data[start]   = c1;
+        data[start+1] = c2;
+        data[start+2] = c3;
+      }
+    }
+  },
+
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
     return _SDL_Blit(src, srcrect, dst, dstrect);
@@ -413,6 +438,11 @@ mergeInto(LibraryManager.library, {
       surfData.colors[i] = Array_copy(colors + i*4, colors + i*4 + 4);
     }
     return 1;
+  },
+
+  SDL_MapRGB: function(fmt, r, g, b) {
+    // Canvas screens are always RGBA
+    return r + (g << 8) + (b << 16);
   },
 
   // SDL_Image
@@ -490,5 +520,18 @@ mergeInto(LibraryManager.library, {
 
   SDL_LockAudio: function() {},
   SDL_UnlockAudio: function() {},
+
+  SDL_CreateMutex: function() { return 0 },
+  SDL_LockMutex: function() {},
+  SDL_UnlockMutex: function() {},
+  SDL_DestroyMutex: function() {},
+
+  SDL_CreateCond: function() { return 0 },
+  SDL_CondSignal: function() {},
+  SDL_CondWait: function() {},
+  SDL_DestroyCond: function() {},
+
+//SDL_CreateYUVOverlay
+//SDL_CreateThread, SDL_WaitThread etc
 });
 

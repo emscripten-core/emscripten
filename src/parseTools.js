@@ -1074,6 +1074,10 @@ function handleOverflow(text, bits) {
   }
 }
 
+function makeLLVMStruct(values) { // TODO: Use this everywhere
+  return '{ ' + values.map(function(value, i) { return 'f' + i + ': ' + value }).join(', ') + ' }'
+}
+
 // From parseLLVMSegment
 function finalizeLLVMParameter(param, noIndexizeFunctions) {
   var ret;
@@ -1083,10 +1087,16 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     return toNiceIdentCarefully(param);
   } else if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
     ret = finalizeLLVMFunctionCall(param, noIndexizeFunctions);
+  } else if (param.ident == 'zeroinitializer') {
+    if (isStructType(param.type)) {
+      return makeLLVMStruct(zeros(Types.types[param.type].fields.length));
+    } else {
+      return '0';
+    }
   } else if (param.intertype == 'value') {
     ret = parseNumerical(param.ident);
   } else if (param.intertype == 'structvalue') {
-    ret = param.values.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) });
+    ret = makeLLVMStruct(param.values.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) }));
   } else if (param.intertype === 'blockaddress') {
     return finalizeBlockAddress(param);
   } else if (param.intertype === 'type') {
