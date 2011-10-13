@@ -111,7 +111,7 @@ class RunnerCore(unittest.TestCase):
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
     assert output is None or 'Could not open input file' not in output, 'Linking error: ' + output
 
-  def prep_ll_test(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
+  def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
       if ll_file != filename + '.o':
         shutil.copy(ll_file, filename + '.o')
@@ -178,7 +178,7 @@ class RunnerCore(unittest.TestCase):
         raise Exception("Linkage error");
 
     # Finalize
-    self.prep_ll_test(filename, filename + '.o', build_ll_hook=build_ll_hook)
+    self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
     self.do_emscripten(filename, output_processor, extra_args=extra_emscripten_args)
 
@@ -258,7 +258,7 @@ if 'benchmark' not in str(sys.argv):
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_test(self, src, expected_output=None, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
+    def do_run(self, src, expected_output=None, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
         #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         if force_c or (main_file is not None and main_file[-2:]) == '.c':
           basename = 'src.c'
@@ -294,13 +294,13 @@ if 'benchmark' not in str(sys.argv):
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-    def do_ll_test(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
+    def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
 
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
-      self.prep_ll_test(filename, ll_file, force_recompile, build_ll_hook)
+      self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
       self.do_emscripten(filename, extra_args=extra_emscripten_args)
-      self.do_test(None,
+      self.do_run(None,
                    expected_output,
                    args,
                    no_build=True,
@@ -317,7 +317,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, 'hello, world!')
+        self.do_run(src, 'hello, world!')
 
     def test_intvars(self):
         src = '''
@@ -370,7 +370,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\nfixed:320434\n*21*')
+        self.do_run(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\nfixed:320434\n*21*')
 
     def test_sintvars(self):
         global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Relevant to this test
@@ -401,7 +401,7 @@ if 'benchmark' not in str(sys.argv):
         '''
         output = '*32780,32522,258*\n*258,2*\n*32780,32999,-219*\n*65317,510*'
         global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
-        self.do_test(src, output, force_c=True)
+        self.do_run(src, output, force_c=True)
 
     def test_bigint(self):
         if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
@@ -425,7 +425,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
+        self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
     def test_unsigned(self):
         global CORRECT_SIGNS; CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
@@ -466,7 +466,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src)#, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
+        self.do_run(src)#, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
 
         # Now let's see some code that should just work in USE_TYPED_ARRAYS == 2, but requires
         # corrections otherwise
@@ -520,7 +520,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
+        self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
     def test_bitfields(self):
         global SAFE_HEAP; SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
@@ -547,7 +547,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*0,0,0,0,0,1,0,1,0,0,1,1,1,0,0,1,0,1,1,1,0,1,1,1,*')
+        self.do_run(src, '*0,0,0,0,0,1,0,1,0,0,1,1,1,0,0,1,0,1,1,1,0,1,1,1,*')
 
     def test_floatvars(self):
         src = '''
@@ -570,7 +570,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*1,10,10.5,1,1.2340,0.00*')
+        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*')
 
     def test_math(self):
         src = '''
@@ -591,12 +591,12 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*3.14,-3.14,inf,-inf,0,0,0,1,0,1,1,0*')
+        self.do_run(src, '*3.14,-3.14,inf,-inf,0,0,0,1,0,1,1,0*')
 
     def test_math_hyperbolic(self):
         src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
         expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
-        self.do_test(src, expected)
+        self.do_run(src, expected)
 
     def test_getgep(self):
         # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
@@ -617,7 +617,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*1 2*')
+        self.do_run(src, '*1 2*')
 
     def test_if(self):
         src = '''
@@ -631,11 +631,11 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*yes*')
+        self.do_run(src, '*yes*')
 
         # Test for issue 39
         if not LLVM_OPTS:
-          self.do_ll_test(path_from_root('tests', 'issue_39.ll'), '*yes*')
+          self.do_ll_run(path_from_root('tests', 'issue_39.ll'), '*yes*')
 
     def test_if_else(self):
         src = '''
@@ -651,7 +651,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*no*')
+        self.do_run(src, '*no*')
 
     def test_loop(self):
         src = '''
@@ -665,7 +665,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*3600*')
+        self.do_run(src, '*3600*')
 
     def test_stack(self):
         src = '''
@@ -687,7 +687,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*0,1*')
+        self.do_run(src, '*0,1*')
 
     def test_strings(self):
         src = '''
@@ -722,7 +722,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+        self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
     def test_errar(self):
         src = r'''
@@ -752,7 +752,7 @@ if 'benchmark' not in str(sys.argv):
           <34>
           <123>
           '''
-        self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+        self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_mainenv(self):
         src = '''
@@ -763,7 +763,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*(nil)*')
+        self.do_run(src, '*(nil)*')
 
     def test_funcs(self):
         src = '''
@@ -778,7 +778,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*72,90*')
+        self.do_run(src, '*72,90*')
 
     def test_structs(self):
         src = '''
@@ -803,7 +803,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*10,6,101,7018,101,7018,101,7018*')
+        self.do_run(src, '*10,6,101,7018,101,7018,101,7018*')
 
     gen_struct_src = '''
           #include <stdio.h>
@@ -825,10 +825,10 @@ if 'benchmark' not in str(sys.argv):
     '''
 
     def test_mallocstruct(self):
-        self.do_test(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+        self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
     def test_newstruct(self):
-        self.do_test(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
+        self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
     def test_addr_of_stacked(self):
         src = '''
@@ -845,7 +845,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*7*')
+        self.do_run(src, '*7*')
 
     def test_globals(self):
         src = '''
@@ -861,7 +861,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*25,51*')
+        self.do_run(src, '*25,51*')
 
     def test_linked_list(self):
         src = '''
@@ -906,7 +906,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*1410,0*')
+        self.do_run(src, '*1410,0*')
 
     def test_sup(self):
         src = '''
@@ -954,9 +954,9 @@ if 'benchmark' not in str(sys.argv):
           }
         '''
         if QUANTUM_SIZE == 1:
-          self.do_test(src, 'sizeofs:6,8\n*C___: 0,3,6,9<24*\n*Carr: 0,3,6,9<24*\n*C__w: 0,3,9,12<24*\n*Cp1_: 1,2,5,8<24*\n*Cp2_: 0,2,5,8<24*\n*Cint: 0,3,4,7<24*\n*C4__: 0,3,4,7<24*\n*C4_2: 0,3,5,8<20*\n*C__z: 0,3,5,8<28*')
+          self.do_run(src, 'sizeofs:6,8\n*C___: 0,3,6,9<24*\n*Carr: 0,3,6,9<24*\n*C__w: 0,3,9,12<24*\n*Cp1_: 1,2,5,8<24*\n*Cp2_: 0,2,5,8<24*\n*Cint: 0,3,4,7<24*\n*C4__: 0,3,4,7<24*\n*C4_2: 0,3,5,8<20*\n*C__z: 0,3,5,8<28*')
         else:
-          self.do_test(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
+          self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
     def test_assert(self):
         src = '''
@@ -968,7 +968,7 @@ if 'benchmark' not in str(sys.argv):
             return 1;
           }
         '''
-        self.do_test(src, 'Assertion failed: 1 == false')
+        self.do_run(src, 'Assertion failed: 1 == false')
 
     def test_exceptions(self):
         src = '''
@@ -994,11 +994,11 @@ if 'benchmark' not in str(sys.argv):
             return 1;
           }
         '''
-        self.do_test(src, '*throw...caught!infunc...done!*')
+        self.do_run(src, '*throw...caught!infunc...done!*')
 
         global DISABLE_EXCEPTION_CATCHING
         DISABLE_EXCEPTION_CATCHING = 1
-        self.do_test(src, 'Compiled code throwing an exception')
+        self.do_run(src, 'Compiled code throwing an exception')
 
     def test_typed_exceptions(self):
         return self.skip('TODO: fix this for llvm 3.0')
@@ -1007,7 +1007,7 @@ if 'benchmark' not in str(sys.argv):
         global EXCEPTION_DEBUG; EXCEPTION_DEBUG = 0  # Messes up expected output.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
         expected = open(path_from_root('tests', 'exceptions', 'output.txt'), 'r').read()
-        self.do_test(src, expected)
+        self.do_run(src, expected)
 
     def test_class(self):
         src = '''
@@ -1036,7 +1036,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*0*')
+        self.do_run(src, '*0*')
 
     def test_inherit(self):
         src = '''
@@ -1064,7 +1064,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*51,87,78,550,100,78,550*')
+        self.do_run(src, '*51,87,78,550,100,78,550*')
 
     def test_polymorph(self):
         src = '''
@@ -1101,7 +1101,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*11,74,32,1012*\n*11*\n*22*')
+        self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
 
     def test_funcptr(self):
         src = '''
@@ -1139,7 +1139,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*26,26,90,90,26,90*\n*1,0,0,1*\n*goodbye!*')
+        self.do_run(src, '*26,26,90,90,26,90*\n*1,0,0,1*\n*goodbye!*')
 
     def test_mathfuncptr(self):
         src = '''
@@ -1154,7 +1154,7 @@ if 'benchmark' not in str(sys.argv):
            return 0;
           }
           '''
-        self.do_test(src, 'fn2(-5) = 5, fn(10) = 3.16')
+        self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16')
 
     def test_emptyclass(self):
         src = '''
@@ -1172,7 +1172,7 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
         '''
-        self.do_test(src, '*zzcheezzz*')
+        self.do_run(src, '*zzcheezzz*')
 
     def test_alloca(self):
       src = '''
@@ -1185,7 +1185,7 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
       '''
-      self.do_test(src, 'z:1*', force_c=True)
+      self.do_run(src, 'z:1*', force_c=True)
 
     def test_array2(self):
         src = '''
@@ -1203,7 +1203,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '0:-1.00,-0.33 1:0.33,-1.00 2:-0.33,1.00 3:1.00,0.33')
+        self.do_run(src, '0:-1.00,-0.33 1:0.33,-1.00 2:-0.33,1.00 3:1.00,0.33')
 
     def test_array2b(self):
         src = '''
@@ -1222,7 +1222,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '*6,6\n7,95*')
+        self.do_run(src, '*6,6\n7,95*')
 
 
     def test_constglobalstructs(self):
@@ -1256,7 +1256,7 @@ if 'benchmark' not in str(sys.argv):
              return 0;
           }
           '''
-        self.do_test(src, '*97,15,3,10*')
+        self.do_run(src, '*97,15,3,10*')
 
     def test_conststructs(self):
         src = '''
@@ -1280,7 +1280,7 @@ if 'benchmark' not in str(sys.argv):
              return 0;
           }
           '''
-        self.do_test(src, '*70,97,15,3,3029,90*')
+        self.do_run(src, '*70,97,15,3,3029,90*')
 
     def test_mod_globalstruct(self):
         src = '''
@@ -1302,7 +1302,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_test(src, '*4096,4096,8192,69632*')
+        self.do_run(src, '*4096,4096,8192,69632*')
 
     def test_pystruct(self):
         src = '''
@@ -1367,9 +1367,9 @@ if 'benchmark' not in str(sys.argv):
         '''
         if QUANTUM_SIZE == 1:
           # Compressed memory. Note that sizeof() does give the fat sizes, however!
-          self.do_test(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
+          self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
         else:
-          self.do_test(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+          self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
     def test_ptrtoint(self):
         src = '''
@@ -1391,7 +1391,7 @@ if 'benchmark' not in str(sys.argv):
         runner = self
         def check_warnings(output):
             runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
-        self.do_test(src, '*5*', output_processor=check_warnings)
+        self.do_run(src, '*5*', output_processor=check_warnings)
 
     def test_sizeof(self):
         # Has invalid writes between printouts
@@ -1426,7 +1426,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
+        self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_emscripten_api(self):
         src = '''
@@ -1444,7 +1444,7 @@ if 'benchmark' not in str(sys.argv):
           src = open(filename, 'r').read()
           assert '// hello from the source' in src
 
-        self.do_test(src, 'hello world!', post_build=check)
+        self.do_run(src, 'hello world!', post_build=check)
 
     def test_ssr(self): # struct self-ref
         src = '''
@@ -1472,9 +1472,9 @@ if 'benchmark' not in str(sys.argv):
           }
           '''
         if QUANTUM_SIZE == 1:
-          self.do_test(src, '''*4*\n0:22016,0,8,12\n1:22018,1,12,8\n''')
+          self.do_run(src, '''*4*\n0:22016,0,8,12\n1:22018,1,12,8\n''')
         else:
-          self.do_test(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
+          self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
 
     def test_tinyfuncstr(self):
         src = '''
@@ -1490,7 +1490,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '*nameA,nameB*')
+        self.do_run(src, '*nameA,nameB*')
 
     def test_llvmswitch(self):
         src = '''
@@ -1515,7 +1515,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '*96,97,98,101,101*')
+        self.do_run(src, '*96,97,98,101,101*')
 
     def test_indirectbr(self):
         src = '''
@@ -1539,7 +1539,7 @@ if 'benchmark' not in str(sys.argv):
             goto *addr;
           }
           '''
-        self.do_test(src, 'good\nbad')
+        self.do_run(src, 'good\nbad')
 
     def test_pack(self):
         src = '''
@@ -1571,9 +1571,9 @@ if 'benchmark' not in str(sys.argv):
           }
           '''
         if QUANTUM_SIZE == 1:
-          self.do_test(src, '*4,2,3*\n*6,2,3*')
+          self.do_run(src, '*4,2,3*\n*6,2,3*')
         else:
-          self.do_test(src, '*4,3,4*\n*6,4,6*')
+          self.do_run(src, '*4,3,4*\n*6,4,6*')
 
     def test_varargs(self):
         if QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
@@ -1640,7 +1640,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
+        self.do_run(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
 
     def test_stdlibs(self):
         if USE_TYPED_ARRAYS == 2:
@@ -1695,13 +1695,13 @@ if 'benchmark' not in str(sys.argv):
           }
           '''
 
-        self.do_test(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
+        self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
 
     def test_time(self):
       if USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
-      self.do_test(src, expected,
+      self.do_run(src, expected,
                    extra_emscripten_args=['-H', 'libc/time.h'])
                    #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
@@ -1748,7 +1748,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '*staticccz*\n*1.00,2.00,3.00*')
+        self.do_run(src, '*staticccz*\n*1.00,2.00,3.00*')
 
     def test_copyop(self):
         # clang generated code is vulnerable to this, as it uses
@@ -1791,7 +1791,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src, '*0.00,0.00,0.00*\n*0,77,0*\n*0,77,0*\n*0,77,0*')
+        self.do_run(src, '*0.00,0.00,0.00*\n*0,77,0*\n*0,77,0*\n*0,77,0*')
 
     def test_memcpy(self):
         src = '''
@@ -1823,7 +1823,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        self.do_test(src)
+        self.do_run(src)
 
     def test_nestedstructs(self):
         src = '''
@@ -1898,10 +1898,10 @@ if 'benchmark' not in str(sys.argv):
           '''
         if QUANTUM_SIZE == 1:
           # Compressed memory. Note that sizeof() does give the fat sizes, however!
-          self.do_test(src, '*16,0,1,2,2,3|20,0,1,1,2,3,3,4|24,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,72*\n*2*')
+          self.do_run(src, '*16,0,1,2,2,3|20,0,1,1,2,3,3,4|24,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,72*\n*2*')
         else:
           # Bloated memory; same layout as C/C++
-          self.do_test(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
+          self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
     def test_dlfcn_basic(self):
       global BUILD_AS_SHARED_LIB
@@ -1948,7 +1948,7 @@ if 'benchmark' not in str(sys.argv):
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, 'Constructing main object.\nConstructing lib object.\n',
+      self.do_run(src, 'Constructing main object.\nConstructing lib object.\n',
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
@@ -2033,7 +2033,7 @@ if 'benchmark' not in str(sys.argv):
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
+      self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
@@ -2133,7 +2133,7 @@ if 'benchmark' not in str(sys.argv):
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
+      self.do_run(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
@@ -2180,7 +2180,7 @@ if 'benchmark' not in str(sys.argv):
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, 'Parent global: 123.*Parent global: 456.*',
+      self.do_run(src, 'Parent global: 123.*Parent global: 456.*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks,
                    extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
@@ -2237,7 +2237,7 @@ if 'benchmark' not in str(sys.argv):
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
-      self.do_test(src, '100*200*13*42*',
+      self.do_run(src, '100*200*13*42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
 
@@ -2281,7 +2281,7 @@ if 'benchmark' not in str(sys.argv):
         1406932606, 3554416254
         12345, 12345
         '''
-      self.do_test(src, re.sub(r'(^|\n)\s+', r'\1', expected))
+      self.do_run(src, re.sub(r'(^|\n)\s+', r'\1', expected))
 
     def test_strtod(self):
       if USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
@@ -2336,19 +2336,19 @@ if 'benchmark' not in str(sys.argv):
         1.234e+57
         10
         '''
-      self.do_test(src, re.sub(r'\n\s+', '\n', expected))
+      self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_parseInt(self):
       if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_printf(self):
       if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_printf_types(self):
       src = r'''
@@ -2367,7 +2367,7 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
         '''
-      self.do_test(src, '1,2,3,4,5.5,6.6\n')
+      self.do_run(src, '1,2,3,4,5.5,6.6\n')
 
     def test_vprintf(self):
       src = r'''
@@ -2392,12 +2392,12 @@ if 'benchmark' not in str(sys.argv):
         Call with 1 variable argument.
         Call with 2 variable arguments.
         '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
-      self.do_test(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
+      self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
     def test_files(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
@@ -2422,7 +2422,7 @@ if 'benchmark' not in str(sys.argv):
       other.close()
 
       src = open(path_from_root('tests', 'files.cpp'), 'r').read()
-      self.do_test(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n',
+      self.do_run(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n',
                    post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_folders(self):
@@ -2501,7 +2501,7 @@ if 'benchmark' not in str(sys.argv):
         --E: 20, D: 0
         --E: 9
       '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
 
     def test_stat(self):
       def add_pre_run(filename):
@@ -2518,7 +2518,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'stat', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl(self):
       def add_pre_run(filename):
@@ -2529,7 +2529,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_open(self):
       def add_pre_run(filename):
@@ -2544,7 +2544,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_misc(self):
       def add_pre_run(filename):
@@ -2555,7 +2555,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_poll(self):
       def add_pre_run(filename):
@@ -2606,7 +2606,7 @@ if 'benchmark' not in str(sys.argv):
         multi[3].revents: 1
         multi[4].revents: 1
         '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
 
     def test_statvfs(self):
       src = r'''
@@ -2650,7 +2650,7 @@ if 'benchmark' not in str(sys.argv):
         f_flag: 2
         f_namemax: 255
         '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_libgen(self):
       src = r'''
@@ -2705,7 +2705,7 @@ if 'benchmark' not in str(sys.argv):
         (empty) -> . : .
         (null) -> . : .
       '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_utime(self):
       def add_pre_run_and_checks(filename):
@@ -2749,7 +2749,7 @@ if 'benchmark' not in str(sys.argv):
         first changed: true
         second changed: false
       '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
     def test_fs_base(self):
       global INCLUDE_FULL_LIBRARY; INCLUDE_FULL_LIBRARY = 1
@@ -2761,7 +2761,7 @@ if 'benchmark' not in str(sys.argv):
           open(filename, 'w').write(src)
         src = 'int main() {return 0;}\n'
         expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
-        self.do_test(src, expected, post_build=addJS, extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
+        self.do_run(src, expected, post_build=addJS, extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
       finally:
         INCLUDE_FULL_LIBRARY = 0
 
@@ -2774,7 +2774,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_curdir(self):
       def add_pre_run(filename):
@@ -2785,17 +2785,17 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_close(self):
       src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_unistd_confstr(self):
       src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'confstr.out'), 'r').read()
-      self.do_test(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
+      self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
 
     def test_unistd_ttyname(self):
       def add_pre_run(filename):
@@ -2806,17 +2806,17 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'ttyname.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_dup(self):
       src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_unistd_pathconf(self):
       src = open(path_from_root('tests', 'unistd', 'pathconf.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'pathconf.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_unistd_truncate(self):
       def add_pre_run(filename):
@@ -2827,12 +2827,12 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_swab(self):
       src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'swab.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_unistd_isatty(self):
       def add_pre_run(filename):
@@ -2843,17 +2843,17 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'isatty.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_sysconf(self):
       src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'sysconf.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_unistd_login(self):
       src = open(path_from_root('tests', 'unistd', 'login.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_unistd_unlink(self):
       def add_pre_run(filename):
@@ -2864,7 +2864,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'unlink.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_links(self):
       def add_pre_run(filename):
@@ -2875,12 +2875,12 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_sleep(self):
       src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'sleep.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_unistd_io(self):
       def add_pre_run(filename):
@@ -2891,12 +2891,12 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
-      self.do_test(src, expected, post_build=add_pre_run)
+      self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_misc(self):
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_uname(self):
       src = r'''
@@ -2923,12 +2923,12 @@ if 'benchmark' not in str(sys.argv):
         version: #1
         machine: x86-JS
       '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_env(self):
       src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
 
     def test_getloadavg(self):
       src = r'''
@@ -2954,14 +2954,14 @@ if 'benchmark' not in str(sys.argv):
         load[3]: 42.130
         load[4]: 42.130
       '''
-      self.do_test(src, re.sub('(^|\n)\s+', '\\1', expected))
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_ctype(self):
       # The bit fiddling done by the macros using __ctype_b_loc requires this.
       global CORRECT_SIGNS; CORRECT_SIGNS = 1
       src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
-      self.do_test(src, expected)
+      self.do_run(src, expected)
       CORRECT_SIGNS = 0
 
     ### 'Big' tests
@@ -2970,7 +2970,7 @@ if 'benchmark' not in str(sys.argv):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
         for i, j in results:
           src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-          self.do_test(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
+          self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
         global USE_TYPED_ARRAYS
@@ -2978,14 +2978,14 @@ if 'benchmark' not in str(sys.argv):
 
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
-        self.do_test(src, output, ['3', '16'])#, build_ll_hook=self.do_autodebug)
+        self.do_run(src, output, ['3', '16'])#, build_ll_hook=self.do_autodebug)
 
     def test_fasta(self):
         results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
 (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''') ]
         for i, j in results:
           src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
-          self.do_test(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
+          self.do_run(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def test_dlmalloc(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
@@ -2993,13 +2993,13 @@ if 'benchmark' not in str(sys.argv):
       global TOTAL_MEMORY; TOTAL_MEMORY = 100*1024*1024 # needed with typed arrays
 
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_test(src, '*1,0*', ['200', '1'])
-      self.do_test(src, '*400,0*', ['400', '400'], no_build=True)
+      self.do_run(src, '*1,0*', ['200', '1'])
+      self.do_run(src, '*400,0*', ['400', '400'], no_build=True)
 
       # Linked version
       src = open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_test(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
-      self.do_test(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
+      self.do_run(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
+      self.do_run(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
 
     def zzztest_gl(self):
       # Switch to gcc from g++ - we don't compile properly otherwise (why?)
@@ -3014,17 +3014,17 @@ if 'benchmark' not in str(sys.argv):
              };'''
         )
         open(filename, 'w').write(src)
-      self.do_test(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
+      self.do_run(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
 
     def test_libcxx(self):
-      self.do_test(path_from_root('tests', 'libcxx'),
+      self.do_run(path_from_root('tests', 'libcxx'),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
                    main_file='main.cpp', additional_files=['hash.cpp'])
 
       # This will fail without using libcxx, as libstdc++ (gnu c++ lib) will use but not link in 
       # __ZSt29_Rb_tree_insert_and_rebalancebPSt18_Rb_tree_node_baseS0_RS_
       # So a way to avoid that problem is to include libcxx, as done here
-      self.do_test('''
+      self.do_run('''
         #include <set>
         #include <stdio.h>
         int main() {
@@ -3044,18 +3044,18 @@ if 'benchmark' not in str(sys.argv):
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
 
-      self.do_test(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
                    #build_ll_hook=self.do_autodebug)
 
     def test_gcc_unmangler(self):
-      self.do_test(path_from_root('third_party'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
+      self.do_run(path_from_root('third_party'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
 
       #### Code snippet that is helpful to search for nonportable optimizations ####
       #global LLVM_OPT_OPTS
       #for opt in ['-aa-eval', '-adce', '-always-inline', '-argpromotion', '-basicaa', '-basiccg', '-block-placement', '-break-crit-edges', '-codegenprepare', '-constmerge', '-constprop', '-correlated-propagation', '-count-aa', '-dce', '-deadargelim', '-deadtypeelim', '-debug-aa', '-die', '-domfrontier', '-domtree', '-dse', '-extract-blocks', '-functionattrs', '-globaldce', '-globalopt', '-globalsmodref-aa', '-gvn', '-indvars', '-inline', '-insert-edge-profiling', '-insert-optimal-edge-profiling', '-instcombine', '-instcount', '-instnamer', '-internalize', '-intervals', '-ipconstprop', '-ipsccp', '-iv-users', '-jump-threading', '-lazy-value-info', '-lcssa', '-lda', '-libcall-aa', '-licm', '-lint', '-live-values', '-loop-deletion', '-loop-extract', '-loop-extract-single', '-loop-index-split', '-loop-reduce', '-loop-rotate', '-loop-unroll', '-loop-unswitch', '-loops', '-loopsimplify', '-loweratomic', '-lowerinvoke', '-lowersetjmp', '-lowerswitch', '-mem2reg', '-memcpyopt', '-memdep', '-mergefunc', '-mergereturn', '-module-debuginfo', '-no-aa', '-no-profile', '-partial-inliner', '-partialspecialization', '-pointertracking', '-postdomfrontier', '-postdomtree', '-preverify', '-prune-eh', '-reassociate', '-reg2mem', '-regions', '-scalar-evolution', '-scalarrepl', '-sccp', '-scev-aa', '-simplify-libcalls', '-simplify-libcalls-halfpowr', '-simplifycfg', '-sink', '-split-geps', '-sretpromotion', '-strip', '-strip-dead-debug-info', '-strip-dead-prototypes', '-strip-debug-declare', '-strip-nondebug', '-tailcallelim', '-tailduplicate', '-targetdata', '-tbaa']:
       #  LLVM_OPT_OPTS = [opt]
       #  try:
-      #    self.do_test(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
+      #    self.do_run(path_from_root(['third_party']), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
       #    print opt, "ok"
       #  except:
       #    print opt, "FAIL"
@@ -3071,7 +3071,7 @@ if 'benchmark' not in str(sys.argv):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
       global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
 
-      self.do_ll_test(path_from_root('tests', 'lua', 'lua.ll'),
+      self.do_ll_run(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17\n1\n2\n3\n4\n7',
                       args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'),
@@ -3151,7 +3151,7 @@ if 'benchmark' not in str(sys.argv):
         open(filename, 'w').write(src)
 
       # Main
-      self.do_test(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
+      self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                    ['font.ttf', 'test!', '150', '120', '25'],
                    libraries=[self.get_freetype()],
@@ -3191,7 +3191,7 @@ if 'benchmark' not in str(sys.argv):
         ''')
         src.close()
 
-      self.do_test(r'''
+      self.do_run(r'''
                         #define SQLITE_DISABLE_LFS
                         #define LONGDOUBLE_TYPE double
                         #define SQLITE_INT64_TYPE int
@@ -3208,7 +3208,7 @@ if 'benchmark' not in str(sys.argv):
     def test_zlib(self):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1
 
-      self.do_test(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
+      self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    libraries=[self.get_library('zlib', os.path.join('libz.a.bc'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
@@ -3219,7 +3219,7 @@ if 'benchmark' not in str(sys.argv):
       global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
       global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 1
 
-      self.do_test(r'''
+      self.do_run(r'''
                       #include <stdio.h>
                       int main() { printf("hai\n"); return 1; }
                    ''',
@@ -3242,7 +3242,7 @@ if 'benchmark' not in str(sys.argv):
         SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                            'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
-      self.do_test(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
+      self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
                    libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
                                                           os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
@@ -3328,7 +3328,7 @@ if 'benchmark' not in str(sys.argv):
       combined = os.path.join(self.get_building_dir(), 'combined.bc')
       self.do_link([freetype, poppler], combined)
 
-      self.do_ll_test(combined,
+      self.do_ll_run(combined,
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                       args='-scale-to 512 paper.pdf filename'.split(' '),
                       post_build=post)
@@ -3405,7 +3405,7 @@ if 'benchmark' not in str(sys.argv):
 
         return output
 
-      self.do_test(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
+      self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
                    'Successfully generated', # The real test for valid output is in image_compare
                    '-i image.j2k -o image.raw'.split(' '),
                    libraries=[lib],
@@ -3429,7 +3429,7 @@ if 'benchmark' not in str(sys.argv):
       global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
       global EXPORTED_FUNCTIONS; EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
 
-      self.do_ll_test(path_from_root('tests', 'python', 'python.ll'),
+      self.do_ll_run(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
                       extra_emscripten_args=['-m'])
@@ -3455,13 +3455,13 @@ if 'benchmark' not in str(sys.argv):
         else:
           output = 'hello, world!'
         if output.rstrip() != 'skip':
-          self.do_ll_test(path_from_root('tests', 'cases', name), output)
+          self.do_ll_run(path_from_root('tests', 'cases', name), output)
 
     # Autodebug the code
     def do_autodebug(self, filename):
       output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
       assert 'Success.' in output, output
-      self.prep_ll_test(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc
+      self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc
 
     def test_autodebug(self):
       if LLVM_OPTS: return self.skip('LLVM opts mess us up')
@@ -3473,7 +3473,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_autodebug(filename)
 
       # Compare to each other, and to expected output
-      self.do_ll_test(path_from_root('tests', filename+'.o.ll.ll'))
+      self.do_ll_run(path_from_root('tests', filename+'.o.ll.ll'))
 
       # Test using build_ll_hook
       src = '''
@@ -3491,8 +3491,8 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-      self.do_test(src, build_ll_hook=self.do_autodebug)
-      self.do_test(src, 'AD:', build_ll_hook=self.do_autodebug)
+      self.do_run(src, build_ll_hook=self.do_autodebug)
+      self.do_run(src, 'AD:', build_ll_hook=self.do_autodebug)
 
     def test_dfe(self):
       def hook(filename):
@@ -3514,7 +3514,7 @@ if 'benchmark' not in str(sys.argv):
           }
         '''
       # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
-      self.do_test(src, '*hello slim world*', build_ll_hook=hook)
+      self.do_run(src, '*hello slim world*', build_ll_hook=hook)
 
     def test_profiling(self):
       global PROFILE; PROFILE = 1
@@ -3564,7 +3564,7 @@ if 'benchmark' not in str(sys.argv):
         src.close()
 
       # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
-      self.do_test(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
+      self.do_run(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
 
     ### Integration tests
 
@@ -3610,7 +3610,7 @@ if 'benchmark' not in str(sys.argv):
               '// {{MODULE_ADDITIONS}'
           )
           open(filename, 'w').write(src)
-        # XXX disable due to possible v8 bug -- self.do_test(src, '*166*\n*ok*', post_build=post)
+        # XXX disable due to possible v8 bug -- self.do_run(src, '*166*\n*ok*', post_build=post)
 
         # Way 2: use CppHeaderParser
 
@@ -3757,7 +3757,7 @@ if 'benchmark' not in str(sys.argv):
               '// {{MODULE_ADDITIONS}'
           )
           open(filename, 'w').write(src)
-        self.do_test(src, '''*
+        self.do_run(src, '''*
 84
 c1
 Parent:7
@@ -3839,13 +3839,13 @@ Child2:9
           '''
         )
         open(filename, 'w').write(src)
-      self.do_test(src,
+      self.do_run(src,
                    '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
                    post_build=post)
 
       # Make sure that without the setting, we don't spam the .js with the type info
       RUNTIME_TYPE_INFO = 0
-      self.do_test(src, 'No type info.', post_build=post)
+      self.do_run(src, 'No type info.', post_build=post)
 
     ### Tests for tools
 
@@ -3869,7 +3869,7 @@ Child2:9
         assert re.search('function \w\(', src) # see before
         assert 'function _main()' not in src # closure should have wiped it out
         open(filename, 'w').write(src)
-      self.do_test(src, '*closured*', post_build=add_cc)
+      self.do_run(src, '*closured*', post_build=add_cc)
 
     def test_safe_heap(self):
       global SAFE_HEAP, SAFE_HEAP_LINES
@@ -3889,7 +3889,7 @@ Child2:9
       '''
 
       try:
-        self.do_test(src, '*nothingatall*')
+        self.do_run(src, '*nothingatall*')
       except Exception, e:
         # This test *should* fail, by throwing this exception
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
@@ -3899,14 +3899,14 @@ Child2:9
       SAFE_HEAP = 3
       SAFE_HEAP_LINES = ["src.cpp:7"]
 
-      self.do_test(src, '*ok*')
+      self.do_run(src, '*ok*')
 
       # But if we disable the wrong lines, we still fail
 
       SAFE_HEAP_LINES = ["src.cpp:99"]
 
       try:
-        self.do_test(src, '*nothingatall*')
+        self.do_run(src, '*nothingatall*')
       except Exception, e:
         # This test *should* fail, by throwing this exception
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
@@ -3916,7 +3916,7 @@ Child2:9
       SAFE_HEAP = 2
       SAFE_HEAP_LINES = ["src.cpp:99"]
 
-      self.do_test(src, '*ok*')
+      self.do_run(src, '*ok*')
 
     def test_check_overflow(self):
       global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1
@@ -3935,7 +3935,7 @@ Child2:9
           }
       '''
       try:
-        self.do_test(src, '*nothingatall*')
+        self.do_run(src, '*nothingatall*')
       except Exception, e:
         # This test *should* fail, by throwing this exception
         assert 'Too many corrections' in str(e), str(e)
@@ -3964,7 +3964,7 @@ Child2:9
           found_filename = any(('src.cpp"\n' in line) for line in lines)
           assert found_line_num, 'Must have debug info with the line number'
           assert found_filename, 'Must have debug info with the filename'
-        self.do_test(src, '*nothingatall*', post_build=post)
+        self.do_run(src, '*nothingatall*', post_build=post)
       except Exception, e:
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
@@ -3987,7 +3987,7 @@ Child2:9
       self.do_emscripten(new_filename, append_ext=False)
 
       shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
-      self.do_test(None, 'test\n', basename='new.cpp', no_build=True)
+      self.do_run(None, 'test\n', basename='new.cpp', no_build=True)
 
     def test_linespecific(self):
       global CHECK_SIGNS; CHECK_SIGNS = 0
@@ -4009,28 +4009,28 @@ Child2:9
       '''
 
       CORRECT_SIGNS = 0
-      self.do_test(src, '*1*') # This is a fail - we expect 0
+      self.do_run(src, '*1*') # This is a fail - we expect 0
 
       CORRECT_SIGNS = 1
-      self.do_test(src, '*0*') # Now it will work properly
+      self.do_run(src, '*0*') # Now it will work properly
 
       # And now let's fix just that one line
       CORRECT_SIGNS = 2
       CORRECT_SIGNS_LINES = ["src.cpp:9"]
-      self.do_test(src, '*0*')
+      self.do_run(src, '*0*')
 
       # Fixing the wrong line should not work
       CORRECT_SIGNS = 2
       CORRECT_SIGNS_LINES = ["src.cpp:3"]
-      self.do_test(src, '*1*')
+      self.do_run(src, '*1*')
 
       # And reverse the checks with = 2
       CORRECT_SIGNS = 3
       CORRECT_SIGNS_LINES = ["src.cpp:3"]
-      self.do_test(src, '*0*')
+      self.do_run(src, '*0*')
       CORRECT_SIGNS = 3
       CORRECT_SIGNS_LINES = ["src.cpp:9"]
-      self.do_test(src, '*1*')
+      self.do_run(src, '*1*')
 
       # Overflows
 
@@ -4049,25 +4049,25 @@ Child2:9
       correct = '*186854335,63*'
       CORRECT_OVERFLOWS = 0
       try:
-        self.do_test(src, correct)
+        self.do_run(src, correct)
         raise Exception('UNEXPECTED-PASS')
       except Exception, e:
         assert 'UNEXPECTED' not in str(e), str(e)
         assert 'Expected to find' in str(e), str(e)
 
       CORRECT_OVERFLOWS = 1
-      self.do_test(src, correct) # Now it will work properly
+      self.do_run(src, correct) # Now it will work properly
 
       # And now let's fix just that one line
       CORRECT_OVERFLOWS = 2
       CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
-      self.do_test(src, correct)
+      self.do_run(src, correct)
 
       # Fixing the wrong line should not work
       CORRECT_OVERFLOWS = 2
       CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
       try:
-        self.do_test(src, correct)
+        self.do_run(src, correct)
         raise Exception('UNEXPECTED-PASS')
       except Exception, e:
         assert 'UNEXPECTED' not in str(e), str(e)
@@ -4076,11 +4076,11 @@ Child2:9
       # And reverse the checks with = 2
       CORRECT_OVERFLOWS = 3
       CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
-      self.do_test(src, correct)
+      self.do_run(src, correct)
       CORRECT_OVERFLOWS = 3
       CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
       try:
-        self.do_test(src, correct)
+        self.do_run(src, correct)
         raise Exception('UNEXPECTED-PASS')
       except Exception, e:
         assert 'UNEXPECTED' not in str(e), str(e)
@@ -4111,23 +4111,23 @@ Child2:9
       '''
 
       CORRECT_ROUNDINGS = 0
-      self.do_test(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
-      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
+      self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
+      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
 
       CORRECT_ROUNDINGS = 1
-      self.do_test(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
-      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
+      self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
+      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
 
       CORRECT_ROUNDINGS = 2
       CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
-      self.do_test(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
-      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
+      self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
+      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
 
       # And reverse the check with = 2
       CORRECT_ROUNDINGS = 3
       CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
-      self.do_test(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
-      self.do_test(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
+      self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
+      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
 
     def test_autooptimize(self):
       global CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CHECK_SIGNS, CORRECT_SIGNS, AUTO_OPTIMIZE
@@ -4159,11 +4159,11 @@ Child2:9
         assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections'
         return output
 
-      self.do_test(src, '*186854335,63*\n', output_nicerizer=check)
+      self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
 
 
   # Generate tests for all our compilers
-  def make_test(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
+  def make_run(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
     exec('''
 class %s(T):
   def tearDown(self):
@@ -4223,7 +4223,7 @@ TT = %s
       fullname = '%s_%d_%d%s%s' % (
         name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
       )
-      exec('%s = make_test(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
+      exec('%s = make_run(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
