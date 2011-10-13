@@ -619,7 +619,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
     item.type = item.tokens[1].text;
     Types.needAnalysis[item.type] = 0;
     item.functionType = '';
-    while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS)) {
+    while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS) &&
+           item.tokens[2].text != 'null') {
       // We cannot compile assembly. If you hit this, perhaps tell the compiler not
       // to generate arch-specific code? |-U__i386__ -U__x86_64__| might help, it undefines
       // the standard archs.
