@@ -22,6 +22,5 @@ while len(sdata) > 0:
   if len(sdata) > 0:
     lined += ['\n']
 json = '[' + ''.join(lined) + ']'
-
-print 'var ' + sys.argv[2] + '=' + json + ';'
+print json
 
