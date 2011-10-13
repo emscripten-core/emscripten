@@ -76,12 +76,7 @@ try:
   #f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
   #f.close()
 
-  # If no provided compiler, use LLVM_GCC from ~/.emscripten.
-  # Or, use the provided one; if it is 'clang', then use CLANG from ~/.emscripten
-  cxx = os.environ.get('EMMAKEN_COMPILER')
-  if cxx and cxx == 'clang':
-    cxx = CLANG
-  CXX = cxx or LLVM_GCC
+  CXX = CLANG
   CC = to_cc(CXX)
 
   # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
