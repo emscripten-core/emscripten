@@ -1430,11 +1430,17 @@ if 'benchmark' not in str(sys.argv):
           #include "emscripten.h"
 
           int main() {
+            EMSCRIPTEN_COMMENT("hello from the source");
             emscripten_run_script("print('hello world' + '!')");
             return 0;
           }
           '''
-        self.do_test(src, 'hello world!')
+
+        def check(filename):
+          src = open(filename, 'r').read()
+          assert '// hello from the source' in src
+
+        self.do_test(src, 'hello world!', post_build=check)
 
     def test_ssr(self): # struct self-ref
         src = '''
@@ -4232,14 +4238,11 @@ else:
 
   assert(os.path.exists(CLOSURE_COMPILER))
 
-  USE_CLOSURE_COMPILER = 1
-
-  if USE_CLOSURE_COMPILER:
-    try:
-      index = SPIDERMONKEY_ENGINE.index("options('strict')")
-      SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
-    except:
-      pass
+  try:
+    index = SPIDERMONKEY_ENGINE.index("options('strict')")
+    SPIDERMONKEY_ENGINE = SPIDERMONKEY_ENGINE[:index-1] + SPIDERMONKEY_ENGINE[index+1:] # closure generates non-strict
+  except:
+    pass
 
   COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE
@@ -4264,11 +4267,11 @@ else:
   TOTAL_TESTS = 6
 
   tests_done = 0
-  total_times = map(lambda x: 0., range(TEST_REPS))
-  total_native_times = map(lambda x: 0., range(TEST_REPS))
+  total_times = map(lambda x: 0., range(TOTAL_TESTS))
+  total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
-    def print_stats(self, times, native_times):
+    def print_stats(self, times, native_times, normalize_by_native=False):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
@@ -4279,9 +4282,17 @@ else:
       mean_of_squared_native = sum(squared_native_times)/len(native_times)
       std_native = math.sqrt(mean_of_squared_native - mean_native*mean_native)
 
+      if not normalize_by_native:
+        final = mean / mean_native
+      else:
+        final = 0
+        for i in range(len(times)):
+          final += times[i]/native_times[i]
+        final /= len(times)
+
       print
       print '   JavaScript  : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
-      print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f times slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, mean/mean_native)
+      print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False, handpicked=False):
       global USE_TYPED_ARRAYS, LLVM_OPTS
@@ -4296,34 +4307,40 @@ else:
 
       final_filename = filename + '.o.js'
 
-      if USE_CLOSURE_COMPILER:
-        # Optimize using closure compiler
-        try:
-          os.remove(filename + '.cc.js')
-        except:
-          pass
-        # Something like this (adjust memory as needed):
-        #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+      for post in POST_OPTIMIZATIONS:
+        if post == 'closure':
+          # Something like this (adjust memory as needed):
+          #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
 
-        cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
-                           '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                           '--formatting', 'PRETTY_PRINT',
-                           '--variable_map_output_file', filename + '.vars',
-                           '--js', filename + '.o.js', '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-        if 'ERROR' in cc_output:
-          raise Exception('Error in cc output: ' + cc_output)
-
-        final_filename = filename + '.cc.js'
+          cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
+                             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+                             '--formatting', 'PRETTY_PRINT',
+                             '--variable_map_output_file', final_filename + '.vars',
+                             '--js', final_filename, '--js_output_file', final_filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+          if 'ERROR' in cc_output:
+            raise Exception('Error in cc output: ' + cc_output)
+          final_filename += '.cc.js'
+        elif post == 'eliminator':
+          coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
+          eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
+          input = open(final_filename, 'r').read()
+          output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+          final_filename += '.el.js'
+          f = open(final_filename, 'w')
+          f.write(output)
+          f.close()
+        else:
+          raise Exception('Unknown post-optimization: ' + post)
 
       # Run JS
-      global total_times
+      global total_times, tests_done
       times = []
       for i in range(TEST_REPS):
         start = time.time()
         js_output = self.run_generated_code(JS_ENGINE, final_filename, args, check_timeout=False)
         curr = time.time()-start
         times.append(curr)
-        total_times[i] += curr
+        total_times[tests_done] += curr
         if i == 0:
           # Sanity check on output
           self.assertContained(expected_output, js_output)
@@ -4337,18 +4354,19 @@ else:
         self.run_native(filename, args)
         curr = time.time()-start
         native_times.append(curr)
-        total_native_times[i] += curr
+        total_native_times[tests_done] += curr
 
       self.print_stats(times, native_times)
 
-      global tests_done
       tests_done += 1
       if tests_done == TOTAL_TESTS:
         print
         print 'Total stats:'
-        self.print_stats(total_times, total_native_times)
+        self.print_stats(total_times, total_native_times, True)
 
     def test_primes(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
+
       src = '''
         #include<stdio.h>
         #include<math.h>
@@ -4374,6 +4392,8 @@ else:
       self.do_benchmark(src, [], 'lastprime: 1297001.', llvm_opts=True, handpicked=False)
 
     def test_memops(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
+
       # memcpy would also be interesting, however native code uses SSE/NEON/etc. and is much, much faster than JS can be
       src = '''
         #include<stdio.h>
@@ -4398,15 +4418,21 @@ else:
       self.do_benchmark(src, [], 'final: 720.', llvm_opts=True, handpicked=True)
 
     def test_fannkuch(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
+
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
       self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.', llvm_opts=True, handpicked=True)
 
     def test_fasta(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
+
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
       self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
         llvm_opts=True, handpicked=False)
 
     def test_raytrace(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['closure']
+
       global QUANTUM_SIZE, USE_TYPED_ARRAYS
       old_quantum = QUANTUM_SIZE
       old_use_typed_arrays = USE_TYPED_ARRAYS
@@ -4420,6 +4446,8 @@ else:
       USE_TYPED_ARRAYS = old_use_typed_arrays
 
     def test_dlmalloc(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
+
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
       global CORRECT_SIGNS; CORRECT_SIGNS = 2
       global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]

@@ -838,6 +838,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       return makeSetValue(params[0].ident, 0, data, 'void*');
     } else if (ident == '_llvm_va_end') {
       return ';';
+    } else if (ident == '_EMSCRIPTEN_COMMENT') {
+      var param = finalizeParam(params[0]);
+      if (param.indexOf('CHECK_OVERFLOW') >= 0) {
+        param = param.split('(')[1].split(',')[0];
+      }
+      return '// ' + GLOBAL_VARIABLES[param].value.text.replace('\\00', '') + '   ';
     }
 
     var func = Functions.currFunctions[ident] || Functions.currExternalFunctions[ident];
