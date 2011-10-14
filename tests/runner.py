@@ -2,6 +2,13 @@
 Simple test runner
 
 See settings.py file for options&params. Edit as needed.
+
+These tests can be run in parallel using nose, for example
+
+  nosetests --processes=4 -v -s tests/runner.py 
+
+will use 4 processes. To install nose do something like
+|pip install nose| or |sudo apt-get install python-nose|.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
@@ -1429,6 +1436,9 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_emscripten_api(self):
+        global OPTIMIZE, RELOOP, LLVM_OPTS
+        if OPTIMIZE or RELOOP or LLVM_OPTS: return self.skip('FIXME')
+
         src = '''
           #include <stdio.h>
           #include "emscripten.h"
