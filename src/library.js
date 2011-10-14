@@ -4003,6 +4003,15 @@ LibraryManager.library = {
     }
     return ret;
   },
+  
+  llvm_ctlz_i32: function(x) {
+    for (var i=0; i<32; i++) {
+        if ( (x & (1 << (31-i))) != 0 ) {
+            return i;
+        }
+    }
+    return 32;
+  },
 
   __assert_fail: function(condition, file, line) {
     ABORT = true;
