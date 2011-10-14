@@ -27,10 +27,10 @@ EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 
 # Additional compiler options
 
-USE_EMSDK = True
-
-COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-v', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
+COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__']
+
+USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:
   COMPILER_OPTS += [ '-nostdinc',
