@@ -8279,5 +8279,7 @@ int main() {
   printf("%hhx\n", -0xFF);
   printf("%hx\n", -0xFFFF);
   printf("%x\n", -0xFFFFFFFF);
+  printf("\n");
+  printf("no_new_line");
   return 0;
 }

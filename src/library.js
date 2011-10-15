@@ -24,7 +24,7 @@ LibraryManager.library = {
   _impure_ptr: 0,
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: 'FS.init();',
+  $FS__postset: 'FS.init(); __ATEXIT__.push({ func: function() { FS.quit() } });',
   $FS: {
     // The path to the current folder.
     currentPath: '/',
@@ -323,19 +323,6 @@ LibraryManager.library = {
         return input.cache.shift();
       };
       if (!output) output = function(val) {
-        if (!output.printer) {
-          if (typeof print == 'function') {
-            // Either console or custom print function defined.
-            output.printer = print;
-          } else if (console && typeof console.log == 'function') {
-            // Browser-like environment with a console.
-            output.printer = console.log;
-          } else {
-            // Fallback to a harmless no-op.
-            output.printer = function() {};
-          }
-        }
-        if (!output.buffer) output.buffer = [];
         if (val === null || val === '\n'.charCodeAt(0)) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
@@ -343,6 +330,19 @@ LibraryManager.library = {
           output.buffer.push(String.fromCharCode(val));
         }
       };
+      if (!output.printer) {
+        if (typeof print == 'function') {
+          // Either console or custom print function defined.
+          output.printer = print;
+        } else if (console && typeof console.log == 'function') {
+          // Browser-like environment with a console.
+          output.printer = console.log;
+        } else {
+          // Fallback to a harmless no-op.
+          output.printer = function() {};
+        }
+      }
+      if (!output.buffer) output.buffer = [];
       if (!error) error = output;
 
       // Create the temporary folder.
@@ -403,6 +403,12 @@ LibraryManager.library = {
 
       // Once initialized, permissions start having effect.
       FS.ignorePermissions = false;
+    },
+
+    quit: function() {
+      // Flush any partially-printed lines in stdout and stderr
+      if (FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output('\n'.charCodeAt(0));
+      if (FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output('\n'.charCodeAt(0));
     }
   },
 
