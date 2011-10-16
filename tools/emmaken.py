@@ -51,6 +51,14 @@ to run g++ on it despite the .c extension, see
   https://github.com/kripken/emscripten/issues/6
 
 (If a similar situation occurs with ./configure, you can do the same there too.)
+
+emmaken can be influenced by a few environment variables:
+
+  EMMAKEN_NO_SDK - Will tell emmaken *not* to use the emscripten headers. Instead
+                   your system headers will be used.
+
+  EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
+
 '''
 
 import sys
