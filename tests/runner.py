@@ -5,7 +5,7 @@ See settings.py file for options&params. Edit as needed.
 
 These tests can be run in parallel using nose, for example
 
-  nosetests --processes=4 -v -s tests/runner.py 
+  nosetests --processes=4 -v -s tests/runner.py
 
 will use 4 processes. To install nose do something like
 |pip install nose| or |sudo apt-get install python-nose|.
@@ -43,25 +43,30 @@ GlobalCache = {}
 
 class Dummy: pass
 Settings = Dummy()
-Settings.saveJS = 0
+Settings.save_dir = 1
+Settings.save_JS = 0
 
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
   def setUp(self):
-    dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
+    if not Settings.save_dir:
+      dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
+    else:
+      dirname = os.path.join(TEMP_DIR, 'tmp')
     if not os.path.exists(dirname):
       os.makedirs(dirname)
     self.working_dir = dirname
     
   def tearDown(self):
-    if Settings.saveJS:
+    if Settings.save_JS:
       for name in os.listdir(self.get_dir()):
         if name.endswith(('.o.js', '.cc.js')):
           suff = '.'.join(name.split('.')[-2:])
           shutil.copy(os.path.join(self.get_dir(), name),
                       os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
-    shutil.rmtree(self.get_dir())
+    if not Settings.save_dir:
+      shutil.rmtree(self.get_dir())
 
   def skip(self, why):
     print >> sys.stderr, '<skipping: %s> ' % why,
