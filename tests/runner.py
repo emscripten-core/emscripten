@@ -43,7 +43,7 @@ GlobalCache = {}
 
 class Dummy: pass
 Settings = Dummy()
-Settings.save_dir = 1
+Settings.save_dir = 0
 Settings.save_JS = 0
 
 # Core test runner class, shared between normal tests and benchmarks
