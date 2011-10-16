@@ -793,14 +793,23 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   }
 }
 
+var UNROLL_LOOP_LIMIT = 5;
+
 function makeSetValues(ptr, pos, value, type, num) {
   function safety(where) {
     where = where || getFastValue(ptr, '+', pos) + '+$mspi$';
     return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + where + ', ' + type + ', 1)' : '');
   }
   if (USE_TYPED_ARRAYS in set(0, 1)) {
+    if (isNumber(num)) {
+      if (num < UNROLL_LOOP_LIMIT) {
+        return range(num).map(function(i) {
+          return makeSetValue(ptr, getFastValue(pos, '+', i), value, type);
+        }).join('; ');
+      }
+    }
     return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
-      makeSetValue(ptr, getFastValue(pos, '+', '$mspi$'), value, type) + ';\n}';
+      makeSetValue(ptr, getFastValue(pos, '+', '$mspi$'), value, type) + '\n}';
   } else { // USE_TYPED_ARRAYS == 2
 /*
     return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
@@ -837,6 +846,17 @@ function makeCopyValues(dest, src, num, type, modifier) {
     return (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + to + ', ' + from + ')' : '');
   }
   if (USE_TYPED_ARRAYS in set(0, 1)) {
+    if (isNumber(num)) {
+      if (num < UNROLL_LOOP_LIMIT) {
+        return range(num).map(function(i) {
+          return type !== 'null' ? makeSetValue(dest, i, makeGetValue(src, i, type) + (modifier || ''), type)
+                           : // Null is special-cased: We copy over all heaps
+                            makeGetSlabs(dest, 'null', true).map(function(slab) {
+                              return slab + '[' + dest + '+' + i + ']=' + slab + '[' + src + '+' + i + ']';
+                            }).join('; ') + '; ' + safety(dest + '+' + i, src + '+' + i)
+        }).join('; ');
+      }
+    }
     return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
       (type !== 'null' ? makeSetValue(dest, '$mcpi$', makeGetValue(src, '$mcpi$', type) + (modifier || ''), type)
                        : // Null is special-cased: We copy over all heaps

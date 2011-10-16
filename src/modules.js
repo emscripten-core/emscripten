@@ -186,6 +186,10 @@ var Debugging = {
   }
 };
 
+var Variables = {
+  globals: null
+};
+
 var Types = {
   types: {},
   fatTypes: {}, // With QUANTUM_SIZE=1, we store the full-size type data here

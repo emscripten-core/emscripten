@@ -3578,13 +3578,21 @@ LibraryManager.library = {
   // string.h
   // ==========================================================================
 
+  memcpy__inline: function (dest, src, num, idunno) {
+    var ret = '';
+#if ASSERTIONS
+    ret += "assert(" + num + " % 1 === 0, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');";
+#endif
+    ret += makeCopyValues(dest, src, num, 'null');
+    return ret;
+  },
   memcpy: function (dest, src, num, idunno) {
 #if ASSERTIONS
     assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');
 #endif
-    // || 0, since memcpy sometimes copies uninitialized areas XXX: Investigate why initializing alloc'ed memory does not fix that too
-    {{{ makeCopyValues('dest', 'src', 'num', 'null', ' || 0') }}};
+    {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};
   },
+
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
@@ -3604,6 +3612,9 @@ LibraryManager.library = {
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
+  memset__inline: function(ptr, value, num) {
+    return makeSetValues(ptr, 0, value, 'null', num);
+  },
   memset: function(ptr, value, num) {
     {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}}
   },
@@ -3984,6 +3995,14 @@ LibraryManager.library = {
   // LLVM specifics
   // ==========================================================================
 
+  llvm_va_start__inline: function(ptr) {
+    // varargs - we received a pointer to the varargs as a final 'extra' parameter
+    var data = 'arguments[' + Framework.currItem.funcData.ident + '.length]';
+    return makeSetValue(ptr, 0, data, 'void*');
+  },
+
+  llvm_va_end: function() {},
+
   llvm_va_copy: function(ppdest, ppsrc) {
     {{{ makeCopyValues('ppdest', 'ppsrc', QUANTUM_SIZE, 'null') }}}
     /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
@@ -4173,8 +4192,8 @@ LibraryManager.library = {
     return ret;
   },
 
-  llvm_expect_i32: function(x, y) {
-    return x == y; // TODO: inline this
+  llvm_expect_i32__inline: function(x, y) {
+    return '((' + x + ')==(' + y + '))';
   },
 
   llvm_lifetime_start: function() {},
@@ -5389,6 +5408,13 @@ LibraryManager.library = {
 
   _Z21emscripten_run_scriptPKc: function(ptr) {
     eval(Pointer_stringify(ptr));
+  },
+
+  EMSCRIPTEN_COMMENT__inline: function(param) {
+    if (param.indexOf('CHECK_OVERFLOW') >= 0) {
+      param = param.split('(')[1].split(',')[0];
+    }
+    return '// ' + Variables.globals[param].value.text.replace('\\00', '') + '   ';
   }
 };
 

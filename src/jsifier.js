@@ -42,6 +42,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   substrate = new Substrate('JSifyer');
 
   var GLOBAL_VARIABLES = !mainPass ? givenGlobalVariables : data.globalVariables;
+  Variables.globals = GLOBAL_VARIABLES;
 
   Functions.currFunctions = !mainPass ? givenFunctions.currFunctions : {};
   Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
@@ -831,28 +832,13 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
-    // Special cases
-    if (ident == '_llvm_va_start') {
-      // varargs - we received a pointer to the varargs as a final 'extra' parameter
-      var data = 'arguments[' + Framework.currItem.funcData.ident + '.length]';
-      return makeSetValue(params[0].ident, 0, data, 'void*');
-    } else if (ident == '_llvm_va_end') {
-      return ';';
-    } else if (ident == '_EMSCRIPTEN_COMMENT') {
-      var param = finalizeParam(params[0]);
-      if (param.indexOf('CHECK_OVERFLOW') >= 0) {
-        param = param.split('(')[1].split(',')[0];
-      }
-      return '// ' + GLOBAL_VARIABLES[param].value.text.replace('\\00', '') + '   ';
-    }
-
+    var shortident = LibraryManager.getRootIdent(ident.slice(1)) || ident.slice(1); // ident may not be in library, if all there is is ident__inline
     var func = Functions.currFunctions[ident] || Functions.currExternalFunctions[ident];
-
     var args = [];
     var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
-    var useJSArgs = (ident.slice(1) + '__jsargs') in LibraryManager.library;
+    var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
@@ -878,11 +864,19 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       varargs = makePointer('[' + varargs + ']', 0, 'ALLOC_STACK', varargsTypes);
     }
 
+    args = args.concat(varargs);
+    var argsText = args.join(', ');
+
+    var inline = LibraryManager.library[shortident + '__inline'];
+    if (inline) {
+      return inline.apply(null, args); // Warning: inlining does not prevent recalculation of the arguments. They should be simple identifiers
+    }
+
     if (getVarData(funcData, ident)) {
       ident = 'FUNCTION_TABLE[' + ident + ']';
     }
 
-    return ident + '(' + args.concat(varargs).join(', ') + ')';
+    return ident + '(' + args.join(', ') + ')';
   }
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
