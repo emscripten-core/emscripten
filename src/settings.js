@@ -53,6 +53,7 @@ SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                          // may allocate stack later, and in a loop, this can be
                          // very bad. In particular, when debugging, printf()ing
                          // a lot can exhaust the stack very fast, with this option.
+INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses

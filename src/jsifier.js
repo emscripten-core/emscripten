@@ -867,8 +867,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     args = args.concat(varargs);
     var argsText = args.join(', ');
 
+    // Inline if either we inline whenever we can (and we can), or if there is no noninlined version
     var inline = LibraryManager.library[shortident + '__inline'];
-    if (inline) {
+    var nonInlined = shortident in LibraryManager.library;
+    if (inline && (INLINE_LIBRARY_FUNCS || !nonInlined)) {
       return inline.apply(null, args); // Warning: inlining does not prevent recalculation of the arguments. They should be simple identifiers
     }
 
