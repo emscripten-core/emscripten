@@ -76,7 +76,11 @@ try:
   #f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
   #f.close()
 
-  CXX = CLANG
+  if os.environ.get('EMMAKEN_COMPILER'):
+    CXX = os.environ['EMMAKEN_COMPILER']
+  else:
+    CXX = CLANG
+
   CC = to_cc(CXX)
 
   # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
