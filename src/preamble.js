@@ -655,8 +655,10 @@ Module['String_copy'] = String_copy;
 
 // Tools
 
-if (typeof print === 'undefined') {
-  this['print'] = console.log; // we are on the web
+if (typeof console === 'object' && typeof console.log === 'function') {
+  this['print'] = function(x) { console.log(x) }; // web console
+} else if (typeof print === 'undefined') {
+  this['print'] = function(){}; // harmless no-op
 }
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.

@@ -330,18 +330,7 @@ LibraryManager.library = {
           output.buffer.push(String.fromCharCode(val));
         }
       };
-      if (!output.printer) {
-        if (typeof print == 'function') {
-          // Either console or custom print function defined.
-          output.printer = print;
-        } else if (console && typeof console.log == 'function') {
-          // Browser-like environment with a console.
-          output.printer = console.log;
-        } else {
-          // Fallback to a harmless no-op.
-          output.printer = function() {};
-        }
-      }
+      if (!output.printer) output.printer = print;
       if (!output.buffer) output.buffer = [];
       if (!error) error = output;
 
