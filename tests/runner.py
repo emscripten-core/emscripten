@@ -2979,6 +2979,19 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, expected)
       CORRECT_SIGNS = 0
 
+    def test_iostream(self):
+      src = '''
+        #include <iostream>
+
+        int main()
+        {
+          std::cout << "hello world";
+          return 0;
+        }
+      '''
+
+      self.do_run(src, 'hello world')
+
     ### 'Big' tests
 
     def test_fannkuch(self):
