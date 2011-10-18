@@ -1,6 +1,8 @@
 
 #define INET_ADDRSTRLEN 16
 
+#define INADDR_ANY 0
+
 struct in_addr {
   unsigned long s_addr;
 };

@@ -1,5 +1,9 @@
 /* */
 
+#define SOMAXCONN 128
+#define PF_INET 2
+#define SO_BROADCAST 6
+
 #define AF_UNSPEC 100
 #define SOCK_STREAM 200
 #define SOL_SOCKET 50
@@ -37,4 +41,15 @@ ssize_t recv(int s, void *buf, size_t len, int flags);
 ssize_t send(int s, const void *buf, size_t len, int flags);
 int setsockopt(int s, int level, int optname, const void *optval, socklen_t optlen);
 ssize_t sendto(int s, const void *buf, size_t len, int flags, const struct sockaddr *to, socklen_t tolen);
+
+struct msghdr
+{
+  void         *msg_name;
+  socklen_t     msg_namelen;
+  struct iovec *msg_iov;
+  size_t        msg_iovlen;
+  void *        msg_control;
+  size_t        msg_controllen;
+  int           msg_flags;
+};
 
