@@ -23,6 +23,9 @@ var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 
 function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
+#if USE_TYPED_ARRAYS == 2
+  return; // It is legitimate to violate the load-store assumption in this case
+#endif
   if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
   // You cannot, however, do the nonportable act of store X and load Y!
@@ -30,7 +33,7 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
     HEAP_HISTORY[dest] = ignore ? null : type;
   } else {
 #if USE_TYPED_ARRAYS == 0
-    if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false) { // false can be the result of a mathop comparator
+    if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false && !ignore) { // false can be the result of a mathop comparator
       var error = true;
       try {
         if (HEAP[dest].toString() === 'NaN') error = false; // NaN is acceptable, as a double value
@@ -98,11 +101,11 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
   switch(type) {
     case 'i1': case 'i8': HEAP8[dest] = value; break;
-    case 'i16': assert(dest % 2 === 0, type + ' stores must be aligned'); HEAP16[dest>>1] = value; break;
-    case 'i32': assert(dest % 4 === 0, type + ' stores must be aligned'); HEAP32[dest>>2] = value; break;
-    case 'i64': assert(dest % 4 === 0, type + ' stores must be aligned'); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
-    case 'float': assert(dest % 4 === 0, type + ' stores must be aligned'); HEAPF32[dest>>2] = value; break;
-    case 'double': assert(dest % 4 === 0, type + ' stores must be aligned'); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
+    case 'i16': assert(dest % 2 === 0, type + ' stores must be aligned: ' + dest); HEAP16[dest>>1] = value; break;
+    case 'i32': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); HEAP32[dest>>2] = value; break;
+    case 'i64': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
+    case 'float': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); HEAPF32[dest>>2] = value; break;
+    case 'double': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
     default: throw 'weird type for typed array II: ' + type + new Error().stack;
   }
 #else
@@ -139,18 +142,18 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
       break;
     }
     case 'i16': {
-      assert(dest % 2 === 0, type + ' loads must be aligned');
+      assert(dest % 2 === 0, type + ' loads must be aligned: ' + dest);
       ret = (unsigned ? HEAPU16 : HEAP16)[dest>>1];
       break;
     }
     case 'i32': case 'i64': { // XXX store int64 as int32
-      assert(dest % 4 === 0, type + ' loads must be aligned');
+      assert(dest % 4 === 0, type + ' loads must be aligned: ' + dest);
       if (type === 'i64') warn64();
       ret = (unsigned ? HEAPU32 : HEAP32)[dest>>2];
       break;
     }
     case 'float': case 'double': { // XXX store doubles as floats
-      assert(dest % 4 === 0, type + ' loads must be aligned');
+      assert(dest % 4 === 0, type + ' loads must be aligned: ' + dest);
       if (type === 'double') warn64();
       ret = HEAPF32[dest>>2];
       break;

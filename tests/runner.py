@@ -3900,10 +3900,12 @@ Child2:9
       self.do_run(src, '*closured*', post_build=add_cc)
 
     def test_safe_heap(self):
-      global SAFE_HEAP, SAFE_HEAP_LINES
+      global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS
 
+      if USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
       if not SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
       if LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
+
       src = '''
         #include<stdio.h>
         int main() {
