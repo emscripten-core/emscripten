@@ -28,3 +28,22 @@ if len(sys.argv) < 3:
 else:
   print 'var ' + sys.argv[2] + '=' + json + ';'
 
+'''
+or (but this fails, we get a string at runtime?)
+
+data = open(sys.argv[1], 'r').read()
+counter = 0
+print '[',
+for i in range(len(data)):
+  last = i == len(data)-1
+  print ord(data[i]),
+  counter += 1
+  if counter % 20 == 0:
+    print
+  if counter % 1005 == 0 and not last:
+    print '] + [',
+  elif not last: print ',',
+
+print ']'
+'''
+
