@@ -255,6 +255,8 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
+    Module['canvas'].width = width;
+    Module['canvas'].height = height;
     return SDL.screen = SDL.makeSurface(width, height, flags);
   },
 
@@ -268,7 +270,7 @@ mergeInto(LibraryManager.library, {
       }
       surfData.ctx.putImageData(surfData.image, 0, 0);
     }
-    _SDL_CloseAudio(); // make sure we don't leave our audio timer running
+    if (SDL.audio) _SDL_CloseAudio(); // make sure we don't leave our audio timer running
     __shutdownRuntime__();
     throw 'SDL_Quit!';
   },
@@ -304,11 +306,27 @@ mergeInto(LibraryManager.library, {
     if (!surfData.colors) {
       var data = surfData.image.data;
       var buffer = surfData.buffer;
+#if USE_TYPED_ARRAYS == 2
+      assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
+      var src = buffer >> 2;
+      var dst = 0;
+      while (dst < num) {
+        var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+        data[dst]   = val & 0xff;
+        data[dst+1] = (val >> 8) & 0xff;
+        data[dst+2] = (val >> 16) & 0xff;
+        data[dst+3] = 0xff;
+        src++;
+        dst += 4;
+      }
+#else
       for (var i = 0; i < num; i++) {
         // We may need to correct signs here. Potentially you can hardcode a write of 255 to alpha, say, and
         // the compiler may decide to write -1 in the llvm bitcode...
         data[i] = {{{ makeGetValue('buffer', 'i', 'i8') + (CORRECT_SIGNS ? '&0xff' : '') }}};
+        if (i % 4 == 3) data[i] = 0xff;
       }
+#endif
     } else {
       var width = Module['canvas'].width;
       var height = Module['canvas'].height;
