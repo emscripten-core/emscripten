@@ -10,7 +10,7 @@ if not os.path.exists(CONFIG_FILE):
   shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
 exec(open(CONFIG_FILE, 'r').read())
 
-# Tools
+# Tools/paths
 
 CLANG=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
@@ -22,6 +22,12 @@ LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to 
 LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
 
+EMSCRIPTEN = path_from_root('emscripten.py')
+DEMANGLER = path_from_root('third_party', 'demangler.py')
+NAMESPACER = path_from_root('tools', 'namespacer.py')
+EMMAKEN = path_from_root('tools', 'emmaken.py')
+AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
+DFE = path_from_root('tools', 'dead_function_eliminator.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 

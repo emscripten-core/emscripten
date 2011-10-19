@@ -28,15 +28,6 @@ try:
 except:
   raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template from settings.py into it.')
 
-# Paths
-
-EMSCRIPTEN = path_from_root('emscripten.py')
-DEMANGLER = path_from_root('third_party', 'demangler.py')
-NAMESPACER = path_from_root('tools', 'namespacer.py')
-EMMAKEN = path_from_root('tools', 'emmaken.py')
-AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-DFE = path_from_root('tools', 'dead_function_eliminator.py')
-
 # Global cache for tests (we have multiple TestCase instances; this object lets them share data)
 
 GlobalCache = {}
