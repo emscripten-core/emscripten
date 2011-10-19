@@ -3348,6 +3348,7 @@ LibraryManager.library = {
 
   qsort__deps: ['memcpy'],
   qsort: function(base, num, size, comparator) {
+    if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
     // first, sort the items logically
     comparator = FUNCTION_TABLE[comparator];
@@ -4192,10 +4193,15 @@ LibraryManager.library = {
   // iostream.h
   // ==========================================================================
 
-  // TODO: Document; compile from real implementation.
+  // libc++
+
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3___postset: 'try { __ZNSt3__14coutE = 1 } catch(e){}; try { __ZNSt3__14cerrE = 2 } catch(e){};',
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_: function(){},
+
+  // glibc
 
   _ZNSt8ios_base4InitC1Ev: function() {
-    // need valid 'file descriptors'
+    // need valid 'file descriptors' for glibc
     //__ZSt4cout = 1;
     //__ZSt4cerr = 2;
   },
@@ -4268,6 +4274,11 @@ LibraryManager.library = {
   scalbnf: 'ldexp',
   scalbln: 'ldexp',
   scalblnf: 'ldexp',
+  cbrt: function(x) {
+    return Math.pow(x, 1/3);
+  },
+  cbrtf: 'cbrt',
+  cbrtl: 'cbrt',
 
   modf: function(x, intpart) {
     {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}}
