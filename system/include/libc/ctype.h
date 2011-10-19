@@ -33,9 +33,9 @@ int _EXFUN(toascii, (int __c));
 #ifndef _MB_CAPABLE
 _CONST
 #endif
-extern	__IMPORT char	*__ctype_ptr__;
+/* XXX Emscripten extern	__IMPORT char	*__ctype_ptr__; */
 
-#ifndef __cplusplus
+#if 0 /* ndef __cplusplus XXX Emscripten: Do not use the macros here. always use the simple functions */
 
 /* XXX Emscripten - these confuse libc++. moved to inside ifndef __cplusplus, and added CTYPE_ */
 #define	CTYPE__U	01
