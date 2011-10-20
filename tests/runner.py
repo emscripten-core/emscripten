@@ -3873,11 +3873,28 @@ Child2:9
         #include<stdio.h>
         int main() {
           printf("*closured*\\n");
+
+          FILE *file = fopen("somefile.binary", "rb");
+          char buffer[1024];
+          size_t read = fread(buffer, 1, 4, file);
+          printf("data: %d", buffer[0]);
+          for (int i = 1; i < 4; i++)
+            printf(",%d", buffer[i]);
+          printf("\\n");
+
           return 0;
         }
       '''
 
-      def add_cc(filename):
+      def post(filename):
+        src = open(filename, 'r').read().replace(
+          '// {{PRE_RUN_ADDITIONS}}',
+          '''
+            FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);
+          '''
+        )
+        open(filename, 'w').write(src)
+
         Popen(['java', '-jar', CLOSURE_COMPILER,
                        '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
                        '--formatting', 'PRETTY_PRINT',
@@ -3888,7 +3905,8 @@ Child2:9
         assert re.search('function \w\(', src) # see before
         assert 'function _main()' not in src # closure should have wiped it out
         open(filename, 'w').write(src)
-      self.do_run(src, '*closured*', post_build=add_cc)
+
+      self.do_run(src, '*closured*\ndata: 100,200,50,25\n', post_build=post)
 
     def test_safe_heap(self):
       global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS

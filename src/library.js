@@ -246,8 +246,7 @@ LibraryManager.library = {
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile: function(obj) {
-      if (obj.isDevice || obj.isFolder || obj.link ||
-          'contents' in obj) return true;
+      if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
