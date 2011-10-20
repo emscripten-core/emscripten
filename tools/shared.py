@@ -21,6 +21,7 @@ LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to do just    []
 LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
+COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
@@ -30,6 +31,7 @@ AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 DFE = path_from_root('tools', 'dead_function_eliminator.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
+VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 
 # Additional compiler options
 

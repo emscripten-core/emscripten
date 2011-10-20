@@ -4250,11 +4250,9 @@ TT = %s
 
   class OtherTests(RunnerCore):
     def test_eliminator(self):
-      coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
-      eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
-      output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+      output = Popen([COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
       self.assertEquals(output, expected)
 
 else:
