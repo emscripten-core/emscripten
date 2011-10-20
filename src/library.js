@@ -4195,8 +4195,13 @@ LibraryManager.library = {
 
   // libc++
 
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3___postset: 'try { __ZNSt3__14coutE = 1 } catch(e){}; try { __ZNSt3__14cerrE = 2 } catch(e){};',
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_: function(){},
+  $libcxx__postset: 'try { __ZNSt3__14coutE = 1 } catch(e){}; try { __ZNSt3__14cerrE = 2 } catch(e){};',
+  $libcxx: {},
+
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPKv__deps: ['fputs', '$libcxx'],
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPKv: function(stream, str) {
+    _fputs(str, _stdout); // XXX stderr etc.
+  },
 
   // glibc
 
