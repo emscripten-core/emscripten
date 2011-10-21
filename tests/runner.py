@@ -2755,7 +2755,7 @@ if 'benchmark' not in str(sys.argv):
         expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
         self.do_run(src, expected, post_build=addJS, extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
       finally:
-        INCLUDE_FULL_LIBRARY = 0
+        Settings.INCLUDE_FULL_LIBRARY = 0
 
     def test_unistd_access(self):
       def add_pre_run(filename):
