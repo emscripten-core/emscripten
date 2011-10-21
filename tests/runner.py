@@ -32,11 +32,6 @@ except:
 
 GlobalCache = {}
 
-class Dummy: pass
-Settings = Dummy()
-Settings.save_dir = 0
-Settings.save_JS = 0
-
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
@@ -67,12 +62,12 @@ class RunnerCore(unittest.TestCase):
 
   # Similar to LLVM::createStandardModulePasses()
   def pick_llvm_opts(self, optimization_level, handpicked=None):
-    global LLVM_OPT_OPTS, QUANTUM_SIZE, USE_TYPED_ARRAYS
+    global LLVM_OPT_OPTS
 
     if handpicked is None:
       handpicked = True # Not even TA2 can withstand instruction combining
 
-    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, handpicked, quantum_size=QUANTUM_SIZE)
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, handpicked, quantum_size=Settings.QUANTUM_SIZE)
 
   # Emscripten optimizations that we run on the .ll file
   def do_ll_opts(self, filename):
@@ -194,7 +189,7 @@ class RunnerCore(unittest.TestCase):
     exported_settings = {}
     for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
       try:
-        value = eval(setting)
+        value = eval('Settings.' + setting)
         if value is not None:
           exported_settings[setting] = value
       except:
@@ -285,7 +280,7 @@ if 'benchmark' not in str(sys.argv):
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         if js_engines is None:
           js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE]
-        if USE_TYPED_ARRAYS == 2:
+        if Settings.USE_TYPED_ARRAYS == 2:
           js_engines = [SPIDERMONKEY_ENGINE] # when oh when will v8 support typed arrays in the console
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
@@ -376,7 +371,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\nfixed:320434\n*21*')
 
     def test_sintvars(self):
-        global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Relevant to this test
+        Settings.CORRECT_SIGNS = 1 # Relevant to this test
         src = '''
           #include <stdio.h>
           struct S {
@@ -403,11 +398,11 @@ if 'benchmark' not in str(sys.argv):
           }
         '''
         output = '*32780,32522,258*\n*258,2*\n*32780,32999,-219*\n*65317,510*'
-        global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
+        Settings.CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
         self.do_run(src, output, force_c=True)
 
     def test_bigint(self):
-        if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
+        if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
         src = '''
           #include <stdio.h>
           int main()
@@ -431,8 +426,8 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
     def test_unsigned(self):
-        global CORRECT_SIGNS; CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
-        global CHECK_SIGNS; CHECK_SIGNS = 0
+        Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
+        Settings.CHECK_SIGNS = 0
         src = '''
           #include <stdio.h>
           const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
@@ -473,12 +468,12 @@ if 'benchmark' not in str(sys.argv):
 
         # Now let's see some code that should just work in USE_TYPED_ARRAYS == 2, but requires
         # corrections otherwise
-        if USE_TYPED_ARRAYS == 2:
-          CORRECT_SIGNS = 0
-          CHECK_SIGNS = 1
+        if Settings.USE_TYPED_ARRAYS == 2:
+          Settings.CORRECT_SIGNS = 0
+          Settings.CHECK_SIGNS = 1
         else:
-          CORRECT_SIGNS = 1
-          CHECK_SIGNS = 0
+          Settings.CORRECT_SIGNS = 1
+          Settings.CHECK_SIGNS = 0
 
         src = '''
           #include <stdio.h>
@@ -526,7 +521,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
     def test_bitfields(self):
-        global SAFE_HEAP; SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
+        Settings.SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
         src = '''
           #include <stdio.h>
           struct bitty {
@@ -956,7 +951,7 @@ if 'benchmark' not in str(sys.argv):
             return 1;
           }
         '''
-        if QUANTUM_SIZE == 1:
+        if Settings.QUANTUM_SIZE == 1:
           self.do_run(src, 'sizeofs:6,8\n*C___: 0,3,6,9<24*\n*Carr: 0,3,6,9<24*\n*C__w: 0,3,9,12<24*\n*Cp1_: 1,2,5,8<24*\n*Cp2_: 0,2,5,8<24*\n*Cint: 0,3,4,7<24*\n*C4__: 0,3,4,7<24*\n*C4_2: 0,3,5,8<20*\n*C__z: 0,3,5,8<28*')
         else:
           self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
@@ -999,15 +994,14 @@ if 'benchmark' not in str(sys.argv):
         '''
         self.do_run(src, '*throw...caught!infunc...done!*')
 
-        global DISABLE_EXCEPTION_CATCHING
-        DISABLE_EXCEPTION_CATCHING = 1
+        Settings.DISABLE_EXCEPTION_CATCHING = 1
         self.do_run(src, 'Compiled code throwing an exception')
 
     def test_typed_exceptions(self):
         return self.skip('TODO: fix this for llvm 3.0')
 
-        global SAFE_HEAP; SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
-        global EXCEPTION_DEBUG; EXCEPTION_DEBUG = 0  # Messes up expected output.
+        Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
+        Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
         expected = open(path_from_root('tests', 'exceptions', 'output.txt'), 'r').read()
         self.do_run(src, expected)
@@ -1368,7 +1362,7 @@ if 'benchmark' not in str(sys.argv):
             printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
           }
         '''
-        if QUANTUM_SIZE == 1:
+        if Settings.QUANTUM_SIZE == 1:
           # Compressed memory. Note that sizeof() does give the fat sizes, however!
           self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
         else:
@@ -1398,7 +1392,7 @@ if 'benchmark' not in str(sys.argv):
 
     def test_sizeof(self):
         # Has invalid writes between printouts
-        global SAFE_HEAP; SAFE_HEAP = 0
+        Settings.SAFE_HEAP = 0
 
         src = '''
           #include <stdio.h>
@@ -1432,8 +1426,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_emscripten_api(self):
-        global OPTIMIZE, RELOOP, LLVM_OPTS
-        if OPTIMIZE or RELOOP or LLVM_OPTS: return self.skip('FIXME')
+        if Settings.OPTIMIZE or Settings.RELOOP or LLVM_OPTS: return self.skip('FIXME')
 
         src = '''
           #include <stdio.h>
@@ -1477,7 +1470,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        if QUANTUM_SIZE == 1:
+        if Settings.QUANTUM_SIZE == 1:
           self.do_run(src, '''*4*\n0:22016,0,8,12\n1:22018,1,12,8\n''')
         else:
           self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
@@ -1576,13 +1569,13 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        if QUANTUM_SIZE == 1:
+        if Settings.QUANTUM_SIZE == 1:
           self.do_run(src, '*4,2,3*\n*6,2,3*')
         else:
           self.do_run(src, '*4,3,4*\n*6,4,6*')
 
     def test_varargs(self):
-        if QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
+        if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
 
         src = '''
           #include <stdio.h>
@@ -1649,9 +1642,9 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
 
     def test_stdlibs(self):
-        if USE_TYPED_ARRAYS == 2:
+        if Settings.USE_TYPED_ARRAYS == 2:
             # Typed arrays = 2 + safe heap prints a warning that messes up our output.
-            global SAFE_HEAP; SAFE_HEAP = 0
+            Settings.SAFE_HEAP = 0
         src = '''
           #include <stdio.h>
           #include <stdlib.h>
@@ -1704,7 +1697,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
 
     def test_time(self):
-      if USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
       self.do_run(src, expected,
@@ -1713,10 +1706,9 @@ if 'benchmark' not in str(sys.argv):
 
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
-        global SAFE_HEAP, SAFE_HEAP_LINES
-        if SAFE_HEAP:
-          SAFE_HEAP = 3
-          SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26']
+        if Settings.SAFE_HEAP:
+          Settings.SAFE_HEAP = 3
+          Settings.SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26']
 
         src = '''
           #include <stdio.h>
@@ -1902,7 +1894,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
           '''
-        if QUANTUM_SIZE == 1:
+        if Settings.QUANTUM_SIZE == 1:
           # Compressed memory. Note that sizeof() does give the fat sizes, however!
           self.do_run(src, '*16,0,1,2,2,3|20,0,1,1,2,3,3,4|24,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,72*\n*2*')
         else:
@@ -1910,7 +1902,6 @@ if 'benchmark' not in str(sys.argv):
           self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
     def test_dlfcn_basic(self):
-      global BUILD_AS_SHARED_LIB
       lib_src = '''
         #include <cstdio>
 
@@ -1925,7 +1916,7 @@ if 'benchmark' not in str(sys.argv):
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
-      BUILD_AS_SHARED_LIB = 1
+      Settings.BUILD_AS_SHARED_LIB = 1
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -1947,7 +1938,7 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
         '''
-      BUILD_AS_SHARED_LIB = 0
+      Settings.BUILD_AS_SHARED_LIB = 0
       def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -1958,7 +1949,6 @@ if 'benchmark' not in str(sys.argv):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
-      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
       lib_src = '''
         int lib_cmp(const void* left, const void* right) {
           const int* a = (const int*) left;
@@ -1976,8 +1966,8 @@ if 'benchmark' not in str(sys.argv):
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
-      BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['_get_cmp']
+      Settings.BUILD_AS_SHARED_LIB = 1
+      Settings.EXPORTED_FUNCTIONS = ['_get_cmp']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -2031,8 +2021,8 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
         '''
-      BUILD_AS_SHARED_LIB = 0
-      EXPORTED_FUNCTIONS = ['_main']
+      Settings.BUILD_AS_SHARED_LIB = 0
+      Settings.EXPORTED_FUNCTIONS = ['_main']
       def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -2044,10 +2034,8 @@ if 'benchmark' not in str(sys.argv):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_data_and_fptr(self):
-      global LLVM_OPTS
       if LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
-      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS, EXPORTED_GLOBALS
       lib_src = '''
         #include <stdio.h>
 
@@ -2072,9 +2060,9 @@ if 'benchmark' not in str(sys.argv):
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
-      BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['_func']
-      EXPORTED_GLOBALS = ['_global']
+      Settings.BUILD_AS_SHARED_LIB = 1
+      Settings.EXPORTED_FUNCTIONS = ['_func']
+      Settings.EXPORTED_GLOBALS = ['_global']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -2130,9 +2118,9 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
         '''
-      BUILD_AS_SHARED_LIB = 0
-      EXPORTED_FUNCTIONS = ['_main']
-      EXPORTED_GLOBALS = []
+      Settings.BUILD_AS_SHARED_LIB = 0
+      Settings.EXPORTED_FUNCTIONS = ['_main']
+      Settings.EXPORTED_GLOBALS = []
       def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -2144,7 +2132,6 @@ if 'benchmark' not in str(sys.argv):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_alias(self):
-      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS, INCLUDE_FULL_LIBRARY
       lib_src = r'''
         #include <stdio.h>
         extern int parent_global;
@@ -2154,8 +2141,8 @@ if 'benchmark' not in str(sys.argv):
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
-      BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['_func']
+      Settings.BUILD_AS_SHARED_LIB = 1
+      Settings.EXPORTED_FUNCTIONS = ['_func']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -2177,9 +2164,9 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
         '''
-      BUILD_AS_SHARED_LIB = 0
-      INCLUDE_FULL_LIBRARY = 1
-      EXPORTED_FUNCTIONS = ['_main']
+      Settings.BUILD_AS_SHARED_LIB = 0
+      Settings.INCLUDE_FULL_LIBRARY = 1
+      Settings.EXPORTED_FUNCTIONS = ['_main']
       def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -2190,11 +2177,10 @@ if 'benchmark' not in str(sys.argv):
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks,
                    extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
-      INCLUDE_FULL_LIBRARY = 0
+      Settings.INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
-      if QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
-      global BUILD_AS_SHARED_LIB, EXPORTED_FUNCTIONS
+      if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
       lib_src = r'''
         void print_ints(int n, ...);
         extern "C" void func() {
@@ -2203,8 +2189,8 @@ if 'benchmark' not in str(sys.argv):
         '''
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'liblib.cpp')
-      BUILD_AS_SHARED_LIB = 1
-      EXPORTED_FUNCTIONS = ['_func']
+      Settings.BUILD_AS_SHARED_LIB = 1
+      Settings.EXPORTED_FUNCTIONS = ['_func']
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -2235,8 +2221,8 @@ if 'benchmark' not in str(sys.argv):
           return 0;
         }
         '''
-      BUILD_AS_SHARED_LIB = 0
-      EXPORTED_FUNCTIONS = ['_main']
+      Settings.BUILD_AS_SHARED_LIB = 0
+      Settings.EXPORTED_FUNCTIONS = ['_main']
       def add_pre_run_and_checks(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -2290,7 +2276,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub(r'(^|\n)\s+', r'\1', expected))
 
     def test_strtod(self):
-      if USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -2345,13 +2331,13 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_parseInt(self):
-      if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
+      if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
     def test_printf(self):
-      if USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
+      if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
       self.do_run(src, expected)
@@ -2406,7 +2392,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
     def test_files(self):
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
+      Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       def post(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -2758,7 +2744,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
     def test_fs_base(self):
-      global INCLUDE_FULL_LIBRARY; INCLUDE_FULL_LIBRARY = 1
+      Settings.INCLUDE_FULL_LIBRARY = 1
       try:
         def addJS(filename):
           src = open(filename, 'r').read().replace(
@@ -2964,7 +2950,7 @@ if 'benchmark' not in str(sys.argv):
 
     def test_ctype(self):
       # The bit fiddling done by the macros using __ctype_b_loc requires this.
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      Settings.CORRECT_SIGNS = 1
       src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
       self.do_run(src, expected)
@@ -2992,8 +2978,7 @@ if 'benchmark' not in str(sys.argv):
           self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
-        global USE_TYPED_ARRAYS
-        if USE_TYPED_ARRAYS == 2: return self.skip('Relies on double values')
+        if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double values')
 
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
@@ -3007,9 +2992,9 @@ if 'benchmark' not in str(sys.argv):
           self.do_run(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def test_dlmalloc(self):
-      global CORRECT_SIGNS; CORRECT_SIGNS = 2
-      global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
-      global TOTAL_MEMORY; TOTAL_MEMORY = 100*1024*1024 # needed with typed arrays
+      Settings.CORRECT_SIGNS = 2
+      Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
+      Settings.TOTAL_MEMORY = 100*1024*1024 # needed with typed arrays
 
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_run(src, '*1,0*', ['200', '1'])
@@ -3057,11 +3042,11 @@ if 'benchmark' not in str(sys.argv):
     def test_cubescript(self):
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
 
-      global SAFE_HEAP; SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
+      Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
       # Overflows happen in hash loop
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
+      Settings.CORRECT_OVERFLOWS = 1
+      Settings.CHECK_OVERFLOWS = 0
 
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
                    #build_ll_hook=self.do_autodebug)
@@ -3080,15 +3065,14 @@ if 'benchmark' not in str(sys.argv):
       #    print opt, "FAIL"
 
     def test_lua(self):
-      global QUANTUM_SIZE
-      if QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
+      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
       # Overflows in luaS_newlstr hash loop
-      global SAFE_HEAP; SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
-      global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
+      Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
+      Settings.CORRECT_OVERFLOWS = 1
+      Settings.CHECK_OVERFLOWS = 0
+      Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
+      Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       self.do_ll_run(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17\n1\n2\n3\n4\n7',
@@ -3147,17 +3131,16 @@ if 'benchmark' not in str(sys.argv):
       return bc_file
 
     def get_freetype(self):
-      global INIT_STACK; INIT_STACK = 1 # TODO: Investigate why this is necessary
+      Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a.bc'))
 
     def test_freetype(self):
-      if QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      if LLVM_OPTS: global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      if LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
-      global CORRECT_SIGNS
-      if CORRECT_SIGNS == 0: CORRECT_SIGNS = 1 # Not sure why, but needed
+      if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
       def post(filename):
         # Embed the font into the document
@@ -3180,22 +3163,21 @@ if 'benchmark' not in str(sys.argv):
 
     def test_sqlite(self):
       # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
-      global QUANTUM_SIZE, OPTIMIZE, RELOOP, USE_TYPED_ARRAYS
-      if QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
-      RELOOP = 0 # too slow
+      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
+      Settings.RELOOP = 0 # too slow
 
       auto_optimize_data = read_auto_optimize_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
 
-      global CORRECT_SIGNS; CORRECT_SIGNS = 2
-      global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = auto_optimize_data['signs_lines']
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0
-      global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 0
-      global SAFE_HEAP; SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
-      global DISABLE_EXCEPTION_CATCHING; DISABLE_EXCEPTION_CATCHING = 1
-      global FAST_MEMORY; FAST_MEMORY = 4*1024*1024
-      global EXPORTED_FUNCTIONS; EXPORTED_FUNCTIONS = ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
+      Settings.CORRECT_SIGNS = 2
+      Settings.CORRECT_SIGNS_LINES = auto_optimize_data['signs_lines']
+      Settings.CORRECT_OVERFLOWS = 0
+      Settings.CORRECT_ROUNDINGS = 0
+      Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
+      Settings.DISABLE_EXCEPTION_CATCHING = 1
+      Settings.FAST_MEMORY = 4*1024*1024
+      Settings.EXPORTED_FUNCTIONS = ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
 
-      global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
+      Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
 
       def post(filename):
         src = open(filename, 'a')
@@ -3225,7 +3207,7 @@ if 'benchmark' not in str(sys.argv):
                    post_build=post)#,build_ll_hook=self.do_autodebug)
 
     def test_zlib(self):
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1
+      Settings.CORRECT_SIGNS = 1
 
       self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
@@ -3233,33 +3215,18 @@ if 'benchmark' not in str(sys.argv):
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
-    def zzztest_glibc(self):
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
-      global CORRECT_ROUNDINGS; CORRECT_ROUNDINGS = 1
-
-      self.do_run(r'''
-                      #include <stdio.h>
-                      int main() { printf("hai\n"); return 1; }
-                   ''',
-                   libraries=[self.get_library('glibc', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
-                                                         os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
-                                                         os.path.join('src', '.libs', 'libLinearMath.a.bc')],
-                                               configure_args=['--disable-sanity-checks'])],
-                   includes=[path_from_root('tests', 'glibc', 'include')])
-
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
-      global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS, LLVM_OPTS
+      global LLVM_OPTS
 
-      if LLVM_OPTS: SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+      if LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
-      if USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
 
-      if SAFE_HEAP:
+      if Settings.SAFE_HEAP:
         # Ignore bitfield warnings
-        SAFE_HEAP = 3
-        SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
-                           'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
+        Settings.SAFE_HEAP = 3
+        Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
+                                    'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
@@ -3271,25 +3238,20 @@ if 'benchmark' not in str(sys.argv):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      global RELOOP, LLVM_OPTS, USE_TYPED_ARRAYS, QUANTUM_SIZE
+      global LLVM_OPTS
 
       # llvm-link failure when using clang, LLVM bug 9498, still relevant?
-      if RELOOP or LLVM_OPTS: return self.skip('TODO')
-      if USE_TYPED_ARRAYS == 2 or QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+      if Settings.RELOOP or LLVM_OPTS: return self.skip('TODO')
+      if Settings.USE_TYPED_ARRAYS == 2 or Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
+      Settings.USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
 
-      global SAFE_HEAP; SAFE_HEAP = 0 # Has variable object
+      Settings.SAFE_HEAP = 0 # Has variable object
 
-      #global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
+      Settings.CHECK_OVERFLOWS = 0
 
-      #global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1
-      #global CHECK_SIGNS; CHECK_SIGNS = 1
-
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1
-      global CORRECT_SIGNS_LINES
-      CORRECT_SIGNS_LINES = ['parseargs.cc:171', 'BuiltinFont.cc:64', 'NameToCharCode.cc:115', 'GooHash.cc:368',
+      Settings.CORRECT_SIGNS = 1
+      Settings.CORRECT_SIGNS_LINES = ['parseargs.cc:171', 'BuiltinFont.cc:64', 'NameToCharCode.cc:115', 'GooHash.cc:368',
                              'Stream.h:469', 'PDFDoc.cc:1064', 'Lexer.cc:201', 'Splash.cc:1130', 'XRef.cc:997',
                              'vector:714', 'Lexer.cc:259', 'Splash.cc:438', 'Splash.cc:532', 'GfxFont.cc:1152',
                              'Gfx.cc:3838', 'Splash.cc:3162', 'Splash.cc:3163', 'Splash.cc:3164', 'Splash.cc:3153',
@@ -3309,7 +3271,7 @@ if 'benchmark' not in str(sys.argv):
         '-I' + path_from_root('tests', 'poppler', 'include'),
       ]
 
-      global INVOKE_RUN; INVOKE_RUN = 0 # We append code that does run() ourselves
+      Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
 
       # See post(), below
       input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
@@ -3354,14 +3316,11 @@ if 'benchmark' not in str(sys.argv):
                       #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
-      global USE_TYPED_ARRAYS
-      global CORRECT_SIGNS
-      if USE_TYPED_ARRAYS == 2:
-        CORRECT_SIGNS = 1
+      if Settings.USE_TYPED_ARRAYS == 2:
+        Settings.CORRECT_SIGNS = 1
       else:
-        CORRECT_SIGNS = 2
-        global CORRECT_SIGNS_LINES
-        CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
+        Settings.CORRECT_SIGNS = 2
+        Settings.CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
 
       original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
 
@@ -3437,16 +3396,15 @@ if 'benchmark' not in str(sys.argv):
                    output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
 
     def test_python(self):
-      global QUANTUM_SIZE, USE_TYPED_ARRAYS
-      if QUANTUM_SIZE == 1 or USE_TYPED_ARRAYS == 2: return self.skip('TODO: make this work')
+      if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2: return self.skip('TODO: make this work')
 
       # Overflows in string_hash
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 1
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
-      global RELOOP; RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
-      global SAFE_HEAP; SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
-      global CORRECT_SIGNS; CORRECT_SIGNS = 1 # Not sure why, but needed
-      global EXPORTED_FUNCTIONS; EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
+      Settings.CORRECT_OVERFLOWS = 1
+      Settings.CHECK_OVERFLOWS = 0
+      Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
+      Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
+      Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
 
       self.do_ll_run(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
@@ -3457,15 +3415,14 @@ if 'benchmark' not in str(sys.argv):
     # They are only valid enough for us to read for test purposes, not for llvm-as
     # to process.
     def test_cases(self):
-      global QUANTUM_SIZE
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
+      Settings.CHECK_OVERFLOWS = 0
       if LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         print "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
-        if QUANTUM_SIZE == 1:
+        if Settings.QUANTUM_SIZE == 1:
           q1_output_file = path_from_root('tests', 'cases', shortname + '_q1.txt')
           if os.path.exists(q1_output_file):
             output_file = q1_output_file
@@ -3536,8 +3493,8 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, '*hello slim world*', build_ll_hook=hook)
 
     def test_profiling(self):
-      global PROFILE; PROFILE = 1
-      global INVOKE_RUN; INVOKE_RUN = 0
+      Settings.PROFILE = 1
+      Settings.INVOKE_RUN = 0
 
       src = '''
           #include <stdio.h>
@@ -3633,7 +3590,7 @@ if 'benchmark' not in str(sys.argv):
 
         # Way 2: use CppHeaderParser
 
-        global RUNTIME_TYPE_INFO; RUNTIME_TYPE_INFO = 1
+        Settings.RUNTIME_TYPE_INFO = 1
 
         header = '''
           #include <stdio.h>
@@ -3819,9 +3776,8 @@ Child2:9
 ''', post_build=post2)
 
     def test_typeinfo(self):
-      global RUNTIME_TYPE_INFO; RUNTIME_TYPE_INFO = 1
-      global QUANTUM_SIZE
-      if QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
+      Settings.RUNTIME_TYPE_INFO = 1
+      if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
 
       src = '''
         #include<stdio.h>
@@ -3863,7 +3819,7 @@ Child2:9
                    post_build=post)
 
       # Make sure that without the setting, we don't spam the .js with the type info
-      RUNTIME_TYPE_INFO = 0
+      Settings.RUNTIME_TYPE_INFO = 0
       self.do_run(src, 'No type info.', post_build=post)
 
     ### Tests for tools
@@ -3909,10 +3865,8 @@ Child2:9
       self.do_run(src, '*closured*\ndata: 100,200,50,25\n', post_build=post)
 
     def test_safe_heap(self):
-      global SAFE_HEAP, SAFE_HEAP_LINES, USE_TYPED_ARRAYS
-
-      if USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
-      if not SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
+      if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
       if LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
 
       src = '''
@@ -3935,14 +3889,14 @@ Child2:9
 
       # And we should not fail if we disable checking on that line
 
-      SAFE_HEAP = 3
-      SAFE_HEAP_LINES = ["src.cpp:7"]
+      Settings.SAFE_HEAP = 3
+      Settings.SAFE_HEAP_LINES = ["src.cpp:7"]
 
       self.do_run(src, '*ok*')
 
       # But if we disable the wrong lines, we still fail
 
-      SAFE_HEAP_LINES = ["src.cpp:99"]
+      Settings.SAFE_HEAP_LINES = ["src.cpp:99"]
 
       try:
         self.do_run(src, '*nothingatall*')
@@ -3952,14 +3906,14 @@ Child2:9
 
       # And reverse the checks with = 2
 
-      SAFE_HEAP = 2
-      SAFE_HEAP_LINES = ["src.cpp:99"]
+      Settings.SAFE_HEAP = 2
+      Settings.SAFE_HEAP_LINES = ["src.cpp:99"]
 
       self.do_run(src, '*ok*')
 
     def test_check_overflow(self):
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 1
-      global CORRECT_OVERFLOWS; CORRECT_OVERFLOWS = 0
+      Settings.CHECK_OVERFLOWS = 1
+      Settings.CORRECT_OVERFLOWS = 0
 
       src = '''
           #include<stdio.h>
@@ -4029,9 +3983,8 @@ Child2:9
       self.do_run(None, 'test\n', basename='new.cpp', no_build=True)
 
     def test_linespecific(self):
-      global CHECK_SIGNS; CHECK_SIGNS = 0
-      global CHECK_OVERFLOWS; CHECK_OVERFLOWS = 0
-      global CORRECT_SIGNS, CORRECT_OVERFLOWS, CORRECT_ROUNDINGS, CORRECT_SIGNS_LINES, CORRECT_OVERFLOWS_LINES, CORRECT_ROUNDINGS_LINES
+      Settings.CHECK_SIGNS = 0
+      Settings.CHECK_OVERFLOWS = 0
 
       # Signs
 
@@ -4047,28 +4000,28 @@ Child2:9
         }
       '''
 
-      CORRECT_SIGNS = 0
+      Settings.CORRECT_SIGNS = 0
       self.do_run(src, '*1*') # This is a fail - we expect 0
 
-      CORRECT_SIGNS = 1
+      Settings.CORRECT_SIGNS = 1
       self.do_run(src, '*0*') # Now it will work properly
 
       # And now let's fix just that one line
-      CORRECT_SIGNS = 2
-      CORRECT_SIGNS_LINES = ["src.cpp:9"]
+      Settings.CORRECT_SIGNS = 2
+      Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
       self.do_run(src, '*0*')
 
       # Fixing the wrong line should not work
-      CORRECT_SIGNS = 2
-      CORRECT_SIGNS_LINES = ["src.cpp:3"]
+      Settings.CORRECT_SIGNS = 2
+      Settings.CORRECT_SIGNS_LINES = ["src.cpp:3"]
       self.do_run(src, '*1*')
 
       # And reverse the checks with = 2
-      CORRECT_SIGNS = 3
-      CORRECT_SIGNS_LINES = ["src.cpp:3"]
+      Settings.CORRECT_SIGNS = 3
+      Settings.CORRECT_SIGNS_LINES = ["src.cpp:3"]
       self.do_run(src, '*0*')
-      CORRECT_SIGNS = 3
-      CORRECT_SIGNS_LINES = ["src.cpp:9"]
+      Settings.CORRECT_SIGNS = 3
+      Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
       self.do_run(src, '*1*')
 
       # Overflows
@@ -4086,7 +4039,7 @@ Child2:9
       '''
 
       correct = '*186854335,63*'
-      CORRECT_OVERFLOWS = 0
+      Settings.CORRECT_OVERFLOWS = 0
       try:
         self.do_run(src, correct)
         raise Exception('UNEXPECTED-PASS')
@@ -4094,17 +4047,17 @@ Child2:9
         assert 'UNEXPECTED' not in str(e), str(e)
         assert 'Expected to find' in str(e), str(e)
 
-      CORRECT_OVERFLOWS = 1
+      Settings.CORRECT_OVERFLOWS = 1
       self.do_run(src, correct) # Now it will work properly
 
       # And now let's fix just that one line
-      CORRECT_OVERFLOWS = 2
-      CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
+      Settings.CORRECT_OVERFLOWS = 2
+      Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
       self.do_run(src, correct)
 
       # Fixing the wrong line should not work
-      CORRECT_OVERFLOWS = 2
-      CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
+      Settings.CORRECT_OVERFLOWS = 2
+      Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
       try:
         self.do_run(src, correct)
         raise Exception('UNEXPECTED-PASS')
@@ -4113,11 +4066,11 @@ Child2:9
         assert 'Expected to find' in str(e), str(e)
 
       # And reverse the checks with = 2
-      CORRECT_OVERFLOWS = 3
-      CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
+      Settings.CORRECT_OVERFLOWS = 3
+      Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
       self.do_run(src, correct)
-      CORRECT_OVERFLOWS = 3
-      CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
+      Settings.CORRECT_OVERFLOWS = 3
+      Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
       try:
         self.do_run(src, correct)
         raise Exception('UNEXPECTED-PASS')
@@ -4149,29 +4102,27 @@ Child2:9
         }
       '''
 
-      CORRECT_ROUNDINGS = 0
+      Settings.CORRECT_ROUNDINGS = 0
       self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
 
-      CORRECT_ROUNDINGS = 1
+      Settings.CORRECT_ROUNDINGS = 1
       self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
 
-      CORRECT_ROUNDINGS = 2
-      CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
+      Settings.CORRECT_ROUNDINGS = 2
+      Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
       self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
 
       # And reverse the check with = 2
-      CORRECT_ROUNDINGS = 3
-      CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
+      Settings.CORRECT_ROUNDINGS = 3
+      Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
       self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
 
     def test_autooptimize(self):
-      global CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CHECK_SIGNS, CORRECT_SIGNS, AUTO_OPTIMIZE
-
-      AUTO_OPTIMIZE = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = CORRECT_SIGNS = 1
+      Settings.AUTO_OPTIMIZE = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
 
       src = '''
         #include<stdio.h>
@@ -4211,34 +4162,34 @@ class %s(T):
   def setUp(self):
     super(%s, self).setUp()
   
-    global COMPILER, QUANTUM_SIZE, RELOOP, OPTIMIZE, ASSERTIONS, USE_TYPED_ARRAYS, LLVM_OPTS, SAFE_HEAP, CHECK_OVERFLOWS, CORRECT_OVERFLOWS, CORRECT_OVERFLOWS_LINES, CORRECT_SIGNS, CORRECT_SIGNS_LINES, CHECK_SIGNS, COMPILER_TEST_OPTS, CORRECT_ROUNDINGS, CORRECT_ROUNDINGS_LINES, INVOKE_RUN, SAFE_HEAP_LINES, INIT_STACK, AUTO_OPTIMIZE, RUNTIME_TYPE_INFO, DISABLE_EXCEPTION_CATCHING, PROFILE, TOTAL_MEMORY, FAST_MEMORY
+    global COMPILER, LLVM_OPTS, COMPILER_TEST_OPTS
 
     COMPILER = %r
     llvm_opts = %d
     embetter = %d
     quantum_size = %d
-    USE_TYPED_ARRAYS = %d
-    INVOKE_RUN = 1
-    RELOOP = OPTIMIZE = embetter
-    QUANTUM_SIZE = quantum_size
-    ASSERTIONS = 1-embetter
-    SAFE_HEAP = 1-(embetter and llvm_opts)
+    Settings.USE_TYPED_ARRAYS = %d
+    Settings.INVOKE_RUN = 1
+    Settings.RELOOP = Settings.OPTIMIZE = embetter
+    Settings.QUANTUM_SIZE = quantum_size
+    Settings.ASSERTIONS = 1-embetter
+    Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
     LLVM_OPTS = llvm_opts
-    AUTO_OPTIMIZE = 0
-    CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
-    CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
-    CORRECT_SIGNS = 0
-    CORRECT_ROUNDINGS = 0
-    CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
-    CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
-    INIT_STACK = 0
-    RUNTIME_TYPE_INFO = 0
-    DISABLE_EXCEPTION_CATCHING = 0
-    PROFILE = 0
-    TOTAL_MEMORY = FAST_MEMORY = None
+    Settings.AUTO_OPTIMIZE = 0
+    Settings.CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
+    Settings.CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
+    Settings.CORRECT_SIGNS = 0
+    Settings.CORRECT_ROUNDINGS = 0
+    Settings.CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
+    Settings.CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
+    Settings.INIT_STACK = 0
+    Settings.RUNTIME_TYPE_INFO = 0
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    Settings.PROFILE = 0
+    Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
 
-    if QUANTUM_SIZE == 1 or USE_TYPED_ARRAYS == 2:
-      RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
+    if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
+      Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
     if LLVM_OPTS:
       self.pick_llvm_opts(3)
@@ -4295,18 +4246,18 @@ else:
 
   global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = []
 
-  QUANTUM_SIZE = 1
-  RELOOP = OPTIMIZE = 1
-  USE_TYPED_ARRAYS = 1
-  ASSERTIONS = SAFE_HEAP = CHECK_OVERFLOWS = CORRECT_OVERFLOWS = CHECK_SIGNS = INIT_STACK = AUTO_OPTIMIZE = RUNTIME_TYPE_INFO = 0
-  INVOKE_RUN = 1
-  CORRECT_SIGNS = 0
-  CORRECT_ROUNDINGS = 0
-  CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
-  DISABLE_EXCEPTION_CATCHING = 1
-  if USE_TYPED_ARRAYS:
-    TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
-  FAST_MEMORY = 10*1024*1024
+  Settings.QUANTUM_SIZE = 1
+  Settings.RELOOP = Settings.OPTIMIZE = 1
+  Settings.USE_TYPED_ARRAYS = 1
+  Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.AUTO_OPTIMIZE = Settings.RUNTIME_TYPE_INFO = 0
+  Settings.INVOKE_RUN = 1
+  Settings.CORRECT_SIGNS = 0
+  Settings.CORRECT_ROUNDINGS = 0
+  Settings.CORRECT_OVERFLOWS_LINES = Settings.CORRECT_SIGNS_LINES = Settings.CORRECT_ROUNDINGS_LINES = Settings.SAFE_HEAP_LINES = []
+  Settings.DISABLE_EXCEPTION_CATCHING = 1
+  if Settings.USE_TYPED_ARRAYS:
+    Settings.TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
+  Settings.FAST_MEMORY = 10*1024*1024
 
   TEST_REPS = 4
   TOTAL_TESTS = 6
@@ -4340,7 +4291,7 @@ else:
       print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False, handpicked=False):
-      global USE_TYPED_ARRAYS, LLVM_OPTS
+      global LLVM_OPTS
 
       LLVM_OPTS = llvm_opts
       if LLVM_OPTS:
@@ -4478,24 +4429,23 @@ else:
     def test_raytrace(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['closure']
 
-      global QUANTUM_SIZE, USE_TYPED_ARRAYS
-      old_quantum = QUANTUM_SIZE
-      old_use_typed_arrays = USE_TYPED_ARRAYS
-      QUANTUM_SIZE = 1
-      USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code. However, TA2 is much faster (2X)
+      old_quantum = Settings.QUANTUM_SIZE
+      old_use_typed_arrays = Settings.USE_TYPED_ARRAYS
+      Settings.QUANTUM_SIZE = 1
+      Settings.USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code. However, TA2 is much faster (2X)
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['7', '256'], '256 256', llvm_opts=True, handpicked=False)
 
-      QUANTUM_SIZE = old_quantum
-      USE_TYPED_ARRAYS = old_use_typed_arrays
+      Settings.QUANTUM_SIZE = old_quantum
+      Settings.USE_TYPED_ARRAYS = old_use_typed_arrays
 
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
 
       global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
-      global CORRECT_SIGNS; CORRECT_SIGNS = 2
-      global CORRECT_SIGNS_LINES; CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
+      Settings.CORRECT_SIGNS = 2
+      Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_benchmark(src, ['400', '400'], '*400,0*', llvm_opts=True, handpicked=True)

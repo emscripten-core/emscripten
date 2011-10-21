@@ -204,3 +204,11 @@ def read_auto_optimize_data(filename):
     'overflows_lines': overflows_lines
   }
 
+# Settings
+
+class Dummy: pass
+
+Settings = Dummy() # A global singleton. Not pretty, but nicer than passing |, settings| everywhere
+Settings.save_dir = 0
+Settings.save_JS = 0
+
