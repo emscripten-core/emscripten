@@ -49,6 +49,8 @@ if USE_EMSDK:
   '-I' + path_from_root('system', 'include', 'gfx'),
   '-I' + path_from_root('system', 'include', 'net'),
   '-I' + path_from_root('system', 'include', 'SDL'),
+] + [
+  '-U__APPLE__'
 ]
 
 # Engine tweaks
