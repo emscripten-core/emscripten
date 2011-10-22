@@ -3846,7 +3846,7 @@ Child2:9
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
           '''
-            FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);
+            FS.createDataFile('/', 'somefile.binary', [100, 1, 50, 25, 10, 77, 123], true, false);
           '''
         )
         open(filename, 'w').write(src)
@@ -3862,7 +3862,7 @@ Child2:9
         assert 'function _main()' not in src # closure should have wiped it out
         open(filename, 'w').write(src)
 
-      self.do_run(src, '*closured*\ndata: 100,200,50,25\n', post_build=post)
+      self.do_run(src, '*closured*\ndata: 100,1,50,25\n', post_build=post)
 
     def test_safe_heap(self):
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
