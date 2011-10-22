@@ -302,7 +302,7 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 #define _SC_PRIORITIZED_IO               28
 #define _SC_REALTIME_SIGNALS             29
 #define _SC_SEMAPHORES                   30
-#define _SC_SHARED_MEMORY_OBJECTS        31
+#define _SC_SHARED_MEMORY_OBJECTS       199 /* XXX Emscripten changed 31 to 199 */
 #define _SC_SYNCHRONIZED_IO              32
 #define _SC_TIMERS                       33
 #define _SC_AIO_LISTIO_MAX               34
@@ -406,8 +406,6 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 #define _SC_THREAD_ROBUST_PRIO_INHERIT  122
 #define _SC_THREAD_ROBUST_PRIO_PROTECT  123
 #define _SC_XOPEN_UUCP                  124
-/* XXX Emscripten */
-#define _SC_SHARED_MEMORY_OBJECTS       199
 
 /*
  *  pathconf values per IEEE Std 1003.1, 2008 Edition
