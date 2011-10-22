@@ -129,57 +129,35 @@ function isUndefined(value)
 		return GL.TRUE;
 }
 
-var LibraryGLES2 = {
-  $GLES2: {
-    textures: {},
-    buffers:  {},
-    programs: {},
-    shaders:  {},
-    textureCounter: 0,
-    NO_ERROR:          0,
-    INVALID_ENUM:      0x0500,
-    INVALID_VALUE:     0x0501,
-    INVALID_OPERATION: 0x0502,
-    OUT_OF_MEMORY:     0x0505,
-    FALSE: 0,
-    TRUE:  1,
-    TYPE_BOOLEAN:  1,
-    TYPE_NUMBER:   2,
-    TYPE_OBJECT:   3,
-    TYPE_ARRAY:    4,
-    TYPE_UNDEFINED 5
-  },
-  
-  glActiveTexture: function(GLenum texture)
-  {
-  	ctx().activeTexture(tex(texture));
-  }
-  
-  glAttachShader: function(program, shader)
-  {
-  	ctx().attachShader(prg(program), shader);
-  }
-  
+var LibraryGLES2 =
+{
+	$GLES2:
+	{
+		textures: {},
+		buffers:  {},
+		programs: {},
+		shaders:  {},
+		textureCounter: 0,
+		NO_ERROR:          0,
+		INVALID_ENUM:      0x0500,
+		INVALID_VALUE:     0x0501,
+		INVALID_OPERATION: 0x0502,
+		OUT_OF_MEMORY:     0x0505,
+		FALSE: 0,
+		TRUE:  1,
+		TYPE_BOOLEAN:  1,
+		TYPE_NUMBER:   2,
+		TYPE_OBJECT:   3,
+		TYPE_ARRAY:    4,
+		TYPE_UNDEFINED 5,
+		HEAPF32: IHEAP
+	},
+
   glBindAttribLocation: function(program, index, name)
   {
   	ctx().bindAttribLocation(prg(program), index, name);
   }
   
-  glBindBuffer: function(target, buffer)
-  {
-  	ctx().bindBuffer(target, buf(buffer));
-  },
-  
-  glBindFramebuffer: function(target, framebuffer)
-  {
-  	ctx().bindFramebuffer(target, fbf(framebuffer));
-  },
-  
-  glBindRenderbuffer: function(target, renderbuffer)
-  {
-  	ctx().bindRenderbuffer(target, rbf(renderbuffer));
-  },
-
   glGetString: function(name_) {
     switch(name_) {
       case Module.ctxGL.VENDOR:
@@ -215,10 +193,6 @@ var LibraryGLES2 = {
     Module.ctxGL.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
 
-  glBindTexture: function(target, texture) {
-    ctx().bindTexture(target, tex(texture));
-  },
-  
   glBufferData: function(target, size, data, usage)
   {
   	ctx().bufferData(target, size, data, usage);
@@ -229,40 +203,6 @@ var LibraryGLES2 = {
   	ctx().bufferSubData(target, offset, size, data);
   },
   
-  glCheckFramebufferStatus: function(target)
-  {
-  	return ctx().checkFramebufferStatus(target);
-  },
-  
-  glClear: function(mask)
-  {
-  	ctx().clear(mask);
-  },
-  
-  glClearColor: function(red, green, blue, alpha)
-  {
-  	ctx().clearColor(red, green, blue, alpha);
-  },
-  
-  glClearDepthf: function(depth)
-  {
-  	ctx().clearDepthf(depth);
-  },
-  
-  glClearStencil: function(s)
-  {
-  	ctx().clearStencil(s);
-  },
-  
-  glColorMask: function(red, green, blue, alpha)
-  {
-  	ctx().colorMask(red, green, blue, alpha);
-  },
-  
-  glCompileShader: function(shader)
-  {
-  	ctx().compileShader(shd(shader));
-  },
 /* No equivalent in WebGL
   glCompressedTexImage2D: function(target, level, internalformat, width, height, border, imageSize, data)
   {
@@ -272,15 +212,6 @@ var LibraryGLES2 = {
   {
   },
 */
-  glCopyTexImage2D: function(target, level, internalformat, x, y, width, height, border)
-  {
-  	ctx().copyTexImage2D(target, level, internalformat, x, y, width, height, border);
-  },
-  
-  glCopyTexSubImage2D: function(target, level, xoffset, yoffset, x, y, width, height)
-  {
-  	ctx().copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
-  },
   
   glCreateProgram: function()
   {
@@ -291,12 +222,7 @@ var LibraryGLES2 = {
   {
   	return getShd(ctx().createShader(type));
   },
-  
-  glCullFace: function(mode)
-  {
-  	return ctx().cullFace(mode);
-  },
-  
+
   glDeleteBuffers: function(n, buffers)
   {
   	for( var i = 0; i < n; i++ )
@@ -696,11 +622,6 @@ If an error is generated, no change is made to the contents of range or precisio
   		return GL.FALSE;
   },
 
-  glLinkProgram: function(program)
-  {
-  	ctx().linkProgram(prg(program));
-  },
-
   glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid* pixels)
   {
   	//TODO: make more dynamic
@@ -798,36 +719,10 @@ If an error is generated, no change is made to the contents of range or precisio
   glUniform1iv (GLint location, GLsizei count, const GLint* v);
 
 //
-
-  glUniform2fv: function(GLint location, GLsizei count, const GLfloat* v)
+  toArray(argname, count, heap)
   {
-  	var n = count / 2;
-  	n = Math.floor(n);
-  	
-  	for( int i = 0; i < n; i += 2 )
-  	{
-  		ctx().uniform2fv(IHEAP[v + i], IHEAP[v + i + 1]);
-  	}
+  	var array = '[' + range(count).map(function(i) { return 'GLES2.' + heap + '[' + argname + ' + ' + i + ']'}).join(', ') + ']';
   },
-  glUniform2iv (GLint location, GLsizei count, const GLint* v);
-  glUniform3fv (GLint location, GLsizei count, const GLfloat* v);
-  glUniform3iv (GLint location, GLsizei count, const GLint* v);
-  glUniform4fv (GLint location, GLsizei count, const GLfloat* v);
-  glUniform4iv (GLint location, GLsizei count, const GLint* v);
-  glUniformMatrix2fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
-  glUniformMatrix3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
-  glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
-  
-  glUseProgram: function(program)
-  {
-  	ctx().useProgram(prg(program));
-  },
-  
-  glValidateProgram: function(program)
-  {
-  	ctx().validateProgram(prg(program));
-  },
-  
   
   glVertexAttrib1fv (GLuint indx, const GLfloat* values);
   glVertexAttrib2fv (GLuint indx, const GLfloat* values);
@@ -836,12 +731,6 @@ If an error is generated, no change is made to the contents of range or precisio
   glVertexAttribPointer (GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* ptr);
 
 };
-
-// Ignored stubs for fixed-function pipeline. We will need to emulate this
-'begin end matrixMode loadIdentity ortho color3f texCoord2f vertex2f blendFunc pushMatrix popMatrix translatef scalef color4ub enableClientState disableClientState vertexPointer colorPointer normalPointer texCoordPointer drawArrays clientActiveTexture_'.split(' ').forEach(function(name_) {
-  var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
-  LibraryGL[cName] = function(){};
-});
 
 // Simple pass-through functions
 [
@@ -852,19 +741,43 @@ If an error is generated, no change is made to the contents of range or precisio
 			'glFlush',
 			{
 				'api_name': 'glGetError',
-				'return': true
+				'return'  : true
 			}
 		]
 	],
 	[
 		1,
 		[
+			{
+				'api_name': 'glActiveTexture',
+				'wrap':
+				{
+					'arg_index': 0,
+					func       : 'tex'
+				}
+			},
 			'glBlendEquation',
+			'glCheckFramebufferStatus',
+			'glClear',
+			'glClearDepthf': {
+				js_name: 'clearDepth'
+			},
+			'glClearStencil',
+			'glCompileShader':
+			{
+				wrap:
+				[
+					{
+						arg_index: 0,
+						func     : 'shd'
+					}
+				]
+			},
+			'glCullFace',
 			'glDepthFunc',
 			'glDepthMask',
-			{
-				'api_name': 'glDepthRangef',
-				'js_name': 'depthRange',
+			'glDepthRangef': {
+				js_name: 'depthRange',
 			},
 			'glDisable',
 			'glDisableVertexAttribArray',
@@ -873,12 +786,90 @@ If an error is generated, no change is made to the contents of range or precisio
 			'glFrontFace',
 			'glGenerateMipmap',
 			'glLineWidth',
-			'glStencilMask'
+			'glLinkProgram':
+			{
+				'wrap':
+				{
+					'arg_index': 0,
+					func       : 'prg'
+				}
+			},
+			'glStencilMask',
+			'glUseProgram':
+			{
+				'wrap':
+				{
+					'arg_index': 0,
+					func       : 'prg'
+				}
+			},
+			'glValidateProgram':
+			{
+				'wrap':
+				{
+					'arg_index': 0,
+					func       : 'prg'
+				}
+			}
 		]
 	],
 	[
 		2,
 		[
+			'glAttachShader':
+			{
+				'wrap':
+				[
+					{
+						arg_index: 0,
+						func     : 'prg'
+					},
+					{
+						arg_index: 1,
+						func     : 'shd'
+					}
+				]
+			},
+			'glBindBuffer':
+			{
+				wrap:
+				[
+					{
+						arg_index: 1,
+						func     : 'buf'
+					}
+				]
+			},
+			'glBindFramebuffer':
+			{
+				wrap:
+				[
+					{
+						arg_index: 1,
+						func     : 'fbf'
+					}
+				]
+			},
+			'glBindRenderbuffer':
+			{
+				wrap:
+				[
+					{
+						arg_index: 1,
+						func     : 'rbf'
+					}
+				]
+			},
+			'glBindTexture':
+			{
+				wrap:
+				[
+					{
+						arg_index: 1,
+						func     : 'tex'
+					}
+				]
+			},
 			'glBlendEquationSeparate',
 			'glBlendFunc',
 			'glHint',
@@ -900,7 +891,73 @@ If an error is generated, no change is made to the contents of range or precisio
 			'glTexParameterf',
 			'glTexParameteri',
 			'glUniform2f',
+			'glUniform2fv':
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 2,
+						type             : GLES2.FLOAT32
+					}
+				]
+			}
 			'glUniform2i',
+			'glUniform2iv': 
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 2,
+						type             : GLES2.INT32
+					}
+				]
+			},
+			'glUniform3fv': 
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 2,
+						type             : GLES2.FLOAT32
+					}
+				]
+			},
+			'glUniform3iv':
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 2,
+						type             : GLES2.INT32
+					}
+				]
+			},
+			'glUniform4fv':
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 2,
+						type             : GLES2.FLOAT32
+					}
+				]
+			},
+			'glUniform4iv':
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 2,
+						type:            : GLES2.INT32
+					}
+				]
+			}
 			'glVertexAttrib2f'
 		]
 	],
@@ -908,12 +965,47 @@ If an error is generated, no change is made to the contents of range or precisio
 		4,
 		[
 			'glBlendColor',
-			'glBlendFuncSeparate'
+			'glBlendFuncSeparate',
+			'glClearColor',
+			'glColorMask',
 			'glScissor',
 			'glStencilFuncSeparate',
 			'glStencilOpSeparate',
 			'glUniform3f',
 			'glUniform3i',
+			'glUniformMatrix2fv':
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 3,
+						type             : GLES2.FLOAT32
+					}
+				]
+			},
+			'glUniformMatrix3fv':
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 3,
+						type             : GLES2.FLOAT32
+					}
+				]
+			},
+			'glUniformMatrix4fv'
+			{
+				'array' :
+				[
+					{
+						'count_arg_index': 1,
+						'arg_index'      : 3,
+						type             : GLES2.FLOAT32
+					}
+				]
+			}
 			'glVertexAttrib3f'
 		]
 	],
@@ -926,58 +1018,67 @@ If an error is generated, no change is made to the contents of range or precisio
 			'glViewport',
 			'glFramebufferTexture2D'
 		]
+	],
+	[
+		8,
+		[
+			'glCopyTexImage2D',
+			'glCopyTexSubImage2D'
+		]
 	]
 ].forEach(function(data) {
-  var num = data[0];
-  var names = data[1];
-  var args = range(num).map(function(i) { return 'x' + i }).join(', ');
+	var num = data[0];
+	var names = data[1];
+	var args = range(num).map(function(i) { return 'x' + i }).join(', ');
 
-  names.forEach(function(entry) {
-    var isReturn = false;
-    var cName = null;
-    var jsName = null;
-    
-    if( is_String(entry) )
-      cName = entry;
-    else
-    {
-      cName = entry.api_name;
-      
-      if( entry.return == true )
-        isReturn = true;
-     
-      if( entry.js_name !== undefined )
-        jsName = entry.js_name;
-    }
-    
-    if( jsName == null )
-      jsName = cName[2].toUpperCase() + cName.substr(3);
-      
-    var stub = '(function(' + args + ') { '
-      + (isReturn ? 'return ' : '')
-      + (num > 0 ? 'ctx().' + jsName + '(' + args + ');' : '') + ' })';
-    LibraryGLES2[cName] = eval(stub);
-  };
-  
-});
+	names.forEach(function(entry) {
+		var isReturn = false;
+		var cName = null;
+		var jsName = null;
 
+		if( is_String(entry) )
+			cName = entry;
+		else
+		{
+			cName = entry.api_name;
+	
+			if( entry.return )
+				isReturn = true;
+	
+			if( entry.js_name !== undefined )
+				jsName = entry.js_name;
+	
+			if( entry.array !== undefined )
+			{
+				entry.array.forEach(function(array_entry){
+					var countArgIndex = array_entry.count_arg_index;
+					var argIndex      = array_entry.arg_index;
+			
+					var heap;
+					switch( array_entry.type )
+					{
+						case GLES2.INT32:
+							heap = "HEAPI32";
+							break;
+						case GLES2.FLOAT32:
+							heap = "HEAPF32";
+							break;
+					}
+			
+					args = args.replace('x' + argIndex, toArray(countArgIndex, 'x' + argIndex, heap));
+				});
+			}
+		}
 
+		if( jsName == null )
+			jsName = cName[2].toUpperCase() + cName.substr(3);
 
-
-[[0, 'shadeModel fogi fogfv'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace'],
- [2, 'pixelStorei'],
- [3, 'texParameteri texParameterf'],
- [4, 'viewport clearColor']].forEach(function(data) {
-  var num = data[0];
-  var names = data[1];
-  var args = range(num).map(function(i) { return 'x' + i }).join(', ');
-  var stub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctxGL.NAME(' + args + ')' : '') + ' })';
-  names.split(' ').forEach(function(name_) {
-    var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
-    LibraryGL[cName] = eval(stub.replace('NAME', name_));
-    //print(cName + ': ' + LibraryGL[cName]);
-  });
+		var stub = '(function(' + args + ') { '
+			+ (isReturn ? 'return ' : '')
+			+ (num > 0 ? 'ctx().' + jsName + '(' + args + ');' : '') + ' })';
+		LibraryGLES2[cName] = eval(stub);
+		};
+	});
 });
 
 mergeInto(LibraryManager.library, LibraryGLES2);
