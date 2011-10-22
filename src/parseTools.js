@@ -1382,3 +1382,17 @@ function finalizeBlockAddress(param) {
   return Functions.currFunctions[param.func].labelIds[param.label]; // XXX We rely on currFunctions here...?
 }
 
+function stripCorrections(param) {
+  var m;
+  if (m = /^\((.*)\)$/.exec(param)) {
+    param = m[1];
+  }
+  if (m = /^\((\w+)\)&\d+$/.exec(param)) {
+    param = m[1];
+  }
+  if (m = /CHECK_OVERFLOW\(([^,)]*),.*/.exec(param)) {
+    param = m[1];
+  }
+  return param;
+}
+
