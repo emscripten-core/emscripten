@@ -76,7 +76,7 @@ typedef void *EGLClientBuffer;
 #define EGL_NO_SURFACE			((EGLSurface)0)
 
 /* Out-of-band attribute value */
-#define EGL_DONT_CARE			((EGLint)-1)
+#define WGL_DONT_CARE			((WGLint)-1)
 
 /* Errors / GetError return values */
 #define WGL_SUCCESS			0x3000
@@ -203,7 +203,7 @@ typedef void *EGLClientBuffer;
 #define EGL_DISPLAY_SCALING		10000
 
 /* Unknown display resolution/aspect ratio */
-#define EGL_UNKNOWN			((EGLint)-1)
+#define WGL_UNKNOWN			((WGLint)-1)
 
 /* Back buffer swap behaviors */
 #define EGL_BUFFER_PRESERVED		0x3094	/* EGL_SWAP_BEHAVIOR value */
@@ -255,10 +255,10 @@ WGLAPI WGLint WGLAPIENTRY wglGetError(void);
 /*
 EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id);
 */
-WGLAPI WGLBoolean WGLAPIENTRY wglInitialize(EGLint *major, EGLint *minor);
+WGLAPI WGLBoolean WGLAPIENTRY wglInitialize(WGLint *major, WGLint *minor);
 WGLAPI WGLBoolean WGLAPIENTRY wglTerminate();
 
-EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
+WGLAPI const char * WGLAPIENTRY eglQueryString(WGLint name);
 /*
 
 EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
