@@ -150,7 +150,8 @@ var LibraryGLES2 =
 		TYPE_OBJECT:   3,
 		TYPE_ARRAY:    4,
 		TYPE_UNDEFINED 5,
-		HEAPF32: IHEAP
+		HEAPF32: FHEAP,
+		HEAPI32: IHEAP
 	},
 
   glBindAttribLocation: function(program, index, name)
