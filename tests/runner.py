@@ -28,10 +28,6 @@ try:
 except:
   raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template from settings.py into it.')
 
-# Global cache for tests (we have multiple TestCase instances; this object lets them share data)
-
-GlobalCache = {}
-
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
@@ -105,10 +101,6 @@ class RunnerCore(unittest.TestCase):
     output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
     assert os.path.exists(target), 'Could not create bc file: ' + output
 
-  def do_link(self, files, target):
-    output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert output is None or 'Could not open input file' not in output, 'Linking error: ' + output
-
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
       if ll_file != filename + '.o':
@@ -169,8 +161,8 @@ class RunnerCore(unittest.TestCase):
     # Link all files
     if len(additional_files) + len(libraries) > 0:
       shutil.move(filename + '.o', filename + '.o.alone')
-      self.do_link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
-                   filename + '.o')
+      do_link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
+               filename + '.o')
       if not os.path.exists(filename + '.o'):
         print "Failed to link LLVM binaries:\n\n", output
         raise Exception("Linkage error");
@@ -3080,60 +3072,13 @@ if 'benchmark' not in str(sys.argv):
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'),
                       extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
-    def get_building_dir(self):
+    def get_build_dir(self):
       return os.path.join(self.get_dir(), 'building')
-
-    # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
-    # memory since the test directory is destroyed and recreated for each test. Note that we cache separately
-    # for different compilers)
-    def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, build_subdir=None):
-      if type(generated_libs) is not list: generated_libs = [generated_libs]
-      if build_subdir and configure.startswith('./'):
-        configure = '.' + configure
-
-      if GlobalCache is not None:
-        cache_name = name + '|' + COMPILER
-        if cache and GlobalCache.get(cache_name):
-          print >> sys.stderr,  '<load build from cache> ',
-          bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
-          f = open(bc_file, 'wb')
-          f.write(GlobalCache[cache_name])
-          f.close()
-          return bc_file
-
-      temp_dir = self.get_building_dir()
-      project_dir = os.path.join(temp_dir, name)
-      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
-      os.chdir(project_dir)
-      if build_subdir:
-        try:
-          os.mkdir('cbuild')
-        except:
-          pass
-        os.chdir(os.path.join(project_dir, 'cbuild'))
-      env = os.environ.copy()
-      env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
-      env['EMMAKEN_COMPILER'] = COMPILER
-      env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-      env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
-      if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
-        env['EMMAKEN_JUST_CONFIGURE'] = '1'
-        Popen(configure + configure_args, stdout=open(os.path.join(self.get_dir(), 'configure'), 'w'),
-                                          stderr=open(os.path.join(self.get_dir(), 'configure_err'), 'w'), env=env).communicate()[0]
-        del env['EMMAKEN_JUST_CONFIGURE']
-      Popen(make + make_args, stdout=open(os.path.join(self.get_dir(), 'make'), 'w'),
-                              stderr=open(os.path.join(self.get_dir(), 'make_err'), 'w'), env=env).communicate()[0]
-      bc_file = os.path.join(project_dir, 'bc.bc')
-      self.do_link(map(lambda lib: os.path.join(project_dir, 'cbuild', lib) if build_subdir else os.path.join(project_dir, lib), generated_libs), bc_file)
-      if cache and GlobalCache is not None:
-        print >> sys.stderr, '<save build into cache> ',
-        GlobalCache[cache_name] = open(bc_file, 'rb').read()
-      return bc_file
 
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
-      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a.bc'))
+      return get_library('freetype', self.get_build_dir(), self.get_dir(), os.path.join('objs', '.libs', 'libfreetype.a.bc'))
 
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
@@ -3211,7 +3156,7 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   libraries=[self.get_library('zlib', os.path.join('libz.a.bc'), make_args=['libz.a'])],
+                   libraries=[get_library('zlib', self.get_build_dir(), self.get_dir(), os.path.join('libz.a.bc'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
@@ -3230,7 +3175,7 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
-                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
+                   libraries=[get_library('bullet', self.get_build_dir(), self.get_dir(), [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
                                                           os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a.bc')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking'])],
@@ -3291,11 +3236,11 @@ if 'benchmark' not in str(sys.argv):
         )
         src.close()
 
-      #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
+      #fontconfig = get_library('fontconfig', self.get_build_dir(), self.get_dir(), [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
 
       freetype = self.get_freetype()
 
-      poppler = self.get_library('poppler',
+      poppler = get_library('poppler', self.get_build_dir(), self.get_dir(),
                                  [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0.bc'),
                                   os.path.join('goo', '.libs', 'libgoo.a.bc'),
                                   os.path.join('fofi', '.libs', 'libfofi.a.bc'),
@@ -3307,7 +3252,7 @@ if 'benchmark' not in str(sys.argv):
       # Combine libraries
 
       combined = os.path.join(self.get_building_dir(), 'combined.bc')
-      self.do_link([freetype, poppler], combined)
+      do_link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
@@ -3336,7 +3281,7 @@ if 'benchmark' not in str(sys.argv):
         )
         open(filename, 'w').write(src)
 
-      lib = self.get_library('openjpeg',
+      lib = get_library('openjpeg', self.get_build_dir(), self.get_dir(), 
                              [os.path.join('bin', 'libopenjpeg.so.1.4.0.bc'),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
