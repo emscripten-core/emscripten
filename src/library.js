@@ -5415,9 +5415,7 @@ LibraryManager.library = {
   },
 
   EMSCRIPTEN_COMMENT__inline: function(param) {
-    if (param.indexOf('CHECK_OVERFLOW') >= 0) {
-      param = param.split('(')[1].split(',')[0];
-    }
+    param = stripCorrections(param);
     return '// ' + Variables.globals[param].value.text.replace('\\00', '') + '   ';
   }
 };

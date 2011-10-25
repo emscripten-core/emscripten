@@ -31,8 +31,11 @@ except:
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
+  save_dir = 0
+  save_JS = 0
+
   def setUp(self):
-    if not Settings.save_dir:
+    if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
     else:
       dirname = os.path.join(TEMP_DIR, 'tmp')
@@ -41,13 +44,13 @@ class RunnerCore(unittest.TestCase):
     self.working_dir = dirname
     
   def tearDown(self):
-    if Settings.save_JS:
+    if self.save_JS:
       for name in os.listdir(self.get_dir()):
         if name.endswith(('.o.js', '.cc.js')):
           suff = '.'.join(name.split('.')[-2:])
           shutil.copy(os.path.join(self.get_dir(), name),
                       os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
-    if not Settings.save_dir:
+    if not self.save_dir:
       shutil.rmtree(self.get_dir())
 
   def skip(self, why):
@@ -1418,7 +1421,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_emscripten_api(self):
-        if Settings.OPTIMIZE or Settings.RELOOP or LLVM_OPTS: return self.skip('FIXME')
+        #if Settings.OPTIMIZE or Settings.RELOOP or LLVM_OPTS: return self.skip('FIXME')
 
         src = '''
           #include <stdio.h>
