@@ -506,7 +506,8 @@ Module['Array_stringify'] = Array_stringify;
 
 // Memory management
 
-var FUNCTION_TABLE;
+var FUNCTION_TABLE; // XXX: In theory the indexes here can be equal to pointers to stacked or malloced memory. Such comparisons should
+                    //      be false, but can turn out true. We should probably set the top bit to prevent such issues.
 
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
