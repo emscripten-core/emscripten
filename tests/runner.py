@@ -137,32 +137,7 @@ class RunnerCore(unittest.TestCase):
     # Finalize
     self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
-    self.do_emscripten(filename, output_processor, extra_args=extra_emscripten_args)
-
-  def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
-    # Add some headers by default. TODO: remove manually adding these in each test
-    if '-H' not in extra_args:
-      extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
-
-    # Run Emscripten
-    exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
-      try:
-        value = eval('Settings.' + setting)
-        if value is not None:
-          exported_settings[setting] = value
-      except:
-        pass
-    settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
-    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
-    #print compiler_output
-
-    # Detect compilation crashes and errors
-    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
-    assert os.path.exists(filename + '.o.js') and len(open(filename + '.o.js', 'r').read()) > 0, 'Emscripten failed to generate .js: ' + str(compiler_output)
-
-    if output_processor is not None:
-      output_processor(open(filename + '.o.js').read())
+    Building.emscripten(filename, output_processor, extra_args=extra_emscripten_args)
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
@@ -277,7 +252,7 @@ if 'benchmark' not in str(sys.argv):
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
       self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
-      self.do_emscripten(filename, extra_args=extra_emscripten_args)
+      Building.emscripten(filename, extra_args=extra_emscripten_args)
       self.do_run(None,
                    expected_output,
                    args,
@@ -3910,7 +3885,7 @@ Child2:9
 
       new_filename = os.path.join(dirname, 'new.bc')
       shutil.copy(filename + '.o', new_filename)
-      self.do_emscripten(new_filename, append_ext=False)
+      Building.emscripten(new_filename, append_ext=False)
 
       shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
       self.do_run(None, 'test\n', basename='new.cpp', no_build=True)

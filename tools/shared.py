@@ -294,3 +294,29 @@ class Building:
     output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
     assert os.path.exists(target), 'Could not create bc file: ' + output
 
+  @staticmethod
+  def emscripten(filename, output_processor=None, append_ext=True, extra_args=[]):
+    # Add some headers by default. TODO: remove manually adding these in each test
+    if '-H' not in extra_args:
+      extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
+
+    # Run Emscripten
+    exported_settings = {}
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
+      try:
+        value = eval('Settings.' + setting)
+        if value is not None:
+          exported_settings[setting] = value
+      except:
+        pass
+    settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
+    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    #print compiler_output
+
+    # Detect compilation crashes and errors
+    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
+    assert os.path.exists(filename + '.o.js') and len(open(filename + '.o.js', 'r').read()) > 0, 'Emscripten failed to generate .js: ' + str(compiler_output)
+
+    if output_processor is not None:
+      output_processor(open(filename + '.o.js').read())
+
