@@ -1,4 +1,4 @@
-import shutil, time, os
+import shutil, time, os, json
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -228,9 +228,11 @@ class Building:
     if type(generated_libs) is not list: generated_libs = [generated_libs]
 
     temp_dir = build_dir
-    project_dir = os.path.join(temp_dir, name)
     if copy_project:
+      project_dir = os.path.join(temp_dir, name)
       shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
+    else:
+      project_dir = build_dir
     try:
       old_dir = os.getcwd()
     except:

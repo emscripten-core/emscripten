@@ -12,7 +12,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json, difflib
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib
 
 # Setup
 
