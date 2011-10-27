@@ -78,7 +78,7 @@ class RunnerCore(unittest.TestCase):
 
     force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts
 
-    if LLVM_OPTS or force_recompile or build_ll_hook:
+    if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       Building.ll_opts(filename)
       if build_ll_hook:
         build_ll_hook(filename)
@@ -116,7 +116,7 @@ class RunnerCore(unittest.TestCase):
         os.remove(f + '.o.ll')
       except:
         pass
-      output = Popen([COMPILER, '-emit-llvm'] + COMPILER_OPTS + COMPILER_TEST_OPTS +
+      output = Popen([Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS +
                      ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
                      map(lambda include: '-I' + include, includes) + 
                      ['-c', f, '-o', f + '.o'],
@@ -187,7 +187,7 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + '|' + COMPILER
+    cache_name = name + '|' + Building.COMPILER
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
         print >> sys.stderr,  '<load build from cache> ',
@@ -199,7 +199,8 @@ class RunnerCore(unittest.TestCase):
 
     print >> sys.stderr, '<building and saving into cache> ',
 
-    return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name)
+    return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
+                                  copy_project=True)
 
 
 ###################################################################################################
@@ -212,11 +213,9 @@ if 'benchmark' not in str(sys.argv):
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_run(self, src, expected_output=None, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
-        #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         if force_c or (main_file is not None and main_file[-2:]) == '.c':
           basename = 'src.c'
-          global COMPILER
-          COMPILER = to_cc(COMPILER)
+          Building.COMPILER = to_cc(Building.COMPILER)
 
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
@@ -587,7 +586,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*yes*')
 
         # Test for issue 39
-        if not LLVM_OPTS:
+        if not Building.LLVM_OPTS:
           self.do_ll_run(path_from_root('tests', 'issue_39.ll'), '*yes*')
 
     def test_if_else(self):
@@ -1381,7 +1380,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_emscripten_api(self):
-        #if Settings.OPTIMIZE or Settings.RELOOP or LLVM_OPTS: return self.skip('FIXME')
+        #if Settings.OPTIMIZE or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
         src = '''
           #include <stdio.h>
@@ -1989,7 +1988,7 @@ if 'benchmark' not in str(sys.argv):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_data_and_fptr(self):
-      if LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
+      if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
       lib_src = '''
         #include <stdio.h>
@@ -2960,21 +2959,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
       self.do_run(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
 
-    def zzztest_gl(self):
-      # Switch to gcc from g++ - we don't compile properly otherwise (why?)
-      global COMPILER
-      COMPILER = COMPILER.replace('++', '')
-
-      def post(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''Module["__CANVAS__"] = {
-               getContext: function() {},
-             };'''
-        )
-        open(filename, 'w').write(src)
-      self.do_run(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
-
     def test_libcxx(self):
       self.do_run(path_from_root('tests', 'libcxx'),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
@@ -2995,7 +2979,7 @@ if 'benchmark' not in str(sys.argv):
         ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
 
     def test_cubescript(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
+      Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
 
       Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
@@ -3046,7 +3030,7 @@ if 'benchmark' not in str(sys.argv):
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      if LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      if Building.LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
@@ -3124,9 +3108,7 @@ if 'benchmark' not in str(sys.argv):
                    force_c=True)
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
-      global LLVM_OPTS
-
-      if LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+      if Building.LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
 
@@ -3146,10 +3128,8 @@ if 'benchmark' not in str(sys.argv):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      global LLVM_OPTS
-
       # llvm-link failure when using clang, LLVM bug 9498, still relevant?
-      if Settings.RELOOP or LLVM_OPTS: return self.skip('TODO')
+      if Settings.RELOOP or Building.LLVM_OPTS: return self.skip('TODO')
       if Settings.USE_TYPED_ARRAYS == 2 or Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
       Settings.USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
@@ -3173,7 +3153,7 @@ if 'benchmark' not in str(sys.argv):
                              'psobjs.c:195', 'pshglob.c:165', 'ttload.c:694', 'ttmtx.c:195', 'sfobjs.c:957',
                              'sfobjs.c:958', 'ftstream.c:369', 'ftstream.c:372', 'ttobjs.c:1007'] # And many more...
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS += [
+      Building.COMPILER_TEST_OPTS += [
         '-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
         '-I' + path_from_root('tests', 'freetype', 'include'),
         '-I' + path_from_root('tests', 'poppler', 'include'),
@@ -3324,7 +3304,7 @@ if 'benchmark' not in str(sys.argv):
     # to process.
     def test_cases(self):
       Settings.CHECK_OVERFLOWS = 0
-      if LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
+      if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
@@ -3348,7 +3328,7 @@ if 'benchmark' not in str(sys.argv):
       self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc
 
     def test_autodebug(self):
-      if LLVM_OPTS: return self.skip('LLVM opts mess us up')
+      if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
 
       # Run a test that should work, generating some code
       self.test_structs()
@@ -3775,7 +3755,7 @@ Child2:9
     def test_safe_heap(self):
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
       if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
-      if LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
+      if Building.LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
 
       src = '''
         #include<stdio.h>
@@ -4070,9 +4050,7 @@ class %s(T):
   def setUp(self):
     super(%s, self).setUp()
   
-    global COMPILER, LLVM_OPTS, COMPILER_TEST_OPTS
-
-    COMPILER = %r
+    Building.COMPILER = %r
     llvm_opts = %d
     embetter = %d
     quantum_size = %d
@@ -4082,7 +4060,7 @@ class %s(T):
     Settings.QUANTUM_SIZE = quantum_size
     Settings.ASSERTIONS = 1-embetter
     Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
-    LLVM_OPTS = llvm_opts
+    Building.LLVM_OPTS = llvm_opts
     Settings.AUTO_OPTIMIZE = 0
     Settings.CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     Settings.CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
@@ -4099,10 +4077,10 @@ class %s(T):
     if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
-    if LLVM_OPTS:
+    if Building.LLVM_OPTS:
       self.pick_llvm_opts(3)
 
-    COMPILER_TEST_OPTS = ['-g']
+    Building.COMPILER_TEST_OPTS = ['-g']
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
@@ -4148,11 +4126,11 @@ else:
   except:
     pass
 
-  COMPILER = CLANG
+  Building.COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE
   #JS_ENGINE = V8_ENGINE
 
-  global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = []
+  Building.COMPILER_TEST_OPTS = []
 
   Settings.QUANTUM_SIZE = 1
   Settings.RELOOP = Settings.OPTIMIZE = 1
@@ -4199,10 +4177,8 @@ else:
       print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False, handpicked=False):
-      global LLVM_OPTS
-
-      LLVM_OPTS = llvm_opts
-      if LLVM_OPTS:
+      Building.LLVM_OPTS = llvm_opts
+      if Building.LLVM_OPTS:
         self.pick_llvm_opts(3, handpicked)
 
       dirname = self.get_dir()
@@ -4351,7 +4327,7 @@ else:
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+      Building.COMPILER_TEST_OPTS = ['-g']
       Settings.CORRECT_SIGNS = 2
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 

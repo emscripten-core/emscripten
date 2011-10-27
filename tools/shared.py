@@ -220,7 +220,7 @@ class Building:
   COMPILER_TEST_OPTS = []
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers) '''
@@ -229,13 +229,18 @@ class Building:
 
     temp_dir = build_dir
     project_dir = os.path.join(temp_dir, name)
-    shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
+    if copy_project:
+      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
+    try:
+      old_dir = os.getcwd()
+    except:
+      old_dir = None
     os.chdir(project_dir)
     env = os.environ.copy()
     env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
-    env['EMMAKEN_COMPILER'] = COMPILER
+    env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
       Popen(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure'), 'w'),
@@ -247,6 +252,8 @@ class Building:
     Building.link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
     if cache is not None:
       cache[cache_name] = open(bc_file, 'rb').read()
+    if old_dir:
+      os.chdir(old_dir)
     return bc_file
 
   @staticmethod
@@ -269,7 +276,7 @@ class Building:
   # Optional LLVM optimizations
   @staticmethod
   def llvm_opts(filename):
-    if LLVM_OPTS:
+    if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
       output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
