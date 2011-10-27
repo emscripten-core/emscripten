@@ -254,3 +254,43 @@ class Building:
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
     assert output is None or 'Could not open input file' not in output, 'Linking error: ' + output
 
+  # Emscripten optimizations that we run on the .ll file
+  @staticmethod
+  def ll_opts(filename):
+    # Remove target info. This helps LLVM opts, if we run them later
+    cleaned = filter(lambda line: not line.startswith('target datalayout = ') and not line.startswith('target triple = '),
+                     open(filename + '.o.ll', 'r').readlines())
+    os.unlink(filename + '.o.ll')
+    open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
+
+    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
+
+  # Optional LLVM optimizations
+  @staticmethod
+  def llvm_opts(filename):
+    if LLVM_OPTS:
+      shutil.move(filename + '.o', filename + '.o.pre')
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
+
+  @staticmethod
+  def llvm_dis(filename):
+    # LLVM binary ==> LLVM assembly
+    try:
+      os.remove(filename + '.o.ll')
+    except:
+      pass
+    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
+
+  @staticmethod
+  def llvm_as(source, target):
+    # LLVM assembly ==> LLVM binary
+    try:
+      os.remove(target)
+    except:
+      pass
+    output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(target), 'Could not create bc file: ' + output
+

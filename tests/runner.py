@@ -68,62 +68,26 @@ class RunnerCore(unittest.TestCase):
 
     LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, handpicked, quantum_size=Settings.QUANTUM_SIZE)
 
-  # Emscripten optimizations that we run on the .ll file
-  def do_ll_opts(self, filename):
-    # Remove target info. This helps LLVM opts, if we run them later
-    cleaned = filter(lambda line: not line.startswith('target datalayout = ') and not line.startswith('target triple = '),
-                     open(filename + '.o.ll', 'r').readlines())
-    os.unlink(filename + '.o.ll')
-    open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
-
-    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
-
-  # Optional LLVM optimizations
-  def do_llvm_opts(self, filename):
-    if LLVM_OPTS:
-      shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
-
-  def do_llvm_dis(self, filename):
-    # LLVM binary ==> LLVM assembly
-    try:
-      os.remove(filename + '.o.ll')
-    except:
-      pass
-    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
-
-  def do_llvm_as(self, source, target):
-    # LLVM assembly ==> LLVM binary
-    try:
-      os.remove(target)
-    except:
-      pass
-    output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(target), 'Could not create bc file: ' + output
-
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
       if ll_file != filename + '.o':
         shutil.copy(ll_file, filename + '.o')
-      self.do_llvm_dis(filename)
+      Building.llvm_dis(filename)
     else:
       shutil.copy(ll_file, filename + '.o.ll')
 
     force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts
 
     if LLVM_OPTS or force_recompile or build_ll_hook:
-      self.do_ll_opts(filename)
+      Building.ll_opts(filename)
       if build_ll_hook:
         build_ll_hook(filename)
       shutil.move(filename + '.o.ll', filename + '.o.ll.pre')
-      self.do_llvm_as(filename + '.o.ll.pre', filename + '.o')
+      Building.llvm_as(filename + '.o.ll.pre', filename + '.o')
       output = Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
       assert 'error:' not in output, 'Error in llvm-as: ' + output
-      self.do_llvm_opts(filename)
-      self.do_llvm_dis(filename)
+      Building.llvm_opts(filename)
+      Building.llvm_dis(filename)
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[]):
