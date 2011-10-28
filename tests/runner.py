@@ -3381,6 +3381,38 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, '*hello slim world*', build_ll_hook=hook)
 
     def test_profiling(self):
+      src = '''
+          #include <emscripten.h>
+          #include <unistd.h>
+
+          int main()
+          {
+            EMSCRIPTEN_PROFILE_INIT(3);
+            EMSCRIPTEN_PROFILE_BEGIN(0);
+            usleep(10 * 1000);
+            EMSCRIPTEN_PROFILE_END(0);
+            EMSCRIPTEN_PROFILE_BEGIN(1);
+            usleep(50 * 1000);
+            EMSCRIPTEN_PROFILE_END(1);
+            EMSCRIPTEN_PROFILE_BEGIN(2);
+            usleep(250 * 1000);
+            EMSCRIPTEN_PROFILE_END(2);
+            return 0;
+          }
+        '''
+
+      def post1(filename):
+        src = open(filename, 'a')
+        src.write('''
+          Profiling.dump();
+        ''')
+        src.close()
+
+      self.do_run(src, '''Profiling data:
+Block 0: ''', post_build=post1)
+
+      # Part 2: old JS version
+
       Settings.PROFILE = 1
       Settings.INVOKE_RUN = 0
 
@@ -3427,7 +3459,6 @@ if 'benchmark' not in str(sys.argv):
         ''')
         src.close()
 
-      # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
       self.do_run(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
 
     ### Integration tests
