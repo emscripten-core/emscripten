@@ -127,7 +127,9 @@ using ::vfwscanf;
 using ::vswprintf;
 using ::vswscanf;
 using ::vwprintf;
+#ifndef _MSC_VER
 using ::vwscanf;
+#endif // _MSC_VER
 using ::wprintf;
 using ::wscanf;
 using ::fgetwc;
@@ -141,8 +143,10 @@ using ::putwc;
 using ::putwchar;
 using ::ungetwc;
 using ::wcstod;
+#ifndef _MSC_VER
 using ::wcstof;
 using ::wcstold;
+#endif // _MSC_VER
 using ::wcstol;
 using ::wcstoll;
 using ::wcstoul;

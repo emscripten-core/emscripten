@@ -11,7 +11,9 @@
 #ifndef _LIBCPP_CONFIG
 #define _LIBCPP_CONFIG
 
+#if !_MSC_VER // explicit macro necessary because it is only defined below in this file
 #pragma GCC system_header
+#endif
 
 #define _LIBCPP_VERSION 1001
 

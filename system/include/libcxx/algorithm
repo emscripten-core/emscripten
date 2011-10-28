@@ -3683,6 +3683,10 @@ sort(__wrap_iter<_Tp*> __first, __wrap_iter<_Tp*> __last, _Compare __comp)
     _VSTD::sort<_Tp*, _Comp_ref>(__first.base(), __last.base(), __comp);
 }
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable: 4231)
+#endif // _MSC_VER
 extern template void __sort<__less<char>&, char*>(char*, char*, __less<char>&);
 extern template void __sort<__less<wchar_t>&, wchar_t*>(wchar_t*, wchar_t*, __less<wchar_t>&);
 extern template void __sort<__less<signed char>&, signed char*>(signed char*, signed char*, __less<signed char>&);
@@ -3716,6 +3720,9 @@ extern template bool __insertion_sort_incomplete<__less<double>&, double*>(doubl
 extern template bool __insertion_sort_incomplete<__less<long double>&, long double*>(long double*, long double*, __less<long double>&);
 
 extern template unsigned __sort5<__less<long double>&, long double*>(long double*, long double*, long double*, long double*, long double*, __less<long double>&);
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif _MSC_VER
 
 // lower_bound
 

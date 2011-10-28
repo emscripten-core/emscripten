@@ -126,10 +126,12 @@ using ::scanf;
 using ::snprintf;
 using ::sprintf;
 using ::sscanf;
+#ifndef _MSC_VER
 using ::vfprintf;
 using ::vfscanf;
 using ::vprintf;
 using ::vscanf;
+#endif // _MSC_VER
 using ::vsnprintf;
 using ::vsprintf;
 using ::vsscanf;
