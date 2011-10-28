@@ -187,7 +187,7 @@ template <class charT> class messages_byname;
 #include <cstdlib>
 #include <ctime>
 #if _WIN32
-#include <support/win32/support.h> // vasprintf
+#include <support/win32/locale_win32.h>
 #else // _WIN32
 // XXX Emscripten #include <nl_types.h>
 #endif  // !_WIN32
@@ -1394,7 +1394,7 @@ void
 __num_put<_CharT>::__widen_and_group_float(char* __nb, char* __np, char* __ne,
                                            _CharT* __ob, _CharT*& __op, _CharT*& __oe,
                                            const locale& __loc)
-;/* XXX Emscripten {
+{
     const ctype<_CharT>&    __ct = use_facet<ctype<_CharT> >   (__loc);
     const numpunct<_CharT>& __npt = use_facet<numpunct<_CharT> >(__loc);
     string __grouping = __npt.grouping();
@@ -1409,21 +1409,13 @@ __num_put<_CharT>::__widen_and_group_float(char* __nb, char* __np, char* __ne,
         *__oe++ = __ct.widen(*__nf++);
         *__oe++ = __ct.widen(*__nf++);
         for (__ns = __nf; __ns < __ne; ++__ns)
-#ifdef _LIBCPP_STABLE_APPLE_ABI
-            if (!isxdigit_l(*__ns, 0))
-#else
-            if (!isxdigit_l(*__ns, __cloc()))
-#endif
+            if (!isxdigit_l(*__ns, _LIBCPP_GET_C_LOCALE))
                 break;
     }
     else
     {
         for (__ns = __nf; __ns < __ne; ++__ns)
-#ifdef _LIBCPP_STABLE_APPLE_ABI
-            if (!isdigit_l(*__ns, 0))
-#else
-            if (!isdigit_l(*__ns, __cloc()))
-#endif
+            if (!isdigit_l(*__ns, _LIBCPP_GET_C_LOCALE))
                 break;
     }
     if (__grouping.empty())
@@ -1469,7 +1461,6 @@ __num_put<_CharT>::__widen_and_group_float(char* __nb, char* __np, char* __ne,
     else
         __op = __ob + (__np - __nb);
 }
-*/
 
 extern template class __num_put<char>;
 extern template class __num_put<wchar_t>;

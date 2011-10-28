@@ -103,7 +103,9 @@
 
 /* Support gcc's __attribute__ facility.  */
 
-#ifdef __GNUC__
+#if defined(EMSCRIPTEN) && defined(_ATTRIBUTE)
+// emscripten fucks up!
+#elif defined(__GNUC__)
 #define _ATTRIBUTE(attrs) __attribute__ (attrs)
 #else
 #define _ATTRIBUTE(attrs)

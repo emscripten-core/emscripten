@@ -206,7 +206,6 @@ protected:
     basic_ostream() {}  // extension, intentially does not initialize
 };
 
-/*
 template <class _CharT, class _Traits>
 class _LIBCPP_VISIBLE basic_ostream<_CharT, _Traits>::sentry
 {
@@ -1290,7 +1289,6 @@ operator<<(basic_ostream<_CharT, _Traits>& __os, const bitset<_Size>& __x)
 
 extern template class basic_ostream<char>;
 extern template class basic_ostream<wchar_t>;
-*/
 
 _LIBCPP_END_NAMESPACE_STD
 
