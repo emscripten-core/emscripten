@@ -27,7 +27,9 @@
 /* XXX EMSCRIPTEN # include <xlocale.h> */
 #endif  // _WIN32
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
