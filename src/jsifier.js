@@ -300,6 +300,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   substrate.addActor('FunctionStub', {
     processItem: function(item) {
       var ret = [item];
+      if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return null;
       var shortident = item.ident.substr(1);
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the runtime of their parents.
@@ -410,6 +411,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     funcs: {},
     seen: {},
     processItem: function(item) {
+      if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return null;
       if (this.seen[item.__uid__]) return null;
       if (item.intertype == 'function') {
         this.funcs[item.ident] = item;

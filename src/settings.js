@@ -116,6 +116,13 @@ PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage exampl
 EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
                                 // be accessible outside of the generated code.
 
+IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
+                        // This is useful if your project code includes a function, and you want to replace
+                        // that in the compiled code with your own handwritten JS. (Of course even without
+                        // this option, you could just override the generated function at runtime. However,
+                        // JS engines might optimize better if the function is defined once in a single
+                        // place in your code.)
+
 EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
                        // exported, so they are guaranteed to be
                        // accessible outside of the generated code.
