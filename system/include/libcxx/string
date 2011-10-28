@@ -1021,7 +1021,7 @@ __basic_string_common<__b>::__throw_out_of_range() const
 #endif
 }
 
-extern template class __basic_string_common<true>;
+//extern template class __basic_string_common<true>; /* XXX EMScripten: Comment to export the class */
 
 template<class _CharT, class _Traits, class _Allocator>
 class _LIBCPP_VISIBLE basic_string
@@ -3965,8 +3965,8 @@ getline(basic_istream<_CharT, _Traits>&& __is,
 
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
-extern template class basic_string<char>;
-extern template class basic_string<wchar_t>;
+//extern template class basic_string<char>; /* XXX EMScripten: Comment to export the class */
+//extern template class basic_string<wchar_t>; /* XXX EMScripten: Comment to export the class */
 
 extern template
     string
