@@ -261,7 +261,7 @@ class Building:
   @staticmethod
   def link(files, target):
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert output is None or 'Could not open input file' not in output, 'Linking error: ' + output
+    assert not os.path.exists(target) or output is None or 'Could not open input file' not in output, 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
