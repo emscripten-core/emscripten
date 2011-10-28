@@ -3194,7 +3194,7 @@ if 'benchmark' not in str(sys.argv):
 
       # Combine libraries
 
-      combined = os.path.join(self.get_building_dir(), 'combined.bc')
+      combined = os.path.join(self.get_build_dir(), 'combined.bc')
       Building.link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
@@ -3278,7 +3278,7 @@ if 'benchmark' not in str(sys.argv):
                    includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
                              path_from_root('tests', 'openjpeg', 'codec'),
                              path_from_root('tests', 'openjpeg', 'common'),
-                             os.path.join(self.get_building_dir(), 'openjpeg')],
+                             os.path.join(self.get_build_dir(), 'openjpeg')],
                    force_c=True,
                    post_build=post,
                    output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
