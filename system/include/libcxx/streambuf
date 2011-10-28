@@ -111,6 +111,7 @@ protected:
 #include <__config>
 #include <iosfwd>
 #include <ios>
+#include <__locale>
 
 #pragma GCC system_header
 
