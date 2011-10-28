@@ -893,12 +893,12 @@ struct _LIBCPP_VISIBLE aligned_storage
 
 #define _CREATE_ALIGNED_STORAGE_SPECIALIZATION(n) \
 template <size_t _Len>\
-struct __attribute__ ((__visibility__("default"))) aligned_storage<_Len, n>\
+struct _LIBCPP_VISIBLE aligned_storage<_Len, n>\
 {\
-    struct type\
+    struct _ALIGNAS(n) type\
     {\
         unsigned char _[_Len];\
-    } __attribute__((__aligned__(n)));\
+    };\
 }
 
 _CREATE_ALIGNED_STORAGE_SPECIALIZATION(0x1);
@@ -938,7 +938,7 @@ private:
     typedef typename __promote<_A2>::type __type2;
     typedef typename __promote<_A3>::type __type3;
 public:
-    typedef __typeof__(__type1() + __type2() + __type3()) type;
+    typedef decltype(__type1() + __type2() + __type3()) type;
 };
 
 template <class _A1, class _A2>
@@ -948,7 +948,7 @@ private:
     typedef typename __promote<_A1>::type __type1;
     typedef typename __promote<_A2>::type __type2;
 public:
-    typedef __typeof__(__type1() + __type2()) type;
+    typedef decltype(__type1() + __type2()) type;
 };
 
 template <class _A1>
@@ -1277,9 +1277,9 @@ inline _LIBCPP_INLINE_VISIBILITY
 _Tp&&
 forward(typename std::remove_reference<_Tp>::type&& __t) _NOEXCEPT
 {
- 	static_assert(!std::is_lvalue_reference<_Tp>::value,
- 	              "Can not forward an rvalue as an lvalue.");
- 	return static_cast<_Tp&&>(__t);
+    static_assert(!std::is_lvalue_reference<_Tp>::value,
+                  "Can not forward an rvalue as an lvalue.");
+    return static_cast<_Tp&&>(__t);
 }
 
 #else  // _LIBCPP_HAS_NO_RVALUE_REFERENCES

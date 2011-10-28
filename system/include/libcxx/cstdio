@@ -129,12 +129,12 @@ using ::sscanf;
 #ifndef _MSC_VER
 using ::vfprintf;
 using ::vfscanf;
-using ::vprintf;
 using ::vscanf;
+using ::vsscanf;
 #endif // _MSC_VER
+using ::vprintf;
 using ::vsnprintf;
 using ::vsprintf;
-using ::vsscanf;
 using ::fgetc;
 using ::fgets;
 using ::fputc;
