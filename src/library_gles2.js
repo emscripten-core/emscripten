@@ -150,8 +150,10 @@ var LibraryGLES2 =
 		TYPE_OBJECT:   3,
 		TYPE_ARRAY:    4,
 		TYPE_UNDEFINED 5,
-		HEAPF32: FHEAP,
-		HEAPI32: IHEAP
+		INT8:    'i8',
+		INT16:   'i16',
+		INT32:   'i32',
+		FLOAT32: 'f32'
 	},
 
   glBindAttribLocation: function(program, index, name)
@@ -720,11 +722,11 @@ If an error is generated, no change is made to the contents of range or precisio
   glUniform1iv (GLint location, GLsizei count, const GLint* v);
 
 //
-  toArray(argname, count, heap)
-  {
-  	var array = '[' + range(count).map(function(i) { return 'GLES2.' + heap + '[' + argname + ' + ' + i + ']'}).join(', ') + ']';
-  },
-  
+	toArray(argname, count, type)
+	{
+		var array = '[' + range(count).map(function(i) { return {{{ makeGetValue(0, 'argname' + i, type) }}};}).join(', ') + ']';
+	},
+	
   glVertexAttrib1fv (GLuint indx, const GLfloat* values);
   glVertexAttrib2fv (GLuint indx, const GLfloat* values);
   glVertexAttrib3fv (GLuint indx, const GLfloat* values);
@@ -1054,19 +1056,7 @@ If an error is generated, no change is made to the contents of range or precisio
 				entry.array.forEach(function(array_entry){
 					var countArgIndex = array_entry.count_arg_index;
 					var argIndex      = array_entry.arg_index;
-			
-					var heap;
-					switch( array_entry.type )
-					{
-						case GLES2.INT32:
-							heap = "HEAPI32";
-							break;
-						case GLES2.FLOAT32:
-							heap = "HEAPF32";
-							break;
-					}
-			
-					args = args.replace('x' + argIndex, toArray(countArgIndex, 'x' + argIndex, heap));
+					args = args.replace('x' + argIndex, toArray(countArgIndex, 'x' + argIndex, array_entry.type));
 				});
 			}
 		}

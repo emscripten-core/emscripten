@@ -19,6 +19,11 @@ int _EXFUN(isxdigit,(int __c));
 int _EXFUN(tolower, (int __c));
 int _EXFUN(toupper, (int __c));
 
+int _EXFUN(isxdigit_l, (int __c, locale_t locale));
+int _EXFUN(isdigit_l, (int __c, locale_t locale));
+
+
+
 #if !defined(__STRICT_ANSI__) || defined(__cplusplus) || __STDC_VERSION__ >= 199901L
 int _EXFUN(isblank, (int __c));
 #endif
