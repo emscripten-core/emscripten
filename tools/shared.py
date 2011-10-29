@@ -1,4 +1,4 @@
-import shutil, time, os
+import shutil, time, os, json
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -73,7 +73,7 @@ def timeout_run(proc, timeout, note):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
-def run_js(engine, filename, args, check_timeout=False, stdout=PIPE, stderr=STDOUT, cwd=None):
+def run_js(engine, filename, args=[], check_timeout=False, stdout=PIPE, stderr=STDOUT, cwd=None):
   return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
                      stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
@@ -211,6 +211,123 @@ def read_auto_optimize_data(filename):
 class Dummy: pass
 
 Settings = Dummy() # A global singleton. Not pretty, but nicer than passing |, settings| everywhere
-Settings.save_dir = 0
-Settings.save_JS = 0
+
+# Building
+
+class Building:
+  COMPILER = CLANG
+  LLVM_OPTS = False
+  COMPILER_TEST_OPTS = []
+
+  @staticmethod
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}):
+    ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
+        memory since the test directory is destroyed and recreated for each test. Note that we cache separately
+        for different compilers) '''
+
+    if type(generated_libs) is not list: generated_libs = [generated_libs]
+
+    temp_dir = build_dir
+    if copy_project:
+      project_dir = os.path.join(temp_dir, name)
+      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
+    else:
+      project_dir = build_dir
+    try:
+      old_dir = os.getcwd()
+    except:
+      old_dir = None
+    os.chdir(project_dir)
+    env = os.environ.copy()
+    env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
+    env['EMMAKEN_COMPILER'] = Building.COMPILER
+    env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
+    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+    for k, v in env_init.iteritems():
+      env[k] = v
+    if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
+      env['EMMAKEN_JUST_CONFIGURE'] = '1'
+      Popen(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure_'), 'w'),
+                                        stderr=open(os.path.join(output_dir, 'configure_err'), 'w'), env=env).communicate()[0]
+      del env['EMMAKEN_JUST_CONFIGURE']
+    Popen(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
+                            stderr=open(os.path.join(output_dir, 'make_err'), 'w'), env=env).communicate()[0]
+    bc_file = os.path.join(project_dir, 'bc.bc')
+    Building.link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
+    if cache is not None:
+      cache[cache_name] = open(bc_file, 'rb').read()
+    if old_dir:
+      os.chdir(old_dir)
+    return bc_file
+
+  @staticmethod
+  def link(files, target):
+    output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+
+  # Emscripten optimizations that we run on the .ll file
+  @staticmethod
+  def ll_opts(filename):
+    # Remove target info. This helps LLVM opts, if we run them later
+    cleaned = filter(lambda line: not line.startswith('target datalayout = ') and not line.startswith('target triple = '),
+                     open(filename + '.o.ll', 'r').readlines())
+    os.unlink(filename + '.o.ll')
+    open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
+
+    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
+
+  # Optional LLVM optimizations
+  @staticmethod
+  def llvm_opts(filename):
+    if Building.LLVM_OPTS:
+      shutil.move(filename + '.o', filename + '.o.pre')
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
+
+  @staticmethod
+  def llvm_dis(filename):
+    # LLVM binary ==> LLVM assembly
+    try:
+      os.remove(filename + '.o.ll')
+    except:
+      pass
+    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
+
+  @staticmethod
+  def llvm_as(source, target):
+    # LLVM assembly ==> LLVM binary
+    try:
+      os.remove(target)
+    except:
+      pass
+    output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(target), 'Could not create bc file: ' + output
+
+  @staticmethod
+  def emscripten(filename, output_processor=None, append_ext=True, extra_args=[]):
+    # Add some headers by default. TODO: remove manually adding these in each test
+    if '-H' not in extra_args:
+      extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
+
+    # Run Emscripten
+    exported_settings = {}
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
+      try:
+        value = eval('Settings.' + setting)
+        if value is not None:
+          exported_settings[setting] = value
+      except:
+        pass
+    settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
+    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    #print compiler_output
+
+    # Detect compilation crashes and errors
+    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
+    assert os.path.exists(filename + '.o.js') and len(open(filename + '.o.js', 'r').read()) > 0, 'Emscripten failed to generate .js: ' + str(compiler_output)
+
+    if output_processor is not None:
+      output_processor(open(filename + '.o.js').read())
 

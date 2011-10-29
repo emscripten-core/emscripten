@@ -12,7 +12,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, json, difflib
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib
 
 # Setup
 
@@ -28,15 +28,14 @@ try:
 except:
   raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template from settings.py into it.')
 
-# Global cache for tests (we have multiple TestCase instances; this object lets them share data)
-
-GlobalCache = {}
-
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
+  save_dir = 0
+  save_JS = 0
+
   def setUp(self):
-    if not Settings.save_dir:
+    if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
     else:
       dirname = os.path.join(TEMP_DIR, 'tmp')
@@ -45,13 +44,13 @@ class RunnerCore(unittest.TestCase):
     self.working_dir = dirname
     
   def tearDown(self):
-    if Settings.save_JS:
+    if self.save_JS:
       for name in os.listdir(self.get_dir()):
         if name.endswith(('.o.js', '.cc.js')):
           suff = '.'.join(name.split('.')[-2:])
           shutil.copy(os.path.join(self.get_dir(), name),
                       os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
-    if not Settings.save_dir:
+    if not self.save_dir:
       shutil.rmtree(self.get_dir())
 
   def skip(self, why):
@@ -69,66 +68,26 @@ class RunnerCore(unittest.TestCase):
 
     LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, handpicked, quantum_size=Settings.QUANTUM_SIZE)
 
-  # Emscripten optimizations that we run on the .ll file
-  def do_ll_opts(self, filename):
-    # Remove target info. This helps LLVM opts, if we run them later
-    cleaned = filter(lambda line: not line.startswith('target datalayout = ') and not line.startswith('target triple = '),
-                     open(filename + '.o.ll', 'r').readlines())
-    os.unlink(filename + '.o.ll')
-    open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
-
-    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
-
-  # Optional LLVM optimizations
-  def do_llvm_opts(self, filename):
-    if LLVM_OPTS:
-      shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
-
-  def do_llvm_dis(self, filename):
-    # LLVM binary ==> LLVM assembly
-    try:
-      os.remove(filename + '.o.ll')
-    except:
-      pass
-    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
-
-  def do_llvm_as(self, source, target):
-    # LLVM assembly ==> LLVM binary
-    try:
-      os.remove(target)
-    except:
-      pass
-    output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(target), 'Could not create bc file: ' + output
-
-  def do_link(self, files, target):
-    output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert output is None or 'Could not open input file' not in output, 'Linking error: ' + output
-
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
       if ll_file != filename + '.o':
         shutil.copy(ll_file, filename + '.o')
-      self.do_llvm_dis(filename)
+      Building.llvm_dis(filename)
     else:
       shutil.copy(ll_file, filename + '.o.ll')
 
     force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts
 
-    if LLVM_OPTS or force_recompile or build_ll_hook:
-      self.do_ll_opts(filename)
+    if Building.LLVM_OPTS or force_recompile or build_ll_hook:
+      Building.ll_opts(filename)
       if build_ll_hook:
         build_ll_hook(filename)
       shutil.move(filename + '.o.ll', filename + '.o.ll.pre')
-      self.do_llvm_as(filename + '.o.ll.pre', filename + '.o')
+      Building.llvm_as(filename + '.o.ll.pre', filename + '.o')
       output = Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
       assert 'error:' not in output, 'Error in llvm-as: ' + output
-      self.do_llvm_opts(filename)
-      self.do_llvm_dis(filename)
+      Building.llvm_opts(filename)
+      Building.llvm_dis(filename)
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[]):
@@ -157,7 +116,7 @@ class RunnerCore(unittest.TestCase):
         os.remove(f + '.o.ll')
       except:
         pass
-      output = Popen([COMPILER, '-emit-llvm'] + COMPILER_OPTS + COMPILER_TEST_OPTS +
+      output = Popen([Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS +
                      ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
                      map(lambda include: '-I' + include, includes) + 
                      ['-c', f, '-o', f + '.o'],
@@ -169,8 +128,8 @@ class RunnerCore(unittest.TestCase):
     # Link all files
     if len(additional_files) + len(libraries) > 0:
       shutil.move(filename + '.o', filename + '.o.alone')
-      self.do_link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
-                   filename + '.o')
+      Building.link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
+               filename + '.o')
       if not os.path.exists(filename + '.o'):
         print "Failed to link LLVM binaries:\n\n", output
         raise Exception("Linkage error");
@@ -178,32 +137,7 @@ class RunnerCore(unittest.TestCase):
     # Finalize
     self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
-    self.do_emscripten(filename, output_processor, extra_args=extra_emscripten_args)
-
-  def do_emscripten(self, filename, output_processor=None, append_ext=True, extra_args=[]):
-    # Add some headers by default. TODO: remove manually adding these in each test
-    if '-H' not in extra_args:
-      extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
-
-    # Run Emscripten
-    exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE']:
-      try:
-        value = eval('Settings.' + setting)
-        if value is not None:
-          exported_settings[setting] = value
-      except:
-        pass
-    settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
-    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
-    #print compiler_output
-
-    # Detect compilation crashes and errors
-    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
-    assert os.path.exists(filename + '.o.js') and len(open(filename + '.o.js', 'r').read()) > 0, 'Emscripten failed to generate .js: ' + str(compiler_output)
-
-    if output_processor is not None:
-      output_processor(open(filename + '.o.js').read())
+    Building.emscripten(filename, output_processor, extra_args=extra_emscripten_args)
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
@@ -247,6 +181,28 @@ class RunnerCore(unittest.TestCase):
         limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
       ))
 
+  library_cache = {}
+
+  def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
+    build_dir = self.get_build_dir()
+    output_dir = self.get_dir()
+
+    cache_name = name + '|' + Building.COMPILER
+    if self.library_cache is not None:
+      if cache and self.library_cache.get(cache_name):
+        print >> sys.stderr,  '<load build from cache> ',
+        bc_file = os.path.join(output_dir, 'lib' + name + '.bc')
+        f = open(bc_file, 'wb')
+        f.write(self.library_cache[cache_name])
+        f.close()
+        return bc_file
+
+    print >> sys.stderr, '<building and saving into cache> ',
+
+    return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
+                                  copy_project=True)
+
+
 ###################################################################################################
 
 if 'benchmark' not in str(sys.argv):
@@ -257,11 +213,9 @@ if 'benchmark' not in str(sys.argv):
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_run(self, src, expected_output=None, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
-        #print 'Running test:', inspect.stack()[1][3].replace('test_', ''), '[%s,%s,%s]' % (COMPILER.split(os.sep)[-1], 'llvm-optimizations' if LLVM_OPTS else '', 'reloop&optimize' if RELOOP else '')
         if force_c or (main_file is not None and main_file[-2:]) == '.c':
           basename = 'src.c'
-          global COMPILER
-          COMPILER = to_cc(COMPILER)
+          Building.COMPILER = to_cc(Building.COMPILER)
 
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
@@ -297,7 +251,7 @@ if 'benchmark' not in str(sys.argv):
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
       self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
-      self.do_emscripten(filename, extra_args=extra_emscripten_args)
+      Building.emscripten(filename, extra_args=extra_emscripten_args)
       self.do_run(None,
                    expected_output,
                    args,
@@ -632,7 +586,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*yes*')
 
         # Test for issue 39
-        if not LLVM_OPTS:
+        if not Building.LLVM_OPTS:
           self.do_ll_run(path_from_root('tests', 'issue_39.ll'), '*yes*')
 
     def test_if_else(self):
@@ -1426,7 +1380,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_emscripten_api(self):
-        if Settings.OPTIMIZE or Settings.RELOOP or LLVM_OPTS: return self.skip('FIXME')
+        #if Settings.OPTIMIZE or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
         src = '''
           #include <stdio.h>
@@ -2034,7 +1988,7 @@ if 'benchmark' not in str(sys.argv):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_data_and_fptr(self):
-      if LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
+      if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
       lib_src = '''
         #include <stdio.h>
@@ -3005,21 +2959,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
       self.do_run(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
 
-    def zzztest_gl(self):
-      # Switch to gcc from g++ - we don't compile properly otherwise (why?)
-      global COMPILER
-      COMPILER = COMPILER.replace('++', '')
-
-      def post(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''Module["__CANVAS__"] = {
-               getContext: function() {},
-             };'''
-        )
-        open(filename, 'w').write(src)
-      self.do_run(path_from_root('tests', 'gl'), '*?*', main_file='sdl_ogl.c', post_build=post)
-
     def test_libcxx(self):
       self.do_run(path_from_root('tests', 'libcxx'),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
@@ -3040,7 +2979,7 @@ if 'benchmark' not in str(sys.argv):
         ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
 
     def test_cubescript(self):
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
+      Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
 
       Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
@@ -3080,55 +3019,8 @@ if 'benchmark' not in str(sys.argv):
                       output_nicerizer=lambda string: string.replace('\n\n', '\n').replace('\n\n', '\n'),
                       extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
-    def get_building_dir(self):
+    def get_build_dir(self):
       return os.path.join(self.get_dir(), 'building')
-
-    # Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
-    # memory since the test directory is destroyed and recreated for each test. Note that we cache separately
-    # for different compilers)
-    def get_library(self, name, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, build_subdir=None):
-      if type(generated_libs) is not list: generated_libs = [generated_libs]
-      if build_subdir and configure.startswith('./'):
-        configure = '.' + configure
-
-      if GlobalCache is not None:
-        cache_name = name + '|' + COMPILER
-        if cache and GlobalCache.get(cache_name):
-          print >> sys.stderr,  '<load build from cache> ',
-          bc_file = os.path.join(self.get_dir(), 'lib' + name + '.bc')
-          f = open(bc_file, 'wb')
-          f.write(GlobalCache[cache_name])
-          f.close()
-          return bc_file
-
-      temp_dir = self.get_building_dir()
-      project_dir = os.path.join(temp_dir, name)
-      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
-      os.chdir(project_dir)
-      if build_subdir:
-        try:
-          os.mkdir('cbuild')
-        except:
-          pass
-        os.chdir(os.path.join(project_dir, 'cbuild'))
-      env = os.environ.copy()
-      env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
-      env['EMMAKEN_COMPILER'] = COMPILER
-      env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-      env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
-      if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
-        env['EMMAKEN_JUST_CONFIGURE'] = '1'
-        Popen(configure + configure_args, stdout=open(os.path.join(self.get_dir(), 'configure'), 'w'),
-                                          stderr=open(os.path.join(self.get_dir(), 'configure_err'), 'w'), env=env).communicate()[0]
-        del env['EMMAKEN_JUST_CONFIGURE']
-      Popen(make + make_args, stdout=open(os.path.join(self.get_dir(), 'make'), 'w'),
-                              stderr=open(os.path.join(self.get_dir(), 'make_err'), 'w'), env=env).communicate()[0]
-      bc_file = os.path.join(project_dir, 'bc.bc')
-      self.do_link(map(lambda lib: os.path.join(project_dir, 'cbuild', lib) if build_subdir else os.path.join(project_dir, lib), generated_libs), bc_file)
-      if cache and GlobalCache is not None:
-        print >> sys.stderr, '<save build into cache> ',
-        GlobalCache[cache_name] = open(bc_file, 'rb').read()
-      return bc_file
 
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
@@ -3138,7 +3030,7 @@ if 'benchmark' not in str(sys.argv):
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      if LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      if Building.LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
 
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
@@ -3216,9 +3108,7 @@ if 'benchmark' not in str(sys.argv):
                    force_c=True)
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
-      global LLVM_OPTS
-
-      if LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+      if Building.LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
 
@@ -3238,10 +3128,8 @@ if 'benchmark' not in str(sys.argv):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      global LLVM_OPTS
-
       # llvm-link failure when using clang, LLVM bug 9498, still relevant?
-      if Settings.RELOOP or LLVM_OPTS: return self.skip('TODO')
+      if Settings.RELOOP or Building.LLVM_OPTS: return self.skip('TODO')
       if Settings.USE_TYPED_ARRAYS == 2 or Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
       Settings.USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
@@ -3265,7 +3153,7 @@ if 'benchmark' not in str(sys.argv):
                              'psobjs.c:195', 'pshglob.c:165', 'ttload.c:694', 'ttmtx.c:195', 'sfobjs.c:957',
                              'sfobjs.c:958', 'ftstream.c:369', 'ftstream.c:372', 'ttobjs.c:1007'] # And many more...
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS += [
+      Building.COMPILER_TEST_OPTS += [
         '-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
         '-I' + path_from_root('tests', 'freetype', 'include'),
         '-I' + path_from_root('tests', 'poppler', 'include'),
@@ -3306,8 +3194,8 @@ if 'benchmark' not in str(sys.argv):
 
       # Combine libraries
 
-      combined = os.path.join(self.get_building_dir(), 'combined.bc')
-      self.do_link([freetype, poppler], combined)
+      combined = os.path.join(self.get_build_dir(), 'combined.bc')
+      Building.link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
                       lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
@@ -3390,7 +3278,7 @@ if 'benchmark' not in str(sys.argv):
                    includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
                              path_from_root('tests', 'openjpeg', 'codec'),
                              path_from_root('tests', 'openjpeg', 'common'),
-                             os.path.join(self.get_building_dir(), 'openjpeg')],
+                             os.path.join(self.get_build_dir(), 'openjpeg')],
                    force_c=True,
                    post_build=post,
                    output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
@@ -3416,7 +3304,7 @@ if 'benchmark' not in str(sys.argv):
     # to process.
     def test_cases(self):
       Settings.CHECK_OVERFLOWS = 0
-      if LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
+      if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
@@ -3440,7 +3328,7 @@ if 'benchmark' not in str(sys.argv):
       self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc
 
     def test_autodebug(self):
-      if LLVM_OPTS: return self.skip('LLVM opts mess us up')
+      if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
 
       # Run a test that should work, generating some code
       self.test_structs()
@@ -3493,6 +3381,38 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, '*hello slim world*', build_ll_hook=hook)
 
     def test_profiling(self):
+      src = '''
+          #include <emscripten.h>
+          #include <unistd.h>
+
+          int main()
+          {
+            EMSCRIPTEN_PROFILE_INIT(3);
+            EMSCRIPTEN_PROFILE_BEGIN(0);
+            usleep(10 * 1000);
+            EMSCRIPTEN_PROFILE_END(0);
+            EMSCRIPTEN_PROFILE_BEGIN(1);
+            usleep(50 * 1000);
+            EMSCRIPTEN_PROFILE_END(1);
+            EMSCRIPTEN_PROFILE_BEGIN(2);
+            usleep(250 * 1000);
+            EMSCRIPTEN_PROFILE_END(2);
+            return 0;
+          }
+        '''
+
+      def post1(filename):
+        src = open(filename, 'a')
+        src.write('''
+          Profiling.dump();
+        ''')
+        src.close()
+
+      self.do_run(src, '''Profiling data:
+Block 0: ''', post_build=post1)
+
+      # Part 2: old JS version
+
       Settings.PROFILE = 1
       Settings.INVOKE_RUN = 0
 
@@ -3539,7 +3459,6 @@ if 'benchmark' not in str(sys.argv):
         ''')
         src.close()
 
-      # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
       self.do_run(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
 
     ### Integration tests
@@ -3867,7 +3786,7 @@ Child2:9
     def test_safe_heap(self):
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
       if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
-      if LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
+      if Building.LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
 
       src = '''
         #include<stdio.h>
@@ -3977,7 +3896,7 @@ Child2:9
 
       new_filename = os.path.join(dirname, 'new.bc')
       shutil.copy(filename + '.o', new_filename)
-      self.do_emscripten(new_filename, append_ext=False)
+      Building.emscripten(new_filename, append_ext=False)
 
       shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
       self.do_run(None, 'test\n', basename='new.cpp', no_build=True)
@@ -4162,9 +4081,7 @@ class %s(T):
   def setUp(self):
     super(%s, self).setUp()
   
-    global COMPILER, LLVM_OPTS, COMPILER_TEST_OPTS
-
-    COMPILER = %r
+    Building.COMPILER = %r
     llvm_opts = %d
     embetter = %d
     quantum_size = %d
@@ -4174,7 +4091,7 @@ class %s(T):
     Settings.QUANTUM_SIZE = quantum_size
     Settings.ASSERTIONS = 1-embetter
     Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
-    LLVM_OPTS = llvm_opts
+    Building.LLVM_OPTS = llvm_opts
     Settings.AUTO_OPTIMIZE = 0
     Settings.CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     Settings.CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
@@ -4191,10 +4108,10 @@ class %s(T):
     if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
-    if LLVM_OPTS:
+    if Building.LLVM_OPTS:
       self.pick_llvm_opts(3)
 
-    COMPILER_TEST_OPTS = ['-g']
+    Building.COMPILER_TEST_OPTS = ['-g']
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
@@ -4240,11 +4157,11 @@ else:
   except:
     pass
 
-  COMPILER = CLANG
+  Building.COMPILER = CLANG
   JS_ENGINE = SPIDERMONKEY_ENGINE
   #JS_ENGINE = V8_ENGINE
 
-  global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = []
+  Building.COMPILER_TEST_OPTS = []
 
   Settings.QUANTUM_SIZE = 1
   Settings.RELOOP = Settings.OPTIMIZE = 1
@@ -4291,10 +4208,8 @@ else:
       print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False, handpicked=False):
-      global LLVM_OPTS
-
-      LLVM_OPTS = llvm_opts
-      if LLVM_OPTS:
+      Building.LLVM_OPTS = llvm_opts
+      if Building.LLVM_OPTS:
         self.pick_llvm_opts(3, handpicked)
 
       dirname = self.get_dir()
@@ -4443,7 +4358,7 @@ else:
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
 
-      global COMPILER_TEST_OPTS; COMPILER_TEST_OPTS = ['-g']
+      Building.COMPILER_TEST_OPTS = ['-g']
       Settings.CORRECT_SIGNS = 2
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 

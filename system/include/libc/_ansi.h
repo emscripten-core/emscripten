@@ -103,13 +103,13 @@
 
 /* Support gcc's __attribute__ facility.  */
 
-#if defined(EMSCRIPTEN) && defined(_ATTRIBUTE)
-// emscripten fucks up!
-#elif defined(__GNUC__)
+#ifndef _ATTRIBUTE /* XXX Emscripten */
+#ifdef __GNUC__
 #define _ATTRIBUTE(attrs) __attribute__ (attrs)
 #else
 #define _ATTRIBUTE(attrs)
 #endif
+#endif /* XXX Emscripten */
 
 /*  The traditional meaning of 'extern inline' for GCC is not
   to emit the function body unless the address is explicitly

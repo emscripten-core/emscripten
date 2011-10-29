@@ -111,6 +111,7 @@ protected:
 #include <__config>
 #include <iosfwd>
 #include <ios>
+#include <__locale>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -553,11 +554,11 @@ basic_streambuf<_CharT, _Traits>::overflow(int_type __c)
     return traits_type::eof();
 }
 
-extern template class basic_streambuf<char>;
-extern template class basic_streambuf<wchar_t>;
+//extern template class basic_streambuf<char>; /* XXX EMScripten */
+//extern template class basic_streambuf<wchar_t>; /* XXX EMScripten */
 
-extern template class basic_ios<char>;
-extern template class basic_ios<wchar_t>;
+//extern template class basic_ios<char>; /* XXX EMScripten */
+//extern template class basic_ios<wchar_t>; /* XXX EMScripten */
 
 _LIBCPP_END_NAMESPACE_STD
 
