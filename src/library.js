@@ -5372,6 +5372,21 @@ LibraryManager.library = {
   },
   __01getrlimit64_: 'getrlimit',
 
+  // TODO: Implement for real. We just do time used, and no useful data
+  __rusage_struct_layout: Runtime.generateStructInfo(null, '%struct.rusage'),
+  getrusage__deps: ['__rusage_struct_layout'],
+  getrusage: function(resource, rlp) {
+    // %struct.timeval = type { i32, i32 }
+    var timeval = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
+
+    // int getrusage(int resource, struct rusage *rlp);
+    {{{ makeSetValue('rlp', '___rusage_struct_layout.ru_utime+timeval[0]', '1', 'i32') }}}
+    {{{ makeSetValue('rlp', '___rusage_struct_layout.ru_utime+timeval[1]', '2', 'i32') }}}
+    {{{ makeSetValue('rlp', '___rusage_struct_layout.ru_stime+timeval[0]', '3', 'i32') }}}
+    {{{ makeSetValue('rlp', '___rusage_struct_layout.ru_stime+timeval[1]', '4', 'i32') }}}
+    return 0;
+  },
+
   // ==========================================================================
   // pthread.h (stubs for mutexes only - no thread support yet!)
   // ==========================================================================
