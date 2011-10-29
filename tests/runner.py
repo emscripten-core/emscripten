@@ -2910,6 +2910,8 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, expected)
       CORRECT_SIGNS = 0
 
+    # libc++ tests
+
     def test_iostream(self):
       src = '''
         #include <iostream>
@@ -2922,6 +2924,41 @@ if 'benchmark' not in str(sys.argv):
       '''
 
       self.do_run(src, 'hello world')
+
+    def test_stdvec(self):
+      src = '''
+        #include <vector>
+        #include <stdio.h>
+
+        struct S {
+            int a;
+            float b;
+        };
+
+        void foo(int a, float b)
+        {
+          printf("%d:%.2f\\n", a, b);
+        }
+
+        int main ( int argc, char *argv[] )
+        {
+          std::vector<S> ar;  
+          S s;
+
+          s.a = 789;
+          s.b = 123.456f;
+          ar.push_back(s);
+
+          s.a = 0;
+          s.b = 100.1f;
+          ar.push_back(s);
+
+          foo(ar[0].a, ar[0].b);
+          foo(ar[1].a, ar[1].b);
+        }
+      '''
+
+      self.do_run(src, '789:123.46\n0:100.1')
 
     ### 'Big' tests
 
