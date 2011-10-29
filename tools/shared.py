@@ -220,7 +220,7 @@ class Building:
   COMPILER_TEST_OPTS = []
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers) '''
@@ -243,12 +243,14 @@ class Building:
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+    for k, v in env_init.iteritems():
+      env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
-      Popen(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure'), 'w'),
+      Popen(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure_'), 'w'),
                                         stderr=open(os.path.join(output_dir, 'configure_err'), 'w'), env=env).communicate()[0]
       del env['EMMAKEN_JUST_CONFIGURE']
-    Popen(make + make_args, stdout=open(os.path.join(output_dir, 'make'), 'w'),
+    Popen(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
                             stderr=open(os.path.join(output_dir, 'make_err'), 'w'), env=env).communicate()[0]
     bc_file = os.path.join(project_dir, 'bc.bc')
     Building.link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
@@ -261,7 +263,7 @@ class Building:
   @staticmethod
   def link(files, target):
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert not os.path.exists(target) or output is None or 'Could not open input file' not in output, 'Linking error: ' + output
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
