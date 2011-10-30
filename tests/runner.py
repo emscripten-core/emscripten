@@ -236,6 +236,8 @@ if 'benchmark' not in str(sys.argv):
           js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE]
         if Settings.USE_TYPED_ARRAYS == 2:
           js_engines = [SPIDERMONKEY_ENGINE] # when oh when will v8 support typed arrays in the console
+        js_engines = filter(lambda engine: os.path.exists(engine[0]), js_engines)
+        assert len(js_engines) > 0, 'No JS engine present to run this test with. Check ~/.emscripten and the paths therein.'
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
@@ -2910,6 +2912,8 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, expected)
       CORRECT_SIGNS = 0
 
+    # libc++ tests
+
     def test_iostream(self):
       src = '''
         #include <iostream>
@@ -2922,6 +2926,41 @@ if 'benchmark' not in str(sys.argv):
       '''
 
       self.do_run(src, 'hello world')
+
+    def test_stdvec(self):
+      src = '''
+        #include <vector>
+        #include <stdio.h>
+
+        struct S {
+            int a;
+            float b;
+        };
+
+        void foo(int a, float b)
+        {
+          printf("%d:%.2f\\n", a, b);
+        }
+
+        int main ( int argc, char *argv[] )
+        {
+          std::vector<S> ar;  
+          S s;
+
+          s.a = 789;
+          s.b = 123.456f;
+          ar.push_back(s);
+
+          s.a = 0;
+          s.b = 100.1f;
+          ar.push_back(s);
+
+          foo(ar[0].a, ar[0].b);
+          foo(ar[1].a, ar[1].b);
+        }
+      '''
+
+      self.do_run(src, '789:123.46\n0:100.1')
 
     ### 'Big' tests
 
