@@ -236,6 +236,8 @@ if 'benchmark' not in str(sys.argv):
           js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE]
         if Settings.USE_TYPED_ARRAYS == 2:
           js_engines = [SPIDERMONKEY_ENGINE] # when oh when will v8 support typed arrays in the console
+        js_engines = filter(lambda engine: os.path.exists(engine[0]), js_engines)
+        assert len(js_engines) > 0, 'No JS engine present to run this test with. Check ~/.emscripten and the paths therein.'
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
