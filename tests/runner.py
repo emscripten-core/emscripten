@@ -4184,7 +4184,21 @@ else:
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.
 
-  print "Running Emscripten benchmarks..."
+  fingerprint = [time.asctime()]
+  try:
+    fingerprint.append('em: ' + Popen(['git', 'show'], stdout=PIPE).communicate()[0].split('\n')[0])
+  except:
+    pass
+  try:
+    d = os.getcwd()
+    os.chdir(os.path.expanduser('~/Dev/mozilla-central'))
+    fingerprint.append('sm: ' + filter(lambda line: 'changeset' in line, 
+                                       Popen(['hg', 'tip'], stdout=PIPE).communicate()[0].split('\n'))[0])
+  except:
+    pass
+  finally:
+    os.chdir(d)
+  print 'Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint)
 
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
 
