@@ -238,6 +238,12 @@ class Building:
     except:
       old_dir = None
     os.chdir(project_dir)
+    generated_libs = map(lambda lib: os.path.join(project_dir, lib), generated_libs)
+    #for lib in generated_libs:
+    #  try:
+    #    os.unlink(lib) # make sure compilation completed successfully
+    #  except:
+    #    pass
     env = os.environ.copy()
     env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
     env['EMMAKEN_COMPILER'] = Building.COMPILER
@@ -253,7 +259,7 @@ class Building:
     Popen(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
                             stderr=open(os.path.join(output_dir, 'make_err'), 'w'), env=env).communicate()[0]
     bc_file = os.path.join(project_dir, 'bc.bc')
-    Building.link(map(lambda lib: os.path.join(project_dir, lib), generated_libs), bc_file)
+    Building.link(generated_libs, bc_file)
     if cache is not None:
       cache[cache_name] = open(bc_file, 'rb').read()
     if old_dir:
