@@ -931,7 +931,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
     generated = generated.concat(itemsDict.function).concat(data.unparsedFunctions);
 
-    if (!mainPass) return generated.map(function(item) { return item.JS }).join('\n');
+    if (!mainPass) {
+      Functions.allIdents = Functions.allIdents.concat(itemsDict.function.map(function(func) {
+        return func.ident;
+      }));
+      return generated.map(function(item) { return item.JS }).join('\n');
+    }
 
     // We are ready to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
@@ -967,6 +972,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
       print(postParts[1]);
     print(shellParts[1]);
+    // Print out some useful metadata (for additional optimizations later, like the eliminator)
+    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(Functions.allIdents) + '\n');
     return null;
   }
 

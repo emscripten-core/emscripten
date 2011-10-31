@@ -91,3 +91,5 @@ function py() {
   var $8 = $4 + 12;
   HEAP[$8] = $7;
 }
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h"]
+
