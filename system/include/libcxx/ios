@@ -122,7 +122,7 @@ public:
     operator unspecified-bool-type() const;
     bool operator!() const;
     iostate rdstate() const;
-    void clear(iostate state = goodbit);
+    void clear(iostate state = goodbit) {} /* XXX EMScripten */
     void setstate(iostate state);
     bool good() const;
     bool eof() const;
