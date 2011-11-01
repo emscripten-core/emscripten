@@ -934,6 +934,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     if (!mainPass) {
       Functions.allIdents = Functions.allIdents.concat(itemsDict.function.map(function(func) {
         return func.ident;
+      }).filter(function(func) {
+        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
       }));
       return generated.map(function(item) { return item.JS }).join('\n');
     }
