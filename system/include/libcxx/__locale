@@ -57,7 +57,7 @@ public:
     */
 
     // construct/copy/destroy:
-    locale()  _NOEXCEPT;
+    locale()  _NOEXCEPT {} /* XXX EMScripten */
     locale(const locale&)  _NOEXCEPT;
     explicit locale(const char*);
     explicit locale(const string&);
