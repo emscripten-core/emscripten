@@ -113,7 +113,7 @@ class Eliminator
   #   @returns: The number of variables eliminated, or undefined if skipped.
   run: ->
     # Our optimization does not account for closures.
-    if not @isGenerated then return undefined
+    if not @isGenerated() then return undefined
 
     @calculateBasicVarStats()
     @analyzeInitialValues()

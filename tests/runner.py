@@ -163,6 +163,13 @@ class RunnerCore(unittest.TestCase):
   def run_native(self, filename, args):
     Popen([filename+'.native'] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
+  def assertIdentical(self, x, y):
+    if x != y:
+      raise Exception("Expected to have '%s' == '%s', diff:\n\n%s" % (
+        limit_size(x), limit_size(y),
+        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
+      ))
+
   def assertContained(self, value, string):
     if type(value) is not str: value = value() # lazy loading
     if type(string) is not str: string = string()
@@ -4178,7 +4185,7 @@ TT = %s
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
       output = Popen([COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
-      self.assertEquals(output, expected)
+      self.assertIdentical(expected, output)
 
 else:
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
