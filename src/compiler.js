@@ -70,12 +70,35 @@ eval(processMacros(preprocess(read('runtime.js'))));
 
 // Read llvm
 
-var raw = read(ll_file);
-if (FAKE_X86_FP80) {
-  raw = raw.replace(/x86_fp80/g, 'double');
+var lines;
+
+if( ll_file && ll_file.length != 0 )
+{
+	var raw = read(ll_file);
+	if (FAKE_X86_FP80)
+		raw = raw.replace(/x86_fp80/g, 'double');
+		
+	lines = raw.split('\n');
 }
-var lines = raw.split('\n');
-raw = null;
+else
+{
+	lines = [];
+	
+	// Use stdin
+	while( true )
+	{
+		var line = readline();
+		
+		if( !line )
+			break;
+		
+		if (FAKE_X86_FP80)
+			line = line.replace(/x86_fp80/g, 'double');
+
+		lines.push(line);
+	}
+	
+}
 
 // Do it
 

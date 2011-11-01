@@ -54,7 +54,7 @@ def assemble(filepath):
   Returns:
     The path to the assembled file.
   """
-  if not filepath.endswith('.bc'):
+  if not filepath is None and filepath.endswith('.bc'):
     command = [shared.LLVM_AS, '-o=-', filepath]
     with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
     if ret != 0: raise RuntimeError('Could not assemble %s.' % filepath)
@@ -72,7 +72,7 @@ def disassemble(filepath):
   Returns:
     The path to the disassembled file.
   """
-  if not filepath.endswith('.ll'):
+  if not filepath is None and filepath.endswith('.ll'):
     command = [shared.LLVM_DIS, '-o=-', filepath] + shared.LLVM_DIS_OPTS
     with get_temp_file('.ll') as out: ret = subprocess.call(command, stdout=out)
     if ret != 0: raise RuntimeError('Could not disassemble %s.' % filepath)
@@ -89,6 +89,8 @@ def optimize(filepath):
   Returns:
     The path to the optimized file.
   """
+  if filepath is None:
+    return filepath
   command = [shared.LLVM_OPT, '-o=-', filepath] + shared.pick_llvm_opts(3, True)
   with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not optimize %s.' % filepath)
@@ -150,19 +152,28 @@ def emscript(infile, settings, outfile):
   s.write(settings)
   s.close()
   compiler = path_from_root('src', 'compiler.js')
-  shared.run_js(shared.COMPILER_ENGINE, compiler, [settings_file, infile], stdout=outfile, stderr=subprocess.STDOUT, cwd=path_from_root('src'))
+  if infile is None:
+    infile = '' # Needed for some calling conventions
+    read_stdin = True
+  else:
+    read_stdin = False
+
+  shared.run_js(shared.COMPILER_ENGINE, compiler, [settings_file, infile], stdout=outfile, cwd=path_from_root('src'),
+                read_stdin=read_stdin)
   outfile.close()
 
 
 def main(args):
   # Construct a final linked and disassembled file.
-  if args.dlmalloc or args.optimize or not has_annotations(args.infile):
-    args.infile = assemble(args.infile)
-    if args.dlmalloc:
-      malloc = compile_malloc()
-      args.infile = link(args.infile, malloc)
-    if args.optimize: args.infile = optimize(args.infile)
-  args.infile = disassemble(args.infile)
+  if args.infile is not None:
+    if args.dlmalloc or args.optimize or not has_annotations(args.infile):
+      args.infile = assemble(args.infile)
+      if args.dlmalloc:
+        malloc = compile_malloc()
+        args.infile = link(args.infile, malloc)
+      if args.optimize:
+        args.infile = optimize(args.infile)
+    args.infile = disassemble(args.infile)
 
   # Prepare settings for serialization to JSON.
   settings = {}
@@ -249,7 +260,7 @@ def main(args):
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
+      usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* [infile]',
       description=('Compile an LLVM assembly file to Javascript. Accepts both '
                    'human-readable (*.ll) and bitcode (*.bc) formats.'),
       epilog='You should have an ~/.emscripten file set up; see settings.py.')
@@ -278,9 +289,12 @@ if __name__ == '__main__':
 
   # Convert to the same format that argparse would have produced.
   keywords, positional = parser.parse_args()
-  if len(positional) != 1:
-    raise RuntimeError('Must provide exactly one positional argument.')
-  keywords.infile = os.path.abspath(positional[0])
+  if len(positional) == 0:
+    keywords.infile = None; # Default to stdin
+  elif len(positional) == 1:
+    keywords.infile = os.path.abspath(positional[0])
+  else:
+    raise RuntimeError('May not provide more than one positional argument.')
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 

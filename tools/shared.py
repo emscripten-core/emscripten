@@ -1,4 +1,4 @@
-import shutil, time, os, json
+import shutil, time, os, json, sys
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -63,7 +63,7 @@ if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
 
 # Utilities
 
-def timeout_run(proc, timeout, note):
+def timeout_run(proc, timeout, note, input=None):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
@@ -71,11 +71,18 @@ def timeout_run(proc, timeout, note):
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
       raise Exception("Timed out: " + note)
-  return proc.communicate()[0]
+  return proc.communicate(input=input)[0]
 
-def run_js(engine, filename, args=[], check_timeout=False, stdout=PIPE, stderr=STDOUT, cwd=None):
+def run_js(engine, filename, args=[], check_timeout=False, read_stdin=False, stdout=PIPE, cwd=None):
+
+  if read_stdin:
+    input = ''
+    for line in sys.stdin:
+      input += line + '\n'
+  else:
+    input = None
   return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
-                     stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
+                     stdout=stdout, cwd=cwd), 15*60 if check_timeout else None, 'Execution', input=input)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
