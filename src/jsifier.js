@@ -411,7 +411,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     funcs: {},
     seen: {},
     processItem: function(item) {
-      if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return null;
       if (this.seen[item.__uid__]) return null;
       if (item.intertype == 'function') {
         this.funcs[item.ident] = item;
@@ -434,6 +433,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (func.splitItems > 0) return null;
 
       // We have this function all reconstructed, go and finalize it's JS!
+
+      if (IGNORED_FUNCTIONS.indexOf(func.ident) >= 0) return null;
 
       func.JS = '\nfunction ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
 
