@@ -285,7 +285,7 @@ public:
 
     // 27.5.2.3 locales:
     locale imbue(const locale& __loc);
-    locale getloc() const;
+    locale getloc() const { return locale(); } /* XXX EMScripten */
 
     // 27.5.2.5 storage:
     static int xalloc();
@@ -327,7 +327,7 @@ protected:
     ios_base() {// purposefully does no initialization
                }
 
-    void init(void* __sb);
+    void init(void* __sb) {}
     _LIBCPP_ALWAYS_INLINE void* rdbuf() const {return __rdbuf_;}
 
     _LIBCPP_ALWAYS_INLINE
