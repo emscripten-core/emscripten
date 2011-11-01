@@ -92,7 +92,7 @@ private:
     void __install_ctor(const locale&, facet*, long);
     static locale& __global();
     bool has_facet(id&) const;
-    const facet* use_facet(id&) const;
+    const facet* use_facet(id&) const { return 0; } /* XXX EMScripten */
 
     template <class _Facet> friend bool has_facet(const locale&)  _NOEXCEPT;
     template <class _Facet> friend const _Facet& use_facet(const locale&);
