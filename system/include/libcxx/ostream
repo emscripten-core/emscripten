@@ -204,6 +204,7 @@ protected:
     basic_ostream() {}  // extension, intentially does not initialize
 };
 
+/*
 template <class _CharT, class _Traits>
 class _LIBCPP_VISIBLE basic_ostream<_CharT, _Traits>::sentry
 {
@@ -1284,7 +1285,7 @@ operator<<(basic_ostream<_CharT, _Traits>& __os, const bitset<_Size>& __x)
                         (use_facet<ctype<_CharT> >(__os.getloc()).widen('0'),
                          use_facet<ctype<_CharT> >(__os.getloc()).widen('1'));
 }
-
+*/
 //extern template class basic_ostream<char>; /* XXX EMScripten */
 //extern template class basic_ostream<wchar_t>; /* XXX EMScripten */
 

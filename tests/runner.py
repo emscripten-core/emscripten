@@ -2927,7 +2927,7 @@ if 'benchmark' not in str(sys.argv):
 
         int main()
         {
-          std::cout << "hello world" << std::endl;
+          std::cout << "hello world";
           return 0;
         }
       '''
