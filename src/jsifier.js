@@ -411,7 +411,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     funcs: {},
     seen: {},
     processItem: function(item) {
-      if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return null;
       if (this.seen[item.__uid__]) return null;
       if (item.intertype == 'function') {
         this.funcs[item.ident] = item;
@@ -434,6 +433,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (func.splitItems > 0) return null;
 
       // We have this function all reconstructed, go and finalize it's JS!
+
+      if (IGNORED_FUNCTIONS.indexOf(func.ident) >= 0) return null;
 
       func.JS = '\nfunction ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
 
@@ -931,7 +932,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
     generated = generated.concat(itemsDict.function).concat(data.unparsedFunctions);
 
-    if (!mainPass) return generated.map(function(item) { return item.JS }).join('\n');
+    if (!mainPass) {
+      Functions.allIdents = Functions.allIdents.concat(itemsDict.function.map(function(func) {
+        return func.ident;
+      }).filter(function(func) {
+        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
+      }));
+      return generated.map(function(item) { return item.JS }).join('\n');
+    }
 
     // We are ready to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
@@ -967,6 +975,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
       print(postParts[1]);
     print(shellParts[1]);
+    // Print out some useful metadata (for additional optimizations later, like the eliminator)
+    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(Functions.allIdents) + '\n');
     return null;
   }
 

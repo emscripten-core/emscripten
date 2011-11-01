@@ -228,6 +228,9 @@ var Functions = {
   // All functions that will be implemented in this file
   implementedFunctions: null,
 
+  // All the function idents seen so far
+  allIdents: [],
+
   indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
 
   // Mark a function as needing indexing, and returns the index

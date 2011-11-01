@@ -5,7 +5,7 @@ function f() {
   var z = y / 2;
   HEAP[123] = z;
 }
-var g = function (a1, a2) {
+function g(a1, a2) {
   var a = 1;
   var b = a * 2;
   var c = b - 1;
@@ -39,7 +39,7 @@ var g = function (a1, a2) {
     unquoted: 3,
     4: 5
   };
-};
+}
 function h() {
   var out;
   bar(hello);
@@ -91,3 +91,19 @@ function py() {
   var $8 = $4 + 12;
   HEAP[$8] = $7;
 }
+function otherPy() {
+  var $4 = HEAP[__PyThreadState_Current];
+  var $5 = $4 + 12;
+  var $7 = HEAP[$5] + 1;
+  var $8 = $4 + 12;
+  HEAP[$8] = $7;
+}
+var anon = function(x) {
+  var $4 = HEAP[__PyThreadState_Current];
+  var $5 = $4 + 12;
+  var $7 = HEAP[$5] + 1;
+  var $8 = $4 + 12;
+  HEAP[$8] = $7;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py"]
+

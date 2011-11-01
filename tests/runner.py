@@ -163,6 +163,13 @@ class RunnerCore(unittest.TestCase):
   def run_native(self, filename, args):
     Popen([filename+'.native'] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
+  def assertIdentical(self, x, y):
+    if x != y:
+      raise Exception("Expected to have '%s' == '%s', diff:\n\n%s" % (
+        limit_size(x), limit_size(y),
+        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
+      ))
+
   def assertContained(self, value, string):
     if type(value) is not str: value = value() # lazy loading
     if type(string) is not str: string = string()
@@ -4178,13 +4185,27 @@ TT = %s
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
       output = Popen([COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
-      self.assertEquals(output, expected)
+      self.assertIdentical(expected, output)
 
 else:
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.
 
-  print "Running Emscripten benchmarks..."
+  fingerprint = [time.asctime()]
+  try:
+    fingerprint.append('em: ' + Popen(['git', 'show'], stdout=PIPE).communicate()[0].split('\n')[0])
+  except:
+    pass
+  try:
+    d = os.getcwd()
+    os.chdir(os.path.expanduser('~/Dev/mozilla-central'))
+    fingerprint.append('sm: ' + filter(lambda line: 'changeset' in line, 
+                                       Popen(['hg', 'tip'], stdout=PIPE).communicate()[0].split('\n'))[0])
+  except:
+    pass
+  finally:
+    os.chdir(d)
+  print 'Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint)
 
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
 
