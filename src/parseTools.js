@@ -719,7 +719,12 @@ function getHeapOffset(offset, type) {
     if (getNativeFieldSize(type) > 4) {
       type = 'i32'; // XXX we emulate 64-bit values as 32
     }
-    return '((' + offset + ')>>' + (Math.log(getNativeTypeSize(type))/Math.LN2) + ')';
+    var shifts = Math.log(getNativeTypeSize(type))/Math.LN2;
+    if (shifts != 0) {
+      return '((' + offset + ')>>' + (shifts) + ')';
+    } else {
+      return '(' + offset + ')';
+    }
   }
 }
 
@@ -898,21 +903,33 @@ function getFastValue(a, op, b) {
   if (isNumber(a) && isNumber(b)) {
     return eval(a + op + b);
   }
-  if (op == '*') {
-    if (!a) a = 1;
-    if (!b) b = 1;
-    if (a == 0 || b == 0) {
-      return 0;
-    } else if (a == 1) {
-      return b;
-    } else if (b == 1) {
-      return a;
+  if (op in set('*', '/')) {
+    if (!a) a = '1';
+    if (!b) b = '1';
+    if (op == '*') {
+      if (a == 0 || b == 0) {
+        return '0';
+      } else if (a == 1) {
+        return b;
+      } else if (b == 1) {
+        return a;
+      }
+    } else {
+      if (a == '0') {
+        return '0';
+      } else if (b == 1) {
+        return a;
+      }
     }
   } else if (op in set('+', '-')) {
-    if (!a) a = 0;
-    if (!b) b = 0;
+    if (!a) a = '0';
+    if (!b) b = '0';
+    if (b[0] == '-') {
+      op = op == '+' ? '-' : '+';
+      b = b.substr(1);
+    }
     if (a == 0) {
-      return b;
+      return op == '+' ? b : '(-' + b + ')';
     } else if (b == 0) {
       return a;
     }
@@ -1218,11 +1235,11 @@ function processMathop(item) { with(item) {
 
   switch (op) {
     // basic integer ops
-    case 'add': return handleOverflow(ident1 + ' + ' + ident2, bits);
-    case 'sub': return handleOverflow(ident1 + ' - ' + ident2, bits);
-    case 'sdiv': case 'udiv': return makeRounding(ident1 + '/' + ident2, bits, op[0] === 's');
-    case 'mul': return handleOverflow(ident1 + ' * ' + ident2, bits);
-    case 'urem': case 'srem': return ident1 + ' % ' + ident2;
+    case 'add': return handleOverflow(getFastValue(ident1, '+', ident2), bits);
+    case 'sub': return handleOverflow(getFastValue(ident1, '-', ident2), bits);
+    case 'sdiv': case 'udiv': return makeRounding(getFastValue(ident1, '/', ident2), bits, op[0] === 's');
+    case 'mul': return handleOverflow(getFastValue(ident1, '*', ident2), bits);
+    case 'urem': case 'srem': return getFastValue(ident1, '%', ident2);
     case 'or': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for or: ' + bits);
@@ -1273,10 +1290,10 @@ function processMathop(item) { with(item) {
       return ident1 + ' >>> ' + ident2;
     }
     // basic float ops
-    case 'fadd': return ident1 + ' + ' + ident2;
-    case 'fsub': return ident1 + ' - ' + ident2;
-    case 'fdiv': return ident1 + ' / ' + ident2;
-    case 'fmul': return ident1 + ' * ' + ident2;
+    case 'fadd': return getFastValue(ident1, '+', ident2);
+    case 'fsub': return getFastValue(ident1, '-', ident2);
+    case 'fdiv': return getFastValue(ident1, '/', ident2);
+    case 'fmul': return getFastValue(ident1, '*', ident2);
     case 'uitofp': case 'sitofp': return ident1;
     case 'fptoui': case 'fptosi': return makeRounding(ident1, bitsLeft, op === 'fptosi');
 
