@@ -463,6 +463,9 @@ mergeInto(LibraryManager.library, {
     return r + (g << 8) + (b << 16);
   },
 
+  SDL_WM_GrabInput: function() {},
+  SDL_ShowCursor: function() {},
+
   // SDL_Image
 
   IMG_Load: function(filename) {
@@ -551,5 +554,9 @@ mergeInto(LibraryManager.library, {
 
 //SDL_CreateYUVOverlay
 //SDL_CreateThread, SDL_WaitThread etc
+
+  // SDL Mixer
+
+  Mix_OpenAudio: function() { return -1 },
 });
 
