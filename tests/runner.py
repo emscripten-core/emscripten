@@ -4236,7 +4236,7 @@ else:
     Settings.TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
   Settings.FAST_MEMORY = 10*1024*1024
 
-  TEST_REPS = 4
+  TEST_REPS = 10
   TOTAL_TESTS = 6
 
   tests_done = 0
