@@ -784,7 +784,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       case VAR_NATIVIZED: {
         return value; // We have the actual value here
       }
-      case VAR_EMULATED: return makeGetValue(value, null, item.type, 0, item.unsigned);
+      case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned);
       default: throw "unknown [load] impl: " + impl;
     }
   });

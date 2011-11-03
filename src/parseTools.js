@@ -900,12 +900,17 @@ function makeCopyValues(dest, src, num, type, modifier) {
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
 function getFastValue(a, op, b) {
+  a = a.toString();
+  b = b.toString();
   if (isNumber(a) && isNumber(b)) {
     return eval(a + op + b).toString();
   }
+  if (op in set('+', '*') && isNumber(a)) { // if one of them is a number, keep it last
+    var c = b;
+    b = a;
+    a = c;
+  }
   if (op in set('*', '/')) {
-    if (!a) a = '1';
-    if (!b) b = '1';
     if (op == '*') {
       if (a == 0 || b == 0) {
         return '0';
@@ -922,8 +927,6 @@ function getFastValue(a, op, b) {
       }
     }
   } else if (op in set('+', '-')) {
-    if (!a) a = '0';
-    if (!b) b = '0';
     if (b[0] == '-') {
       op = op == '+' ? '-' : '+';
       b = b.substr(1);
