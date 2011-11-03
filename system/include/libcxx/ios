@@ -122,7 +122,7 @@ public:
     operator unspecified-bool-type() const;
     bool operator!() const;
     iostate rdstate() const;
-    void clear(iostate state = goodbit) {} /* XXX EMScripten */
+    void clear(iostate state = goodbit);
     void setstate(iostate state);
     bool good() const;
     bool eof() const;
@@ -308,7 +308,7 @@ public:
     static bool sync_with_stdio(bool __sync = true);
 
     _LIBCPP_INLINE_VISIBILITY iostate rdstate() const;
-    void clear(iostate __state = goodbit);
+    void clear(iostate __state = goodbit) {} /* XXX EMScripten */
     _LIBCPP_INLINE_VISIBILITY void setstate(iostate __state);
 
     _LIBCPP_INLINE_VISIBILITY bool good() const;
@@ -327,7 +327,7 @@ protected:
     ios_base() {// purposefully does no initialization
                }
 
-    void init(void* __sb) {}
+    void init(void* __sb) {} /* XXX EMScripten */
     _LIBCPP_ALWAYS_INLINE void* rdbuf() const {return __rdbuf_;}
 
     _LIBCPP_ALWAYS_INLINE
