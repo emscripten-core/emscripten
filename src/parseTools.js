@@ -901,7 +901,7 @@ function makeCopyValues(dest, src, num, type, modifier) {
 // Tries to do as much as possible at compile time.
 function getFastValue(a, op, b) {
   if (isNumber(a) && isNumber(b)) {
-    return eval(a + op + b);
+    return eval(a + op + b).toString();
   }
   if (op in set('*', '/')) {
     if (!a) a = '1';
@@ -935,6 +935,27 @@ function getFastValue(a, op, b) {
     }
   }
   return a + op + b;
+}
+
+function getFastValues(list, op) {
+  assert(op == '+');
+  var changed = true;
+  while (changed) {
+    changed = false;
+    for (var i = 0; i < list.length-1; i++) {
+      var fast = getFastValue(list[i], op, list[i+1]);
+      var raw = list[i] + op + list[i+1];
+      if (fast.length < raw.length || fast.indexOf(op) < 0) {
+        list[i] = fast;
+        list.splice(i+1, 1);
+        i--;
+        changed = true;
+        break;
+      }
+    }
+  }
+  if (list.length == 1) return list[0];
+  return list.reduce(function(a, b) { return a + op + b });
 }
 
 function calcFastOffset(ptr, pos, noNeedFirst) {
@@ -1086,10 +1107,8 @@ function getGetElementPtrIndexes(item) {
     }
     type = typeData && typeData.fields[curr] ? typeData.fields[curr] : '';
   });
-  var ret = indexes[0];
-  for (var i = 1; i < indexes.length; i++) {
-    ret = getFastValue(ret, '+', indexes[i]);
-  }
+
+  var ret = getFastValues(indexes, '+');
 
   ret = handleOverflow(ret, 32); // XXX - we assume a 32-bit arch here. If you fail on this, change to 64
 
