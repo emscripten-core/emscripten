@@ -2349,6 +2349,28 @@ if 'benchmark' not in str(sys.argv):
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
+    def test_atoi(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main () {
+          printf("%d\n", atoi(""));
+          printf("%d\n", atoi("a"));
+          printf("%d\n", atoi(" b"));
+          printf("%d\n", atoi(" c "));
+          printf("%d\n", atoi("6"));
+          printf("%d\n", atoi(" 5"));
+          printf("%d\n", atoi("4 "));
+          printf("%d\n", atoi("3 6"));
+          printf("%d\n", atoi(" 3 7"));
+          printf("%d\n", atoi("9 d"));
+          printf("%d\n", atoi(" 8 e"));
+          return 0;
+        }
+        '''
+      self.do_run(src)
+
     def test_sscanf(self):
       src = r'''
         #include <stdio.h>

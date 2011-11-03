@@ -3156,8 +3156,14 @@ LibraryManager.library = {
 
   abs: 'Math.abs', // XXX should be integer?
 
+  atoi__deps: ['isspace', 'isdigit'],
   atoi: function(s) {
-    return Math.floor(Number(Pointer_stringify(s)));
+    var c;
+    while ((c = {{{ makeGetValue('s', 0, 'i8') }}}) && _isspace(c)) s++;
+    if (!c || !_isdigit(c)) return 0;
+    var e = s;
+    while ((c = {{{ makeGetValue('e', 0, 'i8') }}}) && _isdigit(c)) e++;
+    return Math.floor(Number(Pointer_stringify(s).substr(0, e-s)));
   },
 
   exit__deps: ['_exit'],
