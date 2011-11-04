@@ -3372,7 +3372,7 @@ if 'benchmark' not in str(sys.argv):
                              os.path.join(self.get_build_dir(), 'openjpeg')],
                    force_c=True,
                    post_build=post,
-                   output_nicerizer=image_compare)# build_ll_hook=self.do_autodebug)
+                   output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
 
     def test_python(self):
       if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2: return self.skip('TODO: make this work')

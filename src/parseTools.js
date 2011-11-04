@@ -126,6 +126,10 @@ function isPointerType(type) {
   return pointingLevels(type) > 0;
 }
 
+function isIntImplemented(type) {
+  return type[0] == 'i' || isPointerType(type);
+}
+
 function isVoidType(type) {
   return type == 'void';
 }
@@ -899,7 +903,7 @@ function makeCopyValues(dest, src, num, type, modifier) {
 
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
-function getFastValue(a, op, b) {
+function getFastValue(a, op, b, type) {
   a = a.toString();
   b = b.toString();
   if (isNumber(a) && isNumber(b)) {
@@ -918,13 +922,18 @@ function getFastValue(a, op, b) {
         return b;
       } else if (b == 1) {
         return a;
+      } else if (isNumber(b) && type && isIntImplemented(type) && getNativeTypeSize(type) <= 32) {
+        var shifts = Math.log(parseFloat(b))/Math.LN2;
+        if (shifts % 1 == 0) {
+          return '(' + a + '<<' + shifts + ')';
+        }
       }
     } else {
       if (a == '0') {
         return '0';
       } else if (b == 1) {
         return a;
-      }
+      } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
     }
   } else if (op in set('+', '-')) {
     if (b[0] == '-') {
@@ -940,13 +949,13 @@ function getFastValue(a, op, b) {
   return a + op + b;
 }
 
-function getFastValues(list, op) {
+function getFastValues(list, op, type) {
   assert(op == '+');
   var changed = true;
   while (changed) {
     changed = false;
     for (var i = 0; i < list.length-1; i++) {
-      var fast = getFastValue(list[i], op, list[i+1]);
+      var fast = getFastValue(list[i], op, list[i+1], type);
       var raw = list[i] + op + list[i+1];
       if (fast.length < raw.length || fast.indexOf(op) < 0) {
         list[i] = fast;
@@ -963,7 +972,7 @@ function getFastValues(list, op) {
 
 function calcFastOffset(ptr, pos, noNeedFirst) {
   var offset = noNeedFirst ? '0' : makeGetPos(ptr);
-  return getFastValue(offset, '+', pos);
+  return getFastValue(offset, '+', pos, 'i32');
 }
 
 function makeGetPos(ptr) {
@@ -1075,9 +1084,9 @@ function getGetElementPtrIndexes(item) {
   var offset = item.params[1];
   if (offset != 0) {
     if (isStructType(type)) {
-      indexes.push(getFastValue(Types.types[type].flatSize, '*', offset));
+      indexes.push(getFastValue(Types.types[type].flatSize, '*', offset, 'i32'));
     } else {
-      indexes.push(getFastValue(getNativeTypeSize(type), '*', offset));
+      indexes.push(getFastValue(getNativeTypeSize(type), '*', offset, 'i32'));
     }
   }
   item.params.slice(2, item.params.length).forEach(function(arg) {
@@ -1086,7 +1095,7 @@ function getGetElementPtrIndexes(item) {
     var typeData = Types.types[type];
     if (isStructType(type) && typeData.needsFlattening) {
       if (typeData.flatFactor) {
-        indexes.push(getFastValue(curr, '*', typeData.flatFactor));
+        indexes.push(getFastValue(curr, '*', typeData.flatFactor, 'i32'));
       } else {
         if (isNumber(curr)) {
           indexes.push(typeData.flatIndexes[curr]);
@@ -1111,7 +1120,7 @@ function getGetElementPtrIndexes(item) {
     type = typeData && typeData.fields[curr] ? typeData.fields[curr] : '';
   });
 
-  var ret = getFastValues(indexes, '+');
+  var ret = getFastValues(indexes, '+', 'i32');
 
   ret = handleOverflow(ret, 32); // XXX - we assume a 32-bit arch here. If you fail on this, change to 64
 
@@ -1257,11 +1266,11 @@ function processMathop(item) { with(item) {
 
   switch (op) {
     // basic integer ops
-    case 'add': return handleOverflow(getFastValue(ident1, '+', ident2), bits);
-    case 'sub': return handleOverflow(getFastValue(ident1, '-', ident2), bits);
-    case 'sdiv': case 'udiv': return makeRounding(getFastValue(ident1, '/', ident2), bits, op[0] === 's');
-    case 'mul': return handleOverflow(getFastValue(ident1, '*', ident2), bits);
-    case 'urem': case 'srem': return getFastValue(ident1, '%', ident2);
+    case 'add': return handleOverflow(getFastValue(ident1, '+', ident2, item.type), bits);
+    case 'sub': return handleOverflow(getFastValue(ident1, '-', ident2, item.type), bits);
+    case 'sdiv': case 'udiv': return makeRounding(getFastValue(ident1, '/', ident2, item.type), bits, op[0] === 's');
+    case 'mul': return handleOverflow(getFastValue(ident1, '*', ident2, item.type), bits);
+    case 'urem': case 'srem': return getFastValue(ident1, '%', ident2, item.type);
     case 'or': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for or: ' + bits);
@@ -1312,10 +1321,10 @@ function processMathop(item) { with(item) {
       return ident1 + ' >>> ' + ident2;
     }
     // basic float ops
-    case 'fadd': return getFastValue(ident1, '+', ident2);
-    case 'fsub': return getFastValue(ident1, '-', ident2);
-    case 'fdiv': return getFastValue(ident1, '/', ident2);
-    case 'fmul': return getFastValue(ident1, '*', ident2);
+    case 'fadd': return getFastValue(ident1, '+', ident2, item.type);
+    case 'fsub': return getFastValue(ident1, '-', ident2, item.type);
+    case 'fdiv': return getFastValue(ident1, '/', ident2, item.type);
+    case 'fmul': return getFastValue(ident1, '*', ident2, item.type);
     case 'uitofp': case 'sitofp': return ident1;
     case 'fptoui': case 'fptosi': return makeRounding(ident1, bitsLeft, op === 'fptosi');
 
