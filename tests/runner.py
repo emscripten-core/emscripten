@@ -1774,7 +1774,7 @@ if 'benchmark' not in str(sys.argv):
                   if (i == j) continue;
                   if (i < j && i+k > j) continue;
                   if (j < i && j+k > i) continue;
-                  printf("[%d,%d,%d]\\n", i, j, k);
+                  printf("[%d,%d,%d] ", i, j, k);
                   reset(buffer);
                   memcpy(buffer+i, buffer+j, k);
                   dump(buffer);
@@ -4449,16 +4449,8 @@ else:
     def test_raytrace(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['closure']
 
-      old_quantum = Settings.QUANTUM_SIZE
-      old_use_typed_arrays = Settings.USE_TYPED_ARRAYS
-      Settings.QUANTUM_SIZE = 1
-      Settings.USE_TYPED_ARRAYS = 0 # Rounding errors with TA2 are too big in this very rounding-sensitive code. However, TA2 is much faster (2X)
-
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['7', '256'], '256 256', llvm_opts=True, handpicked=False)
-
-      Settings.QUANTUM_SIZE = old_quantum
-      Settings.USE_TYPED_ARRAYS = old_use_typed_arrays
 
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']

@@ -802,7 +802,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   }
 }
 
-var UNROLL_LOOP_LIMIT = 5;
+var UNROLL_LOOP_LIMIT = 8;
 
 function makeSetValues(ptr, pos, value, type, num) {
   function safety(where) {
@@ -854,25 +854,36 @@ function makeCopyValues(dest, src, num, type, modifier) {
     from = from || (src + '+' + '$mcpi$');
     return (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + to + ', ' + from + ')' : '');
   }
-  if (USE_TYPED_ARRAYS in set(0, 1)) {
+  if (USE_TYPED_ARRAYS <= 1) {
     if (isNumber(num)) {
       if (num < UNROLL_LOOP_LIMIT) {
         return range(num).map(function(i) {
           return type !== 'null' ? makeSetValue(dest, i, makeGetValue(src, i, type) + (modifier || ''), type)
                            : // Null is special-cased: We copy over all heaps
                             makeGetSlabs(dest, 'null', true).map(function(slab) {
-                              return slab + '[' + dest + '+' + i + ']=' + slab + '[' + src + '+' + i + ']';
+                              return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']';
                             }).join('; ') + '; ' + safety(dest + '+' + i, src + '+' + i)
         }).join('; ');
       }
     }
-    return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
-      (type !== 'null' ? makeSetValue(dest, '$mcpi$', makeGetValue(src, '$mcpi$', type) + (modifier || ''), type)
-                       : // Null is special-cased: We copy over all heaps
-                        makeGetSlabs(dest, 'null', true).map(function(slab) {
-                          return slab + '[' + dest + '+$mcpi$]=' + slab + '[' + src + '+$mcpi$]'
-                        }).join('; ') + '; ' + safety()
-      ) + '\n' + '}';
+    if (SAFE_HEAP) {
+      return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
+        (type !== 'null' ? makeSetValue(dest, '$mcpi$', makeGetValue(src, '$mcpi$', type) + (modifier || ''), type)
+                         : // Null is special-cased: We copy over all heaps
+                          makeGetSlabs(dest, 'null', true).map(function(slab) {
+                            return slab + '[' + dest + '+$mcpi$]=' + slab + '[' + src + '+$mcpi$]'
+                          }).join('; ') + '; ' + safety()
+        ) + '\n' + '}';
+    }
+    if (USE_TYPED_ARRAYS == 0) {
+      return 'for (var $mcpi_s$=' + src + ',$mcpi_e$=' + src + '+' + num + ',$mcpi_d$=' + dest + '; $mcpi_s$<$mcpi_e$; $mcpi_s$++, $mcpi_d$++) {\n' +
+             '  HEAP[$mcpi_d$] = HEAP[$mcpi_s$];\n' +
+             '}';
+    } else { // USE_TYPED_ARRAYS == 1
+      return 'for (var $mcpi_s$=' + src + ',$mcpi_e$=' + src + '+' + num + ',$mcpi_d$=' + dest + '; $mcpi_s$<$mcpi_e$; $mcpi_s$++, $mcpi_d$++) {\n' +
+             '  IHEAP[$mcpi_d$] = IHEAP[$mcpi_s$]; FHEAP[$mcpi_d$] = FHEAP[$mcpi_s$];\n' +
+             '}';
+    }
   } else { // USE_TYPED_ARRAYS == 2
     return '' +
       'var $src$, $dest$, $stop$, $stop4$, $fast$;\n' +
