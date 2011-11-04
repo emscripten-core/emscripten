@@ -881,7 +881,7 @@ function makeCopyValues(dest, src, num, type, modifier) {
              '}';
     } else { // USE_TYPED_ARRAYS == 1
       return 'for (var $mcpi_s$=' + src + ',$mcpi_e$=' + src + '+' + num + ',$mcpi_d$=' + dest + '; $mcpi_s$<$mcpi_e$; $mcpi_s$++, $mcpi_d$++) {\n' +
-             '  IHEAP[$mcpi_d$] = IHEAP[$mcpi_s$]; FHEAP[$mcpi_d$] = FHEAP[$mcpi_s$];\n' +
+             '  IHEAP[$mcpi_d$] = IHEAP[$mcpi_s$];' + (USE_FHEAP ? ' FHEAP[$mcpi_d$] = FHEAP[$mcpi_s$];' : '') + '\n' +
              '}';
     }
   } else { // USE_TYPED_ARRAYS == 2
@@ -1026,12 +1026,16 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     return ['HEAP'];
   } else if (USE_TYPED_ARRAYS == 1) {
     if (type in Runtime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
-      return ['FHEAP'];
+      return ['FHEAP']; // If USE_FHEAP is false, will fail at runtime. At compiletime we do need it for library stuff.
     } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
       return ['IHEAP'];
     } else {
       assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
-      return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
+      if (USE_FHEAP) {
+        return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
+      } else {
+        return ['IHEAP'];
+      }
     }
   } else { // USE_TYPED_ARRAYS == 2)
     if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
