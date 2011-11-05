@@ -806,7 +806,7 @@ var UNROLL_LOOP_LIMIT = 8;
 
 function makeSetValues(ptr, pos, value, type, num) {
   function safety(where) {
-    where = where || getFastValue(ptr, '+', pos) + '+$mspi$';
+    where = where || getFastValue(ptr, '+', pos) + '+mspi';
     return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + where + ', ' + type + ', 1)' : '');
   }
   if (USE_TYPED_ARRAYS in set(0, 1)) {
@@ -817,41 +817,41 @@ function makeSetValues(ptr, pos, value, type, num) {
         }).join('; ');
       }
     }
-    return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
-      makeSetValue(ptr, getFastValue(pos, '+', '$mspi$'), value, type) + '\n}';
+    return 'for (var mspi = 0; mspi < ' + num + '; mspi++) {\n' +
+      makeSetValue(ptr, getFastValue(pos, '+', 'mspi'), value, type) + '\n}';
   } else { // USE_TYPED_ARRAYS == 2
 /*
-    return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
-           '  HEAP8[' + getFastValue(ptr, '+', pos) + '+$mspi$] = ' + value + safety() + '\n}';
+    return 'for (var mspi = 0; mspi < ' + num + '; mspi++) {\n' +
+           '  HEAP8[' + getFastValue(ptr, '+', pos) + '+mspi] = ' + value + safety() + '\n}';
 */
     return '' +
-      'var $dest$, $stop$, $stop4$, $fast$, $value4$;\n' +
-      '$dest$ = ' + getFastValue(ptr, '+', pos) + ';\n' +
-      '$stop$ = $dest$ + ' + num + ';\n' +
-      '$value4$ = ' + value + ';\n' +
-      'if ($value4$ < 0) $value4$ += 256;\n' +
-      '$value4$ = $value4$ + ($value4$<<8) + ($value4$<<16) + ($value4$*16777216);\n' + 
-      'while ($dest$%4 !== 0 && $dest$ < $stop$) {\n' +
-      '  ' + safety('$dest$') + '; HEAP8[$dest$++] = ' + value + ';\n' +
+      'var dest, stop, stop4, fast, value;\n' +
+      'dest = ' + getFastValue(ptr, '+', pos) + ';\n' +
+      'stop = dest + ' + num + ';\n' +
+      'value = ' + value + ';\n' +
+      'if (value < 0) value += 256;\n' +
+      'value = value + (value<<8) + (value<<16) + (value*16777216);\n' + 
+      'while (dest%4 !== 0 && dest < stop) {\n' +
+      '  ' + safety('dest') + '; HEAP8[dest++] = ' + value + ';\n' +
       '}\n' +
-      '$dest$ >>= 2;\n' +
-      '$stop4$ = $stop$ >> 2;\n' +
-      'while ($dest$ < $stop4$) {\n' +
-         safety('($dest$<<2)+0', '($src$<<2)+0') + ';' + safety('($dest$<<2)+1', '($src$<<2)+1') + ';' + 
-         safety('($dest$<<2)+2', '($src$<<2)+2') + ';' + safety('($dest$<<2)+3', '($src$<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-      '  HEAP32[$dest$++] = $value4$;\n' + // this is the fast inner loop we try hard to stay in
+      'dest >>= 2;\n' +
+      'stop4 = stop >> 2;\n' +
+      'while (dest < stop4) {\n' +
+         safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
+         safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
+      '  HEAP32[dest++] = value;\n' + // this is the fast inner loop we try hard to stay in
       '}\n' +
-      '$dest$ <<= 2;\n' +
-      'while ($dest$ < $stop$) {\n' +
-      '  ' + safety('$dest$') + '; HEAP8[$dest$++] = ' + value + ';\n' +
+      'dest <<= 2;\n' +
+      'while (dest < stop) {\n' +
+      '  ' + safety('dest') + '; HEAP8[dest++] = ' + value + ';\n' +
       '}'
   }
 }
 
 function makeCopyValues(dest, src, num, type, modifier) {
   function safety(to, from) {
-    to = to || (dest + '+' + '$mcpi$');
-    from = from || (src + '+' + '$mcpi$');
+    to = to || (dest + '+' + 'mcpi');
+    from = from || (src + '+' + 'mcpi');
     return (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + to + ', ' + from + ')' : '');
   }
   if (USE_TYPED_ARRAYS <= 1) {
@@ -867,46 +867,46 @@ function makeCopyValues(dest, src, num, type, modifier) {
       }
     }
     if (SAFE_HEAP) {
-      return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
-        (type !== 'null' ? makeSetValue(dest, '$mcpi$', makeGetValue(src, '$mcpi$', type) + (modifier || ''), type)
+      return 'for (var mcpi = 0; mcpi < ' + num + '; mcpi++) {\n' +
+        (type !== 'null' ? makeSetValue(dest, 'mcpi', makeGetValue(src, 'mcpi', type) + (modifier || ''), type)
                          : // Null is special-cased: We copy over all heaps
                           makeGetSlabs(dest, 'null', true).map(function(slab) {
-                            return slab + '[' + dest + '+$mcpi$]=' + slab + '[' + src + '+$mcpi$]'
+                            return slab + '[' + dest + '+mcpi]=' + slab + '[' + src + '+mcpi]'
                           }).join('; ') + '; ' + safety()
         ) + '\n' + '}';
     }
     if (USE_TYPED_ARRAYS == 0) {
-      return 'for (var $mcpi_s$=' + src + ',$mcpi_e$=' + src + '+' + num + ',$mcpi_d$=' + dest + '; $mcpi_s$<$mcpi_e$; $mcpi_s$++, $mcpi_d$++) {\n' +
-             '  HEAP[$mcpi_d$] = HEAP[$mcpi_s$];\n' +
+      return 'for (var mcpi_s=' + src + ',mcpi_e=' + src + '+' + num + ',mcpi_d=' + dest + '; mcpi_s<mcpi_e; mcpi_s++, mcpi_d++) {\n' +
+             '  HEAP[mcpi_d] = HEAP[mcpi_s];\n' +
              '}';
     } else { // USE_TYPED_ARRAYS == 1
-      return 'for (var $mcpi_s$=' + src + ',$mcpi_e$=' + src + '+' + num + ',$mcpi_d$=' + dest + '; $mcpi_s$<$mcpi_e$; $mcpi_s$++, $mcpi_d$++) {\n' +
-             '  IHEAP[$mcpi_d$] = IHEAP[$mcpi_s$];' + (USE_FHEAP ? ' FHEAP[$mcpi_d$] = FHEAP[$mcpi_s$];' : '') + '\n' +
+      return 'for (var mcpi_s=' + src + ',mcpi_e=' + src + '+' + num + ',mcpi_d=' + dest + '; mcpi_s<mcpi_e; mcpi_s++, mcpi_d++) {\n' +
+             '  IHEAP[mcpi_d] = IHEAP[mcpi_s];' + (USE_FHEAP ? ' FHEAP[mcpi_d] = FHEAP[mcpi_s];' : '') + '\n' +
              '}';
     }
   } else { // USE_TYPED_ARRAYS == 2
     return '' +
-      'var $src$, $dest$, $stop$, $stop4$, $fast$;\n' +
-      '$src$ = ' + src + ';\n' +
-      '$dest$ = ' + dest + ';\n' +
-      '$stop$ = $src$ + ' + num + ';\n' +
-      'if (($dest$%4) == ($src$%4) && ' + num + ' > 8) {\n' +
-      '  while ($src$%4 !== 0 && $src$ < $stop$) {\n' +
-      '    ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
+      'var src, dest, stop, stop4, fast;\n' +
+      'src = ' + src + ';\n' +
+      'dest = ' + dest + ';\n' +
+      'stop = src + ' + num + ';\n' +
+      'if ((dest%4) == (src%4) && ' + num + ' > 8) {\n' +
+      '  while (src%4 !== 0 && src < stop) {\n' +
+      '    ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
       '  }\n' +
-      '  $src$ >>= 2;\n' +
-      '  $dest$ >>= 2;\n' +
-      '  $stop4$ = $stop$ >> 2;\n' +
-      '  while ($src$ < $stop4$) {\n' +
-           safety('($dest$<<2)+0', '($src$<<2)+0') + ';' + safety('($dest$<<2)+1', '($src$<<2)+1') + ';' + 
-           safety('($dest$<<2)+2', '($src$<<2)+2') + ';' + safety('($dest$<<2)+3', '($src$<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-      '    HEAP32[$dest$++] = HEAP32[$src$++];\n' + // this is the fast inner loop we try hard to stay in
+      '  src >>= 2;\n' +
+      '  dest >>= 2;\n' +
+      '  stop4 = stop >> 2;\n' +
+      '  while (src < stop4) {\n' +
+           safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
+           safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
+      '    HEAP32[dest++] = HEAP32[src++];\n' + // this is the fast inner loop we try hard to stay in
       '  }\n' +
-      '  $src$ <<= 2;\n' +
-      '  $dest$ <<= 2;\n' +
+      '  src <<= 2;\n' +
+      '  dest <<= 2;\n' +
       '}' +
-      'while ($src$ < $stop$) {\n' +
-      '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
+      'while (src < stop) {\n' +
+      '  ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
       '}';
   }
   return null;
