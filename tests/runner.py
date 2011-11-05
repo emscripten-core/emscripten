@@ -4225,7 +4225,7 @@ TT = %s
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
-  class OtherTests(RunnerCore):
+  class Other(RunnerCore):
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
@@ -4450,7 +4450,7 @@ else:
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['closure']
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
-      self.do_benchmark(src, ['7', '256'], '256 256', llvm_opts=True, handpicked=False)
+      self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read(), llvm_opts=True, handpicked=True)
 
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
