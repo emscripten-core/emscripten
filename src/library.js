@@ -3833,7 +3833,7 @@ LibraryManager.library = {
   },
 
   __strtok_state: 0,
-  strtok__deps: ['___strtok_state'],
+  strtok__deps: ['__strtok_state'],
   strtok: function(str, delims) {
     if (str == 0) str = ___strtok_state;
     if (str == 0) return 0;
