@@ -3374,6 +3374,24 @@ LibraryManager.library = {
     _free(temp);
   },
 
+  bsearch: function(key, base, num, size, comparator) {
+    if (num == 0 || size == 0) return;
+    comparator = FUNCTION_TABLE[comparator];
+    var min = 0, max = num;
+    while (min < max) {
+      var idx = Math.floor((min + max) / 2);
+      var p = base+idx*size;
+      var cmp = comparator(key, p);
+      if (cmp < 0)
+        max = idx;
+      else if (cmp > 0)
+        min = idx + 1;
+      else
+        return p;
+    }
+    return 0;
+  },
+
   environ: null,
   __environ: null,
   __buildEnvironment__deps: ['environ', '__environ'],

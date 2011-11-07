@@ -1659,6 +1659,45 @@ if 'benchmark' not in str(sys.argv):
 
         self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*cleaned*')
 
+    def test_bsearch(self):
+      src = '''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+
+        int comp(const void *a, const void *b) {
+          return (*((int *)a) - *((int *)b));
+        }
+
+        int main() {
+          int values[] = { 1, 5, 7, 9 };
+          int key;
+          
+          key = 0;
+          printf("%d ", bsearch(&key, values, 4, sizeof(int), comp));
+
+          key = 6;
+          printf("%d ", bsearch(&key, values, 4, sizeof(int), comp));
+
+          key = 11;
+          printf("%d ", bsearch(&key, values, 4, sizeof(int), comp));
+          
+          for (int i=0; i<4; i++) {
+            key = values[i];
+            printf("%d ", *(int *)bsearch(&key, values, 4, sizeof(int), comp));
+          }
+          
+          key = 1;
+          printf("%d ", *(int *)bsearch(&key, values, 1, sizeof(int), comp));
+          
+          key = 1;
+          printf("%d ", *(int *)bsearch(&key, values, 3, sizeof(int), comp));
+
+          return 0;
+        }
+      '''
+      self.do_run(src, "0 0 0 1 5 7 9 1 1 ")
+
     def test_time(self):
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
