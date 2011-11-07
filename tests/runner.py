@@ -4452,6 +4452,12 @@ else:
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read(), llvm_opts=True, handpicked=True)
 
+    def test_skinning(self):
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
+
+      src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
+      self.do_benchmark(src, ['10000', '3000'], 'blah=0.000000', llvm_opts=True, handpicked=True)
+
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
 
