@@ -3166,6 +3166,11 @@ LibraryManager.library = {
     return Math.floor(Number(Pointer_stringify(s).substr(0, e-s)));
   },
 
+  atof__deps: ['strtod'],
+  atof: function(s) {
+    return _strtod(s, 0);
+  },
+
   exit__deps: ['_exit'],
   exit: function(status) {
     __exit(status);

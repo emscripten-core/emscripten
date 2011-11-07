@@ -2439,6 +2439,54 @@ if 'benchmark' not in str(sys.argv):
         '''
       self.do_run(src)
 
+    def test_atof(self):
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          printf("\n");
+          printf("%g\n", atof("0"));
+          printf("%g\n", atof("0."));
+          printf("%g\n", atof("0.0"));
+          printf("%g\n", atof("1"));
+          printf("%g\n", atof("1."));
+          printf("%g\n", atof("1.0"));
+          printf("%g\n", atof("123"));
+          printf("%g\n", atof("123.456"));
+          printf("%g\n", atof("-123.456"));
+          printf("%g\n", atof("1234567891234567890"));
+          printf("%g\n", atof("1234567891234567890e+50"));
+          printf("%g\n", atof("84e+220"));
+          printf("%g\n", atof("84e+420"));
+          printf("%g\n", atof("123e-50"));
+          printf("%g\n", atof("123e-250"));
+          printf("%g\n", atof("123e-450"));
+
+          return 0;
+        }
+        '''
+      expected = '''
+        0
+        0
+        0
+        1
+        1
+        1
+        123
+        123.456
+        -123.456
+        1.23457e+18
+        1.23457e+68
+        8.4e+221
+        inf
+        1.23e-48
+        1.23e-248
+        0
+        '''
+      self.do_run(src, re.sub(r'\n\s+', '\n', expected))
+
     def test_sscanf(self):
       src = r'''
         #include <stdio.h>
