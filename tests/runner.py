@@ -4447,7 +4447,7 @@ else:
         llvm_opts=True, handpicked=False)
 
     def test_raytrace(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['closure']
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read(), llvm_opts=True, handpicked=True)
