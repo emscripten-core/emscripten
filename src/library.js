@@ -3827,6 +3827,47 @@ LibraryManager.library = {
     return 0;
   },
 
+  __strtok_state: 0,
+  strtok__deps: ['___strtok_state'],
+  strtok: function(str, delims) {
+    if (str == 0) str = ___strtok_state;
+    if (str == 0) return 0;
+
+    var start = 0;
+    var chr;
+    do {
+      chr = {{{ makeGetValue('str', 0, 'i8') }}};
+
+      // Check if chr is a delimiter
+      var delimsP = delims, delim;
+      do {
+        delim = {{{ makeGetValue('delimsP', 0, 'i8') }}};
+        delimsP++;
+      } while (delim != 0 && chr != delim);
+
+      if (chr == 0) {
+        // End of the string
+        ___strtok_state = 0;
+      } else if (chr == delim) {
+        if (start != 0) {
+          // Make this the end of the current token
+          {{{ makeSetValue('str', 0, 0, 'i8') }}};
+          chr = 0;
+
+          // Next token starts at the next character
+          ___strtok_state = str + 1;
+        }
+      } else if (start == 0) {
+        // We found the start of the current token
+        start = str;
+      }
+
+      str++;
+    } while (chr != 0);
+
+    return start;
+  },
+
   // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays
   strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=HEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=HEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=HEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=HEAP[f]=0;else{c=b+-1;a:for(;;){e=HEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=HEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else HEAP[b+-1]=0; HEAP[f]=b;c=c}else if(a==7){HEAP[f]=b;HEAP[b+-1]=0;c=b+-1}}return c},
   // TODO: Compile strtok() from source.

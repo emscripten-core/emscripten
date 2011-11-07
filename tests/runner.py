@@ -685,6 +685,35 @@ if 'benchmark' not in str(sys.argv):
         '''
         self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
+    def test_strtok(self):
+        src = '''
+          #include <stdio.h>
+          #include <string.h>
+
+          void printTok(char *str) {
+            char delim[] = "- :.";
+            char *p;
+            p = strtok(str, delim);
+            while (p != NULL) {
+              printf("%s\\n", p);
+              p = strtok(NULL, delim);
+            }
+          }
+
+          int main() {
+            printTok("- Emscripten: An LLVM-to-JavaScript Compiler.");
+            printTok("-  -");
+            printTok("-");
+            printTok("");
+            printTok("abc");
+            printTok(" a");
+            printTok("b ");
+            printTok("c");
+            return 0;
+          }
+        '''
+        self.do_run(src, "Emscripten\nAn\nLLVM\nto\nJavaScript\nCompiler\nabc\na\nb\nc\n")
+
     def test_errar(self):
         src = r'''
           #include <stdio.h>
