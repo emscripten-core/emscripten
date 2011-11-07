@@ -12,7 +12,7 @@ COMPILER_OPTS = []
 SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n']
 V8_ENGINE = [os.path.expanduser('~/Dev/v8/d8')]
 
-#COMPILER_ENGINE=SPIDERMONKEY_ENGINE # XXX Warning: currently appears to be broken on trunk, some file reading issue
+#COMPILER_ENGINE=SPIDERMONKEY_ENGINE
 COMPILER_ENGINE=V8_ENGINE
 
 JS_ENGINE=V8_ENGINE
