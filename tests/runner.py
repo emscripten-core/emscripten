@@ -4282,7 +4282,7 @@ else:
   Settings.FAST_MEMORY = 10*1024*1024
 
   TEST_REPS = 10
-  TOTAL_TESTS = 6
+  TOTAL_TESTS = 7
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
@@ -4456,7 +4456,7 @@ else:
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark(src, ['10000', '3000'], 'blah=0.000000', llvm_opts=True, handpicked=True)
+      self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000', llvm_opts=True, handpicked=True)
 
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
