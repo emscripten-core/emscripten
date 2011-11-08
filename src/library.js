@@ -4051,6 +4051,27 @@ LibraryManager.library = {
     return 1;
   },
 
+  _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
+  _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
+
+  __dynamic_cast: function(ptr, knownTI, attemptedTI, idunno) {
+    var ptrTV = {{{ makeGetValue('ptr', '0', '*') }}};
+    var count = {{{ makeGetValue('ptrTV', '0', '*') }}};
+    ptrTV -= {{{ QUANTUM_SIZE }}};
+    var TI = {{{ makeGetValue('ptrTV', '0', '*') }}};
+    do {
+      if (TI == attemptedTI) return 1;
+      // Go to parent class
+      var type_infoAddr = {{{ makeGetValue('TI', '0', '*') }}} - {{{ QUANTUM_SIZE*2 }}};
+      var type_info = {{{ makeGetValue('type_infoAddr', '0', '*') }}};
+      if (type_info == 1) return 0; // no parent class
+      var TIAddr = TI + {{{ QUANTUM_SIZE*2 }}};
+      var TI = {{{ makeGetValue('TIAddr', '0', '*') }}};
+    } while (1);
+
+    return 0;
+  },
+
   // Exceptions
   __cxa_allocate_exception: function(size) {
     return _malloc(size);
