@@ -67,7 +67,7 @@ public:
         _LIBCPP_INLINE_VISIBILITY locale(const locale&, _Facet*);
     locale(const locale&, const locale&, category);
 
-    ~locale();
+    ~locale() {} /* XXX EMScripten */
 
     const locale& operator=(const locale&)  _NOEXCEPT;
 
