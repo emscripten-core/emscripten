@@ -5,7 +5,7 @@ EMSCRIPTEN_ROOT=os.path.expanduser("~/Dev/emscripten") # TODO: Use this
 
 TEMP_DIR='/tmp'
 
-LLVM_ROOT=os.path.expanduser('~/Dev/llvm-2.9/cbuild/bin')
+LLVM_ROOT=os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
 
 COMPILER_OPTS = []
 
