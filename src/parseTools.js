@@ -526,6 +526,16 @@ function IEEEUnHex(stringy) {
   return (absolute * (neg ? -1 : 1)).toString();
 }
 
+// Makes a proper runtime value for a 64-bit value. Used in library.
+function makeI64(low, high) {
+  if (I64_MODE == 1) {
+    return '[' + low + ',' + (high || '0') + ']';
+  } else {
+    assert(!high);
+    return low;
+  }
+}
+
 function makeCopyI64(value) {
   assert(I64_MODE == 1);
 
@@ -772,16 +782,6 @@ function checkSpecificSafeHeap() {
 }
 function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
-}
-
-// Makes a proper runtime value for a 64-bit value. Used in library.
-function makeI64(low, high) {
-  if (I64_MODE == 1) {
-    return '[' + low + ',' + (high || '0') + ']';
-  } else {
-    assert(!high);
-    return low;
-  }
 }
 
 function getHeapOffset(offset, type) {
@@ -1357,7 +1357,7 @@ function processMathop(item) { with(item) {
     return '(tempBigInt=(' + value + '), tempBigInt-tempBigInt%1)';
   }
 
-  if (item.type == 'i64' && I64_MODE == 1) {
+  if ((paramTypes[0] == 'i64' || paramTypes[1] == 'i64') && I64_MODE == 1) {
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -1371,27 +1371,27 @@ function processMathop(item) { with(item) {
       }
       case 'shl': {
         return '[' + ident1 + '[0] << ' + ident2 + ', ' +
-                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
+                 '('+ident1 + '[1] << ' + ident2 + ') | (' + ident1 + '[0]&(Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
       }
       case 'ashr': {
-        return '[('+ident1 + '[0] >> ' + ident2 + ') | ((' + ident + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
-                  + ident1 + '[1] >> ' + ident2 + ']';
+        return '[('+ident1 + '[0] >> ' + ident2 + ') | (' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + ')),' +
+                    ident1 + '[1] >> ' + ident2 + ']';
       }
       case 'lshr': {
-        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
-                  + ident1 + '[1] >>> ' + ident2 + ']';
+        return '[('+ident1 + '[0] >>> ' + ident2 + ') | (' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + ')),' +
+                    ident1 + '[1] >>> ' + ident2 + ']';
       }
-
+      case 'uitofp': case 'sitofp': return ident1 + '[0] + ' + ident1 + '[1]*4294967296';
       case 'icmp': {
         switch (variant) {
           case 'uge': case 'sge': return ident1 + '[1] >= ' + ident2 + '[1] && (' + ident1 + '[1] > '  + ident2 + '[1] || ' +
-                                                                              '(' + ident1 + '[0] >= ' + ident2 + '[0]');
+                                                                                    ident1 + '[0] >= ' + ident2 + '[0])';
           case 'ule': case 'sle': return ident1 + '[1] <= ' + ident2 + '[1] && (' + ident1 + '[1] < '  + ident2 + '[1] || ' +
-                                                                              '(' + ident1 + '[0] <= ' + ident2 + '[0]');
+                                                                                    ident1 + '[0] <= ' + ident2 + '[0])';
           case 'ugt': case 'sgt': return ident1 + '[1] > ' + ident2 + '[1] || (' + ident1 + '[1] = '  + ident2 + '[1] && ' +
-                                                                             '(' + ident1 + '[0] > ' + ident2 + '[0]');
+                                                                                   ident1 + '[0] > ' + ident2 + '[0])';
           case 'ult': case 'slt': return ident1 + '[1] < ' + ident2 + '[1] || (' + ident1 + '[1] = '  + ident2 + '[1] && ' +
-                                                                             '(' + ident1 + '[0] < ' + ident2 + '[0]');
+                                                                                   ident1 + '[0] < ' + ident2 + '[0])';
           case 'ne': case 'eq': {
             // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
             // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
@@ -1406,30 +1406,12 @@ function processMathop(item) { with(item) {
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
-      case 'zext': case 'sext': return makeCopyI64(ident1);
+      case 'zext': case 'sext': return makeI64(ident1, 0);
       case 'trunc': {
-        // Unlike extending, which we just 'do' (by doing nothing),
-        // truncating can change the number, e.g. by truncating to an i1
-        // in order to get the first bit
-        assert(ident2[1] == 'i');
-        assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
-        return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
+        return '((' + ident1 + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
-      case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
-      case 'ptrtoint': case 'inttoptr': {
-        var ret = '';
-        if (QUANTUM_SIZE == 1) {
-          if (!Debugging.shownPtrtointWarning) {
-            dprint('WARNING: .ll contains ptrtoint and/or inttoptr. These may be dangerous in QUANTUM == 1.');
-            dprint('         The safest thing is to investigate every appearance, and modify the source code to avoid this.');
-            dprint('         Emscripten will print a list of the .ll lines, and also annotate the .js.');
-            Debugging.shownPtrtointWarning = true;
-          }
-          dprint('  ' + op + ' on .ll line ' + item.lineNum);
-          ret = ' /* Warning: ' + op + ', .ll line ' + item.lineNum + ' */';
-        }
-        return ident1 + ret;
-      }
+      case 'select': return ident1 + ' ? ' + makeCopyI64(ident2) + ' : ' + makeCopyI64(ident3);
+      case 'ptrtoint': case 'inttoptr': throw 'Pointers cannot be 64-bit!';
       default: throw 'Unsupported i64 mode 1 op: ' + item.op;
     }
   }

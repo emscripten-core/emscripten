@@ -841,23 +841,43 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
+    var ignoreFunctionIndexizing = [];
     var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
       if (!func || !func.hasVarArgs || i < func.numParams-1 || useJSArgs) {
+        if (param.type == 'i64' && I64_MODE == 1) {
+          val = makeI64Copy(val); // Must copy [low, high] i64s, so they don't end up modified in the caller
+        }
         args.push(val);
         argsTypes.push(param.type);
       } else {
-        varargs.push(val);
-        varargs = varargs.concat(zeros(getNativeFieldSize(param.type)-1));
-        varargsTypes.push(param.type);
-        varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize(param.type)-1));
+        if (!(param.type == 'i64' && I64_MODE == 1)) {
+          varargs.push(val);
+          varargs = varargs.concat(zeros(getNativeFieldSize(param.type)-1));
+          varargsTypes.push(param.type);
+          varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize(param.type)-1));
+        } else {
+          // i64 mode 1. Write one i32 with type i64, and one i32 with type i32
+          varargs.push(val + '[0]');
+          varargs = varargs.concat(zeros(getNativeFieldSize('i32')-1));
+          ignoreFunctionIndexizing.push(varargs.length); // We will have a value there, but no type (the type is i64, but we write two i32s)
+          varargs.push(val + '[1]');
+          varargs = varargs.concat(zeros(getNativeFieldSize('i32')-1));
+          varargsTypes.push('i64');
+          varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize('i32')-1));
+          varargsTypes.push('i32');
+          varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize('i32')-1));
+        }
       }
     });
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
-    varargs = varargs.map(function(vararg, i) { return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i]) });
+    varargs = varargs.map(function(vararg, i) {
+      if (ignoreFunctionIndexizing.indexOf(i) >= 0) return vararg;
+      return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i])
+    });
 
     if (func && func.hasVarArgs && !useJSArgs) {
       if (varargs.length === 0) {

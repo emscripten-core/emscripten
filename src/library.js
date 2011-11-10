@@ -2205,6 +2205,12 @@ LibraryManager.library = {
       var ret;
       if (type === 'float' || type === 'double') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
+#if I64_MODE == 1
+      } else if (type == 'i64') {
+        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
+               {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
+        ret = ret[0] + ret[1]*Math.pow(2, 32); // XXX - loss of precision
+#endif
       } else {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }

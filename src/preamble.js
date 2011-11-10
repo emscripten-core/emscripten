@@ -474,6 +474,10 @@ function allocate(slab, types, allocator) {
     assert(type, 'Must know what type to store in allocate!');
 #endif
 
+#if I64_MODE == 1
+    if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
+#endif
+
     setValue(ret+i, curr, type);
     i += Runtime.getNativeTypeSize(type);
   }
