@@ -421,12 +421,17 @@ if 'benchmark' not in str(sys.argv):
             printf("*%Ld*\n", returner1());
             printf("*%Ld*\n", returner2(30));
 
-            // Make sure in params are not modified
+            int64_t maxx = -1ULL;
+            //printf("*%Ld*\n", maxx);
+
+            // Make sure params are not modified if they shouldn't be
             int64_t t = 123;
             modifier1(t);
             printf("*%Ld*\n", t);
             modifier2(t);
             printf("*%Ld*\n", t);
+
+            // 
             return 0;
           }
         '''

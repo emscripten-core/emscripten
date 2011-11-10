@@ -545,44 +545,77 @@ function makeCopyI64(value) {
   return value + '.slice(0)';
 }
 
-function parseI64Constant(v) {
+function parseI64Constant(str) {
   assert(I64_MODE == 1);
 
-  if (!isNumber(v)) {
+  if (!isNumber(str)) {
     // This is a variable. Copy it, so we do not modify the original
-    return makeCopyI64(v);
+    return makeCopyI64(str);
   }
 
-  function getDigit(i) {
-    return v.charCodeAt(i) - '0'.charCodeAt(0);
+  function str2vec(s) { // index 0 is the highest value
+    var ret = [];
+    for (var i = 0; i < s.length; i++) {
+      ret.push(s.charCodeAt(i) - '0'.charCodeAt(0));
+    }
+    return ret;
   }
-  function setDigit(i, d) {
-    v = v.substr(0, i) + String.fromCharCode(d + '0'.charCodeAt(0)) + v.substr(i+1);
-  }
-  function divide2() {
+
+  function divide2(v) { // v /= 2
     for (var i = v.length-1; i >= 0; i--) {
-      var d = getDigit(i);
+      var d = v[i];
       var r = d % 2;
       d = Math.floor(d/2);
-      setDigit(i, d);
+      v[i] = d;
       if (r) {
         assert(i+1 < v.length);
-        var d2 = getDigit(i+1);
+        var d2 = v[i+1];
         d2 += 5;
         if (d2 >= 10) {
-          setDigit(i, d+1);
+          v[i] = d+1;
           d2 -= 10;
         }
-        setDigit(i+1, d2);
+        v[i+1] = d2;
       }
     }
   }
 
+  function subtract(v, w) { // v -= w. we assume v >= w
+    while (v.length > w.length) w.push(0);
+    for (var i = 0; i < v.length; i++) {
+      v[i] -= w[i];
+      if (v[i] < 0) {
+        assert(i-1 >= 0);
+        assert(v[i-1] > 0);
+        v[i-1]--;
+        v[i] += 10;
+      }
+    }
+  }
+
+  function isZero(v) {
+    for (var i = 0; i < v.length; i++) {
+      if (v[i] > 0) return false;
+    }
+    return true;
+  }
+
+  var v;
+
+  if (str[0] == '-') {
+    // twos-complement is needed
+    str = str.substr(1);
+    v = str2vec('18446744073709551616'); // 2^64
+    subtract(v, str2vec(str));
+  } else {
+    v = str2vec(str);
+  }
+
   var bits = [];
-  while (!v.match(/^0+$/)) {
-    bits.push((getDigit(v.length-1) % 2 != 0)+0);
-    setDigit(v.length-1, getDigit(v.length-1) & 0xfe);
-    divide2();
+  while (!isZero(v)) {
+    bits.push((v[v.length-1] % 2 != 0)+0);
+    v[v.length-1] = v[v.length-1] & 0xfe;
+    divide2(v);
   }
 
   var low = 0, high = 0;
@@ -593,6 +626,7 @@ function parseI64Constant(v) {
       high += bits[i]*Math.pow(2, i-32);
     }
   }
+
   return '[' + low + ',' + high + ']';
 }
 
