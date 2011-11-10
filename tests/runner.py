@@ -422,8 +422,8 @@ if 'benchmark' not in str(sys.argv):
             printf("*%Ld*\n", returner1());
             printf("*%Ld*\n", returner2(30));
 
-            int64_t maxx = -1ULL;
-            printf("*%Lu*\n", maxx);
+            uint64_t maxx = -1ULL;
+            printf("*%Lu*\n*%Lu*\n", maxx, maxx >> 5);
 
             // Make sure params are not modified if they shouldn't be
             int64_t t = 123;
@@ -436,7 +436,8 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n*18446744073709552000*\n' +
+        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
+                         '*18446744073709552000*\n*576460752303423500*\n' +
                          'm1: 127\n*123*\n*127*\n')
 
 
