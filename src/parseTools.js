@@ -1255,7 +1255,11 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
       return '0';
     }
   } else if (param.intertype == 'value') {
-    ret = parseNumerical(param.ident);
+    ret = param.ident;
+    if (param.type == 'i64' && I64_MODE == 1) {
+      ret = parseI64Constant(ret);
+    }
+    ret = parseNumerical(ret);
   } else if (param.intertype == 'structvalue') {
     ret = makeLLVMStruct(param.values.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) }));
   } else if (param.intertype === 'blockaddress') {
@@ -1371,14 +1375,14 @@ function processMathop(item) { with(item) {
       }
       case 'shl': {
         return '[' + ident1 + '[0] << ' + ident2 + ', ' +
-                 '('+ident1 + '[1] << ' + ident2 + ') | (' + ident1 + '[0]&(Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
+                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident1 + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + '))]';
       }
       case 'ashr': {
-        return '[('+ident1 + '[0] >> ' + ident2 + ') | (' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + ')),' +
+        return '[('+ident1 + '[0] >> ' + ident2 + ') | ((' + ident1 + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + ')),' +
                     ident1 + '[1] >> ' + ident2 + ']';
       }
       case 'lshr': {
-        return '[('+ident1 + '[0] >>> ' + ident2 + ') | (' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + ')),' +
+        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + ')),' +
                     ident1 + '[1] >>> ' + ident2 + ']';
       }
       case 'uitofp': case 'sitofp': return ident1 + '[0] + ' + ident1 + '[1]*4294967296';
@@ -1388,9 +1392,9 @@ function processMathop(item) { with(item) {
                                                                                     ident1 + '[0] >= ' + ident2 + '[0])';
           case 'ule': case 'sle': return ident1 + '[1] <= ' + ident2 + '[1] && (' + ident1 + '[1] < '  + ident2 + '[1] || ' +
                                                                                     ident1 + '[0] <= ' + ident2 + '[0])';
-          case 'ugt': case 'sgt': return ident1 + '[1] > ' + ident2 + '[1] || (' + ident1 + '[1] = '  + ident2 + '[1] && ' +
+          case 'ugt': case 'sgt': return ident1 + '[1] > ' + ident2 + '[1] || (' + ident1 + '[1] == '  + ident2 + '[1] && ' +
                                                                                    ident1 + '[0] > ' + ident2 + '[0])';
-          case 'ult': case 'slt': return ident1 + '[1] < ' + ident2 + '[1] || (' + ident1 + '[1] = '  + ident2 + '[1] && ' +
+          case 'ult': case 'slt': return ident1 + '[1] < ' + ident2 + '[1] || (' + ident1 + '[1] == '  + ident2 + '[1] && ' +
                                                                                    ident1 + '[0] < ' + ident2 + '[0])';
           case 'ne': case 'eq': {
             // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)

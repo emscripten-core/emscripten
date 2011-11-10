@@ -757,7 +757,13 @@ function intertyper(data, parseFunctions, baseLineNum) {
         item.type = item.param1.type;
       }
       for (var i = 1; i <= 4; i++) {
-        if (item['param'+i]) item['param'+i].type = item.type; // All params have the same type
+        if (item['param'+i]) item['param'+i].type = item.type; // All params have the same type, normally
+        if (I64_MODE == 1) {
+          // Some specific corrections, since 'i64' is special
+          if (item.op in LLVM.SHIFTS) {
+            item.param2.type = 'i32';
+          }
+        }
       }
       Types.needAnalysis[item.type] = 0;
       this.forwardItem(item, 'Reintegrator');
