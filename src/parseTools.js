@@ -526,12 +526,18 @@ function IEEEUnHex(stringy) {
   return (absolute * (neg ? -1 : 1)).toString();
 }
 
+function makeCopyI64(value) {
+  assert(I64_MODE == 1);
+
+  return value + '.slice(0)';
+}
+
 function parseI64Constant(v) {
   assert(I64_MODE == 1);
 
   if (!isNumber(v)) {
     // This is a variable. Copy it, so we do not modify the original
-    return v + '.slice(0)';
+    return makeCopyI64(v);
   }
 
   function getDigit(i) {
@@ -1349,6 +1355,83 @@ function processMathop(item) { with(item) {
 
   function integerizeBignum(value) {
     return '(tempBigInt=(' + value + '), tempBigInt-tempBigInt%1)';
+  }
+
+  if (item.type == 'i64' && I64_MODE == 1) {
+    switch (op) {
+      // basic integer ops
+      case 'or': {
+        return '[' + ident1 + '[0] | ' + ident2 + '[0], ' + ident1 + '[1] | ' + ident2 + '[1]]';
+      }
+      case 'and': {
+        return '[' + ident1 + '[0] & ' + ident2 + '[0], ' + ident1 + '[1] & ' + ident2 + '[1]]';
+      }
+      case 'xor': {
+        return '[' + ident1 + '[0] ^ ' + ident2 + '[0], ' + ident1 + '[1] ^ ' + ident2 + '[1]]';
+      }
+      case 'shl': {
+        return '[' + ident1 + '[0] << ' + ident2 + ', ' +
+                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
+      }
+      case 'ashr': {
+        return '[('+ident1 + '[0] >> ' + ident2 + ') | ((' + ident + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
+                  + ident1 + '[1] >> ' + ident2 + ']';
+      }
+      case 'lshr': {
+        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + ') >> (32-' + ident2 + '))]';
+                  + ident1 + '[1] >>> ' + ident2 + ']';
+      }
+
+      case 'icmp': {
+        switch (variant) {
+          case 'uge': case 'sge': return ident1 + '[1] >= ' + ident2 + '[1] && (' + ident1 + '[1] > '  + ident2 + '[1] || ' +
+                                                                              '(' + ident1 + '[0] >= ' + ident2 + '[0]');
+          case 'ule': case 'sle': return ident1 + '[1] <= ' + ident2 + '[1] && (' + ident1 + '[1] < '  + ident2 + '[1] || ' +
+                                                                              '(' + ident1 + '[0] <= ' + ident2 + '[0]');
+          case 'ugt': case 'sgt': return ident1 + '[1] > ' + ident2 + '[1] || (' + ident1 + '[1] = '  + ident2 + '[1] && ' +
+                                                                             '(' + ident1 + '[0] > ' + ident2 + '[0]');
+          case 'ult': case 'slt': return ident1 + '[1] < ' + ident2 + '[1] || (' + ident1 + '[1] = '  + ident2 + '[1] && ' +
+                                                                             '(' + ident1 + '[0] < ' + ident2 + '[0]');
+          case 'ne': case 'eq': {
+            // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
+            // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
+            ident1 = makeSignOp(ident1, type, 're');
+            ident2 = makeSignOp(ident2, type, 're');
+            if (variant === 'eq') {
+              return ident1 + '[0] == ' + ident2 + '[0] && ' + ident1 + '[0] == ' + ident2 + '[0]';
+            } else {
+              return ident1 + '[0] != ' + ident2 + '[0] || ' + ident1 + '[0] != ' + ident2 + '[0]';
+            }
+          }
+          default: throw 'Unknown icmp variant: ' + variant;
+        }
+      }
+      case 'zext': case 'sext': return makeCopyI64(ident1);
+      case 'trunc': {
+        // Unlike extending, which we just 'do' (by doing nothing),
+        // truncating can change the number, e.g. by truncating to an i1
+        // in order to get the first bit
+        assert(ident2[1] == 'i');
+        assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
+        return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
+      }
+      case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
+      case 'ptrtoint': case 'inttoptr': {
+        var ret = '';
+        if (QUANTUM_SIZE == 1) {
+          if (!Debugging.shownPtrtointWarning) {
+            dprint('WARNING: .ll contains ptrtoint and/or inttoptr. These may be dangerous in QUANTUM == 1.');
+            dprint('         The safest thing is to investigate every appearance, and modify the source code to avoid this.');
+            dprint('         Emscripten will print a list of the .ll lines, and also annotate the .js.');
+            Debugging.shownPtrtointWarning = true;
+          }
+          dprint('  ' + op + ' on .ll line ' + item.lineNum);
+          ret = ' /* Warning: ' + op + ', .ll line ' + item.lineNum + ' */';
+        }
+        return ident1 + ret;
+      }
+      default: throw 'Unsupported i64 mode 1 op: ' + item.op;
+    }
   }
 
   switch (op) {
