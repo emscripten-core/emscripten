@@ -403,6 +403,14 @@ if 'benchmark' not in str(sys.argv):
             return test > 5 ? 0x0000def123450123ULL : 0ULL;
           }
 
+          void modifier1(int64_t t) {
+            t |= 12;
+            printf("m1: %Ld\n", t);
+          }
+          void modifier2(int64_t &t) {
+            t |= 12;
+          }
+
           int main()
           {
             int64_t x1 = 0x1234def123450789ULL;
@@ -411,11 +419,19 @@ if 'benchmark' not in str(sys.argv):
             printf("*%Ld\n%d,%d,%d,%d,%d\n%d,%d,%d,%d,%d*\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
                                                                   x1==x3, x1<x3, x1<=x3, x1>x3, x1>=x3);
             printf("*%Ld*\n", returner1());
-            //printf("*%Ld*\n", returner2(30));
+            printf("*%Ld*\n", returner2(30));
+
+            // Make sure in params are not modified
+            int64_t t = 123;
+            modifier1(t);
+            printf("*%Ld*\n", t);
+            modifier2(t);
+            printf("*%Ld*\n", t);
             return 0;
           }
         '''
-        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n')
+        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
+                         'm1: 127\n*123*\n*127*\n')
 
 
     def test_unsigned(self):

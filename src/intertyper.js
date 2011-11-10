@@ -762,6 +762,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
           // Some specific corrections, since 'i64' is special
           if (item.op in LLVM.SHIFTS) {
             item.param2.type = 'i32';
+          } else if (item.op == 'select') {
+            item.param1.type = 'i1';
           }
         }
       }

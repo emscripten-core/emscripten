@@ -848,7 +848,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var val = finalizeParam(param);
       if (!func || !func.hasVarArgs || i < func.numParams-1 || useJSArgs) {
         if (param.type == 'i64' && I64_MODE == 1) {
-          val = makeI64Copy(val); // Must copy [low, high] i64s, so they don't end up modified in the caller
+          val = makeCopyI64(val); // Must copy [low, high] i64s, so they don't end up modified in the caller
         }
         args.push(val);
         argsTypes.push(param.type);
