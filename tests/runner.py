@@ -365,8 +365,8 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, output, force_c=True)
 
     def test_i64(self):
-        for i64_mode in [1]: # XXX add 0
-          if i64_mode == 0 and Settings.USE_TYPED_ARRAYS != 0: continue # Typed arrays truncate i64'
+        for i64_mode in [0,1]:
+          if i64_mode == 0 and Settings.USE_TYPED_ARRAYS != 0: continue # Typed arrays truncate i64
           Settings.I64_MODE = i64_mode
           src = '''
             #include <stdio.h>
@@ -391,7 +391,26 @@ if 'benchmark' not in str(sys.argv):
           self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
         # Stuff that only works in i64_mode = 1
-        # TODO
+
+        Settings.I64_MODE = 1
+        src = '''
+          #include <stdio.h>
+          #include <stdint.h>
+
+          int64_t returner() { return 0x0000def123450789ULL; }
+
+          int main()
+          {
+            int64_t x1 = 0x1234def123450789ULL;
+            int64_t x2 = 0x1234def123450788ULL;
+            int64_t x3 = 0x1234def123450789ULL;
+            printf("*%Ld\\n%d,%d,%d,%d,%d\\n%d,%d,%d,%d,%d*\\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
+                                                                     x1==x3, x1<x3, x1<=x3, x1>x3, x1>=x3);
+            return 0;
+          }
+        '''
+        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n')
+
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
