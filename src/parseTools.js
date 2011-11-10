@@ -359,6 +359,9 @@ function finalizeParam(param) {
   } else if (param.intertype === 'jsvalue') {
     return param.ident;
   } else {
+    if (param.type == 'i64' && I64_MODE == 1) {
+      return parseI64Constant(param.ident);
+    }
     return toNiceIdent(param.ident);
   }
 }
@@ -526,7 +529,7 @@ function IEEEUnHex(stringy) {
   return (absolute * (neg ? -1 : 1)).toString();
 }
 
-// Makes a proper runtime value for a 64-bit value. Used in library.
+// Makes a proper runtime value for a 64-bit value from low and high i32s.
 function makeI64(low, high) {
   if (I64_MODE == 1) {
     return '[' + low + ',' + (high || '0') + ']';

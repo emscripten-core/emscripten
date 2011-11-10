@@ -393,23 +393,29 @@ if 'benchmark' not in str(sys.argv):
         # Stuff that only works in i64_mode = 1
 
         Settings.I64_MODE = 1
-        src = '''
+        src = r'''
           #include <stdio.h>
           #include <stdint.h>
 
-          int64_t returner() { return 0x0000def123450789ULL; }
+          int64_t returner1() { return 0x0000def123450789ULL; }
+          int64_t returner2(int test) {
+            while (test > 10) test /= 2; // confuse the compiler so it doesn't eliminate this function
+            return test > 5 ? 0x0000def123450123ULL : 0ULL;
+          }
 
           int main()
           {
             int64_t x1 = 0x1234def123450789ULL;
             int64_t x2 = 0x1234def123450788ULL;
             int64_t x3 = 0x1234def123450789ULL;
-            printf("*%Ld\\n%d,%d,%d,%d,%d\\n%d,%d,%d,%d,%d*\\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
-                                                                     x1==x3, x1<x3, x1<=x3, x1>x3, x1>=x3);
+            printf("*%Ld\n%d,%d,%d,%d,%d\n%d,%d,%d,%d,%d*\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
+                                                                  x1==x3, x1<x3, x1<=x3, x1>x3, x1>=x3);
+            printf("*%Ld*\n", returner1());
+            //printf("*%Ld*\n", returner2(30));
             return 0;
           }
         '''
-        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n')
+        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n')
 
 
     def test_unsigned(self):

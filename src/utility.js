@@ -185,7 +185,7 @@ function mergeInto(obj, other) {
 }
 
 function isNumber(x) {
-  return x == parseFloat(x); // XXX add:            || x.match(/^-?\d+(\.\d+)?/);
+  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+/));
 }
 
 function isArray(x) {
