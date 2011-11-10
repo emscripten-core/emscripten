@@ -581,7 +581,7 @@ function parseI64Constant(str) {
   }
 
   function subtract(v, w) { // v -= w. we assume v >= w
-    while (v.length > w.length) w.push(0);
+    while (v.length > w.length) w.splice(0, 0, 0);
     for (var i = 0; i < v.length; i++) {
       v[i] -= w[i];
       if (v[i] < 0) {
