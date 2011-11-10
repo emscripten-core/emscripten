@@ -645,9 +645,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         break;
       case VAR_EMULATED:
         if (item.pointer.intertype == 'value') {
-          return makeSetValue(item.ident, 0, value, item.valueType);
+          return makeSetValue(item.ident, 0, value, item.valueType) + ';';
         } else {
-          return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType);
+          return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType) + ';';
         }
         break;
       default:

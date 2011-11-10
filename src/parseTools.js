@@ -526,11 +526,64 @@ function IEEEUnHex(stringy) {
   return (absolute * (neg ? -1 : 1)).toString();
 }
 
+function parseI64Constant(v) {
+  assert(I64_MODE == 1);
+
+  if (!isNumber(v)) {
+    // This is a variable. Copy it, so we do not modify the original
+    return v + '.slice(0)';
+  }
+
+  function getDigit(i) {
+    return v.charCodeAt(i) - '0'.charCodeAt(0);
+  }
+  function setDigit(i, d) {
+    v = v.substr(0, i) + String.fromCharCode(d + '0'.charCodeAt(0)) + v.substr(i+1);
+  }
+  function divide2() {
+    for (var i = v.length-1; i >= 0; i--) {
+      var d = getDigit(i);
+      var r = d % 2;
+      d = Math.floor(d/2);
+      setDigit(i, d);
+      if (r) {
+        assert(i+1 < v.length);
+        var d2 = getDigit(i+1);
+        d2 += 5;
+        if (d2 >= 10) {
+          setDigit(i, d+1);
+          d2 -= 10;
+        }
+        setDigit(i+1, d2);
+      }
+    }
+  }
+
+  var bits = [];
+  while (!v.match(/^0+$/)) {
+    bits.push((getDigit(v.length-1) % 2 != 0)+0);
+    setDigit(v.length-1, getDigit(v.length-1) & 0xfe);
+    divide2();
+  }
+
+  var low = 0, high = 0;
+  for (var i = 0; i < bits.length; i++) {
+    if (i <= 31) {
+      low += bits[i]*Math.pow(2, i);
+    } else {
+      high += bits[i]*Math.pow(2, i-32);
+    }
+  }
+  return '[' + low + ',' + high + ']';
+}
+
 function parseNumerical(value, type) {
   if ((!type || type == 'double' || type == 'float') && (value.substr && value.substr(0,2) == '0x')) {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     value = IEEEUnHex(value);
+  } else if (type == 'i64' && I64_MODE == 1) {
+    value = parseI64Constant(value);
   } else if (value == 'null') {
     // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
     value = '0';
@@ -715,6 +768,15 @@ function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
 }
 
+// Makes a proper runtime value for a 64-bit value. Used in library.
+function makeI64(low, high) {
+  if (I64_MODE == 1) {
+    return '[' + low + ',' + (high || '0') + ']';
+  } else {
+    assert(!high);
+    return low;
+  }
+}
 
 function getHeapOffset(offset, type) {
   if (USE_TYPED_ARRAYS !== 2) {
@@ -741,6 +803,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore) {
       ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst, unsigned));
     }
     return '{ ' + ret.join(', ') + ' }';
+  }
+
+  if (type == 'i64' && I64_MODE == 1) {
+    return '[' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore) + ','
+               + makeGetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore) + ']';
   }
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
@@ -791,14 +858,19 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
     return ret.join('; ');
   }
 
+  if (type == 'i64' && I64_MODE == 1) {
+    return '(' + makeSetValue(ptr, pos, value + '[0]', 'i32', noNeedFirst, ignore) + ','
+               + makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), value + '[1]', 'i32', noNeedFirst, ignore) + ')';
+  }
+
   value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
-    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ');';
+    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
-    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ') + ';';
+    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ');
   }
 }
 

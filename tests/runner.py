@@ -31,7 +31,7 @@ except:
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
-  save_dir = 0
+  save_dir = 1
   save_JS = 0
 
   def setUp(self):
@@ -364,29 +364,34 @@ if 'benchmark' not in str(sys.argv):
         Settings.CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
         self.do_run(src, output, force_c=True)
 
-    def test_bigint(self):
-        if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
-        src = '''
-          #include <stdio.h>
-          int main()
-          {
-            long long x = 0x0000def123450789ULL; // any bigger than this, and we
-            long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-            printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
+    def test_i64(self):
+        for i64_mode in [1]: # XXX add 0
+          if i64_mode == 0 and Settings.USE_TYPED_ARRAYS != 0: continue # Typed arrays truncate i64'
+          Settings.I64_MODE = i64_mode
+          src = '''
+            #include <stdio.h>
+            int main()
+            {
+              long long x = 0x0000def123450789ULL; // any bigger than this, and we
+              long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
+              printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
 
-            printf("*");
-            long long z = 13;
-            int n = 0;
-            while (z > 1) {
-              printf("%.2f,", (float)z); // these must be integers!
-              z = z >> 1;
-              n++;
+              printf("*");
+              long long z = 13;
+              int n = 0;
+              while (z > 1) {
+                printf("%.2f,", (float)z); // these must be integers!
+                z = z >> 1;
+                n++;
+              }
+              printf("*%d*\\n", n);
+              return 0;
             }
-            printf("*%d*\\n", n);
-            return 0;
-          }
-        '''
-        self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
+          '''
+          self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
+
+        # Stuff that only works in i64_mode = 1
+        # TODO
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
@@ -1511,6 +1516,9 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*96,97,98,101,101*')
 
     def test_indirectbr(self):
+        if Settings.USE_TYPED_ARRAYS == 2:
+          Settings.I64_MODE = 1 # Unsafe optimizations use 64-bit load/store on two i32s
+
         src = '''
           #include <stdio.h>
           int main(void) {
@@ -3110,7 +3118,6 @@ if 'benchmark' not in str(sys.argv):
       Settings.CHECK_OVERFLOWS = 0
 
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
-                   #build_ll_hook=self.do_autodebug)
 
     def test_gcc_unmangler(self):
       self.do_run(path_from_root('third_party'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
@@ -4226,12 +4233,13 @@ class %s(T):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.PROFILE = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
+    Settings.I64_MODE = 1 # XXX
 
     if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
     if Building.LLVM_OPTS:
-      self.pick_llvm_opts(3)
+      self.pick_llvm_opts(3) #, handpicked=Settings.USE_TYPED_ARRAYS != 2)
 
     Building.COMPILER_TEST_OPTS = ['-g']
 
@@ -4302,6 +4310,7 @@ else:
   Settings.QUANTUM_SIZE = 1
   Settings.RELOOP = Settings.OPTIMIZE = 1
   Settings.USE_TYPED_ARRAYS = 1
+  Settings.I64_MODE = 0
   Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.AUTO_OPTIMIZE = Settings.RUNTIME_TYPE_INFO = 0
   Settings.INVOKE_RUN = 1
   Settings.CORRECT_SIGNS = 0

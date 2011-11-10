@@ -50,6 +50,12 @@ USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
                       // TODO: require compiling with -malign-double, which does align doubles
 USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
                // not generated at all. This is useful if your code is 100% ints without floats or doubles
+I64_MODE = 0; // How to implement 64-bit integers:
+              // 0: As doubles. This will work up to about 53 bits.
+              // 1: As [low, high]. This will support all 64 bits for bit ops, etc., but not full math.
+              //    TODO: reuse these arrays/escape analysis to avoid GC
+              // 2: Full bignum support. TODO
+
 SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                          // functions that have no basic stack usage. But, they
                          // may allocate stack later, and in a loop, this can be

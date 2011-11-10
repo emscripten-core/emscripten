@@ -361,6 +361,8 @@ function analyzer(data) {
             variable.impl = VAR_EMULATED;
           } else if (variable.origin == 'funcparam') {
             variable.impl = VAR_EMULATED;
+          } else if (variable.type == 'i64*' && I64_MODE == 1) {
+            variable.impl = VAR_EMULATED;
           } else if (OPTIMIZE && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
             // A simple int value, can be implemented as a native variable
             variable.impl = VAR_NATIVE;
