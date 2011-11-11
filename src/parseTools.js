@@ -1203,6 +1203,10 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
 
 function getGetElementPtrIndexes(item) {
   var type = item.params[0].type;
+  if (I64_MODE == 1) {
+    // GEP indexes are marked as i64s, but they are just numbers to us
+    item.params.forEach(function(param) { param.type = 'i32' });
+  }
   item.params = item.params.map(finalizeLLVMParameter);
   var ident = item.params[0];
 
