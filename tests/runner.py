@@ -4364,9 +4364,9 @@ else:
 
   Building.COMPILER_TEST_OPTS = []
 
-  Settings.QUANTUM_SIZE = 1
   Settings.RELOOP = Settings.OPTIMIZE = 1
   Settings.USE_TYPED_ARRAYS = 1
+  Settings.QUANTUM_SIZE = 1
   Settings.I64_MODE = 0
   Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.AUTO_OPTIMIZE = Settings.RUNTIME_TYPE_INFO = 0
   Settings.INVOKE_RUN = 1
