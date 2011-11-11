@@ -2596,6 +2596,8 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
 
     def test_stat(self):
+      if Settings.I64_MODE == 1: return self.skip('TODO')
+
       def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
