@@ -3119,7 +3119,7 @@ if 'benchmark' not in str(sys.argv):
     def test_raytrace(self):
         if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double values')
 
-        src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read()
+        src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
         self.do_run(src, output, ['3', '16'])#, build_ll_hook=self.do_autodebug)
 
@@ -4308,10 +4308,10 @@ TT = %s
 
   for llvm_opts in [0,1]:
     for name, compiler, quantum, embetter, typed_arrays in [
-      #('clang', CLANG, 1, 0, 0),
-      #('clang', CLANG, 4, 0, 0),
-      #('clang', CLANG, 1, 1, 1),
-      #('clang', CLANG, 4, 1, 1),
+      ('clang', CLANG, 1, 0, 0),
+      ('clang', CLANG, 4, 0, 0),
+      ('clang', CLANG, 1, 1, 1),
+      ('clang', CLANG, 4, 1, 1),
       ('clang', CLANG, 4, 1, 2),
     ]:
       fullname = '%s_%d_%d%s%s' % (
