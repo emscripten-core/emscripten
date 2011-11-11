@@ -540,10 +540,15 @@ function makeI64(low, high) {
   }
 }
 
-// Splits a number (an integer in a double, possibly > 32 bits) into an I64_MODE 1 i64 value
+// Splits a number (an integer in a double, possibly > 32 bits) into an I64_MODE 1 i64 value.
+// Will suffer from rounding. margeI64 does the opposite.
 function splitI64(value) {
   assert(I64_MODE == 1);
-  return makeI64(value + '|0', 'Math.floor(' + value + '/4294967296)');
+  return '(tempInt=' + value + ',' + makeI64('tempInt|0', 'Math.floor(tempInt/4294967296)') + ')';
+}
+function mergeI64(value) {
+  assert(I64_MODE == 1);
+  return '(tempI64=' + value + ',tempI64[0]+tempI64[1]*4294967296)';
 }
 
 function makeCopyI64(value) {
@@ -1469,6 +1474,12 @@ function processMathop(item) { with(item) {
       }
       case 'select': return ident1 + ' ? ' + makeCopyI64(ident2) + ' : ' + makeCopyI64(ident3);
       case 'ptrtoint': case 'inttoptr': throw 'Pointers cannot be 64-bit!';
+      // Dangerous, rounded operations. TODO: Fully emulate
+      case 'add': return handleOverflow(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)), bits);
+      case 'sub': return handleOverflow(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)), bits);
+      case 'sdiv': case 'udiv': return splitI64(makeRounding(mergeI64(ident1) + '/' + mergeI64(ident2), bits, op[0] === 's'));
+      case 'mul': return handleOverflow(splitI64(mergeI64(ident1) + '*' + mergeI64(ident2)), bits);
+      case 'urem': return splitI64(mergeI64(ident1) + '%' + mergeI64(ident2));
       default: throw 'Unsupported i64 mode 1 op: ' + item.op;
     }
   }

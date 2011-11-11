@@ -397,6 +397,7 @@ if 'benchmark' not in str(sys.argv):
 
         Settings.I64_MODE = 1
         src = r'''
+          #include <time.h>
           #include <stdio.h>
           #include <stdint.h>
 
@@ -412,6 +413,15 @@ if 'benchmark' not in str(sys.argv):
           }
           void modifier2(int64_t &t) {
             t |= 12;
+          }
+
+          int truthy() {
+            int x = time(0);
+            while (x > 10) {
+              x |= 7;
+              x /= 2;
+            }
+            return x < 3;
           }
 
           int main()
@@ -434,13 +444,20 @@ if 'benchmark' not in str(sys.argv):
             modifier2(t);
             printf("*%Ld*\n", t);
 
-            // 
+            // Basic (rounded, for now) math
+            int64_t a = 0x1234def123450789ULL;
+            a--; if (truthy()) a--; // confuse optimizer
+            int64_t b = 0x1234000000450789ULL;
+            b++; if (truthy()) b--; // confuse optimizer
+            printf("*%Ld,%Ld,%Ld*\n", a+b, a-b, a*3, a/5);
+
             return 0;
           }
         '''
         self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
                          '*18446744073709552000*\n*576460752303423500*\n' +
-                         'm1: 127\n*123*\n*127*\n')
+                         'm1: 127\n*123*\n*127*\n' +
+                         '*2623591910208049000,245127255687168,3935755556195604500*\n')
 
 
     def test_unsigned(self):

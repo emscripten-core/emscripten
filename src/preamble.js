@@ -382,6 +382,9 @@ var ABORT = false;
 
 var undef = 0;
 var tempValue, tempInt, tempBigInt;
+#if I64_MODE == 1
+var tempI64, tempI64b;
+#endif
 
 function abort(text) {
   print(text + ':\n' + (new Error).stack);
