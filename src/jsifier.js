@@ -844,6 +844,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var ignoreFunctionIndexizing = [];
     var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
 
+    if (I64_MODE == 1 && ident in LLVM.INTRINSICS_32) {
+      // Some LLVM intrinsics use i64 where it is not needed, and would cause much overhead
+      params.forEach(function(param) { if (param.type == 'i64') param.type = 'i32' });
+    }
+
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
       if (!func || !func.hasVarArgs || i < func.numParams-1 || useJSArgs) {
