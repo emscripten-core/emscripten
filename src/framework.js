@@ -73,7 +73,7 @@ Substrate.prototype = {
     var that = this;
     function midComment(force) {
       var curr = Date.now();
-      if (curr - midTime > 1000 || force) {
+      if (curr - midTime > 500 || force) {
         dprint('framework', '// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds.');
         midTime = curr;
       }

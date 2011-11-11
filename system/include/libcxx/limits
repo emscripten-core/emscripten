@@ -102,10 +102,16 @@ template<> class numeric_limits<cv long double>;
 
 */
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 #include <__config>
 #include <type_traits>
+
+#if defined(_MSC_VER)
+#include "support/win32/limits_win32.h"
+#endif // _MSC_VER
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 

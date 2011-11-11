@@ -19,6 +19,11 @@ int _EXFUN(isxdigit,(int __c));
 int _EXFUN(tolower, (int __c));
 int _EXFUN(toupper, (int __c));
 
+int _EXFUN(isxdigit_l, (int __c, locale_t locale));
+int _EXFUN(isdigit_l, (int __c, locale_t locale));
+
+
+
 #if !defined(__STRICT_ANSI__) || defined(__cplusplus) || __STDC_VERSION__ >= 199901L
 int _EXFUN(isblank, (int __c));
 #endif
@@ -30,10 +35,11 @@ int _EXFUN(toascii, (int __c));
 #define _toupper(__c) ((unsigned char)(__c) - 'a' + 'A')
 #endif
 
+/* XXX Emscripten 
 #ifndef _MB_CAPABLE
 _CONST
 #endif
-/* XXX Emscripten extern	__IMPORT char	*__ctype_ptr__; */
+extern	__IMPORT char	*__ctype_ptr__;*/
 
 #if 0 /* ndef __cplusplus XXX Emscripten: Do not use the macros here. always use the simple functions */
 

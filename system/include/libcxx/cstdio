@@ -99,7 +99,9 @@ void perror(const char* s);
 #include <__config>
 #include <stdio.h>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -124,13 +126,15 @@ using ::scanf;
 using ::snprintf;
 using ::sprintf;
 using ::sscanf;
+#ifndef _MSC_VER
 using ::vfprintf;
 using ::vfscanf;
-using ::vprintf;
 using ::vscanf;
+using ::vsscanf;
+#endif // _MSC_VER
+using ::vprintf;
 using ::vsnprintf;
 using ::vsprintf;
-using ::vsscanf;
 using ::fgetc;
 using ::fgets;
 using ::fputc;

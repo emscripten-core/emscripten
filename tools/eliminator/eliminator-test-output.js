@@ -105,3 +105,6 @@ var anon = (function(x) {
   var $8 = $4 + 12;
   HEAP[$8] = $7;
 });
+function r($0) {
+  HEAP[$0 + 7] = 107;
+}

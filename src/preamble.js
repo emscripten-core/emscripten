@@ -89,7 +89,9 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if USE_TYPED_ARRAYS == 1
   if (type === null) {
     IHEAP[dest] = value;
+#if USE_FHEAP
     FHEAP[dest] = value;
+#endif
   } else if (type in Runtime.FLOAT_TYPES) {
     FHEAP[dest] = value;
   } else {
@@ -516,7 +518,10 @@ function alignMemoryPage(x) {
 
 var HEAP;
 #if USE_TYPED_ARRAYS == 1
-var IHEAP, FHEAP;
+var IHEAP;
+#if USE_FHEAP
+var FHEAP;
+#endif
 #endif
 #if USE_TYPED_ARRAYS == 2
 var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
@@ -539,7 +544,9 @@ try {
 if (HAS_TYPED_ARRAYS) {
 #if USE_TYPED_ARRAYS == 1
   HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+#if USE_FHEAP
   FHEAP = new Float64Array(TOTAL_MEMORY);
+#endif
 #endif
 #if USE_TYPED_ARRAYS == 2
   var buffer = new ArrayBuffer(TOTAL_MEMORY);
@@ -564,7 +571,10 @@ if (HAS_TYPED_ARRAYS) {
     HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
   }
 #if USE_TYPED_ARRAYS == 1
-  IHEAP = FHEAP = HEAP;
+  IHEAP = HEAP;
+#if USE_FHEAP
+  FHEAP = HEAP;
+#endif
 #endif
 #if USE_TYPED_ARRAYS == 2
   abort('Cannot fallback to non-typed array case in USE_TYPED_ARRAYS == 2: Code is too specialized');
@@ -580,7 +590,9 @@ for (var i = 0; i < base.length; i++) {
 Module['HEAP'] = HEAP;
 #if USE_TYPED_ARRAYS == 1
 Module['IHEAP'] = IHEAP;
+#if USE_FHEAP
 Module['FHEAP'] = FHEAP;
+#endif
 #endif
 #if USE_TYPED_ARRAYS == 2
 Module['HEAP8'] = HEAP8;

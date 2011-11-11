@@ -2130,6 +2130,7 @@ LibraryManager.library = {
     var fields = 0;
     var argIndex = 0;
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
+      if (next <= 0) return fields;
       var next = get();
       if (next <= 0) return fields;  // End of input.
       if (format[formatIndex] === '%') {
@@ -2153,7 +2154,8 @@ LibraryManager.library = {
               (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
                                 next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
                                 next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
-              (type === 's')) {
+              (type === 's') &&
+              (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
             buffer.push(String.fromCharCode(next));
             next = get();
             curr++;
@@ -3154,8 +3156,14 @@ LibraryManager.library = {
 
   abs: 'Math.abs', // XXX should be integer?
 
+  atoi__deps: ['isspace', 'isdigit'],
   atoi: function(s) {
-    return Math.floor(Number(Pointer_stringify(s)));
+    var c;
+    while ((c = {{{ makeGetValue('s', 0, 'i8') }}}) && _isspace(c)) s++;
+    if (!c || !_isdigit(c)) return 0;
+    var e = s;
+    while ((c = {{{ makeGetValue('e', 0, 'i8') }}}) && _isdigit(c)) e++;
+    return Math.floor(Number(Pointer_stringify(s).substr(0, e-s)));
   },
 
   exit__deps: ['_exit'],
@@ -4041,6 +4049,27 @@ LibraryManager.library = {
   },
   __cxa_guard_release: function() {
     return 1;
+  },
+
+  _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
+  _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
+
+  __dynamic_cast: function(ptr, knownTI, attemptedTI, idunno) {
+    var ptrTV = {{{ makeGetValue('ptr', '0', '*') }}};
+    var count = {{{ makeGetValue('ptrTV', '0', '*') }}};
+    ptrTV -= {{{ QUANTUM_SIZE }}};
+    var TI = {{{ makeGetValue('ptrTV', '0', '*') }}};
+    do {
+      if (TI == attemptedTI) return 1;
+      // Go to parent class
+      var type_infoAddr = {{{ makeGetValue('TI', '0', '*') }}} - {{{ QUANTUM_SIZE*2 }}};
+      var type_info = {{{ makeGetValue('type_infoAddr', '0', '*') }}};
+      if (type_info == 1) return 0; // no parent class
+      var TIAddr = TI + {{{ QUANTUM_SIZE*2 }}};
+      var TI = {{{ makeGetValue('TIAddr', '0', '*') }}};
+    } while (1);
+
+    return 0;
   },
 
   // Exceptions

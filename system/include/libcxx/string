@@ -446,7 +446,9 @@ template <> struct hash<wstring>;
 #include <cassert>
 #endif
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -1021,7 +1023,7 @@ __basic_string_common<__b>::__throw_out_of_range() const
 #endif
 }
 
-//extern template class __basic_string_common<true>; /* XXX EMScripten: Comment to export the class */
+extern template class __basic_string_common<true>; /* XXX EMScripten: Comment to export the class */
 
 template<class _CharT, class _Traits, class _Allocator>
 class _LIBCPP_VISIBLE basic_string

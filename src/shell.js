@@ -1,4 +1,4 @@
-"use strict";
+// TODO: " u s e   s t r i c t ";
 
 /*
 // Capture the output of this into a variable, if you want

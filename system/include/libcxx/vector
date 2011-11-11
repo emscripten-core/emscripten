@@ -270,7 +270,9 @@ void swap(vector<T,Allocator>& x, vector<T,Allocator>& y)
 #include <__split_buffer>
 #include <__functional_base>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -305,7 +307,14 @@ __vector_base_common<__b>::__throw_out_of_range() const
 #endif
 }
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable: 4231 )
+#endif // _MSC_VER
 extern template class __vector_base_common<true>;
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif // _MSC_VER
 
 template <class _Tp, class _Allocator>
 class __vector_base
