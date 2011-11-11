@@ -592,10 +592,15 @@ function parseI64Constant(str) {
     for (var i = 0; i < v.length; i++) {
       v[i] -= w[i];
       if (v[i] < 0) {
-        assert(i-1 >= 0);
-        assert(v[i-1] > 0);
-        v[i-1]--;
         v[i] += 10;
+        // find something to take from
+        var j = i-1;
+        while (v[j] == 0) {
+          v[j] = 9;
+          j--;
+          assert(j >= 0);
+        }
+        v[j]--;
       }
     }
   }
