@@ -1,4 +1,4 @@
-import shutil, time, os, json, sys
+import shutil, time, os, json, sys, io
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -38,6 +38,8 @@ VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__']
 
+MAX_SPOOL_FILE_SIZE = 1000000
+
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:
@@ -63,7 +65,7 @@ if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
 
 # Utilities
 
-def timeout_run(proc, timeout, note, input=None):
+def timeout_run(proc, timeout, note):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
@@ -71,18 +73,12 @@ def timeout_run(proc, timeout, note, input=None):
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
       raise Exception("Timed out: " + note)
-  return proc.communicate(input=input)[0]
+  return proc.communicate()[0]
 
-def run_js(engine, filename, args=[], check_timeout=False, read_stdin=False, stdout=PIPE, cwd=None):
+def run_js(engine, filename, args=[], check_timeout=False, stdin=None, stdout=PIPE, cwd=None):
 
-  if read_stdin:
-    input = ''
-    for line in sys.stdin:
-      input += line + '\n'
-  else:
-    input = None
   return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
-                     stdout=stdout, cwd=cwd), 15*60 if check_timeout else None, 'Execution', input=input)
+                     stdin=stdin, stdout=stdout, cwd=cwd), 15*60 if check_timeout else None, 'Execution', input=input)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
@@ -338,9 +334,66 @@ class Building:
     #print compiler_output
 
     # Detect compilation crashes and errors
-    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
+    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output:
+      print(compiler_output)
+      assert 0
     assert os.path.exists(filename + '.o.js') and len(open(filename + '.o.js', 'r').read()) > 0, 'Emscripten failed to generate .js: ' + str(compiler_output)
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
+
+def get_std_reader():
+	if platform.system() == "Windows":
+		msvcrt.setmode(sys.stdin.fileno(), 'rb')
+	return io.BufferedReader(sys.stdin.fileno())
+
+def get_std_writer():
+	if platform.system() == "Windows":
+		msvcrt.setmode(sys.stdout.fileno(), 'wb')
+	return io.BufferedWriter(sys.stdout.fileno())
+
+def delegate(reader = get_std_reader(), writer = get_std_writer()):
+	data_queue = queue()
+	no_input = False
+
+	class InThread:
+		def __init__(self):
+			threading.Thread.__init__()
+		
+		def run(self):
+			while true:
+				bytes = reader.read(io.DEFAULT_BUFFER_SIZE)
+				if len(bytes) == 0:
+					no_input = True
+					break # End of stream
+				data_queue.put_nowait(bytes)
+	
+	class OutThread:
+		def __init__(self):
+			threading.Thread.__init__()
+		
+		def run(self):
+			while true:
+				try:
+					# TODO: try whether syncing output thread
+					# actually makes the whole thing perform faster
+					# It's actively waiting here - Nuff said
+					bytes = data_queue.get_nowait()
+					writer.write(bytes)
+				except queue.Empty:
+					if no_input:
+						break; # All written
+	
+	in_thread  = InThread()
+	out_thread = OutThread()
+	
+	in_thread.start()
+	out_thread.start()
+	
+	# Wait up on the started threads
+	in_thread.join()
+	out_thread.join()
+
+def is_bitcode(reader):
+	return reader.peek(2) == [0x42, 0x43]
 
