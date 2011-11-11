@@ -784,7 +784,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       case VAR_NATIVIZED: {
         return value; // We have the actual value here
       }
-      case VAR_EMULATED: return makeGetValue(value, null, item.type, 0, item.unsigned);
+      case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned);
       default: throw "unknown [load] impl: " + impl;
     }
   });
@@ -982,11 +982,15 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   // Data
 
-  substrate.addItems(values(Types.types).filter(function(type) { return type.lineNum != '?' }), 'Type');
-  substrate.addItems(values(data.globalVariables), 'GlobalVariable');
-  substrate.addItems(data.functions, 'FunctionSplitter');
-  substrate.addItems(data.functionStubs, 'FunctionStub');
-  substrate.addItems(data.aliass, 'Alias');
+  if (mainPass) {
+    substrate.addItems(values(Types.types).filter(function(type) { return type.lineNum != '?' }), 'Type');
+    substrate.addItems(values(data.globalVariables), 'GlobalVariable');
+    substrate.addItems(data.functionStubs, 'FunctionStub');
+    substrate.addItems(data.aliass, 'Alias');
+    assert(data.functions.length == 0);
+  } else {
+    substrate.addItems(data.functions, 'FunctionSplitter');
+  }
 
   return finalCombiner(substrate.solve());
 }

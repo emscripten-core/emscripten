@@ -9,8 +9,6 @@
 
 //#include "emscripten.h"
 
-static int outputLeft = 550; // limit output, so we do not benchmark speed of printing
-
 #define GIMME_SHADOWS  // usage: ./sphereflake [lvl=6] >pix.ppm
 
 enum { childs = 9, ss= 2, ss_sqr = ss*ss }; /* not really tweakable anymore */
@@ -114,24 +112,19 @@ static void trace_rgss(const int width,const int height) {
 	}
 	v_t scan(0,w-1,std::max(w,h)); /*scan line*/
 	for(int i=height;i;--i) {
+    int lineMean = 0;
 		for(int j=width;j;--j) {
 			double g=0;
 			for(int idx=0;idx < ss_sqr;++idx){ /*AA*/
 				ray.d=(scan+rgss[idx]).norm();
 				g+=ray_trace(pool,ray); /*trace*/
 			}
-      if (outputLeft) {
-  		  printf("%d ", int(scale*g)); // std::cout << int(scale*g)<< " ";
-        outputLeft--;
-      }
+  		lineMean += int(scale*g);
 			scan.x+=1; /*next pixel*/
 		}
+    printf("%d : %d\n", i, lineMean/width);
 		scan.x=0;scan.y-=1; /*next line*/
 	}
-  if (outputLeft) {
-    printf("\n"); // std::cout << "\n"; // XXX Emscripten: std::endl crashes...
-    outputLeft--;
-  }
 }
 	
 struct basis_t{ /* bogus and compact, exactly what we need */

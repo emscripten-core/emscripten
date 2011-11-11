@@ -105,5 +105,8 @@ var anon = function(x) {
   var $8 = $4 + 12;
   HEAP[$8] = $7;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py"]
+function r($0) {
+  HEAP[$0 + 5 + 2] = 99+5+2+1;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r"]
 

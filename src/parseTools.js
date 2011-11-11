@@ -126,6 +126,10 @@ function isPointerType(type) {
   return pointingLevels(type) > 0;
 }
 
+function isIntImplemented(type) {
+  return type[0] == 'i' || isPointerType(type);
+}
+
 function isVoidType(type) {
   return type == 'void';
 }
@@ -719,7 +723,12 @@ function getHeapOffset(offset, type) {
     if (getNativeFieldSize(type) > 4) {
       type = 'i32'; // XXX we emulate 64-bit values as 32
     }
-    return '((' + offset + ')>>' + (Math.log(getNativeTypeSize(type))/Math.LN2) + ')';
+    var shifts = Math.log(getNativeTypeSize(type))/Math.LN2;
+    if (shifts != 0) {
+      return '((' + offset + ')>>' + (shifts) + ')';
+    } else {
+      return '(' + offset + ')';
+    }
   }
 }
 
@@ -793,11 +802,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   }
 }
 
-var UNROLL_LOOP_LIMIT = 5;
+var UNROLL_LOOP_LIMIT = 8;
 
 function makeSetValues(ptr, pos, value, type, num) {
   function safety(where) {
-    where = where || getFastValue(ptr, '+', pos) + '+$mspi$';
+    where = where || getFastValue(ptr, '+', pos) + '+mspi';
     return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + where + ', ' + type + ', 1)' : '');
   }
   if (USE_TYPED_ARRAYS in set(0, 1)) {
@@ -808,85 +817,96 @@ function makeSetValues(ptr, pos, value, type, num) {
         }).join('; ');
       }
     }
-    return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
-      makeSetValue(ptr, getFastValue(pos, '+', '$mspi$'), value, type) + '\n}';
+    return 'for (var mspi = 0; mspi < ' + num + '; mspi++) {\n' +
+      makeSetValue(ptr, getFastValue(pos, '+', 'mspi'), value, type) + '\n}';
   } else { // USE_TYPED_ARRAYS == 2
 /*
-    return 'for (var $mspi$ = 0; $mspi$ < ' + num + '; $mspi$++) {\n' +
-           '  HEAP8[' + getFastValue(ptr, '+', pos) + '+$mspi$] = ' + value + safety() + '\n}';
+    return 'for (var mspi = 0; mspi < ' + num + '; mspi++) {\n' +
+           '  HEAP8[' + getFastValue(ptr, '+', pos) + '+mspi] = ' + value + safety() + '\n}';
 */
     return '' +
-      'var $dest$, $stop$, $stop4$, $fast$, $value4$;\n' +
-      '$dest$ = ' + getFastValue(ptr, '+', pos) + ';\n' +
-      '$stop$ = $dest$ + ' + num + ';\n' +
-      '$value4$ = ' + value + ';\n' +
-      'if ($value4$ < 0) $value4$ += 256;\n' +
-      '$value4$ = $value4$ + ($value4$<<8) + ($value4$<<16) + ($value4$*16777216);\n' + 
-      'while ($dest$%4 !== 0 && $dest$ < $stop$) {\n' +
-      '  ' + safety('$dest$') + '; HEAP8[$dest$++] = ' + value + ';\n' +
+      'var dest, stop, stop4, fast, value;\n' +
+      'dest = ' + getFastValue(ptr, '+', pos) + ';\n' +
+      'stop = dest + ' + num + ';\n' +
+      'value = ' + value + ';\n' +
+      'if (value < 0) value += 256;\n' +
+      'value = value + (value<<8) + (value<<16) + (value*16777216);\n' + 
+      'while (dest%4 !== 0 && dest < stop) {\n' +
+      '  ' + safety('dest') + '; HEAP8[dest++] = ' + value + ';\n' +
       '}\n' +
-      '$dest$ >>= 2;\n' +
-      '$stop4$ = $stop$ >> 2;\n' +
-      'while ($dest$ < $stop4$) {\n' +
-         safety('($dest$<<2)+0', '($src$<<2)+0') + ';' + safety('($dest$<<2)+1', '($src$<<2)+1') + ';' + 
-         safety('($dest$<<2)+2', '($src$<<2)+2') + ';' + safety('($dest$<<2)+3', '($src$<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-      '  HEAP32[$dest$++] = $value4$;\n' + // this is the fast inner loop we try hard to stay in
+      'dest >>= 2;\n' +
+      'stop4 = stop >> 2;\n' +
+      'while (dest < stop4) {\n' +
+         safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
+         safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
+      '  HEAP32[dest++] = value;\n' + // this is the fast inner loop we try hard to stay in
       '}\n' +
-      '$dest$ <<= 2;\n' +
-      'while ($dest$ < $stop$) {\n' +
-      '  ' + safety('$dest$') + '; HEAP8[$dest$++] = ' + value + ';\n' +
+      'dest <<= 2;\n' +
+      'while (dest < stop) {\n' +
+      '  ' + safety('dest') + '; HEAP8[dest++] = ' + value + ';\n' +
       '}'
   }
 }
 
 function makeCopyValues(dest, src, num, type, modifier) {
   function safety(to, from) {
-    to = to || (dest + '+' + '$mcpi$');
-    from = from || (src + '+' + '$mcpi$');
+    to = to || (dest + '+' + 'mcpi');
+    from = from || (src + '+' + 'mcpi');
     return (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + to + ', ' + from + ')' : '');
   }
-  if (USE_TYPED_ARRAYS in set(0, 1)) {
+  if (USE_TYPED_ARRAYS <= 1) {
     if (isNumber(num)) {
       if (num < UNROLL_LOOP_LIMIT) {
         return range(num).map(function(i) {
           return type !== 'null' ? makeSetValue(dest, i, makeGetValue(src, i, type) + (modifier || ''), type)
                            : // Null is special-cased: We copy over all heaps
                             makeGetSlabs(dest, 'null', true).map(function(slab) {
-                              return slab + '[' + dest + '+' + i + ']=' + slab + '[' + src + '+' + i + ']';
+                              return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']';
                             }).join('; ') + '; ' + safety(dest + '+' + i, src + '+' + i)
         }).join('; ');
       }
     }
-    return 'for (var $mcpi$ = 0; $mcpi$ < ' + num + '; $mcpi$++) {\n' +
-      (type !== 'null' ? makeSetValue(dest, '$mcpi$', makeGetValue(src, '$mcpi$', type) + (modifier || ''), type)
-                       : // Null is special-cased: We copy over all heaps
-                        makeGetSlabs(dest, 'null', true).map(function(slab) {
-                          return slab + '[' + dest + '+$mcpi$]=' + slab + '[' + src + '+$mcpi$]'
-                        }).join('; ') + '; ' + safety()
-      ) + '\n' + '}';
+    if (SAFE_HEAP) {
+      return 'for (var mcpi = 0; mcpi < ' + num + '; mcpi++) {\n' +
+        (type !== 'null' ? makeSetValue(dest, 'mcpi', makeGetValue(src, 'mcpi', type) + (modifier || ''), type)
+                         : // Null is special-cased: We copy over all heaps
+                          makeGetSlabs(dest, 'null', true).map(function(slab) {
+                            return slab + '[' + dest + '+mcpi]=' + slab + '[' + src + '+mcpi]'
+                          }).join('; ') + '; ' + safety()
+        ) + '\n' + '}';
+    }
+    if (USE_TYPED_ARRAYS == 0) {
+      return 'for (var mcpi_s=' + src + ',mcpi_e=' + src + '+' + num + ',mcpi_d=' + dest + '; mcpi_s<mcpi_e; mcpi_s++, mcpi_d++) {\n' +
+             '  HEAP[mcpi_d] = HEAP[mcpi_s];\n' +
+             '}';
+    } else { // USE_TYPED_ARRAYS == 1
+      return 'for (var mcpi_s=' + src + ',mcpi_e=' + src + '+' + num + ',mcpi_d=' + dest + '; mcpi_s<mcpi_e; mcpi_s++, mcpi_d++) {\n' +
+             '  IHEAP[mcpi_d] = IHEAP[mcpi_s];' + (USE_FHEAP ? ' FHEAP[mcpi_d] = FHEAP[mcpi_s];' : '') + '\n' +
+             '}';
+    }
   } else { // USE_TYPED_ARRAYS == 2
     return '' +
-      'var $src$, $dest$, $stop$, $stop4$, $fast$;\n' +
-      '$src$ = ' + src + ';\n' +
-      '$dest$ = ' + dest + ';\n' +
-      '$stop$ = $src$ + ' + num + ';\n' +
-      'if (($dest$%4) == ($src$%4) && ' + num + ' > 8) {\n' +
-      '  while ($src$%4 !== 0 && $src$ < $stop$) {\n' +
-      '    ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
+      'var src, dest, stop, stop4, fast;\n' +
+      'src = ' + src + ';\n' +
+      'dest = ' + dest + ';\n' +
+      'stop = src + ' + num + ';\n' +
+      'if ((dest%4) == (src%4) && ' + num + ' > 8) {\n' +
+      '  while (src%4 !== 0 && src < stop) {\n' +
+      '    ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
       '  }\n' +
-      '  $src$ >>= 2;\n' +
-      '  $dest$ >>= 2;\n' +
-      '  $stop4$ = $stop$ >> 2;\n' +
-      '  while ($src$ < $stop4$) {\n' +
-           safety('($dest$<<2)+0', '($src$<<2)+0') + ';' + safety('($dest$<<2)+1', '($src$<<2)+1') + ';' + 
-           safety('($dest$<<2)+2', '($src$<<2)+2') + ';' + safety('($dest$<<2)+3', '($src$<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-      '    HEAP32[$dest$++] = HEAP32[$src$++];\n' + // this is the fast inner loop we try hard to stay in
+      '  src >>= 2;\n' +
+      '  dest >>= 2;\n' +
+      '  stop4 = stop >> 2;\n' +
+      '  while (src < stop4) {\n' +
+           safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
+           safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
+      '    HEAP32[dest++] = HEAP32[src++];\n' + // this is the fast inner loop we try hard to stay in
       '  }\n' +
-      '  $src$ <<= 2;\n' +
-      '  $dest$ <<= 2;\n' +
+      '  src <<= 2;\n' +
+      '  dest <<= 2;\n' +
       '}' +
-      'while ($src$ < $stop$) {\n' +
-      '  ' + safety('$dest$', '$src$') + '; HEAP8[$dest$++] = HEAP8[$src$++];\n' +
+      'while (src < stop) {\n' +
+      '  ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
       '}';
   }
   return null;
@@ -894,25 +914,45 @@ function makeCopyValues(dest, src, num, type, modifier) {
 
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
-function getFastValue(a, op, b) {
+function getFastValue(a, op, b, type) {
+  a = a.toString();
+  b = b.toString();
   if (isNumber(a) && isNumber(b)) {
-    return eval(a + op + b);
+    return eval(a + op + b).toString();
   }
-  if (op == '*') {
-    if (!a) a = 1;
-    if (!b) b = 1;
-    if (a == 0 || b == 0) {
-      return 0;
-    } else if (a == 1) {
-      return b;
-    } else if (b == 1) {
-      return a;
+  if (op in set('+', '*') && isNumber(a)) { // if one of them is a number, keep it last
+    var c = b;
+    b = a;
+    a = c;
+  }
+  if (op in set('*', '/')) {
+    if (op == '*') {
+      if (a == 0 || b == 0) {
+        return '0';
+      } else if (a == 1) {
+        return b;
+      } else if (b == 1) {
+        return a;
+      } else if (isNumber(b) && type && isIntImplemented(type) && getNativeTypeSize(type) <= 32) {
+        var shifts = Math.log(parseFloat(b))/Math.LN2;
+        if (shifts % 1 == 0) {
+          return '(' + a + '<<' + shifts + ')';
+        }
+      }
+    } else {
+      if (a == '0') {
+        return '0';
+      } else if (b == 1) {
+        return a;
+      } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
     }
   } else if (op in set('+', '-')) {
-    if (!a) a = 0;
-    if (!b) b = 0;
+    if (b[0] == '-') {
+      op = op == '+' ? '-' : '+';
+      b = b.substr(1);
+    }
     if (a == 0) {
-      return b;
+      return op == '+' ? b : '(-' + b + ')';
     } else if (b == 0) {
       return a;
     }
@@ -920,9 +960,30 @@ function getFastValue(a, op, b) {
   return a + op + b;
 }
 
+function getFastValues(list, op, type) {
+  assert(op == '+');
+  var changed = true;
+  while (changed) {
+    changed = false;
+    for (var i = 0; i < list.length-1; i++) {
+      var fast = getFastValue(list[i], op, list[i+1], type);
+      var raw = list[i] + op + list[i+1];
+      if (fast.length < raw.length || fast.indexOf(op) < 0) {
+        list[i] = fast;
+        list.splice(i+1, 1);
+        i--;
+        changed = true;
+        break;
+      }
+    }
+  }
+  if (list.length == 1) return list[0];
+  return list.reduce(function(a, b) { return a + op + b });
+}
+
 function calcFastOffset(ptr, pos, noNeedFirst) {
   var offset = noNeedFirst ? '0' : makeGetPos(ptr);
-  return getFastValue(offset, '+', pos);
+  return getFastValue(offset, '+', pos, 'i32');
 }
 
 function makeGetPos(ptr) {
@@ -965,12 +1026,16 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     return ['HEAP'];
   } else if (USE_TYPED_ARRAYS == 1) {
     if (type in Runtime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
-      return ['FHEAP'];
+      return ['FHEAP']; // If USE_FHEAP is false, will fail at runtime. At compiletime we do need it for library stuff.
     } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
       return ['IHEAP'];
     } else {
       assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
-      return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
+      if (USE_FHEAP) {
+        return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
+      } else {
+        return ['IHEAP'];
+      }
     }
   } else { // USE_TYPED_ARRAYS == 2)
     if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
@@ -1034,9 +1099,9 @@ function getGetElementPtrIndexes(item) {
   var offset = item.params[1];
   if (offset != 0) {
     if (isStructType(type)) {
-      indexes.push(getFastValue(Types.types[type].flatSize, '*', offset));
+      indexes.push(getFastValue(Types.types[type].flatSize, '*', offset, 'i32'));
     } else {
-      indexes.push(getFastValue(getNativeTypeSize(type), '*', offset));
+      indexes.push(getFastValue(getNativeTypeSize(type), '*', offset, 'i32'));
     }
   }
   item.params.slice(2, item.params.length).forEach(function(arg) {
@@ -1045,7 +1110,7 @@ function getGetElementPtrIndexes(item) {
     var typeData = Types.types[type];
     if (isStructType(type) && typeData.needsFlattening) {
       if (typeData.flatFactor) {
-        indexes.push(getFastValue(curr, '*', typeData.flatFactor));
+        indexes.push(getFastValue(curr, '*', typeData.flatFactor, 'i32'));
       } else {
         if (isNumber(curr)) {
           indexes.push(typeData.flatIndexes[curr]);
@@ -1069,10 +1134,8 @@ function getGetElementPtrIndexes(item) {
     }
     type = typeData && typeData.fields[curr] ? typeData.fields[curr] : '';
   });
-  var ret = indexes[0];
-  for (var i = 1; i < indexes.length; i++) {
-    ret = getFastValue(ret, '+', indexes[i]);
-  }
+
+  var ret = getFastValues(indexes, '+', 'i32');
 
   ret = handleOverflow(ret, 32); // XXX - we assume a 32-bit arch here. If you fail on this, change to 64
 
@@ -1218,11 +1281,11 @@ function processMathop(item) { with(item) {
 
   switch (op) {
     // basic integer ops
-    case 'add': return handleOverflow(ident1 + ' + ' + ident2, bits);
-    case 'sub': return handleOverflow(ident1 + ' - ' + ident2, bits);
-    case 'sdiv': case 'udiv': return makeRounding(ident1 + '/' + ident2, bits, op[0] === 's');
-    case 'mul': return handleOverflow(ident1 + ' * ' + ident2, bits);
-    case 'urem': case 'srem': return ident1 + ' % ' + ident2;
+    case 'add': return handleOverflow(getFastValue(ident1, '+', ident2, item.type), bits);
+    case 'sub': return handleOverflow(getFastValue(ident1, '-', ident2, item.type), bits);
+    case 'sdiv': case 'udiv': return makeRounding(getFastValue(ident1, '/', ident2, item.type), bits, op[0] === 's');
+    case 'mul': return handleOverflow(getFastValue(ident1, '*', ident2, item.type), bits);
+    case 'urem': case 'srem': return getFastValue(ident1, '%', ident2, item.type);
     case 'or': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for or: ' + bits);
@@ -1273,10 +1336,10 @@ function processMathop(item) { with(item) {
       return ident1 + ' >>> ' + ident2;
     }
     // basic float ops
-    case 'fadd': return ident1 + ' + ' + ident2;
-    case 'fsub': return ident1 + ' - ' + ident2;
-    case 'fdiv': return ident1 + ' / ' + ident2;
-    case 'fmul': return ident1 + ' * ' + ident2;
+    case 'fadd': return getFastValue(ident1, '+', ident2, item.type);
+    case 'fsub': return getFastValue(ident1, '-', ident2, item.type);
+    case 'fdiv': return getFastValue(ident1, '/', ident2, item.type);
+    case 'fmul': return getFastValue(ident1, '*', ident2, item.type);
     case 'uitofp': case 'sitofp': return ident1;
     case 'fptoui': case 'fptosi': return makeRounding(ident1, bitsLeft, op === 'fptosi');
 
