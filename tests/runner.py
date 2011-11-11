@@ -64,7 +64,7 @@ class RunnerCore(unittest.TestCase):
     global LLVM_OPT_OPTS
 
     if handpicked is None:
-      handpicked = True # Not even TA2 can withstand instruction combining
+      handpicked = Settings.USE_TYPED_ARRAYS != 2 # TA2 should be able to withstand instruction combining, and we do use I64_MODE = 1 there
 
     LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, handpicked, quantum_size=Settings.QUANTUM_SIZE)
 
@@ -4306,12 +4306,12 @@ TT = %s
 ''' % (fullname, fullname, fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
-  for llvm_opts in [0,1]:
+  for llvm_opts in [1]:
     for name, compiler, quantum, embetter, typed_arrays in [
-      ('clang', CLANG, 1, 0, 0),
-      ('clang', CLANG, 4, 0, 0),
-      ('clang', CLANG, 1, 1, 1),
-      ('clang', CLANG, 4, 1, 1),
+      #('clang', CLANG, 1, 0, 0),
+      #('clang', CLANG, 4, 0, 0),
+      #('clang', CLANG, 1, 1, 1),
+      #('clang', CLANG, 4, 1, 1),
       ('clang', CLANG, 4, 1, 2),
     ]:
       fullname = '%s_%d_%d%s%s' % (
