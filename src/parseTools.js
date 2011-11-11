@@ -533,10 +533,17 @@ function IEEEUnHex(stringy) {
 function makeI64(low, high) {
   if (I64_MODE == 1) {
     return '[' + low + ',' + (high || '0') + ']';
+    // FIXME with this?       return '[unSign(' + low + ',32),' + (high ? ('unSign(' + high + ',32)') : '0') + ']';
   } else {
     assert(!high);
     return low;
   }
+}
+
+// Splits a number (an integer in a double, possibly > 32 bits) into an I64_MODE 1 i64 value
+function splitI64(value) {
+  assert(I64_MODE == 1);
+  return makeI64(value + '|0', 'Math.floor(' + value + '/4294967296)');
 }
 
 function makeCopyI64(value) {

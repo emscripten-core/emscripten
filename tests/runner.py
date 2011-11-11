@@ -2385,7 +2385,10 @@ if 'benchmark' not in str(sys.argv):
     def test_parseInt(self):
       if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
-      expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
+      if Settings.I64_MODE == 0:
+        expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
+      else:
+        expected = open(path_from_root('tests', 'parseInt', 'output_i64mode1.txt'), 'r').read() # some rounding issues, etc.
       self.do_run(src, expected)
 
     def test_printf(self):

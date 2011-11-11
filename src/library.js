@@ -2209,7 +2209,7 @@ LibraryManager.library = {
       } else if (type == 'i64') {
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
-        ret = unSign(ret[0], 32) + unSign(ret[1], 32)*Math.pow(2, 32); // XXX - loss of precision
+        ret = unSign(ret[0], 32) + unSign(ret[1], 32)*Math.pow(2, 32); // Unsigned in this notation. Signed later if needed. // XXX - loss of precision
 #endif
       } else {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
@@ -3274,7 +3274,7 @@ LibraryManager.library = {
   },
 
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
-  _parseInt: function(str, endptr, base, min, max, unsignBits) {
+  _parseInt: function(str, endptr, base, min, max, bits, unsign) {
     // Skip space.
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
 
@@ -3325,12 +3325,12 @@ LibraryManager.library = {
     }
 
     // Unsign if needed.
-    if (unsignBits) {
+    if (unsign) {
       if (Math.abs(ret) > max) {
         ret = max;
         ___setErrNo(ERRNO_CODES.ERANGE);
       } else {
-        ret = unSign(ret, unsignBits);
+        ret = unSign(ret, bits);
       }
     }
 
@@ -3340,23 +3340,29 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE);
     }
 
+#if I64_MODE == 1
+    if (bits == 64) {
+      ret = {{{ splitI64('ret') }}};
+    }
+#endif
+
     return ret;
   },
   strtoll__deps: ['_parseInt'],
   strtoll: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -9223372036854775808, 9223372036854775807);  // LLONG_MIN, LLONG_MAX; imprecise.
+    return __parseInt(str, endptr, base, -9223372036854775808, 9223372036854775807, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
   },
   strtol__deps: ['_parseInt'],
   strtol: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -2147483648, 2147483647);  // LONG_MIN, LONG_MAX.
+    return __parseInt(str, endptr, base, -2147483648, 2147483647, 32);  // LONG_MIN, LONG_MAX.
   },
   strtoul__deps: ['_parseInt'],
   strtoul: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, 0, 4294967295, 32);  // ULONG_MAX.
+    return __parseInt(str, endptr, base, 0, 4294967295, 32, true);  // ULONG_MAX.
   },
   strtoull__deps: ['_parseInt'],
   strtoull: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64);  // ULONG_MAX; imprecise.
+    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64, true);  // ULONG_MAX; imprecise.
   },
 
   qsort__deps: ['memcpy'],
