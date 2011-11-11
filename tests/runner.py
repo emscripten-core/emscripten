@@ -4287,7 +4287,8 @@ class %s(T):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.PROFILE = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
-    Settings.I64_MODE = 1 # XXX
+    if Settings.USE_TYPED_ARRAYS == 2:
+      Settings.I64_MODE = 1
 
     if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
@@ -4305,10 +4306,10 @@ TT = %s
 
   for llvm_opts in [0,1]:
     for name, compiler, quantum, embetter, typed_arrays in [
-      ('clang', CLANG, 1, 0, 0),
-      ('clang', CLANG, 4, 0, 0),
-      ('clang', CLANG, 1, 1, 1),
-      ('clang', CLANG, 4, 1, 1),
+      #('clang', CLANG, 1, 0, 0),
+      #('clang', CLANG, 4, 0, 0),
+      #('clang', CLANG, 1, 1, 1),
+      #('clang', CLANG, 4, 1, 1),
       ('clang', CLANG, 4, 1, 2),
     ]:
       fullname = '%s_%d_%d%s%s' % (
