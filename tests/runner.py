@@ -281,6 +281,8 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, 'hello, world!')
 
     def test_intvars(self):
+        Settings.I64_MODE = 0 # We do not support 64-bit addition etc. in mode 1
+
         src = '''
           #include <stdio.h>
           int global = 20;
