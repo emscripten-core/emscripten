@@ -4270,6 +4270,8 @@ Child2:9
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
 
     def test_autooptimize(self):
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')
+
       Settings.AUTO_OPTIMIZE = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
 
       src = '''
@@ -4293,8 +4295,8 @@ Child2:9
 
       def check(output):
         # TODO: check the line #
-        assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections'
-        assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections'
+        assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections: ' + output
+        assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections: ' + output
         return output
 
       self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
