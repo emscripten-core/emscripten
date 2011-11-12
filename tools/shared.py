@@ -304,14 +304,14 @@ class Building:
     assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
 
   @staticmethod
-  def llvm_as(source, target):
+  def llvm_as(filename):
     # LLVM assembly ==> LLVM binary
     try:
       os.remove(target)
     except:
       pass
-    output = Popen([LLVM_AS, source, '-o=' + target], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    assert os.path.exists(target), 'Could not create bc file: ' + output
+    output = Popen([LLVM_AS, filename + '.o.ll', '-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert os.path.exists(filename + '.o'), 'Could not create bc file: ' + output
 
   @staticmethod
   def emscripten(filename, output_processor=None, append_ext=True, extra_args=[]):

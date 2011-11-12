@@ -81,13 +81,16 @@ class RunnerCore(unittest.TestCase):
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       Building.ll_opts(filename)
       if build_ll_hook:
-        build_ll_hook(filename)
-      shutil.move(filename + '.o.ll', filename + '.o.ll.pre')
-      Building.llvm_as(filename + '.o.ll.pre', filename + '.o')
-      output = Popen([LLVM_AS, filename + '.o.ll.pre'] + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-      assert 'error:' not in output, 'Error in llvm-as: ' + output
+        need_post = build_ll_hook(filename)
+      Building.llvm_as(filename)
+      shutil.move(filename + '.o.ll', filename + '.o.ll.pre') # for comparisons later
       Building.llvm_opts(filename)
       Building.llvm_dis(filename)
+      if build_ll_hook and need_post:
+        build_ll_hook(filename)
+        Building.llvm_as(filename)
+        shutil.move(filename + '.o.ll', filename + '.o.ll.post') # for comparisons later
+        Building.llvm_dis(filename)
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[]):
@@ -3526,7 +3529,21 @@ if 'benchmark' not in str(sys.argv):
     def do_autodebug(self, filename):
       output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
       assert 'Success.' in output, output
-      self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc
+      self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc # TODO: use code in do_autodebug_post for this
+
+    # Autodebug the code, after LLVM opts. Will only work once!
+    def do_autodebug_post(self, filename):
+      if not hasattr(self, 'post'):
+        print 'Asking for post re-call'
+        self.post = True
+        return True
+      print 'Autodebugging during post time'
+      delattr(self, 'post')
+      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      assert 'Success.' in output, output
+      shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
+      Building.llvm_as(filename)
+      Building.llvm_dis(filename)
 
     def test_autodebug(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
@@ -3898,6 +3915,7 @@ Child2:9
     def test_typeinfo(self):
       Settings.RUNTIME_TYPE_INFO = 1
       if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM unsafe opts optimize out the type info')
 
       src = '''
         #include<stdio.h>
