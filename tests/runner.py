@@ -3195,6 +3195,9 @@ if 'benchmark' not in str(sys.argv):
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
 
+      if Settings.USE_TYPED_ARRAYS == 2:
+        Settings.CORRECT_SIGNS = 1
+
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
