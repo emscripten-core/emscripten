@@ -230,6 +230,8 @@ class Building:
     temp_dir = build_dir
     if copy_project:
       project_dir = os.path.join(temp_dir, name)
+      if os.path.exists(project_dir):
+        shutil.rmtree(project_dir)
       shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
     else:
       project_dir = build_dir
