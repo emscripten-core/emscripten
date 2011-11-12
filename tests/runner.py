@@ -3131,7 +3131,7 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_run(src, '789:123.46\n0:100.1')
 
-    ### 'Big' tests
+    ### 'Medium' tests
 
     def test_fannkuch(self):
         results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
@@ -4410,28 +4410,31 @@ else:
 
   Building.COMPILER_TEST_OPTS = []
 
-  Settings.RELOOP = Settings.OPTIMIZE = 1
-  Settings.USE_TYPED_ARRAYS = 1
-  Settings.QUANTUM_SIZE = 1
-  Settings.I64_MODE = 0
-  Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.AUTO_OPTIMIZE = Settings.RUNTIME_TYPE_INFO = 0
-  Settings.INVOKE_RUN = 1
-  Settings.CORRECT_SIGNS = 0
-  Settings.CORRECT_ROUNDINGS = 0
-  Settings.CORRECT_OVERFLOWS_LINES = Settings.CORRECT_SIGNS_LINES = Settings.CORRECT_ROUNDINGS_LINES = Settings.SAFE_HEAP_LINES = []
-  Settings.DISABLE_EXCEPTION_CATCHING = 1
-  if Settings.USE_TYPED_ARRAYS:
-    Settings.TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
-  Settings.FAST_MEMORY = 10*1024*1024
-
   TEST_REPS = 10
-  TOTAL_TESTS = 7
+  TOTAL_TESTS = 6
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
   total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
+    def setUp(self):
+      Settings.RELOOP = Settings.OPTIMIZE = 1
+      Settings.USE_TYPED_ARRAYS = 1
+      Settings.QUANTUM_SIZE = 1
+      Settings.I64_MODE = 0
+      Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.AUTO_OPTIMIZE = Settings.RUNTIME_TYPE_INFO = 0
+      Settings.INVOKE_RUN = 1
+      Settings.CORRECT_SIGNS = 0
+      Settings.CORRECT_ROUNDINGS = 0
+      Settings.CORRECT_OVERFLOWS_LINES = Settings.CORRECT_SIGNS_LINES = Settings.CORRECT_ROUNDINGS_LINES = Settings.SAFE_HEAP_LINES = []
+      Settings.DISABLE_EXCEPTION_CATCHING = 1
+      if Settings.USE_TYPED_ARRAYS:
+        Settings.TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
+      Settings.FAST_MEMORY = 10*1024*1024
+
+      super(benchmark, self).setUp()
+
     def print_stats(self, times, native_times, normalize_by_native=False):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
@@ -4589,7 +4592,7 @@ else:
       self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
         llvm_opts=True, handpicked=False)
 
-    def test_raytrace(self):
+    def zzztest_raytrace(self): # This test is disabled because it gives wildly different results depending on float rounding, JIT effects, etc.
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
