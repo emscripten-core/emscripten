@@ -2021,6 +2021,9 @@ if 'benchmark' not in str(sys.argv):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
+      if Settings.USE_TYPED_ARRAYS == 2:
+        Settings.CORRECT_SIGNS = 1 # Needed for unsafe optimizations
+
       lib_src = '''
         int lib_cmp(const void* left, const void* right) {
           const int* a = (const int*) left;
