@@ -758,13 +758,18 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       for (var i = 1; i <= 4; i++) {
         if (item['param'+i]) item['param'+i].type = item.type; // All params have the same type, normally
-        if (I64_MODE == 1) {
-          // Some specific corrections, since 'i64' is special
-          if (item.op in LLVM.SHIFTS) {
-            item.param2.type = 'i32';
-          } else if (item.op == 'select') {
-            item.param1.type = 'i1';
-          }
+      }
+      if (item.op in LLVM.EXTENDS) {
+        item.type = item.param2.ident;
+        item.param1.type = item.param2.type;
+        // TODO: also remove 2nd param?
+      }
+      if (I64_MODE == 1) {
+        // Some specific corrections, since 'i64' is special
+        if (item.op in LLVM.SHIFTS) {
+          item.param2.type = 'i32';
+        } else if (item.op == 'select') {
+          item.param1.type = 'i1';
         }
       }
       Types.needAnalysis[item.type] = 0;

@@ -1419,7 +1419,7 @@ function processMathop(item) { with(item) {
     return '(tempBigInt=(' + value + '), tempBigInt-tempBigInt%1)';
   }
 
-  if ((paramTypes[0] == 'i64' || paramTypes[1] == 'i64') && I64_MODE == 1) {
+  if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64') && I64_MODE == 1) {
     switch (op) {
       // basic integer ops
       case 'or': {
