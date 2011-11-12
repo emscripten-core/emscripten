@@ -3637,6 +3637,8 @@ Block 0: ''', post_build=post1)
 
       # Part 2: old JS version
 
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts inline out the inner func')
+
       Settings.PROFILE = 1
       Settings.INVOKE_RUN = 0
 
@@ -4129,7 +4131,8 @@ Child2:9
     def test_linespecific(self):
       Settings.CHECK_SIGNS = 0
       Settings.CHECK_OVERFLOWS = 0
-      Settings.I64_MODE = 0 # We do not support 64-bit addition etc. in mode 1
+
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')
 
       # Signs
 
