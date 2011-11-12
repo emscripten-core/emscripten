@@ -613,6 +613,7 @@ function analyzer(data) {
         func.hasIndirectBr = false;
         func.remarkableLabels = [];
         func.labels.forEach(function(label) {
+          var phis = [];
           label.lines.forEach(function(line) {
             if (line.value && line.value.intertype == 'phi') {
               for (var i = 0; i < line.value.params.length; i++) {
@@ -627,12 +628,34 @@ function analyzer(data) {
                   lastLine.currLabelId = remarkableLabelId;
                 }
               }
+              phis.push(line);
               func.hasPhi = true;
             }
             if (line.intertype == 'indirectbr') {
               func.hasIndirectBr = true;
             }
           });
+          if (phis.length >= 2) {
+            // Multiple phis have the semantics that they all occur 'in parallel', i.e., changes to
+            // a variable that is the result of a phi should *not* affect the other results. We must
+            // therefore be careful!
+            // TODO: optimize this for cases where they are not dependent
+            phis[phis.length-1].value.postSet = '; /* post-phi: */';
+            for (var i = 0; i < phis.length-1; i++) {
+              var ident = phis[i].ident;
+              var phid = ident+'$phi'
+              phis[phis.length-1].value.postSet += ident + '=' + phid + ';';
+              phis[i].ident = phid;
+              func.variables[phid] = {
+                ident: phid,
+                type: func.variables[ident].type,
+                origin: func.variables[ident].origin,
+                lineNum: func.variables[ident].lineNum,
+                uses: 1,
+                impl: VAR_EMULATED
+              };
+            }
+          }
         });
       });
       this.forwardItem(item, 'StackAnalyzer');

@@ -822,7 +822,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
                                    finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
     }
-    return makeOne(0);
+    var ret = makeOne(0);
+    if (item.postSet) ret += item.postSet;
+    return ret;
   });
 
   makeFuncLineActor('mathop', processMathop);
