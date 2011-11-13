@@ -63,8 +63,8 @@ class RunnerCore(unittest.TestCase):
   def pick_llvm_opts(self, optimization_level):
     global LLVM_OPT_OPTS
 
-    # TA2 should be able to withstand instruction combining, and we do use I64_MODE = 1 there
-    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe=Settings.USE_TYPED_ARRAYS != 2)
+    # TODO: TA2 should be able to withstand unsafe opts, and we do use I64_MODE = 1 there
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe=True)
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
@@ -4350,12 +4350,12 @@ TT = %s
 ''' % (fullname, fullname, fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
-  for llvm_opts in [1]:
+  for llvm_opts in [0,1]:
     for name, compiler, quantum, embetter, typed_arrays in [
-      #('clang', CLANG, 1, 0, 0),
-      #('clang', CLANG, 4, 0, 0),
-      #('clang', CLANG, 1, 1, 1),
-      #('clang', CLANG, 4, 1, 1),
+      ('clang', CLANG, 1, 0, 0),
+      ('clang', CLANG, 4, 0, 0),
+      ('clang', CLANG, 1, 1, 1),
+      ('clang', CLANG, 4, 1, 1),
       ('clang', CLANG, 4, 1, 2),
     ]:
       fullname = '%s_%d_%d%s%s' % (
