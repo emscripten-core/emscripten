@@ -101,7 +101,7 @@ def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
   return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
-def pick_llvm_opts(optimization_level, handpicked, quantum_size=4, use_aa=False):
+def pick_llvm_opts(optimization_level, safe=True):
   '''
     It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
     (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
@@ -110,11 +110,12 @@ def pick_llvm_opts(optimization_level, handpicked, quantum_size=4, use_aa=False)
   '''
   opts = []
   if optimization_level > 0:
-    if not handpicked:
+    if not safe:
       opts.append('-O%d' % optimization_level)
     else:
       allow_nonportable = False
       optimize_size = True
+      use_aa = False
 
       # PassManagerBuilder::populateModulePassManager
       if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
@@ -152,7 +153,7 @@ def pick_llvm_opts(optimization_level, handpicked, quantum_size=4, use_aa=False)
       opts.append('-licm')
       opts.append('-loop-unswitch') # XXX should depend on optimize_size
       if allow_nonportable: opts.append('-instcombine')
-      if quantum_size == 4: opts.append('-indvars') # XXX this infinite-loops raytrace on q1 (loop in |new node_t[count]| has 68 hardcoded &not fixed)
+      if Settings.QUANTUM_SIZE == 4: opts.append('-indvars') # XXX this infinite-loops raytrace on q1 (loop in |new node_t[count]| has 68 hardcoded &not fixed)
       if allow_nonportable: opts.append('-loop-idiom') # ?
       opts.append('-loop-deletion')
       opts.append('-loop-unroll')

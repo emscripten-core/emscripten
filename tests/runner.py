@@ -60,13 +60,11 @@ class RunnerCore(unittest.TestCase):
     return self.working_dir
 
   # Similar to LLVM::createStandardModulePasses()
-  def pick_llvm_opts(self, optimization_level, handpicked=None):
+  def pick_llvm_opts(self, optimization_level):
     global LLVM_OPT_OPTS
 
-    if handpicked is None:
-      handpicked = Settings.USE_TYPED_ARRAYS != 2 # TA2 should be able to withstand instruction combining, and we do use I64_MODE = 1 there
-
-    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, handpicked, quantum_size=Settings.QUANTUM_SIZE)
+    # TA2 should be able to withstand instruction combining, and we do use I64_MODE = 1 there
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe=Settings.USE_TYPED_ARRAYS != 2)
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
@@ -4342,7 +4340,7 @@ class %s(T):
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
     if Building.LLVM_OPTS:
-      self.pick_llvm_opts(3) #, handpicked=Settings.USE_TYPED_ARRAYS != 2)
+      self.pick_llvm_opts(3)
 
     Building.COMPILER_TEST_OPTS = ['-g']
 
@@ -4458,10 +4456,10 @@ else:
       print '   JavaScript  : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
       print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
-    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False, handpicked=False):
+    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False):
       Building.LLVM_OPTS = llvm_opts
       if Building.LLVM_OPTS:
-        self.pick_llvm_opts(3, handpicked)
+        self.pick_llvm_opts(3)
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')
@@ -4551,7 +4549,7 @@ else:
           return 1;
         }
       '''
-      self.do_benchmark(src, [], 'lastprime: 1297001.', llvm_opts=True, handpicked=False)
+      self.do_benchmark(src, [], 'lastprime: 1297001.', llvm_opts=True)
 
     def test_memops(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
@@ -4577,32 +4575,32 @@ else:
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 720.', llvm_opts=True, handpicked=True)
+      self.do_benchmark(src, [], 'final: 720.', llvm_opts=True)
 
     def test_fannkuch(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.', llvm_opts=True, handpicked=True)
+      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.', llvm_opts=True)
 
     def test_fasta(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
 
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
       self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
-        llvm_opts=True, handpicked=False)
+        llvm_opts=True)
 
     def zzztest_raytrace(self): # This test is disabled because it gives wildly different results depending on float rounding, JIT effects, etc.
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
-      self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read(), llvm_opts=True, handpicked=True)
+      self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read(), llvm_opts=True)
 
     def test_skinning(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000', llvm_opts=True, handpicked=True)
+      self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000', llvm_opts=True)
 
     def test_dlmalloc(self):
       global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
@@ -4612,7 +4610,7 @@ else:
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark(src, ['400', '400'], '*400,0*', llvm_opts=True, handpicked=True)
+      self.do_benchmark(src, ['400', '400'], '*400,0*', llvm_opts=True)
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
