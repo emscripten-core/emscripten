@@ -65,6 +65,7 @@ class RunnerCore(unittest.TestCase):
 
     # TODO: TA2 should be able to withstand unsafe opts, and we do use I64_MODE = 1 there
     LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe=True)
+    #LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe=Settings.USE_TYPED_ARRAYS != 2)
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
@@ -4337,6 +4338,7 @@ class %s(T):
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.I64_MODE = 1
+      Settings.SAFE_HEAP = 1 # only checks for alignment problems, which is very important with unsafe opts
 
     if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
