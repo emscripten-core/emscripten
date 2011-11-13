@@ -445,21 +445,19 @@ if 'benchmark' not in str(sys.argv):
             modifier2(t);
             printf("*%Ld*\n", t);
 
-            // Basic (rounded, for now) math
+            // Basic (rounded, for now) math. Just check compilation.
             int64_t a = 0x1234def123450789ULL;
             a--; if (truthy()) a--; // confuse optimizer
             int64_t b = 0x1234000000450789ULL;
             b++; if (truthy()) b--; // confuse optimizer
-            printf("*%Ld,%Ld,%Ld*\n", a+b, a-b, a*3, a/5);
+            printf("*%Ld,%Ld,%Ld,%Ld*\n",   (a+b)/5000, (a-b)/5000, (a*3)/5000, (a/5)/5000);
 
             return 0;
           }
         '''
         self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
                          '*18446744073709552000*\n*576460752303423500*\n' +
-                         'm1: 127\n*123*\n*127*\n' +
-                         '*2623591910208049000,245127255687168,3935755556195604500*\n')
-
+                         'm1: 127\n*123*\n*127*\n')
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
