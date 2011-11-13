@@ -368,9 +368,10 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, output, force_c=True)
 
     def test_i64(self):
-        #for i64_mode in []:
         for i64_mode in [0,1]:
           if i64_mode == 0 and Settings.USE_TYPED_ARRAYS != 0: continue # Typed arrays truncate i64
+          if i64_mode == 1 and Settings.QUANTUM_SIZE == 1: continue # TODO: i64 mode 1 for q1
+
           Settings.I64_MODE = i64_mode
           src = '''
             #include <stdio.h>
@@ -393,6 +394,8 @@ if 'benchmark' not in str(sys.argv):
             }
           '''
           self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
+
+        if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: i64 mode 1 for q1')
 
         # Stuff that only works in i64_mode = 1
 
