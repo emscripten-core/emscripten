@@ -77,7 +77,9 @@ CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
-  exit(os.execvp(compiler, [compiler] + sys.argv[1:]))
+  cmd = [compiler] + EMSDK_OPTS + sys.argv[1:]
+  print >> sys.stderr, 'emmaken.py, just configuring: ', cmd
+  exit(os.execvp(compiler, cmd))
 
 try:
   #f=open('/dev/shm/tmp/waka.txt', 'a')
