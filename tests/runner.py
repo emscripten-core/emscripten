@@ -31,7 +31,7 @@ except:
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
-  save_dir = 1
+  save_dir = 0
   save_JS = 0
 
   def setUp(self):
