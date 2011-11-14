@@ -934,7 +934,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
   }
 }
 
-var UNROLL_LOOP_LIMIT = 8;
+var UNROLL_LOOP_MAX = 5;
 
 function makeSetValues(ptr, pos, value, type, num) {
   function safety(where) {
@@ -943,7 +943,7 @@ function makeSetValues(ptr, pos, value, type, num) {
   }
   if (USE_TYPED_ARRAYS in set(0, 1)) {
     if (isNumber(num)) {
-      if (num < UNROLL_LOOP_LIMIT) {
+      if (parseInt(num) <= UNROLL_LOOP_MAX) {
         return range(num).map(function(i) {
           return makeSetValue(ptr, getFastValue(pos, '+', i), value, type);
         }).join('; ');
@@ -980,6 +980,8 @@ function makeSetValues(ptr, pos, value, type, num) {
   }
 }
 
+var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
+
 function makeCopyValues(dest, src, num, type, modifier) {
   function safety(to, from) {
     to = to || (dest + '+' + 'mcpi');
@@ -988,7 +990,7 @@ function makeCopyValues(dest, src, num, type, modifier) {
   }
   if (USE_TYPED_ARRAYS <= 1) {
     if (isNumber(num)) {
-      if (num < UNROLL_LOOP_LIMIT) {
+      if (parseInt(num) <= UNROLL_LOOP_MAX) {
         return range(num).map(function(i) {
           return type !== 'null' ? makeSetValue(dest, i, makeGetValue(src, i, type) + (modifier || ''), type)
                            : // Null is special-cased: We copy over all heaps
@@ -1012,34 +1014,45 @@ function makeCopyValues(dest, src, num, type, modifier) {
              '  HEAP[mcpi_d] = HEAP[mcpi_s];\n' +
              '}';
     } else { // USE_TYPED_ARRAYS == 1
+      if (isNumber(num) && parseInt(num) >= TYPED_ARRAY_SET_MIN) {
+        return 'IHEAP.set(IHEAP.subarray(' + src + ',' + src + '+' + num + '), ' + dest + '); ' +
+               'FHEAP.set(FHEAP.subarray(' + src + ',' + src + '+' + num + '), ' + dest + ')';
+      }
       return 'for (var mcpi_s=' + src + ',mcpi_e=' + src + '+' + num + ',mcpi_d=' + dest + '; mcpi_s<mcpi_e; mcpi_s++, mcpi_d++) {\n' +
              '  IHEAP[mcpi_d] = IHEAP[mcpi_s];' + (USE_FHEAP ? ' FHEAP[mcpi_d] = FHEAP[mcpi_s];' : '') + '\n' +
              '}';
     }
   } else { // USE_TYPED_ARRAYS == 2
-    return '' +
-      'var src, dest, stop, stop4, fast;\n' +
+    var ret = '' +
+      'var src, dest, stop, stop4;\n' +
       'src = ' + src + ';\n' +
       'dest = ' + dest + ';\n' +
       'stop = src + ' + num + ';\n' +
       'if ((dest%4) == (src%4) && ' + num + ' > 8) {\n' +
       '  while (src%4 !== 0 && src < stop) {\n' +
       '    ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
-      '  }\n' +
-      '  src >>= 2;\n' +
-      '  dest >>= 2;\n' +
-      '  stop4 = stop >> 2;\n' +
-      '  while (src < stop4) {\n' +
-           safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
-           safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-      '    HEAP32[dest++] = HEAP32[src++];\n' + // this is the fast inner loop we try hard to stay in
-      '  }\n' +
-      '  src <<= 2;\n' +
-      '  dest <<= 2;\n' +
-      '}' +
+      '  }\n';
+    if (SAFE_HEAP || !(isNumber(num) && parseInt(num) >= TYPED_ARRAY_SET_MIN)) {
+      ret += '  src >>= 2;\n' +
+             '  dest >>= 2;\n' +
+             '  stop4 = stop >> 2;\n' +
+             '  while (src < stop4) {\n' +
+                  safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
+                  safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
+             '    HEAP32[dest++] = HEAP32[src++];\n' +
+             '  }\n' +
+             '  src <<= 2;\n' +
+             '  dest <<= 2;\n';
+    } else {
+      ret += '  var src4 = src >> 2, stop4 = stop >> 2, num4 = (stop4 - src4) << 2;\n' +
+             '  HEAP32.set(HEAP32.subarray(src4, stop4), dest >> 2);\n' +
+             '  src += num4; dest += num4;\n';
+    }
+    ret += '}' +
       'while (src < stop) {\n' +
       '  ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
       '}';
+    return ret;
   }
   return null;
 }

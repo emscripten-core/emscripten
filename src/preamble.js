@@ -537,18 +537,15 @@ var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
 var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
 
-var HAS_TYPED_ARRAYS = false;
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
-HAS_TYPED_ARRAYS = false;
-try {
-  HAS_TYPED_ARRAYS = !!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']); // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-} catch(e) {}
+// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+  assert(!!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
+         'Cannot fallback to non-typed array case: Code is too specialized');
 
-if (HAS_TYPED_ARRAYS) {
 #if USE_TYPED_ARRAYS == 1
   HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
 #if USE_FHEAP
@@ -569,24 +566,13 @@ if (HAS_TYPED_ARRAYS) {
   HEAP32[0] = 255;
   assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
 #endif
-} else
-#endif
-{
+#else
   // Make sure that our HEAP is implemented as a flat array.
   HEAP = new Array(TOTAL_MEMORY);
   for (var i = 0; i < FAST_MEMORY; i++) {
     HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
   }
-#if USE_TYPED_ARRAYS == 1
-  IHEAP = HEAP;
-#if USE_FHEAP
-  FHEAP = HEAP;
 #endif
-#endif
-#if USE_TYPED_ARRAYS == 2
-  abort('Cannot fallback to non-typed array case in USE_TYPED_ARRAYS == 2: Code is too specialized');
-#endif
-}
 
 var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                          // Also this ensures we leave 0 as an invalid address, 'NULL'
@@ -637,22 +623,14 @@ function __shutdownRuntime__() {
 // Copies a list of num items on the HEAP into a
 // a normal JavaScript array of numbers
 function Array_copy(ptr, num) {
-  // TODO: In the SAFE_HEAP case, do some reading here, for debugging purposes - currently this is an 'unnoticed read'.
 #if USE_TYPED_ARRAYS == 1
-  if (HAS_TYPED_ARRAYS) {
-    return Array.prototype.slice.call(IHEAP.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
-                                                                     // Consider making a typed array here, for speed?
-  } else {
-    return IHEAP.slice(ptr, ptr+num);
-  }
+  // TODO: In the SAFE_HEAP case, do some reading here, for debugging purposes - currently this is an 'unnoticed read'.
+  return Array.prototype.slice.call(IHEAP.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
+                                                                   // Consider making a typed array here, for speed?
 #endif
 #if USE_TYPED_ARRAYS == 2
-  if (HAS_TYPED_ARRAYS) {
-    return Array.prototype.slice.call(HEAP8.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
-                                                                     // Consider making a typed array here, for speed?
-  } else {
-    return HEAP8.slice(ptr, ptr+num);
-  }
+  return Array.prototype.slice.call(HEAP8.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
+                                                                   // Consider making a typed array here, for speed?
 #endif
   return HEAP.slice(ptr, ptr+num);
 }

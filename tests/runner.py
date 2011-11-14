@@ -243,8 +243,8 @@ if 'benchmark' not in str(sys.argv):
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         if js_engines is None:
           js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE]
-        if Settings.USE_TYPED_ARRAYS == 2:
-          js_engines = [SPIDERMONKEY_ENGINE] # when oh when will v8 support typed arrays in the console
+        if Settings.USE_TYPED_ARRAYS:
+          js_engines = [SPIDERMONKEY_ENGINE] # V8 issue 1822
         js_engines = filter(lambda engine: os.path.exists(engine[0]), js_engines)
         assert len(js_engines) > 0, 'No JS engine present to run this test with. Check ~/.emscripten and the paths therein.'
         for engine in js_engines:
