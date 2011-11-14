@@ -69,6 +69,13 @@ function warn(a, msg) {
   }
 }
 
+function warnOnce(msg) {
+  if (!warnOnce.msgs) warnOnce.msgs = {};
+  if (msg in warnOnce.msgs) return;
+  warnOnce.msgs[msg] = true;
+  dprint('Warning: ' + msg);
+}
+
 function dedup(items, ident) {
   var seen = {};
   if (ident) {

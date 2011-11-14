@@ -501,11 +501,7 @@ function IEEEUnHex(stringy) {
   while (stringy.length < 16) stringy = '0' + stringy;
   if (FAKE_X86_FP80 && stringy.length > 16) {
     stringy = stringy.substr(stringy.length-16, 16);
-    if (!Debugging.shownIEEEUnHexWarning) {
-      dprint('WARNING: .ll contains floating-point values with more than 64 bits. Faking values for them.');
-      dprint('         If they are used, this will almost certainly fail!');
-      Debugging.shownIEEEUnHexWarning = true;
-    }
+    warnOnce('.ll contains floating-point values with more than 64 bits. Faking values for them. If they are used, this will almost certainly fail!');
   }
   assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific'); // |long double| can cause x86_fp80 which causes this
   var top = eval('0x' + stringy[0]);
@@ -1185,11 +1181,8 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   } else { // USE_TYPED_ARRAYS == 2)
     if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
     function warn64() {
-      if (!Debugging.shownUTA2_64Warning) {
-        dprint('WARNING: .ll contains i64 or double values. These 64-bit values are dangerous in USE_TYPED_ARRAYS == 2.');
-        dprint('         We store i64 as i32, and double as float. This can cause serious problems!');
-        Debugging.shownUTA2_64Warning = true;
-      }
+      warnOnce('.ll contains i64 or double values. These 64-bit values are dangerous in USE_TYPED_ARRAYS == 2. ' +
+               'We store i64 as i32, and double as float. This can cause serious problems!');
     }
     switch(type) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
@@ -1433,6 +1426,9 @@ function processMathop(item) { with(item) {
   }
 
   if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64') && I64_MODE == 1) {
+    function warnI64_1() {
+      warnOnce('Arithmetic on 64-bit integers in mode 1 is rounded and flaky, like mode 0, but much slower!');
+    }
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -1488,11 +1484,11 @@ function processMathop(item) { with(item) {
       case 'select': return ident1 + ' ? ' + makeCopyI64(ident2) + ' : ' + makeCopyI64(ident3);
       case 'ptrtoint': case 'inttoptr': throw 'Pointers cannot be 64-bit!';
       // Dangerous, rounded operations. TODO: Fully emulate
-      case 'add': return handleOverflow(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)), bits);
-      case 'sub': return handleOverflow(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)), bits);
-      case 'sdiv': case 'udiv': return splitI64(makeRounding(mergeI64(ident1) + '/' + mergeI64(ident2), bits, op[0] === 's'));
-      case 'mul': return handleOverflow(splitI64(mergeI64(ident1) + '*' + mergeI64(ident2)), bits);
-      case 'urem': return splitI64(mergeI64(ident1) + '%' + mergeI64(ident2));
+      case 'add': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)), bits);
+      case 'sub': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)), bits);
+      case 'sdiv': case 'udiv': warnI64_1(); return splitI64(makeRounding(mergeI64(ident1) + '/' + mergeI64(ident2), bits, op[0] === 's'));
+      case 'mul': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '*' + mergeI64(ident2)), bits);
+      case 'urem': warnI64_1(); return splitI64(mergeI64(ident1) + '%' + mergeI64(ident2));
       default: throw 'Unsupported i64 mode 1 op: ' + item.op;
     }
   }
@@ -1612,12 +1608,9 @@ function processMathop(item) { with(item) {
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
       if (QUANTUM_SIZE == 1) {
-        if (!Debugging.shownPtrtointWarning) {
-          dprint('WARNING: .ll contains ptrtoint and/or inttoptr. These may be dangerous in QUANTUM == 1.');
-          dprint('         The safest thing is to investigate every appearance, and modify the source code to avoid this.');
-          dprint('         Emscripten will print a list of the .ll lines, and also annotate the .js.');
-          Debugging.shownPtrtointWarning = true;
-        }
+        warnOnce('.ll contains ptrtoint and/or inttoptr. These may be dangerous in QUANTUM == 1. ' +
+                 'The safest thing is to investigate every appearance, and modify the source code to avoid this. ' +
+                 'Emscripten will print a list of the .ll lines, and also annotate the .js.');
         dprint('  ' + op + ' on .ll line ' + item.lineNum);
         ret = ' /* Warning: ' + op + ', .ll line ' + item.lineNum + ' */';
       }
