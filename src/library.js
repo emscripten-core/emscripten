@@ -3587,6 +3587,8 @@ LibraryManager.library = {
   // string.h
   // ==========================================================================
 
+  // FIXME: memcpy, memmove and memset should all return their destination pointers.
+
   memcpy__inline: function (dest, src, num, idunno) {
     var ret = '';
 #if ASSERTIONS
