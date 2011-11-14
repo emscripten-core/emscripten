@@ -54,6 +54,17 @@ EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
 
+// Output some info and warnings based on settings
+
+if (!OPTIMIZE || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || CHECK_ROUNDINGS || INIT_STACK || INIT_HEAP ||
+    !SKIP_STACK_IN_SMALL || SAFE_HEAP || AUTO_OPTIMIZE || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
+  print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
+}
+
+if (CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
+  print('// Note: Some Emscripten settings may limit the speed of the generated code.');
+}
+
 // Load compiler code
 
 load('framework.js');
