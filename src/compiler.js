@@ -60,7 +60,7 @@ if (!OPTIMIZE || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT
     !SKIP_STACK_IN_SMALL || SAFE_HEAP || AUTO_OPTIMIZE || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
   print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
 } else {
-  print('// Note: For maximum-speed code, it is recommended to run the emscripten eliminator tool and/or closure compiler.');
+  print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
 }
 
 if (CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
