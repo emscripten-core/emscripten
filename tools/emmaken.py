@@ -23,7 +23,13 @@ opt yourself, but be careful with the parameters you pass).
 
 Example uses:
 
- * With configure, do something like
+ * For configure, instead of ./configure, cmake, etc., run emconfiguren.py
+   with that command as an argument, for example
+
+    emconfiguren.py ./configure [options]
+  
+   emconfiguren.py is a tiny script that just sets some environment vars
+   as a convenience. The command just shown is equivalent to
 
     EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emmaken.py AR=PATH/emmaken.py CXX=PATH/emmakenxx.py CC=PATH/emmaken.py ./configure [options]
 

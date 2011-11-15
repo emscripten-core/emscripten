@@ -222,6 +222,29 @@ class Building:
   COMPILER_TEST_OPTS = []
 
   @staticmethod
+  def get_building_env():
+    env = os.environ.copy()
+    env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
+    env['EMMAKEN_COMPILER'] = Building.COMPILER
+    env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
+    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+    return env
+
+  @staticmethod
+  def configure(args, stdout=None, stderr=None, env=None):
+    if env is None:
+      env = Building.get_building_env()
+    env['EMMAKEN_JUST_CONFIGURE'] = '1'
+    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
+    del env['EMMAKEN_JUST_CONFIGURE']
+
+  @staticmethod
+  def make(args, stdout=None, stderr=None, env=None):
+    if env is None:
+      env = Building.get_building_env()
+    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
+
+  @staticmethod
   def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
@@ -248,20 +271,14 @@ class Building:
     #    os.unlink(lib) # make sure compilation completed successfully
     #  except:
     #    pass
-    env = os.environ.copy()
-    env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
-    env['EMMAKEN_COMPILER'] = Building.COMPILER
-    env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+    env = Building.get_building_env()
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
-      env['EMMAKEN_JUST_CONFIGURE'] = '1'
-      Popen(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure_'), 'w'),
-                                        stderr=open(os.path.join(output_dir, 'configure_err'), 'w'), env=env).communicate()[0]
-      del env['EMMAKEN_JUST_CONFIGURE']
-    Popen(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
-                            stderr=open(os.path.join(output_dir, 'make_err'), 'w'), env=env).communicate()[0]
+      Building.configure(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure_'), 'w'),
+                                                     stderr=open(os.path.join(output_dir, 'configure_err'), 'w'), env=env)
+    Building.make(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
+                                    stderr=open(os.path.join(output_dir, 'make_err'), 'w'), env=env)
     bc_file = os.path.join(project_dir, 'bc.bc')
     Building.link(generated_libs, bc_file)
     if cache is not None:
