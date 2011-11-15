@@ -13,6 +13,14 @@ For example, compilation will be translated into calls to llvm-gcc
 with -emit-llvm, and linking will be translated into calls to llvm-link,
 and so forth.
 
+emmaken is only meant to *COMPILE* source code into LLVM bitcode. It does
+not do optimizations (in fact, it will disable -Ox flags and warn you
+about that). The reason is that doing such optimizations early can lead
+to bitcode that Emscripten cannot process properly, or can process but
+not fully optimize. You can (and probably should) still run LLVM
+optimizations though, by telling emscripten.py to do so (or run LLVM
+opt yourself, but be careful with the parameters you pass).
+
 Example uses:
 
  * With configure, do something like
@@ -97,7 +105,6 @@ try:
   if os.environ.get('EMMAKEN_CXX'):
     CC = CXX
 
-  CC_ARG_SKIP = ['-O1', '-O2', '-O3']
   CC_ADDITIONAL_ARGS = COMPILER_OPTS # + ['-g']?
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
                        '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
@@ -170,11 +177,15 @@ try:
         newargs.append(arg)
   elif not header:
     call = CXX if use_cxx else CC
-    newargs = [ arg for arg in sys.argv[1:] if arg not in CC_ARG_SKIP ] + CC_ADDITIONAL_ARGS
-    if 'conftest.c' not in files:
-      newargs.append('-emit-llvm')
-      if not use_linker:
-        newargs.append('-c') 
+    newargs = sys.argv[1:]
+    for i in range(len(newargs)):
+      if newargs[i].startswith('-O'):
+        print >> sys.stderr, 'emmaken.py: WARNING: Optimization flags (-Ox) are ignored in emmaken. Tell emscripten.py to do that, or run LLVM opt.'
+        newargs[i] = ''
+    newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
+    newargs.append('-emit-llvm')
+    if not use_linker:
+      newargs.append('-c') 
   else:
     print >> sys.stderr, 'Just copy.'
     shutil.copy(sys.argv[-1], sys.argv[-2])
