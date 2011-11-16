@@ -71,6 +71,10 @@ SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                          // a lot can exhaust the stack very fast, with this option.
                          // In particular, be careful with the autodebugger!
 INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
+CLOSURE_INLINE_PREVENTION_LINES = 50; // Functions of this number of lines or larger will have
+                                      // code generated that tells the closure compiler not to
+                                      // inline them. This is useful to prevent the generation of
+                                      // overly large functions.
 
 // Generated code debugging options
 SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses

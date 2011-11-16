@@ -4646,7 +4646,7 @@ else:
       self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000', llvm_opts=True)
 
     def test_dlmalloc(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator']
+      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
       Building.COMPILER_TEST_OPTS = ['-g']
       Settings.CORRECT_SIGNS = 2

@@ -553,6 +553,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
       }
 
+      if (func.lines.length >= CLOSURE_INLINE_PREVENTION_LINES) {
+        func.JS += func.ident + '["X"]=1;';
+      }
+
       return func;
     }
   });
