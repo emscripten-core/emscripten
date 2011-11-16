@@ -4450,6 +4450,7 @@ else:
   #JS_ENGINE = V8_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
+  POST_OPTIMIZATIONS = ['eliminator', 'closure']
 
   TEST_REPS = 10
   TOTAL_TESTS = 6
@@ -4568,8 +4569,6 @@ else:
         self.print_stats(total_times, total_native_times, True)
 
     def test_primes(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
-
       src = '''
         #include<stdio.h>
         #include<math.h>
@@ -4595,8 +4594,6 @@ else:
       self.do_benchmark(src, [], 'lastprime: 1297001.', llvm_opts=True)
 
     def test_memops(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
-
       # memcpy would also be interesting, however native code uses SSE/NEON/etc. and is much, much faster than JS can be
       src = '''
         #include<stdio.h>
@@ -4621,33 +4618,23 @@ else:
       self.do_benchmark(src, [], 'final: 720.', llvm_opts=True)
 
     def test_fannkuch(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
-
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
       self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.', llvm_opts=True)
 
     def test_fasta(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
-
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
       self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
         llvm_opts=True)
 
     def zzztest_raytrace(self): # This test is disabled because it gives wildly different results depending on float rounding, JIT effects, etc.
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
-
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
       self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read(), llvm_opts=True)
 
     def test_skinning(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
-
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
       self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000', llvm_opts=True)
 
     def test_dlmalloc(self):
-      global POST_OPTIMIZATIONS; POST_OPTIMIZATIONS = ['eliminator', 'closure']
-
       Building.COMPILER_TEST_OPTS = ['-g']
       Settings.CORRECT_SIGNS = 2
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
