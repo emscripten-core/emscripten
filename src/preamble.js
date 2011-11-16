@@ -66,7 +66,7 @@ var warned64 = false;
 function warn64() {
   if (!warned64) {
     __ATEXIT__.push({ func: function() {
-      print('Warning: using a 64-bit type with USE_TYPED_ARRAYS == 2. This is emulated as a 32-bit value, and will likely fail horribly.');
+      print('Warning: using a 64-bit type with USE_TYPED_ARRAYS == 2. Depending on I64_MODE this may be problematic.');
     } });
     warned64 = true;
   }
@@ -381,7 +381,7 @@ var __ATEXIT__ = [];
 var ABORT = false;
 
 var undef = 0;
-var tempValue, tempInt, tempBigInt;
+var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair;
 #if I64_MODE == 1
 var tempI64, tempI64b;
 #endif

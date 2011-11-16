@@ -531,8 +531,11 @@ function makeI64(low, high) {
     return '[' + low + ',' + (high || '0') + ']';
     // FIXME with this?       return '[unSign(' + low + ',32),' + (high ? ('unSign(' + high + ',32)') : '0') + ']';
   } else {
-    assert(!high);
-    return low;
+    var ret = low;
+    if (high) {
+      ret = '(' + low + '+(4294967296*' + high + '))';
+    }
+    return ret;
   }
 }
 
@@ -540,11 +543,18 @@ function makeI64(low, high) {
 // Will suffer from rounding. margeI64 does the opposite.
 function splitI64(value) {
   assert(I64_MODE == 1);
-  return '(tempInt=' + value + ',' + makeI64('tempInt|0', 'Math.floor(tempInt/4294967296)') + ')';
+  return '(tempInt=' + value + ',' + makeI64('tempInt>>>0', 'Math.floor(tempInt/4294967296)') + ')';
 }
 function mergeI64(value) {
   assert(I64_MODE == 1);
   return '(tempI64=' + value + ',tempI64[0]+tempI64[1]*4294967296)';
+}
+
+// Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
+// mode, this is a no-op
+function ensureI64_1(value) {
+  if (I64_MODE == 1) return value;
+  return '(tempInt=' + value + ',[tempInt>>>0, Math.floor(tempInt/4294967296)])';
 }
 
 function makeCopyI64(value) {
@@ -687,7 +697,7 @@ function getLabelIds(labels) {
   return labels.map(function(label) { return label.ident });
 }
 
-//! Returns the size of a type, as C/C++ would have it (in 32-bit, for now).
+//! Returns the size of a type, as C/C++ would have it (in 32-bit, for now), in bytes.
 //! @param type The type, by name.
 function getNativeTypeSize(type) {
   if (QUANTUM_SIZE == 1) return 1;
@@ -851,7 +861,7 @@ function getHeapOffset(offset, type) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -859,6 +869,29 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore) {
       ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst, unsigned));
     }
     return '{ ' + ret.join(', ') + ' }';
+  }
+
+  if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
+    // Alignment is important here. May need to split this up
+    var bytes = getNativeTypeSize(type);
+    if (bytes > align) {
+      var ret = '/* unaligned */(';
+      if (bytes <= 4) {
+        for (var i = 0; i < bytes; i++) {
+          ret += 'tempInt' + (i == 0 ? '=' : (i < bytes-1 ? '+=((' : '+(('));
+          ret += makeSignOp(makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, unsigned, ignore), 'i8', 'un', true);
+          if (i > 0) ret += ')<<' + (8*i) + ')';
+          if (i < bytes-1) ret += ',';
+        }
+      } else {
+        assert(bytes == 8);
+        ret += 'tempBigInt=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, true, ignore, align) + ',';
+        ret += 'tempBigInt2=' + makeGetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'i32', noNeedFirst, true, ignore, align) + ',';
+        ret += makeI64('tempBigInt', 'tempBigInt2');
+      }
+      ret += ')';
+      return ret;
+    }
   }
 
   if (type == 'i64' && I64_MODE == 1) {
@@ -899,7 +932,7 @@ function indexizeFunctions(value, type) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -912,6 +945,27 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore) {
       ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
     }
     return ret.join('; ');
+  }
+
+  if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
+    // Alignment is important here. May need to split this up
+    var bytes = getNativeTypeSize(type);
+    if (bytes > align) {
+      var ret = '/* unaligned */';
+      if (bytes <= 4) {
+        ret += 'tempInt=' + value + ';';
+        for (var i = 0; i < bytes; i++) {
+          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempInt&0xff', 'i8', noNeedFirst, ignore) + ';';
+          if (i < bytes-1) ret += 'tempInt>>=8;';
+        }
+      } else {
+        assert(bytes == 8);
+        ret += 'tempPair=' + ensureI64_1(value) + ';';
+        ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + ';';
+        ret += makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + ';';
+      }
+      return ret;
+    }
   }
 
   if (type == 'i64' && I64_MODE == 1) {
@@ -1338,7 +1392,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   return ret;
 }
 
-function makeSignOp(value, type, op) {
+function makeSignOp(value, type, op, force) {
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
   if (!value) return value;
   var bits, full;
@@ -1352,7 +1406,7 @@ function makeSignOp(value, type, op) {
       return eval(full).toString();
     }
   }
-  if (!correctSigns() && !CHECK_SIGNS) return value;
+  if (!correctSigns() && !CHECK_SIGNS && !force) return value;
   if (type in Runtime.INT_TYPES) {
     // shortcuts
     if (!CHECK_SIGNS) {

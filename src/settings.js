@@ -56,6 +56,13 @@ I64_MODE = 0; // How to implement 64-bit integers:
               //                    use doubles for addition etc., like mode 0. This mode is slower than
               //                    mode 0, so its only benefit is proper support for 64 bit bitops.
               // TODO: Full bignum support
+EMULATE_UNALIGNED_ACCESSES = 1; // If set, the compiler will 'emulate' loads and stores that are not known to
+                                // be sufficiently aligned, by working on individual bytes. This can be
+                                // important in USE_TYPED_ARRAYS == 2, where unaligned accesses do not work,
+                                // specifically in the case where unsafe LLVM optimizations have generated possibly
+                                // unaligned code. (Without unsafe LLVM optimizations, there should be no
+                                // need for this option.)
+                                // Currently this only works for integers, not doubles and floats.
 
 SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                          // functions that have no basic stack usage. But, they

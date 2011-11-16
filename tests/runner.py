@@ -60,12 +60,10 @@ class RunnerCore(unittest.TestCase):
     return self.working_dir
 
   # Similar to LLVM::createStandardModulePasses()
-  def pick_llvm_opts(self, optimization_level):
+  def pick_llvm_opts(self, optimization_level, safe=True):
     global LLVM_OPT_OPTS
 
-    # TODO: TA2 should be able to withstand unsafe opts, and we do use I64_MODE = 1 there
-    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe=True)
-    #LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe=Settings.USE_TYPED_ARRAYS != 2)
+    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe)
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
@@ -462,6 +460,41 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
                          '*18446744073709552000*\n*576460752303423500*\n' +
                          'm1: 127\n*123*\n*127*\n')
+
+    def test_unaligned(self):
+        if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('No meaning to unaligned addresses without t2')
+
+        src = r'''
+          #include <stdio.h>
+
+          int main()
+          {
+            int x[10];
+            char *p = (char*)&x[0];
+            p++;
+            short *q = (short*)p;
+            *q = 300;
+            printf("*%d:%d*\n", *q, ((int)q)%2);
+            int *r = (int*)p;
+            *r = 515559;
+            printf("*%d*\n", *r);
+            long long *t = (long long*)p;
+            *t = 42949672960;
+            printf("*%Ld*\n", *t);
+            return 0;
+          }
+        '''
+
+        Settings.EMULATE_UNALIGNED_ACCESSES = 0
+
+        try:
+          self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
+        except Exception, e:
+          assert 'must be aligned' in str(e), e # expected to fail without emulation
+
+        # XXX TODO Settings.EMULATE_UNALIGNED_ACCESSES = 1
+        #self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n') # but succeeds with it
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
@@ -4314,7 +4347,7 @@ class %s(T):
     super(%s, self).setUp()
   
     Building.COMPILER = %r
-    llvm_opts = %d
+    llvm_opts = %d # 1 is yes, 2 is yes and unsafe
     embetter = %d
     quantum_size = %d
     Settings.USE_TYPED_ARRAYS = %d
@@ -4336,6 +4369,7 @@ class %s(T):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.PROFILE = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
+    Settings.EMULATE_UNALIGNED_ACCESSES = Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.I64_MODE = 1
       Settings.SAFE_HEAP = 1 # only checks for alignment problems, which is very important with unsafe opts
@@ -4344,7 +4378,7 @@ class %s(T):
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
     if Building.LLVM_OPTS:
-      self.pick_llvm_opts(3)
+      self.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
 
     Building.COMPILER_TEST_OPTS = ['-g']
 
@@ -4354,18 +4388,23 @@ TT = %s
 ''' % (fullname, fullname, fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
-  for llvm_opts in [0,1]:
-    for name, compiler, quantum, embetter, typed_arrays in [
-      ('clang', CLANG, 1, 0, 0),
-      ('clang', CLANG, 4, 0, 0),
-      ('clang', CLANG, 1, 1, 1),
-      ('clang', CLANG, 4, 1, 1),
-      ('clang', CLANG, 4, 1, 2),
-    ]:
-      fullname = '%s_%d_%d%s%s' % (
-        name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
-      )
-      exec('%s = make_run(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
+  for name, compiler, quantum, embetter, typed_arrays, llvm_opts in [
+    ('clang', CLANG, 1, 0, 0, 0),
+    ('clang', CLANG, 1, 0, 0, 1),
+    ('clang', CLANG, 4, 0, 0, 0),
+    ('clang', CLANG, 4, 0, 0, 1),
+    ('clang', CLANG, 1, 1, 1, 0),
+    ('clang', CLANG, 1, 1, 1, 1),
+    ('clang', CLANG, 4, 1, 1, 0),
+    ('clang', CLANG, 4, 1, 1, 1),
+    ('clang', CLANG, 4, 1, 2, 0),
+    ('clang', CLANG, 4, 1, 2, 1),
+    #('clang', CLANG, 4, 1, 2, 2),
+  ]:
+    fullname = '%s_%d_%d%s%s' % (
+      name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
+    )
+    exec('%s = make_run(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 

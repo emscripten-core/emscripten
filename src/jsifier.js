@@ -645,9 +645,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         break;
       case VAR_EMULATED:
         if (item.pointer.intertype == 'value') {
-          return makeSetValue(item.ident, 0, value, item.valueType) + ';';
+          return makeSetValue(item.ident, 0, value, item.valueType, 0, 0, item.align) + ';';
         } else {
-          return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType) + ';';
+          return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType, 0, 0, item.align) + ';';
         }
         break;
       default:
@@ -784,7 +784,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       case VAR_NATIVIZED: {
         return value; // We have the actual value here
       }
-      case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned);
+      case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned, 0, item.align);
       default: throw "unknown [load] impl: " + impl;
     }
   });

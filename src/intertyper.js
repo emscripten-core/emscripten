@@ -546,7 +546,14 @@ function intertyper(data, parseFunctions, baseLineNum) {
       item.valueType = item.type = removePointing(item.pointerType);
       Types.needAnalysis[item.type] = 0;
       var last = getTokenIndexByText(item.tokens, ';');
-      item.pointer = parseLLVMSegment(item.tokens.slice(1, last)); // TODO: Use this everywhere else too
+      var segments = splitTokenList(item.tokens.slice(1, last));
+      item.pointer = parseLLVMSegment(segments[0]);
+      if (segments.length > 1) {
+        assert(segments[1][0].text == 'align');
+        item.align = parseInt(segments[1][1].text) || QUANTUM_SIZE; // 0 means preferred arch align
+      } else {
+        item.align = QUANTUM_SIZE;
+      }
       item.ident = item.pointer.ident || null;
       this.forwardItem(item, 'Reintegrator');
     }
@@ -792,6 +799,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
       ret.ident = toNiceIdent(ret.pointer.ident);
       ret.pointerType = ret.pointer.type;
       Types.needAnalysis[ret.pointerType] = 0;
+      if (segments.length > 2) {
+        assert(segments[2][0].text == 'align');
+        ret.align = parseInt(segments[2][1].text) || QUANTUM_SIZE; // 0 means preferred arch align
+      } else {
+        ret.align = QUANTUM_SIZE;
+      }
       return [ret];
     }
   });
