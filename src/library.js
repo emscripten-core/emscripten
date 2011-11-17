@@ -3143,7 +3143,9 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-  malloc: Runtime.staticAlloc,
+  malloc: function(bytes) {
+    return Runtime.staticAlloc(bytes || 1); // accept 0 as an input because libc implementations tend to
+  },
   _Znwj: 'malloc',
   _Znaj: 'malloc',
   _Znam: 'malloc',
