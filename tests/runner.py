@@ -4432,7 +4432,7 @@ TT = %s
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
-  class Other(RunnerCore):
+  class other(RunnerCore):
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
