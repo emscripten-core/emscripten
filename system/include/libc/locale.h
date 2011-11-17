@@ -66,6 +66,13 @@ locale_t newlocale(int category_mask, const char *locale, locale_t base);
 void freelocale(locale_t locobj);
 locale_t uselocale(locale_t newloc);
 
+# define LC_CTYPE_MASK		(1 << LC_CTYPE)
+# define LC_NUMERIC_MASK	(1 << LC_NUMERIC)
+# define LC_TIME_MASK		(1 << LC_TIME)
+# define LC_COLLATE_MASK	(1 << LC_COLLATE)
+# define LC_MONETARY_MASK	(1 << LC_MONETARY)
+# define LC_MESSAGES_MASK	(1 << LC_MESSAGES)
+
 _END_STD_C
 
 #endif /* _LOCALE_H_ */

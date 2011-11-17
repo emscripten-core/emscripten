@@ -24,6 +24,8 @@
 #include <cygwin/stdlib.h>
 #endif
 
+#include <locale.h>
+
 _BEGIN_STD_C
 
 typedef struct 
@@ -191,6 +193,11 @@ long long _EXFUN(strtoll,(const char *__n, char **__end_PTR, int __base));
 long long _EXFUN(_strtoll_r,(struct _reent *, const char *__n, char **__end_PTR, int __base));
 unsigned long long _EXFUN(strtoull,(const char *__n, char **__end_PTR, int __base));
 unsigned long long _EXFUN(_strtoull_r,(struct _reent *, const char *__n, char **__end_PTR, int __base));
+
+double _EXFUN(strtod_l, (const char * nptr, char ** endptr, locale_t loc));
+int _EXFUN(strtoi_l, (const char * nptr, char ** endptr, int base, locale_t loc));
+unsigned int _EXFUN(strtoui_l, (const char * nptr, char ** endptr, int base, locale_t loc));
+
 
 #ifndef __CYGWIN__
 _VOID	_EXFUN(cfree,(_PTR));

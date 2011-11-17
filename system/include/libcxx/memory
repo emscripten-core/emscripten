@@ -600,7 +600,9 @@ void* align(size_t alignment, size_t size, void*& ptr, size_t& space);
     #include <cassert>
 #endif
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -2903,9 +2905,7 @@ public:
     long use_count() const _NOEXCEPT {return __shared_count::use_count();}
     __shared_weak_count* lock() _NOEXCEPT;
 
-#ifndef _LIBCPP_NO_RTTI
     virtual const void* __get_deleter(const type_info&) const _NOEXCEPT;
-#endif
 private:
     virtual void __on_zero_shared_weak() _NOEXCEPT = 0;
 };

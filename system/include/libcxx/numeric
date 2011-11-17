@@ -60,7 +60,9 @@ template <class ForwardIterator, class T>
 #include <__config>
 #include <iterator>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -184,10 +186,10 @@ adjacent_difference(_InputIterator __first, _InputIterator __last, _OutputIterat
 template <class _ForwardIterator, class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
 void
-iota(_ForwardIterator __first, _ForwardIterator __last, _Tp __value)
+iota(_ForwardIterator __first, _ForwardIterator __last, _Tp __value_)
 {
-    for (; __first != __last; ++__first, ++__value)
-        *__first = __value;
+    for (; __first != __last; ++__first, ++__value_)
+        *__first = __value_;
 }
 
 _LIBCPP_END_NAMESPACE_STD

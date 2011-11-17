@@ -14,6 +14,12 @@ Notes:
     (to get properly formatted and annotated .ll).
 '''
 
+#FIXME Enter data!
+__revision__ = "$Id: which.py 1448 2007-02-28 19:13:06Z trentm $"
+__version_info__ = (0, 0, 1)
+__version__ = '.'.join(map(str, __version_info__))
+__all__ = ["emscripten"]
+
 import json
 import optparse
 import os
@@ -21,6 +27,7 @@ import subprocess
 import re
 import sys
 import tempfile
+import io
 from tools import shared
 
 
@@ -43,72 +50,56 @@ def get_temp_file(suffix):
   TEMP_FILES_TO_CLEAN.append(named_file.name)
   return named_file
 
-
-def assemble(filepath):
+def assemble(stdin):
   """Converts human-readable LLVM assembly to binary LLVM bitcode.
 
   Args:
-    filepath: The path to the file to assemble. If the name ends with ".bc", the
-      file is assumed to be in bitcode format already.
+    stdin - the process input
 
   Returns:
-    The path to the assembled file.
+    The process to convert to bitcode format
   """
-  if not filepath.endswith('.bc'):
-    command = [shared.LLVM_AS, '-o=-', filepath]
-    with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
-    if ret != 0: raise RuntimeError('Could not assemble %s.' % filepath)
-    filepath = out.name
-  return filepath
+  cmd = ["python", "tools/assembly.py"]
+  return subprocess.Popen(cmd, stdin=stdin, stdout=subprocess.PIPE)
 
 
-def disassemble(filepath):
+def disassemble(stdin):
   """Converts binary LLVM bitcode to human-readable LLVM assembly.
 
   Args:
-    filepath: The path to the file to disassemble. If the name ends with ".ll",
-      the file is assumed to be in human-readable assembly format already.
+    stdin - the process input
 
   Returns:
-    The path to the disassembled file.
+    The process to convert to human readable format
   """
-  if not filepath.endswith('.ll'):
-    command = [shared.LLVM_DIS, '-o=-', filepath] + shared.LLVM_DIS_OPTS
-    with get_temp_file('.ll') as out: ret = subprocess.call(command, stdout=out)
-    if ret != 0: raise RuntimeError('Could not disassemble %s.' % filepath)
-    filepath = out.name
-  return filepath
+  cmd = ["python", "tools/disassembly.py"]
+  return subprocess.Popen(cmd, stdin=stdin, stdout=subprocess.PIPE)
 
 
-def optimize(filepath):
+def optimize(stdin):
   """Runs LLVM's optimization passes on a given bitcode file.
 
   Args:
-    filepath: The path to the bitcode file to optimize.
+    stdin - the process input
 
   Returns:
-    The path to the optimized file.
+    The process to optimize stream
   """
-  command = [shared.LLVM_OPT, '-o=-', filepath] + shared.pick_llvm_opts(3, True)
-  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
-  if ret != 0: raise RuntimeError('Could not optimize %s.' % filepath)
-  return out.name
+  cmd = [shared.LLVM_OPT, '-o=-', filepath] + shared.pick_llvm_opts(3, True)
+  return subprocess.Popen(cmd, stdin=stdin, stdout=subprocess.PIPE)
 
 
 def link(*objects):
   """Links multiple LLVM bitcode files into a single file.
 
   Args:
-    objects: The bitcode files to link.
+    objects: The files to link.
 
   Returns:
     The path to the linked file.
   """
-  command = [shared.LLVM_LINK] + list(objects)
-  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
-  if ret != 0: raise RuntimeError('Could not link %s.' % objects)
-  return out.name
-
+  cmd = [shared.LLVM_LINK] + list(objects)
+  return process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
 def compile_malloc():
   """Compiles dlmalloc to LLVM bitcode.
@@ -119,12 +110,12 @@ def compile_malloc():
   src = path_from_root('src', 'dlmalloc.c')
   includes = '-I' + path_from_root('src', 'include')
   command = [shared.CLANG, '-c', '-g', '-emit-llvm'] + shared.COMPILER_OPTS + ['-o-', includes, src]
-  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
+  with tempfile.SpooledTemporaryFile(max_size='1000000') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
 
 
-def has_annotations(filepath):
+def has_annotations(input):
   """Tests whether an assembly file contains annotations.
 
   Args:
@@ -133,8 +124,10 @@ def has_annotations(filepath):
   Returns:
     Whether the provided file is valid assembly and has annotations.
   """
-  return filepath.endswith('.ll') and '[#uses=' in open(filepath).read()
-
+  if is_bitcode(input):
+    return False # Don't handle
+  
+  return '[#uses=' in input
 
 def emscript(infile, settings, outfile):
   """Runs the emscripten LLVM-to-JS compiler.
@@ -150,19 +143,58 @@ def emscript(infile, settings, outfile):
   s.write(settings)
   s.close()
   compiler = path_from_root('src', 'compiler.js')
-  shared.run_js(shared.COMPILER_ENGINE, compiler, [settings_file, infile], stdout=outfile, stderr=subprocess.STDOUT, cwd=path_from_root('src'))
+
+  shared.run_js(shared.COMPILER_ENGINE, compiler, [settings_file, None], stdin=infile, stdout=outfile, cwd=path_from_root('src'))
   outfile.close()
 
 
 def main(args):
+
+  construct = args.dlmalloc or args.optimize
+  
+  if args.infile is None:
+    reader = get_std_reader()
+    
+    if construct:
+      previousOutput = reader
+    else:
+      # We have to prepare for parsing the input
+      # multiple times
+      
+      # OS should try to hold the file in memory
+      previousOutput = tempfile.SpooledTemporaryFile(max_size=MAX_SPOOL_FILE_SIZE)
+      shutil.copyfile(reader, previousOutput)
+  else:
+    # if construct:
+    # No need to handle since it is already a file
+    previousOutput = io.open(args.infile, mode = 'rb')
+  
+  # Check second case when construction is
+  # needed
+  if not construct:
+    construct = not has_annotations(previousOutput)
+    # Make sure we revert output back to 0
+    previousOutput.seek(0)
+  
   # Construct a final linked and disassembled file.
-  if args.dlmalloc or args.optimize or not has_annotations(args.infile):
-    args.infile = assemble(args.infile)
+  if construct:
     if args.dlmalloc:
+      # Link does only work on files
+      process = assemble(previousOutput, stdout=tempfile.SpooledTemporaryFile(max_size=MAX_SPOOL_FILE_SIZE))
+      previousOutput = process.stdout;
       malloc = compile_malloc()
-      args.infile = link(args.infile, malloc)
-    if args.optimize: args.infile = optimize(args.infile)
-  args.infile = disassemble(args.infile)
+      process = link(previousOutput, malloc)
+      previousOutput = process.stdout;
+    else:
+      process = assemble(previousOutput, stdout=subprocess.PIPE)
+      previousOutput = process.stdout;
+    
+    if args.optimize:
+      process = optimize(previousOutput)
+      previousOutput = process.stdout;
+  
+  process = disassemble(previousOutput)
+  previousOutput = process.stdout;
 
   # Prepare settings for serialization to JSON.
   settings = {}
@@ -244,12 +276,12 @@ def main(args):
     settings['C_DEFINES'] = defines
 
   # Compile the assembly to Javascript.
-  emscript(args.infile, json.dumps(settings), args.outfile)
+  emscript(previousOutput, json.dumps(settings), args.outfile)
 
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
+      usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* [infile]',
       description=('Compile an LLVM assembly file to Javascript. Accepts both '
                    'human-readable (*.ll) and bitcode (*.bc) formats.'),
       epilog='You should have an ~/.emscripten file set up; see settings.py.')
@@ -278,9 +310,12 @@ if __name__ == '__main__':
 
   # Convert to the same format that argparse would have produced.
   keywords, positional = parser.parse_args()
-  if len(positional) != 1:
-    raise RuntimeError('Must provide exactly one positional argument.')
-  keywords.infile = os.path.abspath(positional[0])
+  if len(positional) == 0:
+    keywords.infile = None; # Default to stdin
+  elif len(positional) == 1:
+    keywords.infile = os.path.abspath(positional[0])
+  else:
+    raise RuntimeError('May not provide more than one positional argument.')
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 

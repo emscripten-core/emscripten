@@ -37,6 +37,45 @@ mergeInto(LibraryManager.library, {
       var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       return imageData;
     },
+  },
+  
+  unref: function(object)
+  {
+  	if( object == -1 )
+  		return;
+  }
+  
+  document_getElementById: function(id)
+  {
+  	var element = document.getElementById(id);
+  	
+  	if( !element )
+  		return -1;
+  	
+  	OHEAP.push(element);
+  	return index;
+  },
+  
+  document_getElementsByName: function(name)
+  {
+  	var element = document.getElementsByName(name);
+  	
+  	if( !element )
+  		return -1;
+  		
+  	OHEAP.push(element);
+  	return index;
+  },
+  
+  document_getElementsByTagName: function(tagName)
+  {
+  	var element = document.getElementsByTagName(tagName);
+  	
+  	if( !element )
+  		return -1;
+  	
+  	OHEAP.push(element);
+  	return index;
   }
 });
 
