@@ -102,90 +102,6 @@ def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
   return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
-def pick_llvm_opts(optimization_level, safe=True):
-  '''
-    It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
-    (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
-    into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
-    things that look useful.
-  '''
-  opts = []
-  if optimization_level > 0:
-    if not safe:
-      opts.append('-O%d' % optimization_level)
-    else:
-      allow_nonportable = not safe
-      optimize_size = True
-      use_aa = not safe
-
-      # PassManagerBuilder::populateModulePassManager
-      if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
-        opts.append('-tbaa')
-        opts.append('-basicaa') # makes fannkuch slow but primes fast
-
-      opts.append('-globalopt')
-      opts.append('-ipsccp')
-      opts.append('-deadargelim')
-      if allow_nonportable: opts.append('-instcombine')
-      opts.append('-simplifycfg')
-
-      opts.append('-prune-eh')
-      if not optimize_size: opts.append('-inline') # The condition here is a difference with LLVM's createStandardAliasAnalysisPasses
-      opts.append('-functionattrs')
-      if optimization_level > 2:
-        opts.append('-argpromotion')
-
-      # XXX Danger: Can turn a memcpy into something that violates the
-      #             load-store consistency hypothesis. See hashnum() in Lua.
-      #             Note: this opt is of great importance for raytrace...
-      if allow_nonportable: opts.append('-scalarrepl')
-
-      if allow_nonportable: opts.append('-early-cse') # ?
-      opts.append('-simplify-libcalls')
-      opts.append('-jump-threading')
-      if allow_nonportable: opts.append('-correlated-propagation') # ?
-      opts.append('-simplifycfg')
-      if allow_nonportable: opts.append('-instcombine')
-
-      opts.append('-tailcallelim')
-      opts.append('-simplifycfg')
-      opts.append('-reassociate')
-      opts.append('-loop-rotate')
-      opts.append('-licm')
-      opts.append('-loop-unswitch') # XXX should depend on optimize_size
-      if allow_nonportable: opts.append('-instcombine')
-      if Settings.QUANTUM_SIZE == 4: opts.append('-indvars') # XXX this infinite-loops raytrace on q1 (loop in |new node_t[count]| has 68 hardcoded &not fixed)
-      if allow_nonportable: opts.append('-loop-idiom') # ?
-      opts.append('-loop-deletion')
-      opts.append('-loop-unroll')
-
-      ##### not in llvm-3.0. but have |      #addExtensionsToPM(EP_LoopOptimizerEnd, MPM);| if allow_nonportable: opts.append('-instcombine')
-
-      # XXX Danger: Messes up Lua output for unknown reasons
-      #             Note: this opt is of minor importance for raytrace...
-      if optimization_level > 1 and allow_nonportable: opts.append('-gvn')
-
-      opts.append('-memcpyopt') # Danger?
-      opts.append('-sccp')
-
-      if allow_nonportable: opts.append('-instcombine')
-      opts.append('-jump-threading')
-      opts.append('-correlated-propagation')
-      opts.append('-dse')
-      #addExtensionsToPM(EP_ScalarOptimizerLate, MPM);
-
-      opts.append('-adce')
-      opts.append('-simplifycfg')
-      if allow_nonportable: opts.append('-instcombine')
-
-      opts.append('-strip-dead-prototypes')
-
-      if optimization_level > 2: opts.append('-globaldce')
-
-      if optimization_level > 1: opts.append('-constmerge')
-
-  return opts
-
 def read_pgo_data(filename):
   '''
     Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
@@ -312,8 +228,14 @@ class Building:
   def llvm_opts(filename):
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
+      if Building.LLVM_OPTS == 2:
+        print 'Unsafe LD!'
+        shutil.move(filename + '.o', filename + '.o.pre')
+        output = Popen([LLVM_LD, filename + '.o.pre', '-o=' + filename + '.tmp'], stdout=PIPE).communicate()[0]
+        assert os.path.exists(filename + '.tmp.bc'), 'Failed to run llvm optimizations: ' + output
+        shutil.move(filename + '.tmp.bc', filename + '.o')
 
   @staticmethod
   def llvm_dis(filename):
@@ -360,4 +282,89 @@ class Building:
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
+
+  @staticmethod
+  def pick_llvm_opts(optimization_level, safe=True):
+    '''
+      It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
+      (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
+      into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
+      things that look useful.
+    '''
+    opts = []
+    if optimization_level > 0:
+      if not safe:
+        opts.append('-O%d' % optimization_level)
+      else:
+        allow_nonportable = not safe
+        optimize_size = True
+        use_aa = not safe
+
+        # PassManagerBuilder::populateModulePassManager
+        if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
+          opts.append('-tbaa')
+          opts.append('-basicaa') # makes fannkuch slow but primes fast
+
+        opts.append('-globalopt')
+        opts.append('-ipsccp')
+        opts.append('-deadargelim')
+        if allow_nonportable: opts.append('-instcombine')
+        opts.append('-simplifycfg')
+
+        opts.append('-prune-eh')
+        if not optimize_size: opts.append('-inline') # The condition here is a difference with LLVM's createStandardAliasAnalysisPasses
+        opts.append('-functionattrs')
+        if optimization_level > 2:
+          opts.append('-argpromotion')
+
+        # XXX Danger: Can turn a memcpy into something that violates the
+        #             load-store consistency hypothesis. See hashnum() in Lua.
+        #             Note: this opt is of great importance for raytrace...
+        if allow_nonportable: opts.append('-scalarrepl')
+
+        if allow_nonportable: opts.append('-early-cse') # ?
+        opts.append('-simplify-libcalls')
+        opts.append('-jump-threading')
+        if allow_nonportable: opts.append('-correlated-propagation') # ?
+        opts.append('-simplifycfg')
+        if allow_nonportable: opts.append('-instcombine')
+
+        opts.append('-tailcallelim')
+        opts.append('-simplifycfg')
+        opts.append('-reassociate')
+        opts.append('-loop-rotate')
+        opts.append('-licm')
+        opts.append('-loop-unswitch') # XXX should depend on optimize_size
+        if allow_nonportable: opts.append('-instcombine')
+        if Settings.QUANTUM_SIZE == 4: opts.append('-indvars') # XXX this infinite-loops raytrace on q1 (loop in |new node_t[count]| has 68 hardcoded &not fixed)
+        if allow_nonportable: opts.append('-loop-idiom') # ?
+        opts.append('-loop-deletion')
+        opts.append('-loop-unroll')
+
+        ##### not in llvm-3.0. but have |      #addExtensionsToPM(EP_LoopOptimizerEnd, MPM);| if allow_nonportable: opts.append('-instcombine')
+
+        # XXX Danger: Messes up Lua output for unknown reasons
+        #             Note: this opt is of minor importance for raytrace...
+        if optimization_level > 1 and allow_nonportable: opts.append('-gvn')
+
+        opts.append('-memcpyopt') # Danger?
+        opts.append('-sccp')
+
+        if allow_nonportable: opts.append('-instcombine')
+        opts.append('-jump-threading')
+        opts.append('-correlated-propagation')
+        opts.append('-dse')
+        #addExtensionsToPM(EP_ScalarOptimizerLate, MPM);
+
+        opts.append('-adce')
+        opts.append('-simplifycfg')
+        if allow_nonportable: opts.append('-instcombine')
+
+        opts.append('-strip-dead-prototypes')
+
+        if optimization_level > 2: opts.append('-globaldce')
+
+        if optimization_level > 1: opts.append('-constmerge')
+
+    Building.LLVM_OPT_OPTS = opts
 

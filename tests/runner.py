@@ -62,11 +62,6 @@ class RunnerCore(unittest.TestCase):
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
 
-  def pick_llvm_opts(self, optimization_level, safe=True):
-    global LLVM_OPT_OPTS
-
-    LLVM_OPT_OPTS = pick_llvm_opts(optimization_level, safe)
-
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
       if ll_file != filename + '.o':
@@ -160,10 +155,10 @@ class RunnerCore(unittest.TestCase):
     return Popen([EXEC_LLVM] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
   def build_native(self, filename):
-    Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE).communicate()[0]
 
   def run_native(self, filename, args):
-    Popen([filename+'.native'] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
+    Popen([filename+'.native'] + args, stdout=PIPE).communicate()[0]
 
   def assertIdentical(self, x, y):
     if x != y:
@@ -4401,8 +4396,7 @@ class %s(T):
     if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
-    if Building.LLVM_OPTS:
-      self.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
+    Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
 
     Building.COMPILER_TEST_OPTS = ['-g']
 
@@ -4500,8 +4494,7 @@ else:
       Settings.FAST_MEMORY = 10*1024*1024
 
       Building.LLVM_OPTS = 1 if Settings.USE_TYPED_ARRAYS != 2 else 2
-      if Building.LLVM_OPTS:
-        self.pick_llvm_opts(2, safe=Building.LLVM_OPTS != 2)
+      Building.pick_llvm_opts(2, safe=Building.LLVM_OPTS != 2)
 
       super(benchmark, self).setUp()
 
