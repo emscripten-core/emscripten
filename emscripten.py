@@ -150,7 +150,7 @@ def emscript(infile, settings, outfile):
   s.write(settings)
   s.close()
   compiler = path_from_root('src', 'compiler.js')
-  shared.run_js(shared.COMPILER_ENGINE, compiler, [settings_file, infile], stdout=outfile, stderr=subprocess.STDOUT, cwd=path_from_root('src'))
+  shared.run_js(shared.COMPILER_ENGINE, compiler, [settings_file, infile], stdout=outfile, cwd=path_from_root('src'))
   outfile.close()
 
 
