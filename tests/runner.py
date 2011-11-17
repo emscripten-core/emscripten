@@ -4475,6 +4475,10 @@ else:
         Settings.TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
       Settings.FAST_MEMORY = 10*1024*1024
 
+      Building.LLVM_OPTS = 1 if Settings.USE_TYPED_ARRAYS != 2 else 2
+      if Building.LLVM_OPTS:
+        self.pick_llvm_opts(2, safe=Building.LLVM_OPTS != 2)
+
       super(benchmark, self).setUp()
 
     def print_stats(self, times, native_times, normalize_by_native=False):
@@ -4500,11 +4504,7 @@ else:
       print '   JavaScript  : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
       print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
-    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None, llvm_opts=False):
-      Building.LLVM_OPTS = llvm_opts
-      if Building.LLVM_OPTS:
-        self.pick_llvm_opts(3)
-
+    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')
       self.build(src, dirname, filename, main_file=main_file)
@@ -4591,7 +4591,7 @@ else:
           return 1;
         }
       '''
-      self.do_benchmark(src, [], 'lastprime: 1297001.', llvm_opts=True)
+      self.do_benchmark(src, [], 'lastprime: 1297001.')
 
     def test_memops(self):
       # memcpy would also be interesting, however native code uses SSE/NEON/etc. and is much, much faster than JS can be
@@ -4615,24 +4615,23 @@ else:
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 720.', llvm_opts=True)
+      self.do_benchmark(src, [], 'final: 720.')
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.', llvm_opts=True)
+      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.')
 
     def test_fasta(self):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
-      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
-        llvm_opts=True)
+      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def zzztest_raytrace(self): # This test is disabled because it gives wildly different results depending on float rounding, JIT effects, etc.
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
-      self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read(), llvm_opts=True)
+      self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read())
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000', llvm_opts=True)
+      self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000')
 
     def test_dlmalloc(self):
       Building.COMPILER_TEST_OPTS = ['-g']
@@ -4640,7 +4639,7 @@ else:
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
 
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark(src, ['400', '400'], '*400,0*', llvm_opts=True)
+      self.do_benchmark(src, ['400', '400'], '*400,0*')
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default

@@ -114,9 +114,9 @@ def pick_llvm_opts(optimization_level, safe=True):
     if not safe:
       opts.append('-O%d' % optimization_level)
     else:
-      allow_nonportable = False
+      allow_nonportable = not safe
       optimize_size = True
-      use_aa = False
+      use_aa = not safe
 
       # PassManagerBuilder::populateModulePassManager
       if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
