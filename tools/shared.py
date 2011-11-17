@@ -74,7 +74,7 @@ def timeout_run(proc, timeout, note):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
-def run_js(engine, filename, args=[], check_timeout=False, stdout=PIPE, stderr=STDOUT, cwd=None):
+def run_js(engine, filename, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
   return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
                      stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
@@ -292,7 +292,7 @@ class Building:
 
   @staticmethod
   def link(files, target):
-    output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
@@ -304,7 +304,7 @@ class Building:
     #os.unlink(filename + '.o.ll')
     #open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
     shutil.move(filename + '.o.ll', filename + '.o.ll.orig')
-    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
 
   # Optional LLVM optimizations
@@ -312,7 +312,7 @@ class Building:
   def llvm_opts(filename):
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   @staticmethod
@@ -322,7 +322,7 @@ class Building:
       os.remove(filename + '.o.ll')
     except:
       pass
-    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
 
   @staticmethod
@@ -332,7 +332,7 @@ class Building:
       os.remove(target)
     except:
       pass
-    output = Popen([LLVM_AS, filename + '.o.ll', '-o=' + filename + '.o'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    output = Popen([LLVM_AS, filename + '.o.ll', '-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.o'), 'Could not create bc file: ' + output
 
   @staticmethod
@@ -351,7 +351,7 @@ class Building:
       except:
         pass
     settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
-    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE, stderr=STDOUT), TIMEOUT, 'Compiling')
+    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), TIMEOUT, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
