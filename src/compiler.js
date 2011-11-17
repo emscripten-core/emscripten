@@ -47,6 +47,12 @@ if (SAFE_HEAP >= 2) {
   SAFE_HEAP_LINES = set(SAFE_HEAP_LINES); // for fast checking
 }
 
+if (PGO) { // by default, correct everything during PGO
+  CORRECT_SIGNS = CORRECT_SIGNS || 1;
+  CORRECT_OVERFLOWS = CORRECT_OVERFLOWS || 1;
+  CORRECT_ROUNDINGS = CORRECT_ROUNDINGS || 1;
+}
+
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 
@@ -57,7 +63,7 @@ assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS ==
 // Output some info and warnings based on settings
 
 if (!OPTIMIZE || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
-    !SKIP_STACK_IN_SMALL || SAFE_HEAP || AUTO_OPTIMIZE || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
+    !SKIP_STACK_IN_SMALL || SAFE_HEAP || PGO || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
   print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
 } else {
   print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');

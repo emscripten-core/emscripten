@@ -187,7 +187,7 @@ function SAFE_HEAP_COPY_HISTORY(dest, src) {
 #endif
 
 var CorrectionsMonitor = {
-#if AUTO_OPTIMIZE
+#if PGO
   MAX_ALLOWED: Infinity,
 #else
   MAX_ALLOWED: 0, // XXX
@@ -200,7 +200,7 @@ var CorrectionsMonitor = {
       this.corrections++;
       if (this.corrections >= this.MAX_ALLOWED) abort('\n\nToo many corrections!');
     }
-#if AUTO_OPTIMIZE
+#if PGO
     if (!sig)
       sig = (new Error().stack).toString().split('\n')[2].split(':').slice(-1)[0]; // Spidermonkey-specific FIXME
     sig = type + '|' + sig;

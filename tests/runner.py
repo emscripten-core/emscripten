@@ -59,7 +59,9 @@ class RunnerCore(unittest.TestCase):
   def get_dir(self):
     return self.working_dir
 
-  # Similar to LLVM::createStandardModulePasses()
+  def get_stdout_path(self):
+    return os.path.join(self.get_dir(), 'stdout')
+
   def pick_llvm_opts(self, optimization_level, safe=True):
     global LLVM_OPT_OPTS
 
@@ -3302,10 +3304,10 @@ if 'benchmark' not in str(sys.argv):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
       Settings.RELOOP = 0 # too slow
 
-      auto_optimize_data = read_auto_optimize_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
+      pgo_data = read_pgo_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
 
       Settings.CORRECT_SIGNS = 2
-      Settings.CORRECT_SIGNS_LINES = auto_optimize_data['signs_lines']
+      Settings.CORRECT_SIGNS_LINES = pgo_data['signs_lines']
       Settings.CORRECT_OVERFLOWS = 0
       Settings.CORRECT_ROUNDINGS = 0
       Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
@@ -4303,10 +4305,10 @@ Child2:9
       self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
 
-    def test_autooptimize(self):
+    def test_pgo(self):
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')
 
-      Settings.AUTO_OPTIMIZE = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
+      Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
 
       src = '''
         #include<stdio.h>
@@ -4335,6 +4337,26 @@ Child2:9
 
       self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
 
+      Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 0
+
+      # Now, recompile with the PGO data, and it should work
+
+      pgo_data = read_pgo_data(self.get_stdout_path())
+
+      Settings.CORRECT_SIGNS = 2
+      Settings.CORRECT_SIGNS_LINES = pgo_data['signs_lines']
+      Settings.CORRECT_OVERFLOWS = 2
+      Settings.CORRECT_OVERFLOWS_LINES = pgo_data['overflows_lines']
+
+      self.do_run(src, '*186854335,63*\n')
+
+      # Sanity check: Without PGO, we will fail
+
+      try:
+        self.do_run(src, '*186854335,63*\n')
+      except:
+        pass
+
 
   # Generate tests for all our compilers
   def make_run(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
@@ -4357,7 +4379,7 @@ class %s(T):
     Settings.ASSERTIONS = 1-embetter
     Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
     Building.LLVM_OPTS = llvm_opts
-    Settings.AUTO_OPTIMIZE = 0
+    Settings.PGO = 0
     Settings.CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     Settings.CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     Settings.CORRECT_SIGNS = 0
@@ -4465,7 +4487,7 @@ else:
       Settings.USE_TYPED_ARRAYS = 1
       Settings.QUANTUM_SIZE = 1
       Settings.I64_MODE = 0
-      Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.AUTO_OPTIMIZE = Settings.RUNTIME_TYPE_INFO = 0
+      Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.PGO = Settings.RUNTIME_TYPE_INFO = 0
       Settings.INVOKE_RUN = 1
       Settings.CORRECT_SIGNS = 0
       Settings.CORRECT_ROUNDINGS = 0

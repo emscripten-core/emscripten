@@ -125,11 +125,14 @@ CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no
                        // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
                        // we will do slow but correct C rounding operations.
 
-AUTO_OPTIMIZE = 0; // When run with the CHECK_* options, will not fail on errors. Instead, will
-                   // keep a record of which checks succeeded and which failed. On shutdown, will
-                   // print out that information. This is useful for knowing which lines need
-                   // checking enabled and which do not, that is, this is a way to automate the
-                   // generation of line data for CORRECT_*_LINES options
+PGO = 0; // Profile-guided optimization.
+         // When run with the CHECK_* options, will not fail on errors. Instead, will
+         // keep a record of which checks succeeded and which failed. On shutdown, will
+         // print out that information. This is useful for knowing which lines need
+         // checking enabled and which do not, that is, this is a way to automate the
+         // generation of line data for CORRECT_*_LINES options.
+         // All CORRECT_* options default to 1 with PGO builds.
+         // See https://github.com/kripken/emscripten/wiki/Optimizing-Code for more info
 
 PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
 

@@ -186,22 +186,25 @@ def pick_llvm_opts(optimization_level, safe=True):
 
   return opts
 
-def read_auto_optimize_data(filename):
+def read_pgo_data(filename):
   '''
-    Reads the output of AUTO_OPTIMIZE and generates proper information for CORRECT_* == 2 's *_LINES options
+    Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
   '''
   signs_lines = []
   overflows_lines = []
   
   for line in open(filename, 'r'):
-    if line.rstrip() == '': continue
-    if '%0 failures' in line: continue
-    left, right = line.split(' : ')
-    signature = left.split('|')[1]
-    if 'Sign' in left:
-      signs_lines.append(signature)
-    elif 'Overflow' in left:
-      overflows_lines.append(signature)
+    try:
+      if line.rstrip() == '': continue
+      if '%0 failures' in line: continue
+      left, right = line.split(' : ')
+      signature = left.split('|')[1]
+      if 'Sign' in left:
+        signs_lines.append(signature)
+      elif 'Overflow' in left:
+        overflows_lines.append(signature)
+    except:
+      pass
 
   return {
     'signs_lines': signs_lines,
@@ -340,7 +343,7 @@ class Building:
 
     # Run Emscripten
     exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'AUTO_OPTIMIZE', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE', 'I64_MODE', 'EMULATE_UNALIGNED_ACCESSES']:
+    for setting in ['QUANTUM_SIZE', 'RELOOP', 'OPTIMIZE', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'PGO', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE', 'I64_MODE', 'EMULATE_UNALIGNED_ACCESSES']:
       try:
         value = eval('Settings.' + setting)
         if value is not None:
