@@ -159,8 +159,8 @@ class RunnerCore(unittest.TestCase):
   def run_llvm_interpreter(self, args):
     return Popen([EXEC_LLVM] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
-  def build_native(self, filename, compiler='g++'):
-    Popen([compiler, '-O3', filename, '-o', filename+'.native'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+  def build_native(self, filename):
+    Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE, stderr=STDOUT).communicate()[0]
 
   def run_native(self, filename, args):
     Popen([filename+'.native'] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
@@ -4525,8 +4525,8 @@ else:
         final /= len(times)
 
       print
-      print '   JavaScript  : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
-      print '   Native (gcc): mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
+      print '   JavaScript: mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     (%d runs)' % (mean, std, max(times), min(times), std/mean, TEST_REPS)
+      print '   Native    : mean: %.3f (+-%.3f) seconds    (max: %.3f, min: %.3f, noise/signal: %.3f)     JS is %.2f X slower' % (mean_native, std_native, max(native_times), min(native_times), std_native/mean_native, final)
 
     def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
       dirname = self.get_dir()
