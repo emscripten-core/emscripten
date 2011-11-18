@@ -671,7 +671,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   function makeBranch(label, lastLabel, labelIsVariable) {
     var pre = '';
-    if (lastLabel) {
+    if (!MICRO_OPTS && lastLabel) {
       pre = '__lastLabel__ = ' + getLabelId(lastLabel) + '; ';
     }
     if (label[0] == 'B') {
@@ -819,16 +819,20 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
   makeFuncLineActor('phi', function(item) {
     var params = item.params;
-    function makeOne(i) {
-      if (i === params.length-1) {
-        return finalizeLLVMParameter(params[i].value);
+    if (!MICRO_OPTS) {
+      function makeOne(i) {
+        if (i === params.length-1) {
+          return finalizeLLVMParameter(params[i].value);
+        }
+        return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
+                                     finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
       }
-      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
-                                   finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
+      var ret = makeOne(0);
+      if (item.postSet) ret += item.postSet;
+      return ret;
+    } else { // MICRO_OPTS == 1
+      assert(0, 'TODO');
     }
-    var ret = makeOne(0);
-    if (item.postSet) ret += item.postSet;
-    return ret;
   });
 
   makeFuncLineActor('mathop', processMathop);

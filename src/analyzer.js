@@ -621,19 +621,15 @@ function analyzer(data) {
           // we need __lastLabel__.
           func.needsLastLabel = false;
           func.labels.forEach(function(label) {
-            var phis = [];
+            var phis = [], phi;
             label.lines.forEach(function(line) {
-              if (line.value && line.value.intertype == 'phi') {
-                for (var i = 0; i < line.value.params.length; i++) {
-                  var remarkableLabelId = line.value.params[i].label;
-                  var remarkableLabel = func.labelsDict[remarkableLabelId];
-                  assert(remarkableLabel);
-                  var lastLine = remarkableLabel.lines.slice(-1)[0];
-                  if (lastLine.intertype === 'assign') {
-                    lastLine.value.currLabelId = remarkableLabelId;
-                  } else {
-                    lastLine.currLabelId = remarkableLabelId;
-                  }
+              if ((phi = line.value) && phi.intertype == 'phi') {
+                for (var i = 0; i < phi.params.length; i++) {
+                  var sourceLabelId = phi.params[i].label;
+                  var sourceLabel = func.labelsDict[sourceLabelId];
+                  var lastLine = sourceLabel.lines.slice(-1)[0];
+                  assert(lastLine.intertype == 'branch', 'Only branches can lead to labels with phis');
+                  lastLine.currLabelId = sourceLabelId;
                 }
                 phis.push(line);
                 func.needsLastLabel = true;
@@ -661,8 +657,36 @@ function analyzer(data) {
               }
             }
           });
-        } else { // MICRO_OPTS
-          assert(0, 'TODO');
+        } else {
+          // MICRO_OPTS == 1: Properly implement phis, by pushing them back into the branch
+          // that leads to here. We will only have the |var| definition in this location.
+
+          // First, push phis back
+          func.labels.forEach(function(label) {
+            label.lines.forEach(function(line) {
+              var phi;
+              if ((phi = line.value) && phi.intertype == 'phi') {
+                for (var i = 0; i < phi.params.length; i++) {
+                  var param = phi.params[i];
+                  var sourceLabelId = param.label;
+                  var sourceLabel = func.labelsDict[sourceLabelId];
+                  var lastLine = sourceLabel.lines.slice(-1)[0];
+                  assert(lastLine.intertype == 'branch', 'Only branches can lead to labels with phis');
+                  if (!lastLine.phi) {
+                    // We store the phi assignments in the branch's params (which are otherwise unused)
+                    lastLine.phi = true;
+                    assert(!lastLine.params);
+                    lastLine.params = [];
+                  };
+                  lastLine.params.push({
+                    intertype: 'phiassign',
+                    ident: line.ident,
+                    value: param.value
+                  });
+                }
+              }
+            });
+          });
         }
       });
       this.forwardItem(item, 'StackAnalyzer');
