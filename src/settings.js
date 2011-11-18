@@ -37,7 +37,7 @@ TOTAL_MEMORY = 50*1024*1024; // The total amount of memory to use. This mainly m
                              // is currently no warning about that!
 
 // Code embetterments
-OPTIMIZE = 0; // Optimize llvm operations into js commands
+MICRO_OPTS = 0; // Various micro-optimizations, like nativizing variables
 RELOOP = 0; // Recreate js native loops from llvm data
 USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
                       // 1 has two heaps, IHEAP (int32) and FHEAP (double),
