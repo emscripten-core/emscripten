@@ -454,7 +454,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       if (true) { // TODO: optimize away when not needed
         func.JS += '  var __label__;\n';
       }
-      if (func.hasPhi) {
+      if (func.needsLastLabel) {
         func.JS += '  var __lastLabel__ = null;\n';
       }
 
