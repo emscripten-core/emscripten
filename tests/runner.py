@@ -396,6 +396,7 @@ if 'benchmark' not in str(sys.argv):
         # Stuff that only works in i64_mode = 1
 
         Settings.I64_MODE = 1
+
         src = r'''
           #include <time.h>
           #include <stdio.h>
@@ -457,6 +458,31 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
                          '*18446744073709552000*\n*576460752303423500*\n' +
                          'm1: 127\n*123*\n*127*\n')
+
+        Settings.CORRECT_SIGNS = 1
+
+        src = r'''
+          #include <stdio.h>
+          #include <stdint.h>
+
+          int main()
+          {
+            // i32 vs i64
+            int32_t small = -1;
+            int64_t large = -1;
+            printf("*%d*\n", small == large);
+            small++;
+            printf("*%d*\n", small == large);
+            uint32_t usmall = -1;
+            uint64_t ularge = -1;
+            printf("*%d*\n", usmall == ularge);
+            usmall++;
+            printf("*%d*\n", usmall == ularge);
+            return 0;
+          }
+        '''
+
+        self.do_run(src, '*1*\n*0*\n*1*\n*0*')
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')

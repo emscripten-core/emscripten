@@ -1339,6 +1339,7 @@ function getGetElementPtrIndexes(item) {
 }
 
 function handleOverflow(text, bits) {
+  // TODO: handle overflows of i64s
   if (!bits) return text;
   var correct = correctOverflows();
   warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits + ' at line ' + Framework.currItem.lineNum);
@@ -1393,6 +1394,10 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
 }
 
 function makeSignOp(value, type, op, force) {
+  if (I64_MODE == 1 && type == 'i64') {
+    return '(tempPair=' + value + ',[' + makeSignOp('tempPair[0]', 'i32', op, force) + ',' + makeSignOp('tempPair[1]', 'i32', op, force) + '])';
+  }
+
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
   if (!value) return value;
   var bits, full;
@@ -1430,6 +1435,8 @@ function makeSignOp(value, type, op, force) {
 }
 
 function makeRounding(value, bits, signed) {
+  // TODO: handle roundings of i64s
+
   // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
   // With 32 bits and less, and a signed value, |0 will round it like C does.
   if (bits && bits <= 32 && signed) return '(('+value+')|0)';
@@ -1531,7 +1538,8 @@ function processMathop(item) { with(item) {
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
-      case 'zext': case 'sext': return makeI64(ident1, 0);
+      case 'zext': return makeI64(ident1, 0);
+      case 'sext': return '(tempInt=' + ident1 + ',' + makeI64('tempInt', 'tempInt<0 ? 4294967295 : 0') + ')';
       case 'trunc': {
         return '((' + ident1 + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
