@@ -702,13 +702,29 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   }
 
   makeFuncLineActor('branch', function(item) {
-    if (item.stolen) return ';'; // We will appear where we were stolen to
+    var phiSets = null;
+    if (item.phi) {
+      phiSets = {};
+      // TODO: Do not always rename them all
+      // TODO: eliminate unneeded sets (to undefined etc.)
+      item.params.forEach(function(param) {
+        if (!phiSets[param.targetLabel]) phiSets[param.targetLabel] = [];
+        phiSets[param.targetLabel].unshift('var ' + param.ident + '$phi = ' + finalizeLLVMParameter(param.value) + ';');
+        phiSets[param.targetLabel].push(param.ident + ' = ' + param.ident + '$phi;');
+      });
+    }
+    function getPhiSets(label) {
+      label = getOldLabel(label);
+      if (!phiSets || !phiSets[label]) return '';
+      return sumStringy(phiSets[label]);
+    }
+    if (item.stolen) return getPhiSets(item.label) || ';'; // We will appear where we were stolen to
     if (!item.value) {
-      return makeBranch(item.label, item.currLabelId);
+      return getPhiSets(item.label) + makeBranch(item.label, item.currLabelId);
     } else {
       var condition = finalizeLLVMParameter(item.value);
-      var labelTrue = makeBranch(item.labelTrue, item.currLabelId);
-      var labelFalse = makeBranch(item.labelFalse, item.currLabelId);
+      var labelTrue = getPhiSets(item.labelTrue) + makeBranch(item.labelTrue, item.currLabelId);
+      var labelFalse = getPhiSets(item.labelFalse) + makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + condition + ') { ';
       var head2 = 'if (!(' + condition + ')) { ';

@@ -628,7 +628,7 @@ function analyzer(data) {
                   var sourceLabelId = phi.params[i].label;
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
-                  assert(lastLine.intertype == 'branch', 'Only branches can lead to labels with phis');
+                  assert(lastLine.intertype == 'branch', 'Only branches can lead to labels with phis, line ' + [func.ident, label.ident]);
                   lastLine.currLabelId = sourceLabelId;
                 }
                 phis.push(line);
@@ -671,7 +671,7 @@ function analyzer(data) {
                   var sourceLabelId = param.label;
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
-                  assert(lastLine.intertype == 'branch', 'Only branches can lead to labels with phis');
+                  assert(lastLine.intertype == 'branch', 'Only branches can lead to labels with phis, line ' + [func.ident, label.ident]);
                   if (!lastLine.phi) {
                     // We store the phi assignments in the branch's params (which are otherwise unused)
                     lastLine.phi = true;
@@ -681,7 +681,8 @@ function analyzer(data) {
                   lastLine.params.push({
                     intertype: 'phiassign',
                     ident: line.ident,
-                    value: param.value
+                    value: param.value,
+                    targetLabel: label.ident
                   });
                 }
                 // The assign to phi is now just a var

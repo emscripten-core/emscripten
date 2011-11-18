@@ -731,6 +731,11 @@ function cleanLabel(label) {
   }
 }
 
+function getOldLabel(label) {
+  var parts = label.split('|');
+  return parts[parts.length-1];
+}
+
 function calcAllocatedSize(type) {
   if (pointingLevels(type) == 0 && isStructType(type)) {
     return Types.types[type].flatSize; // makeEmptyStruct(item.allocatedType).length;
