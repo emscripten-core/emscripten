@@ -609,54 +609,61 @@ function analyzer(data) {
         });
         func.labelIds[toNiceIdent('%0')] = -1; // entry is always -1
 
-        func.hasPhi = false;
         func.hasIndirectBr = false;
-        func.remarkableLabels = [];
-        func.labels.forEach(function(label) {
-          var phis = [];
-          label.lines.forEach(function(line) {
-            if (line.value && line.value.intertype == 'phi') {
-              for (var i = 0; i < line.value.params.length; i++) {
-                var remarkableLabelId = line.value.params[i].label;
-                func.remarkableLabels.push(remarkableLabelId);
-                var remarkableLabel = func.labelsDict[remarkableLabelId];
-                assert(remarkableLabel);
-                var lastLine = remarkableLabel.lines.slice(-1)[0];
-                if (lastLine.intertype === 'assign') {
-                  lastLine.value.currLabelId = remarkableLabelId;
-                } else {
-                  lastLine.currLabelId = remarkableLabelId;
-                }
-              }
-              phis.push(line);
-              func.hasPhi = true;
-            }
-            if (line.intertype == 'indirectbr') {
-              func.hasIndirectBr = true;
-            }
-          });
-          if (phis.length >= 2) {
-            // Multiple phis have the semantics that they all occur 'in parallel', i.e., changes to
-            // a variable that is the result of a phi should *not* affect the other results. We must
-            // therefore be careful!
-            // TODO: optimize this for cases where they are not dependent
-            phis[phis.length-1].value.postSet = '; /* post-phi: */';
-            for (var i = 0; i < phis.length-1; i++) {
-              var ident = phis[i].ident;
-              var phid = ident+'$phi'
-              phis[phis.length-1].value.postSet += ident + '=' + phid + ';';
-              phis[i].ident = phid;
-              func.variables[phid] = {
-                ident: phid,
-                type: func.variables[ident].type,
-                origin: func.variables[ident].origin,
-                lineNum: func.variables[ident].lineNum,
-                uses: 1,
-                impl: VAR_EMULATED
-              };
-            }
+        func.lines.forEach(function(line) {
+          if (line.intertype == 'indirectbr') {
+            func.hasIndirectBr = true;
           }
         });
+
+        if (!MICRO_OPTS) {
+          // 'Emulate' phis, by doing an if where the phi appears in the .ll. For this
+          // we need __lastLabel__.
+          func.needsLastLabel = false;
+          func.labels.forEach(function(label) {
+            var phis = [];
+            label.lines.forEach(function(line) {
+              if (line.value && line.value.intertype == 'phi') {
+                for (var i = 0; i < line.value.params.length; i++) {
+                  var remarkableLabelId = line.value.params[i].label;
+                  var remarkableLabel = func.labelsDict[remarkableLabelId];
+                  assert(remarkableLabel);
+                  var lastLine = remarkableLabel.lines.slice(-1)[0];
+                  if (lastLine.intertype === 'assign') {
+                    lastLine.value.currLabelId = remarkableLabelId;
+                  } else {
+                    lastLine.currLabelId = remarkableLabelId;
+                  }
+                }
+                phis.push(line);
+                func.needsLastLabel = true;
+              }
+            });
+
+            if (phis.length >= 2) {
+              // Multiple phis have the semantics that they all occur 'in parallel', i.e., changes to
+              // a variable that is the result of a phi should *not* affect the other results. We must
+              // therefore be careful!
+              phis[phis.length-1].value.postSet = '; /* post-phi: */';
+              for (var i = 0; i < phis.length-1; i++) {
+                var ident = phis[i].ident;
+                var phid = ident+'$phi'
+                phis[phis.length-1].value.postSet += ident + '=' + phid + ';';
+                phis[i].ident = phid;
+                func.variables[phid] = {
+                  ident: phid,
+                  type: func.variables[ident].type,
+                  origin: func.variables[ident].origin,
+                  lineNum: func.variables[ident].lineNum,
+                  uses: 1,
+                  impl: VAR_EMULATED
+                };
+              }
+            }
+          });
+        } else { // MICRO_OPTS
+          assert(0, 'TODO');
+        }
       });
       this.forwardItem(item, 'StackAnalyzer');
     }
