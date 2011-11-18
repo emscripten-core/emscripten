@@ -684,6 +684,9 @@ function analyzer(data) {
                     value: param.value
                   });
                 }
+                // The assign to phi is now just a var
+                line.intertype = 'var';
+                line.value = null;
               }
             });
           });

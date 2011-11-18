@@ -634,6 +634,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }
     });
   }
+  makeFuncLineActor('var', function(item) { // assigns into phis become simple vars when MICRO_OPTS
+    return 'var ' + item.ident + ';';
+  });
   makeFuncLineActor('store', function(item) {
     var value = finalizeLLVMParameter(item.value);
     if (pointingLevels(item.pointerType) == 1) {
@@ -819,20 +822,17 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
   makeFuncLineActor('phi', function(item) {
     var params = item.params;
-    if (!MICRO_OPTS) {
-      function makeOne(i) {
-        if (i === params.length-1) {
-          return finalizeLLVMParameter(params[i].value);
-        }
-        return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
-                                     finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
+    assert(!MICRO_OPTS);
+    function makeOne(i) {
+      if (i === params.length-1) {
+        return finalizeLLVMParameter(params[i].value);
       }
-      var ret = makeOne(0);
-      if (item.postSet) ret += item.postSet;
-      return ret;
-    } else { // MICRO_OPTS == 1
-      assert(0, 'TODO');
+      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
+                                   finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
     }
+    var ret = makeOne(0);
+    if (item.postSet) ret += item.postSet;
+    return ret;
   });
 
   makeFuncLineActor('mathop', processMathop);
