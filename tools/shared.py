@@ -291,10 +291,15 @@ class Building:
       into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
       things that look useful.
     '''
+    if not Building.LLVM_OPTS: return
+
     opts = []
     if optimization_level > 0:
       if not safe:
-        opts.append('-O%d' % optimization_level)
+        #opts.append('-O%d' % optimization_level)
+        opts.append('-std-compile-opts')
+        opts.append('-std-link-opts')
+        print 'Unsafe:', opts
       else:
         allow_nonportable = not safe
         optimize_size = True
