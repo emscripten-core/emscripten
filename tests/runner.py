@@ -1551,7 +1551,7 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x: x.replace('\n', '*'))
 
     def test_emscripten_api(self):
-        #if Settings.OPTIMIZE or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
+        #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
         src = '''
           #include <stdio.h>
@@ -3299,7 +3299,7 @@ if 'benchmark' not in str(sys.argv):
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      if Building.LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      if Building.LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and MICRO_OPTS though
 
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
@@ -3558,7 +3558,7 @@ if 'benchmark' not in str(sys.argv):
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
-      Settings.RELOOP = 0 # Too slow; we do care about typed arrays and OPTIMIZE though
+      Settings.RELOOP = 0 # Too slow; we do care about typed arrays and MICRO_OPTS though
       Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
       Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
@@ -4397,7 +4397,7 @@ class %s(T):
     quantum_size = %d
     Settings.USE_TYPED_ARRAYS = %d
     Settings.INVOKE_RUN = 1
-    Settings.RELOOP = Settings.OPTIMIZE = embetter
+    Settings.RELOOP = Settings.MICRO_OPTS = embetter
     Settings.QUANTUM_SIZE = quantum_size
     Settings.ASSERTIONS = 1-embetter
     Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
@@ -4505,7 +4505,7 @@ else:
 
   class benchmark(RunnerCore):
     def setUp(self):
-      Settings.RELOOP = Settings.OPTIMIZE = 1
+      Settings.RELOOP = Settings.MICRO_OPTS = 1
       Settings.USE_TYPED_ARRAYS = 1
       Settings.QUANTUM_SIZE = 1
       Settings.I64_MODE = 0

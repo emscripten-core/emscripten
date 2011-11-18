@@ -363,10 +363,10 @@ function analyzer(data) {
             variable.impl = VAR_EMULATED;
           } else if (variable.type == 'i64*' && I64_MODE == 1) {
             variable.impl = VAR_EMULATED;
-          } else if (OPTIMIZE && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
+          } else if (MICRO_OPTS && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
             // A simple int value, can be implemented as a native variable
             variable.impl = VAR_NATIVE;
-          } else if (OPTIMIZE && variable.origin === 'alloca' && !variable.hasAddrTaken && !variable.hasValueTaken &&
+          } else if (MICRO_OPTS && variable.origin === 'alloca' && !variable.hasAddrTaken && !variable.hasValueTaken &&
                      variable.allocatedNum === 1 &&
                      (Runtime.isNumberType(pointedType) || Runtime.isPointerType(pointedType))) {
             // A pointer to a value which is only accessible through this pointer. Basically

@@ -168,6 +168,7 @@ def main(args):
   settings = {}
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
+    assert name != 'OPTIMIZE', 'OPTIMIZE has been renamed MICRO_OPTS, to not confuse new users. Sorry for any inconvenience.'
     settings[name] = json.loads(value)
 
   # Adjust sign correction for dlmalloc.
