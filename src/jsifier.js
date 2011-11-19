@@ -704,7 +704,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   function calcPhiSets(item) {
     if (!item.phi) return null;
     var phiSets = {};
-    item.params.forEach(function(param) {
+    item.dependent.params.forEach(function(param) {
       if (!phiSets[param.targetLabel]) phiSets[param.targetLabel] = [];
       phiSets[param.targetLabel].push(param);
       param.valueJS = finalizeLLVMParameter(param.value);
@@ -713,8 +713,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   }
 
   function getPhiSetsForLabel(phiSets, label) {
+    if (!phiSets) return '';
     label = getOldLabel(label);
-    if (!phiSets || !phiSets[label]) return '';
+    if (!phiSets[label]) return '';
     var labelSets = phiSets[label];
     // FIXME: Many of the |var |s here are not needed, but without them we get slowdowns with closure compiler. TODO: remove this workaround.
     if (labelSets.length == 1) {

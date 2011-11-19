@@ -1696,6 +1696,7 @@ function walkInterdata(item, pre, post, obj) {
   var originalObj = obj;
   if (obj && obj.replaceWith) obj = obj.replaceWith; // allow pre to replace the object we pass to all its children
   if (item.value && walkInterdata(item.value, pre, post,  obj)) return true;
+  if (item.dependent && walkInterdata(item.dependent, pre, post,  obj)) return true;
   var i;
   for (i = 1; i <= 4; i++) {
     if (item['param'+i] && walkInterdata(item['param'+i], pre, post,  obj)) return true;
