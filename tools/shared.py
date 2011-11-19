@@ -291,7 +291,7 @@ class Building:
       into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
       things that look useful.
     '''
-    if not Building.LLVM_OPTS: return
+    if not Building.LLVM_OPTS: return # XXX this makes using this independently from the test runner very unpleasant
 
     opts = []
     if optimization_level > 0:
