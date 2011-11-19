@@ -704,12 +704,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   function calcPhiSets(item) {
     if (!item.phi) return null;
     var phiSets = {};
-    // TODO: Do not always rename them all
-    // TODO: eliminate unneeded sets (to undefined etc.)
     item.params.forEach(function(param) {
       if (!phiSets[param.targetLabel]) phiSets[param.targetLabel] = [];
-      phiSets[param.targetLabel].unshift('var ' + param.ident + '$phi = ' + finalizeLLVMParameter(param.value) + ';');
-      phiSets[param.targetLabel].push(param.ident + ' = ' + param.ident + '$phi;');
+      phiSets[param.targetLabel].push(param);
+      param.valueJS = finalizeLLVMParameter(param.value);
     });
     return phiSets;
   }
@@ -717,7 +715,21 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   function getPhiSetsForLabel(phiSets, label) {
     label = getOldLabel(label);
     if (!phiSets || !phiSets[label]) return '';
-    return sumStringy(phiSets[label]);
+    var labelSets = phiSets[label];
+    if (labelSets.length == 1) {
+      return 'var ' + labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
+    }
+    // TODO: optimize number of copies
+    // TODO: eliminate unneeded sets (to undefined etc.)
+    var ret = '';
+    for (var i = 0; i < labelSets.length-1; i++) {
+      ret += 'var ' + labelSets[i].ident + '$phi = ' + labelSets[i].valueJS + ';';
+    }
+    ret += labelSets[labelSets.length-1].ident + ' = ' + labelSets[labelSets.length-1].valueJS + ';';
+    for (var i = 0; i < labelSets.length-1; i++) {
+      ret += labelSets[i].ident + ' = ' + labelSets[i].ident + '$phi;';
+    }
+    return '/* phi */' + ret;
   }
 
   makeFuncLineActor('branch', function(item) {
