@@ -717,10 +717,45 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     if (!phiSets || !phiSets[label]) return '';
     var labelSets = phiSets[label];
     if (labelSets.length == 1) {
-      return 'var ' + labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
+      return labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
     }
-    // TODO: optimize number of copies
     // TODO: eliminate unneeded sets (to undefined etc.)
+    var deps = {}; // for each ident we will set, which others it depends on
+    var valueJSes = {};
+    labelSets.forEach(function(labelSet) {
+      deps[labelSet.ident] = {};
+      valueJSes[labelSet.ident] = labelSet.valueJS;
+    });
+    labelSets.forEach(function(labelSet) {
+      walkInterdata(labelSet.value, function mark(item) {
+        if (item.intertype == 'value' && item.ident in deps) {
+          deps[labelSet.ident][item.ident] = true;
+        }
+      });
+    });
+    var pre = '', post = '', idents;
+    mainLoop: while ((idents = keys(deps)).length > 0) {
+      function remove(ident) {
+        for (var i = 0; i < idents.length; i++) {
+          delete deps[idents[i]][ident];
+        }
+        delete deps[ident];
+      }
+      for (var i = 0; i < idents.length; i++) {
+        if (keys(deps[idents[i]]).length == 0) {
+          pre = idents[i] + ' = ' + valueJSes[idents[i]] + ';' + pre;
+          remove(idents[i]);
+          continue mainLoop;
+        }
+      }
+      // If we got here, we have circular dependencies, and must break at least one.
+      pre = 'var ' + idents[0] + '$phi = ' + valueJSes[idents[i]] + ';' + pre;
+      post += idents[0] + ' = ' + idents[0] + '$phi;';
+      remove(idents[0]);
+    }
+    return pre + post;
+
+    /* // Safe, unoptimized copying
     var ret = '';
     for (var i = 0; i < labelSets.length-1; i++) {
       ret += 'var ' + labelSets[i].ident + '$phi = ' + labelSets[i].valueJS + ';';
@@ -729,7 +764,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     for (var i = 0; i < labelSets.length-1; i++) {
       ret += labelSets[i].ident + ' = ' + labelSets[i].ident + '$phi;';
     }
-    return '/* phi */' + ret;
+    return ret;
+    */
   }
 
   makeFuncLineActor('branch', function(item) {

@@ -1692,9 +1692,9 @@ function processMathop(item) { with(item) {
 // TODO: Use this in analyzer, possibly also in jsifier
 function walkInterdata(item, pre, post, obj) {
   if (!item || !item.intertype) return false;
-  if (pre(item, obj)) return true;
+  if (pre && pre(item, obj)) return true;
   var originalObj = obj;
-  if (obj.replaceWith) obj = obj.replaceWith; // allow pre to replace the object we pass to all its children
+  if (obj && obj.replaceWith) obj = obj.replaceWith; // allow pre to replace the object we pass to all its children
   if (item.value && walkInterdata(item.value, pre, post,  obj)) return true;
   var i;
   for (i = 1; i <= 4; i++) {
@@ -1712,7 +1712,7 @@ function walkInterdata(item, pre, post, obj) {
       if (walkInterdata(box, pre, post,  obj)) return true;
     }
   }
-  return post(item, originalObj, obj);
+  return post && post(item, originalObj, obj);
 }
 
 function parseBlockAddress(segment) {
