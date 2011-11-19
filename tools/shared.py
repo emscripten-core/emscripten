@@ -372,4 +372,5 @@ class Building:
         if optimization_level > 1: opts.append('-constmerge')
 
     Building.LLVM_OPT_OPTS = opts
+    return opts
 
