@@ -716,8 +716,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     label = getOldLabel(label);
     if (!phiSets || !phiSets[label]) return '';
     var labelSets = phiSets[label];
+    // FIXME: Many of the |var |s here are not needed, but without them we get slowdowns with closure compiler. TODO: remove this workaround.
     if (labelSets.length == 1) {
-      return labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
+      return 'var ' + labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
     }
     // TODO: eliminate unneeded sets (to undefined etc.)
     var deps = {}; // for each ident we will set, which others it depends on
@@ -743,14 +744,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }
       for (var i = 0; i < idents.length; i++) {
         if (keys(deps[idents[i]]).length == 0) {
-          pre = idents[i] + ' = ' + valueJSes[idents[i]] + ';' + pre;
+          pre = 'var ' + idents[i] + ' = ' + valueJSes[idents[i]] + ';' + pre;
           remove(idents[i]);
           continue mainLoop;
         }
       }
       // If we got here, we have circular dependencies, and must break at least one.
       pre = 'var ' + idents[0] + '$phi = ' + valueJSes[idents[i]] + ';' + pre;
-      post += idents[0] + ' = ' + idents[0] + '$phi;';
+      post += 'var ' + idents[0] + ' = ' + idents[0] + '$phi;';
       remove(idents[0]);
     }
     return pre + post;
@@ -806,7 +807,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       ret += '}\n';
     });
     if (item.switchLabels.length > 0) ret += 'else {\n';
-    ret += makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+    ret += getPhiSetsForLabel(phiSets, item.defaultLabel) + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
     if (item.switchLabels.length > 0) ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
@@ -837,16 +838,16 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
+    var phiSets = calcPhiSets(item);
     var call_ = makeFunctionCall(item.ident, item.params, item.funcData);
-    var branch = makeBranch(item.toLabel, item.currLabelId);
     var ret = '(function() { try { __THREW__ = false; return '
             + call_ + ' '
             + '} catch(e) { '
             + 'if (typeof e != "number") throw e; '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
-            + 'return null } })(); if (!__THREW__) { ' + branch
-            + ' } else { ' + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
+            + 'return null } })(); if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
+            + ' } else { ' + getPhiSetsForLabel(phiSets, item.unwindLabel)  + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
   makeFuncLineActor('landingpad', function(item) {
