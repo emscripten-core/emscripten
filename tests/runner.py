@@ -42,6 +42,7 @@ class RunnerCore(unittest.TestCase):
     if not os.path.exists(dirname):
       os.makedirs(dirname)
     self.working_dir = dirname
+    os.chdir(dirname)
     
   def tearDown(self):
     if self.save_JS:
@@ -4456,7 +4457,7 @@ TT = %s
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
-      output = Popen([COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+      output = Popen([COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output)
 
 else:
