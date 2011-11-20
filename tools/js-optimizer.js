@@ -160,7 +160,6 @@ function unGlobalize(ast) {
 // This pass assumes that unGlobalize has been run, so undefined
 // is now explicit.
 function removeAssignsToUndefined(ast) {
-  // TODO: in vars too
   traverse(ast, function(node, type) {
     if (type == 'assign' && jsonCompare(node[3], ['unary-prefix', 'void', ['num', 0]])) {
       return emptyNode();
@@ -173,6 +172,17 @@ function removeAssignsToUndefined(ast) {
       });
     }
   });
+  // cleanup (|x = y = void 0| leaves |x = ;| right now)
+  var modified = true;
+  while (modified) {
+    modified = false;
+    traverse(ast, function(node, type) {
+      if (type == 'assign' && jsonCompare(node[3], emptyNode())) {
+        modified = true;
+        return emptyNode();
+      }
+    });
+  }
 }
 
 // Main

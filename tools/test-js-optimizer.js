@@ -7,6 +7,7 @@ function abc() {
   var fleefl;
   cheez = 10;
   fleefl = x;
+  fleefl = cheez = x;
   var waka = x, flake = x, marfoosh = x;
   var waka2 = 5, flake2 = x, marfoosh2 = x;
   var waka3 = x, flake3 = 5, marfoosh3 = x;

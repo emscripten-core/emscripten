@@ -2326,9 +2326,9 @@ LibraryManager.library = {
             argSize = 4;
             break;
           default:
-            argSize = undefined;
+            argSize = null;
         }
-        if (argSize !== undefined) textIndex++;
+        if (argSize) textIndex++;
         next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
 
         // Handle type specifier.
