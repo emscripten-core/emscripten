@@ -4501,7 +4501,7 @@ else:
   #JS_ENGINE = V8_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
-  POST_OPTIMIZATIONS = ['eliminator', 'closure']
+  POST_OPTIMIZATIONS = ['eliminator', 'closure', 'js-optimizer']
 
   TEST_REPS = 10
   TOTAL_TESTS = 6
@@ -4580,6 +4580,13 @@ else:
           input = open(final_filename, 'r').read()
           output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
           final_filename += '.el.js'
+          f = open(final_filename, 'w')
+          f.write(output)
+          f.close()
+        elif post == 'js-optimizer':
+          input = open(final_filename, 'r').read()
+          output = Popen([NODE_JS, JS_OPTIMIZER], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+          final_filename += '.jo.js'
           f = open(final_filename, 'w')
           f.write(output)
           f.close()
