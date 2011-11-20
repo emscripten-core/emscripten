@@ -6,7 +6,6 @@ function abc() {
   var cheez = [ void 0 ];
   var fleefl;
   cheez = 10;
-  fleefl = void 0;
   var waka = void 0, flake = void 0, marfoosh = void 0;
   var waka2 = 5, flake2 = void 0, marfoosh2 = void 0;
   var waka3 = void 0, flake3 = 5, marfoosh3 = void 0;

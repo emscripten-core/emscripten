@@ -92,7 +92,7 @@ function traverseWithVariables(ast, callback) {
   }, []);
 }
 
-function makeEmptyNode() {
+function emptyNode() {
   return ['toplevel', []]
 }
 
@@ -112,18 +112,15 @@ function unGlobalize(ast) {
       var value = varItem[1];
       if (!value) return true;
       var possible = false;
-      if (value[0] == 'name' && value[1] == 'null') {
-        possible = true;
-      } else if (value[0] == 'unary-prefix' && value[1] == 'void' && value[2] && value[2].length == 2 && value[2][0] == 'num' && value[2][1] == 0) {
-        possible = true;
-      } else if (value[0] == 'unary-prefix' && value[1] == '!' && value[2] && value[2].length == 2 && value[2][0] == 'num' && value[2][1] == 0) {
-        possible = true;
-      } else if (value[0] == 'unary-prefix' && value[1] == '!' && value[2] && value[2].length == 2 && value[2][0] == 'num' && value[2][1] == 1) {
+      if (jsonCompare(value, ['name', 'null']) ||
+          jsonCompare(value, ['unary-prefix', 'void', ['num', 0]]) ||
+          jsonCompare(value, ['unary-prefix', '!', ['num', 0]]) ||
+          jsonCompare(value, ['unary-prefix', '!', ['num', 1]])) {
         possible = true;
       }
       if (!possible) return true;
       // Make sure there are no assignments to this variable. (This isn't fast, we traverse many times..)
-      ast[1][i][1][j] = makeEmptyNode();
+      ast[1][i][1][j] = emptyNode();
       var assigned = false;
       traverseWithVariables(ast, function(node, type, allVars) {
         if (type == 'assign' && node[2][0] == 'name' && node[2][1] == ident) assigned = true;
@@ -137,7 +134,7 @@ function unGlobalize(ast) {
     });
 
     if (node[1].length == 0) {
-      ast[1][i] = makeEmptyNode();
+      ast[1][i] = emptyNode();
     }
   });
   traverseWithVariables(ast, function(node, type, allVars) {
@@ -150,6 +147,22 @@ function unGlobalize(ast) {
   });
 }
 
+// Closure compiler, when inlining, will insert assignments to
+// undefined for the shared variables. However, in compiled code
+// - and in library/shell code too! - we should never rely on
+// undefined being assigned. So we can simply remove those assignments.
+//
+// This pass assumes that unGlobalize has been run, so undefined
+// is now explicit.
+function removeAssignsToUndefined(ast) {
+  // TODO: in vars too
+  traverse(ast, function(node, type) {
+    if (type == 'assign' && jsonCompare(node[3], ['unary-prefix', 'void', ['num', 0]])) {
+      return emptyNode();
+    }
+  });
+}
+
 // Main
 
 var src = fs.readFileSync('/dev/stdin').toString();
@@ -157,6 +170,7 @@ var src = fs.readFileSync('/dev/stdin').toString();
 var ast = uglify.parser.parse(src);
 
 unGlobalize(ast);
+removeAssignsToUndefined(ast);
 
 print(uglify.uglify.gen_code(ast, {
   ascii_only: true,

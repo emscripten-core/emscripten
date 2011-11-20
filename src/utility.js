@@ -272,3 +272,7 @@ function copy(x) {
   return JSON.parse(JSON.stringify(x));
 }
 
+function jsonCompare(x, y) {
+  return JSON.stringify(x) == JSON.stringify(y);
+}
+
