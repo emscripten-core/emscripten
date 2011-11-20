@@ -1,6 +1,6 @@
 var c;
 var b = 5, x = void 0, y = null, t = !0;
-var s = !1, s2 = !1;
+var s = !1, s2 = !1, s3 = !0;
 function abc() {
   var cheez = x;
   var fleefl;
@@ -11,6 +11,7 @@ function abc() {
   var waka3 = x, flake3 = 5, marfoosh3 = x;
   var waka4 = x, flake4 = x, marfoosh4 = 5;
   var test1 = t, test2 = s, test3 = y, test4 = z, test5 = b, test6 = x;
+  s3 = 9;
 }
 function xyz() {
   var x = 52;
@@ -24,6 +25,7 @@ function xyz() {
     var i = x, j = y, k = 5, l = t, m = s2;
     var s2 = 8;
   };
+  var patama = s3;
 }
 function xyz2(x) {
   var cheez = x;
