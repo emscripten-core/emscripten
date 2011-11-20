@@ -6,11 +6,11 @@ function abc() {
   var cheez = [ void 0 ];
   var fleefl;
   cheez = 10;
-  var waka = void 0, flake = void 0, marfoosh = void 0;
-  var waka2 = 5, flake2 = void 0, marfoosh2 = void 0;
-  var waka3 = void 0, flake3 = 5, marfoosh3 = void 0;
-  var waka4 = void 0, flake4 = void 0, marfoosh4 = 5;
-  var test1 = !0, test2 = !1, test3 = null, test4 = z, test5 = b, test6 = void 0;
+  var waka, flake, marfoosh;
+  var waka2 = 5, flake2, marfoosh2;
+  var waka3, flake3 = 5, marfoosh3;
+  var waka4, flake4, marfoosh4 = 5;
+  var test1 = !0, test2 = !1, test3 = null, test4 = z, test5 = b, test6;
   s3 = 9;
 }
 function xyz() {
@@ -31,5 +31,5 @@ function xyz2(x) {
   var cheez = x;
 }
 zzz = (function(nada) {
-  var cheez = void 0;
+  var cheez;
 });

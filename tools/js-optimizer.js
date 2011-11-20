@@ -26,6 +26,11 @@ eval(read('utility.js'));
 
 var FUNCTION = set('defun', 'function');
 
+var NULL_NODE = ['name', 'null'];
+var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
+var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
+var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
+
 // Traverses a JavaScript syntax tree rooted at the given node calling the given
 // callback for each node.
 //   @arg node: The root of the AST.
@@ -112,10 +117,10 @@ function unGlobalize(ast) {
       var value = varItem[1];
       if (!value) return true;
       var possible = false;
-      if (jsonCompare(value, ['name', 'null']) ||
-          jsonCompare(value, ['unary-prefix', 'void', ['num', 0]]) ||
-          jsonCompare(value, ['unary-prefix', '!', ['num', 0]]) ||
-          jsonCompare(value, ['unary-prefix', '!', ['num', 1]])) {
+      if (jsonCompare(value, NULL_NODE) ||
+          jsonCompare(value, UNDEFINED_NODE) ||
+          jsonCompare(value, TRUE_NODE) ||
+          jsonCompare(value, FALSE_NODE)) {
         possible = true;
       }
       if (!possible) return true;
@@ -159,6 +164,13 @@ function removeAssignsToUndefined(ast) {
   traverse(ast, function(node, type) {
     if (type == 'assign' && jsonCompare(node[3], ['unary-prefix', 'void', ['num', 0]])) {
       return emptyNode();
+    } else if (type == 'var') {
+      node[1] = node[1].map(function(varItem, j) {
+        var ident = varItem[0];
+        var value = varItem[1];
+        if (jsonCompare(value, UNDEFINED_NODE)) return [ident];
+        return [ident, value];
+      });
     }
   });
 }
