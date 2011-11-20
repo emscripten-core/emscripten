@@ -4460,6 +4460,12 @@ TT = %s
       output = Popen([COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output)
 
+    def test_js_optimizer(self):
+      input = open(path_from_root('tools', 'test-js-optimizer.js')).read()
+      expected = open(path_from_root('tools', 'test-js-optimizer-output.js')).read()
+      output = Popen([NODE_JS, JS_OPTIMIZER], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+      self.assertIdentical(expected, output.replace('\n\n', '\n'))
+
 else:
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.

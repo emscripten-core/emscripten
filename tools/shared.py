@@ -32,6 +32,7 @@ DFE = path_from_root('tools', 'dead_function_eliminator.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
+JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 # Additional compiler options
 

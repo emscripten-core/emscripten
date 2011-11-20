@@ -22,4 +22,5 @@ TIMEOUT = None
 # Tools
 
 CLOSURE_COMPILER = os.path.expanduser('~/Dev/closure-compiler/compiler.jar')
+NODE_JS = 'node'
 
