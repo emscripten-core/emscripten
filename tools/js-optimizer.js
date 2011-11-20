@@ -79,14 +79,14 @@ function traverseWithVariables(ast, callback) {
       }
     }
   }, function(node, type, stack) {
-    if (type in FUNCTION) {
+    if (type == 'toplevel' || type in FUNCTION) {
       // We know all of the variables that are seen here, proceed to do relevant replacements
       var allVars = stack.map(function(item) { return item ? item.vars : [] }).reduce(concatenator, []); // FIXME dictionary for speed?
-      traverse(node, function(node, type, stack) {
+      traverse(node, function(node2, type2, stack2) {
         // Be careful not to look into our inner functions. They have already been processed.
-        if (sum(stack) > 1) return;
-        if (type in FUNCTION) stack.push(1);
-        return callback(node, type, allVars);
+        if (sum(stack2) > 1 || (type == 'toplevel' && sum(stack2) == 1)) return;
+        if (type2 in FUNCTION) stack2.push(1);
+        return callback(node2, type2, allVars);
       }, null, []);
     }
   }, []);

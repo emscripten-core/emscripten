@@ -1,8 +1,9 @@
 var c;
 var b = 5;
 var s3 = !0;
+var block = [ void 0 ];
 function abc() {
-  var cheez = void 0;
+  var cheez = [ void 0 ];
   var fleefl;
   cheez = 10;
   fleefl = void 0;
