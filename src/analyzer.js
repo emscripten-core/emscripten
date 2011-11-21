@@ -628,7 +628,8 @@ function analyzer(data) {
                   var sourceLabelId = phi.params[i].label;
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
-                  assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis, line ' + [func.ident, label.ident]);
+                  if (lastLine.intertype == 'assign') lastLine = lastLine.value;
+                  assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
                   lastLine.currLabelId = sourceLabelId;
                 }
                 phis.push(line);
@@ -671,7 +672,8 @@ function analyzer(data) {
                   var sourceLabelId = param.label;
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
-                  assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis, line ' + [func.ident, label.ident]);
+                  if (lastLine.intertype == 'assign') lastLine = lastLine.value;
+                  assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
                   if (!lastLine.phi) {
                     lastLine.phi = true;
                     assert(!lastLine.dependent);
