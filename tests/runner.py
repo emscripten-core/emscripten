@@ -4465,6 +4465,8 @@ TT = %s
       # emcc -llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe)
       # emcc src.cpp -c ==> should give a .bc file
       # linking - TODO
+      #     annotate each .bc with emscripten info, like "compiled with -O2: do the O2 opts when going to final .js"
+      #     warn if linking files with different annotations etc.
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
 
     def test_eliminator(self):
