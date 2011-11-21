@@ -231,12 +231,12 @@ class Building:
       shutil.move(filename + '.o', filename + '.o.pre')
       output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
-      if Building.LLVM_OPTS == 2:
-        print 'Unsafe LD!'
-        shutil.move(filename + '.o', filename + '.o.pre')
-        output = Popen([LLVM_LD, filename + '.o.pre', '-o=' + filename + '.tmp'], stdout=PIPE).communicate()[0]
-        assert os.path.exists(filename + '.tmp.bc'), 'Failed to run llvm optimizations: ' + output
-        shutil.move(filename + '.tmp.bc', filename + '.o')
+      #if Building.LLVM_OPTS == 2:
+      #  print 'Unsafe LD!'
+      #  shutil.move(filename + '.o', filename + '.o.pre')
+      #  output = Popen([LLVM_LD, filename + '.o.pre', '-o=' + filename + '.tmp'], stdout=PIPE).communicate()[0]
+      #  assert os.path.exists(filename + '.tmp.bc'), 'Failed to run llvm optimizations: ' + output
+      #  shutil.move(filename + '.tmp.bc', filename + '.o')
 
   @staticmethod
   def llvm_dis(filename):
@@ -296,11 +296,12 @@ class Building:
 
     opts = []
     if optimization_level > 0:
+      #opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining
       if not safe:
         #opts.append('-O%d' % optimization_level)
         opts.append('-std-compile-opts')
         opts.append('-std-link-opts')
-        print 'Unsafe:', opts
+        print 'Unsafe:', opts,
       else:
         allow_nonportable = not safe
         optimize_size = True
