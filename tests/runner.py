@@ -4454,6 +4454,19 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
+    def test_emcc(self):
+      pass
+      # emcc src.cpp ==> should give a .js file
+      # emcc -O0 src.cpp ==> same as without -O0 (i.e., assertions, etc.)
+      # emcc -O1 src.cpp ==> no assertions, basic optimizations, plus eliminator, but no reloop
+      # emcc -O2 src.cpp ==> plus reloop
+      # emcc -O3 src.cpp ==> plus closure compiler
+      # emcc -typed-arrays=x .. ==> should use typed arrays
+      # emcc -llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe)
+      # emcc src.cpp -c ==> should give a .bc file
+      # linking - TODO
+      # TODO: when ready, switch tools/shared building to use emcc over emmaken
+
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
