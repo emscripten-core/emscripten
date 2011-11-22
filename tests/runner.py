@@ -477,13 +477,11 @@ if 'benchmark' not in str(sys.argv):
             uint32_t usmall = -1;
             uint64_t ularge = -1;
             printf("*%d*\n", usmall == ularge);
-            usmall++;
-            printf("*%d*\n", usmall == ularge);
             return 0;
           }
         '''
 
-        self.do_run(src, '*1*\n*0*\n*1*\n*0*')
+        self.do_run(src, '*1*\n*0*\n*0*\n')
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
@@ -2267,6 +2265,8 @@ if 'benchmark' not in str(sys.argv):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_alias(self):
+      if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize away stuff we expect from the shared library')
+
       lib_src = r'''
         #include <stdio.h>
         extern int parent_global;
@@ -2315,7 +2315,9 @@ if 'benchmark' not in str(sys.argv):
       Settings.INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
+      if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize things that prevent shared objects from working')
       if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
+
       lib_src = r'''
         void print_ints(int n, ...);
         extern "C" void func() {
@@ -2364,8 +2366,7 @@ if 'benchmark' not in str(sys.argv):
           '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
         )
         open(filename, 'w').write(src)
-      self.do_run(src, '100*200*13*42*',
-                   output_nicerizer=lambda x: x.replace('\n', '*'),
+      self.do_run(src, '100\n200\n13\n42\n',
                    post_build=add_pre_run_and_checks)
 
     def test_rand(self):

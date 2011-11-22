@@ -1535,9 +1535,9 @@ function processMathop(item) { with(item) {
             ident1 = makeSignOp(ident1, type, 're');
             ident2 = makeSignOp(ident2, type, 're');
             if (variant === 'eq') {
-              return ident1 + '[0] == ' + ident2 + '[0] && ' + ident1 + '[0] == ' + ident2 + '[0]';
+              return ident1 + '[0] == ' + ident2 + '[0] && ' + ident1 + '[1] == ' + ident2 + '[1]';
             } else {
-              return ident1 + '[0] != ' + ident2 + '[0] || ' + ident1 + '[0] != ' + ident2 + '[0]';
+              return ident1 + '[0] != ' + ident2 + '[0] || ' + ident1 + '[1] != ' + ident2 + '[1]';
             }
           }
           default: throw 'Unknown icmp variant: ' + variant;
