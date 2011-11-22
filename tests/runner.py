@@ -4517,7 +4517,7 @@ else:
   #JS_ENGINE = V8_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
-  POST_OPTIMIZATIONS = ['eliminator', 'closure', 'js-optimizer']
+  POST_OPTIMIZATIONS = ['eliminator', 'closure', ['js-optimizer', 'unGlobalize', 'removeAssignsToUndefined']]
 
   TEST_REPS = 10
   TOTAL_TESTS = 6
@@ -4578,6 +4578,10 @@ else:
       final_filename = filename + '.o.js'
 
       for post in POST_OPTIMIZATIONS:
+        post_args = []
+        if type(post) == list:
+          post_args = post[1:]
+          post = post[0]
         if post == 'closure':
           # Something like this (adjust memory as needed):
           #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
@@ -4601,7 +4605,7 @@ else:
           f.close()
         elif post == 'js-optimizer':
           input = open(final_filename, 'r').read()
-          output = Popen([NODE_JS, JS_OPTIMIZER], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+          output = Popen([NODE_JS, JS_OPTIMIZER] + post_args, stdin=PIPE, stdout=PIPE).communicate(input)[0]
           final_filename += '.jo.js'
           f = open(final_filename, 'w')
           f.write(output)

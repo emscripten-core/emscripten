@@ -397,6 +397,7 @@ main = ->
   for node in ast[1]
     process.stdout.write uglify.uglify.gen_code node, GEN_OPTIONS
     process.stdout.write '\n'
+  process.stdout.write generatedFunctionsLine + '\n'
 
   return undefined
 

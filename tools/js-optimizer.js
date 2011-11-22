@@ -17,6 +17,7 @@ function read(filename) {
   if (filename[0] != '/') filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
   return fs.readFileSync(filename).toString();
 }
+var arguments = process.argv.slice(2);
 
 // Load some modules
 
@@ -185,18 +186,55 @@ function removeAssignsToUndefined(ast) {
   }
 }
 
+// XXX This is an invalid optimization
+// We sometimes leave some settings to __label__ that are not needed, if later in
+// the relooper we realize that we have a single entry, so no checks on __label__
+// are actually necessary. It's easy to clean those up now.
+function removeUnneededLabelSettings(ast) {
+  traverse(ast, function(node, type) {
+    if (type == 'defun') { // all of our compiled code is in defun nodes
+      // Find all checks
+      var checked = {};
+      traverse(node, function(node, type) {
+        if (type == 'binary' && node[1] == '==' && node[2][0] == 'name' && node[2][1] == '__label__') {
+          assert(node[3][0] == 'num');
+          checked[node[3][1]] = 1;
+        }
+      });
+      // Remove unneeded sets
+      traverse(node, function(node, type) {
+        if (type == 'assign' && node[2][0] == 'name' && node[2][1] == '__label__') {
+          assert(node[3][0] == 'num');
+          if (!(node[3][1] in checked)) return emptyNode();
+        }
+      });
+    }
+  });
+}
+
+// Passes table
+
+var passes = {
+  unGlobalize: unGlobalize,
+  removeAssignsToUndefined: removeAssignsToUndefined,
+  //removeUnneededLabelSettings: removeUnneededLabelSettings
+};
+
 // Main
 
 var src = fs.readFileSync('/dev/stdin').toString();
-
 var ast = uglify.parser.parse(src);
+var metadata = src.split('\n').filter(function(line) { return line.indexOf('EMSCRIPTEN_GENERATED_FUNCTIONS') >= 0 })[0];
+//assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
 
-unGlobalize(ast);
-removeAssignsToUndefined(ast);
+arguments.forEach(function(arg) {
+  passes[arg](ast);
+});
 
 print(uglify.uglify.gen_code(ast, {
   ascii_only: true,
   beautify: true,
   indent_level: 2
 }));
+if (metadata) print(metadata + '\n');
 
