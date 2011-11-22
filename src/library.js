@@ -4187,6 +4187,13 @@ LibraryManager.library = {
   // type_info for void.
   _ZTIv: [0],
 
+  llvm_uadd_with_overflow_i32: function(x, y) {
+    return {
+      f0: x+y,
+      f1: 0 // We never overflow... for now
+    };
+  },
+
   llvm_umul_with_overflow_i32: function(x, y) {
     return {
       f0: x*y,
