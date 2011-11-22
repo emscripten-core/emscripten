@@ -524,13 +524,24 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               first = false;
             });
           } else {
-            // TODO: Find out cases where the final if is not needed - where we know we must be in a specific label at that point
-            block.entryLabels.forEach(function(entryLabel) {
-              ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
-              ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
+            // TODO: Find out cases where the final if/case is not needed - where we know we must be in a specific label at that point
+            var SWITCH_IN_MULTIPLE = 0; // This appears to never be worth it, for no amount of labels
+            if (SWITCH_IN_MULTIPLE && block.entryLabels.length >= 2) {
+              ret += indent + multipleIdent + 'switch(__label__) {\n';
+              block.entryLabels.forEach(function(entryLabel) {
+                ret += indent + multipleIdent + '  case ' + getLabelId(entryLabel.ident) + ': {\n';
+                ret += walkBlock(entryLabel.block, indent + '    ' + multipleIdent);
+                ret += indent + multipleIdent + '  } break;\n';
+              });
               ret += indent + multipleIdent + '}\n';
-              first = false;
-            });
+            } else {
+              block.entryLabels.forEach(function(entryLabel) {
+                ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
+                ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
+                ret += indent + multipleIdent + '}\n';
+                first = false;
+              });
+            }
           }
           if (!block.loopless) {
             ret += indent + '} while(0);\n';
@@ -794,6 +805,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     }
   });
   makeFuncLineActor('switch', function(item) {
+    // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
     var phiSets = calcPhiSets(item);
     var ret = '';
     var first = true;
