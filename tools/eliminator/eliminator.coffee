@@ -395,7 +395,11 @@ main = ->
   # NOTE: For large file, can't generate code for the whole file in a single
   #       call due to the v8 memory limit. Writing out root children instead.
   for node in ast[1]
-    process.stdout.write uglify.uglify.gen_code node, GEN_OPTIONS
+    # Parse and recompile again, to remove unneeded lines
+    src2 = uglify.uglify.gen_code node, GEN_OPTIONS
+    node2 = uglify.parser.parse src2
+
+    process.stdout.write uglify.uglify.gen_code node2, GEN_OPTIONS
     process.stdout.write '\n'
   process.stdout.write generatedFunctionsLine + '\n'
 

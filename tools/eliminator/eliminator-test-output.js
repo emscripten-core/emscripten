@@ -1,18 +1,11 @@
 function f() {
-  
-  
-  
-  
   HEAP[123] = (GLOB[1] + 1) / 2;
 }
 function g(a1, a2) {
   var a = 1;
-  
   var c = a * 2 - 1;
-  
   a = c;
   foo(c);
-  
   foo(2);
   for (var i = 0; i < 5; i++) {
     var q = {
@@ -24,7 +17,6 @@ function g(a1, a2) {
   }
   var $0 = HEAP[5];
   MAYBE_HEAP[myglobal] = 123;
-  
   if ($0 < 0) {
     __label__ = 1;
   } else {
@@ -62,7 +54,6 @@ function h() {
     x = y ? x + 1 : 7;
     var x = -5;
   }
-  
   if (1) {
     otherGlob = glob;
     breakMe();
@@ -85,8 +76,6 @@ function strtok_part(b, j, f) {
   }
 }
 function py() {
-  
-  
   var $7 = HEAP[HEAP[__PyThreadState_Current] + 12] + 1;
   var $8 = HEAP[__PyThreadState_Current] + 12;
   HEAP[$8] = $7;
