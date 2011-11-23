@@ -108,5 +108,11 @@ var anon = function(x) {
 function r($0) {
   HEAP[$0 + 5 + 2] = 99+5+2+1;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r"]
+function t() {
+  var $cmp2=($10) < ($11);
+  if ($cmp2) { __label__ = 3; }
+  var $cmp3=($12) < ($13);
+  if (!($cmp3)) { __label__ = 4; }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t"]
 

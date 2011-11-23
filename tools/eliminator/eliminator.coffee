@@ -42,6 +42,7 @@ NODES_WITHOUT_SIDE_EFFECTS =
   string: true
   binary: true
   sub: true
+  'unary-prefix': true # ++x can have side effects, but we never have that in generated code
 
 # Nodes which may break control flow. Moving a variable beyond them may have
 # side effects.
@@ -148,7 +149,7 @@ class Eliminator
         varName = node[1]
         if @useCount.hasOwnProperty varName then @useCount[varName]++
         else @isSingleDef[varName] = false
-      else if type in ['assign', 'unary-prefix', 'unary-postfix']
+      else if type in ['assign']
         varName = node[2][1]
         if @isSingleDef[varName] then @isSingleDef[varName] = false
       return undefined
@@ -373,6 +374,8 @@ main = ->
   generatedFunctions = eval(generatedFunctionsLine[0].replace(GENERATED_FUNCTIONS_MARKER, ''))
 
   ast = uglify.parser.parse src
+
+  #process.stderr.write(JSON.stringify(ast) + '\n')
 
   # Run on all functions.
   traverse ast, (node, type) ->

@@ -97,4 +97,12 @@ var anon = (function(x) {
 function r($0) {
   HEAP[$0 + 7] = 107;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r"]
+function t() {
+  if ($10 < $11) {
+    __label__ = 3;
+  }
+  if (!($12 < $13)) {
+    __label__ = 4;
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t"]
