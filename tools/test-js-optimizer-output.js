@@ -33,3 +33,7 @@ function xyz2(x) {
 zzz = (function(nada) {
   var cheez;
 });
+function expr() {
+  if ($0 >= $1) print("hi");
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr"]

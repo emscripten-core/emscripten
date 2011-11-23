@@ -32,6 +32,12 @@ var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
 var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
 var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 
+var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
+var generatedFunctions = {};
+function isGenerated(ident) {
+  return ident in generatedFunctions;
+}
+
 // Traverses a JavaScript syntax tree rooted at the given node calling the given
 // callback for each node.
 //   @arg node: The root of the AST.
@@ -219,24 +225,60 @@ function removeUnneededLabelSettings(ast) {
   });
 }
 
+// We often have branchings that are simplified so one end vanishes, and
+// we then get
+//   if (!(x < 5))
+// or such. Simplifying these saves space and time.
+function simplifyNotComps(ast) {
+  traverse(ast, function(node, type) {
+    if (type == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
+      if (node[2][1] == '<') {
+        return ['binary', '>=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '>') {
+        return ['binary', '<=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '==') {
+        return ['binary', '!=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '!=') {
+        return ['binary', '==', node[2][2], node[2][3]];
+      } else if (node[2][1] == '===') {
+        return ['binary', '!==', node[2][2], node[2][3]];
+      } else if (node[2][1] == '!==') {
+        return ['binary', '===', node[2][2], node[2][3]];
+      }
+    }
+  });
+}
+
 // Passes table
 
 var passes = {
   unGlobalize: unGlobalize,
   removeAssignsToUndefined: removeAssignsToUndefined,
-  //removeUnneededLabelSettings: removeUnneededLabelSettings
+  //removeUnneededLabelSettings: removeUnneededLabelSettings,
+  simplifyNotComps: simplifyNotComps
 };
 
 // Main
 
 var src = fs.readFileSync('/dev/stdin').toString();
 var ast = uglify.parser.parse(src);
+//print(JSON.stringify(ast));
 var metadata = src.split('\n').filter(function(line) { return line.indexOf('EMSCRIPTEN_GENERATED_FUNCTIONS') >= 0 })[0];
 //assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
+//generatedFunctions = set(eval(metadata.replace(GENERATED_FUNCTIONS_MARKER, '')))
 
 arguments.forEach(function(arg) {
   passes[arg](ast);
 });
+/* TODO: run only on generated functions (but, some passes look at globals...)
+arguments.forEach(function(arg) {
+  ast[1].forEach(function(node, i) {
+    if (node[0] == 'defun' && isGenerated(node[1])) {
+      passes[arg](node);
+    }
+  });
+});
+*/
 
 print(uglify.uglify.gen_code(ast, {
   ascii_only: true,
