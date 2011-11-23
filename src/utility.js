@@ -248,10 +248,10 @@ function set() {
 }
 
 function setSub(x, y) {
-  var ret = set(values(x));
+  var ret = set(keys(x));
   for (yy in y) {
     if (yy in ret) {
-      delete ret.yy;
+      delete ret[yy];
     }
   }
   return ret;
