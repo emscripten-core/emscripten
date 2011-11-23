@@ -96,16 +96,40 @@ import sys
 import os
 import subprocess
 
+DEBUG = 0
+
 ################### XXX
 print >> sys.stderr, '***This is a WORK IN PROGRESS***'
 ################### XXX
 
-print >> sys.stderr, 'emcc.py: ', ' '.join(sys.argv)
+if DEBUG: print >> sys.stderr, 'emcc.py: ', ' '.join(sys.argv)
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
+
+# Handle some global flags
+if sys.argv[1] == '--version':
+  print '''emcc 2.X
+This is drop-in compiler replacement for Emscripten
+http://emscripten.org
+  '''
+  exit(0)
+elif sys.argv[1] == '--help':
+  print '''OVERVIEW: Emscripten "gcc-compatible" driver script, using LLVM/Clang
+          Many but not all gcc options can be used.
+
+USAGE: emcc [options] <inputs>
+
+OPTIONS:
+  -O0                     No optimization. Enables runtime assertions. This is the default.
+  -O1                     Basic optimizations. Disables runtime assertions.
+  -O2                     Like -O2, but includes loop recreation optimization (relooper).
+  -O3                     Like -O3, but includes closure compiler advanced optimizations.
+                          Use with care and read the closure compiler docs.
+'''
+  exit(0)
 
 # If this is a configure-type thing, just do that
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
@@ -113,7 +137,7 @@ CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMak
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
   cmd = [compiler] + EMSDK_OPTS + sys.argv[1:]
-  print >> sys.stderr, 'emcc.py, just configuring: ', cmd
+  if DEBUG: print >> sys.stderr, 'emcc.py, just configuring: ', cmd
   exit(os.execvp(compiler, cmd))
 
 try:
@@ -207,14 +231,14 @@ try:
     newargs = sys.argv[1:]
     for i in range(len(newargs)):
       if newargs[i].startswith('-O'):
-        print >> sys.stderr, 'emcc.py: WARNING: Optimization flags (-Ox) are ignored in emcc. Tell emscripten.py to do that, or run LLVM opt.'
+        if DEBUG: print >> sys.stderr, 'emcc.py: WARNING: Optimization flags (-Ox) are ignored in emcc. Tell emscripten.py to do that, or run LLVM opt.'
         newargs[i] = ''
     newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
     newargs.append('-emit-llvm')
     if not use_linker:
       newargs.append('-c') 
   else:
-    print >> sys.stderr, 'Just copy.'
+    if DEBUG: print >> sys.stderr, 'Just copy.'
     shutil.copy(sys.argv[-1], sys.argv[-2])
     exit(0)
 
@@ -222,7 +246,7 @@ try:
   #f.write('Calling: ' + ' '.join(newargs) + '\n\n')
   #f.close()
 
-  print >> sys.stderr, "Running:", call, ' '.join(newargs)
+  if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
 
   os.execvp(call, [call] + newargs)
 except Exception, e:

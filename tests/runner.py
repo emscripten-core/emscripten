@@ -4457,17 +4457,20 @@ TT = %s
   class other(RunnerCore):
     def test_emcc(self):
       pass
+      # TODO: make sure all of these match gcc
+      # -- options: check these, warn about errors. valid gcc ones are help, version. Ours should be -- too, not -.
       # emcc src.cpp ==> should give a .js file
       # emcc -O0 src.cpp ==> same as without -O0 (i.e., assertions, etc.)
       # emcc -O1 src.cpp ==> no assertions, basic optimizations, plus eliminator, but no reloop
       # emcc -O2 src.cpp ==> plus reloop
       # emcc -O3 src.cpp ==> plus closure compiler
-      # emcc -typed-arrays=x .. ==> should use typed arrays
-      # emcc -llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe)
+      # emcc --typed-arrays=x .. ==> should use typed arrays
+      # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe)
       # emcc src.cpp -c ==> should give a .bc file
       # linking - TODO
       #     annotate each .bc with emscripten info, like "compiled with -O2: do the O2 opts when going to final .js"
       #     warn if linking files with different annotations etc.
+      #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
 
     def test_eliminator(self):
