@@ -1146,15 +1146,6 @@ function analyzer(data) {
           exploreBlockEndings(block.inner, singular(block.inner));
         } else if (block.type == 'multiple') {
           block.entryLabels.forEach(function(entryLabel) { exploreBlockEndings(entryLabel.block, singular(block.next)) });
-        } else if (block.type === 'emulated' && block.next && block.next.type === 'multiple') {
-          assert(block.labels.length == 1);
-          var lastLine = block.labels[0].lines.slice(-1)[0];
-          if (lastLine.intertype == 'branch' && lastLine.ident) { // TODO: handle switch, and other non-branch2 things
-            // 'Steal' the condition
-            block.next.stolenCondition = lastLine;
-            dprint('relooping', 'steal condition: ' + block.next.stolenCondition.ident);
-            lastLine.stolen = true;
-          }
         }
 
         exploreBlockEndings(block.next, endOfTheWorld);
@@ -1182,19 +1173,6 @@ function analyzer(data) {
           replaceLabelLabels(block.labels, set('BCONT|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
         } else if (block.type === 'multiple') {
-          // Stolen conditions can be optimized further than the same branches in their original position
-          var stolen = block.stolenCondition;
-          if (stolen) {
-            [stolen.labelTrue, stolen.labelFalse].forEach(function(entry) {
-              entryLabel = block.entryLabels.filter(function(possible) { return possible.ident === getActualLabelId(entry) })[0];
-              if (entryLabel) {
-                replaceLabelLabels([{ lines: [stolen] }], set(entry), 'BNOPP');
-              } else {
-                replaceLabelLabels([{ lines: [stolen] }], set('BJSET|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
-              }
-            });
-          }
-
           // Check if the one-time loop (that allows breaking out) is actually needed
           if (replaceLabelLabels(block.labels, set('BREAK|' + block.id + '|*')).length === 0) {
             block.loopless = true;

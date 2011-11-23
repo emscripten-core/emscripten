@@ -505,43 +505,23 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
             ret += indent + (block.needBlockId ? block.id + ': ' : '') + 'do { \n';
             multipleIdent = '  ';
           }
-          var stolen = block.stolenCondition;
-          if (stolen) {
-            var intendedTrueLabel = stolen.labelTrue;
-            assert(block.entryLabels.length <= 2);
-            [stolen.labelTrue, stolen.labelFalse].forEach(function(entry) {
-              var branch = makeBranch(entry, stolen.currLabelId || null);
-              entryLabel = block.entryLabels.filter(function(possible) { return possible.ident === getActualLabelId(entry) })[0];
-              if (branch.length < 5 && !entryLabel) return;
-              //ret += indent + multipleIdent + (first ? '' : 'else ') +
-              //       'if (' + (entry == intendedTrueLabel ? '' : '!') + stolen.ident + ')' + ' {\n';
-              ret += indent + multipleIdent + (first ? 'if (' + (entry == intendedTrueLabel ? '' : '!') + stolen.ident + ')' : 'else') + ' {\n';
-              ret += indent + multipleIdent + '  ' + branch + '\n';
-              if (entryLabel) {
-                ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
-              }
+          // TODO: Find out cases where the final if/case is not needed - where we know we must be in a specific label at that point
+          var SWITCH_IN_MULTIPLE = 0; // This appears to never be worth it, for no amount of labels
+          if (SWITCH_IN_MULTIPLE && block.entryLabels.length >= 2) {
+            ret += indent + multipleIdent + 'switch(__label__) {\n';
+            block.entryLabels.forEach(function(entryLabel) {
+              ret += indent + multipleIdent + '  case ' + getLabelId(entryLabel.ident) + ': {\n';
+              ret += walkBlock(entryLabel.block, indent + '    ' + multipleIdent);
+              ret += indent + multipleIdent + '  } break;\n';
+            });
+            ret += indent + multipleIdent + '}\n';
+          } else {
+            block.entryLabels.forEach(function(entryLabel) {
+              ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
+              ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
               ret += indent + multipleIdent + '}\n';
               first = false;
             });
-          } else {
-            // TODO: Find out cases where the final if/case is not needed - where we know we must be in a specific label at that point
-            var SWITCH_IN_MULTIPLE = 0; // This appears to never be worth it, for no amount of labels
-            if (SWITCH_IN_MULTIPLE && block.entryLabels.length >= 2) {
-              ret += indent + multipleIdent + 'switch(__label__) {\n';
-              block.entryLabels.forEach(function(entryLabel) {
-                ret += indent + multipleIdent + '  case ' + getLabelId(entryLabel.ident) + ': {\n';
-                ret += walkBlock(entryLabel.block, indent + '    ' + multipleIdent);
-                ret += indent + multipleIdent + '  } break;\n';
-              });
-              ret += indent + multipleIdent + '}\n';
-            } else {
-              block.entryLabels.forEach(function(entryLabel) {
-                ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
-                ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
-                ret += indent + multipleIdent + '}\n';
-                first = false;
-              });
-            }
           }
           if (!block.loopless) {
             ret += indent + '} while(0);\n';
@@ -783,7 +763,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   makeFuncLineActor('branch', function(item) {
     var phiSets = calcPhiSets(item);
-    if (item.stolen) return getPhiSetsForLabel(phiSets, item.label) || ';'; // We will appear where we were stolen to
     if (!item.value) {
       return getPhiSetsForLabel(phiSets, item.label) + makeBranch(item.label, item.currLabelId);
     } else {
