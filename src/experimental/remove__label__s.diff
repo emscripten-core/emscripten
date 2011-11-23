@@ -1,0 +1,140 @@
+diff --git a/src/analyzer.js b/src/analyzer.js
+index d0c3cb7..bbeceed 100644
+--- a/src/analyzer.js
++++ b/src/analyzer.js
+@@ -768,18 +768,19 @@ function analyzer(data) {
+     }
+ 
+     operateOnLabels(line, function process(item, id) {
++dprint('zz consider replacing: ' + [item[id], ' ^^^^ ', wildcardParts]);
+       if (item[id] in labelIds || (wildcard && wildcardCheck(item[id]))) {
+         ret.push(item[id]);
+-        dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId);
+         if (toLabelId) {
+           // replace wildcards in new value with old parts
+           var oldParts = item[id].split('|');
+           var newParts = toLabelId.split('|');
+-          for (var i = 1; i < 3; i++) {
++          for (var i = 0; i < 3; i++) {
+             if (newParts[i] === '*') newParts[i] = oldParts[i];
+           }
+           item[id] = newParts.join('|') + '|' + item[id];
+         }
++        dprint('relooping', 'zz ' + id + ' replace ' + ret[ret.length-1] + ' with ' + toLabelId + ' ==> ' + item[id]);
+       }
+     });
+     return ret;
+@@ -1204,8 +1205,6 @@ function analyzer(data) {
+ 
+       // Checks whether we actually need labels. We return whether we have a loop nested inside us.
+       function optimizeOutUnneededLabels(block) {
+-        if (!block) return false;
+-
+         dprint('relooping', "//    optimizing (2) block: " + block.type + ' : ' + block.entries);
+ 
+         var containLoop = sum(recurseBlock(block, optimizeOutUnneededLabels)) > 0;
+@@ -1227,12 +1226,39 @@ function analyzer(data) {
+         return assert(false);
+       }
+ 
+-      // TODO: Parallelize
++      // If a label ID is never in a multiple, then there is never a need to set it
++      function removeUneededLabelSettings(block, allLabels) {
++        // Find needed labels to be set
++        var needed = {};
++        recurseBlock(block, function noteNeeded(block) {
++dprint('zz reccc ' + [block.type, block.entries]);
++          if (block.type == 'multiple') {
++            block.entryLabels.forEach(function(entryLabel) {
++dprint('zz seen one needed! ' + dump(entryLabel));
++              needed[entryLabel.ident] = 1;
++            });
++          }
++          recurseBlock(block, noteNeeded);
++        });
++        var all = {};
++        allLabels.forEach(function(label) { all[label.ident] = 1 });
++        var unneeded = setSub(all, needed);
++dprint('zz all, unneeded: ' + keys(all) + '   ||   ' + keys(needed) + '   >>   ' + keys(unneeded) + ' : ' + [keys(all).length, keys(needed).length, keys(unneeded).length]);
++        keys(unneeded).forEach(function(un) {
++dprint('zz trying to remoof ' + un);
++          replaceLabelLabels(allLabels, set('BJSET|*|' + un), 'BNOPP|||');
++          replaceLabelLabels(allLabels, set('*|*|' + un), '*|*|||');
++        });
++      }
++
+       item.functions.forEach(function(func) {
+         dprint('relooping', "// loopOptimizing function: " + func.ident);
+-        exploreBlockEndings(func.block);
+-        optimizeBlockEndings(func.block);
+-        optimizeOutUnneededLabels(func.block);
++
++        //exploreBlockEndings(func.block);
++        //optimizeBlockEndings(func.block);
++        //optimizeOutUnneededLabels(func.block);
++
++        removeUneededLabelSettings(func.block, func.labels);
+       });
+       return finish();
+     }
+diff --git a/src/parseTools.js b/src/parseTools.js
+index 03a529a..e49acd4 100644
+--- a/src/parseTools.js
++++ b/src/parseTools.js
+@@ -782,11 +782,11 @@ function generateStructTypes(type) {
+ function recurseBlock(block, func) {
+   var ret = [];
+   if (block.type == 'reloop') {
+-    ret.push(func(block.inner));
++    if (block.inner) ret.push(func(block.inner));
+   } else if (block.type == 'multiple') {
+     block.entryLabels.forEach(function(entryLabel) { ret.push(func(entryLabel.block)) });
+   }
+-  ret.push(func(block.next));
++  if (block.next) ret.push(func(block.next));
+   return ret;
+ }
+ 
+diff --git a/src/settings.js b/src/settings.js
+index acdb8c1..e3babd9 100644
+--- a/src/settings.js
++++ b/src/settings.js
+@@ -177,7 +177,7 @@ FAKE_X86_FP80 = 0; // Replaces x86_fp80 with double. This loses precision. It is
+                    // (which is nonportable anyhow).
+ 
+ // Compiler debugging options
+-DEBUG_TAGS_SHOWING = [];
++DEBUG_TAGS_SHOWING = ['relooping'];
+   // Some useful items:
+   //    framework
+   //    frameworkLines
+diff --git a/src/utility.js b/src/utility.js
+index 91c4abe..ba97a39 100644
+--- a/src/utility.js
++++ b/src/utility.js
+@@ -248,10 +248,10 @@ function set() {
+ }
+ 
+ function setSub(x, y) {
+-  var ret = set(values(x));
++  var ret = set(keys(x));
+   for (yy in y) {
+     if (yy in ret) {
+-      delete ret.yy;
++      delete ret[yy];
+     }
+   }
+   return ret;
+diff --git a/tests/runner.py b/tests/runner.py
+index 8c09820..48c5d9a 100644
+--- a/tests/runner.py
++++ b/tests/runner.py
+@@ -31,7 +31,7 @@ except:
+ # Core test runner class, shared between normal tests and benchmarks
+ 
+ class RunnerCore(unittest.TestCase):
+-  save_dir = 0
++  save_dir = 1
+   save_JS = 0
+ 
+   def setUp(self):
