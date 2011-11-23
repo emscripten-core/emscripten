@@ -108,3 +108,4 @@ var anon = (function(x) {
 function r($0) {
   HEAP[$0 + 7] = 107;
 }
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r"]
