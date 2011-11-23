@@ -181,6 +181,13 @@ function removeAssignsToUndefined(ast) {
       if (type == 'assign' && jsonCompare(node[3], emptyNode())) {
         modified = true;
         return emptyNode();
+      } else if (type == 'var') {
+        node[1] = node[1].map(function(varItem, j) {
+          var ident = varItem[0];
+          var value = varItem[1];
+          if (value && jsonCompare(value, emptyNode())) return [ident];
+          return [ident, value];
+        });
       }
     });
   }
