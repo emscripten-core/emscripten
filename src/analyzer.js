@@ -1169,8 +1169,8 @@ function analyzer(data) {
 
         if (block.type === 'emulated' && block.willGetTo) {
           dprint('relooping', '//         removing (trying): ' + block.willGetTo);
-          replaceLabelLabels(block.labels, set('BJSET|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
-          replaceLabelLabels(block.labels, set('BCONT|' + block.willGetTo + '|' + block.willGetTo), 'BNOPP');
+          replaceLabelLabels(block.labels, set('BJSET|*|' + block.willGetTo), 'BNOPP');
+          replaceLabelLabels(block.labels, set('BCONT|*|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
         } else if (block.type === 'multiple') {
           // Check if the one-time loop (that allows breaking out) is actually needed
