@@ -38,5 +38,47 @@ zzz = function(nada) {
 function expr() {
   if (!($0 < $1)) print("hi");
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr"]
+function loopy() {
+  $while_body$2: while(1) { 
+    $ok=1;
+    $for_cond$4: while(1) { 
+      if ($ok) break $for_cond$4;
+      var $inc=$ok+1;
+      if ($inc == 9999) break $while_body$2; // this forces a label to remain on the outer loop
+    }
+    continue $while_body$2;
+  }
+  next();
+  b$while_body$2: while(1) { 
+    $ok=1;
+    b$for_cond$4: while(1) {
+      if ($ok) break b$for_cond$4;
+      var $inc=$ok+1;
+    }
+    continue b$while_body$2;
+  }
+  next();
+  $once: do {
+    if (!$ok) break $once; // forces the entire one-time do to remain (but unlabelled)
+    something();
+  } while(0);
+  next();
+  b$once: do {
+    while (more()) {
+      if (!$ok) break b$once; // forces the entire one-time do to remain, with label
+    }
+    something();
+  } while(0);
+  next();
+  c$once: do {
+    something();
+  } while(0);
+}
+function ignoreLoopy() {
+  b$for_cond$4: while(1) {
+    if ($ok) break b$for_cond$4;
+    var $inc=$ok+1;
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy"]
 

@@ -36,4 +36,46 @@ zzz = (function(nada) {
 function expr() {
   if ($0 >= $1) print("hi");
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr"]
+function loopy() {
+  $while_body$2 : while (1) {
+    $ok = 1;
+    while (1) {
+      if ($ok) break;
+      var $inc = $ok + 1;
+      if ($inc == 9999) break $while_body$2;
+    }
+    continue;
+  }
+  next();
+  while (1) {
+    $ok = 1;
+    while (1) {
+      if ($ok) break;
+      var $inc = $ok + 1;
+    }
+    continue;
+  }
+  next();
+  do {
+    if (!$ok) break;
+    something();
+  } while (0);
+  next();
+  b$once : do {
+    while (more()) {
+      if (!$ok) break b$once;
+    }
+    something();
+  } while (0);
+  next();
+  do {
+    something();
+  } while (0);
+}
+function ignoreLoopy() {
+  b$for_cond$4 : while (1) {
+    if ($ok) break b$for_cond$4;
+    var $inc = $ok + 1;
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy"]

@@ -13,6 +13,9 @@ var fs = require('fs');
 function print(text) {
   process.stdout.write(text + '\n');
 }
+function printErr(text) {
+  process.stderr.write(text + '\n');
+}
 function read(filename) {
   if (filename[0] != '/') filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
   return fs.readFileSync(filename).toString();
@@ -26,6 +29,8 @@ eval(read('utility.js'));
 // Utilities
 
 var FUNCTION = set('defun', 'function');
+var LOOP = set('do', 'while', 'for');
+var LOOP_FLOW = set('break', 'continue');
 
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
@@ -33,7 +38,10 @@ var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
 var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 
 var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
-var generatedFunctions = {};
+var generatedFunctions = null;
+function setGeneratedFunctions(metadata) {
+  generatedFunctions = set(eval(metadata.replace(GENERATED_FUNCTIONS_MARKER, '')));
+}
 function isGenerated(ident) {
   return ident in generatedFunctions;
 }
@@ -76,6 +84,15 @@ function traverse(node, pre, post, stack) {
     if (stack) stack.pop();
   }
   return result;
+}
+
+// Only walk through the generated functions
+function traverseGenerated(ast, pre, post, stack) {
+  ast[1].forEach(function(node, i) {
+    if (node[0] == 'defun' && isGenerated(node[1])) {
+      traverse(node, pre, post, stack);
+    }
+  });
 }
 
 // Walk the ast in a simple way, with an understanding of which JS variables are defined)
@@ -249,23 +266,85 @@ function simplifyNotComps(ast) {
   });
 }
 
+function loopOptimizer(ast) {
+  // We generate loops and one-time loops (do while(0)) with labels. It is often
+  // possible to eliminate those labels.
+  function loopLabelOptimizer(ast) {
+    // Find unneeded labels
+    traverseGenerated(ast, function(node, type, stack) {
+      if (type == 'label' && node[2][0] in LOOP) {
+        // this is a labelled loop. we don't know if it's needed yet. Mark its label for removal for now now.
+        stack.push(node);
+        node[1] = '+' + node[1];
+      } else if (type in LOOP) {
+        stack.push(node);
+      } else if (type in LOOP_FLOW && node[1]) { // only care about break/continue with an explicit label
+        // Find topmost loop, and its label if there is one
+        var lastLabel = null, lastLoop = null, i = stack.length-1;
+        while (i >= 0 && !lastLoop) {
+          if (stack[i][0] in LOOP) lastLoop = stack[i];
+          i--;
+        }
+        assert(lastLoop, 'Cannot break/continue without a Label');
+        while (i >= 0 && !lastLabel) {
+          if (stack[i][0] in LOOP) break; // another loop in the middle - no label for lastLoop
+          if (stack[i][0] == 'label') lastLabel = stack[i];
+          i--;
+        }
+        var ident = node[1];
+        var plus = '+' + ident;
+        if (lastLabel && (ident == lastLabel[1] || plus == lastLabel[1])) {
+          // We don't need the control flow command to have a label - it's referring to the current loop
+          return [node[0]];
+        } else {
+          // Find the label node that needs to stay alive
+          stack.forEach(function(label) {
+            if (!label) return;
+            if (label[1] == plus) label[1] = label[1].substr(1); // Remove '+', marking it as needed
+          });
+        }
+      }
+    }, null, []);
+    // Remove those labels
+    traverseGenerated(ast, function(node, type) {
+      if (type == 'label' && node[1][0] == '+') {
+        var ident = node[1].substr(1);
+        // Remove label from loop flow commands
+        traverse(node[2], function(node2, type) {
+          if (type in LOOP_FLOW && node2[1] == ident) {
+            return [node2[0]];
+          }
+        });
+        return node[2]; // Remove the label itself on the loop
+      }
+    });
+  }
+
+  // Eliminate unneeded breaks and continues, when we would get to that place anyhow
+  function loopMotionOptimizer(ast) {} // TODO
+
+  loopLabelOptimizer(ast);
+  loopMotionOptimizer(ast);
+}
+
 // Passes table
 
 var passes = {
   unGlobalize: unGlobalize,
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
-  simplifyNotComps: simplifyNotComps
+  simplifyNotComps: simplifyNotComps,
+  loopOptimizer: loopOptimizer
 };
 
 // Main
 
 var src = fs.readFileSync('/dev/stdin').toString();
 var ast = uglify.parser.parse(src);
-//print(JSON.stringify(ast));
+//printErr(JSON.stringify(ast)); throw 1;
 var metadata = src.split('\n').filter(function(line) { return line.indexOf('EMSCRIPTEN_GENERATED_FUNCTIONS') >= 0 })[0];
 //assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
-//generatedFunctions = set(eval(metadata.replace(GENERATED_FUNCTIONS_MARKER, '')))
+if (metadata) setGeneratedFunctions(metadata);
 
 arguments.forEach(function(arg) {
   passes[arg](ast);
