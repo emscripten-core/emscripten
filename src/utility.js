@@ -135,6 +135,10 @@ function sumStringy(x) {
   return x.reduce(function(a,b) { return a+b }, '');
 }
 
+function filterTruthy(x) {
+  return x.filter(function(y) { return !!y });
+}
+
 function loopOn(array, func) {
   for (var i = 0; i < array.length; i++) {
     func(i, array[i]);

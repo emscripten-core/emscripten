@@ -1172,37 +1172,7 @@ function analyzer(data) {
           replaceLabelLabels(block.labels, set('BJSET|*|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BCONT|*|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
-        } else if (block.type === 'multiple') {
-          // Check if the one-time loop (that allows breaking out) is actually needed
-          if (replaceLabelLabels(block.labels, set('BREAK|' + block.id + '|*')).length === 0) {
-            block.loopless = true;
-          }
         }
-      }
-
-      // Checks whether we actually need labels. We return whether we have a loop nested inside us.
-      function optimizeOutUnneededLabels(block) {
-        if (!block) return false;
-
-        dprint('relooping', "//    optimizing (2) block: " + block.type + ' : ' + block.entries);
-
-        var containLoop = sum(recurseBlock(block, optimizeOutUnneededLabels)) > 0;
-
-        if (block.type === 'emulated') {
-          return containLoop;
-        } else if (block.type === 'multiple') {
-          // TODO: Apply the same optimization below for 'reloop', to looped multiples
-          return containLoop || !block.loopless;
-        } else if (block.type === 'reloop') {
-          if (!containLoop) {
-            block.needBlockId = false;
-
-            replaceLabelLabels(block.labels, set('BCONT|' + block.id + '|*'), 'BCONT||*');
-            replaceLabelLabels(block.labels, set('BREAK|' + block.id + '|*'), 'BREAK||*');
-          }
-          return true;
-        }
-        return assert(false);
       }
 
       // TODO: Parallelize
@@ -1210,7 +1180,6 @@ function analyzer(data) {
         dprint('relooping', "// loopOptimizing function: " + func.ident);
         exploreBlockEndings(func.block);
         optimizeBlockEndings(func.block);
-        optimizeOutUnneededLabels(func.block);
       });
       return finish();
     }

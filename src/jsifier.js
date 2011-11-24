@@ -495,16 +495,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
           }
           ret += '\n';
         } else if (block.type == 'reloop') {
-          ret += indent + (block.needBlockId ? block.id + ': ' : '') + 'while(1) { ' + (SHOW_LABELS ? ' /* ' + block.entries + + ' */' : '') + '\n';
+          ret += indent + block.id + ': while(1) { ' + (SHOW_LABELS ? ' /* ' + block.entries + + ' */' : '') + '\n';
           ret += walkBlock(block.inner, indent + '  ');
           ret += indent + '}\n';
         } else if (block.type == 'multiple') {
           var first = true;
           var multipleIdent = '';
-          if (!block.loopless) {
-            ret += indent + (block.needBlockId ? block.id + ': ' : '') + 'do { \n';
-            multipleIdent = '  ';
-          }
+          ret += indent + block.id + ': do { \n';
+          multipleIdent = '  ';
           // TODO: Find out cases where the final if/case is not needed - where we know we must be in a specific label at that point
           var SWITCH_IN_MULTIPLE = 0; // This appears to never be worth it, for no amount of labels
           if (SWITCH_IN_MULTIPLE && block.entryLabels.length >= 2) {
@@ -523,9 +521,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               first = false;
             });
           }
-          if (!block.loopless) {
-            ret += indent + '} while(0);\n';
-          }
+          ret += indent + '} while(0);\n';
         } else {
           throw "Walked into an invalid block type: " + block.type;
         }

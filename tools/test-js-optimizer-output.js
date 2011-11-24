@@ -68,9 +68,9 @@ function loopy() {
     something();
   } while (0);
   next();
-  do {
+  {
     something();
-  } while (0);
+  }
 }
 function ignoreLoopy() {
   b$for_cond$4 : while (1) {

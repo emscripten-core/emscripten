@@ -46,6 +46,18 @@ function isGenerated(ident) {
   return ident in generatedFunctions;
 }
 
+function srcToAst(src) {
+  return uglify.parser.parse(src);
+}
+
+function astToSrc(ast) {
+    return uglify.uglify.gen_code(ast, {
+    ascii_only: true,
+    beautify: true,
+    indent_level: 2
+  });
+}
+
 // Traverses a JavaScript syntax tree rooted at the given node calling the given
 // callback for each node.
 //   @arg node: The root of the AST.
@@ -267,9 +279,9 @@ function simplifyNotComps(ast) {
 }
 
 function loopOptimizer(ast) {
-  // We generate loops and one-time loops (do while(0)) with labels. It is often
-  // possible to eliminate those labels.
-  function loopLabelOptimizer(ast) {
+  // Remove unneeded labels and one-time (do while(0)) loops. It is convenient to do these both at once.
+  function passTwo(ast) {
+    var neededDos = [];
     // Find unneeded labels
     traverseGenerated(ast, function(node, type, stack) {
       if (type == 'label' && node[2][0] in LOOP) {
@@ -294,6 +306,8 @@ function loopOptimizer(ast) {
         var ident = node[1];
         var plus = '+' + ident;
         if (lastLabel && (ident == lastLabel[1] || plus == lastLabel[1])) {
+          // If this is a 'do' loop, this break means we actually need it.
+          neededDos.push(lastLoop);
           // We don't need the control flow command to have a label - it's referring to the current loop
           return [node[0]];
         } else {
@@ -305,7 +319,7 @@ function loopOptimizer(ast) {
         }
       }
     }, null, []);
-    // Remove those labels
+    // Remove unneeded labels
     traverseGenerated(ast, function(node, type) {
       if (type == 'label' && node[1][0] == '+') {
         var ident = node[1].substr(1);
@@ -318,13 +332,27 @@ function loopOptimizer(ast) {
         return node[2]; // Remove the label itself on the loop
       }
     });
+    // Remove unneeded one-time loops. We need such loops if (1) they have a label, or (2) they have a direct break so they are in neededDos.
+    // First, add all labeled loops of this nature to neededDos
+    traverseGenerated(ast, function(node, type) {
+      if (type == 'label' && node[2][0] == 'do') {
+        neededDos.push(node[2]);
+      }
+    });
+    // Remove unneeded dos, we know who they are now
+    traverseGenerated(ast, function(node, type) {
+      if (type == 'do' && neededDos.indexOf(node) < 0) {
+        assert(jsonCompare(node[1], ['num', 0]), 'Trying to remove a one-time do loop that is not one of our generated ones.;');
+        return node[2];
+      }
+    });
   }
 
-  // Eliminate unneeded breaks and continues, when we would get to that place anyhow
-  function loopMotionOptimizer(ast) {} // TODO
+  // Go
 
-  loopLabelOptimizer(ast);
-  loopMotionOptimizer(ast);
+  // TODO: pass 1: Removal of unneeded continues, breaks if they get us to where we are already going. That will
+  //               help the next pass.
+  passTwo(ast);
 }
 
 // Passes table
@@ -340,7 +368,7 @@ var passes = {
 // Main
 
 var src = fs.readFileSync('/dev/stdin').toString();
-var ast = uglify.parser.parse(src);
+var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
 var metadata = src.split('\n').filter(function(line) { return line.indexOf('EMSCRIPTEN_GENERATED_FUNCTIONS') >= 0 })[0];
 //assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
@@ -359,10 +387,6 @@ arguments.forEach(function(arg) {
 });
 */
 
-print(uglify.uglify.gen_code(ast, {
-  ascii_only: true,
-  beautify: true,
-  indent_level: 2
-}));
+print(astToSrc(ast));
 if (metadata) print(metadata + '\n');
 
