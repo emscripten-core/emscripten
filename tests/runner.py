@@ -4709,14 +4709,14 @@ else:
         int main() {
           int N = 6000;
           int M = 6000;
-          unsigned int final = 0;
+          unsigned int f = 0;
           for (int t = 0; t < M; t++) {
             for (int i = 0; i < N; i++) {
-              final += i / ((t % 5)+1);
-              if (final > 1000) final /= (t % 3)+1;
+              f += i / ((t % 5)+1);
+              if (f > 1000) f /= (t % 3)+1;
             }
           }
-          printf("final: %d.\\n", final);
+          printf("final: %d.\\n", f);
           return 1;
         }      
       '''
