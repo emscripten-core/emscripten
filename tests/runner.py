@@ -4524,7 +4524,7 @@ else:
   POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyNotComps']]
 
   TEST_REPS = 10
-  TOTAL_TESTS = 6
+  TOTAL_TESTS = 7
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
@@ -4702,13 +4702,29 @@ else:
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
       self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.')
 
+    def test_corrections(self):
+      Settings.CORRECT_SIGNS = Settings.CORRECT_OVERFLOWS = Settings.CORRECT_ROUNDINGS = 1
+      src = '''
+        #include<stdio.h>
+        int main() {
+          int N = 6000;
+          int M = 6000;
+          unsigned int final = 0;
+          for (int t = 0; t < M; t++) {
+            for (int i = 0; i < N; i++) {
+              final += i / ((t % 5)+1);
+              if (final > 1000) final /= (t % 3)+1;
+            }
+          }
+          printf("final: %d.\\n", final);
+          return 1;
+        }      
+      '''
+      self.do_benchmark(src, [], 'final: 599.')
+
     def test_fasta(self):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
       self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
-
-    def zzztest_raytrace(self): # This test is disabled because it gives wildly different results depending on float rounding, JIT effects, etc.
-      src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float') # benchmark with floats
-      self.do_benchmark(src, ['7', '256'], open(path_from_root('tests', 'raytrace_7_256.ppm')).read())
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
