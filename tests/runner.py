@@ -1787,6 +1787,8 @@ if 'benchmark' not in str(sys.argv):
           #include "header.h"
 
           void dump(struct point p) {
+            p.x++; // should not modify
+            p.y++; // anything in the caller!
             printf("dump: %d,%d\n", p.x, p.y);
           }
         '''
@@ -1805,6 +1807,9 @@ if 'benchmark' not in str(sys.argv):
             point p = { 54, 2 };
             printf("pre:  %d,%d\n", p.x, p.y);
             dump(p);
+            void (*dp)(point p) = dump; // And, as a function pointer
+            dp(p);
+            printf("post: %d,%d\n", p.x, p.y);
             return 0;
           }
         '''
@@ -1816,7 +1821,7 @@ if 'benchmark' not in str(sys.argv):
         all_name = os.path.join(self.get_dir(), 'all.bc')
         Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
-        self.do_ll_run(all_name, 'pre:  54,2\ndump: 54,2\n')
+        self.do_ll_run(all_name, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2')
 
     def test_stdlibs(self):
         if Settings.USE_TYPED_ARRAYS == 2:
