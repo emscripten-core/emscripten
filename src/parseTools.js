@@ -135,7 +135,7 @@ function isVoidType(type) {
 }
 
 // Detects a function definition, ([...|type,[type,...]])
-function isFunctionDef(token) {
+function isFunctionDef(token, out) {
   var text = token.text;
   var nonPointing = removeAllPointing(text);
   if (nonPointing[0] != '(' || nonPointing.substr(-1) != ')')
@@ -143,24 +143,39 @@ function isFunctionDef(token) {
   if (nonPointing === '()') return true;
   if (!token.item) return false;
   var fail = false;
-  splitTokenList(token.item.tokens).forEach(function(segment) {
+  var segments = splitTokenList(token.item.tokens);
+  segments.forEach(function(segment) {
     var subtext = segment[0].text;
     fail = fail || segment.length > 1 || !(isType(subtext) || subtext == '...');
   });
+  if (out) out.numArgs = segments.length;
   return !fail;
 }
 
-function isFunctionType(type) {
+function isFunctionType(type, out) {
   type = type.replace(/"[^"]+"/g, '".."');
   var parts = type.split(' ');
   if (pointingLevels(type) !== 1) return false;
   var text = removeAllPointing(parts.slice(1).join(' '));
   if (!text) return false;
-  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) });
+  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) }, out);
 }
 
 function isType(type) { // TODO!
   return isVoidType(type) || Runtime.isNumberType(type) || isStructType(type) || isPointerType(type) || isFunctionType(type);
+}
+
+function isVarArgsFunctionType(type) {
+  // assumes this is known to be a function type already
+  var varArgsSuffix = '...)*';
+  return type.substr(-varArgsSuffix.length) == varArgsSuffix;
+}
+
+function countNormalArgs(type) {
+  var out = {};
+  assert(isFunctionType(type, out));
+  if (isVarArgsFunctionType(type)) out.numArgs--;
+  return out.numArgs;
 }
 
 function addIdent(token) {

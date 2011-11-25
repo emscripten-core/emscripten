@@ -827,7 +827,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
     var phiSets = calcPhiSets(item);
-    var call_ = makeFunctionCall(item.ident, item.params, item.funcData);
+    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type);
     var ret = '(function() { try { __THREW__ = false; return '
             + call_ + ' '
             + '} catch(e) { '
@@ -899,18 +899,19 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     return finalizeLLVMParameter(item.params[0]);
   });
 
-  function makeFunctionCall(ident, params, funcData) {
+  function makeFunctionCall(ident, params, funcData, type) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
     var shortident = LibraryManager.getRootIdent(ident.slice(1)) || ident.slice(1); // ident may not be in library, if all there is is ident__inline
-    var func = Functions.currFunctions[ident] || Functions.currExternalFunctions[ident];
     var args = [];
     var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
     var ignoreFunctionIndexizing = [];
     var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
+    var hasVarArgs = isVarArgsFunctionType(type);
+    var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type) : -1;
 
     if (I64_MODE == 1 && ident in LLVM.INTRINSICS_32) {
       // Some LLVM intrinsics use i64 where it is not needed, and would cause much overhead
@@ -919,7 +920,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
-      if (!func || !func.hasVarArgs || i < func.numParams-1 || useJSArgs) {
+      if (!hasVarArgs || useJSArgs || i < normalArgs) {
         if (param.type == 'i64' && I64_MODE == 1) {
           val = makeCopyI64(val); // Must copy [low, high] i64s, so they don't end up modified in the caller
         }
@@ -952,7 +953,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i])
     });
 
-    if (func && func.hasVarArgs && !useJSArgs) {
+    if (hasVarArgs && !useJSArgs) {
       if (varargs.length === 0) {
         varargs = [0];
         varargsTypes = ['i32'];
@@ -979,7 +980,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
-    return makeFunctionCall(item.ident, item.params, item.funcData) + (item.standalone ? ';' : '');
+    return makeFunctionCall(item.ident, item.params, item.funcData, item.type) + (item.standalone ? ';' : '');
   });
 
   makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable!"' }); // Original .ll line: ' + item.lineNum + '";' });
