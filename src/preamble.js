@@ -230,12 +230,6 @@ var CorrectionsMonitor = {
   }
 };
 
-#if CORRECT_ROUNDINGS
-function cRound(x) {
-  return x >= 0 ? Math.floor(x) : Math.ceil(x);
-}
-#endif
-
 #if CHECK_OVERFLOWS
 //========================================
 // Debugging tools - Mathop overflows
@@ -381,6 +375,8 @@ var __ATEXIT__ = [];
 var ABORT = false;
 
 var undef = 0;
+// tempInt is used for 32-bit signed values or smaller. tempBigInt is used
+// for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
 var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair;
 #if I64_MODE == 1
 var tempI64, tempI64b;

@@ -4233,6 +4233,8 @@ Child2:9
       Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
       self.do_run(src, '*1*')
 
+      Settings.CORRECT_SIGNS = 0
+
       # Overflows
 
       src = '''
@@ -4287,6 +4289,8 @@ Child2:9
         assert 'UNEXPECTED' not in str(e), str(e)
         assert 'Expected to find' in str(e), str(e)
 
+      Settings.CORRECT_OVERFLOWS = 0
+
       # Roundings
 
       src = '''
@@ -4314,21 +4318,30 @@ Child2:9
       Settings.CORRECT_ROUNDINGS = 0
       self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
+      self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-6**5*') # We fail, since no fast shortcut for 32-bit unsigneds
 
       Settings.CORRECT_ROUNDINGS = 1
       self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
+      Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
+      self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*') # Correct
+      return
+      Settings.CORRECT_SIGNS = 0
 
       Settings.CORRECT_ROUNDINGS = 2
       Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
       self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
+      self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-5**5*') # No such luck here
 
       # And reverse the check with = 2
       Settings.CORRECT_ROUNDINGS = 3
       Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
       self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
+      Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
+      self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*')
+      Settings.CORRECT_SIGNS = 0
 
     def test_pgo(self):
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')

@@ -541,6 +541,7 @@ function makeI64(low, high) {
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an I64_MODE 1 i64 value.
 // Will suffer from rounding. margeI64 does the opposite.
+// TODO: optimize I64 calcs
 function splitI64(value) {
   assert(I64_MODE == 1);
   return '(tempInt=' + value + ',' + makeI64('tempInt>>>0', 'Math.floor(tempInt/4294967296)') + ')';
@@ -1439,24 +1440,35 @@ function makeSignOp(value, type, op, force) {
   return value;
 }
 
-function makeRounding(value, bits, signed) {
+// @param floatConversion Means that we are receiving a float and rounding it to
+//                        an integer. We must be careful here, the input has *not*
+//                        already been converted to a signed/unsigned value (that
+//                        would already do rounding, before us!)
+function makeRounding(value, bits, signed, floatConversion) {
   // TODO: handle roundings of i64s
-
+  assert(bits);
   // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
-  // With 32 bits and less, and a signed value, |0 will round it like C does.
-  if (bits && bits <= 32 && signed) return '(('+value+')|0)';
-  // If the value may be negative, and we care about proper rounding, then use a slow but correct function
-  if (signed && correctRoundings()) return 'cRound(' + value + ')';
-  // Either this must be positive, so Math.Floor is correct, or we don't care
-  return 'Math.floor(' + value + ')';
+  if (bits <= 32 && signed) return '((' + value + ')|0)'; // This is fast and even correct, for all cases
+  // Do Math.floor, which is reasonably fast, if we either don't care, or if we can be sure
+  // the value is non-negative
+  if (!correctRoundings() || (!signed && !floatConversion)) return 'Math.floor(' + value + ')';
+  // We are left with >32 bits signed, or a float conversion. Check and correct inline
+  // Note that if converting a float, we may have the wrong sign at this point! But, we have
+  // been rounded properly regardless, and we will be sign-corrected later when actually used, if
+  // necessary.
+  return '(tempBigInt='+value+',tempBigInt >= 0 ? Math.floor(tempBigInt) : Math.ceil(tempBigInt))';
 }
+
+// fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
+// just sign/unsign the input first.
+var UNSIGNED_OP = set('udiv', 'urem', 'uitofp', 'zext', 'lshr');
+var SIGNED_OP = set('sdiv', 'srem', 'sitofp', 'sext', 'ashr');
 
 function isUnsignedOp(op, variant) {
-  return op in set('udiv', 'urem', 'uitofp', 'zext', 'lshr') || (variant && variant[0] == 'u');
+  return op in UNSIGNED_OP || (variant && variant[0] == 'u');
 }
-
 function isSignedOp(op, variant) {
-  return op in set('sdiv', 'srem', 'sitofp', 'sext', 'ashr') || (variant && variant[0] == 's');
+  return op in SIGNED_OP || (variant && variant[0] == 's');
 }
 
 function processMathop(item) { with(item) {
@@ -1622,7 +1634,7 @@ function processMathop(item) { with(item) {
     case 'fdiv': return getFastValue(ident1, '/', ident2, item.type);
     case 'fmul': return getFastValue(ident1, '*', ident2, item.type);
     case 'uitofp': case 'sitofp': return ident1;
-    case 'fptoui': case 'fptosi': return makeRounding(ident1, bitsLeft, op === 'fptosi');
+    case 'fptoui': case 'fptosi': return makeRounding(ident1, bitsLeft, op === 'fptosi', true);
 
     // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
     //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
