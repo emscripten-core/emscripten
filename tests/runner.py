@@ -31,7 +31,7 @@ except:
 # Core test runner class, shared between normal tests and benchmarks
 
 class RunnerCore(unittest.TestCase):
-  save_dir = 0
+  save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
 
   def setUp(self):
@@ -4719,21 +4719,23 @@ else:
       Settings.CORRECT_SIGNS = Settings.CORRECT_OVERFLOWS = Settings.CORRECT_ROUNDINGS = 1
       src = '''
         #include<stdio.h>
+        #include<math.h>
         int main() {
-          int N = 6000;
-          int M = 6000;
+          int N = 4500;
+          int M = 4500;
           unsigned int f = 0;
           for (int t = 0; t < M; t++) {
             for (int i = 0; i < N; i++) {
               f += i / ((t % 5)+1);
               if (f > 1000) f /= (t % 3)+1;
+              if (i % 4 == 0) f += sqrtf(i) * (i % 8 == 0 ? 1 : -1);
             }
           }
           printf("final: %d.\\n", f);
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 599.')
+      self.do_benchmark(src, [], 'final: 451.')
 
     def test_fasta(self):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
