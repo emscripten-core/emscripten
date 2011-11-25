@@ -1763,10 +1763,60 @@ if 'benchmark' not in str(sys.argv):
             double maxxD = getMaxD(6,        (double)2.1, (double)5.1, (double)22.1, (double)4.1, (double)-10.1, (double)19.1);
             printf("maxxD:%.2f*\\n", (float)maxxD);
 
+            // And, as a function pointer
+            void (*vfp)(const char *s, ...) = vary;
+            vfp("*vfp:%d,%d*", 22, 199);
+
             return 0;
           }
           '''
-        self.do_run(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n')
+        self.do_run(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n*vfp:22,199*\n*vfp:22,199*\n')
+
+    def test_mix_c_cpp(self):
+        header = r'''
+          struct point
+          {
+            int x, y;
+          };
+
+        '''
+        open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
+
+        supp = r'''
+          #include <stdio.h>
+          #include "header.h"
+
+          void dump(struct point p) {
+            printf("dump: %d,%d\n", p.x, p.y);
+          }
+        '''
+        supp_name = os.path.join(self.get_dir(), 'supp.c')
+        open(supp_name, 'w').write(supp)
+
+        main = r'''
+          #include <stdio.h>
+          #include "header.h"
+
+          extern "C" {
+            void dump(point p);
+          }
+
+          int main( int argc, const char *argv[] ) {
+            point p = { 54, 2 };
+            printf("pre:  %d,%d\n", p.x, p.y);
+            dump(p);
+            return 0;
+          }
+        '''
+        main_name = os.path.join(self.get_dir(), 'main.cpp')
+        open(main_name, 'w').write(main)
+
+        Building.emmaken(supp_name)
+        Building.emmaken(main_name)
+        all_name = os.path.join(self.get_dir(), 'all.bc')
+        Building.link([supp_name + '.o', main_name + '.o'], all_name)
+
+        self.do_ll_run(all_name, 'pre:  54,2\ndump: 54,2\n')
 
     def test_stdlibs(self):
         if Settings.USE_TYPED_ARRAYS == 2:

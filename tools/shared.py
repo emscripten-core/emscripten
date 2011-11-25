@@ -258,6 +258,15 @@ class Building:
     output = Popen([LLVM_AS, filename + '.o.ll', '-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.o'), 'Could not create bc file: ' + output
 
+  @staticmethod # TODO: make this use emcc instead of emmaken
+  def emmaken(filename, stdout=None, stderr=None, env=None):
+    try:
+      os.remove(filename + '.o')
+    except:
+      pass
+    Popen([EMMAKEN, filename, '-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
+    assert os.path.exists(filename + '.o'), 'Could not create bc file'
+
   @staticmethod
   def emscripten(filename, output_processor=None, append_ext=True, extra_args=[]):
     # Add some headers by default. TODO: remove manually adding these in each test
