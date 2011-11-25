@@ -525,6 +525,17 @@ function IEEEUnHex(stringy) {
   return (absolute * (neg ? -1 : 1)).toString();
 }
 
+// Given an expression like (VALUE=VALUE*2,VALUE<10?VALUE:t+1) , this will
+// replace VALUE with value. If value is not a simple identifier of a variable,
+// value will be replaced with tempVar.
+function makeInlineCalculation(expression, value, tempVar) {
+  if (!isNiceIdent(value, true)) {
+    expression = tempVar + '=' + value + ',' + expression;
+    value = tempVar;
+  }
+  return '(' + expression.replace(/VALUE/g, value) + ')';
+}
+
 // Makes a proper runtime value for a 64-bit value from low and high i32s.
 function makeI64(low, high) {
   if (I64_MODE == 1) {
@@ -544,7 +555,7 @@ function makeI64(low, high) {
 // TODO: optimize I64 calcs
 function splitI64(value) {
   assert(I64_MODE == 1);
-  return '(tempInt=' + value + ',' + makeI64('tempInt>>>0', 'Math.floor(tempInt/4294967296)') + ')';
+  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.floor(VALUE/4294967296)'), value, 'tempBigInt');
 }
 function mergeI64(value) {
   assert(I64_MODE == 1);
@@ -555,7 +566,7 @@ function mergeI64(value) {
 // mode, this is a no-op
 function ensureI64_1(value) {
   if (I64_MODE == 1) return value;
-  return '(tempInt=' + value + ',[tempInt>>>0, Math.floor(tempInt/4294967296)])';
+  return makeInlineCalculation('[VALUE>>>0, Math.floor(VALUE/4294967296)]', value, 'tempBigInt');
 }
 
 function makeCopyI64(value) {
@@ -959,10 +970,10 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
     if (bytes > align) {
       var ret = '/* unaligned */';
       if (bytes <= 4) {
-        ret += 'tempInt=' + value + ';';
+        ret += 'tempBigInt=' + value + ';';
         for (var i = 0; i < bytes; i++) {
-          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempInt&0xff', 'i8', noNeedFirst, ignore) + ';';
-          if (i < bytes-1) ret += 'tempInt>>=8;';
+          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore) + ';';
+          if (i < bytes-1) ret += 'tempBigInt>>=8;';
         }
       } else {
         assert(bytes == 8);
@@ -1431,7 +1442,7 @@ function makeSignOp(value, type, op, force) {
         if (op === 'un') {
           return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
         } else {
-          return '(tempInt=(' + value + '),(tempInt>=' + Math.pow(2, bits-1) + '?tempInt-' + Math.pow(2, bits) + ':tempInt))';
+          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempInt');
         }
       }
     }
@@ -1456,7 +1467,7 @@ function makeRounding(value, bits, signed, floatConversion) {
   // Note that if converting a float, we may have the wrong sign at this point! But, we have
   // been rounded properly regardless, and we will be sign-corrected later when actually used, if
   // necessary.
-  return '(tempBigInt='+value+',tempBigInt >= 0 ? Math.floor(tempBigInt) : Math.ceil(tempBigInt))';
+  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigInt');
 }
 
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
@@ -1500,7 +1511,7 @@ function processMathop(item) { with(item) {
   var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
 
   function integerizeBignum(value) {
-    return '(tempBigInt=(' + value + '), tempBigInt-tempBigInt%1)';
+    return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigInt');
   }
 
   if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64') && I64_MODE == 1) {
@@ -1556,7 +1567,7 @@ function processMathop(item) { with(item) {
         }
       }
       case 'zext': return makeI64(ident1, 0);
-      case 'sext': return '(tempInt=' + ident1 + ',' + makeI64('tempInt', 'tempInt<0 ? 4294967295 : 0') + ')';
+      case 'sext': return makeInlineCalculation(makeI64('VALUE', 'VALUE<0 ? 4294967295 : 0'), ident1, 'tempBigInt');
       case 'trunc': {
         return '((' + ident1 + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
