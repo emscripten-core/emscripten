@@ -64,6 +64,10 @@ function assertTrue(a, msg) {
 assert = assertTrue;
 
 function warn(a, msg) {
+  if (!msg) {
+    msg = a;
+    a = false;
+  }
   if (!a) {
     dprint('Warning: ' + msg);
   }

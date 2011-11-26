@@ -1772,7 +1772,50 @@ if 'benchmark' not in str(sys.argv):
           '''
         self.do_run(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n*vfp:22,199*\n*vfp:22,199*\n')
 
-    def test_mix_c_cpp(self):
+    def test_structbyval(self):
+        # part 1: make sure that normally, passing structs by value works
+
+        src = r'''
+          #include <stdio.h>
+
+          struct point
+          {
+            int x, y;
+          };
+
+          void dump(struct point p) {
+            p.x++; // should not modify
+            p.y++; // anything in the caller!
+            printf("dump: %d,%d\n", p.x, p.y);
+          }
+
+          void dumpmod(struct point *p) {
+            p->x++; // should not modify
+            p->y++; // anything in the caller!
+            printf("dump: %d,%d\n", p->x, p->y);
+          }
+
+          int main( int argc, const char *argv[] ) {
+            point p = { 54, 2 };
+            printf("pre:  %d,%d\n", p.x, p.y);
+            dump(p);
+            void (*dp)(point p) = dump; // And, as a function pointer
+            dp(p);
+            printf("post: %d,%d\n", p.x, p.y);
+            dumpmod(&p);
+            dumpmod(&p);
+            printf("last: %d,%d\n", p.x, p.y);
+            return 0;
+          }
+        '''
+        self.do_run(src, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2\ndump: 55,3\ndump: 56,4\nlast: 56,4')
+
+        # Check for lack of warning in the generated code (they should appear in part 2)
+        generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+        assert 'Casting a function pointer type to another with a different number of arguments.' not in generated, 'Unexpected warning'
+
+        # part 2: make sure we warn about mixing c and c++ calling conventions here
+
         header = r'''
           struct point
           {
@@ -1799,15 +1842,19 @@ if 'benchmark' not in str(sys.argv):
           #include <stdio.h>
           #include "header.h"
 
+          #ifdef __cplusplus
           extern "C" {
-            void dump(point p);
+          #endif
+            void dump(struct point p);
+          #ifdef __cplusplus
           }
+          #endif
 
           int main( int argc, const char *argv[] ) {
-            point p = { 54, 2 };
+            struct point p = { 54, 2 };
             printf("pre:  %d,%d\n", p.x, p.y);
             dump(p);
-            void (*dp)(point p) = dump; // And, as a function pointer
+            void (*dp)(struct point p) = dump; // And, as a function pointer
             dp(p);
             printf("post: %d,%d\n", p.x, p.y);
             return 0;
@@ -1821,7 +1868,16 @@ if 'benchmark' not in str(sys.argv):
         all_name = os.path.join(self.get_dir(), 'all.bc')
         Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
-        self.do_ll_run(all_name, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2')
+        try:
+          # This will fail! See explanation near the warning we check for, in the compiler source code
+          self.do_ll_run(all_name, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2')
+        except Exception, e:
+          # Check for warning in the generated code
+          generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+          assert 'Casting a function pointer type to another with a different number of arguments.' in generated, 'Missing expected warning'
+          assert 'void (i32, i32)* ==> void (%struct.point.0*)*' in generated, 'Missing expected warning details'
+          return
+        raise Exception('We should not have gotten to here!')
 
     def test_stdlibs(self):
         if Settings.USE_TYPED_ARRAYS == 2:

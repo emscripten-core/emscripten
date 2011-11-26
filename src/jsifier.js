@@ -449,6 +449,16 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack) + ';\n';
 
+      // Make copies of by-value params
+      func.params.forEach(function(param) {
+        if (param.byVal) {
+          var type = removePointing(param.type);
+          var typeInfo = Types.types[type];
+          func.JS += '  var tempParam = ' + param.ident + '; ' + param.ident + ' = ' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
+                     makeCopyValues(param.ident, 'tempParam', typeInfo.flatSize, 'null') + ';\n';
+        }
+      });
+
       if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed

@@ -165,6 +165,12 @@ function isType(type) { // TODO!
   return isVoidType(type) || Runtime.isNumberType(type) || isStructType(type) || isPointerType(type) || isFunctionType(type);
 }
 
+function isPossiblyFunctionType(type) {
+  // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
+  var suffix = ')*';
+  return type.substr(-suffix.length) == suffix;
+}
+
 function isVarArgsFunctionType(type) {
   // assumes this is known to be a function type already
   var varArgsSuffix = '...)*';
@@ -173,7 +179,7 @@ function isVarArgsFunctionType(type) {
 
 function countNormalArgs(type) {
   var out = {};
-  assert(isFunctionType(type, out));
+  if (!isFunctionType(type, out)) return -1;
   if (isVarArgsFunctionType(type)) out.numArgs--;
   return out.numArgs;
 }
@@ -307,8 +313,10 @@ function parseParamTokens(params) {
     var segment = params.slice(0, i);
     params = params.slice(i+1);
     segment = cleanSegment(segment);
+    var byVal = false;
     if (segment[1] && segment[1].text === 'byval') {
       // handle 'byval' and 'byval align X'
+      byVal = true;
       segment.splice(1, 1);
       if (segment[1] && segment[1].text === 'align') {
         segment.splice(1, 2);
@@ -353,6 +361,7 @@ function parseParamTokens(params) {
       //          } else {
       //            throw "what is this params token? " + JSON.stringify(segment);
     }
+    ret[ret.length-1].byVal = byVal;
   }
   return ret;
 }
@@ -1290,6 +1299,32 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
     case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
       return makePointer(makeGetSlabs(item.ident, item.type)[0], getGetElementPtrIndexes(item), null, item.type);
     case 'bitcast':
+      // Warn about some types of casts, then fall through to the handling code below
+      var oldType = item.params[0].type;
+      var newType = item.type;
+      if (isPossiblyFunctionType(oldType) && isPossiblyFunctionType(newType) &&
+          countNormalArgs(oldType) != countNormalArgs(newType)) {
+        warn('Casting a function pointer type to another with a different number of arguments. See more info in the source (grep for this text). ' +
+             oldType + ' ==> ' + newType);
+        // This may be dangerous as clang generates different code for C and C++ calling conventions. The only problem
+        // case appears to be passing a structure by value, C will have (field1, field2) as function args, and the
+        // function will internally create a structure with that data, while C++ will have (struct* byVal) and it
+        // will create a copy before calling the function, then call it with a pointer to the copy. Mixing the two
+        // first of all leads to two copies being made, so this is a bad idea even regardless of Emscripten. But,
+        // what is a problem for Emscripten is that mixing these two calling conventions (say, calling a C one from
+        // C++) will then assume that (struct* byVal) is actually the same as (field1, field2). In native code, this
+        // is easily possible, you place the two fields on the stack and call the function (you know to place the
+        // values since there is 'byVal'). In Emscripten, though, this means we would need to always do one or the
+        // other of the two possibilities, for example, always passing by-value structs as (field1, field2). This
+        // would slow down everything, just to handle this corner case. (Which, just to point out how much of a
+        // corner case it is, does not appear to happen with nested structures!)
+        //
+        // The recommended solution for this problem is not to mix C and C++ calling conventions when passing structs
+        // by value. Either always pass structs by value within C code or C++ code, but not mixing the two by
+        // defining a function in one and calling it from the other (so, just changing .c to .cpp, or moving code
+        // from one file to another, would be enough to fix this), or, do not pass structs by value (which in general
+        // is inefficient, and worth avoiding if you can).
+      }
     case 'inttoptr':
     case 'ptrtoint':
       return finalizeLLVMParameter(item.params[0], noIndexizeFunctions);
