@@ -450,6 +450,12 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack) + ';\n';
 
       // Make copies of by-value params
+      // XXX It is not clear we actually need this. While without this we fail, it does look like
+      //     Clang normally does the copy itself, in the calling function. We only need this code
+      //     when Clang optimizes the code and passes the original, not the copy, to the other
+      //     function. But Clang still copies, the copy is just unused! Need to figure out if that
+      //     is caused by our running just some optimizations (the safe ones), or if its a bug
+      //     in Clang, or a bug in our understanding of the IR.
       func.params.forEach(function(param) {
         if (param.byVal) {
           var type = removePointing(param.type);
