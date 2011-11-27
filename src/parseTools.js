@@ -1493,7 +1493,7 @@ function makeSignOp(value, type, op, force) {
         }
       } else if (bits < 32) {
         if (op === 're') {
-          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempInt');
+          return makeInlineCalculation('(VALUE << ' + (32-bits) + ') >> ' + (32-bits), value, 'tempInt');
         } else {
           return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
         }
