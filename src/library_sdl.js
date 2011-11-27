@@ -226,6 +226,7 @@ mergeInto(LibraryManager.library, {
 
   SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
+    SDL.isLittleEndian = ( new Int8Array(new Int32Array([1]).buffer)[0] === 1 );
     SDL.startTime = Date.now();
     ['keydown', 'keyup', 'keypress'].forEach(function(event) {
       addEventListener(event, SDL.receiveEvent, true);
