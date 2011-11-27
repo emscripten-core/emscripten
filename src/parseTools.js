@@ -1487,12 +1487,15 @@ function makeSignOp(value, type, op, force) {
           return '((' + value + ')|0)';
         } else {
           return '((' + value + ')>>>0)';
+          // Alternatively, we can consider the lengthier
+          //    return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + ' + VALUE', value, 'tempBigInt');
+          // which does not always turn us into a 32-bit *un*signed value
         }
       } else if (bits < 32) {
-        if (op === 'un') {
-          return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
-        } else {
+        if (op === 're') {
           return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempInt');
+        } else {
+          return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
         }
       }
     }
