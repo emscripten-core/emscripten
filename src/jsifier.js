@@ -5,6 +5,40 @@
 function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   var mainPass = !functionsOnly;
 
+  if (mainPass) {
+    // We will start to print out the data, but must do so carefully - we are
+    // dealing with potentially *huge* strings. Convenient replacements and
+    // manipulations may create in-memory copies, and we may OOM.
+    //
+    // Final shape that will be created:
+    //    shell
+    //      (body)
+    //        preamble
+    //          runtime
+    //        generated code
+    //        postamble
+    //          global_vars
+    //
+    // First, we print out everything until the generated code. Then the
+    // functions will print themselves out as they are parsed. Finally, we
+    // will call finalCombiner in the main pass, to print out everything
+    // else. This lets us not hold any strings in memory, we simply print
+    // things out as they are ready.
+
+    var shellFile = BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js';
+    var shellParts = read(shellFile).split('{{BODY}}');
+    print(shellParts[0]);
+    var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
+    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
+    print(pre);
+    print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
+    if (RUNTIME_TYPE_INFO) {
+      Types.cleanForRuntime();
+      print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
+      print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
+    }
+  }
+
   // Add additional necessary items for the main pass
   if (mainPass) {
     LibraryManager.load();
@@ -71,21 +105,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
     dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
-    //var t = Date.now();
-    func.JS = JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
-    //t = (Date.now()-t)/1000;
-    //dprint('unparsedFunctions', 'unparsedFunction took ' + t + ' seconds.');
-    delete func.lines; // clean up memory as much as possible
-  }
-
-  if (data.unparsedFunctions.length > 0) {
-    // We are now doing the final JS generation
-    dprint('unparsedFunctions', '== Completed unparsedFunctions ==\n');
-
-    // Save some memory, before the final heavy lifting
-    //Functions.currFunctions = null;
-    //Functions.currExternalFunctions = null;
-    //Debugging.clear();
+    JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
+    // We don't need to save anything here, the function has printed itself out and can now be forgotten
+    data.unparsedFunctions[i] = null;
   }
 
   // Actors
@@ -1057,48 +1079,27 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }).filter(function(func) {
         return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
       }));
-      return generated.map(function(item) { return item.JS }).join('\n');
+      print(generated.map(function(item) { return item.JS }).join('\n'));
+      return;
     }
 
-    // This is the main pass.
-    var generated = itemsDict.type.concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub).concat(data.unparsedFunctions);
+    // This is the main pass. Print out the generated code that we have here, together with the
+    // rest of the output that we started to print out earlier (see comment on the
+    // "Final shape that will be created").
+    var generated = itemsDict.type.concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
+    generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
 
-    // We are ready to print out the data, but must do so carefully - we are
-    // dealing with potentially *huge* strings. Convenient replacements and
-    // manipulations may create in-memory copies, and we may OOM.
-    //
-    // Final shape that we now create:
-    //    shell
-    //      (body)
-    //        preamble
-    //          runtime
-    //        generated code
-    //        postamble
-    //          global_vars
-
-    var shellFile = BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js';
-    var shellParts = read(shellFile).split('{{BODY}}');
-    print(shellParts[0]);
-      var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
-      var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
-      print(pre);
-      print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
-      if (RUNTIME_TYPE_INFO) {
-        Types.cleanForRuntime();
-        print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
-        print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
-      }
-      generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
-      var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
-      var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
-      print(postParts[0]);
-        itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
-        itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });
-        print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
-      print(postParts[1]);
+    var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
+    var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
+    print(postParts[0]);
+    itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
+    itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });
+    print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
+    print(postParts[1]);
     print(shellParts[1]);
     // Print out some useful metadata (for additional optimizations later, like the eliminator)
     print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(Functions.allIdents) + '\n');
+
     return null;
   }
 
@@ -1114,6 +1115,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     substrate.addItems(data.functions, 'FunctionSplitter');
   }
 
-  return finalCombiner(substrate.solve());
+  finalCombiner(substrate.solve());
 }
 

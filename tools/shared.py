@@ -177,7 +177,7 @@ class Building:
       project_dir = os.path.join(temp_dir, name)
       if os.path.exists(project_dir):
         shutil.rmtree(project_dir)
-      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out
+      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out, and two lines above
     else:
       project_dir = build_dir
     try:
@@ -194,7 +194,7 @@ class Building:
     env = Building.get_building_env()
     for k, v in env_init.iteritems():
       env[k] = v
-    if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |make| call)
+    if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       Building.configure(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure_'), 'w'),
                                                      stderr=open(os.path.join(output_dir, 'configure_err'), 'w'), env=env)
     Building.make(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
