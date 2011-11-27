@@ -1831,6 +1831,9 @@ function stripCorrections(param) {
   if (m = /^\((\w+)\)&\d+$/.exec(param)) {
     param = m[1];
   }
+  if (m = /^\((\w+)\)\|0$/.exec(param)) {
+    param = m[1];
+  }
   if (m = /CHECK_OVERFLOW\(([^,)]*),.*/.exec(param)) {
     param = m[1];
   }
