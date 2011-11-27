@@ -478,7 +478,14 @@ function allocate(slab, types, allocator) {
 #endif
 
 #if I64_MODE == 1
-    if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
+    if (type == 'i64') { // special case: we have one i32 here, and one i32 later
+      // We split the current value into a low word and high word, using the same
+      // calculation as splitI64 in parseTools.js.
+      type = 'i32'; 
+      setValue(ret+i, curr>>>0, type);
+      i += Runtime.getNativeTypeSize(type);
+      curr = Math.floor(curr/4294967296);
+    }
 #endif
 
     setValue(ret+i, curr, type);
