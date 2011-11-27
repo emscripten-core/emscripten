@@ -71,7 +71,7 @@ class RunnerCore(unittest.TestCase):
     else:
       shutil.copy(ll_file, filename + '.o.ll')
 
-    force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts
+    #force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
 
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       Building.ll_opts(filename)
