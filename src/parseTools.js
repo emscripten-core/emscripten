@@ -1461,6 +1461,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
 }
 
 function makeSignOp(value, type, op, force) {
+  // XXX this is not quite right. both parts should always be unsigned (or, perhaps always signed, we should move to that - separate issue though)
   if (I64_MODE == 1 && type == 'i64') {
     return '(tempPair=' + value + ',[' + makeSignOp('tempPair[0]', 'i32', op, force) + ',' + makeSignOp('tempPair[1]', 'i32', op, force) + '])';
   }
@@ -1496,6 +1497,12 @@ function makeSignOp(value, type, op, force) {
           return makeInlineCalculation('(VALUE << ' + (32-bits) + ') >> ' + (32-bits), value, 'tempInt');
         } else {
           return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
+        }
+      } else { // bits > 32
+        if (op === 're') {
+          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempBigInt');
+        } else {
+          return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigInt');
         }
       }
     }
