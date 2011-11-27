@@ -117,24 +117,38 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   function alignStruct(values, type) {
     var typeData = Types.types[type];
     assertTrue(typeData);
-    var ret = [];
-    var i = 0, soFar = 0;
+    var ret = new Array(typeData.flatSize);
+    var index = 0;
+    var i = 0;
     while (i < values.length) {
       // Pad until the right place
       var padded = typeData.flatFactor ? typeData.flatFactor*i : typeData.flatIndexes[i];
-      while (soFar < padded) {
-        ret.push(0);
-        soFar++;
+      while (index < padded) {
+        ret[index++] = 0;
       }
       // Add current value(s)
       var currValue = flatten(values[i]);
-      ret.push(currValue);
+      if (I64_MODE == 1 && typeData.fields[i] == 'i64') {
+        // 'flatten' out the 64-bit value into two 32-bit halves
+        ret[index++] = currValue + '>>>0';
+        ret[index++] = 0;
+        ret[index++] = 0;
+        ret[index++] = 0;
+        ret[index++] = 'Math.floor(' + currValue + '/4294967296)';
+        ret[index++] = 0;
+        ret[index++] = 0;
+        ret[index++] = 0;
+      } else if (typeof currValue == 'object') {
+        for (var j = 0; j < currValue.length; j++) {
+          ret[index++] = currValue[j];
+        }
+      } else {
+        ret[index++] = currValue;
+      }
       i += 1;
-      soFar += typeof currValue === 'object' ? currValue.length : 1;
     }
-    while (soFar < typeData.flatSize) {
-      ret.push(0);
-      soFar++;
+    while (index < typeData.flatSize) {
+      ret[index++] = 0;
     }
     return ret;
   }

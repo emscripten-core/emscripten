@@ -426,6 +426,16 @@ if 'benchmark' not in str(sys.argv):
             return x < 3;
           }
 
+          struct IUB {
+             int c;
+             long long d;
+          };
+
+          IUB iub[] = {
+             { 55, 17179869184 },
+             { 122, 25769803776 },
+          };
+
           int main()
           {
             int64_t x1 = 0x1234def123450789ULL;
@@ -446,6 +456,9 @@ if 'benchmark' not in str(sys.argv):
             modifier2(t);
             printf("*%Ld*\n", t);
 
+            // global structs with i64s
+            printf("*%d,%Ld*\n*%d,%Ld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
+
             // Basic (rounded, for now) math. Just check compilation.
             int64_t a = 0x1234def123450789ULL;
             a--; if (truthy()) a--; // confuse optimizer
@@ -458,7 +471,8 @@ if 'benchmark' not in str(sys.argv):
         '''
         self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
                          '*18446744073709552000*\n*576460752303423500*\n' +
-                         'm1: 127\n*123*\n*127*\n')
+                         'm1: 127\n*123*\n*127*\n' +
+                         '*55,17179869184*\n*122,25769803776*\n')
 
         Settings.CORRECT_SIGNS = 1
 

@@ -785,6 +785,9 @@ function calcAllocatedSize(type) {
 function generateStructTypes(type) {
   if (isArray(type)) return type; // already in the form of [type, type,...]
   if (Runtime.isNumberType(type) || isPointerType(type)) {
+    if (I64_MODE == 1 && type == 'i64') {
+      return ['i64', 0, 0, 0, 'i32', 0, 0, 0];
+    }
     return [type].concat(zeros(getNativeFieldSize(type)));
   }
 
@@ -798,6 +801,17 @@ function generateStructTypes(type) {
     for (var i = 0; i < typeData.fields.length; i++) {
       var type = typeData.fields[i];
       if (Runtime.isNumberType(type) || isPointerType(type)) {
+        if (I64_MODE == 1 && type == 'i64') {
+          ret[index++] = 'i64';
+          ret[index++] = 0;
+          ret[index++] = 0;
+          ret[index++] = 0;
+          ret[index++] = 'i32';
+          ret[index++] = 0;
+          ret[index++] = 0;
+          ret[index++] = 0;
+          continue;
+        }
         ret[index++] = type;
       } else {
         add(Types.types[type]);
