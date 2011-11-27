@@ -576,7 +576,7 @@ function makeI64(low, high) {
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an I64_MODE 1 i64 value.
 // Will suffer from rounding. margeI64 does the opposite.
-// TODO: optimize I64 calcs
+// TODO: optimize I64 calcs. For example, saving their parts as signed 32 as opposed to unsigned would help
 function splitI64(value) {
   assert(I64_MODE == 1);
   return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.floor(VALUE/4294967296)'), value, 'tempBigInt');
@@ -1590,7 +1590,7 @@ function processMathop(item) { with(item) {
     return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigInt');
   }
 
-  if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64') && I64_MODE == 1) {
+  if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || ident2 == '(i64)') && I64_MODE == 1) {
     function warnI64_1() {
       warnOnce('Arithmetic on 64-bit integers in mode 1 is rounded and flaky, like mode 0, but much slower!');
     }
@@ -1618,6 +1618,7 @@ function processMathop(item) { with(item) {
                     ident1 + '[1] >>> ' + ident2 + ']';
       }
       case 'uitofp': case 'sitofp': return ident1 + '[0] + ' + ident1 + '[1]*4294967296';
+      case 'fptoui': case 'fptosi': return splitI64(ident1);
       case 'icmp': {
         switch (variant) {
           case 'uge': case 'sge': return ident1 + '[1] >= ' + ident2 + '[1] && (' + ident1 + '[1] > '  + ident2 + '[1] || ' +
