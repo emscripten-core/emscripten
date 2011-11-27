@@ -1050,13 +1050,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
     //
 
-    var generated = [];
-    if (mainPass) {
-      generated = generated.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
-    }
-    generated = generated.concat(itemsDict.function).concat(data.unparsedFunctions);
-
     if (!mainPass) {
+      var generated = itemsDict.function;
       Functions.allIdents = Functions.allIdents.concat(itemsDict.function.map(function(func) {
         return func.ident;
       }).filter(function(func) {
@@ -1064,6 +1059,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }));
       return generated.map(function(item) { return item.JS }).join('\n');
     }
+
+    // This is the main pass.
+    var generated = itemsDict.type.concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub).concat(data.unparsedFunctions);
 
     // We are ready to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
