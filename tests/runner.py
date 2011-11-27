@@ -4606,7 +4606,7 @@ TT = %s
     def test_js_optimizer(self):
       input = open(path_from_root('tools', 'test-js-optimizer.js')).read()
       expected = open(path_from_root('tools', 'test-js-optimizer-output.js')).read()
-      output = Popen([NODE_JS, JS_OPTIMIZER, 'unGlobalize', 'removeAssignsToUndefined', 'simplifyNotComps', 'loopOptimizer'],
+      output = Popen([NODE_JS, JS_OPTIMIZER, 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressions', 'loopOptimizer'],
                      stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
@@ -4645,7 +4645,7 @@ else:
   #JS_ENGINE = V8_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
-  POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyNotComps']]
+  POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressions']]
 
   TEST_REPS = 10
   TOTAL_TESTS = 7

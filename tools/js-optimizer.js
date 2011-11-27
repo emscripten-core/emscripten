@@ -254,28 +254,35 @@ function removeUnneededLabelSettings(ast) {
   });
 }
 
-// We often have branchings that are simplified so one end vanishes, and
-// we then get
-//   if (!(x < 5))
-// or such. Simplifying these saves space and time.
-function simplifyNotComps(ast) {
-  traverse(ast, function(node, type) {
-    if (type == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
-      if (node[2][1] == '<') {
-        return ['binary', '>=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '>') {
-        return ['binary', '<=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '==') {
-        return ['binary', '!=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '!=') {
-        return ['binary', '==', node[2][2], node[2][3]];
-      } else if (node[2][1] == '===') {
-        return ['binary', '!==', node[2][2], node[2][3]];
-      } else if (node[2][1] == '!==') {
-        return ['binary', '===', node[2][2], node[2][3]];
+// Various expression simplifications
+function simplifyExpressions(ast) {
+  // We often have branchings that are simplified so one end vanishes, and
+  // we then get
+  //   if (!(x < 5))
+  // or such. Simplifying these saves space and time.
+  function simplifyNotComps(ast) {
+    traverse(ast, function(node, type) {
+      if (type == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
+        if (node[2][1] == '<') {
+          return ['binary', '>=', node[2][2], node[2][3]];
+        } else if (node[2][1] == '>') {
+          return ['binary', '<=', node[2][2], node[2][3]];
+        } else if (node[2][1] == '==') {
+          return ['binary', '!=', node[2][2], node[2][3]];
+        } else if (node[2][1] == '!=') {
+          return ['binary', '==', node[2][2], node[2][3]];
+        } else if (node[2][1] == '===') {
+          return ['binary', '!==', node[2][2], node[2][3]];
+        } else if (node[2][1] == '!==') {
+          return ['binary', '===', node[2][2], node[2][3]];
+        }
       }
-    }
-  });
+    });
+  }
+
+  // Go
+
+  simplifyNotComps(ast);
 }
 
 function loopOptimizer(ast) {
@@ -361,7 +368,7 @@ var passes = {
   unGlobalize: unGlobalize,
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
-  simplifyNotComps: simplifyNotComps,
+  simplifyExpressions: simplifyExpressions,
   loopOptimizer: loopOptimizer
 };
 
