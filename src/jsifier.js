@@ -147,11 +147,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       var currValue = flatten(values[i]);
       if (I64_MODE == 1 && typeData.fields[i] == 'i64') {
         // 'flatten' out the 64-bit value into two 32-bit halves
-        ret[index++] = currValue + '>>>0';
+        ret[index++] = currValue>>>0;
         ret[index++] = 0;
         ret[index++] = 0;
         ret[index++] = 0;
-        ret[index++] = 'Math.floor(' + currValue + '/4294967296)';
+        ret[index++] = Math.floor(currValue/4294967296);
         ret[index++] = 0;
         ret[index++] = 0;
         ret[index++] = 0;
