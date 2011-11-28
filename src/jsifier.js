@@ -32,11 +32,6 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
     print(pre);
     print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
-    if (RUNTIME_TYPE_INFO) {
-      Types.cleanForRuntime();
-      print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
-      print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
-    }
   }
 
   // Add additional necessary items for the main pass
@@ -1088,7 +1083,11 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     // "Final shape that will be created").
     var generated = itemsDict.type.concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
     generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
-
+    if (RUNTIME_TYPE_INFO) {
+      Types.cleanForRuntime();
+      print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
+      print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
+    }
     var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
