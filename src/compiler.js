@@ -102,3 +102,10 @@ raw = null;
 
 JSify(analyzer(intertyper(lines)));
 
+if (DEBUG_MEMORY) {
+  print('zzz. last gc: ' + gc());
+  MemoryDebugger.dump();
+  print('zzz. hanging now!');
+  while(1){};
+}
+

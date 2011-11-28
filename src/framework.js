@@ -13,7 +13,60 @@
 // output of the entire calculation done in the substrate.
 //
 
-DEBUG = false;
+var DEBUG = 0;
+var DEBUG_MEMORY = 0;
+
+var MemoryDebugger = {
+  time: Date.now(),
+  datas: {},
+  last: 0,
+
+  tick: function(name) {
+    var now = Date.now();
+    if (now - this.time > 1000) {
+      // ..
+      this.time = now;
+    }
+
+    // assume |name| exists from now on
+
+    print('zzz timer gc...');
+    var raw = gc().replace('\n', '');
+    print('zzz       gc: ' + raw);
+    var info = /before (\d+), after (\d+),.*/.exec(raw);
+    var before = info[1];
+    var after = info[2];
+    var garbage = before - after;
+    var real = after - MemoryDebugger.last;
+    MemoryDebugger.last = after;
+
+    if (Math.abs(garbage) + Math.abs(real) > 0) {
+      var data = MemoryDebugger.datas[name];
+      if (!data) {
+        data = MemoryDebugger.datas[name] = {
+          name: name,
+          count: 0,
+          garbage: 0,
+          real: 0
+        };
+      }
+      data.garbage += garbage;
+      data.real += real;
+    }
+
+    MemoryDebugger.dump();
+  },
+
+  dump: function() {
+    var vals = values(MemoryDebugger.datas);
+    print('zz real:');
+    vals.sort(function(x, y) { return y.real - x.real });
+    vals.forEach(function(v) { if (v.real > 1024*1024) print('zz    ' + v.name + ' real = ' + (v.real/(1024*1024)).toFixed(3) + ' mb'); });
+    print('zz garbage:');
+    vals.sort(function(x, y) { return y.garbage - x.garbage });
+    vals.forEach(function(v) { if (v.garbage > 1024*1024) print('zz    ' + v.name + ' garbage = ' + (v.garbage/(1024*1024)).toFixed(3) + ' mb'); });
+  }
+}
 
 Substrate = function(name_) {
   this.name_ = name_;
@@ -71,9 +124,9 @@ Substrate.prototype = {
     var startTime = Date.now();
     var midTime = startTime;
     var that = this;
-    function midComment(force) {
+    function midComment() {
       var curr = Date.now();
-      if (curr - midTime > 500 || force) {
+      if (curr - midTime > 500) {
         dprint('framework', '// Working on ' + that.name_ + ', so far ' + ((curr-startTime)/1000).toString().substr(0,10) + ' seconds.');
         midTime = curr;
       }
@@ -82,14 +135,16 @@ Substrate.prototype = {
       dprint('framework', '// Completed ' + that.name_ + ' in ' + ((Date.now() - startTime)/1000).toString().substr(0,10) + ' seconds.');
     }
 
+    var ret = null;
     var finalResult = null;
     this.results = [];
     var finished = false;
     var that = this;
+    var actors = values(this.actors); // Assumes actors are not constantly added
     while (!finished) {
       dprint('framework', "Cycle start, items: ");// + values(this.actors).map(function(actor) actor.items).reduce(function(x,y) x+y, 0));
       var hadProcessing = false;
-      values(this.actors).forEach(function(actor) {
+      actors.forEach(function(actor) {
         midComment();
 
         that.checkInbox(actor);
@@ -102,6 +157,7 @@ Substrate.prototype = {
         actor.items = []; // More may be added in process(); we'll get to them next time
         //var t = Date.now();
         outputs = actor.process(inputs);
+        if (DEBUG_MEMORY) MemoryDebugger.tick('actor ' + actor.name_);
         //t = (Date.now()-t)/1000;
         //dprint('framework', 'Took ' + t + ' seconds.');
         dprint('framework', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
@@ -127,14 +183,23 @@ Substrate.prototype = {
         this.results.forEach(function(output) {
           delete output.__uid__; // Might recycle these
         });
-        return this.results;
+        ret =  this.results;
+        break;
       }
       if (finalResult) {
-        return finalResult;
+        ret = finalResult;
+        break;
       }
       midComment();
     }
-    return null;
+
+    // Clear the actors. Do not forget about the actors, though, to make this substrate reusable.
+    actors.forEach(function(actor) {
+      actor.items = null;
+      actor.inbox = null;
+    });
+
+    return ret;
   }
 };
 

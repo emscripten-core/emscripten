@@ -90,7 +90,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           }
         }
       }
-      this.forwardItems(ret.filter(function(item) { return item.lineText; }), 'Tokenizer');
+      this.forwardItems(ret.filter(function(item) { return item.lineText && item.lineText[0] != ';'; }), 'Tokenizer');
       return unparsedFunctions;
     }
   });
@@ -312,7 +312,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           }
           if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
             return 'Call';
-          if (token0Text in set(';', 'target'))
+          if (token0Text == 'target')
             return '/dev/null';
           if (tokensLength >= 3 && token0Text == 'invoke')
             return 'Invoke';

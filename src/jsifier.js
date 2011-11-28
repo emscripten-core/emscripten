@@ -103,6 +103,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
     // We don't need to save anything here, the function has printed itself out and can now be forgotten
     data.unparsedFunctions[i] = null;
+    //if (DEBUG_MEMORY) MemoryDebugger.tick('func ' + i + '|' + func.ident + (i == 0 ? ' <first>' : ''));
   }
 
   // Actors
@@ -1074,7 +1075,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
       }).filter(function(func) {
         return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
       }));
-      print(generated.map(function(item) { return item.JS }).join('\n'));
+      if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
       return;
     }
 
