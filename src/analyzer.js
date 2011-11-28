@@ -169,7 +169,7 @@ function analyzer(data) {
       for (type in Types.needAnalysis) {
         if (type) addType(type, data);
       }
-      Types.needAnalysis = [];
+      Types.needAnalysis = {};
       this.forwardItem(data, 'Typeanalyzer');
     }
   });
