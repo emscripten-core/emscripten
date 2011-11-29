@@ -92,7 +92,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
           }
         }
       }
-      this.forwardItems(ret.filter(function(item) { return item.lineText && item.lineText[0] != ';'; }), 'Tokenizer');
+      // We need lines beginning with ';' inside functions, because older LLVM versions generated labels that way. But when not
+      // parsing functions, we can ignore all such lines and save some time that way.
+      this.forwardItems(ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || parseFunctions); }), 'Tokenizer');
       return unparsedFunctions;
     }
   });
