@@ -99,12 +99,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
 
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
-    dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
-    JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
-    // We don't need to save anything here, the function has printed itself out and can now be forgotten
+    // We don't need to save anything past here
     data.unparsedFunctions[i] = null;
-    //if (DEBUG_MEMORY) MemoryDebugger.tick('func ' + i + '|' + func.ident + (i == 0 ? ' <first>' : ''));
+    dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
+    if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func ' + func.ident);
+    JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
+    if (DEBUG_MEMORY) MemoryDebugger.tick('func ' + func.ident);
   }
+  func = null; // Do not hold on to anything from inside that loop (JS function scoping..)
 
   // Actors
 

@@ -17,9 +17,19 @@ var DEBUG = 0;
 var DEBUG_MEMORY = 0;
 
 var MemoryDebugger = {
-  time: Date.now(),
-  datas: {},
-  last: 0,
+  clear: function() {
+    MemoryDebugger.time = Date.now();
+    MemoryDebugger.datas = {};
+    var info = MemoryDebugger.doGC();
+    MemoryDebugger.last = info[2];
+    MemoryDebugger.tick('--clear--');
+  },
+
+  doGC: function() {
+    var raw = gc().replace('\n', '');
+    print('zz raw gc info: ' + raw);
+    return /before (\d+), after (\d+),.*/.exec(raw);
+  },
 
   tick: function(name) {
     var now = Date.now();
@@ -30,14 +40,14 @@ var MemoryDebugger = {
 
     // assume |name| exists from now on
 
-    print('zzz timer gc...');
     var raw = gc().replace('\n', '');
-    print('zzz       gc: ' + raw);
-    var info = /before (\d+), after (\d+),.*/.exec(raw);
+    var info = MemoryDebugger.doGC();
     var before = info[1];
     var after = info[2];
+    // A GC not called by us may have done some work 'silently'
     var garbage = before - after;
     var real = after - MemoryDebugger.last;
+    print('zz gc stats changes: ' + [name, real, garbage]);
     MemoryDebugger.last = after;
 
     if (Math.abs(garbage) + Math.abs(real) > 0) {
@@ -52,6 +62,7 @@ var MemoryDebugger = {
       }
       data.garbage += garbage;
       data.real += real;
+      data.count++;
     }
 
     MemoryDebugger.dump();
@@ -61,12 +72,14 @@ var MemoryDebugger = {
     var vals = values(MemoryDebugger.datas);
     print('zz real:');
     vals.sort(function(x, y) { return y.real - x.real });
-    vals.forEach(function(v) { if (v.real > 1024*1024) print('zz    ' + v.name + ' real = ' + (v.real/(1024*1024)).toFixed(3) + ' mb'); });
+    vals.forEach(function(v) { if (Math.abs(v.real) > 1024*1024) print('zz    ' + v.name + ' real = ' + (v.real/(1024*1024)).toFixed(3) + ' mb'); });
     print('zz garbage:');
     vals.sort(function(x, y) { return y.garbage - x.garbage });
-    vals.forEach(function(v) { if (v.garbage > 1024*1024) print('zz    ' + v.name + ' garbage = ' + (v.garbage/(1024*1024)).toFixed(3) + ' mb'); });
+    vals.forEach(function(v) { if (Math.abs(v.garbage) > 1024*1024) print('zz    ' + v.name + ' garbage = ' + (v.garbage/(1024*1024)).toFixed(3) + ' mb'); });
   }
 }
+
+if (DEBUG_MEMORY) MemoryDebugger.clear();
 
 Substrate = function(name_) {
   this.name_ = name_;
@@ -120,6 +133,8 @@ Substrate.prototype = {
 
   solve: function() {
     dprint('framework', "// Solving " + this.name_ + "...");
+
+    if (DEBUG_MEMORY) MemoryDebugger.tick('pre-run substrate ' + this.name_ + ' (priors may be cleaned)');
 
     var startTime = Date.now();
     var midTime = startTime;
