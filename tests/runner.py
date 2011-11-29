@@ -4201,6 +4201,7 @@ Child2:9
         src = open(filename + '.cc.js', 'r').read()
         assert re.search('function \w\(', src) # see before
         assert 'function _main()' not in src # closure should have wiped it out
+        shutil.move(filename, filename + '.old.js')
         open(filename, 'w').write(src)
 
       self.do_run(src, '*closured*\ndata: 100,1,50,25\n', post_build=post)

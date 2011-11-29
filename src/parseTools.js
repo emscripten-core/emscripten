@@ -738,14 +738,14 @@ function getLabelIds(labels) {
 function getNativeTypeSize(type) {
   if (QUANTUM_SIZE == 1) return 1;
   var size = {
-    '_i1': 1,
-    '_i8': 1,
-    '_i16': 2,
-    '_i32': 4,
-    '_i64': 8,
-    "_float": 4,
-    "_double": 8
-  }['_'+type]; // add '_' since float&double confuse Closure compiler as keys.
+    '%i1': 1,
+    '%i8': 1,
+    '%i16': 2,
+    '%i32': 4,
+    '%i64': 8,
+    "%float": 4,
+    "%double": 8
+  }['%'+type]; // add '%' since float and double confuse Closure compiler as keys, and also spidermonkey as a compiler will remove 's from '_i8' etc
   if (!size && type[type.length-1] == '*') {
     size = QUANTUM_SIZE; // A pointer
   }
