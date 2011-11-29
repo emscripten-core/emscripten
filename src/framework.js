@@ -150,16 +150,13 @@ Substrate.prototype = {
         that.checkInbox(actor);
         if (actor.items.length == 0) return;
 
-        var inputs = actor.items.slice(0);
+        var inputs = actor.items;
         var outputs;
         var currResultCount = that.results.length;
         dprint('framework', 'Processing using ' + actor.name_ + ': ' + inputs.length);
-        actor.items = []; // More may be added in process(); we'll get to them next time
-        //var t = Date.now();
+        actor.items = [];
         outputs = actor.process(inputs);
         if (DEBUG_MEMORY) MemoryDebugger.tick('actor ' + actor.name_);
-        //t = (Date.now()-t)/1000;
-        //dprint('framework', 'Took ' + t + ' seconds.');
         dprint('framework', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
         hadProcessing = true;
 
@@ -215,6 +212,7 @@ Actor.prototype = {
     var ret = [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
+      items[i] = null; // items may be very very large. Allow GCing to occur in the loop by releasing refs here
       dprint('frameworkLines', 'Processing item for llvm line ' + item.lineNum);
       Framework.currItem = item;
       var outputs = this.processItem(item);

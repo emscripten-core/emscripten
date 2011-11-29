@@ -45,6 +45,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var unparsedFunctions = [];
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
+        lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
+
         if (!parseFunctions && /^define .*/.test(line)) {
           inFunction = true;
           currFunctionLines = [];
