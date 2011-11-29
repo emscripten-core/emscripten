@@ -284,3 +284,13 @@ function jsonCompare(x, y) {
   return JSON.stringify(x) == JSON.stringify(y);
 }
 
+function stringifyWithFunctions(obj) {
+  if (typeof obj === 'function') return obj.toString();
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (isArray(obj)) {
+    return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
+  } else {
+    return '{' + keys(obj).map(function(key) { return key + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
+  }
+}
+

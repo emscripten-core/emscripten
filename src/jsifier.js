@@ -359,19 +359,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
               snippet = '_' + snippet;
             }
           } else if (typeof snippet === 'object') {
-            if (snippet === null) {
-              snippet = 'null';
-            } else {
-              var members = [];
-              for (var property in snippet) {
-                if (typeof snippet[property] === 'function') {
-                  members.push(property + ': ' + snippet[property].toString());
-                } else {
-                  members.push(property + ': ' + JSON.stringify(snippet[property]));
-                }
-              }
-              snippet = '{' + members.join(', ') + ' }';
-            }
+            snippet = stringifyWithFunctions(snippet);
           } else if (typeof snippet === 'function') {
             isFunction = true;
             snippet = snippet.toString();
