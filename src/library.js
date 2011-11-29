@@ -3387,12 +3387,13 @@ LibraryManager.library = {
       var idx = Math.floor((min + max) / 2);
       var p = base+idx*size;
       var cmp = comparator(key, p);
-      if (cmp < 0)
+      if (cmp < 0) {
         max = idx;
-      else if (cmp > 0)
+      } else if (cmp > 0) {
         min = idx + 1;
-      else
+      } else {
         return p;
+      }
     }
     return 0;
   },
