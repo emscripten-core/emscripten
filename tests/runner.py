@@ -3713,6 +3713,7 @@ if 'benchmark' not in str(sys.argv):
 
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
+        #if 'break' not in shortname: continue
         print "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
         if Settings.QUANTUM_SIZE == 1:

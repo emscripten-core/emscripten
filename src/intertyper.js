@@ -314,6 +314,8 @@ function intertyper(data, parseFunctions, baseLineNum) {
             return 'Call';
           if (token0Text == 'target')
             return '/dev/null';
+          if (token0Text == ';')
+            return '/dev/null';
           if (tokensLength >= 3 && token0Text == 'invoke')
             return 'Invoke';
         } else {
