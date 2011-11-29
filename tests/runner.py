@@ -2716,7 +2716,7 @@ if 'benchmark' not in str(sys.argv):
           '// {{PRE_RUN_ADDITIONS}}',
           '''
             FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
-            FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+            FS.createLazyFile('/', 'test.file', 'test.file', true, false, true);
             FS.root.write = true;
             var test_files_input = 'hi there!';
             var test_files_input_index = 0;
