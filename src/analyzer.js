@@ -279,14 +279,12 @@ function analyzer(data) {
         // Normal variables
         func.lines.forEach(function(item) {
           if (item.intertype === 'assign') {
-            if (!item.value.tokens.slice(-1)[0].item) throw 'Did you run llvm-dis with -show-annotations?';
-            var commaIndex = getTokenIndexByText(item.value.tokens, ';');
             var variable = func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
               origin: item.value.intertype,
               lineNum: item.lineNum,
-              uses: parseInt(item.value.tokens[commaIndex+1].item.tokens[0].text.split('=')[1])
+              uses: item.uses
             };
             assert(isNumber(variable.uses), 'Failed to find the # of uses of var: ' + item.ident);
             if (variable.origin === 'alloca') {

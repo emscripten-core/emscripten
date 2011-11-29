@@ -192,8 +192,9 @@ Substrate.prototype = {
       if (!hadProcessing) {
         if (DEBUG) print("Solving complete: no remaining items");
         finalComment();
-        this.results.forEach(function(output) {
-          delete output.__uid__; // Might recycle these
+        this.results.forEach(function(result) {
+          delete result.__uid__; // Might recycle these
+          if (that.onResult) that.onResult(result);
         });
         ret =  this.results;
         break;

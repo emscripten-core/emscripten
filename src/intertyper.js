@@ -526,16 +526,18 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Assign', {
     processItem: function(item) {
       var opIndex = findTokenText(item, '=');
+      if (!item.tokens.slice(-1)[0].item) throw 'Did you run llvm-dis with -show-annotations?';
+      var commentIndex = getTokenIndexByText(item.tokens, ';');
       var pair = splitItem({
         intertype: 'assign',
         ident: toNiceIdent(combineTokens(item.tokens.slice(0, opIndex)).text),
-        lineNum: item.lineNum
+        lineNum: item.lineNum,
+        uses: parseInt(item.tokens[commentIndex+1].item.tokens[0].text.split('=')[1])
       }, 'value');
       this.forwardItem(pair.parent, 'Reintegrator');
-      this.forwardItem(mergeInto(pair.child, { // Additional token, to be triaged and later re-integrated
-        indent: -1,
-        tokens: item.tokens.slice(opIndex+1)
-      }), 'Triager');
+      pair.child.indent = -1;
+      pair.child.tokens = item.tokens.slice(opIndex+1);
+      this.forwardItem(pair.child, 'Triager');
     }
   });
 
@@ -935,6 +937,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addItem({
     llvmLines: data
   }, 'LineSplitter');
+
+  substrate.onResult = function(result) {
+    if (result.tokens) result.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
+  };
 
   return substrate.solve();
 }
