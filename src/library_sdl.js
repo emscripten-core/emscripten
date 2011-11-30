@@ -226,6 +226,7 @@ mergeInto(LibraryManager.library, {
 
   SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
+    SDL.isLittleEndian = ( new Int8Array(new Int32Array([1]).buffer)[0] === 1 );
     SDL.startTime = Date.now();
     ['keydown', 'keyup', 'keypress'].forEach(function(event) {
       addEventListener(event, SDL.receiveEvent, true);
@@ -484,8 +485,7 @@ mergeInto(LibraryManager.library, {
   // SDL_Audio
 
   SDL_OpenAudio: function(desired, obtained) {
-    // FIXME: Assumes 16-bit audio
-    assert(obtained === 0, 'Cannot return obtained SDL audio params');
+    var acceptsAlternative = (obtained === 0);
 
     SDL.audio = {
       freq: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.freq', 'i32', 0, 1) }}},
@@ -495,31 +495,232 @@ mergeInto(LibraryManager.library, {
       callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*', 0, 1) }}},
       userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*', 0, 1) }}},
       paused: true,
-      timer: null
+      timer: null,
+      //TODO: Move this to SDL_INIT as it is "static"
+      formats: {
+        U8:     0x0008,  // Unsigned 8-bit samples
+        S8:     0x8008,  // Signed 8-bit samples
+        U16LSB: 0x0010,  // Unsigned 16-bit samples
+        S16LSB: 0x8010,  // Signed 16-bit samples
+        U16MSB: 0x1010,  // As above, but big-endian byte order
+        S16MSB: 0x9010,  // As above, but big-endian byte order
+        S32LSB: 0x8020,
+        S32MSB: 0x9020,
+        F32LSB: 0x8120,  // 32-bit floating point samples
+        F32MSB: 0x9120,  // As above, but big-endian byte order
+        MASK_BITSIZE:  0xFF,
+        MASK_DATATYPE: 1<<8,
+        MASK_ENDIAN:   1<<12,
+        MASK_SIGNED:   1<<15,
+        BITSIZE:        function(x) { return x & SDL.audio.formats.MASK_BITSIZE    },
+        ISFLOAT:        function(x) { return x & SDL.audio.formats.MASK_DATATYPE   },
+        ISBIGENDIAN:    function(x) { return x & SDL.audio.formats.MASK_ENDIAN     },
+        ISSIGNED:       function(x) { return x & SDL.audio.formats.MASK_SIGNED     },
+        ISINT:          function(x) { return !SDL.audio.formats.ISFLOAT(x)         },
+        ISLITTLEENDIAN: function(x) { return !SDL.audio.formats.ISBIGENDIAN(x)     },
+        ISUNSIGNED:     function(x) { return !SDL.audio.formats.ISSIGNED(x)        }
+      }
     };
 
+    // Determine the format
+    
+    var endianMatch = !(SDL.audio.formats.ISLITTLEENDIAN(format) ^ SDL.isLittleEndian);
+    
+    if( acceptsAlternative && !endianMatch )
+    { // Let's make a wish for a format we like
+      var floatFormat = 'F32' + ;
+      if( SDL.isLittleEndian )
+        floatFormat += 'LSB';
+      else
+        floatFormat += 'MSB';
+        
+      SDL.audio.format = SDL.audio.formats[floatFormat];
+    
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.freq'    , 'SDL.audio.freq'    , 'i32'  ) }}},
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.format'  , 'SDL.audio.format'  , 'i16'  ) }}},
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.channels', 'SDL.audio.channels', 'i8'   ) }}},
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.samples' , 'SDL.audio.samples' , 'i16'  ) }}},
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.callback', 'SDL.audio.callback', 'void*') }}},
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.userdata', 'SDL.audio.userdata', 'void*') }}},
+    }
+    
     var totalSamples = SDL.audio.samples*SDL.audio.channels;
-    SDL.audio.bufferSize = totalSamples*2; // hardcoded 16-bit audio
-    SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
+    SDL.audio.sampleSize = SDL.audio.formats.BITSIZE(SDL.audio.format) / 8;
+    SDL.audio.bufferSize = totalSamples * SDL.audio.sampleSize;
+    SDL.audio.buffer = _malloc(SDL.audio.bufferSize); // Used for the callback to write into
+    SDL.audio.sampleValueCount = Math.pow(2, SDL.audio.formats.BITSIZE(SDL.audio.format)) - 1;
+    
+    if( SDL.audio.formats.ISFLOAT(SDL.audio.format) ) {
+      SDL.audio.emtype = 'float';
+      
+      SDL.audio.getValue: function(ptr, i) {
+        return {{{ makeGetValue('ptr', 'i * SDL.audio.sampleSize', 'SDL.audio.emtype') }}};
+      };
+    } else {
+      SDL.audio.emtype = 'i' + SDL.audio.formats.BITSIZE(SDL.audio.format)
+      
+      if( SDL.audio.formats.ISUNSIGNED(SDL.audio.format) ) {
+        SDL.audio.getValue: function(ptr, i) {
+          return {{{ makeGetValue('ptr', 'i * SDL.audio.sampleSize', 'SDL.audio.emtype', 0, 1) }}}
+        };
+      }
+      else
+      {
+        SDL.audio.getValue: function(ptr, i) {
+          return {{{ makeGetValue('ptr', 'i * SDL.audio.sampleSize', 'SDL.audio.emtype', 0, 0) }}}
+        };
+      }
+    }
+    
     SDL.audio.caller = function() {
       FUNCTION_TABLE[SDL.audio.callback](SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
       SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
     };
-    // Mozilla Audio API. TODO: Other audio APIs
-    try {
-      SDL.audio.mozOutput = new Audio();
-      SDL.audio.mozOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
-      SDL.audio.mozBuffer = new Float32Array(totalSamples);
-      SDL.audio.pushAudio = function(ptr, size) {
-        var mozBuffer = SDL.audio.mozBuffer;
-        for (var i = 0; i < totalSamples; i++) {
-          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 1) }}} / 65536)-1; // hardcoded 16-bit audio
-        }
-        SDL.audio.mozOutput['mozWriteAudio'](mozBuffer);
+    
+    // Try to figure out audio API
+    
+    var apis = [
+      function(){ // Standard
+        SDL.audio.context = new AudioContext();
+      },
+      function(){ // Mozilla
+        SDL.audio.mozOutput = new Audio();
+      },
+      function(){ // Webkit
+        SDL.audio.context = new webkitAudioContext();
       }
+      //TODO: Other audio APIs
+    ];
+    
+    for( var api in apis )
+    {
+      try {
+        api();
+        break;
+      } catch(e) {
+        // Continue to next api
+      }
+    }
+    
+    //
+    // Try to setup the found audio API
+    //
+    
+    try {
+      
+      if( SDL.audio.mozOutput ) { // Setup for Mozilla
+        SDL.audio.mozOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
+        SDL.audio.sendBuffer = new DataView(new Float32Array(totalSamples));
+        SDL.audio.submit: function() {
+          SDL.audio.mozOutput['mozWriteAudio'](SDL.audio.sendBuffer);
+        };
+      } else( SDL.audio.context ) { // Setup for Standard
+        var actx = SDL.audio.context;
+        
+        if( !acceptsAlternative ) {
+          // Channels should be ok
+          
+          if( actx.sampleRate != SDL.audio.freq )
+            throw 'WRONG RATE;
+        }
+        
+        SDL.audio.source = actx.createBufferSource();
+        SDL.audio.source['looping'] = false;
+        SDL.audio.source['connect'](actx.destination);
+        SDL.audio.sendBuffer = actx.createBuffer(SDL.audio.channels, totalSamples, actx['sampleRate']);
+        SDL.audio.submit: function() {
+          SDL.audio.source['noteOn'](0);
+        };
+      } else
+        throw 'NO API';
+      
+      //
+      // Set up handling for endianess conversion
+      //  and buffer filling
+      
+      var endianMatch = !(SDL.audio.formats.BITSIZE(SDL.audio.format) ^ SDL.isLittleEndian);
+        
+      if( SDL.audio.formats.ISINT(SDL.audio.format) ) {
+        // Handle INT
+        if( endianMatch ) {
+          if( SDL.audio.formats.ISUNSIGNED(SDL.audio.format) ) {
+            SDL.audio.copy: function(ptr, i) {
+              var floatValue = SDL.audio.getValue(ptr, i) / SDL.audio.sampleValueCount) - 1;
+              SDL.audio.sendBuffer.buffer.set(i, floatValue);
+            };
+          } else {
+            SDL.audio.copy: function(ptr, i) {
+              var floatValue = SDL.audio.getValue(ptr, i) / SDL.audio.sampleValueCount);
+              SDL.audio.sendBuffer.buffer.set(i, floatValue);
+            };
+          }
+        } else { //!endianMatch
+          if( SDL.audio.formats.ISUNSIGNED(SDL.audio.format) ) {
+            SDL.audio.copy: function(ptr, i) {
+              var floatValue = SDL.audio.getValue(ptr, i) / SDL.audio.sampleValueCount) - 1;
+              SDL.audio.sendBuffer.setFloat32(i, floatValue, !SDL.isLittleEndian);
+            };
+          } else {
+            SDL.audio.copy: function(ptr, i) {
+              var floatValue = SDL.audio.getValue(ptr, i) / SDL.audio.sampleValueCount);
+              SDL.audio.sendBuffer.buffer.set(i, floatValue, !SDL.isLittleEndian);
+            }
+          }
+        }
+      } else {
+        // Handle FLOAT
+        if( endianMatch ) {
+          SDL.audio.copy: function(ptr, i) {
+            SDL.audio.sendBuffer.buffer.set(i, SDL.audio.getValue(ptr, i));
+          };
+        } else { //!endianMatch
+          SDL.audio.copy: function(ptr, i) {
+            // By using not the system endian it should switch bits
+            SDL.audio.setFloat32(i, SDL.audio.getValue(ptr, i), !SDL.isLittleEndian);
+          };
+        }
+      }
+      
+      if( SDL.audio.sendBuffer.prototype === DataView ) {
+        SDL.audio.copyArray: function(ptr, size) {
+          // FIXME: It would probably be far faster if we could
+          // get around the double buffer writing
+          for (var i = 0; i < totalSamples; i++) {
+            SDL.audio.copy(ptr, i);
+          }
+        };
+      } else if( SDL.audio.sendBuffer.prototype === AudioBuffer ) {
+        SDL.audio.channelViews = [];
+        
+        // First create a view
+        for( var i = 0; i < SDL.audio.sendBuffer.numberOfChannels; i++ ) {
+          var channelArray = SDL.audio.sendBuffer.getChannelData(i);
+          SDL.audio.channelViews.append(new DataView(channelArray));
+        }
+        
+        SDL.audio.copyArray: function(ptr, size) {
+          
+          // FIXME: It would probably be far faster if we could
+          // get around the double buffer writing
+          
+          for (var i = 0, ic = 0; i < totalSamples; i++, ic++) {
+            if( ic == SDL.audio.sendBuffer.numberOfChannels )
+              ic = 0;
+            var view = SDL.audio.channelViews[ic];
+            SDL.audio.copy(ptr, i, view);
+          }
+        };
+      }
+      
+      SDL.audio.pushAudio: function(ptr, size) {
+        SDL.audio.copyArray(ptr, size);
+        SDL.audio.submit();
+      };
+      
     } catch(e) {
       SDL.audio = null;
     }
+    
     if (!SDL.audio) return -1;
     return 0;
   },
