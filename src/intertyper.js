@@ -339,7 +339,6 @@ function intertyper(data, parseFunctions, baseLineNum) {
   substrate.addActor('Global', {
     processItem: function(item) {
       function scanConst(value, type) {
-        //dprint('inter-const: ' + item.lineNum + ' : ' + JSON.stringify(value) + ',' + type + '\n');
         Types.needAnalysis[type] = 0;
         if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
           return { value: toNiceIdent(value.text), type: type };

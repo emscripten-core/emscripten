@@ -22,6 +22,7 @@ var MemoryDebugger = {
     MemoryDebugger.datas = {};
     var info = MemoryDebugger.doGC();
     MemoryDebugger.last = info[2];
+    MemoryDebugger.max = 0;
     MemoryDebugger.tick('--clear--');
   },
 
@@ -44,6 +45,7 @@ var MemoryDebugger = {
     var info = MemoryDebugger.doGC();
     var before = info[1];
     var after = info[2];
+    MemoryDebugger.max = Math.max(MemoryDebugger.max, before, after);
     // A GC not called by us may have done some work 'silently'
     var garbage = before - after;
     var real = after - MemoryDebugger.last;
@@ -70,6 +72,7 @@ var MemoryDebugger = {
 
   dump: function() {
     var vals = values(MemoryDebugger.datas);
+    print('zz max: ' + (MemoryDebugger.max/(1024*1024)).toFixed(3));
     print('zz real:');
     vals.sort(function(x, y) { return y.real - x.real });
     vals.forEach(function(v) { if (Math.abs(v.real) > 1024*1024) print('zz    ' + v.name + ' real = ' + (v.real/(1024*1024)).toFixed(3) + ' mb'); });
@@ -115,8 +118,15 @@ Substrate.prototype = {
         this.currUid ++;
       }
     }
-    actor.inbox = [];
-    actor.items = actor.items.concat(items);
+    var MAX_INCOMING = Infinity;
+    if (MAX_INCOMING == Infinity) {
+      actor.inbox = [];
+      actor.items = actor.items.concat(items);
+    } else {
+      throw 'Warning: Enter this code at your own risk. It can save memory, but often regresses speed.';
+      actor.inbox = items.slice(MAX_INCOMING);
+      actor.items = actor.items.concat(items.slice(0, MAX_INCOMING));
+    }
   },
 
   addActor: function(name_, actor) {
