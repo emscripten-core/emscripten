@@ -388,9 +388,6 @@ LibraryManager.library = {
       __impure_ptr = allocate([ allocate(
         {{{ QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
         'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
-
-      // Once initialized, permissions start having effect.
-      FS.ignorePermissions = false;
     },
 
     quit: function() {
@@ -5479,11 +5476,6 @@ LibraryManager.library = {
 
   _Z21emscripten_run_scriptPKc: function(ptr) {
     eval(Pointer_stringify(ptr));
-  },
-
-  EMSCRIPTEN_COMMENT__inline: function(param) {
-    param = stripCorrections(param);
-    return '// ' + Variables.globals[param].value.text.replace('\\00', '') + '   ';
   },
 
   $Profiling: {

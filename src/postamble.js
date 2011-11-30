@@ -20,10 +20,10 @@ Module.callMain = function callMain(args) {
   return _main(argc, argv, 0);
 }
 
+{{GLOBAL_VARS}}
+
 function run(args) {
   args = args || Module['arguments'];
-
-{{GLOBAL_VARS}}
 
   __globalConstructor__();
 
@@ -37,6 +37,11 @@ function run(args) {
 Module['run'] = run;
 
 // {{PRE_RUN_ADDITIONS}}
+
+// In a hackish way, we disable permissions until now, so setup code works, but enable them for runtime so compile code works with permissions
+try {
+  FS.ignorePermissions = false;
+} catch(e){}
 
 #if INVOKE_RUN
 #else

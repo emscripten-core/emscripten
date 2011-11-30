@@ -1580,7 +1580,7 @@ if 'benchmark' not in str(sys.argv):
           #include "emscripten.h"
 
           int main() {
-            EMSCRIPTEN_COMMENT("hello from the source");
+            // EMSCRIPTEN_COMMENT("hello from the source");
             emscripten_run_script("print('hello world' + '!')");
             return 0;
           }
@@ -1588,7 +1588,7 @@ if 'benchmark' not in str(sys.argv):
 
         def check(filename):
           src = open(filename, 'r').read()
-          assert '// hello from the source' in src
+          # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 
         self.do_run(src, 'hello world!', post_build=check)
 
@@ -2712,7 +2712,7 @@ if 'benchmark' not in str(sys.argv):
     def test_files(self):
       Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       def post(filename):
-        src = open(filename, 'r').read().replace(
+        src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
           '// {{PRE_RUN_ADDITIONS}}',
           '''
             FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
@@ -3067,7 +3067,7 @@ if 'benchmark' not in str(sys.argv):
       Settings.INCLUDE_FULL_LIBRARY = 1
       try:
         def addJS(filename):
-          src = open(filename, 'r').read().replace(
+          src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
             '// {{PRE_RUN_ADDITIONS}}',
             open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
           open(filename, 'w').write(src)
@@ -4546,6 +4546,7 @@ class %s(T):
     llvm_opts = %d # 1 is yes, 2 is yes and unsafe
     embetter = %d
     quantum_size = %d
+    # TODO: Move much of these to a init() function in shared.py, and reuse that
     Settings.USE_TYPED_ARRAYS = %d
     Settings.INVOKE_RUN = 1
     Settings.RELOOP = Settings.MICRO_OPTS = embetter
@@ -4564,11 +4565,15 @@ class %s(T):
     Settings.RUNTIME_TYPE_INFO = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.PROFILE = 0
+    Settings.INCLUDE_FULL_LIBRARY = 0
+    Settings.BUILD_AS_SHARED_LIB = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
     Settings.EMULATE_UNALIGNED_ACCESSES = Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.I64_MODE = 1
       Settings.SAFE_HEAP = 1 # only checks for alignment problems, which is very important with unsafe opts
+    else:
+      Settings.I64_MODE = 0
 
     if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow

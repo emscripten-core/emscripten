@@ -1,3 +1,8 @@
+/*
+Note: Hardcoded st_ino values etc. may change with minor changes to the library impl.
+      In such an event, we will need to update output.txt here.
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>

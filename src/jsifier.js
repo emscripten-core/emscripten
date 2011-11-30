@@ -2,7 +2,7 @@
 // before this stage, which just does the final conversion to JavaScript.
 
 // Main function
-function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
+function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
 
   if (mainPass) {
@@ -33,7 +33,26 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     print(pre);
     print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
 
-    // Add additional necessary items for the main pass
+    Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
+  }
+
+  // Does simple 'macro' substitution, using Django-like syntax,
+  // {{{ code }}} will be replaced with |eval(code)|.
+  function processMacros(text) {
+    return text.replace(/{{{[^}]+}}}/g, function(str) {
+      str = str.substr(3, str.length-6);
+      return eval(str).toString();
+    });
+  }
+
+  substrate = new Substrate('JSifyer');
+
+  if (mainPass) {
+    // Handle unparsed types TODO: Batch them
+    JSify(analyzer(intertyper(data.unparsedTypess[0].lines, true)), true, Functions);
+
+    // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
+    // generateStructInfo in library.js)
     LibraryManager.load();
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
@@ -53,23 +72,9 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
         ident: '_' + ident
       });
     });
-
-    Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
   }
 
-  // Does simple 'macro' substitution, using Django-like syntax,
-  // {{{ code }}} will be replaced with |eval(code)|.
-  function processMacros(text) {
-    return text.replace(/{{{[^}]+}}}/g, function(str) {
-      str = str.substr(3, str.length-6);
-      return eval(str).toString();
-    });
-  }
-
-  substrate = new Substrate('JSifyer');
-
-  var GLOBAL_VARIABLES = !mainPass ? givenGlobalVariables : data.globalVariables;
-  Variables.globals = GLOBAL_VARIABLES;
+  // Functions
 
   Functions.currFunctions = !mainPass ? givenFunctions.currFunctions : {};
   Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
@@ -101,7 +106,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     data.unparsedFunctions[i] = null;
     dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
     if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func ' + func.ident);
-    JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions, GLOBAL_VARIABLES);
+    JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions);
     if (DEBUG_MEMORY) MemoryDebugger.tick('func ' + func.ident);
   }
   func = null; // Do not hold on to anything from inside that loop (JS function scoping..)
@@ -225,7 +230,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       item.intertype = 'GlobalVariableStub';
-      delete item.lines; // Save some memory
+      item.lines = null; // Save some memory
       var ret = [item];
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
@@ -585,7 +590,14 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   });
 
   function getVarData(funcData, ident) {
-    return funcData.variables[ident] || GLOBAL_VARIABLES[ident] || null;
+    var local = funcData.variables[ident];
+    if (local) return local;
+    var global = Variables.globals[ident];
+    // FIXME: Currently, if something is an alias, we assume it is not a simple variable, so no need for
+    //        FUNCTION_TABLE when calling it (which we do need for a normal simple global variable). In
+    //        theory though an alias could be simple, we should probably check the type if this ever becomes a problem.
+    if (global && global.alias) global = null;
+    return global || null;
   }
 
   function getVarImpl(funcData, ident) {
@@ -1057,7 +1069,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     //
 
     if (!mainPass) {
-      var generated = itemsDict.function;
+      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
       Functions.allIdents = Functions.allIdents.concat(itemsDict.function.map(function(func) {
         return func.ident;
       }).filter(function(func) {
@@ -1070,7 +1082,7 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     // This is the main pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
-    var generated = itemsDict.type.concat(itemsDict.GlobalVariableStub).concat(itemsDict.functionStub);
+    var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
     generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
     if (RUNTIME_TYPE_INFO) {
       Types.cleanForRuntime();
@@ -1080,8 +1092,10 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
-    itemsDict.GlobalVariable.forEach(function(item) { print(indentify(item.JS, 4)); });
-    itemsDict.GlobalVariablePostSet.forEach(function(item) { print(indentify(item.JS, 4)); });
+
+    // Print out global variables and postsets TODO: batching
+    JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true)), true, Functions);
+
     print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
     print(postParts[1]);
     print(shellParts[1]);
@@ -1094,15 +1108,17 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
   // Data
 
   if (mainPass) {
-    substrate.addItems(values(Types.types).filter(function(type) { return type.lineNum != '?' }), 'Type');
-    substrate.addItems(values(data.globalVariables), 'GlobalVariable');
     substrate.addItems(data.functionStubs, 'FunctionStub');
-    substrate.addItems(data.aliass, 'Alias');
     assert(data.functions.length == 0);
   } else {
+    substrate.addItems(values(Types.types).filter(function(type) { return type.lineNum != '?' && type.name_ }), 'Type');
+    substrate.addItems(values(data.globalVariables), 'GlobalVariable');
+    substrate.addItems(data.aliass, 'Alias');
     substrate.addItems(data.functions, 'FunctionSplitter');
   }
 
   finalCombiner(substrate.solve());
+
+  dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
 }
 

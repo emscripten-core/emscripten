@@ -7,6 +7,9 @@ function tokenize(text) {
 }
 
 function intertyper(data, sidePass, baseLineNum) {
+  var mainPass = !sidePass;
+  dprint('framework', 'Big picture: Starting intertyper, main pass=' + mainPass);
+
   baseLineNum = baseLineNum || 0;
 
   // Substrate
@@ -42,16 +45,47 @@ function intertyper(data, sidePass, baseLineNum) {
       var currFunctionLines;
       var currFunctionLineNum;
       var unparsedBundles = [];
+      var unparsedTypes, unparsedGlobals;
+      if (mainPass) {
+        unparsedTypes = {
+          intertype: 'unparsedTypes',
+          lines: []
+        };
+        unparsedBundles.push(unparsedTypes);
+        unparsedGlobals = {
+          intertype: 'unparsedGlobals',
+          lines: []
+        };
+        unparsedBundles.push(unparsedGlobals);
+      }
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
 
-        if (!sidePass && /^define .*/.test(line)) {
+        if (mainPass && (line[0] == '%' || line[0] == '@')) {
+          // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
+          var testType = /[@%\w\d\.\" ]+ = type .*/.exec(line);
+          if (!testType) {
+            var global = /([@%\w\d\.\" ]+) = .*/.exec(line);
+            var globalIdent = toNiceIdent(global[1]);
+            var testAlias = /[@%\w\d\.\" ]+ = alias .*/.exec(line);
+            Variables.globals[globalIdent] = {
+              name: globalIdent,
+              alias: !!testAlias,
+              impl: VAR_EMULATED
+            };
+            unparsedGlobals.lines.push(line);
+          } else {
+            unparsedTypes.lines.push(line);
+          }
+          continue;
+        }
+        if (mainPass && /^define .*/.test(line)) {
           inFunction = true;
           currFunctionLines = [];
           currFunctionLineNum = i + 1;
         }
-        if (!inFunction || sidePass) {
+        if (!inFunction || !mainPass) {
           if (inContinual || new RegExp(/^\ +to.*/g).test(line)
                           || new RegExp(/^\ +catch .*/g).test(line)
                           || new RegExp(/^\ +filter .*/g).test(line)
@@ -74,9 +108,9 @@ function intertyper(data, sidePass, baseLineNum) {
         } else {
           currFunctionLines.push(line);
         }
-        if (!sidePass && /^}.*/.test(line)) {
+        if (mainPass && /^}.*/.test(line)) {
           inFunction = false;
-          if (!sidePass) {
+          if (mainPass) {
             var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true))[0];
             unparsedBundles.push({
               intertype: 'unparsedFunction',
@@ -93,7 +127,7 @@ function intertyper(data, sidePass, baseLineNum) {
       }
       // We need lines beginning with ';' inside functions, because older LLVM versions generated labels that way. But when not
       // parsing functions, we can ignore all such lines and save some time that way.
-      this.forwardItems(ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || sidePass); }), 'Tokenizer');
+      this.forwardItems(ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || !mainPass); }), 'Tokenizer');
       return unparsedBundles;
     }
   });

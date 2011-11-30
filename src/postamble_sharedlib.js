@@ -1,8 +1,9 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+{{GLOBAL_VARS}}
+
 function run(args) {
-  {{GLOBAL_VARS}}
   __globalConstructor__();
 }
 Module['run'] = run;

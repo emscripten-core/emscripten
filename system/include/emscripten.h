@@ -20,8 +20,10 @@ extern void emscripten_run_script(const char *script);
 /*
  * This macro-looking function will cause Emscripten to
  * generate a comment in the generated code.
+ * XXX This is deprecated for now, because it requires us to
+ *     hold all global vars in memory. We need a better solution.
  */
-extern void EMSCRIPTEN_COMMENT(const char *text);
+//extern void EMSCRIPTEN_COMMENT(const char *text);
 
 /*
  * Profiling tools.

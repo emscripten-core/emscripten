@@ -337,7 +337,7 @@ function parseParamTokens(params) {
           value: null,
           ident: toNiceIdent('%') + anonymousIndex
         });
-        Types.needAnalysis[ret.type] = 0;
+        Types.needAnalysis[ret[ret.length-1].type] = 0;
         anonymousIndex ++;
       }
     } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
@@ -358,9 +358,7 @@ function parseParamTokens(params) {
         value: segment[1],
         ident: toNiceIdent(parseNumerical(segment[1].text))
       });
-      Types.needAnalysis[ret.type] = 0;
-      //          } else {
-      //            throw "what is this params token? " + JSON.stringify(segment);
+      Types.needAnalysis[removeAllPointing(ret[ret.length-1].type)] = 0;
     }
     ret[ret.length-1].byVal = byVal;
   }

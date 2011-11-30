@@ -191,7 +191,7 @@ var Debugging = {
 };
 
 var Variables = {
-  globals: null
+  globals: {}
 };
 
 var Types = {
