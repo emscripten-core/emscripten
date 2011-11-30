@@ -281,6 +281,7 @@ function makeReintegrator(afterFunc) {
       }
       for (var i = 0; i < items.length; i++) {
         var child = items[i];
+        if (!child) continue; // it might have been removed by a previous pass
         var j = lineDict[child.parentLineNum];
         if (typeof j === 'number') {
           var parent = items[j];
