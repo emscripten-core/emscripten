@@ -32,10 +32,8 @@ function JSify(data, functionsOnly, givenFunctions, givenGlobalVariables) {
     var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
     print(pre);
     print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
-  }
 
-  // Add additional necessary items for the main pass
-  if (mainPass) {
+    // Add additional necessary items for the main pass
     LibraryManager.load();
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {

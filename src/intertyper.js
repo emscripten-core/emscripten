@@ -33,7 +33,10 @@ function intertyper(data, parseFunctions, baseLineNum) {
 
   substrate = new Substrate('Intertyper');
 
-  // Line splitter.
+  // Line splitter. We break off some bunches of lines into unparsedBundles, which are
+  // parsed in separate passes later. This helps to keep memory usage low - we can start
+  // from raw lines and end up with final JS for each function individually that way, instead
+  // of intertyping them all, then analyzing them all, etc.
   substrate.addActor('LineSplitter', {
     processItem: function(item) {
       var lines = item.llvmLines;
@@ -42,7 +45,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       var inFunction = false;
       var currFunctionLines;
       var currFunctionLineNum;
-      var unparsedFunctions = [];
+      var unparsedBundles = [];
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
@@ -79,7 +82,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
           inFunction = false;
           if (!parseFunctions) {
             var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true))[0];
-            unparsedFunctions.push({
+            unparsedBundles.push({
               intertype: 'unparsedFunction',
               // We need this early, to know basic function info - ident, params, varargs
               ident: toNiceIdent(func.ident),
@@ -95,7 +98,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       // We need lines beginning with ';' inside functions, because older LLVM versions generated labels that way. But when not
       // parsing functions, we can ignore all such lines and save some time that way.
       this.forwardItems(ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || parseFunctions); }), 'Tokenizer');
-      return unparsedFunctions;
+      return unparsedBundles;
     }
   });
 
