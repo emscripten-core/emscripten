@@ -6,11 +6,7 @@ function tokenize(text) {
   return tokenizer.processItem({ lineText: text }, true);
 }
 
-//! @param parseFunctions We parse functions only on later passes, since we do not
-//!                       want to parse all of them at once, and have all their
-//!                       lines and data in memory at the same time.
-function intertyper(data, parseFunctions, baseLineNum) {
-  //parseFunctions = true; // Uncomment to do all parsing in a single big RAM-heavy pass. Faster, if you have the RAM
+function intertyper(data, sidePass, baseLineNum) {
   baseLineNum = baseLineNum || 0;
 
   // Substrate
@@ -50,12 +46,12 @@ function intertyper(data, parseFunctions, baseLineNum) {
         var line = lines[i];
         lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
 
-        if (!parseFunctions && /^define .*/.test(line)) {
+        if (!sidePass && /^define .*/.test(line)) {
           inFunction = true;
           currFunctionLines = [];
           currFunctionLineNum = i + 1;
         }
-        if (!inFunction || parseFunctions) {
+        if (!inFunction || sidePass) {
           if (inContinual || new RegExp(/^\ +to.*/g).test(line)
                           || new RegExp(/^\ +catch .*/g).test(line)
                           || new RegExp(/^\ +filter .*/g).test(line)
@@ -78,9 +74,9 @@ function intertyper(data, parseFunctions, baseLineNum) {
         } else {
           currFunctionLines.push(line);
         }
-        if (!parseFunctions && /^}.*/.test(line)) {
+        if (!sidePass && /^}.*/.test(line)) {
           inFunction = false;
-          if (!parseFunctions) {
+          if (!sidePass) {
             var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true))[0];
             unparsedBundles.push({
               intertype: 'unparsedFunction',
@@ -97,7 +93,7 @@ function intertyper(data, parseFunctions, baseLineNum) {
       }
       // We need lines beginning with ';' inside functions, because older LLVM versions generated labels that way. But when not
       // parsing functions, we can ignore all such lines and save some time that way.
-      this.forwardItems(ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || parseFunctions); }), 'Tokenizer');
+      this.forwardItems(ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || sidePass); }), 'Tokenizer');
       return unparsedBundles;
     }
   });
