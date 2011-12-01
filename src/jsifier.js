@@ -49,7 +49,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   if (mainPass) {
     // Handle unparsed types TODO: Batch them
-    JSify(analyzer(intertyper(data.unparsedTypess[0].lines, true)), true, Functions);
+    analyzer(intertyper(data.unparsedTypess[0].lines, true));
 
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
@@ -114,6 +114,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   // Actors
 
   // type
+  // FIXME: This is no longer used, we do not actually need to JSify on types. TODO: Remove this and related code
   substrate.addActor('Type', {
     processItem: function(item) {
       var type = Types.types[item.name_];
@@ -1111,7 +1112,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     substrate.addItems(data.functionStubs, 'FunctionStub');
     assert(data.functions.length == 0);
   } else {
-    substrate.addItems(values(Types.types).filter(function(type) { return type.lineNum != '?' && type.name_ }), 'Type');
     substrate.addItems(values(data.globalVariables), 'GlobalVariable');
     substrate.addItems(data.aliass, 'Alias');
     substrate.addItems(data.functions, 'FunctionSplitter');
