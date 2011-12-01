@@ -213,7 +213,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           } else {
             throw 'Invalid segment: ' + dump(segment);
           }
-          assert(segment.type, 'Missing type for constant segment: ' + dump(segment));
+          assert(segment.type, 'Missing type for constant segment!');
           return indexizeFunctions(ret, segment.type);
         };
         return tokens.map(handleSegment)

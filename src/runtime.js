@@ -67,7 +67,6 @@ RuntimeGenerator = {
 
 function unInline(name_, params) {
   var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
-  //print('src: ' + src);
   return eval(src);
 }
 
@@ -137,8 +136,7 @@ Runtime = {
         size = Types.types[field].flatSize;
         alignSize = Types.types[field].alignSize;
       } else {
-        dprint('Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]));
-        assert(0);
+        throw 'Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]);
       }
       alignSize = type.packed ? 1 : Math.min(alignSize, QUANTUM_SIZE);
       type.alignSize = Math.max(type.alignSize, alignSize);

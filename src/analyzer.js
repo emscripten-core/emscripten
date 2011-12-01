@@ -79,10 +79,10 @@ function analyzer(data) {
               currLabelFinished = true;
             }
           } else {
-            print('// WARNING: content after a branch in a label, line: ' + subItem.lineNum + '::' + dump(subItem));
+            print('// WARNING: content after a branch in a label, line: ' + subItem.lineNum);
           }
         } else {
-          throw "ERROR: what is this? " + JSON.stringify(subItem);
+          throw 'ERROR: what is this? ' + dump(subItem);
         }
       }
       delete item.items;
@@ -220,8 +220,8 @@ function analyzer(data) {
 
           Runtime.calculateStructAlignment(type);
 
-          dprint('types', 'type (fat=' + !!fatTypes + '): ' + type.name_ + ' : ' + JSON.stringify(type.fields));
-          dprint('types', '                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
+          if (dcheck('types')) dprint('type (fat=' + !!fatTypes + '): ' + type.name_ + ' : ' + JSON.stringify(type.fields));
+          if (dcheck('types')) dprint('                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
         });
       }
 
@@ -336,7 +336,6 @@ function analyzer(data) {
             variable.stores = 0;
 
             func.lines.forEach(function(line) {
-              //print(dump(line))
               if (line.intertype == 'store' && line.ident == vname) {
                 variable.stores ++;
               } else if (line.intertype == 'assign' && line.value.intertype == 'load' && line.value.ident == vname) {
@@ -374,7 +373,7 @@ function analyzer(data) {
           } else {
             variable.impl = VAR_EMULATED;
           }
-          dprint('vars', '// var ' + vname + ': ' + JSON.stringify(variable));
+          if (dcheck('vars')) dprint('// var ' + vname + ': ' + JSON.stringify(variable));
         }
       });
       this.forwardItem(item, 'Signalyzer');
@@ -768,7 +767,7 @@ function analyzer(data) {
     operateOnLabels(line, function process(item, id) {
       if (item[id] in labelIds || (wildcard && wildcardCheck(item[id]))) {
         ret.push(item[id]);
-        dprint('relooping', 'zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId);
+        if (dcheck('relooping')) dprint('zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId);
         if (toLabelId) {
           // replace wildcards in new value with old parts
           var oldParts = item[id].split('|');
@@ -986,7 +985,7 @@ function analyzer(data) {
           var internals = split_.leftIn;
           var currExitLabels = set(getLabelIds(externals));
 
-          dprint('relooping', function() { return '   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels) });
+          if (dcheck('relooping')) dprint('   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels));
 
           // Verify that no external can reach an internal
           var inLabels = set(getLabelIds(internals));
@@ -1003,14 +1002,14 @@ function analyzer(data) {
           });
 
           // To get to any of our (not our parents') exit labels, we will break.
-          dprint('relooping', 'for exit purposes, Replacing: ' + dump(currExitLabels));
+          if (dcheck('relooping')) dprint('for exit purposes, Replacing: ' + dump(currExitLabels));
           var enteredExitLabels = {};
           if (externals.length > 0) {
             entries.forEach(function(entry) {
               mergeInto(enteredExitLabels, set(replaceLabelLabels(internals, currExitLabels, 'BREAK|' + blockId)));
             });
             enteredExitLabels = keys(enteredExitLabels).map(cleanLabel);
-            dprint('relooping', 'enteredExitLabels: ' + dump(enteredExitLabels));
+            if (dcheck('relooping')) dprint('enteredExitLabels: ' + dump(enteredExitLabels));
             assert(enteredExitLabels.length > 0);
           }
 
@@ -1069,15 +1068,15 @@ function analyzer(data) {
           }
         });
 
-        dprint('relooping', '  Considering multiple, canHandle: ' + getLabelIds(handlingNow));
+        if (dcheck('relooping')) dprint('  Considering multiple, canHandle: ' + getLabelIds(handlingNow));
 
         if (handlingNow.length > 0) {
           // This is a 'multiple'
 
           var actualEntries = getLabelIds(actualEntryLabels);
-          dprint('relooping', '   Creating multiple, with entries: ' + actualEntries + ', post entries: ' + dump(postEntryLabels));
+          if (dcheck('relooping')) dprint('   Creating multiple, with entries: ' + actualEntries + ', post entries: ' + dump(postEntryLabels));
           actualEntryLabels.forEach(function(actualEntryLabel) {
-            dprint('relooping', '      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
+            if (dcheck('relooping')) dprint('      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
 
             keys(postEntryLabels).forEach(function(post) {
               replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + blockId);

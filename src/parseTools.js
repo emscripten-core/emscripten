@@ -1470,7 +1470,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
-  assert(param.type || (typeof param === 'string' && param.substr(0, 6) === 'CHECK_'), 'Missing type for param: ' + dump(param));
+  assert(param.type || (typeof param === 'string' && param.substr(0, 6) === 'CHECK_'), 'Missing type for param!');
   if (!noIndexizeFunctions) ret = indexizeFunctions(ret, param.type);
   return ret;
 }
