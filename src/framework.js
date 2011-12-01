@@ -164,25 +164,25 @@ Substrate.prototype = {
     var finalResult = null;
     this.results = [];
     var finished = false;
-    var that = this;
+    var onResult = this.onResult;
     var actors = values(this.actors); // Assumes actors are not constantly added
     while (!finished) {
       dprint('framework', "Cycle start, items: ");// + values(this.actors).map(function(actor) actor.items).reduce(function(x,y) x+y, 0));
       var hadProcessing = false;
-      actors.forEach(function(actor) {
+      for (var i = 0; i < actors.length; i++) {
+        var actor = actors[i];
+        if (actor.inbox.length == 0 && actor.items.length == 0) continue;
+
         midComment();
 
-        that.checkInbox(actor);
-        if (actor.items.length == 0) return;
-
-        var inputs = actor.items;
+        this.checkInbox(actor);
         var outputs;
-        var currResultCount = that.results.length;
-        dprint('framework', 'Processing using ' + actor.name_ + ': ' + inputs.length);
+        var currResultCount = this.results.length;
+        dprint('framework', 'Processing using ' + actor.name_ + ': ' + actor.items.length);
+        outputs = actor.process(actor.items);
         actor.items = [];
-        outputs = actor.process(inputs);
         if (DEBUG_MEMORY) MemoryDebugger.tick('actor ' + actor.name_);
-        dprint('framework', 'New results: ' + (outputs.length + that.results.length - currResultCount) + ' out of ' + (that.results.length + outputs.length));
+        dprint('framework', 'New results: ' + (outputs.length + this.results.length - currResultCount) + ' out of ' + (this.results.length + outputs.length));
         hadProcessing = true;
 
         if (outputs) {
@@ -195,16 +195,16 @@ Substrate.prototype = {
             finalResult = outputs[0];
           } else {
             outputs.forEach(function(output) { delete output.tokens }); // clean up tokens to save memory
-            that.results = that.results.concat(outputs);
+            this.results = this.results.concat(outputs);
           }
         }
-      });
+      }
       if (!hadProcessing) {
         if (DEBUG) print("Solving complete: no remaining items");
         finalComment();
         this.results.forEach(function(result) {
           delete result.__uid__; // Might recycle these
-          if (that.onResult) that.onResult(result);
+          if (onResult) onResult(result);
         });
         ret =  this.results;
         break;
