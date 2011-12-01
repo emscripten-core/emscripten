@@ -45,11 +45,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
   }
 
-  substrate = new Substrate('JSifyer');
+  var substrate = new Substrate('JSifyer');
 
   if (mainPass) {
     // Handle unparsed types TODO: Batch them
     analyzer(intertyper(data.unparsedTypess[0].lines, true));
+    data.unparsedTypess = null;
 
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
@@ -100,6 +101,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
+  // TODO: batch small functions
   for (var i = 0; i < data.unparsedFunctions.length; i++) {
     var func = data.unparsedFunctions[i];
     // We don't need to save anything past here
@@ -110,6 +112,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (DEBUG_MEMORY) MemoryDebugger.tick('func ' + func.ident);
   }
   func = null; // Do not hold on to anything from inside that loop (JS function scoping..)
+  data.unparsedFunctions = null;
 
   // Actors
 
@@ -231,7 +234,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       item.intertype = 'GlobalVariableStub';
-      item.lines = null; // Save some memory
+      assert(!item.lines); // FIXME remove this, after we are sure it isn't needed
       var ret = [item];
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__globalConstructor__ = function() {\n' +
@@ -1096,6 +1099,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     // Print out global variables and postsets TODO: batching
     JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true)), true, Functions);
+    data.unparsedGlobalss = null;
 
     print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
     print(postParts[1]);

@@ -15,7 +15,7 @@ function cleanFunc(func) {
 
 function analyzer(data) {
   // Substrate
-  substrate = new Substrate('Analyzer');
+  var substrate = new Substrate('Analyzer');
 
   // Sorter
   substrate.addActor('Sorter', {

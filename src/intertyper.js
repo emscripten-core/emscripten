@@ -2,6 +2,7 @@
 // to be processed by the later stages.
 
 var tokenizer; // TODO: Clean this up/out
+               //       XXX In particular, this closes over the substrate, which can keep stuff in memory, which is bad
 function tokenize(text) {
   return tokenizer.processItem({ lineText: text }, true);
 }
@@ -30,7 +31,7 @@ function intertyper(data, sidePass, baseLineNum) {
     }
   }
 
-  substrate = new Substrate('Intertyper');
+  var substrate = new Substrate('Intertyper');
 
   // Line splitter. We break off some bunches of lines into unparsedBundles, which are
   // parsed in separate passes later. This helps to keep memory usage low - we can start

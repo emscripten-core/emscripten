@@ -185,7 +185,7 @@ Substrate.prototype = {
         dprint('framework', 'New results: ' + (outputs.length + this.results.length - currResultCount) + ' out of ' + (this.results.length + outputs.length));
         hadProcessing = true;
 
-        if (outputs) {
+        if (outputs && outputs.length > 0) {
           if (outputs.length === 1 && outputs[0].__finalResult__) {
             if (DEBUG) print("Solving complete: __finalResult__");
             delete outputs[0].__finalResult__; // Might recycle this
@@ -194,7 +194,6 @@ Substrate.prototype = {
             finished = true;
             finalResult = outputs[0];
           } else {
-            outputs.forEach(function(output) { delete output.tokens }); // clean up tokens to save memory
             this.results = this.results.concat(outputs);
           }
         }
@@ -206,7 +205,8 @@ Substrate.prototype = {
           delete result.__uid__; // Might recycle these
           if (onResult) onResult(result);
         });
-        ret =  this.results;
+        ret = this.results;
+        this.results = null; // No need to hold on to them any more
         break;
       }
       if (finalResult) {
@@ -221,6 +221,8 @@ Substrate.prototype = {
       actor.items = null;
       actor.inbox = null;
     });
+
+    if (DEBUG_MEMORY) MemoryDebugger.tick('finished ' + this.name_);
 
     return ret;
   }
