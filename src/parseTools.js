@@ -1,3 +1,5 @@
+//"use strict";
+
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
 
@@ -439,7 +441,7 @@ function cleanSegment(segment) {
   return segment;
 }
 
-PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext', 'sub', 'add', 'div');
+var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext', 'sub', 'add', 'div');
 
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)
@@ -1288,10 +1290,10 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     }
   } else { // USE_TYPED_ARRAYS == 2)
     if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
-    function warn64() {
+    var warn64 = function() {
       warnOnce('.ll contains i64 or double values. These 64-bit values are dangerous in USE_TYPED_ARRAYS == 2. ' +
                'We store i64 as i32, and double as float. This can cause serious problems!');
-    }
+    };
     switch(type) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
@@ -1557,9 +1559,11 @@ function isSignedOp(op, variant) {
   return op in SIGNED_OP || (variant && variant[0] == 's');
 }
 
-function processMathop(item) { with(item) {
+function processMathop(item) {
+  var op = item.op;
+  var variant = item.variant;
   var paramTypes = ['', '', '', ''];
-  for (var i = 1; i <= 4; i++) {
+  for (var i = 1; i <= 3; i++) {
     if (item['param'+i]) {
       paramTypes[i-1] = item['param'+i].type || type;
       item['ident'+i] = finalizeLLVMParameter(item['param'+i]);
@@ -1570,6 +1574,9 @@ function processMathop(item) { with(item) {
       item['ident'+i] = null; // just so it exists for purposes of reading ident2 etc. later on, and no exception is thrown
     }
   }
+  var ident1 = item.ident1;
+  var ident2 = item.ident2;
+  var ident3 = item.ident3;
   var originalIdent1 = ident1;
   var originalIdent2 = ident2;
   if (isUnsignedOp(op, variant)) {
@@ -1590,9 +1597,9 @@ function processMathop(item) { with(item) {
   }
 
   if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || ident2 == '(i64)') && I64_MODE == 1) {
-    function warnI64_1() {
+    var warnI64_1 = function() {
       warnOnce('Arithmetic on 64-bit integers in mode 1 is rounded and flaky, like mode 0, but much slower!');
-    }
+    };
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -1784,7 +1791,7 @@ function processMathop(item) { with(item) {
     }
     default: throw 'Unknown mathcmp op: ' + item.op;
   }
-} }
+}
 
 // Walks through some intertype data, calling a function at every item. If
 // the function returns true, will stop the walk.
