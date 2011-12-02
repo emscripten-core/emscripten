@@ -5,15 +5,47 @@ try {
   gcparam('maxBytes', 1024*1024*1024);
 } catch(e) {}
 
-// Prep - allow this to run in both SpiderMonkey and V8
-if (!this['load']) {
-  load = function(f) { eval(snarf(f)) };
-}
-if (!this['read']) {
-  read = function(f) { snarf(f) };
-}
-if (!this['arguments']) {
-  arguments = scriptArgs;
+var ENVIRONMENT_IS_SHELL = typeof window === 'undefined';
+
+if (ENVIRONMENT_IS_SHELL) {
+  // Polyfill over SpiderMonkey/V8 differences
+  if (!this['load']) {
+    load = function(f) { eval(snarf(f)) };
+  }
+  if (!this['read']) {
+    read = function(f) { snarf(f) };
+  }
+  if (!this['arguments']) {
+    arguments = scriptArgs;
+  }
+} else {
+  // We are on the web.
+  var outputElement = document.getElementById('output');
+  print = function(x) {
+    outputElement.innerHTML += x;
+  };
+
+  printErr = function(x) {
+    console.log(x);
+  };
+
+  read = function(url) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, false);
+    xhr.send(null);
+    return xhr.responseText;
+  };
+
+  var that = this;
+  load = function(url) {
+    // We can't just eval naively, we need properties here to be added to the toplevel global.
+    var src = read(url);
+    eval.call(null, src);
+  };
+
+  if (!this['arguments']) {
+    arguments = [];
+  }
 }
 
 // Basic utilities
@@ -27,9 +59,11 @@ load('settings.js');
 var settings_file = arguments[0];
 var ll_file = arguments[1];
 
-var settings = JSON.parse(read(settings_file));
-for (setting in settings) {
-  this[setting] = settings[setting];
+if (settings_file) {
+  var settings = JSON.parse(read(settings_file));
+  for (setting in settings) {
+    this[setting] = settings[setting];
+  }
 }
 
 var CONSTANTS = { 'QUANTUM_SIZE': QUANTUM_SIZE };
