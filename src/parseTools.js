@@ -116,16 +116,16 @@ function isStructPointerType(type) {
   return !Runtime.isNumberType(type) && type[0] == '%';
 }
 
-function isStructType(type) {
-  if (isPointerType(type)) return false;
-  if (new RegExp(/^\[\d+\ x\ (.*)\]/g).test(type)) return true; // [15 x ?] blocks. Like structs
-  if (new RegExp(/<?{ [^}]* }>?/g).test(type)) return true; // { i32, i8 } etc. - anonymous struct types
-  // See comment in isStructPointerType()
-  return !Runtime.isNumberType(type) && type[0] == '%';
+function isPointerType(type) {
+  return type[type.length-1] == '*';
 }
 
-function isPointerType(type) {
-  return pointingLevels(type) > 0;
+function isStructType(type) {
+  if (isPointerType(type)) return false;
+  if (/^\[\d+\ x\ (.*)\]/.test(type)) return true; // [15 x ?] blocks. Like structs
+  if (/<?{ [^}]* }>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
+  // See comment in isStructPointerType()
+  return type[0] == '%';
 }
 
 function isIntImplemented(type) {
