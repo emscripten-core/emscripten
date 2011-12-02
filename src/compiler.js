@@ -18,8 +18,6 @@ if (ENVIRONMENT_IS_SHELL) {
     read = function(f) { snarf(f) };
   }
 
-  load = function(f) { eval.call(globalScope, read(f)) };
-
   if (!this['arguments']) {
     arguments_ = scriptArgs;
   } else {
@@ -27,11 +25,6 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 } else {
   // We are on the web.
-  var outputElement = document.getElementById('output');
-  print = function(x) {
-    outputElement.innerHTML += x;
-  };
-
   printErr = function(x) {
     console.log(x);
   };
@@ -43,16 +36,15 @@ if (ENVIRONMENT_IS_SHELL) {
     return xhr.responseText;
   };
 
-  var that = this;
-  load = function(url) {
-    // We can't just eval naively, we need properties here to be added to the toplevel global.
-    var src = read(url);
-    eval.call(globalScope, src);
-  };
-
   if (this['arguments']) {
     arguments_ = arguments;
   }
+}
+
+if (!this['load']) {
+  load = function(f) {
+    eval.call(globalScope, read(f));
+  };
 }
 
 // Basic utilities
@@ -141,7 +133,11 @@ raw = null;
 
 //dprint(JSON.stringify(C_DEFINES));
 
-JSify(analyzer(intertyper(lines)));
+var intertyped = intertyper(lines);
+lines = null;
+var analyzed = analyzer(intertyped);
+intertyped = null;
+JSify(analyzed);
 
 if (DEBUG_MEMORY) {
   print('zzz. last gc: ' + gc());
