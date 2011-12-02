@@ -1,3 +1,5 @@
+//"use strict";
+
 // LLVM assembly => internal intermediate representation, which is ready
 // to be processed by the later stages.
 
@@ -286,7 +288,7 @@ function intertyper(data, sidePass, baseLineNum) {
     }
   });
 
-  MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
+  var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 
   substrate.addActor('Triager', {
     processItem: function(item) {
@@ -373,6 +375,43 @@ function intertyper(data, sidePass, baseLineNum) {
   substrate.addActor('Global', {
     processItem: function(item) {
       function scanConst(value, type) {
+        // Gets an array of constant items, separated by ',' tokens
+        function handleSegments(tokens) {
+          // Handle a single segment (after comma separation)
+          function handleSegment(segment) {
+            if (segment[1].text == 'null') {
+              return { intertype: 'value', value: 0, type: 'i32' };
+            } else if (segment[1].text == 'zeroinitializer') {
+              Types.needAnalysis[segment[0].text] = 0;
+              return { intertype: 'emptystruct', type: segment[0].text };
+            } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
+              return parseLLVMFunctionCall(segment);
+            } else if (segment[1].type && segment[1].type == '{') {
+              Types.needAnalysis[segment[0].text] = 0;
+              return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].tokens) };
+            } else if (segment[1].type && segment[1].type == '<') {
+              Types.needAnalysis[segment[0].text] = 0;
+              return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].item.tokens[0].tokens) };
+            } else if (segment[1].type && segment[1].type == '[') {
+              Types.needAnalysis[segment[0].text] = 0;
+              return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
+            } else if (segment.length == 2) {
+              Types.needAnalysis[segment[0].text] = 0;
+              return { intertype: 'value', type: segment[0].text, value: toNiceIdent(segment[1].text) };
+            } else if (segment[1].text === 'c') {
+              // string
+              var text = segment[2].text;
+              text = text.substr(1, text.length-2);
+              return { intertype: 'string', text: text, type: 'i8*' };
+            } else if (segment[1].text === 'blockaddress') {
+              return parseBlockAddress(segment);
+            } else {
+              throw 'Invalid segment: ' + dump(segment);
+            }
+          };
+          return splitTokenList(tokens).map(handleSegment);
+        }
+
         Types.needAnalysis[type] = 0;
         if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
           return { value: toNiceIdent(value.text), type: type };
@@ -381,42 +420,6 @@ function intertyper(data, sidePass, baseLineNum) {
         } else if (value.text && value.text[0] == '"') {
           return { intertype: 'string', text: value.text.substr(1, value.text.length-2) };
         } else {
-          // Gets an array of constant items, separated by ',' tokens
-          function handleSegments(tokens) {
-            // Handle a single segment (after comma separation)
-            function handleSegment(segment) {
-              if (segment[1].text == 'null') {
-                return { intertype: 'value', value: 0, type: 'i32' };
-              } else if (segment[1].text == 'zeroinitializer') {
-                Types.needAnalysis[segment[0].text] = 0;
-                return { intertype: 'emptystruct', type: segment[0].text };
-              } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
-                return parseLLVMFunctionCall(segment);
-              } else if (segment[1].type && segment[1].type == '{') {
-                Types.needAnalysis[segment[0].text] = 0;
-                return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].tokens) };
-              } else if (segment[1].type && segment[1].type == '<') {
-                Types.needAnalysis[segment[0].text] = 0;
-                return { intertype: 'struct', type: segment[0].text, contents: handleSegments(segment[1].item.tokens[0].tokens) };
-              } else if (segment[1].type && segment[1].type == '[') {
-                Types.needAnalysis[segment[0].text] = 0;
-                return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
-              } else if (segment.length == 2) {
-                Types.needAnalysis[segment[0].text] = 0;
-                return { intertype: 'value', type: segment[0].text, value: toNiceIdent(segment[1].text) };
-              } else if (segment[1].text === 'c') {
-                // string
-                var text = segment[2].text;
-                text = text.substr(1, text.length-2);
-                return { intertype: 'string', text: text, type: 'i8*' };
-              } else if (segment[1].text === 'blockaddress') {
-                return parseBlockAddress(segment);
-              } else {
-                throw 'Invalid segment: ' + dump(segment);
-              }
-            };
-            return splitTokenList(tokens).map(handleSegment);
-          }
           if (value.type == '<') { // <{ i8 }> etc.
             value = value.item.tokens;
           }
@@ -521,7 +524,7 @@ function intertyper(data, sidePass, baseLineNum) {
     }
   });
   // function header
-  funcHeader = substrate.addActor('FuncHeader', {
+  var funcHeader = substrate.addActor('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
         return !(token.text in LLVM.LINKAGES || token.text in LLVM.PARAM_ATTR || token.text in set('hidden', 'nounwind', 'define', 'inlinehint', '{') || token.text in LLVM.CALLING_CONVENTIONS);

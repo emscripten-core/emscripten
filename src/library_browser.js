@@ -1,3 +1,5 @@
+//"use strict";
+
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {

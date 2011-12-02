@@ -1,3 +1,5 @@
+//"use strict";
+
 // To use emscripten's SDL library here, you need to define
 // Module.canvas and at least one of Module.ctx2D, Module.ctxGL.
 //

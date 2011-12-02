@@ -1,3 +1,5 @@
+//"use strict";
+
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
@@ -182,6 +184,32 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // Gets an entire constant expression
   function makeConst(value, type, ident) {
+    // Gets an array of constant items, separated by ',' tokens
+    function handleSegments(tokens) {
+      // Handle a single segment (after comma separation)
+      function handleSegment(segment) {
+        var ret;
+        if (segment.intertype === 'value') {
+          ret = segment.value.toString();
+        } else if (segment.intertype === 'emptystruct') {
+          ret = makeEmptyStruct(segment.type);
+        } else if (segment.intertype in PARSABLE_LLVM_FUNCTIONS) {
+          ret = finalizeLLVMFunctionCall(segment);
+        } else if (segment.intertype in set('struct', 'list')) {
+          ret = alignStruct(handleSegments(segment.contents), segment.type);
+        } else if (segment.intertype === 'string') {
+          ret = parseLLVMString(segment.text); // + ' /* ' + text + '*/';
+        } else if (segment.intertype === 'blockaddress') {
+          ret = finalizeBlockAddress(segment);
+        } else {
+          throw 'Invalid segment: ' + dump(segment);
+        }
+        assert(segment.type, 'Missing type for constant segment!');
+        return indexizeFunctions(ret, segment.type);
+      };
+      return tokens.map(handleSegment)
+    }
+
     //dprint('jsifier const: ' + JSON.stringify(value) + ',' + type + '\n');
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
@@ -193,31 +221,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       return JSON.stringify(parseLLVMString(value.text)) +
              ' /* ' + value.text.substr(0, 20).replace(/\*/g, '_') + ' */'; // make string safe for inclusion in comment
     } else {
-      // Gets an array of constant items, separated by ',' tokens
-      function handleSegments(tokens) {
-        // Handle a single segment (after comma separation)
-        function handleSegment(segment) {
-          var ret;
-          if (segment.intertype === 'value') {
-            ret = segment.value.toString();
-          } else if (segment.intertype === 'emptystruct') {
-            ret = makeEmptyStruct(segment.type);
-          } else if (segment.intertype in PARSABLE_LLVM_FUNCTIONS) {
-            ret = finalizeLLVMFunctionCall(segment);
-          } else if (segment.intertype in set('struct', 'list')) {
-            ret = alignStruct(handleSegments(segment.contents), segment.type);
-          } else if (segment.intertype === 'string') {
-            ret = parseLLVMString(segment.text); // + ' /* ' + text + '*/';
-          } else if (segment.intertype === 'blockaddress') {
-            ret = finalizeBlockAddress(segment);
-          } else {
-            throw 'Invalid segment: ' + dump(segment);
-          }
-          assert(segment.type, 'Missing type for constant segment!');
-          return indexizeFunctions(ret, segment.type);
-        };
-        return tokens.map(handleSegment)
-      }
       return alignStruct(handleSegments(value.contents), type);
     }
   }
@@ -233,6 +236,10 @@ function JSify(data, functionsOnly, givenFunctions) {
   // globalVariable
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
+      function needsPostSet(value) {
+        return value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW';
+      }
+
       item.intertype = 'GlobalVariableStub';
       assert(!item.lines); // FIXME remove this, after we are sure it isn't needed
       var ret = [item];
@@ -275,10 +282,6 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           return ret;
         } else {
-          function needsPostSet(value) {
-            return value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW';
-          }
-
           constant = parseConst(item.value, item.type, item.ident);
           if (typeof constant === 'string' && constant[0] != '[') {
             constant = [constant]; // A single item. We may need a postset for it.
@@ -340,6 +343,68 @@ function JSify(data, functionsOnly, givenFunctions) {
   // functionStub
   substrate.addActor('FunctionStub', {
     processItem: function(item) {
+      function addFromLibrary(ident) {
+        if (ident in addedLibraryItems) return '';
+        // Don't replace implemented functions with library ones (which can happen when we add dependencies).
+        // Note: We don't return the dependencies here. Be careful not to end up where this matters
+        if (('_' + ident) in Functions.implementedFunctions) return '';
+
+        addedLibraryItems[ident] = true;
+        var snippet = LibraryManager.library[ident];
+        var redirectedIdent = null;
+        var deps = LibraryManager.library[ident + '__deps'] || [];
+        var isFunction = false;
+
+        if (typeof snippet === 'string') {
+          if (LibraryManager.library[snippet]) {
+            // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
+            // This avoid having duplicate functions with identical content.
+            redirectedIdent = snippet;
+            deps.push(snippet);
+            snippet = '_' + snippet;
+          }
+        } else if (typeof snippet === 'object') {
+          snippet = stringifyWithFunctions(snippet);
+        } else if (typeof snippet === 'function') {
+          isFunction = true;
+          snippet = snippet.toString();
+          assert(snippet.indexOf('XXX missing C define') == -1,
+                 'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
+
+          // name the function; overwrite if it's already named
+          snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
+          if (LIBRARY_DEBUG) {
+            snippet = snippet.replace('{', '{ print("[library call:' + ident + ']"); ');
+          }
+        }
+
+        var postsetId = ident + '__postset';
+        var postset = LibraryManager.library[postsetId];
+        if (postset && !addedLibraryItems[postsetId]) {
+          addedLibraryItems[postsetId] = true;
+          ret.push({
+            intertype: 'GlobalVariablePostSet',
+            JS: postset
+          });
+        }
+
+        if (redirectedIdent) {
+          deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
+        }
+        // $ident's are special, we do not prefix them with a '_'.
+        if (ident[0] === '$') {
+          ident = ident.substr(1);
+        } else {
+          ident = '_' + ident;
+        }
+        var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+        text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
+        if (ident in EXPORTED_FUNCTIONS) {
+          text += '\nModule["' + ident + '"] = ' + ident + ';';
+        }
+        return text;
+      }
+
       var ret = [item];
       if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return null;
       var shortident = item.ident.substr(1);
@@ -347,67 +412,6 @@ function JSify(data, functionsOnly, givenFunctions) {
         // Shared libraries reuse the runtime of their parents.
         item.JS = '';
       } else if (LibraryManager.library.hasOwnProperty(shortident)) {
-        function addFromLibrary(ident) {
-          if (ident in addedLibraryItems) return '';
-          // Don't replace implemented functions with library ones (which can happen when we add dependencies).
-          // Note: We don't return the dependencies here. Be careful not to end up where this matters
-          if (('_' + ident) in Functions.implementedFunctions) return '';
-
-          addedLibraryItems[ident] = true;
-          var snippet = LibraryManager.library[ident];
-          var redirectedIdent = null;
-          var deps = LibraryManager.library[ident + '__deps'] || [];
-          var isFunction = false;
-
-          if (typeof snippet === 'string') {
-            if (LibraryManager.library[snippet]) {
-              // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
-              // This avoid having duplicate functions with identical content.
-              redirectedIdent = snippet;
-              deps.push(snippet);
-              snippet = '_' + snippet;
-            }
-          } else if (typeof snippet === 'object') {
-            snippet = stringifyWithFunctions(snippet);
-          } else if (typeof snippet === 'function') {
-            isFunction = true;
-            snippet = snippet.toString();
-            assert(snippet.indexOf('XXX missing C define') == -1,
-                   'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
-
-            // name the function; overwrite if it's already named
-            snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
-            if (LIBRARY_DEBUG) {
-              snippet = snippet.replace('{', '{ print("[library call:' + ident + ']"); ');
-            }
-          }
-
-          var postsetId = ident + '__postset';
-          var postset = LibraryManager.library[postsetId];
-          if (postset && !addedLibraryItems[postsetId]) {
-            addedLibraryItems[postsetId] = true;
-            ret.push({
-              intertype: 'GlobalVariablePostSet',
-              JS: postset
-            });
-          }
-
-          if (redirectedIdent) {
-            deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
-          }
-          // $ident's are special, we do not prefix them with a '_'.
-          if (ident[0] === '$') {
-            ident = ident.substr(1);
-          } else {
-            ident = '_' + ident;
-          }
-          var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
-          text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
-          if (ident in EXPORTED_FUNCTIONS) {
-            text += '\nModule["' + ident + '"] = ' + ident + ';';
-          }
-          return text;
-        }
         item.JS = addFromLibrary(shortident);
       } else {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
@@ -776,7 +780,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var pre = '', post = '', idents;
     mainLoop: while ((idents = keys(deps)).length > 0) {
-      function remove(ident) {
+      var remove = function(ident) {
         for (var i = 0; i < idents.length; i++) {
           delete deps[idents[i]][ident];
         }

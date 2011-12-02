@@ -1,3 +1,5 @@
+//"use strict";
+
 // An implementation of a libc for the web. Basically, implementations of
 // the various standard C libraries, that can be called from compiled code,
 // and work using the actual JavaScript environment.

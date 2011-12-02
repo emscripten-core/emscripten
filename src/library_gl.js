@@ -1,3 +1,5 @@
+//"use strict";
+
 // XXX FIXME Hardcoded '4' in many places, here and in library_SDL, for RGBA
 
 var LibraryGL = {

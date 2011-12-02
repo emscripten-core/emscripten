@@ -1,10 +1,12 @@
+//"use strict";
+
 // Implementation details for the 'runtime environment' we generate in
 // JavaScript. The Runtime object itself is used both during compilation,
 // and is available at runtime (dynamic compilation). The RuntimeGenerator
 // helps to create the Runtime object (written so that the Runtime object
 // itself is as optimized as possible - no unneeded runtime checks).
 
-RuntimeGenerator = {
+var RuntimeGenerator = {
   alloc: function(size, type, init) {
     var ret = type + 'TOP';
     if (ASSERTIONS) {
@@ -66,11 +68,12 @@ RuntimeGenerator = {
 };
 
 function unInline(name_, params) {
-  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
-  return eval(src);
+  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(globalScope, params) + '; return ret; })';
+  var ret = eval.call(globalScope, src);
+  return ret;
 }
 
-Runtime = {
+var Runtime = {
   stackSave: function() {
     return STACKTOP;
   },

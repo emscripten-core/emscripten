@@ -1,3 +1,5 @@
+//"use strict";
+
 // LLVM => JavaScript compiler, main entry point
 
 try {
@@ -5,18 +7,23 @@ try {
   gcparam('maxBytes', 1024*1024*1024);
 } catch(e) {}
 
+var arguments_ = [];
+var globalScope = this;
+
 var ENVIRONMENT_IS_SHELL = typeof window === 'undefined';
 
 if (ENVIRONMENT_IS_SHELL) {
   // Polyfill over SpiderMonkey/V8 differences
-  if (!this['load']) {
-    load = function(f) { eval(snarf(f)) };
-  }
   if (!this['read']) {
     read = function(f) { snarf(f) };
   }
+
+  load = function(f) { eval.call(globalScope, read(f)) };
+
   if (!this['arguments']) {
-    arguments = scriptArgs;
+    arguments_ = scriptArgs;
+  } else {
+    arguments_ = arguments;
   }
 } else {
   // We are on the web.
@@ -40,11 +47,11 @@ if (ENVIRONMENT_IS_SHELL) {
   load = function(url) {
     // We can't just eval naively, we need properties here to be added to the toplevel global.
     var src = read(url);
-    eval.call(null, src);
+    eval.call(globalScope, src);
   };
 
-  if (!this['arguments']) {
-    arguments = [];
+  if (this['arguments']) {
+    arguments_ = arguments;
   }
 }
 
@@ -56,8 +63,8 @@ load('utility.js');
 
 load('settings.js');
 
-var settings_file = arguments[0];
-var ll_file = arguments[1];
+var settings_file = arguments_[0];
+var ll_file = arguments_[1];
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
@@ -115,7 +122,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-eval(processMacros(preprocess(read('runtime.js'))));
+eval.call(globalScope, processMacros(preprocess(read('runtime.js'))));
 
 //===============================
 // Main

@@ -1,3 +1,5 @@
+//"use strict";
+
 // Various namespace-like modules
 
 var LLVM_STYLE = null;

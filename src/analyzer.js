@@ -1,10 +1,12 @@
+//"use strict";
+
 // Analyze intertype data. Calculates things that are necessary in order
 // to do the final conversion into JavaScript later, for example,
 // properties of variables, loop structures of functions, etc.
 
-VAR_NATIVE = 'native';
-VAR_NATIVIZED = 'nativized';
-VAR_EMULATED = 'emulated';
+var VAR_NATIVE = 'native';
+var VAR_NATIVIZED = 'nativized';
+var VAR_EMULATED = 'emulated';
 
 function cleanFunc(func) {
   func.lines = func.lines.filter(function(line) { return line.intertype !== null });

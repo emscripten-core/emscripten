@@ -1,3 +1,5 @@
+//"use strict";
+
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
@@ -61,7 +63,7 @@ function assertTrue(a, msg) {
     throw msg;
   }
 }
-assert = assertTrue;
+var assert = assertTrue;
 
 function warn(a, msg) {
   if (!msg) {
@@ -111,13 +113,13 @@ function zeros(size) {
 
 function keys(x) {
   var ret = [];
-  for (a in x) ret.push(a);
+  for (var a in x) ret.push(a);
   return ret;
 }
 
 function values(x) {
   var ret = [];
-  for (a in x) ret.push(x[a]);
+  for (var a in x) ret.push(x[a]);
   return ret;
 }
 
@@ -159,7 +161,7 @@ function splitter(array, filter) {
 function dcheck(tag) {
   return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
 }
-DPRINT_INDENT = '';
+var DPRINT_INDENT = '';
 function dprint_indent() {
   DPRINT_INDENT += '   ';
 }
@@ -182,8 +184,8 @@ function dprint() {
   print(text);
 }
 
-PROF_ORIGIN = Date.now();
-PROF_TIME = PROF_ORIGIN;
+var PROF_ORIGIN = Date.now();
+var PROF_TIME = PROF_ORIGIN;
 function PROF(pass) {
   if (!pass) {
     dprint("Profiling: " + ((Date.now() - PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - PROF_ORIGIN)/1000));
@@ -292,5 +294,10 @@ function stringifyWithFunctions(obj) {
   } else {
     return '{' + keys(obj).map(function(key) { return key + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
   }
+}
+
+function sleep(secs) {
+  var start = Date.now();
+  while (Date.now() - start < secs*1000) {};
 }
 

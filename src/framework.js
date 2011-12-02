@@ -1,3 +1,5 @@
+//"use strict";
+
 //
 // A framework to make building Emscripten easier. Lets you write modular
 // code to handle specific issues.
@@ -84,7 +86,7 @@ var MemoryDebugger = {
 
 if (DEBUG_MEMORY) MemoryDebugger.clear();
 
-Substrate = function(name_) {
+function Substrate(name_) {
   this.name_ = name_;
   this.actors = {};
   this.currUid = 1;
@@ -234,7 +236,7 @@ var Framework = {
   currItem: null
 };
 
-Actor = function() { };
+function Actor() { };
 Actor.prototype = {
   process: function(items) {
     var ret = [];
