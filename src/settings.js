@@ -77,6 +77,10 @@ var CLOSURE_INLINE_PREVENTION_LINES = 50; // Functions of this number of lines o
                                           // code generated that tells the closure compiler not to
                                           // inline them. This is useful to prevent the generation of
                                           // overly large functions.
+var CATCH_EXIT_CODE = 0; // If set, causes exit() to throw an exception object which is caught
+                         // in a try..catch block and results in the exit status being
+                         // returned from run(). If zero (the default), the program is just
+                         // terminated with an error message.
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses
