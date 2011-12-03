@@ -168,7 +168,7 @@ function analyzer(data) {
   // Typevestigator
   substrate.addActor('Typevestigator', {
     processItem: function(data) {
-      for (type in Types.needAnalysis) {
+      for (var type in Types.needAnalysis) {
         if (type) addType(type, data);
       }
       Types.needAnalysis = {};
