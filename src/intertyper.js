@@ -21,14 +21,6 @@ function intertyper(data, sidePass, baseLineNum) {
       LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new';
       //dprint('LLVM_STYLE: ' + LLVM_STYLE);
     }
-
-    // If the source contains debug info as LLVM metadata, process that out (and save the debugging info for later)
-    for (var i = data.length-1; i >= 0; i--) {
-      if (/^!\d+ = metadata .*/.exec(data[i])) {
-        Debugging.processMetadata(data);
-        break;
-      }
-    }
   }
 
   // Substrate

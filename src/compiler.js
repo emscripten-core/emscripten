@@ -153,9 +153,11 @@ if (FAKE_X86_FP80) {
 var lines = raw.split('\n');
 raw = null;
 
-// Do it
+// Parse metadata
 
-//dprint(JSON.stringify(C_DEFINES));
+Debugging.handleMetadata(lines);
+
+// Do it
 
 var intertyped = intertyper(lines);
 lines = null;

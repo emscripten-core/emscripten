@@ -21,6 +21,15 @@ var LLVM = {
 LLVM.GLOBAL_MODIFIERS = set(keys(LLVM.LINKAGES).concat(['constant', 'global', 'hidden']));
 
 var Debugging = {
+  handleMetadata: function(lines) {
+    for (var i = lines.length-1; i >= 0; i--) {
+      if (/^!\d+ = metadata .*/.exec(lines[i])) {
+        Debugging.processMetadata(lines);
+        break;
+      }
+    }
+  },
+
   processMetadata: function(lines) {
     var llvmLineToMetadata = {};
     var metadataToSourceLine = {};
@@ -49,11 +58,9 @@ var Debugging = {
     var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
     var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, (?:i32 \d+|null), i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)}.*$/;
 
-    var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
-
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
-      line = line.replace(debugComment, '');
+      line = line.replace(/; +\[debug line = \d+:\d+\]/, '');
       var skipLine = false;
 
       if (form6.exec(line)) {
