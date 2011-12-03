@@ -64,7 +64,7 @@ var Debugging = {
       var calc = form1.exec(line) || form2.exec(line);
       if (calc) {
         llvmLineToMetadata[i+1] = calc[1];
-        lines[i] = line.replace(', !dbg !' + calc[1], '');
+        lines[i] = line.replace(/, !dbg !\d+/, '');
         continue;
       }
       calc = formStruct.exec(line);
