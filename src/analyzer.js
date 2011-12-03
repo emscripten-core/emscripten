@@ -231,9 +231,9 @@ function analyzer(data) {
         Types.flipTypes();
         // Fake a quantum size of 4 for fat types. TODO: Might want non-4 for some reason?
         var trueQuantumSize = QUANTUM_SIZE;
-        QUANTUM_SIZE = 4;
+        Runtime.QUANTUM_SIZE = 4;
         analyzeTypes(item, true);
-        QUANTUM_SIZE = trueQuantumSize;
+        Runtime.QUANTUM_SIZE = trueQuantumSize;
         Types.flipTypes();
       }
 
@@ -474,11 +474,11 @@ function analyzer(data) {
       function getSize(types, type, fat) {
         if (types[type]) return types[type].flatSize;
         if (fat) {
-          QUANTUM_SIZE = 4;
+          Runtime.QUANTUM_SIZE = 4;
         }
-        var ret = getNativeTypeSize(type);
+        var ret = Runtime.getNativeTypeSize(type);
         if (fat) {
-          QUANTUM_SIZE = 1;
+          Runtime.QUANTUM_SIZE = 1;
         }
         return ret;
       }

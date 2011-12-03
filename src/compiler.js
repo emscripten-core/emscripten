@@ -8,11 +8,30 @@ try {
 } catch(e) {}
 
 var arguments_ = [];
-var globalScope = this;
 
-var ENVIRONMENT_IS_SHELL = typeof window === 'undefined';
+var ENVIRONMENT_IS_NODE = typeof process === 'object';
+var ENVIRONMENT_IS_WEB = typeof window === 'object';
+var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE;
 
-if (ENVIRONMENT_IS_SHELL) {
+if (ENVIRONMENT_IS_NODE) {
+  // Expose functionality in the same simple way that the shells work
+  print = function(x) {
+    process.stdout.write(x + '\n');
+  };
+  printErr = function(x) {
+    process.stderr.write(x + '\n');
+  };
+
+  var nodeFS = require('fs');
+
+  read = function(filename) {
+    if (filename[0] != '/') filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
+    return nodeFS.readFileSync(filename).toString();
+  };
+
+  arguments_ = process.argv.slice(2);
+
+} else if (ENVIRONMENT_IS_SHELL) {
   // Polyfill over SpiderMonkey/V8 differences
   if (!this['read']) {
     read = function(f) { snarf(f) };
@@ -23,8 +42,8 @@ if (ENVIRONMENT_IS_SHELL) {
   } else {
     arguments_ = arguments;
   }
-} else {
-  // We are on the web.
+
+} else if (ENVIRONMENT_IS_WEB) {
   printErr = function(x) {
     console.log(x);
   };
@@ -39,11 +58,17 @@ if (ENVIRONMENT_IS_SHELL) {
   if (this['arguments']) {
     arguments_ = arguments;
   }
+} else {
+  throw 'Unknown runtime environment. Where are we?';
+}
+
+function globalEval(x) {
+  eval.call(null, x);
 }
 
 if (!this['load']) {
   load = function(f) {
-    eval.call(globalScope, read(f));
+    globalEval(read(f));
   };
 }
 
@@ -61,11 +86,9 @@ var ll_file = arguments_[1];
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
   for (setting in settings) {
-    this[setting] = settings[setting];
+    eval(setting + ' = ' + JSON.stringify(settings[setting]));
   }
 }
-
-var CONSTANTS = { 'QUANTUM_SIZE': QUANTUM_SIZE };
 
 if (CORRECT_SIGNS >= 2) {
   CORRECT_SIGNS_LINES = set(CORRECT_SIGNS_LINES); // for fast checking
@@ -114,7 +137,8 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-eval.call(globalScope, processMacros(preprocess(read('runtime.js'))));
+globalEval(processMacros(preprocess(read('runtime.js'))));
+Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
 //===============================
 // Main

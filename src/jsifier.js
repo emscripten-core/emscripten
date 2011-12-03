@@ -31,7 +31,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[0]);
     var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
-    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), CONSTANTS));
+    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
     print(pre);
     print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
 
@@ -266,7 +266,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             var val = LibraryManager.library[shortident];
             var padding;
             if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
-              padding = [item.type].concat(zeros(getNativeFieldSize(item.type)));
+              padding = [item.type].concat(zeros(Runtime.getNativeFieldSize(item.type)));
             } else {
               padding = makeEmptyStruct(item.type);
             }
@@ -985,20 +985,20 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else {
         if (!(param.type == 'i64' && I64_MODE == 1)) {
           varargs.push(val);
-          varargs = varargs.concat(zeros(getNativeFieldSize(param.type)-1));
+          varargs = varargs.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
           varargsTypes.push(param.type);
-          varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize(param.type)-1));
+          varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
         } else {
           // i64 mode 1. Write one i32 with type i64, and one i32 with type i32
           varargs.push(val + '[0]');
-          varargs = varargs.concat(zeros(getNativeFieldSize('i32')-1));
+          varargs = varargs.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
           ignoreFunctionIndexizing.push(varargs.length); // We will have a value there, but no type (the type is i64, but we write two i32s)
           varargs.push(val + '[1]');
-          varargs = varargs.concat(zeros(getNativeFieldSize('i32')-1));
+          varargs = varargs.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
           varargsTypes.push('i64');
-          varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize('i32')-1));
+          varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
           varargsTypes.push('i32');
-          varargsTypes = varargsTypes.concat(zeros(getNativeFieldSize('i32')-1));
+          varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
         }
       }
     });
@@ -1098,7 +1098,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
     }
     var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile), CONSTANTS)).split('{{GLOBAL_VARS}}');
+    var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 
     // Print out global variables and postsets TODO: batching

@@ -16,15 +16,15 @@ var RuntimeGenerator = {
       ret += '; _memset(' + type + 'TOP, 0, ' + size + ')';
     }
     ret += '; ' + type + 'TOP += ' + size;
-    if (QUANTUM_SIZE > 1) {
-      ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP', QUANTUM_SIZE);
+    if ({{{ QUANTUM_SIZE }}} > 1) {
+      ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
     }
     return ret;
   },
 
   // An allocation that lives as long as the current function call
   stackAlloc: function(size) {
-    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + (QUANTUM_SIZE - (isNumber(size) ? Math.min(size, QUANTUM_SIZE) : QUANTUM_SIZE)) + ';';
+    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ';';
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK);
     if (ASSERTIONS) {
       ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
@@ -61,15 +61,15 @@ var RuntimeGenerator = {
 
   alignMemory: function(target, quantum) {
     if (typeof quantum !== 'number') {
-      quantum = '(quantum ? quantum : QUANTUM_SIZE)';
+      quantum = '(quantum ? quantum : {{{ QUANTUM_SIZE }}})';
     }
     return target + ' = ' + Runtime.forceAlign(target, quantum) + ';';
   }
 };
 
 function unInline(name_, params) {
-  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(globalScope, params) + '; return ret; })';
-  var ret = eval.call(globalScope, src);
+  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
+  var ret = eval(src);
   return ret;
 }
 
@@ -82,7 +82,7 @@ var Runtime = {
   },
 
   forceAlign: function(target, quantum) {
-    quantum = quantum || QUANTUM_SIZE;
+    quantum = quantum || {{{ QUANTUM_SIZE }}};
     if (isNumber(target) && isNumber(quantum)) {
       return Math.ceil(target/quantum)*quantum;
     } else {
@@ -116,8 +116,32 @@ var Runtime = {
     return l + h;
   },
 
-  getNativeFieldSize: getNativeFieldSize,
-  getNativeTypeSize: getNativeTypeSize,
+  //! Returns the size of a type, as C/C++ would have it (in 32-bit, for now), in bytes.
+  //! @param type The type, by name.
+  getNativeTypeSize: function(type, quantumSize) {
+    if (Runtime.QUANTUM_SIZE == 1) return 1;
+    var size = {
+      '%i1': 1,
+      '%i8': 1,
+      '%i16': 2,
+      '%i32': 4,
+      '%i64': 8,
+      "%float": 4,
+      "%double": 8
+    }['%'+type]; // add '%' since float and double confuse Closure compiler as keys, and also spidermonkey as a compiler will remove 's from '_i8' etc
+    if (!size && type[type.length-1] == '*') {
+      size = Runtime.QUANTUM_SIZE; // A pointer
+    }
+    return size;
+  },
+
+  //! Returns the size of a structure field, as C/C++ would have it (in 32-bit,
+  //! for now).
+  //! @param type The type, by name.
+  getNativeFieldSize: function(type) {
+    return Math.max(Runtime.getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
+  },
+
   dedup: dedup,
 
   set: set,
@@ -141,7 +165,7 @@ var Runtime = {
       } else {
         throw 'Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]);
       }
-      alignSize = type.packed ? 1 : Math.min(alignSize, QUANTUM_SIZE);
+      alignSize = type.packed ? 1 : Math.min(alignSize, Runtime.QUANTUM_SIZE);
       type.alignSize = Math.max(type.alignSize, alignSize);
       var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
       type.flatSize = curr + size;

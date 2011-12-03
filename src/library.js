@@ -388,7 +388,7 @@ LibraryManager.library = {
       FS.streams[_stdout] = FS.streams[2];
       FS.streams[_stderr] = FS.streams[3];
       __impure_ptr = allocate([ allocate(
-        {{{ QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
+        {{{ Runtime.QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
         'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
     },
 
@@ -3424,7 +3424,7 @@ LibraryManager.library = {
       ENV['_'] = './this.program';
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
-      envPtr = allocate(MAX_ENV_VALUES * {{{ QUANTUM_SIZE }}},
+      envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
                         'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
       _environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
@@ -3609,14 +3609,14 @@ LibraryManager.library = {
   memcpy__inline: function (dest, src, num, idunno) {
     var ret = '';
 #if ASSERTIONS
-    ret += "assert(" + num + " % 1 === 0, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');";
+    ret += "assert(" + num + " % 1 === 0, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
 #endif
     ret += makeCopyValues(dest, src, num, 'null');
     return ret;
   },
   memcpy: function (dest, src, num, idunno) {
 #if ASSERTIONS
-    assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with QUANTUM_SIZE=1 corrections perhaps?');
+    assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with quantum=1 corrections perhaps?');
 #endif
     {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};
   },
@@ -4032,7 +4032,7 @@ LibraryManager.library = {
   llvm_va_end: function() {},
 
   llvm_va_copy: function(ppdest, ppsrc) {
-    {{{ makeCopyValues('ppdest', 'ppsrc', QUANTUM_SIZE, 'null') }}}
+    {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null') }}}
     /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
     var psrc = IHEAP[ppsrc]-1;
     var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values
@@ -4088,15 +4088,15 @@ LibraryManager.library = {
   __dynamic_cast: function(ptr, knownTI, attemptedTI, idunno) {
     var ptrTV = {{{ makeGetValue('ptr', '0', '*') }}};
     var count = {{{ makeGetValue('ptrTV', '0', '*') }}};
-    ptrTV -= {{{ QUANTUM_SIZE }}};
+    ptrTV -= {{{ Runtime.QUANTUM_SIZE }}};
     var TI = {{{ makeGetValue('ptrTV', '0', '*') }}};
     do {
       if (TI == attemptedTI) return 1;
       // Go to parent class
-      var type_infoAddr = {{{ makeGetValue('TI', '0', '*') }}} - {{{ QUANTUM_SIZE*2 }}};
+      var type_infoAddr = {{{ makeGetValue('TI', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
       var type_info = {{{ makeGetValue('type_infoAddr', '0', '*') }}};
       if (type_info == 1) return 0; // no parent class
-      var TIAddr = TI + {{{ QUANTUM_SIZE*2 }}};
+      var TIAddr = TI + {{{ Runtime.QUANTUM_SIZE*2 }}};
       var TI = {{{ makeGetValue('TIAddr', '0', '*') }}};
     } while (1);
 
@@ -4851,10 +4851,10 @@ LibraryManager.library = {
     // TODO: Use (malleable) environment variables instead of system settings.
     if (__tzname) return; // glibc does not need the double __
 
-    __timezone = _malloc(QUANTUM_SIZE);
+    __timezone = _malloc({{{ Runtime.QUANTUM_SIZE }}});
     {{{ makeSetValue('__timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
-    __daylight = _malloc(QUANTUM_SIZE);
+    __daylight = _malloc({{{ Runtime.QUANTUM_SIZE }}});
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
     {{{ makeSetValue('__daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
@@ -4863,9 +4863,9 @@ LibraryManager.library = {
     var summerName = summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    __tzname = _malloc(2 * QUANTUM_SIZE); // glibc does not need the double __
+    __tzname = _malloc(2 * {{{ Runtime.QUANTUM_SIZE }}}); // glibc does not need the double __
     {{{ makeSetValue('__tzname', '0', 'winterNamePtr', 'i32') }}}
-    {{{ makeSetValue('__tzname', QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+    {{{ makeSetValue('__tzname', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],

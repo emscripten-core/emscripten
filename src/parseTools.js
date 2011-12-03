@@ -15,11 +15,8 @@ function processMacros(text) {
 }
 
 // Simple #if/else/endif preprocessing for a file. Checks if the
-// ident checked is true in our global. Also replaces some constants.
-function preprocess(text, constants) {
-  for (var constant in constants) {
-    text = text.replace(eval('/' + constant + '/g'), constants[constant]);
-  }
+// ident checked is true in our global.
+function preprocess(text) {
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
@@ -734,32 +731,6 @@ function getLabelIds(labels) {
   return labels.map(function(label) { return label.ident });
 }
 
-//! Returns the size of a type, as C/C++ would have it (in 32-bit, for now), in bytes.
-//! @param type The type, by name.
-function getNativeTypeSize(type) {
-  if (QUANTUM_SIZE == 1) return 1;
-  var size = {
-    '%i1': 1,
-    '%i8': 1,
-    '%i16': 2,
-    '%i32': 4,
-    '%i64': 8,
-    "%float": 4,
-    "%double": 8
-  }['%'+type]; // add '%' since float and double confuse Closure compiler as keys, and also spidermonkey as a compiler will remove 's from '_i8' etc
-  if (!size && type[type.length-1] == '*') {
-    size = QUANTUM_SIZE; // A pointer
-  }
-  return size;
-}
-
-//! Returns the size of a structure field, as C/C++ would have it (in 32-bit,
-//! for now).
-//! @param type The type, by name.
-function getNativeFieldSize(type) {
-  return Math.max(Runtime.getNativeTypeSize(type), QUANTUM_SIZE);
-}
-
 function cleanLabel(label) {
   if (label[0] == 'B') {
     return label.substr(5);
@@ -777,7 +748,7 @@ function calcAllocatedSize(type) {
   if (pointingLevels(type) == 0 && isStructType(type)) {
     return Types.types[type].flatSize; // makeEmptyStruct(item.allocatedType).length;
   } else {
-    return getNativeTypeSize(type); // We can really get away with '1', though, at least on the stack...
+    return Runtime.getNativeTypeSize(type); // We can really get away with '1', though, at least on the stack...
   }
 }
 
@@ -789,7 +760,7 @@ function generateStructTypes(type) {
     if (I64_MODE == 1 && type == 'i64') {
       return ['i64', 0, 0, 0, 'i32', 0, 0, 0];
     }
-    return [type].concat(zeros(getNativeFieldSize(type)));
+    return [type].concat(zeros(Runtime.getNativeFieldSize(type)));
   }
 
   // Avoid multiple concats by finding the size first. This is much faster
@@ -904,10 +875,10 @@ function getHeapOffset(offset, type) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
   } else {
-    if (getNativeFieldSize(type) > 4) {
+    if (Runtime.getNativeFieldSize(type) > 4) {
       type = 'i32'; // XXX we emulate 64-bit values as 32
     }
-    var shifts = Math.log(getNativeTypeSize(type))/Math.LN2;
+    var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
     if (shifts != 0) {
       return '((' + offset + ')>>' + (shifts) + ')';
     } else {
@@ -929,7 +900,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 
   if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
     // Alignment is important here. May need to split this up
-    var bytes = getNativeTypeSize(type);
+    var bytes = Runtime.getNativeTypeSize(type);
     if (bytes > align) {
       var ret = '/* unaligned */(';
       if (bytes <= 4) {
@@ -942,7 +913,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
       } else {
         assert(bytes == 8);
         ret += 'tempBigInt=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, true, ignore, align) + ',';
-        ret += 'tempBigInt2=' + makeGetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'i32', noNeedFirst, true, ignore, align) + ',';
+        ret += 'tempBigInt2=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, true, ignore, align) + ',';
         ret += makeI64('tempBigInt', 'tempBigInt2');
       }
       ret += ')';
@@ -952,7 +923,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 
   if (type == 'i64' && I64_MODE == 1) {
     return '[' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore) + ','
-               + makeGetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore) + ']';
+               + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore) + ']';
   }
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
@@ -1005,7 +976,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
 
   if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
     // Alignment is important here. May need to split this up
-    var bytes = getNativeTypeSize(type);
+    var bytes = Runtime.getNativeTypeSize(type);
     if (bytes > align) {
       var ret = '/* unaligned */';
       if (bytes <= 4) {
@@ -1018,7 +989,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
         assert(bytes == 8);
         ret += 'tempPair=' + ensureI64_1(value) + ';';
         ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + ';';
-        ret += makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + ';';
+        ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + ';';
       }
       return ret;
     }
@@ -1026,7 +997,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
 
   if (type == 'i64' && I64_MODE == 1) {
     return '(' + makeSetValue(ptr, pos, value + '[0]', 'i32', noNeedFirst, ignore) + ','
-               + makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), value + '[1]', 'i32', noNeedFirst, ignore) + ')';
+               + makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), value + '[1]', 'i32', noNeedFirst, ignore) + ')';
   }
 
   value = indexizeFunctions(value, type);
@@ -1184,7 +1155,7 @@ function getFastValue(a, op, b, type) {
         return b;
       } else if (b == 1) {
         return a;
-      } else if (isNumber(b) && type && isIntImplemented(type) && getNativeTypeSize(type) <= 32) {
+      } else if (isNumber(b) && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
         var shifts = Math.log(parseFloat(b))/Math.LN2;
         if (shifts % 1 == 0) {
           return '(' + a + '<<' + shifts + ')';
@@ -1379,7 +1350,7 @@ function getGetElementPtrIndexes(item) {
     if (isStructType(type)) {
       indexes.push(getFastValue(Types.types[type].flatSize, '*', offset, 'i32'));
     } else {
-      indexes.push(getFastValue(getNativeTypeSize(type), '*', offset, 'i32'));
+      indexes.push(getFastValue(Runtime.getNativeTypeSize(type), '*', offset, 'i32'));
     }
   }
   item.params.slice(2, item.params.length).forEach(function(arg) {
