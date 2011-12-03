@@ -4533,6 +4533,19 @@ Child2:9
       except:
         pass
 
+    def test_exit_status(self):
+      Settings.CATCH_EXIT_CODE = 1
+
+      src = '''
+        #include <stdio.h>
+        #include <stdlib.h>
+        int main()
+        {
+          printf("hello, world!\\n");
+          exit(118); // Unusual exit status to make sure it's working!
+        }
+      '''
+      self.do_run(src, 'hello, world!\nExit Status: 118')
 
   # Generate tests for all our compilers
   def make_run(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
