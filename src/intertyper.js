@@ -11,27 +11,27 @@ function tokenize(text) {
 
 function intertyper(data, sidePass, baseLineNum) {
   var mainPass = !sidePass;
-  dprint('framework', 'Big picture: Starting intertyper, main pass=' + mainPass);
-
   baseLineNum = baseLineNum || 0;
 
-  // Substrate
+  dprint('framework', 'Big picture: Starting intertyper, main pass=' + mainPass);
 
-  if (LLVM_STYLE === null) {
-    // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
-    LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new';
-    //dprint('LLVM_STYLE: ' + LLVM_STYLE);
-  }
+  if (mainPass) {
+    if (LLVM_STYLE === null) {
+      // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
+      LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new';
+      //dprint('LLVM_STYLE: ' + LLVM_STYLE);
+    }
 
-  // If the source contains debug info as LLVM metadata, process that out (and save the debugging info for later)
-  for (var i = data.length-1; i >= 0; i--) {
-    if (/^!\d+ = metadata .*/.exec(data[i])) {
-      data = Debugging.processMetadata(data);
-      //print(data.join('\n'));
-      //dprint(JSON.stringify(Debugging));
-      break;
+    // If the source contains debug info as LLVM metadata, process that out (and save the debugging info for later)
+    for (var i = data.length-1; i >= 0; i--) {
+      if (/^!\d+ = metadata .*/.exec(data[i])) {
+        Debugging.processMetadata(data);
+        break;
+      }
     }
   }
+
+  // Substrate
 
   var substrate = new Substrate('Intertyper');
 

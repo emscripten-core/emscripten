@@ -51,16 +51,21 @@ var Debugging = {
 
     var debugComment = new RegExp(/; +\[debug line = \d+:\d+\]/);
 
-    var ret = lines.map(function(line, i) {
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
       line = line.replace(debugComment, '');
       var skipLine = false;
 
-      if (form6.exec(line)) return ';';
+      if (form6.exec(line)) {
+        lines[i] = ';';
+        continue;
+      }
 
       var calc = form1.exec(line) || form2.exec(line);
       if (calc) {
         llvmLineToMetadata[i+1] = calc[1];
-        return line.replace(', !dbg !' + calc[1], '');
+        lines[i] = line.replace(', !dbg !' + calc[1], '');
+        continue;
       }
       calc = formStruct.exec(line);
       if (calc) {
@@ -89,22 +94,28 @@ var Debugging = {
       if (calc) {
         metadataToSourceLine[calc[1]] = calc[2];
         metadataToParentMetadata[calc[1]] = calc[3];
-        return ';'; // return an empty line, to keep line numbers of subsequent lines the same
+        lines[i] = ';'; // return an empty line, to keep line numbers of subsequent lines the same
+        continue;
       }
       calc = form3a.exec(line) || form3ab.exec(line) || form3ac.exec(line) || form3ad.exec(line);
       if (calc) {
         metadataToParentMetadata[calc[1]] = calc[2];
-        return ';';
+        lines[i] = ';';
+        continue;
       }
       calc = form3b.exec(line);
       if (calc) {
         metadataToFilename[calc[1]] = /* LLVM 2.8<= : calc[3] + '/' + */ calc[2];
-        return ';';
+        lines[i] = ';';
+        continue;
       }
       calc = form3c.exec(line) || form4.exec(line) || form5.exec(line);
-      if (calc) return ';';
-      return skipLine ? ';' : line;
-    }, this);
+      if (calc) {
+        lines[i] = ';';
+        continue;
+      }
+      lines[i] = skipLine ? ';' : line;
+    }
 
     /*
     dprint("ll ==> meta: " + JSON.stringify(llvmLineToMetadata));
@@ -157,8 +168,6 @@ var Debugging = {
     }
 
     this.on = true;
-
-    return ret;
   },
 
   clear: function() {
