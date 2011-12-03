@@ -103,7 +103,7 @@ function analyzer(data) {
     // to look at the underlying type - it was not defined explicitly
     // anywhere else.
     var nonPointing = removeAllPointing(type);
-    var check = new RegExp(/^\[(\d+)\ x\ (.*)\]$/g).exec(nonPointing);
+    var check = /^\[(\d+)\ x\ (.*)\]$/.exec(nonPointing);
     if (check && !Types.types[nonPointing]) {
       var num = parseInt(check[1]);
       num = Math.max(num, 1); // [0 x something] is used not for allocations and such of course, but
@@ -506,7 +506,7 @@ function analyzer(data) {
           }
           var ret = get();
           if (ret && ret[0] === '[') {
-            var check = new RegExp(/^\[(\d+)\ x\ (.*)\]\*$/g).exec(ret);
+            var check = /^\[(\d+)\ x\ (.*)\]\*$/.exec(ret);
             assert(check);
             ret = check[2] + '*';
           }

@@ -40,7 +40,7 @@ function intertyper(data, sidePass, baseLineNum) {
   // from raw lines and end up with final JS for each function individually that way, instead
   // of intertyping them all, then analyzing them all, etc.
   substrate.addActor('LineSplitter', {
-    processItem: function(item) {
+    processItem: function _lineSplitter(item) {
       var lines = item.llvmLines;
       var ret = [];
       var inContinual = false;
@@ -89,13 +89,10 @@ function intertyper(data, sidePass, baseLineNum) {
           currFunctionLineNum = i + 1;
         }
         if (!inFunction || !mainPass) {
-          if (inContinual || new RegExp(/^\ +to.*/g).test(line)
-                          || new RegExp(/^\ +catch .*/g).test(line)
-                          || new RegExp(/^\ +filter .*/g).test(line)
-                          || new RegExp(/^\ +cleanup.*/g).test(line)) {
+          if (inContinual || /^\ +(to|catch |filter |cleanup).*/.test(line)) {
             // to after invoke or landingpad second line
             ret.slice(-1)[0].lineText += line;
-            if (new RegExp(/^\ +\]/g).test(line)) { // end of llvm switch
+            if (/^\ +\]/.test(line)) { // end of llvm switch
               inContinual = false;
             }
           } else {
@@ -103,7 +100,7 @@ function intertyper(data, sidePass, baseLineNum) {
               lineText: line,
               lineNum: i + 1 + baseLineNum
             });
-            if (new RegExp(/^\ +switch\ .*/g).test(line)) {
+            if (/^\ +switch\ .*/.test(line)) {
               // beginning of llvm switch
               inContinual = true;
             }
@@ -144,7 +141,7 @@ function intertyper(data, sidePass, baseLineNum) {
 
   // Line tokenizer
   tokenizer = substrate.addActor('Tokenizer', {
-    processItem: function(item, inner) {
+    processItem: function _tokenizer(item, inner) {
       //assert(item.lineNum != 40000);
       //if (item.lineNum) print(item.lineNum);
       var tokens = [];
@@ -165,8 +162,7 @@ function intertyper(data, sidePass, baseLineNum) {
       function makeToken(text) {
         if (text.length == 0) return;
         // merge certain tokens
-        if ( (lastToken && lastToken.text == '%' && text[0] == '"' ) ||
-             (lastToken && text.replace(/\*/g, '') == '') ) {
+        if (lastToken && ( (lastToken.text == '%' && text[0] == '"') || /^\**$/.exec(text) ) ) {
           lastToken.text += text;
           return;
         }
@@ -191,7 +187,11 @@ function intertyper(data, sidePass, baseLineNum) {
           tokens.push(token);
           token.type = '{';
           token.text = '{ ' + token.text + ' }';
-          while (pointingLevels(text) > pointingLevels(token.text)) token.text += '*'; // TODO: optimize
+          var pointingLevelsToAdd = pointingLevels(text) - pointingLevels(token.text);
+          while (pointingLevelsToAdd > 0) {
+            token.text += '*';
+            pointingLevelsToAdd--;
+          }
           lastToken = token;
         } else {
           tokens.push(token);
@@ -291,7 +291,7 @@ function intertyper(data, sidePass, baseLineNum) {
   var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 
   substrate.addActor('Triager', {
-    processItem: function(item) {
+    processItem: function _triager(item) {
       function triage() {
         if (!item.intertype) {
           var token0Text = item.tokens[0].text;
@@ -373,7 +373,7 @@ function intertyper(data, sidePass, baseLineNum) {
 
   // globals: type or variable
   substrate.addActor('Global', {
-    processItem: function(item) {
+    processItem: function _global(item) {
       function scanConst(value, type) {
         // Gets an array of constant items, separated by ',' tokens
         function handleSegments(tokens) {
