@@ -706,7 +706,7 @@ function parseNumerical(value, type) {
     return '0';
   }
   if (isNumber(value)) {
-    return eval(value).toString(); // will change e.g. 5.000000e+01 to 50
+    return parseFloat(value).toString(); // will change e.g. 5.000000e+01 to 50
   } else {
     return value;
   }
@@ -1562,6 +1562,7 @@ function isSignedOp(op, variant) {
 function processMathop(item) {
   var op = item.op;
   var variant = item.variant;
+  var type = item.type;
   var paramTypes = ['', '', '', ''];
   for (var i = 1; i <= 3; i++) {
     if (item['param'+i]) {
@@ -1638,8 +1639,9 @@ function processMathop(item) {
           case 'ne': case 'eq': {
             // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
             // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
-            ident1 = makeSignOp(ident1, type, 're');
-            ident2 = makeSignOp(ident2, type, 're');
+            assert(paramTypes[0] == paramTypes[1]);
+            ident1 = makeSignOp(ident1, paramTypes[0], 're');
+            ident2 = makeSignOp(ident2, paramTypes[1], 're');
             if (variant === 'eq') {
               return ident1 + '[0] == ' + ident2 + '[0] && ' + ident1 + '[1] == ' + ident2 + '[1]';
             } else {
@@ -1742,8 +1744,9 @@ function processMathop(item) {
         case 'ne': case 'eq': {
           // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
           // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
-          ident1 = makeSignOp(ident1, type, 're');
-          ident2 = makeSignOp(ident2, type, 're');
+          assert(paramTypes[0] == paramTypes[1]);
+          ident1 = makeSignOp(ident1, paramTypes[0], 're');
+          ident2 = makeSignOp(ident2, paramTypes[1], 're');
           return ident1 + (variant === 'eq' ? '==' : '!=') + ident2;
         }
         default: throw 'Unknown icmp variant: ' + variant;
