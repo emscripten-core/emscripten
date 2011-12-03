@@ -3576,8 +3576,10 @@ if 'benchmark' not in str(sys.argv):
         src = open(filename, 'a')
         src.write(
           '''
+            FS.ignorePermissions = true;
             FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
             FS.root.write = true;
+            FS.ignorePermissions = false;
             run();
             print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents));
           '''
