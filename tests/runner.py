@@ -4582,6 +4582,7 @@ class %s(T):
     Settings.PROFILE = 0
     Settings.INCLUDE_FULL_LIBRARY = 0
     Settings.BUILD_AS_SHARED_LIB = 0
+    Settings.CATCH_EXIT_CODE = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
     Settings.EMULATE_UNALIGNED_ACCESSES = Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2
     if Settings.USE_TYPED_ARRAYS == 2:
