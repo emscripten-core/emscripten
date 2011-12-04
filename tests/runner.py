@@ -35,6 +35,7 @@ class RunnerCore(unittest.TestCase):
   save_JS = 0
 
   def setUp(self):
+    self.banned_js_engines = []
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
     else:
@@ -238,11 +239,12 @@ if 'benchmark' not in str(sys.argv):
 
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
         if js_engines is None:
-          js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE]
+          js_engines = JS_ENGINES
         if Settings.USE_TYPED_ARRAYS:
-          js_engines = [SPIDERMONKEY_ENGINE] # V8 issue 1822
-        js_engines = filter(lambda engine: os.path.exists(engine[0]), js_engines)
-        assert len(js_engines) > 0, 'No JS engine present to run this test with. Check ~/.emscripten and the paths therein.'
+          js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
+        js_engines = filter(lambda engine: os.path.exists(engine[0]) or os.path.sep not in engine, js_engines)
+        js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
+        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check ~/.emscripten and settings.py and the paths therein.')
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
@@ -3710,6 +3712,8 @@ if 'benchmark' not in str(sys.argv):
     # They are only valid enough for us to read for test purposes, not for llvm-as
     # to process.
     def test_cases(self):
+      self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
+
       Settings.CHECK_OVERFLOWS = 0
       if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
@@ -4072,7 +4076,7 @@ Block 0: ''', post_build=post1)
         def post2(filename):
           src = open(filename, 'r').read().replace(
             '// {{MODULE_ADDITIONS}',
-            '''load('bindingtest.js')''' + '\n\n' + script_src_2 + '\n\n' + 
+            open(os.path.join(self.get_dir(), 'bindingtest.js')).read() + '\n\n' + script_src_2 + '\n\n' + 
               '// {{MODULE_ADDITIONS}'
           )
           open(filename, 'w').write(src)
@@ -4277,7 +4281,6 @@ Child2:9
       except Exception, e:
         # This test *should* fail, by throwing this exception
         assert 'Too many corrections' in str(e), str(e)
-        assert 'CHECK_OVERFLOW' in str(e), str(e)
 
     def test_debug(self):
       src = '''

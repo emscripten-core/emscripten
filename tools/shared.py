@@ -36,6 +36,10 @@ JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 # Additional compiler options
 
+try:
+  COMPILER_OPTS # Can be set in ~/.emscripten, optionally
+except:
+  COMPILER_OPTS = []
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__']
 
@@ -76,6 +80,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 def run_js(engine, filename, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
+  if type(engine) is not list: engine = [engine]
   return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
                      stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
@@ -283,7 +288,7 @@ class Building:
       except:
         pass
     settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
-    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), TIMEOUT, 'Compiling')
+    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors

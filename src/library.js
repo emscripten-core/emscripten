@@ -393,6 +393,7 @@ LibraryManager.library = {
     },
 
     quit: function() {
+      if (!FS.init.initialized) return;
       // Flush any partially-printed lines in stdout and stderr
       if (FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output('\n'.charCodeAt(0));
       if (FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output('\n'.charCodeAt(0));

@@ -7,6 +7,9 @@ try {
   gcparam('maxBytes', 1024*1024*1024);
 } catch(e) {}
 
+
+// The environment setup code appears both here and in shell.js, because it can't be shared. Keep them in sync!
+// *** Environment setup code ***
 var arguments_ = [];
 
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
@@ -16,20 +19,24 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE;
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   print = function(x) {
-    process.stdout.write(x + '\n');
+    process['stdout'].write(x + '\n');
   };
   printErr = function(x) {
-    process.stderr.write(x + '\n');
+    process['stderr'].write(x + '\n');
   };
 
   var nodeFS = require('fs');
 
   read = function(filename) {
-    if (filename[0] != '/') filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
-    return nodeFS.readFileSync(filename).toString();
+    var ret = nodeFS['readFileSync'](filename).toString();
+    if (!ret && filename[0] != '/') {
+      filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
+      ret = nodeFS['readFileSync'](filename).toString();
+    }
+    return ret;
   };
 
-  arguments_ = process.argv.slice(2);
+  arguments_ = process['argv'].slice(2);
 
 } else if (ENVIRONMENT_IS_SHELL) {
   // Polyfill over SpiderMonkey/V8 differences
@@ -71,6 +78,8 @@ if (!this['load']) {
     globalEval(read(f));
   };
 }
+// *** Environment setup code ***
+
 
 // Basic utilities
 

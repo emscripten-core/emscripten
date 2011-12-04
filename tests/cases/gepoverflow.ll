@@ -30,6 +30,7 @@ entry:
   br label %return
 
 return:                                           ; preds = %entry
+  store i32 0, i32* %retval
   %retval1 = load i32* %retval                    ; [#uses=1]
   ret i32 %retval1
 }
