@@ -1,28 +1,40 @@
-# This file will be copied to ~/.emscripten if that file doesn't exist.
-# IMPORTANT: Edit it with the right paths!
+# This file will be copied to ~/.emscripten if that file doesn't exist. Or, this is that copy.
+# IMPORTANT: Edit the *copy* with the right paths!
 
-LLVM_ROOT=os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
+LLVM_ROOT = os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
 
+# See below for notes on which JS engine(s) you need
 NODE_JS = 'node'
-SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n'] # optional, but recommended
-V8_ENGINE = os.path.expanduser('~/Dev/v8/d8') # optional (mostly unneeded if you have node)
+SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n']
+V8_ENGINE = os.path.expanduser('~/Dev/v8/d8')
 
 CLOSURE_COMPILER = os.path.expanduser('~/Dev/closure-compiler/compiler.jar') # optional (needed for the benchmarks)
 
-TEMP_DIR='/tmp'
+TEMP_DIR = '/tmp'
+
 
 ########################################################################################################
 
-# Pick the JS engine to use for running the compiler. Any of the three will work. This engine
-# must exist, or nothing can be compiled.
 
-COMPILER_ENGINE=NODE_JS
-#COMPILER_ENGINE=SPIDERMONKEY_ENGINE
-#COMPILER_ENGINE=V8_ENGINE
+# Pick the JS engine to use for running the compiler. This engine must exist, or
+# nothing can be compiled.
+#
+# Recommendation: If you already have node installed, use that. Otherwise, build v8 or
+#                 spidermonkey from source. Any of these three is fine, as long as it's
+#                 a recent version (especially for v8 and spidermonkey).
 
-# JS engines to use when running the automatic tests. Modify this to include all
-# the JS engines you have installed. Not all these engines must exist, if they do not,
-# they will be skipped in the test runner.
+COMPILER_ENGINE = NODE_JS
+#COMPILER_ENGINE = V8_ENGINE
+#COMPILER_ENGINE = SPIDERMONKEY_ENGINE
 
-JS_ENGINES=[NODE_JS, SPIDERMONKEY_ENGINE]
+
+# All JS engines to use when running the automatic tests. Not all the engines in this list
+# must exist (if they don't, they will be skipped in the test runner).
+#
+# Recommendation: If you already have node installed, use that. If you can, also build
+#                 spidermonkey from source as well to get more test coverage (node can't
+#                 run all the tests due to node issue 1669). v8 is currently not recommended
+#                 here because of v8 issue 1822.
+
+JS_ENGINES = [NODE_JS, SPIDERMONKEY_ENGINE]
 
