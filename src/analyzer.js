@@ -15,6 +15,12 @@ function cleanFunc(func) {
   });
 }
 
+// Handy sets
+
+var BRANCH_INVOKE = set('branch', 'invoke');
+
+// Analyzer
+
 function analyzer(data) {
   // Substrate
   var substrate = new Substrate('Analyzer');
@@ -728,7 +734,6 @@ function analyzer(data) {
     }
   });
 
-  var BRANCH_INVOKE = set('branch', 'invoke');
   function operateOnLabels(line, func) {
     function process(item, id) {
       ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {

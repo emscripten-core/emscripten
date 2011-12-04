@@ -3,7 +3,12 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-// Main function
+// Handy sets
+
+var STRUCT_LIST = set('struct', 'list');
+var UNDERSCORE_OPENPARENS = set('_', '(');
+
+// JSifier
 function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
 
@@ -195,7 +200,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           ret = makeEmptyStruct(segment.type);
         } else if (segment.intertype in PARSABLE_LLVM_FUNCTIONS) {
           ret = finalizeLLVMFunctionCall(segment);
-        } else if (segment.intertype in set('struct', 'list')) {
+        } else if (segment.intertype in STRUCT_LIST) {
           ret = alignStruct(handleSegments(segment.contents), segment.type);
         } else if (segment.intertype === 'string') {
           ret = parseLLVMString(segment.text); // + ' /* ' + text + '*/';
@@ -237,7 +242,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       function needsPostSet(value) {
-        return value[0] in set('_', '(') || value.substr(0, 14) === 'CHECK_OVERFLOW';
+        return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW';
       }
 
       item.intertype = 'GlobalVariableStub';

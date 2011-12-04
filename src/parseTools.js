@@ -225,6 +225,8 @@ function findTokenText(item, text) {
   return -1;
 }
 
+var SPLIT_TOKEN_LIST_SPLITTERS = set(',', 'to'); // 'to' can separate parameters as well...
+
 // Splits a list of tokens separated by commas. For example, a list of arguments in a function call
 function splitTokenList(tokens) {
   if (tokens.length == 0) return [];
@@ -232,10 +234,9 @@ function splitTokenList(tokens) {
   if (tokens.slice(-1)[0].text != ',') tokens.push({text:','});
   var ret = [];
   var seg = [];
-  var SPLITTERS = set(',', 'to'); // 'to' can separate parameters as well...
   for (var i = 0; i < tokens.length; i++) {
     var token = tokens[i];
-    if (token.text in SPLITTERS) {
+    if (token.text in SPLIT_TOKEN_LIST_SPLITTERS) {
       ret.push(seg);
       seg = [];
     } else if (token.text == ';') {
@@ -1013,12 +1014,14 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
 
 var UNROLL_LOOP_MAX = 5;
 
+var ZERO_ONE = set(0, 1);
+
 function makeSetValues(ptr, pos, value, type, num) {
   function safety(where) {
     where = where || getFastValue(ptr, '+', pos) + '+mspi';
     return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + where + ', ' + type + ', 1)' : '');
   }
-  if (USE_TYPED_ARRAYS in set(0, 1)) {
+  if (USE_TYPED_ARRAYS in ZERO_ONE) {
     if (isNumber(num)) {
       if (parseInt(num) <= UNROLL_LOOP_MAX) {
         return range(num).map(function(i) {
@@ -1134,6 +1137,10 @@ function makeCopyValues(dest, src, num, type, modifier) {
   return null;
 }
 
+var PLUS_MUL = set('+', '*');
+var MUL_DIV = set('*', '/');
+var PLUS_MINUS = set('+', '-');
+
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
 function getFastValue(a, op, b, type) {
@@ -1142,12 +1149,12 @@ function getFastValue(a, op, b, type) {
   if (isNumber(a) && isNumber(b)) {
     return eval(a + op + b).toString();
   }
-  if (op in set('+', '*') && isNumber(a)) { // if one of them is a number, keep it last
+  if (op in PLUS_MUL && isNumber(a)) { // if one of them is a number, keep it last
     var c = b;
     b = a;
     a = c;
   }
-  if (op in set('*', '/')) {
+  if (op in MUL_DIV) {
     if (op == '*') {
       if (a == 0 || b == 0) {
         return '0';
@@ -1168,7 +1175,7 @@ function getFastValue(a, op, b, type) {
         return a;
       } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
     }
-  } else if (op in set('+', '-')) {
+  } else if (op in PLUS_MINUS) {
     if (b[0] == '-') {
       op = op == '+' ? '-' : '+';
       b = b.substr(1);
@@ -1212,9 +1219,11 @@ function makeGetPos(ptr) {
   return ptr;
 }
 
+var IHEAP_FHEAP = set('IHEAP', 'FHEAP');
+
 function makePointer(slab, pos, allocator, type) {
   assert(type, 'makePointer requires type info');
-  if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in set('IHEAP', 'FHEAP'))) return pos;
+  if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP)) return pos;
   var types = generateStructTypes(type);
   // compress type info and data if possible
   var de;

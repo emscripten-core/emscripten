@@ -9,6 +9,20 @@ function tokenize(text) {
   return tokenizer.processItem({ lineText: text }, true);
 }
 
+// Handy sets
+
+var ENCLOSER_STARTERS = set('[', '(', '<');
+var ENCLOSER_ENDERS = {
+  '[': ']',
+  '(': ')',
+  '<': '>'
+};
+var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
+var ZEROINIT_UNDEF = set('zeroinitializer', 'undef');
+var NSW_NUW = set('nsw', 'nuw');
+
+// Intertyper
+
 function intertyper(data, sidePass, baseLineNum) {
   var mainPass = !sidePass;
   baseLineNum = baseLineNum || 0;
@@ -123,13 +137,6 @@ function intertyper(data, sidePass, baseLineNum) {
       return unparsedBundles;
     }
   });
-
-  var ENCLOSER_STARTERS = set('[', '(', '<');
-  var ENCLOSER_ENDERS = {
-    '[': ']',
-    '(': ')',
-    '<': '>'
-  };
 
   // Line tokenizer
   tokenizer = substrate.addActor('Tokenizer', {
@@ -280,8 +287,6 @@ function intertyper(data, sidePass, baseLineNum) {
     }
   });
 
-  var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
-
   substrate.addActor('Triager', {
     processItem: function _triager(item) {
       function triage() {
@@ -407,7 +412,7 @@ function intertyper(data, sidePass, baseLineNum) {
         Types.needAnalysis[type] = 0;
         if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
           return { value: toNiceIdent(value.text), type: type };
-        } else if (value.text in set('zeroinitializer', 'undef')) { // undef doesn't really need initting, but why not
+        } else if (value.text in ZEROINIT_UNDEF) { // undef doesn't really need initting, but why not
           return { intertype: 'emptystruct', type: type };
         } else if (value.text && value.text[0] == '"') {
           return { intertype: 'string', text: value.text.substr(1, value.text.length-2) };
@@ -519,7 +524,7 @@ function intertyper(data, sidePass, baseLineNum) {
   var funcHeader = substrate.addActor('FuncHeader', {
     processItem: function(item) {
       item.tokens = item.tokens.filter(function(token) {
-        return !(token.text in LLVM.LINKAGES || token.text in LLVM.PARAM_ATTR || token.text in set('hidden', 'nounwind', 'define', 'inlinehint', '{') || token.text in LLVM.CALLING_CONVENTIONS);
+        return !(token.text in LLVM.LINKAGES || token.text in LLVM.PARAM_ATTR || token.text in LLVM.FUNC_ATTR || token.text in LLVM.CALLING_CONVENTIONS);
       });
       var params = parseParamTokens(item.tokens[2].item.tokens);
       return [{
@@ -776,7 +781,7 @@ function intertyper(data, sidePass, baseLineNum) {
       item.intertype = 'mathop';
       item.op = item.tokens[0].text;
       item.variant = null;
-      while (item.tokens[1].text in set('nsw', 'nuw')) item.tokens.splice(1, 1);
+      while (item.tokens[1].text in NSW_NUW) item.tokens.splice(1, 1);
       if (['icmp', 'fcmp'].indexOf(item.op) != -1) {
         item.variant = item.tokens[1].text;
         item.tokens.splice(1, 1);
