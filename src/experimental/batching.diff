@@ -1,0 +1,44 @@
+diff --git a/src/jsifier.js b/src/jsifier.js
+index df2ae43..9f8d06a 100644
+--- a/src/jsifier.js
++++ b/src/jsifier.js
+@@ -108,6 +108,7 @@ function JSify(data, functionsOnly, givenFunctions) {
+     }
+   });
+ 
++/*
+   // TODO: batch small functions
+   for (var i = 0; i < data.unparsedFunctions.length; i++) {
+     var func = data.unparsedFunctions[i];
+@@ -119,6 +120,7 @@ function JSify(data, functionsOnly, givenFunctions) {
+     if (DEBUG_MEMORY) MemoryDebugger.tick('func ' + func.ident);
+   }
+   func = null; // Do not hold on to anything from inside that loop (JS function scoping..)
++*/
+   data.unparsedFunctions = null;
+ 
+   // Actors
+@@ -1107,8 +1109,22 @@ function JSify(data, functionsOnly, givenFunctions) {
+     print(postParts[0]);
+ 
+     // Print out global variables and postsets TODO: batching
+-    JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true)), true, Functions);
++//printErr('pre globals!'); sleep(1);
++var MAX_BATCH_SIZE = 1000;//Infinity;
++    while (data.unparsedGlobalss[0].lines.length > 0) {
++      var currLines = [], currSize = 0;
++      while (data.unparsedGlobalss[0].lines.length > 0 && (currSize == 0 || currSize + data.unparsedGlobalss[0].lines[0].length <= MAX_BATCH_SIZE)) {
++        currLines.push(data.unparsedGlobalss[0].lines.shift());
++        currSize += currLines[currLines.length-1].length;
++      }
++//printErr('zz batch size: ' + currSize);
++      JSify(analyzer(intertyper(currLines, true)), true, Functions);
++    }
++throw "ok!";
++printErr('post globals 1! '); sleep(10);
++    currLines = [];
+     data.unparsedGlobalss = null;
++printErr('post globals 2!'); sleep(10);
+ 
+     print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
+     print(postParts[1]);
