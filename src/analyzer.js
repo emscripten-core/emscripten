@@ -206,8 +206,9 @@ function analyzer(data) {
       var more = true;
       while (more) {
         more = false;
-        values(types).forEach(function(type) {
-          if (type.flatIndexes) return;
+        for (var typeName in types) {
+          var type = types[typeName];
+          if (type.flatIndexes) continue;
           var ready = true;
           type.fields.forEach(function(field) {
             if (isStructType(field)) {
@@ -223,14 +224,14 @@ function analyzer(data) {
           });
           if (!ready) {
             more = true;
-            return;
+            continue;
           }
 
           Runtime.calculateStructAlignment(type);
 
           if (dcheck('types')) dprint('type (fat=' + !!fatTypes + '): ' + type.name_ + ' : ' + JSON.stringify(type.fields));
           if (dcheck('types')) dprint('                        has final size of ' + type.flatSize + ', flatting: ' + type.needsFlattening + ' ? ' + (type.flatFactor ? type.flatFactor : JSON.stringify(type.flatIndexes)));
-        });
+        }
       }
 
       if (QUANTUM_SIZE === 1 && !fatTypes) {
