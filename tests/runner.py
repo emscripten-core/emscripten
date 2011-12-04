@@ -1087,6 +1087,8 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, 'Assertion failed: 1 == false')
 
     def test_exceptions(self):
+        self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
+
         src = '''
           #include <stdio.h>
           void thrower() {
