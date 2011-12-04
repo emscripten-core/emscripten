@@ -4635,8 +4635,8 @@ TT = %s
       # emcc src.cpp ==> should give a .js file
       # emcc -O0 src.cpp ==> same as without -O0 (i.e., assertions, etc.)
       # emcc -O1 src.cpp ==> no assertions, basic optimizations, plus eliminator, but no reloop
-      # emcc -O2 src.cpp ==> plus reloop
-      # emcc -O3 src.cpp ==> plus closure compiler
+      # emcc -O2 src.cpp ==> plus reloop, plus closure compiler. dangerous, warn! (but not dangerous for simple commandline tests?)
+      # emcc -O3 src.cpp ==> no corrections. dangerous, warn!
       # emcc --typed-arrays=x .. ==> should use typed arrays
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe)
       # emcc src.cpp -c ==> should give a .bc file
