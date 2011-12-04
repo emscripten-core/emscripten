@@ -3190,6 +3190,11 @@ LibraryManager.library = {
     return Math.floor(Number(Pointer_stringify(s).substr(0, e-s)));
   },
 
+  atof__deps: ['strtod'],
+  atof: function(s) {
+    return _strtod(s, 0);
+  },
+
   exit__deps: ['_exit'],
   exit: function(status) {
     __exit(status);
@@ -3402,6 +3407,25 @@ LibraryManager.library = {
       _memcpy(base+i*size, temp+keys[i]*size, size);
     }
     _free(temp);
+  },
+
+  bsearch: function(key, base, num, size, comparator) {
+    if (num == 0 || size == 0) return;
+    comparator = FUNCTION_TABLE[comparator];
+    var min = 0, max = num;
+    while (min < max) {
+      var idx = Math.floor((min + max) / 2);
+      var p = base+idx*size;
+      var cmp = comparator(key, p);
+      if (cmp < 0) {
+        max = idx;
+      } else if (cmp > 0) {
+        min = idx + 1;
+      } else {
+        return p;
+      }
+    }
+    return 0;
   },
 
   environ: null,
@@ -3839,6 +3863,47 @@ LibraryManager.library = {
       ptr1++;
     }
     return 0;
+  },
+
+  __strtok_state: 0,
+  strtok__deps: ['__strtok_state'],
+  strtok: function(str, delims) {
+    if (str == 0) str = ___strtok_state;
+    if (str == 0) return 0;
+
+    var start = 0;
+    var chr;
+    do {
+      chr = {{{ makeGetValue('str', 0, 'i8') }}};
+
+      // Check if chr is a delimiter
+      var delimsP = delims, delim;
+      do {
+        delim = {{{ makeGetValue('delimsP', 0, 'i8') }}};
+        delimsP++;
+      } while (delim != 0 && chr != delim);
+
+      if (chr == 0) {
+        // End of the string
+        ___strtok_state = 0;
+      } else if (chr == delim) {
+        if (start != 0) {
+          // Make this the end of the current token
+          {{{ makeSetValue('str', 0, 0, 'i8') }}};
+          chr = 0;
+
+          // Next token starts at the next character
+          ___strtok_state = str + 1;
+        }
+      } else if (start == 0) {
+        // We found the start of the current token
+        start = str;
+      }
+
+      str++;
+    } while (chr != 0);
+
+    return start;
   },
 
   // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays

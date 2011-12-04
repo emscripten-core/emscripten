@@ -840,6 +840,35 @@ if 'benchmark' not in str(sys.argv):
         '''
         self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
+    def test_strtok(self):
+        src = '''
+          #include <stdio.h>
+          #include <string.h>
+
+          void printTok(char *str) {
+            char delim[] = "- :.";
+            char *p;
+            p = strtok(str, delim);
+            while (p != NULL) {
+              printf("%s\\n", p);
+              p = strtok(NULL, delim);
+            }
+          }
+
+          int main() {
+            printTok("- Emscripten: An LLVM-to-JavaScript Compiler.");
+            printTok("-  -");
+            printTok("-");
+            printTok("");
+            printTok("abc");
+            printTok(" a");
+            printTok("b ");
+            printTok("c");
+            return 0;
+          }
+        '''
+        self.do_run(src, "Emscripten\nAn\nLLVM\nto\nJavaScript\nCompiler\nabc\na\nb\nc\n")
+
     def test_errar(self):
         src = r'''
           #include <stdio.h>
@@ -1961,6 +1990,45 @@ if 'benchmark' not in str(sys.argv):
 
         self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*malloc(0)!=0:1*\n*cleaned*')
 
+    def test_bsearch(self):
+      src = '''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+
+        int comp(const void *a, const void *b) {
+          return (*((int *)a) - *((int *)b));
+        }
+
+        int main() {
+          int values[] = { 1, 5, 7, 9 };
+          int key;
+          
+          key = 0;
+          printf("%d ", bsearch(&key, values, 4, sizeof(int), comp));
+
+          key = 6;
+          printf("%d ", bsearch(&key, values, 4, sizeof(int), comp));
+
+          key = 11;
+          printf("%d ", bsearch(&key, values, 4, sizeof(int), comp));
+          
+          for (int i=0; i<4; i++) {
+            key = values[i];
+            printf("%d ", *(int *)bsearch(&key, values, 4, sizeof(int), comp));
+          }
+          
+          key = 1;
+          printf("%d ", *(int *)bsearch(&key, values, 1, sizeof(int), comp));
+          
+          key = 1;
+          printf("%d ", *(int *)bsearch(&key, values, 3, sizeof(int), comp));
+
+          return 0;
+        }
+      '''
+      self.do_run(src, "0 0 0 1 5 7 9 1 1 ")
+
     def test_time(self):
       # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
@@ -2682,6 +2750,54 @@ if 'benchmark' not in str(sys.argv):
         }
         '''
       self.do_run(src)
+
+    def test_atof(self):
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          printf("\n");
+          printf("%g\n", atof("0"));
+          printf("%g\n", atof("0."));
+          printf("%g\n", atof("0.0"));
+          printf("%g\n", atof("1"));
+          printf("%g\n", atof("1."));
+          printf("%g\n", atof("1.0"));
+          printf("%g\n", atof("123"));
+          printf("%g\n", atof("123.456"));
+          printf("%g\n", atof("-123.456"));
+          printf("%g\n", atof("1234567891234567890"));
+          printf("%g\n", atof("1234567891234567890e+50"));
+          printf("%g\n", atof("84e+220"));
+          printf("%g\n", atof("84e+420"));
+          printf("%g\n", atof("123e-50"));
+          printf("%g\n", atof("123e-250"));
+          printf("%g\n", atof("123e-450"));
+
+          return 0;
+        }
+        '''
+      expected = '''
+        0
+        0
+        0
+        1
+        1
+        1
+        123
+        123.456
+        -123.456
+        1.23457e+18
+        1.23457e+68
+        8.4e+221
+        inf
+        1.23e-48
+        1.23e-248
+        0
+        '''
+      self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_sscanf(self):
       src = r'''
