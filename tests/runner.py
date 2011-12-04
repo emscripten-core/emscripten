@@ -4690,8 +4690,10 @@ else:
     pass
 
   Building.COMPILER = CLANG
-  JS_ENGINE = SPIDERMONKEY_ENGINE
-  #JS_ENGINE = V8_ENGINE
+
+  # Pick the JS engine to benchmark
+  JS_ENGINE = JS_ENGINES[1]
+  print 'Benchmarking JS engine:', JS_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
   POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressions']]
