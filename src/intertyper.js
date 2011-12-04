@@ -23,9 +23,9 @@ var NSW_NUW = set('nsw', 'nuw');
 
 // Intertyper
 
-function intertyper(data, sidePass, baseLineNum) {
+function intertyper(data, sidePass, baseLineNums) {
   var mainPass = !sidePass;
-  baseLineNum = baseLineNum || 0;
+  baseLineNums = baseLineNums || [[0,0]]; // each pair [#0,#1] means "starting from line #0, the base line num is #1"
 
   dprint('framework', 'Big picture: Starting intertyper, main pass=' + mainPass);
 
@@ -67,9 +67,14 @@ function intertyper(data, sidePass, baseLineNum) {
         };
         unparsedBundles.push(unparsedGlobals);
       }
+      var baseLineNumPosition = 0;
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
+
+        while (baseLineNumPosition < baseLineNums.length-1 && i >= baseLineNums[baseLineNumPosition+1][0]) {
+          baseLineNumPosition++;
+        }
 
         if (mainPass && (line[0] == '%' || line[0] == '@')) {
           // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
@@ -104,7 +109,7 @@ function intertyper(data, sidePass, baseLineNum) {
           } else {
             ret.push({
               lineText: line,
-              lineNum: i + 1 + baseLineNum
+              lineNum: i + 1 + baseLineNums[baseLineNumPosition][1]
             });
             if (/^\ +switch\ .*/.test(line)) {
               // beginning of llvm switch

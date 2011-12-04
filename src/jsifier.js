@@ -108,17 +108,24 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
-  // TODO: batch small functions
-  for (var i = 0; i < data.unparsedFunctions.length; i++) {
-    var func = data.unparsedFunctions[i];
-    // We don't need to save anything past here
-    data.unparsedFunctions[i] = null;
-    dprint('unparsedFunctions', '====================\n// Processing |' + func.ident + '|, ' + i + '/' + data.unparsedFunctions.length);
-    if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func ' + func.ident);
-    JSify(analyzer(intertyper(func.lines, true, func.lineNum-1)), true, Functions);
-    if (DEBUG_MEMORY) MemoryDebugger.tick('func ' + func.ident);
+
+  var MAX_BATCH_FUNC_LINES = 1000;
+  while (data.unparsedFunctions.length > 0) {
+    var currFuncLines = [];
+    var currBaseLineNums = [];
+    while (currFuncLines.length == 0 ||
+           (data.unparsedFunctions.length > 0 && currFuncLines.length + data.unparsedFunctions[0].lines.length <= MAX_BATCH_FUNC_LINES)) {
+      currBaseLineNums.push([currFuncLines.length, data.unparsedFunctions[0].lineNum-1]);
+      currFuncLines = currFuncLines.concat(data.unparsedFunctions[0].lines); // for first one, assign, do not concat?
+      data.unparsedFunctions.shift();
+    }
+    dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
+                               ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
+    if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
+    JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums)), true, Functions);
+    if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
   }
-  func = null; // Do not hold on to anything from inside that loop (JS function scoping..)
+  currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
   data.unparsedFunctions = null;
 
   // Actors
