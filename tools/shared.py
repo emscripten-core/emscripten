@@ -34,6 +34,17 @@ EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
+# ~/.emscripten stuff
+
+try:
+  JS_ENGINES
+except:
+  try:
+    JS_ENGINES = [JS_ENGINE]
+  except Exception, e:
+    print 'ERROR: ~/.emscripten does not seem to have JS_ENGINES or JS_ENGINE set up'
+    raise
+
 # Additional compiler options
 
 try:
