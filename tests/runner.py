@@ -4990,9 +4990,21 @@ else:
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
-  # TODO: check for js engines ([] or out of [])
+
+  # Sanity checks
+
+  try:
+    check = run_js(COMPILER_ENGINE, path_from_root('tests', 'hello_world.js'))
+  except Exception, e:
+    check = str(e)
+  if check != 'hello, world!\n':
+    print 'WARNING: The JavaScript shell used for compiling (%s) does not seem to work. Check ~/.emscripten. Output:\n---\n\n%s\n\n---\n' % (str(COMPILER_ENGINE), check)
+
   for cmd in [CLANG, LLVM_DIS]:
     if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
       print 'WARNING: Cannot find', cmd
+
+  # Go
+
   unittest.main()
 
