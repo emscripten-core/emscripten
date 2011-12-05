@@ -183,6 +183,8 @@ var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, w
 var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 0), then
                               // we will link these at runtime. They must have been built with
                               // BUILD_AS_SHARED_LIB == 2.
+                              // NOTE: LLVM optimizations run separately on the main file and
+                              //       linked libraries can break things.
 
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you

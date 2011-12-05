@@ -2169,6 +2169,8 @@ if 'benchmark' not in str(sys.argv):
           self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
     def test_runtimelink(self):
+      if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
+
       header = r'''
         struct point
         {
@@ -2212,6 +2214,7 @@ if 'benchmark' not in str(sys.argv):
         int main( int argc, const char *argv[] ) {
           struct point p = { 54, 2 };
           suppFunc(p);
+          printf("ok.\n");
           return 0;
         }
       '''
@@ -2223,7 +2226,7 @@ if 'benchmark' not in str(sys.argv):
       Settings.BUILD_AS_SHARED_LIB = 0
 
       Settings.RUNTIME_LINKED_LIBS = ['liblib.so'];
-      self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\n')
+      self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nok.')
 
     def test_dlfcn_basic(self):
       lib_src = '''
