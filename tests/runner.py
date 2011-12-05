@@ -242,7 +242,6 @@ if 'benchmark' not in str(sys.argv):
           js_engines = JS_ENGINES
         if Settings.USE_TYPED_ARRAYS:
           js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
-        js_engines = filter(lambda engine: os.path.exists(engine[0]) or os.path.sep not in engine, js_engines)
         js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
         if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check ~/.emscripten and settings.py and the paths therein.')
         for engine in js_engines:
@@ -4993,12 +4992,22 @@ if __name__ == '__main__':
 
   # Sanity checks
 
-  try:
-    check = run_js(COMPILER_ENGINE, path_from_root('tests', 'hello_world.js'))
-  except Exception, e:
-    check = str(e)
-  if check != 'hello, world!\n':
-    print 'WARNING: The JavaScript shell used for compiling (%s) does not seem to work. Check ~/.emscripten. Output:\n---\n\n%s\n\n---\n' % (str(COMPILER_ENGINE), check)
+  def check_engine(engine):
+    try:
+      return 'hello, world!' in run_js(engine, path_from_root('tests', 'hello_world.js'))
+    except Exception, e:
+      print 'Checking JS engine %s failed. Check ~/.emscripten. Details: %s' % (str(engine), str(e))
+      return False
+
+  if not check_engine(COMPILER_ENGINE):
+    print 'WARNING: The JavaScript shell used for compiling does not seem to work'
+
+  total_engines = len(JS_ENGINES)
+  JS_ENGINES = filter(check_engine, JS_ENGINES)
+  if len(JS_ENGINES) == 0:
+    print 'WARNING: None of the JS engines in JS_ENGINES appears to work.'
+  elif len(JS_ENGINES) < total_engines:
+    print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
 
   for cmd in [CLANG, LLVM_DIS]:
     if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
