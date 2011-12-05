@@ -38,7 +38,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
     var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
     print(pre);
-    print('Runtime.QUANTUM_SIZE = ' + QUANTUM_SIZE);
 
     Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
   }
