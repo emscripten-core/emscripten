@@ -172,6 +172,17 @@ var SHOW_LABELS = 0; // Show labels in the generated code
 
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which
                              // must be loaded dynamically using dlopen().
+                             // 0 here means this is not a shared lib: It is a main file.
+                             // 1 means this is a normal shared lib.
+                             // 2 means this is a shared lib that will be linked at runtime,
+                             //   which means it will insert its functions into
+                             //   the global namespace. See STATIC_LIBS_TO_LOAD. Note
+                             //   that only functions are exported, not globals, since
+                             //   in a naive implementation they can easily override main's
+                             //   symbols (for example, the global strings, _str1 etc.).
+var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 0), then
+                              // we will link these at runtime. They must have been built with
+                              // BUILD_AS_SHARED_LIB == 2.
 
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you

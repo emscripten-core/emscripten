@@ -321,6 +321,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (item.ident in EXPORTED_GLOBALS) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
           }
+          // TODO: Support exporting BUILD_AS_SHARED_LIB == 2 globals. The problem now is that they override the main file's globals.
+          //if (BUILD_AS_SHARED_LIB == 2) {
+          //  js += 'if (globalScope) globalScope["' + item.ident + '"] = ' + item.ident + ';'; // XXX: assert not overriding
+          //}
           return ret.concat({
             intertype: 'GlobalVariable',
             JS: js,
@@ -601,6 +605,10 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       if (func.lines.length >= CLOSURE_INLINE_PREVENTION_LINES) {
         func.JS += func.ident + '["X"]=1;';
+      }
+
+      if (BUILD_AS_SHARED_LIB == 2) {
+        func.JS += 'if (globalScope) { assert(!globalScope["' + func.ident + '"]); globalScope["' + func.ident + '"] = ' + func.ident + ' }';
       }
 
       return func;
@@ -1116,7 +1124,14 @@ function JSify(data, functionsOnly, givenFunctions) {
     data.unparsedGlobalss = null;
 
     print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
+
+    // Load runtime-linked libraries
+    RUNTIME_LINKED_LIBS.forEach(function(lib) {
+      print('eval(read("' + lib + '"))(FUNCTION_TABLE.length, this);');
+    });
+
     print(postParts[1]);
+
     print(shellParts[1]);
     // Print out some useful metadata (for additional optimizations later, like the eliminator)
     print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(Functions.allIdents) + '\n');

@@ -2168,6 +2168,63 @@ if 'benchmark' not in str(sys.argv):
           # Bloated memory; same layout as C/C++
           self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
+    def test_runtimelink(self):
+      header = r'''
+        struct point
+        {
+          int x, y;
+        };
+
+      '''
+      open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
+
+      supp = r'''
+        #include <stdio.h>
+        #include "header.h"
+
+        extern void mainFunc(int x);
+        extern int mainInt;
+
+        void suppFunc(struct point &p) {
+          printf("supp: %d,%d\n", p.x, p.y);
+          mainFunc(p.x+p.y);
+          printf("supp see: %d\n", mainInt);
+        }
+
+        //int suppInt = 76; // TODO: Support this. Right now, _str1 will override the main _str1
+      '''
+      supp_name = os.path.join(self.get_dir(), 'supp.c')
+      open(supp_name, 'w').write(supp)
+
+      main = r'''
+        #include <stdio.h>
+        #include "header.h"
+
+        extern void suppFunc(struct point &p);
+        extern int suppInt;
+
+        void mainFunc(int x) {
+          printf("main: %d\n", x);
+        }
+
+        int mainInt = 543;
+
+        int main( int argc, const char *argv[] ) {
+          struct point p = { 54, 2 };
+          suppFunc(p);
+          return 0;
+        }
+      '''
+
+      Settings.BUILD_AS_SHARED_LIB = 2
+      dirname = self.get_dir()
+      self.build(supp, dirname, supp_name)
+      shutil.move(supp_name + '.o.js', os.path.join(dirname, 'liblib.so'))
+      Settings.BUILD_AS_SHARED_LIB = 0
+
+      Settings.RUNTIME_LINKED_LIBS = ['liblib.so'];
+      self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\n')
+
     def test_dlfcn_basic(self):
       lib_src = '''
         #include <cstdio>
@@ -4647,6 +4704,7 @@ class %s(T):
     Settings.PROFILE = 0
     Settings.INCLUDE_FULL_LIBRARY = 0
     Settings.BUILD_AS_SHARED_LIB = 0
+    Settings.LIBS_TO_LOAD = []
     Settings.CATCH_EXIT_CODE = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
     Settings.EMULATE_UNALIGNED_ACCESSES = Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2
