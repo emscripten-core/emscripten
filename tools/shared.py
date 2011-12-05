@@ -264,12 +264,12 @@ class Building:
     assert os.path.exists(filename + '.o'), 'Could not create bc file: ' + output
 
   @staticmethod # TODO: make this use emcc instead of emmaken
-  def emmaken(filename, stdout=None, stderr=None, env=None):
+  def emmaken(filename, args=[], stdout=None, stderr=None, env=None):
     try:
       os.remove(filename + '.o')
     except:
       pass
-    Popen([EMMAKEN, filename, '-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
+    Popen([EMMAKEN, filename] + args + ['-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
     assert os.path.exists(filename + '.o'), 'Could not create bc file'
 
   @staticmethod

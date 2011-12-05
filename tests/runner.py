@@ -3521,6 +3521,7 @@ if 'benchmark' not in str(sys.argv):
 
       if Settings.USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
 
+      # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
         # Ignore bitfield warnings
         Settings.SAFE_HEAP = 3
@@ -4262,6 +4263,66 @@ Child2:9
 
       self.do_run(src, '*ok*')
 
+      Settings.SAFE_HEAP = 1
+
+      # Linking multiple files should work too
+
+      module = '''
+        #include<stdio.h>
+        void callFunc() {
+          int *x = new int;
+          *x = 20;
+          float *y = (float*)x;
+          printf("%f\\n", *y);
+        }
+      '''
+      module_name = os.path.join(self.get_dir(), 'module.cpp')
+      open(module_name, 'w').write(module)
+
+      main = '''
+        #include<stdio.h>
+        extern void callFunc();
+        int main() {
+          callFunc();
+          int *x = new int;
+          *x = 20;
+          float *y = (float*)x;
+          printf("%f\\n", *y);
+          printf("*ok*\\n");
+          return 0;
+        }
+      '''
+      main_name = os.path.join(self.get_dir(), 'main.cpp')
+      open(main_name, 'w').write(main)
+
+      Building.emmaken(module_name, ['-g'])
+      Building.emmaken(main_name, ['-g'])
+      all_name = os.path.join(self.get_dir(), 'all.bc')
+      Building.link([module_name + '.o', main_name + '.o'], all_name)
+
+      try:
+        self.do_ll_run(all_name, '*nothingatall*')
+      except Exception, e:
+        # This test *should* fail, by throwing this exception
+        assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
+
+      # And we should not fail if we disable checking on those lines
+
+      Settings.SAFE_HEAP = 3
+      Settings.SAFE_HEAP_LINES = ["module.cpp:7", "main.cpp:9"]
+
+      self.do_ll_run(all_name, '*ok*')
+
+      # But we will fail if we do not disable exactly what we need to - any mistake leads to error
+
+      for lines in [["module.cpp:22", "main.cpp:9"], ["module.cpp:7", "main.cpp:29"], ["module.cpp:127", "main.cpp:449"], ["module.cpp:7"], ["main.cpp:9"]]:
+        Settings.SAFE_HEAP_LINES = lines
+        try:
+          self.do_ll_run(all_name, '*nothingatall*')
+        except Exception, e:
+          # This test *should* fail, by throwing this exception
+          assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
+
     def test_check_overflow(self):
       Settings.CHECK_OVERFLOWS = 1
       Settings.CORRECT_OVERFLOWS = 0
@@ -4929,7 +4990,8 @@ else:
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
-  for cmd in [CLANG, LLVM_DIS, SPIDERMONKEY_ENGINE[0], V8_ENGINE[0]]:
+  # TODO: check for js engines ([] or out of [])
+  for cmd in [CLANG, LLVM_DIS]:
     if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
       print 'WARNING: Cannot find', cmd
   unittest.main()

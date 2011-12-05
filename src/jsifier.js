@@ -108,7 +108,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
-
   var MAX_BATCH_FUNC_LINES = 1000;
   while (data.unparsedFunctions.length > 0) {
     var currFuncLines = [];

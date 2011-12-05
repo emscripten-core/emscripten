@@ -109,7 +109,7 @@ function intertyper(data, sidePass, baseLineNums) {
           } else {
             ret.push({
               lineText: line,
-              lineNum: i + 1 + baseLineNums[baseLineNumPosition][1]
+              lineNum: i + 1 + baseLineNums[baseLineNumPosition][1] - baseLineNums[baseLineNumPosition][0]
             });
             if (/^\ +switch\ .*/.test(line)) {
               // beginning of llvm switch
