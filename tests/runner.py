@@ -4778,7 +4778,7 @@ TT = %s
     return TT
 
   # Make one run with the defaults
-  fullname = 'defaults'
+  fullname = 'default'
   exec(fullname + ' = make_run(compiler=CLANG, defaults=True)')
 
   # Make custom runs with various options
