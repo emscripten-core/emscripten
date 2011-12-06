@@ -35,6 +35,7 @@ class RunnerCore(unittest.TestCase):
   save_JS = 0
 
   def setUp(self):
+    Settings.reset()
     self.banned_js_engines = []
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
@@ -4673,8 +4674,8 @@ Child2:9
       '''
       self.do_run(src, 'hello, world!\nExit Status: 118')
 
-  # Generate tests for all our compilers
-  def make_run(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
+  # Generate tests for everything
+  def make_run(name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, defaults=False):
     exec('''
 class %s(T):
   def tearDown(self):
@@ -4682,8 +4683,16 @@ class %s(T):
     
   def setUp(self):
     super(%s, self).setUp()
-  
+
+    Building.COMPILER_TEST_OPTS = ['-g']
+    os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = %r
+
+    use_defaults = %d
+    if use_defaults:
+      Settings.load_defaults()
+      return
+
     llvm_opts = %d # 1 is yes, 2 is yes and unsafe
     embetter = %d
     quantum_size = %d
@@ -4723,26 +4732,28 @@ class %s(T):
 
     Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
 
-    Building.COMPILER_TEST_OPTS = ['-g']
-
-    os.chdir(self.get_dir()) # Ensure the directory exists and go there
-
 TT = %s
-''' % (fullname, fullname, fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
+''' % (fullname, fullname, fullname, compiler, defaults, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
+  # Make one run with the defaults
+  fullname = 'defaults'
+  exec(fullname + ' = make_run(compiler=CLANG, defaults=True)')
+
+  # Make custom runs with various options
+  basename = 'special'
   for name, compiler, quantum, embetter, typed_arrays, llvm_opts in [
-    ('clang', CLANG, 1, 0, 0, 0),
-    ('clang', CLANG, 1, 0, 0, 1),
-    ('clang', CLANG, 4, 0, 0, 0),
-    ('clang', CLANG, 4, 0, 0, 1),
-    ('clang', CLANG, 1, 1, 1, 0),
-    ('clang', CLANG, 1, 1, 1, 1),
-    ('clang', CLANG, 4, 1, 1, 0),
-    ('clang', CLANG, 4, 1, 1, 1),
-    ('clang', CLANG, 4, 1, 2, 0),
-    ('clang', CLANG, 4, 1, 2, 1),
-    #('clang', CLANG, 4, 1, 2, 2),
+    (basename, CLANG, 1, 0, 0, 0),
+    (basename, CLANG, 1, 0, 0, 1),
+    (basename, CLANG, 4, 0, 0, 0),
+    (basename, CLANG, 4, 0, 0, 1),
+    (basename, CLANG, 1, 1, 1, 0),
+    (basename, CLANG, 1, 1, 1, 1),
+    (basename, CLANG, 4, 1, 1, 0),
+    (basename, CLANG, 4, 1, 1, 1),
+    (basename, CLANG, 4, 1, 2, 0),
+    (basename, CLANG, 4, 1, 2, 1),
+    #(basename, CLANG, 4, 1, 2, 2),
   ]:
     fullname = '%s_%d_%d%s%s' % (
       name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
@@ -4752,6 +4763,9 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
+    def test_reminder(self):
+      raise Exception('update Getting Started to use defaults instead of clang_0_0')
+
     def test_emcc(self):
       pass
       # TODO: make sure all of these match gcc
