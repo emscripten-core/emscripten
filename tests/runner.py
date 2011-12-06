@@ -1620,7 +1620,7 @@ if 'benchmark' not in str(sys.argv):
           printf("*pre: %s,%.3f*\n", buf1, buf2[0]);
 
           int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
-          char *buf3 = (char*)malloc(totalMemory*2);
+          char *buf3 = (char*)malloc(totalMemory+1);
           char *buf4 = (char*)malloc(100);
           float *buf5 = (float*)malloc(100);
           //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
