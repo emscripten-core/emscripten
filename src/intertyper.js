@@ -488,6 +488,7 @@ function intertyper(data, sidePass, baseLineNums) {
       } else {
         // variable
         var ident = item.tokens[0].text;
+        var private_ = findTokenText(item, 'private') >= 0;
         cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [2, 3]);
         var external = false;
         if (item.tokens[2].text === 'external') {
@@ -500,6 +501,7 @@ function intertyper(data, sidePass, baseLineNums) {
           ident: toNiceIdent(ident),
           type: item.tokens[2].text,
           external: external,
+          private_: private_,
           lineNum: item.lineNum
         };
         Types.needAnalysis[ret.type] = 0;

@@ -321,10 +321,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (item.ident in EXPORTED_GLOBALS) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
           }
-          // TODO: Support exporting BUILD_AS_SHARED_LIB == 2 globals. The problem now is that they override the main file's globals.
-          //if (BUILD_AS_SHARED_LIB == 2) {
-          //  js += 'if (globalScope) globalScope["' + item.ident + '"] = ' + item.ident + ';'; // XXX: assert not overriding
-          //}
+          if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
+            // TODO: make the assert conditional on ASSERTIONS
+            js += 'if (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + item.ident + ' }';
+          }
           return ret.concat({
             intertype: 'GlobalVariable',
             JS: js,
@@ -620,6 +620,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
 
       if (BUILD_AS_SHARED_LIB == 2) {
+        // TODO: make the assert conditional on ASSERTIONS
         func.JS += 'if (globalScope) { assert(!globalScope["' + func.ident + '"]); globalScope["' + func.ident + '"] = ' + func.ident + ' }';
       }
 
