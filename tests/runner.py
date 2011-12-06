@@ -212,6 +212,8 @@ class RunnerCore(unittest.TestCase):
 
 ###################################################################################################
 
+sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
+
 if 'benchmark' not in str(sys.argv):
   # Tests
 
