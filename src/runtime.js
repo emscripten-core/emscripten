@@ -59,7 +59,7 @@ var RuntimeGenerator = {
     var ret = '';
     if (USE_TYPED_ARRAYS) ret += 'LAST_STATICTOP = STATICTOP;'
     ret += RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
-    if (USE_TYPED_ARRAYS) ret += 'if (STATICTOP >= TOTAL_MEMORY) enlargeMemory();'
+    if (USE_TYPED_ARRAYS) ret += '; if (STATICTOP >= TOTAL_MEMORY) enlargeMemory();'
     return ret;
   },
 

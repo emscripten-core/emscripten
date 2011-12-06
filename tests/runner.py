@@ -4886,6 +4886,8 @@ else:
 
   class benchmark(RunnerCore):
     def setUp(self):
+      super(benchmark, self).setUp()
+
       Settings.RELOOP = Settings.MICRO_OPTS = 1
       Settings.USE_TYPED_ARRAYS = 1
       Settings.QUANTUM_SIZE = 1
@@ -4902,8 +4904,6 @@ else:
 
       Building.LLVM_OPTS = 1 if Settings.USE_TYPED_ARRAYS != 2 else 2
       Building.pick_llvm_opts(2, safe=Building.LLVM_OPTS != 2)
-
-      super(benchmark, self).setUp()
 
     def print_stats(self, times, native_times, last=False):
       mean = sum(times)/len(times)
