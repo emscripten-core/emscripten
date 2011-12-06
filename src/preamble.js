@@ -532,6 +532,41 @@ var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
 
 var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
+#if USE_TYPED_ARRAYS
+var LAST_STATICTOP;
+function enlargeMemory() {
+  // LAST_STATICTOP is the previous top, TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
+#if ASSERTIONS
+  assert(STATICTOP >= TOTAL_MEMORY && LAST_STATICTOP < TOTAL_MEMORY);
+  assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
+#endif
+  while (TOTAL_MEMORY <= STATICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
+    TOTAL_MEMORY = alignMemoryPage(TOTAL_MEMORY*1.25);
+  }
+#if USE_TYPED_ARRAYS == 1
+  var oldIHEAP = IHEAP;
+  HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+  IHEAP.set(oldIHEAP);
+#if USE_FHEAP
+  var oldFHEAP = FHEAP;
+  FHEAP = new Float64Array(TOTAL_MEMORY);
+  FHEAP.set(oldFHEAP);
+#endif
+#endif
+#if USE_TYPED_ARRAYS == 2
+  var oldHEAP8 = HEAP8;
+  var buffer = new ArrayBuffer(TOTAL_MEMORY);
+  HEAP8 = new Int8Array(buffer);
+  HEAP16 = new Int16Array(buffer);
+  HEAP32 = new Int32Array(buffer);
+  HEAPU8 = new Uint8Array(buffer);
+  HEAPU16 = new Uint16Array(buffer);
+  HEAPU32 = new Uint32Array(buffer);
+  HEAPF32 = new Float32Array(buffer);
+  HEAP8.set(oldHEAP8);
+#endif
+}
+#endif
 
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};

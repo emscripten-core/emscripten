@@ -16,6 +16,7 @@ extern "C" {
  * eval() the given script.
  */
 extern void emscripten_run_script(const char *script);
+extern int emscripten_run_script_int(const char *script);
 
 /*
  * This macro-looking function will cause Emscripten to

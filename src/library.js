@@ -5493,8 +5493,8 @@ LibraryManager.library = {
     eval(Pointer_stringify(ptr));
   },
 
-  _Z21emscripten_run_scriptPKc: function(ptr) {
-    eval(Pointer_stringify(ptr));
+  emscripten_run_script_int: function(ptr) {
+    return eval(Pointer_stringify(ptr));
   },
 
   $Profiling: {

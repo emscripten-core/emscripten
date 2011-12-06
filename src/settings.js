@@ -33,10 +33,9 @@ var INIT_STACK = 1; // Whether to initialize memory on the stack to 0.
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
                                // in a flat array. This only matters in non-typed array builds.
-var TOTAL_MEMORY = 50*1024*1024; // The total amount of memory to use. This mainly matters in
-                                 // typed array builds - accessing memory about this value will
-                                 // return undefined values and lead to serious problems, and there
-                                 // is currently no warning about that!
+var TOTAL_MEMORY = 50*1024*1024; // The total amount of memory to use. Using more memory than this will
+                                 // cause us to expand the heap, which can be costly with typed arrays:
+                                 // we need to copy the old heap into a new one in that case.
 
 // Code embetterments
 var MICRO_OPTS = 0; // Various micro-optimizations, like nativizing variables

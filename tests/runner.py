@@ -1579,13 +1579,14 @@ if 'benchmark' not in str(sys.argv):
     def test_emscripten_api(self):
         #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
-        src = '''
+        src = r'''
           #include <stdio.h>
           #include "emscripten.h"
 
           int main() {
             // EMSCRIPTEN_COMMENT("hello from the source");
             emscripten_run_script("print('hello world' + '!')");
+            printf("*%d*\n", emscripten_run_script_int("5*20"));
             return 0;
           }
           '''
@@ -1594,7 +1595,47 @@ if 'benchmark' not in str(sys.argv):
           src = open(filename, 'r').read()
           # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 
-        self.do_run(src, 'hello world!', post_build=check)
+        self.do_run(src, 'hello world!\n*100*', post_build=check)
+
+    def test_memorygrowth(self):
+      # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
+      # since we then need to enlarge the heap(s).
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+        #include <assert.h>
+        #include "emscripten.h"
+
+        int main()
+        {
+          char *buf1 = (char*)malloc(100);
+          char *data1 = "hello";
+          memcpy(buf1, data1, strlen(data1)+1);
+
+          float *buf2 = (float*)malloc(100);
+          float pie = 4.955;
+          memcpy(buf2, &pie, sizeof(float));
+
+          printf("*pre: %s,%.3f*\n", buf1, buf2[0]);
+
+          int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
+          char *buf3 = (char*)malloc(totalMemory*2);
+          char *buf4 = (char*)malloc(100);
+          float *buf5 = (float*)malloc(100);
+          //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
+          assert((int)buf4 > (int)totalMemory && (int)buf5 > (int)totalMemory);
+
+          printf("*%s,%.3f*\n", buf1, buf2[0]); // the old heap data should still be there
+
+          memcpy(buf4, buf1, strlen(data1)+1);
+          memcpy(buf5, buf2, sizeof(float));
+          printf("*%s,%.3f*\n", buf4, buf5[0]); // and the new heap space should work too
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
     def test_ssr(self): # struct self-ref
         src = '''
