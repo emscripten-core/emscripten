@@ -2006,7 +2006,6 @@ if 'benchmark' not in str(sys.argv):
 
     def test_time(self):
       # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
       self.do_run(src, expected,
@@ -2652,7 +2651,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub(r'(^|\n)\s+', r'\1', expected))
 
     def test_strtod(self):
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -2707,7 +2705,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_parseInt(self):
-      if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       if Settings.I64_MODE == 0:
         expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
@@ -2716,7 +2713,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, expected)
 
     def test_printf(self):
-      if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
       self.do_run(src, expected)
@@ -2920,8 +2916,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
 
     def test_stat(self):
-      if Settings.I64_MODE == 1: return self.skip('TODO')
-
       def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -3441,7 +3435,7 @@ if 'benchmark' not in str(sys.argv):
           self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
-        if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double values')
+        if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double value rounding, extremely sensitive')
 
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
@@ -3621,8 +3615,6 @@ if 'benchmark' not in str(sys.argv):
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       if Building.LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
-
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
         # Ignore bitfield warnings
@@ -3642,7 +3634,7 @@ if 'benchmark' not in str(sys.argv):
     def test_poppler(self):
       # llvm-link failure when using clang, LLVM bug 9498, still relevant?
       if Settings.RELOOP or Building.LLVM_OPTS: return self.skip('TODO')
-      if Settings.USE_TYPED_ARRAYS == 2 or Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
       Settings.USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
 
@@ -3798,7 +3790,7 @@ if 'benchmark' not in str(sys.argv):
                    output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
 
     def test_python(self):
-      if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2: return self.skip('TODO: make this work')
+      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
@@ -3943,8 +3935,6 @@ if 'benchmark' not in str(sys.argv):
 Block 0: ''', post_build=post1)
 
       # Part 2: old JS version
-
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts inline out the inner func')
 
       Settings.PROFILE = 1
       Settings.INVOKE_RUN = 0
@@ -4230,7 +4220,6 @@ Child2:9
     def test_typeinfo(self):
       Settings.RUNTIME_TYPE_INFO = 1
       if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM unsafe opts optimize out the type info')
 
       src = '''
         #include<stdio.h>
@@ -4499,8 +4488,6 @@ Child2:9
       Settings.CHECK_SIGNS = 0
       Settings.CHECK_OVERFLOWS = 0
 
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')
-
       # Signs
 
       src = '''
@@ -4650,8 +4637,6 @@ Child2:9
       Settings.CORRECT_SIGNS = 0
 
     def test_pgo(self):
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')
-
       Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
 
       src = '''
