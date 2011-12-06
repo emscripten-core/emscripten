@@ -4782,22 +4782,21 @@ TT = %s
   exec(fullname + ' = make_run(compiler=CLANG, defaults=True)')
 
   # Make custom runs with various options
-  basename = 'special'
-  for name, compiler, quantum, embetter, typed_arrays, llvm_opts in [
-    (basename, CLANG, 1, 0, 0, 0),
-    (basename, CLANG, 1, 0, 0, 1),
-    (basename, CLANG, 4, 0, 0, 0),
-    (basename, CLANG, 4, 0, 0, 1),
-    (basename, CLANG, 1, 1, 1, 0),
-    (basename, CLANG, 1, 1, 1, 1),
-    (basename, CLANG, 4, 1, 1, 0),
-    (basename, CLANG, 4, 1, 1, 1),
-    (basename, CLANG, 4, 1, 2, 0),
-    (basename, CLANG, 4, 1, 2, 1),
-    #(basename, CLANG, 4, 1, 2, 2),
+  for compiler, quantum, embetter, typed_arrays, llvm_opts in [
+    (CLANG, 1, 0, 0, 0),
+    (CLANG, 1, 0, 0, 1),
+    (CLANG, 4, 0, 0, 0),
+    (CLANG, 4, 0, 0, 1),
+    (CLANG, 1, 1, 1, 0),
+    (CLANG, 1, 1, 1, 1),
+    (CLANG, 4, 1, 1, 0),
+    (CLANG, 4, 1, 1, 1),
+    (CLANG, 4, 1, 2, 0),
+    (CLANG, 4, 1, 2, 1),
+    #(CLANG, 4, 1, 2, 2),
   ]:
-    fullname = '%s_%d_%d%s%s' % (
-      name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
+    fullname = 's_%d_%d%s%s' % (
+      llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
     )
     exec('%s = make_run(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
