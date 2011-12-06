@@ -510,6 +510,36 @@ if 'benchmark' not in str(sys.argv):
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
+
+        src = r'''
+          #include<stdio.h>
+
+          struct S {
+            double x;
+            int y;
+          };
+
+          int main() {
+            // the 64-bit value here will not always be 8-byte aligned
+            S s[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
+            printf("*%d : %d : %d\n", sizeof(S), ((unsigned int)&s[0]) % 8 != ((unsigned int)&s[1]) % 8,
+                                                 ((unsigned int)&s[1]) - ((unsigned int)&s[0]));
+            s[0].x++;
+            s[0].y++;
+            s[1].x++;
+            s[1].y++;
+            printf("%.1f,%d,%.1f,%d\n", s[0].x, s[0].y, s[1].x, s[1].y);
+            return 0;
+          }
+          '''
+
+        # TODO: A version of this with int64s as well
+        self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
+
+        return # TODO: continue to the next part here
+
+        # Test for undefined behavior in C. This is not legitimate code, but does exist
+
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('No meaning to unaligned addresses without t2')
 
         src = r'''
