@@ -483,7 +483,18 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       if (IGNORED_FUNCTIONS.indexOf(func.ident) >= 0) return null;
 
-      func.JS = '\nfunction ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
+      func.JS = '\n';
+
+      if (CLOSURE_ANNOTATIONS) {
+        func.JS += '/**\n';
+        func.paramIdents.forEach(function(param) {
+          func.JS += ' * @param {number} ' + param + '\n';
+        });
+        func.JS += ' * @return {number}\n'
+        func.JS += ' */\n';
+      }
+
+      func.JS += 'function ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
 
       if (PROFILE) {
         func.JS += '  if (PROFILING) { '
@@ -515,6 +526,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed
+        if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
         func.JS += '  var __label__;\n';
       }
       if (func.needsLastLabel) {
@@ -659,7 +671,9 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
   substrate.addActor('AssignReintegrator', makeReintegrator(function(item, child) {
     // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
-    item.JS = (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
+    item.JS = '';
+    if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
+    item.JS += (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
 
     var type = item.value.type;
     var value = parseNumerical(item.value.JS);
