@@ -21,7 +21,7 @@ typedef long _off_t;
 typedef unsigned long long __dev_t;
 #else
 #ifndef __dev_t_defined
-typedef unsigned long long __dev_t; /* XXX Emscripten */
+typedef unsigned __dev_t; /* XXX Emscripten */
 #endif
 #endif
 
@@ -33,7 +33,7 @@ typedef unsigned __gid_t; /* XXX Emscripten */
 #endif
 
 #ifndef __off64_t_defined
-__extension__ typedef long long _off64_t;
+__extension__ typedef unsigned _off64_t; /* XXX Emscripten */
 #endif
 
 /*

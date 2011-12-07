@@ -706,9 +706,8 @@ LibraryManager.library = {
         mode = obj.link === undefined ? 0x8000 : 0xA000;  // S_IFREG, S_IFLNK.
       }
     }
-    {{{ makeSetValue('buf', 'offsets.st_dev', makeI64('dev'), 'i64') }}};
-    {{{ makeSetValue('buf', 'offsets.st_rdev', makeI64('rdev'), 'i64') }}};
-    // NOTE: These two may be i64, depending on compilation options.
+    {{{ makeSetValue('buf', 'offsets.st_dev', 'dev', 'i32') }}};
+    {{{ makeSetValue('buf', 'offsets.st_rdev', 'rdev', 'i32') }}};
     {{{ makeSetValue('buf', 'offsets.st_size', 'size', 'i32') }}}
     {{{ makeSetValue('buf', 'offsets.st_blocks', 'blocks', 'i32') }}}
     if (obj.read) mode |= 0x16D;  // S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH.
