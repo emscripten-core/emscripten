@@ -99,7 +99,6 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #else
     case 'double': assert(dest % 4 == 0); warn64(); break;
 #endif
-    default: abort('invalid type for setValue: ' + type);
   }
 #endif
 
@@ -125,7 +124,6 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 #else
     case 'double': assert(dest % 4 == 0); warn64(); break;
 #endif
-    default: abort('invalid type for setValue: ' + type);
   }
 #endif
 
