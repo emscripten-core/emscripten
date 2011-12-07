@@ -577,19 +577,21 @@ function makeI64(low, high) {
 // Will suffer from rounding. margeI64 does the opposite.
 // TODO: optimize I64 calcs. For example, saving their parts as signed 32 as opposed to unsigned would help
 function splitI64(value) {
-  assert(I64_MODE == 1);
-  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.floor(VALUE/4294967296)'), value, 'tempBigInt');
+  // We need to min here, since our input might be a double, and large values are rounded, so they can
+  // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
+  // HEAP32 or |0'd, etc.
+  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigInt');
 }
 function mergeI64(value) {
   assert(I64_MODE == 1);
-  return '(tempI64=' + value + ',tempI64[0]+tempI64[1]*4294967296)';
+  return makeInlineCalculation('VALUE[0]+VALUE[1]*4294967296', value, 'tempI64');
 }
 
 // Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
 // mode, this is a no-op
 function ensureI64_1(value) {
   if (I64_MODE == 1) return value;
-  return makeInlineCalculation('[VALUE>>>0, Math.floor(VALUE/4294967296)]', value, 'tempBigInt');
+  return splitI64(value, 1);
 }
 
 function makeCopyI64(value) {

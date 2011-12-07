@@ -2739,12 +2739,10 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_parseInt(self):
-      Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s
+      Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s, but we do still get doubling
+                            # FIXME: The output here is wrong, due to double rounding of i64s!
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
-      if Settings.I64_MODE == 0:
-        expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
-      else:
-        expected = open(path_from_root('tests', 'parseInt', 'output_i64mode1.txt'), 'r').read() # some rounding issues, etc.
+      expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
     def test_printf(self):
