@@ -4021,7 +4021,7 @@ Block 0: ''', post_build=post1)
         ''')
         src.close()
 
-      self.do_run(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
+      self.do_run(src, ': __Z6inner1i (5000)\n', post_build=post)
 
     ### Integration tests
 
