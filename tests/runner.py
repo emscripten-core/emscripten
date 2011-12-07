@@ -2739,6 +2739,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_parseInt(self):
+      Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       if Settings.I64_MODE == 0:
         expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
