@@ -726,7 +726,7 @@ if 'benchmark' not in str(sys.argv):
           #include <cmath>
           int main()
           {
-            printf("*%.2f,%.2f,%f,%f", M_PI, -M_PI, 1/0.0, -1/0.0);
+            printf("*%.2f,%.2f,%d", M_PI, -M_PI, (1/0.0) > 1e300); // could end up as infinity, or just a very very big number
             printf(",%d", finite(NAN) != 0);
             printf(",%d", finite(INFINITY) != 0);
             printf(",%d", finite(-INFINITY) != 0);
@@ -739,9 +739,11 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_run(src, '*3.14,-3.14,inf,-inf,0,0,0,1,0,1,1,0*')
+        self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0*')
 
     def test_math_hyperbolic(self):
+        if Settings.DOUBLE_MODE == 1: return self.skip('store-load doubles will make NaNs into actual numbers')
+
         src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
         expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
         self.do_run(src, expected)
@@ -4779,6 +4781,7 @@ class %s(T):
     Settings.CATCH_EXIT_CODE = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
     Settings.EMULATE_UNALIGNED_ACCESSES = Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2
+    Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.I64_MODE = 1
       Settings.SAFE_HEAP = 1 # only checks for alignment problems, which is very important with unsafe opts
