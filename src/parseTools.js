@@ -559,17 +559,23 @@ function makeInlineCalculation(expression, value, tempVar) {
   return '(' + expression.replace(/VALUE/g, value) + ')';
 }
 
-// Makes a proper runtime value for a 64-bit value from low and high i32s.
+// Given two 32-bit unsigned parts of an emulated 64-bit number, combine them into a JS number (double).
+// Rounding is inevitable if the number is large. This is a particular problem for small negative numbers
+// (-1 will be rounded!), so handle negatives separately and carefully
+function makeBigInt(low, high) {
+  // here VALUE will be the big part
+  return '(' + high + ' <= 2147483648 ? (' + makeSignOp(low, 'i32', 'un', 1) + '+(' + makeSignOp(high, 'i32', 'un', 1) + '*4294967296))' +
+                                    ' : (' + makeSignOp(low, 'i32', 're', 1) + '+(1+' + makeSignOp(high, 'i32', 're', 1) + ')*4294967296))';
+}
+
+// Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
 function makeI64(low, high) {
+  high = high || '0';
   if (I64_MODE == 1) {
-    return '[' + low + ',' + (high || '0') + ']';
-    // FIXME with this?       return '[unSign(' + low + ',32),' + (high ? ('unSign(' + high + ',32)') : '0') + ']';
+    return '[' + makeSignOp(low, 'i32', 'un', 1) + ',' + makeSignOp(high, 'i32', 'un', 1) + ']';
   } else {
-    var ret = low;
-    if (high) {
-      ret = '(' + low + '+(4294967296*' + high + '))';
-    }
-    return ret;
+    if (high) return makeBigInt(low, high);
+    return low;
   }
 }
 
@@ -580,11 +586,11 @@ function splitI64(value) {
   // We need to min here, since our input might be a double, and large values are rounded, so they can
   // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
   // HEAP32 or |0'd, etc.
-  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigInt');
+  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
 }
 function mergeI64(value) {
   assert(I64_MODE == 1);
-  return makeInlineCalculation('VALUE[0]+VALUE[1]*4294967296', value, 'tempI64');
+  return makeInlineCalculation(makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
 }
 
 // Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
@@ -596,7 +602,6 @@ function ensureI64_1(value) {
 
 function makeCopyI64(value) {
   assert(I64_MODE == 1);
-
   return value + '.slice(0)';
 }
 
@@ -931,8 +936,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (type == 'i64' && I64_MODE == 1) {
-    return '[' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore) + ','
-               + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore) + ']';
+    return '[' + makeGetValue(ptr, pos, 'i32', noNeedFirst, 1, ignore) + ','
+               + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, 1, ignore) + ']';
   }
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
@@ -1472,9 +1477,8 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
 }
 
 function makeSignOp(value, type, op, force) {
-  // XXX this is not quite right. both parts should always be unsigned (or, perhaps always signed, we should move to that - separate issue though)
   if (I64_MODE == 1 && type == 'i64') {
-    return '(tempPair=' + value + ',[' + makeSignOp('tempPair[0]', 'i32', op, force) + ',' + makeSignOp('tempPair[1]', 'i32', op, force) + '])';
+    return value; // these are always assumed to be two 32-bit unsigneds.
   }
 
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
@@ -1511,9 +1515,9 @@ function makeSignOp(value, type, op, force) {
         }
       } else { // bits > 32
         if (op === 're') {
-          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempBigInt');
+          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempBigIntS');
         } else {
-          return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigInt');
+          return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigIntS');
         }
       }
     }
@@ -1538,7 +1542,7 @@ function makeRounding(value, bits, signed, floatConversion) {
   // Note that if converting a float, we may have the wrong sign at this point! But, we have
   // been rounded properly regardless, and we will be sign-corrected later when actually used, if
   // necessary.
-  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigInt');
+  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
 }
 
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
@@ -1588,7 +1592,7 @@ function processMathop(item) {
   var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
 
   function integerizeBignum(value) {
-    return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigInt');
+    return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigIntI');
   }
 
   if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || ident2 == '(i64)') && I64_MODE == 1) {
@@ -1646,7 +1650,7 @@ function processMathop(item) {
         }
       }
       case 'zext': return makeI64(ident1, 0);
-      case 'sext': return makeInlineCalculation(makeI64('VALUE', 'VALUE<0 ? 4294967295 : 0'), ident1, 'tempBigInt');
+      case 'sext': return makeInlineCalculation(makeI64('VALUE', 'VALUE<0 ? 4294967295 : 0'), ident1, 'tempBigIntD');
       case 'trunc': {
         return '((' + ident1 + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
