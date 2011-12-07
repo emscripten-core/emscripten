@@ -170,14 +170,16 @@ class RunnerCore(unittest.TestCase):
         limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
       ))
 
-  def assertContained(self, value, string):
-    if type(value) is not str: value = value() # lazy loading
-    if type(string) is not str: string = string()
-    if value not in string:
-      raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
-        limit_size(value), limit_size(string),
-        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
-      ))
+  def assertContained(self, values, string):
+    if type(values) not in [list, tuple]: values = [values]
+    for value in values:
+      if type(value) is not str: value = value() # lazy loading
+      if type(string) is not str: string = string()
+      if value in string: return # success
+    raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
+      limit_size(values[0]), limit_size(string),
+      limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
+    ))
 
   def assertNotContained(self, value, string):
     if type(value) is not str: value = value() # lazy loading
@@ -3662,7 +3664,8 @@ if 'benchmark' not in str(sys.argv):
                                     'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
-                   open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
+                   [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
+                    open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read()],
                    libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
                                                           os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a.bc')],
