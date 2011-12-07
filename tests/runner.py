@@ -2705,7 +2705,6 @@ if 'benchmark' not in str(sys.argv):
           printf("%g\n", strtod("1234567891234567890", &endptr));
           printf("%g\n", strtod("1234567891234567890e+50", &endptr));
           printf("%g\n", strtod("84e+220", &endptr));
-          printf("%g\n", strtod("84e+420", &endptr));
           printf("%g\n", strtod("123e-50", &endptr));
           printf("%g\n", strtod("123e-250", &endptr));
           printf("%g\n", strtod("123e-450", &endptr));
@@ -2713,6 +2712,7 @@ if 'benchmark' not in str(sys.argv):
           char str[] = "  12.34e56end";
           printf("%g\n", strtod(str, &endptr));
           printf("%d\n", endptr - str);
+          printf("%g\n", strtod("84e+420", &endptr));
           return 0;
         }
         '''
@@ -2729,13 +2729,18 @@ if 'benchmark' not in str(sys.argv):
         1.23457e+18
         1.23457e+68
         8.4e+221
-        inf
         1.23e-48
         1.23e-248
         0
         1.234e+57
         10
         '''
+      if Settings.I64_MODE != 1:
+        # I64 will un-NaN/Inf this into a very big float, because of our temp storage to a safe typed array
+        expected += '''
+        inf
+        '''
+
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
     def test_parseInt(self):
