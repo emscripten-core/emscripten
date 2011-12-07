@@ -57,6 +57,14 @@ var I64_MODE = 1; // How to implement 64-bit integers:
                   //                    use doubles for addition etc., like mode 0. This mode is slower than
                   //                    mode 0, so its only benefit is proper support for 64 bit bitops.
                   // TODO: Full bignum support
+var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arrays or in typed array mode 1,
+                     // this doesn't matter - these values are just values like any other. In typed array mode 2,
+                     // a potentialy risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
+                     // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
+                     // will carefully load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE
+                     // 0 we will simply store and load doubles as 32-bit floats, so when they are stored/loaded
+                     // they will truncate from 64 to 32 bits, and lose precision. This is faster, and might
+                     // work for some code (but probably that code should just use floats and not doubles anyhow).
 var EMULATE_UNALIGNED_ACCESSES = 1; // If set, the compiler will 'emulate' loads and stores that are not known to
                                     // be sufficiently aligned, by working on individual bytes. This can be
                                     // important in USE_TYPED_ARRAYS == 2, where unaligned accesses do not work,

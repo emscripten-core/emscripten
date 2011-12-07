@@ -889,7 +889,7 @@ function getHeapOffset(offset, type) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -897,6 +897,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
       ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst, unsigned));
     }
     return '{ ' + ret.join(', ') + ' }';
+  }
+
+  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
+    return '(tempDoubleF32[0]=' + makeGetValue(ptr, pos, 'float', noNeedFirst, unsigned, ignore) + ',' +
+            'tempDoubleF32[1]=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('float')), 'float', noNeedFirst, unsigned, ignore) + ',' +
+            'tempDoubleF64[0])';
   }
 
   if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
@@ -928,7 +934,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   }
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP) {
+  if (SAFE_HEAP && !noSafe) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
@@ -960,7 +966,7 @@ function indexizeFunctions(value, type) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -973,6 +979,12 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
       ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
     }
     return ret.join('; ');
+  }
+
+  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
+    return '(tempDoubleF64[0]=' + value + ',' +
+            makeSetValue(ptr, pos, 'tempDoubleF32[0]', 'float', noNeedFirst, ignore, align/2) + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleF32[1]', 'float', noNeedFirst, ignore, align/2) + ')';
   }
 
   if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
@@ -1003,7 +1015,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
 
   value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP) {
+  if (SAFE_HEAP && !noSafe) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';

@@ -86,93 +86,52 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
     print((new Error()).stack);
     throw "Bad store!" + dest;
   }
-#if USE_TYPED_ARRAYS == 1
-  if (type === null) {
-    IHEAP[dest] = value;
-#if USE_FHEAP
-    FHEAP[dest] = value;
-#endif
-  } else if (type in Runtime.FLOAT_TYPES) {
-    FHEAP[dest] = value;
-  } else {
-    IHEAP[dest] = value;
-  }
-#else
+
 #if USE_TYPED_ARRAYS == 2
-  assert(type != 'null', 'typed arrays 2 with null type!');
-  if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
+  // Check alignment
   switch(type) {
-    case 'i1': case 'i8': HEAP8[dest] = value; break;
-    case 'i16': assert(dest % 2 === 0, type + ' stores must be aligned: ' + dest); HEAP16[dest>>1] = value; break;
-    case 'i32': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); HEAP32[dest>>2] = value; break;
-    case 'i64': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
-    case 'float': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); HEAPF32[dest>>2] = value; break;
-    case 'double': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
-    default: throw 'weird type for typed array II: ' + type + new Error().stack;
-  }
+    case 'i16': assert(dest % 2 == 0); break;
+    case 'i32': assert(dest % 4 == 0); break;
+    case 'i64': assert(dest % 8 == 0); break;
+    case 'float': assert(dest % 4 == 0); break;
+#if DOUBLE_MODE == 1
+    case 'double': assert(dest % 4 == 0); break;
 #else
-  HEAP[dest] = value;
+    case 'double': assert(dest % 4 == 0); warn64(); break;
 #endif
+    default: abort('invalid type for setValue: ' + type);
+  }
 #endif
+
+  setValue(dest, value, type, 1, 1);
 }
 
 function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
   SAFE_HEAP_ACCESS(dest, type, ignore);
 
-#if USE_TYPED_ARRAYS == 1
-  if (type in Runtime.FLOAT_TYPES) {
 #if SAFE_HEAP_LOG
-    print('SAFE_HEAP load: ' + [dest, type, FHEAP[dest], ignore]);
+    print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1, 1), ignore]);
 #endif
-    return FHEAP[dest];
-  } else {
-#if SAFE_HEAP_LOG
-    print('SAFE_HEAP load: ' + [dest, type, IHEAP[dest], ignore]);
-#endif
-    return IHEAP[dest];
-  }
-#else
+
 #if USE_TYPED_ARRAYS == 2
-#if SAFE_HEAP_LOG
-  var originalType = type;
-#endif
-  var ret;
-  if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
+  // Check alignment
   switch(type) {
-    case 'i1': case 'i8': {
-      ret = (unsigned ? HEAPU8 : HEAP8)[dest];
-      break;
-    }
-    case 'i16': {
-      assert(dest % 2 === 0, type + ' loads must be aligned: ' + dest);
-      ret = (unsigned ? HEAPU16 : HEAP16)[dest>>1];
-      break;
-    }
-    case 'i32': case 'i64': { // XXX store int64 as int32
-      assert(dest % 4 === 0, type + ' loads must be aligned: ' + dest);
-      if (type === 'i64') warn64();
-      ret = (unsigned ? HEAPU32 : HEAP32)[dest>>2];
-      break;
-    }
-    case 'float': case 'double': { // XXX store doubles as floats
-      assert(dest % 4 === 0, type + ' loads must be aligned: ' + dest);
-      if (type === 'double') warn64();
-      ret = HEAPF32[dest>>2];
-      break;
-    }
-    default: throw 'weird type for typed array II: ' + type;
-  }
-#if SAFE_HEAP_LOG
-  print('SAFE_HEAP load: ' + [dest, originalType, ret, unsigned, ignore]);
-#endif
-  return ret;
+    case 'i16': assert(dest % 2 == 0); break;
+    case 'i32': assert(dest % 4 == 0); break;
+    case 'i64': assert(dest % 8 == 0); break;
+    case 'float': assert(dest % 4 == 0); break;
+#if DOUBLE_MODE == 1
+    case 'double': assert(dest % 4 == 0); break;
 #else
-#if SAFE_HEAP_LOG
-  print('SAFE_HEAP load: ' + [dest, type, HEAP[dest], ignore]);
+    case 'double': assert(dest % 4 == 0); warn64(); break;
 #endif
-  return HEAP[dest];
+    default: abort('invalid type for setValue: ' + type);
+  }
 #endif
-#endif
+
+  var ret = getValue(dest, type, 1, 1);
+  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)));
+  return ret;
 }
 
 function SAFE_HEAP_COPY_HISTORY(dest, src) {
@@ -381,6 +340,13 @@ var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair;
 #if I64_MODE == 1
 var tempI64, tempI64b;
 #endif
+#if DOUBLE_MODE == 1
+#if USE_TYPED_ARRAYS == 2
+var tempDoubleBuffer = new ArrayBuffer(8);
+var tempDoubleF32 = new Float32Array(tempDoubleBuffer);
+var tempDoubleF64 = new Float64Array(tempDoubleBuffer);
+#endif
+#endif
 
 function abort(text) {
   print(text + ':\n' + (new Error).stack);
@@ -400,16 +366,16 @@ function assert(condition, text) {
 // code then, whereas this function picks the right code at
 // run-time.
 
-function setValue(ptr, value, type) {
+function setValue(ptr, value, type, ignore, noSafe) {
   if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
   switch(type) {
-    case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
-    case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
-    case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
-    case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
-    case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
-    case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
-    case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
+    case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, 'ignore', undefined, 'noSafe') }}}; break;
+    case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, 'ignore', undefined, 'noSafe') }}}; break;
+    case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, 'ignore', undefined, 'noSafe') }}}; break;
+    case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, 'ignore', undefined, 'noSafe') }}}; break;
+    case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, 'ignore', undefined, 'noSafe') }}}; break;
+    case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, 'ignore', undefined, 'noSafe') }}}; break;
+    case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, 'ignore', undefined, 'noSafe') }}}; break;
     default: abort('invalid type for setValue: ' + type);
   }
 }
@@ -417,16 +383,16 @@ Module['setValue'] = setValue;
 
 // Parallel to setValue.
 
-function getValue(ptr, type) {
+function getValue(ptr, type, ignore, noSafe) {
   if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
   switch(type) {
-    case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
-    case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
-    case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
-    case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
-    case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
-    case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
-    case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
+    case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, 'ignore', undefined, 'noSafe') }}};
+    case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, 'ignore', undefined, 'noSafe') }}};
+    case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, 'ignore', undefined, 'noSafe') }}};
+    case 'i32': return {{{ makeGetValue('ptr', '0', 'i32', undefined, undefined, 'ignore', undefined, 'noSafe') }}};
+    case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, 'ignore', undefined, 'noSafe') }}};
+    case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, 'ignore', undefined, 'noSafe') }}};
+    case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, 'ignore', undefined, 'noSafe') }}};
     default: abort('invalid type for setValue: ' + type);
   }
   return null;
