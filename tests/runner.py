@@ -2747,7 +2747,8 @@ if 'benchmark' not in str(sys.argv):
 
     def test_printf(self):
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
-      expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
+      # I64 mode 1 has some rounding and un-NaNing effects
+      expected = open(path_from_root('tests', 'printf', 'output.txt' if Settings.I64_MODE == 0 else 'output_i64_1.txt'), 'r').read()
       self.do_run(src, expected)
 
     def test_printf_types(self):
