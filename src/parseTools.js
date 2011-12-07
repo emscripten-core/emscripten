@@ -564,15 +564,15 @@ function makeInlineCalculation(expression, value, tempVar) {
 // (-1 will be rounded!), so handle negatives separately and carefully
 function makeBigInt(low, high) {
   // here VALUE will be the big part
-  return '(' + high + ' <= 2147483648 ? (' + makeSignOp(low, 'i32', 'un', 1) + '+(' + makeSignOp(high, 'i32', 'un', 1) + '*4294967296))' +
-                                    ' : (' + makeSignOp(low, 'i32', 're', 1) + '+(1+' + makeSignOp(high, 'i32', 're', 1) + ')*4294967296))';
+  return '(' + high + ' <= 2147483648 ? (' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 'un', 1, 1) + '*4294967296))' +
+                                    ' : (' + makeSignOp(low, 'i32', 're', 1, 1) + '+(1+' + makeSignOp(high, 'i32', 're', 1, 1) + ')*4294967296))';
 }
 
 // Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
 function makeI64(low, high) {
   high = high || '0';
   if (I64_MODE == 1) {
-    return '[' + makeSignOp(low, 'i32', 'un', 1) + ',' + makeSignOp(high, 'i32', 'un', 1) + ']';
+    return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
   } else {
     if (high) return makeBigInt(low, high);
     return low;
@@ -1476,7 +1476,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   return ret;
 }
 
-function makeSignOp(value, type, op, force) {
+function makeSignOp(value, type, op, force, ignore) {
   if (I64_MODE == 1 && type == 'i64') {
     return value; // these are always assumed to be two 32-bit unsigneds.
   }
@@ -1487,7 +1487,7 @@ function makeSignOp(value, type, op, force) {
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
     full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !PGO) + (
-      PGO ? ', "' + Debugging.getIdentifier() + '"' : ''
+      PGO ? ', "' + (ignore ? '' : Debugging.getIdentifier()) + '"' : ''
     ) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {
@@ -1497,7 +1497,7 @@ function makeSignOp(value, type, op, force) {
   if (!correctSigns() && !CHECK_SIGNS && !force) return value;
   if (type in Runtime.INT_TYPES) {
     // shortcuts
-    if (!CHECK_SIGNS) {
+    if (!CHECK_SIGNS || ignore) {
       if (bits === 32) {
         if (op === 're') {
           return '((' + value + ')|0)';
