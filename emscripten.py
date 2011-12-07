@@ -89,7 +89,9 @@ def optimize(filepath):
   Returns:
     The path to the optimized file.
   """
-  command = [shared.LLVM_OPT, '-o=-', filepath] + shared.pick_llvm_opts(3, True)
+  shared.Building.LLVM_OPTS = 1
+  shared.Settings.QUANTUM_SIZE = 1 # just so it isn't 4, and we assume we can do things that fail on q1
+  command = [shared.LLVM_OPT, '-o=-', filepath] + shared.Building.pick_llvm_opts(3, True)
   with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not optimize %s.' % filepath)
   return out.name
