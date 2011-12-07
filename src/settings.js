@@ -65,6 +65,10 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // 0 we will simply store and load doubles as 32-bit floats, so when they are stored/loaded
                      // they will truncate from 64 to 32 bits, and lose precision. This is faster, and might
                      // work for some code (but probably that code should just use floats and not doubles anyhow).
+                     // Note that a downside of DOUBLE_MODE 1 is that we currently store the double in parts,
+                     // then load it aligned, and that load-store will make JS engines alter it if it is being
+                     // stored to a typed array for security reasons. That will 'fix' the number from being a
+                     // NaN or an infinite number.
 var EMULATE_UNALIGNED_ACCESSES = 1; // If set, the compiler will 'emulate' loads and stores that are not known to
                                     // be sufficiently aligned, by working on individual bytes. This can be
                                     // important in USE_TYPED_ARRAYS == 2, where unaligned accesses do not work,
