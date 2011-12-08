@@ -173,7 +173,6 @@ class RunnerCore(unittest.TestCase):
   def assertContained(self, values, string):
     if type(values) not in [list, tuple]: values = [values]
     for value in values:
-      if type(value) is not str: value = value() # lazy loading
       if type(string) is not str: string = string()
       if value in string: return # success
     raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
@@ -3747,10 +3746,10 @@ if 'benchmark' not in str(sys.argv):
       Building.link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
-                      lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
-                      args='-scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post)
-                      #, build_ll_hook=self.do_autodebug)
+                     open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read().replace(' ', ''),
+                     args='-scale-to 512 paper.pdf filename'.split(' '),
+                     post_build=post)
+                     #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
       if Settings.USE_TYPED_ARRAYS == 2:
