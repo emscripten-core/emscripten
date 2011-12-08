@@ -341,7 +341,7 @@ var tempI64, tempI64b;
 #if DOUBLE_MODE == 1
 #if USE_TYPED_ARRAYS == 2
 var tempDoubleBuffer = new ArrayBuffer(8);
-var tempDoubleF32 = new Float32Array(tempDoubleBuffer);
+var tempDoubleI32 = new Int32Array(tempDoubleBuffer);
 var tempDoubleF64 = new Float64Array(tempDoubleBuffer);
 #endif
 #endif

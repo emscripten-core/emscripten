@@ -907,8 +907,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(tempDoubleF32[0]=' + makeGetValue(ptr, pos, 'float', noNeedFirst, unsigned, ignore) + ',' +
-            'tempDoubleF32[1]=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('float')), 'float', noNeedFirst, unsigned, ignore) + ',' +
+    return '(tempDoubleI32[0]=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
+            'tempDoubleI32[1]=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
             'tempDoubleF64[0])';
   }
 
@@ -990,8 +990,8 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
     return '(tempDoubleF64[0]=' + value + ',' +
-            makeSetValue(ptr, pos, 'tempDoubleF32[0]', 'float', noNeedFirst, ignore, align/2) + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleF32[1]', 'float', noNeedFirst, ignore, align/2) + ')';
+            makeSetValue(ptr, pos, 'tempDoubleI32[0]', 'i32', noNeedFirst, ignore, align) + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align) + ')';
   }
 
   if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
