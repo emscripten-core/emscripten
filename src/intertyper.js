@@ -123,6 +123,12 @@ function intertyper(data, sidePass, baseLineNums) {
           inFunction = false;
           if (mainPass) {
             var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true))[0];
+
+            if (SKIP_STACK_IN_SMALL && /emscripten_autodebug/.exec(func.ident)) {
+              warn('Disabling SKIP_STACK_IN_SMALL because we are apparently processing autodebugger data');
+              SKIP_STACK_IN_SMALL = 0;
+            }
+
             unparsedBundles.push({
               intertype: 'unparsedFunction',
               // We need this early, to know basic function info - ident, params, varargs

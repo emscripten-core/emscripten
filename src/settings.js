@@ -85,7 +85,8 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // may allocate stack later, and in a loop, this can be
                              // very bad. In particular, when debugging, printf()ing
                              // a lot can exhaust the stack very fast, with this option.
-                             // In particular, be careful with the autodebugger!
+                             // In particular, be careful with the autodebugger! (We do turn
+                             // this off automatically in that case, though.)
 var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
 var CLOSURE_INLINE_PREVENTION_LINES = 50; // Functions of this number of lines or larger will have
                                           // code generated that tells the closure compiler not to
