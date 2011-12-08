@@ -2753,6 +2753,7 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, expected)
 
     def test_printf(self):
+      self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       # I64 mode 1 has some rounding and un-NaNing effects
       expected = open(path_from_root('tests', 'printf', 'output.txt' if Settings.I64_MODE == 0 else 'output_i64_1.txt'), 'r').read()
