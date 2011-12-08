@@ -1339,10 +1339,7 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
         // from one file to another, would be enough to fix this), or, do not pass structs by value (which in general
         // is inefficient, and worth avoiding if you can).
       }
-    case 'inttoptr':
-    case 'ptrtoint':
-      return finalizeLLVMParameter(item.params[0], noIndexizeFunctions);
-    case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div':
+    case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div': case 'inttoptr': case 'ptrtoint':
       var temp = {
         op: item.intertype,
         variant: item.variant,
@@ -1655,7 +1652,8 @@ function processMathop(item) {
         return '((' + ident1 + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
       case 'select': return ident1 + ' ? ' + makeCopyI64(ident2) + ' : ' + makeCopyI64(ident3);
-      case 'ptrtoint': case 'inttoptr': throw 'Pointers cannot be 64-bit!';
+      case 'ptrtoint': throw 'Pointers cannot be 64-bit!';
+      case 'inttoptr': return '(' + ident1 + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)), bits);
       case 'sub': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)), bits);
@@ -1790,6 +1788,7 @@ function processMathop(item) {
       }
       return ident1 + ret;
     }
+    case 'bitcast': return ident1;
     default: throw 'Unknown mathcmp op: ' + item.op;
   }
 }
