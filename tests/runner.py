@@ -3746,7 +3746,7 @@ if 'benchmark' not in str(sys.argv):
       Building.link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
-                     open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read().replace(' ', ''),
+                     map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
                      args='-scale-to 512 paper.pdf filename'.split(' '),
                      post_build=post)
                      #, build_ll_hook=self.do_autodebug)
