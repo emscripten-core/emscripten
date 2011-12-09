@@ -743,8 +743,6 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0*')
 
     def test_math_hyperbolic(self):
-        if Settings.DOUBLE_MODE == 1: return self.skip('store-load doubles will make NaNs into actual numbers')
-
         src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
         expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
         self.do_run(src, expected)
