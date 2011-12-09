@@ -803,6 +803,9 @@ function intertyper(data, sidePass, baseLineNums) {
       var segments = splitTokenList(item.tokens.slice(1));
       for (var i = 1; i <= 4; i++) {
         if (segments[i-1]) {
+          if (i > 1 && segments[i-1].length == 1 && segments[0].length > 1) {
+            segments[i-1].unshift(segments[0][0]); // Add the type from the first segment, they are all alike
+          }
           item['param'+i] = parseLLVMSegment(segments[i-1]);
         }
       }
