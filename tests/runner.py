@@ -2733,10 +2733,6 @@ if 'benchmark' not in str(sys.argv):
         0
         1.234e+57
         10
-        '''
-      if Settings.I64_MODE != 1:
-        # I64 will un-NaN/Inf this into a very big float, because of our temp storage to a safe typed array
-        expected += '''
         inf
         '''
 
