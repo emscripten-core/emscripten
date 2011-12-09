@@ -341,7 +341,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var ret = [item];
       item.JS = 'var ' + item.ident + ';';
       // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
-      var value = finalizeLLVMParameter(item.value, true); // do *not* indexize functions here
+      var value = finalizeLLVMParameter(item.value);
       ret.push({
         intertype: 'GlobalVariablePostSet',
         ident: item.ident,
@@ -632,10 +632,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     var local = funcData.variables[ident];
     if (local) return local;
     var global = Variables.globals[ident];
-    // FIXME: Currently, if something is an alias, we assume it is not a simple variable, so no need for
-    //        FUNCTION_TABLE when calling it (which we do need for a normal simple global variable). In
-    //        theory though an alias could be simple, we should probably check the type if this ever becomes a problem.
-    if (global && global.alias) global = null;
     return global || null;
   }
 
