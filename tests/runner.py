@@ -4348,8 +4348,8 @@ Child2:9
       self.do_run(src, '*closured*\ndata: 100,1,50,25\n', post_build=post)
 
     def test_safe_heap(self):
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
       if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
       if Building.LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
 
       src = '''
