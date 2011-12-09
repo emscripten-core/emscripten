@@ -95,9 +95,9 @@ function toNiceIdentCarefully(ident) {
 // is true, then also allow () and spaces.
 function isNiceIdent(ident, loose) {
   if (loose) {
-    return /^[\w$_ ()]+$/.test(ident);
+    return /^\(?[\w$_]+[\w$_\d ]*\)?$/.test(ident);
   } else {
-    return /^[\w$_]+$/.test(ident);
+    return /^[\w$_]+[\w$_\d]*$/.test(ident);
   }
 }
 
