@@ -95,9 +95,9 @@ function toNiceIdentCarefully(ident) {
 // is true, then also allow () and spaces.
 function isNiceIdent(ident, loose) {
   if (loose) {
-    return /^\(?[\w$_]+[\w$_\d ]*\)?$/.test(ident);
+    return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
   } else {
-    return /^[\w$_]+[\w$_\d]*$/.test(ident);
+    return /^[$_]+[\w$_\d]*$/.test(ident);
   }
 }
 
@@ -1586,7 +1586,7 @@ function processMathop(item) {
   if (item.type[0] === 'i') {
     bits = parseInt(item.type.substr(1));
   }
-  var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
+  var bitsLeft = item.param2 ? item.param2.ident.substr(1) : null; // remove i to leave number. This value is important in float ops
 
   function integerizeBignum(value) {
     return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigIntI');
@@ -1609,14 +1609,14 @@ function processMathop(item) {
       }
       case 'shl': {
         return '[' + ident1 + '[0] << ' + ident2 + ', ' +
-                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident1 + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + '))]';
+                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident1 + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >>> (32-' + ident2 + '))]';
       }
       case 'ashr': {
-        return '[('+ident1 + '[0] >> ' + ident2 + ') | ((' + ident1 + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + ')),' +
-                    ident1 + '[1] >> ' + ident2 + ']';
+        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1))<<(32-' + ident2 + ')),' +
+                    ident1 + '[1] >>> ' + ident2 + ']';
       }
       case 'lshr': {
-        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + ')),' +
+        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1))<<(32-' + ident2 + ')),' +
                     ident1 + '[1] >>> ' + ident2 + ']';
       }
       case 'uitofp': case 'sitofp': return ident1 + '[0] + ' + ident1 + '[1]*4294967296';
