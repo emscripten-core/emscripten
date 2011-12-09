@@ -951,8 +951,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 }
 
 function indexizeFunctions(value, type) {
-  assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing: ' + [value, type]);
-  assert(value !== type, 'Type set to value: ' + [value, type]);
+  assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing');
+  assert(value !== type, 'Type set to value');
   if (type && isFunctionType(type) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
     if (BUILD_AS_SHARED_LIB) {
       return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';

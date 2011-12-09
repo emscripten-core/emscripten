@@ -254,22 +254,37 @@ var Functions = {
   // All the function idents seen so far
   allIdents: [],
 
-  indexedFunctions: [0, 0], // Start at a non-0 (even, see below) value
+  indexedFunctions: {},
+  nextIndex: 2, // Start at a non-0 (even, see below) value
 
   // Mark a function as needing indexing, and returns the index
   getIndex: function(ident) {
-    var key = this.indexedFunctions.indexOf(ident);
-    if (key < 0) {
-      key = this.indexedFunctions.length;
-      this.indexedFunctions[key] = ident;
-      this.indexedFunctions[key+1] = 0; // Need to have keys be even numbers, see |polymorph| test
+    var ret = this.indexedFunctions[ident];
+    if (!ret) {
+      ret = this.nextIndex;
+      this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
+      this.indexedFunctions[ident] = ret;
     }
-    return key.toString();
+    return ret.toString();
   },
 
   // Generate code for function indexing
   generateIndexing: function() {
-    var indices = this.indexedFunctions.toString().replace('"', '');
+    var vals = zeros(this.nextIndex);
+    for (var ident in this.indexedFunctions) {
+      vals[this.indexedFunctions[ident]] = ident;
+    }
+
+    // Resolve multi-level aliases all the way down
+    for (var i = 0; i < vals.length; i++) {
+      while (1) {
+        var varData = Variables.globals[vals[i]];
+        if (!(varData && varData.resolvedAlias)) break;
+        vals[i] = vals[varData.resolvedAlias];
+      }
+    }
+
+    var indices = vals.toString().replace('"', '');
     if (BUILD_AS_SHARED_LIB) {
       // Shared libraries reuse the parent's function table.
       return 'FUNCTION_TABLE = FUNCTION_TABLE.concat([' + indices + ']);';

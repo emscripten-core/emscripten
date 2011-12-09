@@ -341,7 +341,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var ret = [item];
       item.JS = 'var ' + item.ident + ';';
       // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
-      var value = finalizeLLVMParameter(item.value);
+      var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
       ret.push({
         intertype: 'GlobalVariablePostSet',
         ident: item.ident,
