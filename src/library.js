@@ -3840,9 +3840,57 @@ LibraryManager.library = {
     return 0;
   },
 
-  // Compiled from newlib; for the original source and licensing, see library_strtok_r.c XXX will not work with typed arrays
-  strtok_r: function(b,j,f){var a;a=null;var c,e;b=b;var i=b!=0;a:do if(i)a=0;else{b=HEAP[f];if(b!=0){a=0;break a}c=0;a=3;break a}while(0);if(a==0){a:for(;;){e=HEAP[b];b+=1;a=j;var g=e;i=a;a=2;b:for(;;){d=a==5?d:0;a=HEAP[i+d];if(a!=0==0){a=9;break a}var d=d+1;if(g==a)break b;else a=5}a=2}if(a==9)if(g==0)c=HEAP[f]=0;else{c=b+-1;a:for(;;){e=HEAP[b];b+=1;a=j;g=e;d=a;a=10;b:for(;;){h=a==13?h:0;a=HEAP[d+h];if(a==g!=0)break a;var h=h+1;if(a!=0)a=13;else break b}}if(e==0)b=0;else HEAP[b+-1]=0; HEAP[f]=b;c=c}else if(a==7){HEAP[f]=b;HEAP[b+-1]=0;c=b+-1}}return c},
-  // TODO: Compile strtok() from source.
+  // Translated from newlib; for the original source and licensing, see library_strtok_r.c
+  strtok_r: function(s, delim, lasts) {
+    var skip_leading_delim = 1;
+    var spanp;
+    var c, sc;
+    var tok;
+
+
+    if (s == 0 && (s = getValue(lasts, 'i8*')) == 0) {
+      return 0;
+    }
+
+    cont: while (1) {
+      c = getValue(s++, 'i8');
+      for (spanp = delim; (sc = getValue(spanp++, 'i8')) != 0;) {
+        if (c == sc) {
+          if (skip_leading_delim) {
+            continue cont;
+          } else {
+            setValue(lasts, s, 'i8*');
+            setValue(s - 1, 0, 'i8');
+            return s - 1;
+          }
+        }
+      }
+      break;
+    }
+
+    if (c == 0) {
+      setValue(lasts, 0, 'i8*');
+      return 0;
+    }
+    tok = s - 1;
+
+    for (;;) {
+      c = getValue(s++, 'i8');
+      spanp = delim;
+      do {
+        if ((sc = getValue(spanp++, 'i8')) == c) {
+          if (c == 0) {
+            s = 0;
+          } else {
+            setValue(s - 1, 0, 'i8');
+          }
+          setValue(lasts, s, 'i8*');
+          return tok;
+        }
+      } while (sc != 0);
+    }
+    abort('strtok_r error!');
+  },
 
   strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],
   strerror_r: function(errnum, strerrbuf, buflen) {

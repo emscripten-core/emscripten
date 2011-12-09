@@ -2742,6 +2742,63 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
+    def test_strtok(self):
+      src = r'''
+        #include<stdio.h>
+        #include<string.h>
+
+        int main() {
+          char test[80], blah[80];
+          char *sep = "\\/:;=-";
+          char *word, *phrase, *brkt, *brkb;
+
+          strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
+
+          for (word = strtok_r(test, sep, &brkt); word; word = strtok_r(NULL, sep, &brkt)) {
+            strcpy(blah, "blah:blat:blab:blag");
+            for (phrase = strtok_r(blah, sep, &brkb); phrase; phrase = strtok_r(NULL, sep, &brkb)) {
+              printf("at %s:%s\n", word, phrase);
+            }
+          }
+          return 1;
+        }
+      '''
+
+      expected = '''at This:blah
+at This:blat
+at This:blab
+at This:blag
+at is.a:blah
+at is.a:blat
+at is.a:blab
+at is.a:blag
+at test:blah
+at test:blat
+at test:blab
+at test:blag
+at of:blah
+at of:blat
+at of:blab
+at of:blag
+at the:blah
+at the:blat
+at the:blab
+at the:blag
+at string:blah
+at string:blat
+at string:blab
+at string:blag
+at tokenizer:blah
+at tokenizer:blat
+at tokenizer:blab
+at tokenizer:blag
+at function.:blah
+at function.:blat
+at function.:blab
+at function.:blag
+'''
+      self.do_run(src, expected)
+
     def test_parseInt(self):
       Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s, but we do still get doubling
                             # FIXME: The output here is wrong, due to double rounding of i64s!
@@ -3680,22 +3737,8 @@ if 'benchmark' not in str(sys.argv):
 
       Settings.SAFE_HEAP = 0 # Has variable object
 
-      Settings.CHECK_OVERFLOWS = 0
-
+      Settings.CORRECT_OVERFLOWS = 1
       Settings.CORRECT_SIGNS = 1
-      Settings.CORRECT_SIGNS_LINES = ['parseargs.cc:171', 'BuiltinFont.cc:64', 'NameToCharCode.cc:115', 'GooHash.cc:368',
-                             'Stream.h:469', 'PDFDoc.cc:1064', 'Lexer.cc:201', 'Splash.cc:1130', 'XRef.cc:997',
-                             'vector:714', 'Lexer.cc:259', 'Splash.cc:438', 'Splash.cc:532', 'GfxFont.cc:1152',
-                             'Gfx.cc:3838', 'Splash.cc:3162', 'Splash.cc:3163', 'Splash.cc:3164', 'Splash.cc:3153',
-                             'Splash.cc:3159', 'SplashBitmap.cc:80', 'SplashBitmap.cc:81', 'SplashBitmap.cc:82',
-                             'Splash.cc:809', 'Splash.cc:805', 'GooHash.cc:379',
-                             # FreeType
-                             't1load.c:1850', 'psconv.c:104', 'psconv.c:185', 'psconv.c:366', 'psconv.c:399',
-                             'ftcalc.c:308', 't1parse.c:405', 'psconv.c:431', 'ftcalc.c:555', 't1objs.c:458',
-                             't1decode.c:595', 't1decode.c:606', 'pstables.h:4048', 'pstables.h:4055', 'pstables.h:4066',
-                             'pshglob.c:166', 'ftobjs.c:2548', 'ftgrays.c:1190', 'psmodule.c:116', 'psmodule.c:119',
-                             'psobjs.c:195', 'pshglob.c:165', 'ttload.c:694', 'ttmtx.c:195', 'sfobjs.c:957',
-                             'sfobjs.c:958', 'ftstream.c:369', 'ftstream.c:372', 'ttobjs.c:1007'] # And many more...
 
       Building.COMPILER_TEST_OPTS += [
         '-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
