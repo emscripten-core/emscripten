@@ -128,7 +128,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 #endif
 
   var ret = getValue(dest, type, 1);
-  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)));
+  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
   return ret;
 }
 
