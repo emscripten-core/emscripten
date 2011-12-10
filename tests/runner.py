@@ -4846,12 +4846,10 @@ TT = %s
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
-    (CLANG, 1, 0, 0, 0),
-    (CLANG, 1, 0, 0, 1),
+    (CLANG, 1, 1, 0, 0),
+    (CLANG, 1, 1, 1, 1),
     (CLANG, 4, 0, 0, 0),
     (CLANG, 4, 0, 0, 1),
-    (CLANG, 1, 1, 1, 0),
-    (CLANG, 1, 1, 1, 1),
     (CLANG, 4, 1, 1, 0),
     (CLANG, 4, 1, 1, 1),
     (CLANG, 4, 1, 2, 0),
