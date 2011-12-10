@@ -3723,8 +3723,7 @@ at function.:blag
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      # Test this big test only in default, and in s_0_0 (to ensure it works without ta2)
-      if not (self.use_defaults or (Settings.RELOOP == 0 and Building.LLVM_OPTS == 0 and Settings.MICRO_OPTS == 0 and Settings.QUANTUM_SIZE != 1)): return self.skip('very slow, we only do this in default and s_0_0')
+      if not self.use_defaults: return self.skip('very slow, we only do this in default')
 
       Settings.SAFE_HEAP = 0 # Has variable object
 
