@@ -1,6 +1,8 @@
 # This file will be copied to ~/.emscripten if that file doesn't exist. Or, this is that copy.
 # IMPORTANT: Edit the *copy* with the right paths!
 
+EMSCRIPTEN_ROOT = os.path.expanduser('~/Dev/emscripten') # this helps projects using emscripten find it
+
 LLVM_ROOT = os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
 
 # See below for notes on which JS engine(s) you need

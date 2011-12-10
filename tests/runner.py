@@ -4755,14 +4755,15 @@ TT = %s
     def test_emcc(self):
       pass
       # TODO: make sure all of these match gcc
+      # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # -- options: check these, warn about errors. valid gcc ones are help, version. Ours should be -- too, not -.
       # emcc src.cpp ==> should give a .js file
-      # emcc -O0 src.cpp ==> same as without -O0 (i.e., assertions, etc.)
-      # emcc -O1 src.cpp ==> no assertions, basic optimizations, plus eliminator, but no reloop
-      # emcc -O2 src.cpp ==> plus reloop, plus closure compiler. dangerous, warn! (but not dangerous for simple commandline tests?)
-      # emcc -O3 src.cpp ==> no corrections. dangerous, warn!
-      # emcc --typed-arrays=x .. ==> should use typed arrays
-      # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe)
+      # emcc -O0 src.cpp ==> same as without -O0: assertions, etc., and greatest chance of code working: i64 1, ta2, etc., micro-opts
+      # emcc -O1 src.cpp ==> no assertions, plus eliminator, plus closure compiler (warn about closure compiler stuff)
+      # emcc -O2 src.cpp ==> plus reloop (warn about speed)
+      # emcc -O3 src.cpp ==> no corrections, relax some other stuff like i64 1 into 0, etc.: dangerous stuff, warn, suggest -O2!
+      # emcc --typed-arrays=x .. ==> should use typed arrays. default should be 2
+      # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
       # emcc src.cpp -c ==> should give a .bc file
       # linking - TODO
       #     annotate each .bc with emscripten info, like "compiled with -O2: do the O2 opts when going to final .js"
