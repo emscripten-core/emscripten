@@ -1238,7 +1238,7 @@ function makeGetPos(ptr) {
   return ptr;
 }
 
-var IHEAP_FHEAP = set('IHEAP', 'FHEAP');
+var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
 function makePointer(slab, pos, allocator, type) {
   assert(type, 'makePointer requires type info');
@@ -1278,7 +1278,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     if (type in Runtime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
       return ['FHEAP']; // If USE_FHEAP is false, will fail at runtime. At compiletime we do need it for library stuff.
     } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
-      return ['IHEAP'];
+      return [unsigned ? 'IHEAPU' : 'IHEAP'];
     } else {
       assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
       if (USE_FHEAP) {

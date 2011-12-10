@@ -521,7 +521,7 @@ function alignMemoryPage(x) {
 
 var HEAP;
 #if USE_TYPED_ARRAYS == 1
-var IHEAP;
+var IHEAP, IHEAPU;
 #if USE_FHEAP
 var FHEAP;
 #endif
@@ -547,6 +547,7 @@ function enlargeMemory() {
   var oldIHEAP = IHEAP;
   HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
   IHEAP.set(oldIHEAP);
+  IHEAPU = new Uint32Array(IHEAP.buffer);
 #if USE_FHEAP
   var oldFHEAP = FHEAP;
   FHEAP = new Float64Array(TOTAL_MEMORY);
@@ -579,6 +580,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 #if USE_TYPED_ARRAYS == 1
   HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+  IHEAPU = new Uint32Array(IHEAP.buffer);
 #if USE_FHEAP
   FHEAP = new Float64Array(TOTAL_MEMORY);
 #endif
