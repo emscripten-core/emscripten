@@ -3727,8 +3727,6 @@ at function.:blag
       if Settings.RELOOP or Building.LLVM_OPTS: return self.skip('TODO')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      Settings.USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
-
       Settings.SAFE_HEAP = 0 # Has variable object
 
       Settings.CORRECT_OVERFLOWS = 1
@@ -3757,7 +3755,7 @@ at function.:blag
             FS.root.write = true;
             FS.ignorePermissions = false;
             run();
-            print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents));
+            print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
           '''
         )
         src.close()
