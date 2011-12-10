@@ -3806,6 +3806,8 @@ at function.:blag
         )
         open(filename, 'w').write(src)
 
+      shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
+
       lib = self.get_library('openjpeg',
                              [os.path.join('bin', 'libopenjpeg.so.1.4.0.bc'),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
@@ -3814,8 +3816,7 @@ at function.:blag
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'.split('/'))],
                              configure=['cmake', '.'],
                              #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
-                             make_args=[], # no -j 2, since parallel builds can fail
-                             cache=False) # We need opj_config.h and other generated files, so cannot cache just the .bc
+                             make_args=[]) # no -j 2, since parallel builds can fail
 
       # We use doubles in JS, so we get slightly different values than native code. So we
       # check our output by comparing the average pixel difference
