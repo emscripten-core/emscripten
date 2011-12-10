@@ -4868,7 +4868,7 @@ TT = %s
 
   class other(RunnerCore):
     def test_reminder(self):
-      raise Exception('update Getting Started to use defaults instead of clang_0_0.')
+      raise Exception('update Getting Started to use defaults instead of clang_0_0.\nAdd more i64 bitshift tests.')
 
     def test_emcc(self):
       pass
