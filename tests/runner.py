@@ -4865,7 +4865,7 @@ TT = %s
 
   class other(RunnerCore):
     def test_reminder(self):
-      raise Exception('update Getting Started to use defaults instead of clang_0_0. test_printf: make the i64-1 and non-i64-1 outputs as identical as possible. investigate differences.')
+      raise Exception('update Getting Started to use defaults instead of clang_0_0.')
 
     def test_emcc(self):
       pass
