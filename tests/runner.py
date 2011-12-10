@@ -3723,9 +3723,8 @@ at function.:blag
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      # llvm-link failure when using clang, LLVM bug 9498, still relevant?
-      if Settings.RELOOP or Building.LLVM_OPTS: return self.skip('TODO')
-      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+      # Test this big test only in default, and in s_0_0 (to ensure it works without ta2)
+      if not (self.use_defaults or (Settings.RELOOP == 0 and Building.LLVM_OPTS == 0 and Settings.MICRO_OPTS == 0 and Settings.QUANTUM_SIZE != 1)): return self.skip('very slow, we only do this in default and s_0_0')
 
       Settings.SAFE_HEAP = 0 # Has variable object
 
@@ -4791,9 +4790,10 @@ class %s(T):
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = %r
 
-    use_defaults = %d
-    if use_defaults:
+    self.use_defaults = %d
+    if self.use_defaults:
       Settings.load_defaults()
+      Building.LLVM_OPTS = 0
       return
 
     llvm_opts = %d # 1 is yes, 2 is yes and unsafe
@@ -4831,7 +4831,7 @@ class %s(T):
     else:
       Settings.I64_MODE = 0
 
-    if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
+    if Settings.USE_TYPED_ARRAYS != 2 or Building.LLVM_OPTS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
     Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
