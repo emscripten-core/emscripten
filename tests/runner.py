@@ -2794,6 +2794,7 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_parseInt(self):
+      if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
       Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s, but we do still get doubling
                             # FIXME: The output here is wrong, due to double rounding of i64s!
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
@@ -2801,7 +2802,8 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_printf(self):
-      #Settings.I64_MODE = 1
+      if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
+      Settings.I64_MODE = 1
       self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
