@@ -1,0 +1,124 @@
+diff --git a/src/analyzer.js b/src/analyzer.js
+index 526d024..a5074e1 100644
+--- a/src/analyzer.js
++++ b/src/analyzer.js
+@@ -462,15 +462,17 @@ function analyzer(data) {
+   //
+   // See settings.js for the meaning of QUANTUM_SIZE. The issue we fix here is,
+   // to correct the .ll assembly code so that things work with QUANTUM_SIZE=1.
+   //
+   substrate.addActor('QuantumFixer', {
+     processItem: function(item) {
+       this.forwardItem(item, 'LabelAnalyzer');
++dprint('cheez qf!');
+       if (QUANTUM_SIZE !== 1) return;
++dprint('cheez qf 2!');
+ 
+       // ptrs: the indexes of parameters that are pointers, whose originalType is what we want
+       // bytes: the index of the 'bytes' parameter
+       // TODO: malloc, realloc?
+       var FIXABLE_CALLS = {
+         'memcpy': { ptrs: [0,1], bytes: 2 },
+         'memmove': { ptrs: [0,1], bytes: 2 },
+@@ -495,16 +497,22 @@ function analyzer(data) {
+         return [0];
+       }
+ 
+       item.functions.forEach(function(func) {
+         function getOriginalType(param) {
+           function get() {
+             if (param.intertype === 'value' && !isNumber(param.ident)) {
+-              if (func.variables[param.ident]) {
+-                return func.variables[param.ident].originalType || null;
++              var varData = func.variables[param.ident];
++              if (varData) {
++                if (varData.origin == 'load') {
++                  return varData.type; // we can trust this
++                }
++// To continue, we need proper type data inside getelementptr, by using type data. not a one liner.
++// TESTING: this makes a difference in fasta
++                return varData.originalType || null;
+               } else {
+                 return item.globalVariables[param.ident].originalType;
+               }
+             } else if (param.intertype === 'bitcast') {
+               return param.params[0].type;
+             } else if (param.intertype === 'getelementptr') {
+               if (param.params[0].type[0] === '[') return param.params[0].type;
+@@ -527,18 +535,21 @@ function analyzer(data) {
+             var fixData = FIXABLE_CALLS[funcIdent];
+             if (!fixData) return;
+             var ptrs = fixData.ptrs.map(function(ptr) { return line.params[ptr] });
+             var bytes = line.params[fixData.bytes].ident;
+ 
+             // Only consider original types. This assumes memcpy always has pointers bitcast to i8*
+             var originalTypes = ptrs.map(getOriginalType);
++dprint('cheez qf 2! ' + dump(func.variables) + ' :: ' + funcIdent + ',' + line.lineNum + ' : ' + dump(ptrs) + ' ==> ' + dump(originalTypes));
+             for (var i = 0; i < originalTypes.length; i++) {
+               if (!originalTypes[i]) return;
+             }
++dprint('cheez qf 3!');
+             originalTypes = originalTypes.map(function(type) { return removePointing(type) });
++dprint('zz cheez ' + [funcIdent, originalTypes]);
+             var sizes = originalTypes.map(function(type) { return getSize(Types.types, type) });
+             var fatSizes = originalTypes.map(function(type) { return getSize(Types.fatTypes, type, true) });
+             // The sizes may not be identical, if we copy a descendant class into a parent class. We use
+             // the smaller size in that case. However, this may also be a bug, it is hard to tell, hence a warning
+             warn(dedup(sizes).length === 1, 'All sizes should probably be identical here: ' + dump(originalTypes) + ':' + dump(sizes) + ':' +
+                  line.lineNum);
+             warn(dedup(fatSizes).length === 1, 'All fat sizes should probably be identical here: ' + dump(originalTypes) + ':' + dump(sizes) + ':' +
+diff --git a/src/parseTools.js b/src/parseTools.js
+index 024026c..a15b89f 100644
+--- a/src/parseTools.js
++++ b/src/parseTools.js
+@@ -1078,14 +1078,29 @@ function makeSetValues(ptr, pos, value, type, num) {
+       '}'
+   }
+ }
+ 
+ var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
+ 
+ function makeCopyValues(dest, src, num, type, modifier) {
++  return '/* zz1 */ ' + makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + ';' +
++         makeCopyValuesX(dest, src, num, type, modifier) + '; /* zz2*/';
++}
++
++function makeCopyValuesX(dest, src, num, type, modifier) {
+   function safety(to, from) {
+     to = to || (dest + '+' + 'mcpi');
+     from = from || (src + '+' + 'mcpi');
+     return (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + to + ', ' + from + ')' : '');
+   }
+   if (USE_TYPED_ARRAYS <= 1) {
+     if (isNumber(num)) {
+diff --git a/src/utility.js b/src/utility.js
+index 1ebbe52..1724c62 100644
+--- a/src/utility.js
++++ b/src/utility.js
+@@ -15,15 +15,15 @@ function dump(item) {
+     while (text.length > 80) {
+       ret += '// ' + text.substr(0,80) + '\n';
+       text = text.substr(80);
+     }
+     return ret + '// ' + text;
+   }
+   try {
+-    return lineify(JSON.stringify(item).substr(0, 80*25));
++    return lineify(JSON.stringify(item).substr(0, 800*25));
+   } catch(e) {
+     var ret = [];
+     for (var i in item) {
+       var j = item[i];
+       if (typeof j === 'string' || typeof j === 'number') {
+         ret.push(i + ': ' + j);
+       } else {
