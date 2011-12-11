@@ -11,12 +11,24 @@
 /*
   Combined with opengl.org tutorial #2,
       http://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_%28C_/_SDL%29
+
+  Build with
+
+    gcc sdl_ogl.c -lSDL -lGL
+
+  g++ will fail!
+
+  Or, to JS:
+
+    ~/Dev/emscripten/tools/emmaken.py sdl_ogl.c -o sdl_ogl.o
+    ~/Dev/emscripten/emscripten.py sdl_ogl.o > sdl_ogl.js
 */
 
 #include "SDL/SDL.h"
 #include "SDL/SDL_opengl.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 char* filetobuf(char *file)
 {
