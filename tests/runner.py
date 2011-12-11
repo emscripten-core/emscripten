@@ -2736,6 +2736,36 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
+    def test_strtok(self):
+      src = r'''
+        #include<stdio.h>
+        #include<string.h>
+
+        int main() {
+          char test[80];
+          char *sep = "\\/:;=-";
+          char *word;
+
+          strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
+
+          for (word = strtok(test, sep); word; word = strtok(NULL, sep)) {
+            printf("at %s\n", word);
+          }
+          return 1;
+        }
+      '''
+
+      expected = '''at This
+at is.a
+at test
+at of
+at the
+at string
+at tokenizer
+at function.
+'''
+      self.do_run(src, expected)
+
     def test_strtok_r(self):
       src = r'''
         #include<stdio.h>
