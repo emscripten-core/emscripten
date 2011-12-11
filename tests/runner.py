@@ -2736,7 +2736,7 @@ if 'benchmark' not in str(sys.argv):
 
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
-    def test_strtok(self):
+    def test_strtok_r(self):
       src = r'''
         #include<stdio.h>
         #include<string.h>
