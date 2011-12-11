@@ -28,6 +28,9 @@
 #ifndef _SDL_opengl_h
 #define _SDL_opengl_h
 
+/* XXX Emscripten */
+#define GL_GLEXT_PROTOTYPES
+
 #include "SDL_config.h"
 
 #ifdef __WIN32__
