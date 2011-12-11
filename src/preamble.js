@@ -537,6 +537,7 @@ var LAST_STATICTOP;
 function enlargeMemory() {
   // LAST_STATICTOP is the previous top, TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
+  printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
   assert(STATICTOP >= TOTAL_MEMORY && LAST_STATICTOP < TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
