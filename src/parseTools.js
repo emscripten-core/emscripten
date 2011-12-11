@@ -95,9 +95,9 @@ function toNiceIdentCarefully(ident) {
 // is true, then also allow () and spaces.
 function isNiceIdent(ident, loose) {
   if (loose) {
-    return /^[\w$_ ()]+$/.test(ident);
+    return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
   } else {
-    return /^[\w$_]+$/.test(ident);
+    return /^[$_]+[\w$_\d]*$/.test(ident);
   }
 }
 
@@ -559,17 +559,23 @@ function makeInlineCalculation(expression, value, tempVar) {
   return '(' + expression.replace(/VALUE/g, value) + ')';
 }
 
-// Makes a proper runtime value for a 64-bit value from low and high i32s.
+// Given two 32-bit unsigned parts of an emulated 64-bit number, combine them into a JS number (double).
+// Rounding is inevitable if the number is large. This is a particular problem for small negative numbers
+// (-1 will be rounded!), so handle negatives separately and carefully
+function makeBigInt(low, high) {
+  // here VALUE will be the big part
+  return '(' + high + ' <= 2147483648 ? (' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 'un', 1, 1) + '*4294967296))' +
+                                    ' : (' + makeSignOp(low, 'i32', 're', 1, 1) + '+(1+' + makeSignOp(high, 'i32', 're', 1, 1) + ')*4294967296))';
+}
+
+// Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
 function makeI64(low, high) {
+  high = high || '0';
   if (I64_MODE == 1) {
-    return '[' + low + ',' + (high || '0') + ']';
-    // FIXME with this?       return '[unSign(' + low + ',32),' + (high ? ('unSign(' + high + ',32)') : '0') + ']';
+    return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
   } else {
-    var ret = low;
-    if (high) {
-      ret = '(' + low + '+(4294967296*' + high + '))';
-    }
-    return ret;
+    if (high) return makeBigInt(low, high);
+    return low;
   }
 }
 
@@ -577,24 +583,25 @@ function makeI64(low, high) {
 // Will suffer from rounding. margeI64 does the opposite.
 // TODO: optimize I64 calcs. For example, saving their parts as signed 32 as opposed to unsigned would help
 function splitI64(value) {
-  assert(I64_MODE == 1);
-  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.floor(VALUE/4294967296)'), value, 'tempBigInt');
+  // We need to min here, since our input might be a double, and large values are rounded, so they can
+  // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
+  // HEAP32 or |0'd, etc.
+  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
 }
 function mergeI64(value) {
   assert(I64_MODE == 1);
-  return '(tempI64=' + value + ',tempI64[0]+tempI64[1]*4294967296)';
+  return makeInlineCalculation(makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
 }
 
 // Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
 // mode, this is a no-op
 function ensureI64_1(value) {
   if (I64_MODE == 1) return value;
-  return makeInlineCalculation('[VALUE>>>0, Math.floor(VALUE/4294967296)]', value, 'tempBigInt');
+  return splitI64(value, 1);
 }
 
 function makeCopyI64(value) {
   assert(I64_MODE == 1);
-
   return value + '.slice(0)';
 }
 
@@ -889,7 +896,7 @@ function getHeapOffset(offset, type) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -897,6 +904,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
       ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst, unsigned));
     }
     return '{ ' + ret.join(', ') + ' }';
+  }
+
+  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
+    return '(tempDoubleI32[0]=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
+            'tempDoubleI32[1]=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
+            'tempDoubleF64[0])';
   }
 
   if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
@@ -923,12 +936,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   }
 
   if (type == 'i64' && I64_MODE == 1) {
-    return '[' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore) + ','
-               + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore) + ']';
+    return '[' + makeGetValue(ptr, pos, 'i32', noNeedFirst, 1, ignore) + ','
+               + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, 1, ignore) + ']';
   }
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP) {
+  if (SAFE_HEAP && !noSafe) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
@@ -938,8 +951,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 }
 
 function indexizeFunctions(value, type) {
-  assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing: ' + [value, type]);
-  assert(value !== type, 'Type set to value: ' + [value, type]);
+  assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing');
+  assert(value !== type, 'Type set to value');
   if (type && isFunctionType(type) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
     if (BUILD_AS_SHARED_LIB) {
       return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
@@ -960,7 +973,7 @@ function indexizeFunctions(value, type) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe) {
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -973,6 +986,12 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
       ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
     }
     return ret.join('; ');
+  }
+
+  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
+    return '(tempDoubleF64[0]=' + value + ',' +
+            makeSetValue(ptr, pos, 'tempDoubleI32[0]', 'i32', noNeedFirst, ignore, align) + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align) + ')';
   }
 
   if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
@@ -1003,7 +1022,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align) {
 
   value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP) {
+  if (SAFE_HEAP && !noSafe) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
@@ -1219,7 +1238,7 @@ function makeGetPos(ptr) {
   return ptr;
 }
 
-var IHEAP_FHEAP = set('IHEAP', 'FHEAP');
+var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
 function makePointer(slab, pos, allocator, type) {
   assert(type, 'makePointer requires type info');
@@ -1259,7 +1278,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     if (type in Runtime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
       return ['FHEAP']; // If USE_FHEAP is false, will fail at runtime. At compiletime we do need it for library stuff.
     } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
-      return ['IHEAP'];
+      return [unsigned ? 'IHEAPU' : 'IHEAP'];
     } else {
       assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
       if (USE_FHEAP) {
@@ -1320,10 +1339,7 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
         // from one file to another, would be enough to fix this), or, do not pass structs by value (which in general
         // is inefficient, and worth avoiding if you can).
       }
-    case 'inttoptr':
-    case 'ptrtoint':
-      return finalizeLLVMParameter(item.params[0], noIndexizeFunctions);
-    case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div':
+    case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div': case 'inttoptr': case 'ptrtoint':
       var temp = {
         op: item.intertype,
         variant: item.variant,
@@ -1457,10 +1473,9 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   return ret;
 }
 
-function makeSignOp(value, type, op, force) {
-  // XXX this is not quite right. both parts should always be unsigned (or, perhaps always signed, we should move to that - separate issue though)
+function makeSignOp(value, type, op, force, ignore) {
   if (I64_MODE == 1 && type == 'i64') {
-    return '(tempPair=' + value + ',[' + makeSignOp('tempPair[0]', 'i32', op, force) + ',' + makeSignOp('tempPair[1]', 'i32', op, force) + '])';
+    return value; // these are always assumed to be two 32-bit unsigneds.
   }
 
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
@@ -1469,7 +1484,7 @@ function makeSignOp(value, type, op, force) {
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
     full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !PGO) + (
-      PGO ? ', "' + Debugging.getIdentifier() + '"' : ''
+      PGO ? ', "' + (ignore ? '' : Debugging.getIdentifier()) + '"' : ''
     ) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {
@@ -1479,7 +1494,7 @@ function makeSignOp(value, type, op, force) {
   if (!correctSigns() && !CHECK_SIGNS && !force) return value;
   if (type in Runtime.INT_TYPES) {
     // shortcuts
-    if (!CHECK_SIGNS) {
+    if (!CHECK_SIGNS || ignore) {
       if (bits === 32) {
         if (op === 're') {
           return '((' + value + ')|0)';
@@ -1497,9 +1512,9 @@ function makeSignOp(value, type, op, force) {
         }
       } else { // bits > 32
         if (op === 're') {
-          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempBigInt');
+          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits-1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempBigIntS');
         } else {
-          return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigInt');
+          return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigIntS');
         }
       }
     }
@@ -1524,7 +1539,7 @@ function makeRounding(value, bits, signed, floatConversion) {
   // Note that if converting a float, we may have the wrong sign at this point! But, we have
   // been rounded properly regardless, and we will be sign-corrected later when actually used, if
   // necessary.
-  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigInt');
+  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
 }
 
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
@@ -1571,10 +1586,10 @@ function processMathop(item) {
   if (item.type[0] === 'i') {
     bits = parseInt(item.type.substr(1));
   }
-  var bitsLeft = ident2 ? ident2.substr(2, ident2.length-3) : null; // remove (i and ), to leave number. This value is important in float ops
+  var bitsLeft = item.param2 ? item.param2.ident.substr(1) : null; // remove i to leave number. This value is important in float ops
 
   function integerizeBignum(value) {
-    return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigInt');
+    return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigIntI');
   }
 
   if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || ident2 == '(i64)') && I64_MODE == 1) {
@@ -1594,14 +1609,14 @@ function processMathop(item) {
       }
       case 'shl': {
         return '[' + ident1 + '[0] << ' + ident2 + ', ' +
-                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident1 + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + '))]';
+                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident1 + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >>> (32-' + ident2 + '))]';
       }
       case 'ashr': {
-        return '[('+ident1 + '[0] >> ' + ident2 + ') | ((' + ident1 + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + ')),' +
-                    ident1 + '[1] >> ' + ident2 + ']';
+        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1))<<(32-' + ident2 + ')),' +
+                    ident1 + '[1] >>> ' + ident2 + ']';
       }
       case 'lshr': {
-        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >> (32-' + ident2 + ')),' +
+        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1))<<(32-' + ident2 + ')),' +
                     ident1 + '[1] >>> ' + ident2 + ']';
       }
       case 'uitofp': case 'sitofp': return ident1 + '[0] + ' + ident1 + '[1]*4294967296';
@@ -1632,12 +1647,13 @@ function processMathop(item) {
         }
       }
       case 'zext': return makeI64(ident1, 0);
-      case 'sext': return makeInlineCalculation(makeI64('VALUE', 'VALUE<0 ? 4294967295 : 0'), ident1, 'tempBigInt');
+      case 'sext': return makeInlineCalculation(makeI64('VALUE', 'VALUE<0 ? 4294967295 : 0'), ident1, 'tempBigIntD');
       case 'trunc': {
         return '((' + ident1 + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
       case 'select': return ident1 + ' ? ' + makeCopyI64(ident2) + ' : ' + makeCopyI64(ident3);
-      case 'ptrtoint': case 'inttoptr': throw 'Pointers cannot be 64-bit!';
+      case 'ptrtoint': throw 'Pointers cannot be 64-bit!';
+      case 'inttoptr': return '(' + ident1 + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)), bits);
       case 'sub': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)), bits);
@@ -1772,6 +1788,7 @@ function processMathop(item) {
       }
       return ident1 + ret;
     }
+    case 'bitcast': return ident1;
     default: throw 'Unknown mathcmp op: ' + item.op;
   }
 }

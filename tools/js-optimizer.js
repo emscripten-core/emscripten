@@ -193,6 +193,11 @@ function unGlobalize(ast) {
 // - and in library/shell code too! - we should never rely on
 // undefined being assigned. So we can simply remove those assignments.
 //
+// Note: An inlined function that kept a large value referenced, may
+//       keep that references when inlined, if we remove the setting to
+//       undefined. This is not dangerous in compiled code, but might be
+//       in supporting code (for example, holding on to the HEAP when copying).
+//
 // This pass assumes that unGlobalize has been run, so undefined
 // is now explicit.
 function removeAssignsToUndefined(ast) {

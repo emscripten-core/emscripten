@@ -144,11 +144,22 @@ def read_pgo_data(filename):
     'overflows_lines': overflows_lines
   }
 
-# Settings
+# Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
-class Dummy: pass
+class Settings:
+  @classmethod
+  def reset(self):
+    global Settings
+    class Settings2:
+      reset = Settings.reset
+      load_defaults = Settings.load_defaults
+    Settings = Settings2
 
-Settings = Dummy() # A global singleton. Not pretty, but nicer than passing |, settings| everywhere
+  @classmethod
+  def load_defaults(self):
+    ''' Load the JS settings into Python '''
+    settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
+    exec(settings)
 
 # Building
 

@@ -86,93 +86,50 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
     print((new Error()).stack);
     throw "Bad store!" + dest;
   }
-#if USE_TYPED_ARRAYS == 1
-  if (type === null) {
-    IHEAP[dest] = value;
-#if USE_FHEAP
-    FHEAP[dest] = value;
-#endif
-  } else if (type in Runtime.FLOAT_TYPES) {
-    FHEAP[dest] = value;
-  } else {
-    IHEAP[dest] = value;
-  }
-#else
+
 #if USE_TYPED_ARRAYS == 2
-  assert(type != 'null', 'typed arrays 2 with null type!');
-  if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
+  // Check alignment
   switch(type) {
-    case 'i1': case 'i8': HEAP8[dest] = value; break;
-    case 'i16': assert(dest % 2 === 0, type + ' stores must be aligned: ' + dest); HEAP16[dest>>1] = value; break;
-    case 'i32': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); HEAP32[dest>>2] = value; break;
-    case 'i64': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); warn64(); HEAP32[dest>>2] = value; break; // XXX store int64 as int32
-    case 'float': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); HEAPF32[dest>>2] = value; break;
-    case 'double': assert(dest % 4 === 0, type + ' stores must be aligned: ' + dest); warn64(); HEAPF32[dest>>2] = value; break; // XXX store doubles as floats
-    default: throw 'weird type for typed array II: ' + type + new Error().stack;
-  }
+    case 'i16': assert(dest % 2 == 0); break;
+    case 'i32': assert(dest % 4 == 0); break;
+    case 'i64': assert(dest % 8 == 0); break;
+    case 'float': assert(dest % 4 == 0); break;
+#if DOUBLE_MODE == 1
+    case 'double': assert(dest % 4 == 0); break;
 #else
-  HEAP[dest] = value;
+    case 'double': assert(dest % 4 == 0); warn64(); break;
 #endif
+  }
 #endif
+
+  setValue(dest, value, type, 1);
 }
 
 function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
   SAFE_HEAP_ACCESS(dest, type, ignore);
 
-#if USE_TYPED_ARRAYS == 1
-  if (type in Runtime.FLOAT_TYPES) {
 #if SAFE_HEAP_LOG
-    print('SAFE_HEAP load: ' + [dest, type, FHEAP[dest], ignore]);
+    print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
 #endif
-    return FHEAP[dest];
-  } else {
-#if SAFE_HEAP_LOG
-    print('SAFE_HEAP load: ' + [dest, type, IHEAP[dest], ignore]);
-#endif
-    return IHEAP[dest];
-  }
-#else
+
 #if USE_TYPED_ARRAYS == 2
-#if SAFE_HEAP_LOG
-  var originalType = type;
-#endif
-  var ret;
-  if (type[type.length-1] === '*') type = 'i32'; // hardcoded pointers as 32-bit
+  // Check alignment
   switch(type) {
-    case 'i1': case 'i8': {
-      ret = (unsigned ? HEAPU8 : HEAP8)[dest];
-      break;
-    }
-    case 'i16': {
-      assert(dest % 2 === 0, type + ' loads must be aligned: ' + dest);
-      ret = (unsigned ? HEAPU16 : HEAP16)[dest>>1];
-      break;
-    }
-    case 'i32': case 'i64': { // XXX store int64 as int32
-      assert(dest % 4 === 0, type + ' loads must be aligned: ' + dest);
-      if (type === 'i64') warn64();
-      ret = (unsigned ? HEAPU32 : HEAP32)[dest>>2];
-      break;
-    }
-    case 'float': case 'double': { // XXX store doubles as floats
-      assert(dest % 4 === 0, type + ' loads must be aligned: ' + dest);
-      if (type === 'double') warn64();
-      ret = HEAPF32[dest>>2];
-      break;
-    }
-    default: throw 'weird type for typed array II: ' + type;
-  }
-#if SAFE_HEAP_LOG
-  print('SAFE_HEAP load: ' + [dest, originalType, ret, unsigned, ignore]);
-#endif
-  return ret;
+    case 'i16': assert(dest % 2 == 0); break;
+    case 'i32': assert(dest % 4 == 0); break;
+    case 'i64': assert(dest % 8 == 0); break;
+    case 'float': assert(dest % 4 == 0); break;
+#if DOUBLE_MODE == 1
+    case 'double': assert(dest % 4 == 0); break;
 #else
-#if SAFE_HEAP_LOG
-  print('SAFE_HEAP load: ' + [dest, type, HEAP[dest], ignore]);
+    case 'double': assert(dest % 4 == 0); warn64(); break;
 #endif
-  return HEAP[dest];
+  }
 #endif
-#endif
+
+  var ret = getValue(dest, type, 1);
+  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
+  return ret;
 }
 
 function SAFE_HEAP_COPY_HISTORY(dest, src) {
@@ -377,9 +334,16 @@ var ABORT = false;
 var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
 // for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
-var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair;
+var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
 #if I64_MODE == 1
 var tempI64, tempI64b;
+#endif
+#if DOUBLE_MODE == 1
+#if USE_TYPED_ARRAYS == 2
+var tempDoubleBuffer = new ArrayBuffer(8);
+var tempDoubleI32 = new Int32Array(tempDoubleBuffer);
+var tempDoubleF64 = new Float64Array(tempDoubleBuffer);
+#endif
 #endif
 
 function abort(text) {
@@ -400,35 +364,71 @@ function assert(condition, text) {
 // code then, whereas this function picks the right code at
 // run-time.
 
-function setValue(ptr, value, type) {
+function setValue(ptr, value, type, noSafe) {
+  type = type || 'i8';
   if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
-  switch(type) {
-    case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
-    case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
-    case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
-    case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
-    case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
-    case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
-    case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
-    default: abort('invalid type for setValue: ' + type);
+#if SAFE_HEAP
+  if (noSafe) {
+    switch(type) {
+      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, undefined, '1') }}}; break;
+      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
+      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
+      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, undefined, '1') }}}; break;
+      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, undefined, '1') }}}; break;
+      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, undefined, '1') }}}; break;
+      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, '1') }}}; break;
+      default: abort('invalid type for setValue: ' + type);
+    }
+  } else {
+#endif
+    switch(type) {
+      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
+      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
+      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
+      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
+      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
+      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
+      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
+      default: abort('invalid type for setValue: ' + type);
+    }
+#if SAFE_HEAP
   }
+#endif
 }
 Module['setValue'] = setValue;
 
 // Parallel to setValue.
 
-function getValue(ptr, type) {
+function getValue(ptr, type, noSafe) {
+  type = type || 'i8';
   if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
-  switch(type) {
-    case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
-    case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
-    case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
-    case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
-    case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
-    case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
-    case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
-    default: abort('invalid type for setValue: ' + type);
+#if SAFE_HEAP
+  if (noSafe) {
+    switch(type) {
+      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, undefined, '1') }}};
+      case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, undefined, '1') }}};
+      case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, '1') }}};
+      default: abort('invalid type for setValue: ' + type);
+    }
+  } else {
+#endif
+    switch(type) {
+      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
+      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
+      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
+      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
+      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
+      case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
+      case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
+      default: abort('invalid type for setValue: ' + type);
+    }
+#if SAFE_HEAP
   }
+#endif
   return null;
 }
 Module['getValue'] = getValue;
@@ -521,7 +521,7 @@ function alignMemoryPage(x) {
 
 var HEAP;
 #if USE_TYPED_ARRAYS == 1
-var IHEAP;
+var IHEAP, IHEAPU;
 #if USE_FHEAP
 var FHEAP;
 #endif
@@ -532,6 +532,42 @@ var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
 
 var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
+#if USE_TYPED_ARRAYS
+var LAST_STATICTOP;
+function enlargeMemory() {
+  // LAST_STATICTOP is the previous top, TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
+#if ASSERTIONS
+  assert(STATICTOP >= TOTAL_MEMORY && LAST_STATICTOP < TOTAL_MEMORY);
+  assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
+#endif
+  while (TOTAL_MEMORY <= STATICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
+    TOTAL_MEMORY = alignMemoryPage(TOTAL_MEMORY*1.25);
+  }
+#if USE_TYPED_ARRAYS == 1
+  var oldIHEAP = IHEAP;
+  HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+  IHEAP.set(oldIHEAP);
+  IHEAPU = new Uint32Array(IHEAP.buffer);
+#if USE_FHEAP
+  var oldFHEAP = FHEAP;
+  FHEAP = new Float64Array(TOTAL_MEMORY);
+  FHEAP.set(oldFHEAP);
+#endif
+#endif
+#if USE_TYPED_ARRAYS == 2
+  var oldHEAP8 = HEAP8;
+  var buffer = new ArrayBuffer(TOTAL_MEMORY);
+  HEAP8 = new Int8Array(buffer);
+  HEAP16 = new Int16Array(buffer);
+  HEAP32 = new Int32Array(buffer);
+  HEAPU8 = new Uint8Array(buffer);
+  HEAPU16 = new Uint16Array(buffer);
+  HEAPU32 = new Uint32Array(buffer);
+  HEAPF32 = new Float32Array(buffer);
+  HEAP8.set(oldHEAP8);
+#endif
+}
+#endif
 
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
@@ -544,6 +580,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 #if USE_TYPED_ARRAYS == 1
   HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+  IHEAPU = new Uint32Array(IHEAP.buffer);
 #if USE_FHEAP
   FHEAP = new Float64Array(TOTAL_MEMORY);
 #endif

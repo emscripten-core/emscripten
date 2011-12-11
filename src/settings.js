@@ -29,19 +29,18 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
 
 var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
                     // code in your own, and will call run() yourself at the right time
-var INIT_STACK = 1; // Whether to initialize memory on the stack to 0.
+var INIT_STACK = 0; // Whether to initialize memory on the stack to 0.
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
                                // in a flat array. This only matters in non-typed array builds.
-var TOTAL_MEMORY = 50*1024*1024; // The total amount of memory to use. This mainly matters in
-                                 // typed array builds - accessing memory about this value will
-                                 // return undefined values and lead to serious problems, and there
-                                 // is currently no warning about that!
+var TOTAL_MEMORY = 10*1024*1024; // The total amount of memory to use. Using more memory than this will
+                                 // cause us to expand the heap, which can be costly with typed arrays:
+                                 // we need to copy the old heap into a new one in that case.
 
 // Code embetterments
-var MICRO_OPTS = 0; // Various micro-optimizations, like nativizing variables
+var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
-var USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
+var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
                           // and addresses there are a match for normal addresses. This wastes memory but can be fast.
                           // 2 is a single heap, accessible through views as int8, int32, etc. This saves memory but
@@ -52,12 +51,24 @@ var USE_TYPED_ARRAYS = 0; // Try to use typed arrays for the heap
                           // TODO: require compiling with -malign-double, which does align doubles
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
                    // not generated at all. This is useful if your code is 100% ints without floats or doubles
-var I64_MODE = 0; // How to implement 64-bit integers:
+var I64_MODE = 1; // How to implement 64-bit integers:
                   // 0: As doubles. This will work up to about 53 bits.
                   // 1: As [low, high]. This will support all 64 bits for bit ops, etc. properly, but will still
                   //                    use doubles for addition etc., like mode 0. This mode is slower than
                   //                    mode 0, so its only benefit is proper support for 64 bit bitops.
                   // TODO: Full bignum support
+var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arrays or in typed array mode 1,
+                     // this doesn't matter - these values are just values like any other. In typed array mode 2,
+                     // a potentialy risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
+                     // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
+                     // will carefully load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE
+                     // 0 we will simply store and load doubles as 32-bit floats, so when they are stored/loaded
+                     // they will truncate from 64 to 32 bits, and lose precision. This is faster, and might
+                     // work for some code (but probably that code should just use floats and not doubles anyhow).
+                     // Note that a downside of DOUBLE_MODE 1 is that we currently store the double in parts,
+                     // then load it aligned, and that load-store will make JS engines alter it if it is being
+                     // stored to a typed array for security reasons. That will 'fix' the number from being a
+                     // NaN or an infinite number.
 var EMULATE_UNALIGNED_ACCESSES = 1; // If set, the compiler will 'emulate' loads and stores that are not known to
                                     // be sufficiently aligned, by working on individual bytes. This can be
                                     // important in USE_TYPED_ARRAYS == 2, where unaligned accesses do not work,
@@ -74,7 +85,8 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // may allocate stack later, and in a loop, this can be
                              // very bad. In particular, when debugging, printf()ing
                              // a lot can exhaust the stack very fast, with this option.
-                             // In particular, be careful with the autodebugger!
+                             // In particular, be careful with the autodebugger! (We do turn
+                             // this off automatically in that case, though.)
 var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
 var CLOSURE_INLINE_PREVENTION_LINES = 50; // Functions of this number of lines or larger will have
                                           // code generated that tells the closure compiler not to

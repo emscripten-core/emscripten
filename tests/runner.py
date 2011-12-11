@@ -35,6 +35,7 @@ class RunnerCore(unittest.TestCase):
   save_JS = 0
 
   def setUp(self):
+    Settings.reset()
     self.banned_js_engines = []
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
@@ -169,14 +170,15 @@ class RunnerCore(unittest.TestCase):
         limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
       ))
 
-  def assertContained(self, value, string):
-    if type(value) is not str: value = value() # lazy loading
-    if type(string) is not str: string = string()
-    if value not in string:
-      raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
-        limit_size(value), limit_size(string),
-        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
-      ))
+  def assertContained(self, values, string):
+    if type(values) not in [list, tuple]: values = [values]
+    for value in values:
+      if type(string) is not str: string = string()
+      if value in string: return # success
+    raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
+      limit_size(values[0]), limit_size(string),
+      limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
+    ))
 
   def assertNotContained(self, value, string):
     if type(value) is not str: value = value() # lazy loading
@@ -210,6 +212,8 @@ class RunnerCore(unittest.TestCase):
 
 
 ###################################################################################################
+
+sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
 if 'benchmark' not in str(sys.argv):
   # Tests
@@ -280,8 +284,6 @@ if 'benchmark' not in str(sys.argv):
         self.do_run(src, 'hello, world!')
 
     def test_intvars(self):
-        Settings.I64_MODE = 0 # We do not support 64-bit addition etc. in mode 1
-
         src = '''
           #include <stdio.h>
           int global = 20;
@@ -509,6 +511,36 @@ if 'benchmark' not in str(sys.argv):
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
+
+        src = r'''
+          #include<stdio.h>
+
+          struct S {
+            double x;
+            int y;
+          };
+
+          int main() {
+            // the 64-bit value here will not always be 8-byte aligned
+            S s[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
+            printf("*%d : %d : %d\n", sizeof(S), ((unsigned int)&s[0]) % 8 != ((unsigned int)&s[1]) % 8,
+                                                 ((unsigned int)&s[1]) - ((unsigned int)&s[0]));
+            s[0].x++;
+            s[0].y++;
+            s[1].x++;
+            s[1].y++;
+            printf("%.1f,%d,%.1f,%d\n", s[0].x, s[0].y, s[1].x, s[1].y);
+            return 0;
+          }
+          '''
+
+        # TODO: A version of this with int64s as well
+        self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
+
+        return # TODO: continue to the next part here
+
+        # Test for undefined behavior in C. This is not legitimate code, but does exist
+
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('No meaning to unaligned addresses without t2')
 
         src = r'''
@@ -693,7 +725,7 @@ if 'benchmark' not in str(sys.argv):
           #include <cmath>
           int main()
           {
-            printf("*%.2f,%.2f,%f,%f", M_PI, -M_PI, 1/0.0, -1/0.0);
+            printf("*%.2f,%.2f,%d", M_PI, -M_PI, (1/0.0) > 1e300); // could end up as infinity, or just a very very big number
             printf(",%d", finite(NAN) != 0);
             printf(",%d", finite(INFINITY) != 0);
             printf(",%d", finite(-INFINITY) != 0);
@@ -706,7 +738,7 @@ if 'benchmark' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_run(src, '*3.14,-3.14,inf,-inf,0,0,0,1,0,1,1,0*')
+        self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0*')
 
     def test_math_hyperbolic(self):
         src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
@@ -1578,13 +1610,14 @@ if 'benchmark' not in str(sys.argv):
     def test_emscripten_api(self):
         #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
-        src = '''
+        src = r'''
           #include <stdio.h>
           #include "emscripten.h"
 
           int main() {
             // EMSCRIPTEN_COMMENT("hello from the source");
             emscripten_run_script("print('hello world' + '!')");
+            printf("*%d*\n", emscripten_run_script_int("5*20"));
             return 0;
           }
           '''
@@ -1593,7 +1626,47 @@ if 'benchmark' not in str(sys.argv):
           src = open(filename, 'r').read()
           # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 
-        self.do_run(src, 'hello world!', post_build=check)
+        self.do_run(src, 'hello world!\n*100*', post_build=check)
+
+    def test_memorygrowth(self):
+      # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
+      # since we then need to enlarge the heap(s).
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+        #include <assert.h>
+        #include "emscripten.h"
+
+        int main()
+        {
+          char *buf1 = (char*)malloc(100);
+          char *data1 = "hello";
+          memcpy(buf1, data1, strlen(data1)+1);
+
+          float *buf2 = (float*)malloc(100);
+          float pie = 4.955;
+          memcpy(buf2, &pie, sizeof(float));
+
+          printf("*pre: %s,%.3f*\n", buf1, buf2[0]);
+
+          int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
+          char *buf3 = (char*)malloc(totalMemory+1);
+          char *buf4 = (char*)malloc(100);
+          float *buf5 = (float*)malloc(100);
+          //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
+          assert((int)buf4 > (int)totalMemory && (int)buf5 > (int)totalMemory);
+
+          printf("*%s,%.3f*\n", buf1, buf2[0]); // the old heap data should still be there
+
+          memcpy(buf4, buf1, strlen(data1)+1);
+          memcpy(buf5, buf2, sizeof(float));
+          printf("*%s,%.3f*\n", buf4, buf5[0]); // and the new heap space should work too
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
     def test_ssr(self): # struct self-ref
         src = '''
@@ -1964,7 +2037,6 @@ if 'benchmark' not in str(sys.argv):
 
     def test_time(self):
       # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate i64s')
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
       self.do_run(src, expected,
@@ -2610,7 +2682,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub(r'(^|\n)\s+', r'\1', expected))
 
     def test_strtod(self):
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Typed arrays = 2 truncate doubles')
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -2631,7 +2702,6 @@ if 'benchmark' not in str(sys.argv):
           printf("%g\n", strtod("1234567891234567890", &endptr));
           printf("%g\n", strtod("1234567891234567890e+50", &endptr));
           printf("%g\n", strtod("84e+220", &endptr));
-          printf("%g\n", strtod("84e+420", &endptr));
           printf("%g\n", strtod("123e-50", &endptr));
           printf("%g\n", strtod("123e-250", &endptr));
           printf("%g\n", strtod("123e-450", &endptr));
@@ -2639,6 +2709,7 @@ if 'benchmark' not in str(sys.argv):
           char str[] = "  12.34e56end";
           printf("%g\n", strtod(str, &endptr));
           printf("%d\n", endptr - str);
+          printf("%g\n", strtod("84e+420", &endptr));
           return 0;
         }
         '''
@@ -2655,28 +2726,88 @@ if 'benchmark' not in str(sys.argv):
         1.23457e+18
         1.23457e+68
         8.4e+221
-        inf
         1.23e-48
         1.23e-248
         0
         1.234e+57
         10
+        inf
         '''
+
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
+    def test_strtok(self):
+      src = r'''
+        #include<stdio.h>
+        #include<string.h>
+
+        int main() {
+          char test[80], blah[80];
+          char *sep = "\\/:;=-";
+          char *word, *phrase, *brkt, *brkb;
+
+          strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
+
+          for (word = strtok_r(test, sep, &brkt); word; word = strtok_r(NULL, sep, &brkt)) {
+            strcpy(blah, "blah:blat:blab:blag");
+            for (phrase = strtok_r(blah, sep, &brkb); phrase; phrase = strtok_r(NULL, sep, &brkb)) {
+              printf("at %s:%s\n", word, phrase);
+            }
+          }
+          return 1;
+        }
+      '''
+
+      expected = '''at This:blah
+at This:blat
+at This:blab
+at This:blag
+at is.a:blah
+at is.a:blat
+at is.a:blab
+at is.a:blag
+at test:blah
+at test:blat
+at test:blab
+at test:blag
+at of:blah
+at of:blat
+at of:blab
+at of:blag
+at the:blah
+at the:blat
+at the:blab
+at the:blag
+at string:blah
+at string:blat
+at string:blab
+at string:blag
+at tokenizer:blah
+at tokenizer:blat
+at tokenizer:blab
+at tokenizer:blag
+at function.:blah
+at function.:blat
+at function.:blab
+at function.:blag
+'''
+      self.do_run(src, expected)
+
     def test_parseInt(self):
-      if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
+      if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
+      Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s, but we do still get doubling
+                            # FIXME: The output here is wrong, due to double rounding of i64s!
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
-      if Settings.I64_MODE == 0:
-        expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
-      else:
-        expected = open(path_from_root('tests', 'parseInt', 'output_i64mode1.txt'), 'r').read() # some rounding issues, etc.
+      expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
     def test_printf(self):
-      if Settings.USE_TYPED_ARRAYS != 0: return self.skip('Typed arrays truncate i64')
+      if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
+      Settings.I64_MODE = 1
+      self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
-      expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
+      expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
+                  open(path_from_root('tests', 'printf', 'output_i64_1.txt'), 'r').read()]
       self.do_run(src, expected)
 
     def test_printf_types(self):
@@ -2878,8 +3009,6 @@ if 'benchmark' not in str(sys.argv):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
 
     def test_stat(self):
-      if Settings.I64_MODE == 1: return self.skip('TODO')
-
       def add_pre_run(filename):
         src = open(filename, 'r').read().replace(
           '// {{PRE_RUN_ADDITIONS}}',
@@ -3399,7 +3528,7 @@ if 'benchmark' not in str(sys.argv):
           self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
-        if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double values')
+        if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double value rounding, extremely sensitive')
 
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
         output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
@@ -3579,8 +3708,6 @@ if 'benchmark' not in str(sys.argv):
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       if Building.LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('We have slightly different rounding here for some reason. TODO: activate this')
-
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
         # Ignore bitfield warnings
@@ -3589,7 +3716,8 @@ if 'benchmark' not in str(sys.argv):
                                     'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
-                   open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(),
+                   [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
+                    open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read()],
                    libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
                                                           os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a.bc')],
@@ -3598,30 +3726,12 @@ if 'benchmark' not in str(sys.argv):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      # llvm-link failure when using clang, LLVM bug 9498, still relevant?
-      if Settings.RELOOP or Building.LLVM_OPTS: return self.skip('TODO')
-      if Settings.USE_TYPED_ARRAYS == 2 or Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
-
-      Settings.USE_TYPED_ARRAYS = 0 # XXX bug - we fail with this FIXME
+      if not self.use_defaults: return self.skip('very slow, we only do this in default')
 
       Settings.SAFE_HEAP = 0 # Has variable object
 
-      Settings.CHECK_OVERFLOWS = 0
-
+      Settings.CORRECT_OVERFLOWS = 1
       Settings.CORRECT_SIGNS = 1
-      Settings.CORRECT_SIGNS_LINES = ['parseargs.cc:171', 'BuiltinFont.cc:64', 'NameToCharCode.cc:115', 'GooHash.cc:368',
-                             'Stream.h:469', 'PDFDoc.cc:1064', 'Lexer.cc:201', 'Splash.cc:1130', 'XRef.cc:997',
-                             'vector:714', 'Lexer.cc:259', 'Splash.cc:438', 'Splash.cc:532', 'GfxFont.cc:1152',
-                             'Gfx.cc:3838', 'Splash.cc:3162', 'Splash.cc:3163', 'Splash.cc:3164', 'Splash.cc:3153',
-                             'Splash.cc:3159', 'SplashBitmap.cc:80', 'SplashBitmap.cc:81', 'SplashBitmap.cc:82',
-                             'Splash.cc:809', 'Splash.cc:805', 'GooHash.cc:379',
-                             # FreeType
-                             't1load.c:1850', 'psconv.c:104', 'psconv.c:185', 'psconv.c:366', 'psconv.c:399',
-                             'ftcalc.c:308', 't1parse.c:405', 'psconv.c:431', 'ftcalc.c:555', 't1objs.c:458',
-                             't1decode.c:595', 't1decode.c:606', 'pstables.h:4048', 'pstables.h:4055', 'pstables.h:4066',
-                             'pshglob.c:166', 'ftobjs.c:2548', 'ftgrays.c:1190', 'psmodule.c:116', 'psmodule.c:119',
-                             'psobjs.c:195', 'pshglob.c:165', 'ttload.c:694', 'ttmtx.c:195', 'sfobjs.c:957',
-                             'sfobjs.c:958', 'ftstream.c:369', 'ftstream.c:372', 'ttobjs.c:1007'] # And many more...
 
       Building.COMPILER_TEST_OPTS += [
         '-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
@@ -3646,7 +3756,7 @@ if 'benchmark' not in str(sys.argv):
             FS.root.write = true;
             FS.ignorePermissions = false;
             run();
-            print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents));
+            print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
           '''
         )
         src.close()
@@ -3670,10 +3780,10 @@ if 'benchmark' not in str(sys.argv):
       Building.link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
-                      lambda: map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
-                      args='-scale-to 512 paper.pdf filename'.split(' '),
-                      post_build=post)
-                      #, build_ll_hook=self.do_autodebug)
+                     map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
+                     args='-scale-to 512 paper.pdf filename'.split(' '),
+                     post_build=post)
+                     #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
       if Settings.USE_TYPED_ARRAYS == 2:
@@ -3696,6 +3806,8 @@ if 'benchmark' not in str(sys.argv):
         )
         open(filename, 'w').write(src)
 
+      shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
+
       lib = self.get_library('openjpeg',
                              [os.path.join('bin', 'libopenjpeg.so.1.4.0.bc'),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
@@ -3704,8 +3816,7 @@ if 'benchmark' not in str(sys.argv):
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'.split('/'))],
                              configure=['cmake', '.'],
                              #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
-                             make_args=[], # no -j 2, since parallel builds can fail
-                             cache=False) # We need opj_config.h and other generated files, so cannot cache just the .bc
+                             make_args=[]) # no -j 2, since parallel builds can fail
 
       # We use doubles in JS, so we get slightly different values than native code. So we
       # check our output by comparing the average pixel difference
@@ -3756,7 +3867,7 @@ if 'benchmark' not in str(sys.argv):
                    output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
 
     def test_python(self):
-      if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2: return self.skip('TODO: make this work')
+      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
@@ -3902,8 +4013,6 @@ Block 0: ''', post_build=post1)
 
       # Part 2: old JS version
 
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts inline out the inner func')
-
       Settings.PROFILE = 1
       Settings.INVOKE_RUN = 0
 
@@ -3950,7 +4059,7 @@ Block 0: ''', post_build=post1)
         ''')
         src.close()
 
-      self.do_run(src, ': __Z6inner1i (5000)\n*ok*', post_build=post)
+      self.do_run(src, ': __Z6inner1i (5000)\n', post_build=post)
 
     ### Integration tests
 
@@ -4188,7 +4297,6 @@ Child2:9
     def test_typeinfo(self):
       Settings.RUNTIME_TYPE_INFO = 1
       if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM unsafe opts optimize out the type info')
 
       src = '''
         #include<stdio.h>
@@ -4277,8 +4385,8 @@ Child2:9
       self.do_run(src, '*closured*\ndata: 100,1,50,25\n', post_build=post)
 
     def test_safe_heap(self):
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
       if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
+      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
       if Building.LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
 
       src = '''
@@ -4457,8 +4565,6 @@ Child2:9
       Settings.CHECK_SIGNS = 0
       Settings.CHECK_OVERFLOWS = 0
 
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')
-
       # Signs
 
       src = '''
@@ -4579,37 +4685,37 @@ Child2:9
         }
       '''
 
-      Settings.CORRECT_ROUNDINGS = 0
-      self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
-      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
-      self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-6**5*') # We fail, since no fast shortcut for 32-bit unsigneds
+      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+        Settings.CORRECT_ROUNDINGS = 0
+        self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
+        self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
+        self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-6**5*') # We fail, since no fast shortcut for 32-bit unsigneds
 
       Settings.CORRECT_ROUNDINGS = 1
+      Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
       self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
       self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
-      Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
       self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*') # Correct
-      return
       Settings.CORRECT_SIGNS = 0
 
-      Settings.CORRECT_ROUNDINGS = 2
-      Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
-      self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
-      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
-      self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-5**5*') # No such luck here
+      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+        Settings.CORRECT_ROUNDINGS = 2
+        Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
+        self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
+        self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
+        self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-5**5*') # No such luck here
 
       # And reverse the check with = 2
-      Settings.CORRECT_ROUNDINGS = 3
-      Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
-      self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
-      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
-      Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
-      self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*')
-      Settings.CORRECT_SIGNS = 0
+      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+        Settings.CORRECT_ROUNDINGS = 3
+        Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
+        self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
+        self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
+        Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
+        self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*')
+        Settings.CORRECT_SIGNS = 0
 
     def test_pgo(self):
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('LLVM opts optimize out the things we check')
-
       Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
 
       src = '''
@@ -4673,8 +4779,8 @@ Child2:9
       '''
       self.do_run(src, 'hello, world!\nExit Status: 118')
 
-  # Generate tests for all our compilers
-  def make_run(name, compiler, llvm_opts, embetter, quantum_size, typed_arrays):
+  # Generate tests for everything
+  def make_run(name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, defaults=False):
     exec('''
 class %s(T):
   def tearDown(self):
@@ -4682,8 +4788,17 @@ class %s(T):
     
   def setUp(self):
     super(%s, self).setUp()
-  
+
+    Building.COMPILER_TEST_OPTS = ['-g']
+    os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = %r
+
+    self.use_defaults = %d
+    if self.use_defaults:
+      Settings.load_defaults()
+      Building.LLVM_OPTS = 0
+      return
+
     llvm_opts = %d # 1 is yes, 2 is yes and unsafe
     embetter = %d
     quantum_size = %d
@@ -4712,40 +4827,40 @@ class %s(T):
     Settings.CATCH_EXIT_CODE = 0
     Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
     Settings.EMULATE_UNALIGNED_ACCESSES = Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2
+    Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.I64_MODE = 1
       Settings.SAFE_HEAP = 1 # only checks for alignment problems, which is very important with unsafe opts
     else:
       Settings.I64_MODE = 0
 
-    if Settings.QUANTUM_SIZE == 1 or Settings.USE_TYPED_ARRAYS == 2:
+    if Settings.USE_TYPED_ARRAYS != 2 or Building.LLVM_OPTS == 2:
       Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
 
     Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
 
-    Building.COMPILER_TEST_OPTS = ['-g']
-
-    os.chdir(self.get_dir()) # Ensure the directory exists and go there
-
 TT = %s
-''' % (fullname, fullname, fullname, compiler, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
+''' % (fullname, fullname, fullname, compiler, defaults, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
-  for name, compiler, quantum, embetter, typed_arrays, llvm_opts in [
-    ('clang', CLANG, 1, 0, 0, 0),
-    ('clang', CLANG, 1, 0, 0, 1),
-    ('clang', CLANG, 4, 0, 0, 0),
-    ('clang', CLANG, 4, 0, 0, 1),
-    ('clang', CLANG, 1, 1, 1, 0),
-    ('clang', CLANG, 1, 1, 1, 1),
-    ('clang', CLANG, 4, 1, 1, 0),
-    ('clang', CLANG, 4, 1, 1, 1),
-    ('clang', CLANG, 4, 1, 2, 0),
-    ('clang', CLANG, 4, 1, 2, 1),
-    #('clang', CLANG, 4, 1, 2, 2),
+  # Make one run with the defaults
+  fullname = 'default'
+  exec(fullname + ' = make_run(compiler=CLANG, defaults=True)')
+
+  # Make custom runs with various options
+  for compiler, quantum, embetter, typed_arrays, llvm_opts in [
+    (CLANG, 1, 1, 0, 0),
+    (CLANG, 1, 1, 1, 1),
+    (CLANG, 4, 0, 0, 0),
+    (CLANG, 4, 0, 0, 1),
+    (CLANG, 4, 1, 1, 0),
+    (CLANG, 4, 1, 1, 1),
+    (CLANG, 4, 1, 2, 0),
+    (CLANG, 4, 1, 2, 1),
+    #(CLANG, 4, 1, 2, 2),
   ]:
-    fullname = '%s_%d_%d%s%s' % (
-      name, llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
+    fullname = 's_%d_%d%s%s' % (
+      llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
     )
     exec('%s = make_run(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
@@ -4821,7 +4936,8 @@ else:
   print 'Benchmarking JS engine:', JS_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
-  POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressions']]
+  # TODO: Use other js optimizer options, like remove assigns to undefined (seems to slow us down more than speed us up)
+  POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'simplifyExpressions']]
 
   TEST_REPS = 10
   TOTAL_TESTS = 7
@@ -4832,10 +4948,13 @@ else:
 
   class benchmark(RunnerCore):
     def setUp(self):
+      super(benchmark, self).setUp()
+
       Settings.RELOOP = Settings.MICRO_OPTS = 1
       Settings.USE_TYPED_ARRAYS = 1
       Settings.QUANTUM_SIZE = 1
       Settings.I64_MODE = 0
+      Settings.DOUBLE_MODE = 0
       Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.PGO = Settings.RUNTIME_TYPE_INFO = 0
       Settings.INVOKE_RUN = 1
       Settings.CORRECT_SIGNS = 0
@@ -4848,8 +4967,6 @@ else:
 
       Building.LLVM_OPTS = 1 if Settings.USE_TYPED_ARRAYS != 2 else 2
       Building.pick_llvm_opts(2, safe=Building.LLVM_OPTS != 2)
-
-      super(benchmark, self).setUp()
 
     def print_stats(self, times, native_times, last=False):
       mean = sum(times)/len(times)

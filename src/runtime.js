@@ -56,7 +56,11 @@ var RuntimeGenerator = {
 
   // An allocation that cannot be free'd
   staticAlloc: function(size) {
-    return RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
+    var ret = '';
+    if (USE_TYPED_ARRAYS) ret += 'LAST_STATICTOP = STATICTOP;'
+    ret += RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
+    if (USE_TYPED_ARRAYS) ret += '; if (STATICTOP >= TOTAL_MEMORY) enlargeMemory();'
+    return ret;
   },
 
   alignMemory: function(target, quantum) {
@@ -301,6 +305,8 @@ function reSign(value, bits, ignore, sig) {
   var noted = false;
 #endif
   if (value >= half && (bits <= 32 || value > half)) { // for huge values, we can hit the precision limit and always get true here. so don't do that
+                                                       // but, in general there is no perfect solution here. With 64-bit ints, we get rounding and errors
+                                                       // TODO: In i64 mode 1, resign the two parts separately and safely
 #if CHECK_SIGNS
     if (!ignore) {
       CorrectionsMonitor.note('ReSign', 0, sig);
