@@ -388,7 +388,7 @@ function intertyper(data, sidePass, baseLineNums) {
           // Handle a single segment (after comma separation)
           function handleSegment(segment) {
             if (segment[1].text == 'null') {
-              return { intertype: 'value', value: 0, type: 'i32' };
+              return { intertype: 'value', ident: '0', type: 'i32' };
             } else if (segment[1].text == 'zeroinitializer') {
               Types.needAnalysis[segment[0].text] = 0;
               return { intertype: 'emptystruct', type: segment[0].text };
@@ -405,7 +405,7 @@ function intertyper(data, sidePass, baseLineNums) {
               return { intertype: 'list', type: segment[0].text, contents: handleSegments(segment[1].item.tokens) };
             } else if (segment.length == 2) {
               Types.needAnalysis[segment[0].text] = 0;
-              return { intertype: 'value', type: segment[0].text, value: toNiceIdent(segment[1].text) };
+              return { intertype: 'value', type: segment[0].text, ident: toNiceIdent(segment[1].text) };
             } else if (segment[1].text === 'c') {
               // string
               var text = segment[2].text;

@@ -334,7 +334,6 @@ function parseParamTokens(params) {
         ret.push({
           intertype: 'value',
           type: segment[0].text,
-          value: null,
           ident: toNiceIdent('%') + anonymousIndex
         });
         Types.needAnalysis[ret[ret.length-1].type] = 0;
@@ -355,7 +354,6 @@ function parseParamTokens(params) {
       ret.push({
         intertype: 'value',
         type: segment[0].text,
-        value: segment[1],
         ident: toNiceIdent(parseNumerical(segment[1].text))
       });
       Types.needAnalysis[removeAllPointing(ret[ret.length-1].type)] = 0;

@@ -4872,15 +4872,17 @@ TT = %s
       # TODO: make sure all of these match gcc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # -- options: check these, warn about errors. valid gcc ones are help, version. Ours should be -- too, not -.
-      # emcc src.cpp ==> should give a .js file
+      # emcc src.cpp   or   emcc src.cpp -o src.js ==> should give a .js file
+      # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
+      # emcc src.cpp -o src.html ==> should embed the js in an html file for immediate running on the web. only tricky part is sdl
       # emcc -O0 src.cpp ==> same as without -O0: assertions, etc., and greatest chance of code working: i64 1, ta2, etc., micro-opts
-      # emcc -O1 src.cpp ==> no assertions, plus eliminator, plus closure compiler (warn about closure compiler stuff)
+      # emcc -O1 src.cpp ==> no assertions, plus eliminator, plus js optimizer
       # emcc -O2 src.cpp ==> plus reloop (warn about speed)
-      # emcc -O3 src.cpp ==> no corrections, relax some other stuff like i64 1 into 0, etc.: dangerous stuff, warn, suggest -O2!
+      # emcc -O3 src.cpp ==> no corrections, relax some other stuff like i64 1 into 0, etc., do closure: dangerous stuff, warn, suggest -O2!
       # emcc --typed-arrays=x .. ==> should use typed arrays. default should be 2
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
-      # emcc src.cpp -c ==> should give a .bc file
-      # linking - TODO
+      # When doing unsafe opts, can we run -Ox on the source, not just at the very end?
+      # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
       #     annotate each .bc with emscripten info, like "compiled with -O2: do the O2 opts when going to final .js"
       #     warn if linking files with different annotations etc.
       #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]

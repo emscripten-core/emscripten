@@ -590,7 +590,7 @@ function analyzer(data) {
               if (param.intertype === 'value' && isNumber(param.ident)) {
                 var corrected = parseInt(param.ident)/(fatSize/slimSize);
                 assert(corrected % 1 === 0);
-                param.ident = param.value.text = corrected.toString();
+                param.ident = corrected.toString();
               }
             });
           } else if (item.params) {

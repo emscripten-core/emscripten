@@ -200,7 +200,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       function handleSegment(segment) {
         var ret;
         if (segment.intertype === 'value') {
-          ret = segment.value.toString();
+          ret = segment.ident;
         } else if (segment.intertype === 'emptystruct') {
           ret = makeEmptyStruct(segment.type);
         } else if (segment.intertype in PARSABLE_LLVM_FUNCTIONS) {
