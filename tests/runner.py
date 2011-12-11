@@ -4869,6 +4869,8 @@ TT = %s
   class other(RunnerCore):
     def test_emcc(self):
       for compiler in [EMCC, EMXX]:
+        shortcompiler = os.path.basename(compiler)
+
         # --version
         output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate(input)[0]
         self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
@@ -4877,9 +4879,38 @@ This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''', output)
 
+        # --help
+        output = Popen([compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate(input)[0]
+        self.assertContained('''%s [options] file...
+
+Most normal gcc/g++ options will work, for example:
+  --help                   Display this information
+  --version                Display compiler version information
+
+Options that are modified or new in %s include:
+  -O0                      [..] default
+  -OX                      TODO
+  -s OPTION=VALUE          JavaScript code generation option
+                           passed into the emscripten compiler
+  --typed-arrays <mode>    0: no typed arrays
+                           1: parallel typed arrays
+                           2: shared typed arrays (default)
+  --llvm-opts <mode>       0: none (default)
+                           1: safe/portable
+                           2: unsafe/unportable
+
+The target file, if specified (-o <target>), defines what will
+be generated:
+  <name>.js                JavaScript (default)
+  <name>.o                 LLVM bitcode
+  <name>.bc                LLVM bitcode
+  <name>.html              HTML with embedded JavaScript
+
+''' % (shortcompiler, shortcompiler), output)
+
       # TODO: make sure all of these match gcc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
-      # -- options: check these, warn about errors. valid gcc ones are help, version. Ours should be -- too, not -.
+      # -- options: check these, warn about errors. Ours should be -- too, not -.
       # emcc src.cpp   or   emcc src.cpp -o src.js ==> should give a .js file
       # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
       # emcc src.cpp -o src.html ==> should embed the js in an html file for immediate running on the web. only tricky part is sdl

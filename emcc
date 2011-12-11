@@ -120,18 +120,34 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   '''
   exit(0)
 elif sys.argv[1] == '--help':
-  print '''OVERVIEW: Emscripten "gcc-compatible" driver script, using LLVM/Clang
-          Many but not all gcc options can be used.
+  this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
 
-USAGE: emcc [options] <inputs>
+  print '''%s [options] file...
 
-OPTIONS:
-  -O0                     No optimization. Enables runtime assertions. This is the default.
-  -O1                     Basic optimizations. Disables runtime assertions.
-  -O2                     Like -O2, but includes loop recreation optimization (relooper).
-  -O3                     Like -O3, but includes closure compiler advanced optimizations.
-                          Use with care and read the closure compiler docs.
-'''
+Most normal gcc/g++ options will work, for example:
+  --help                   Display this information
+  --version                Display compiler version information
+
+Options that are modified or new in %s include:
+  -O0                      [..] default
+  -OX                      TODO
+  -s OPTION=VALUE          JavaScript code generation option
+                           passed into the emscripten compiler
+  --typed-arrays <mode>    0: no typed arrays
+                           1: parallel typed arrays
+                           2: shared typed arrays (default)
+  --llvm-opts <mode>       0: none (default)
+                           1: safe/portable
+                           2: unsafe/unportable
+
+The target file, if specified (-o <target>), defines what will
+be generated:
+  <name>.js                JavaScript (default)
+  <name>.o                 LLVM bitcode
+  <name>.bc                LLVM bitcode
+  <name>.html              HTML with embedded JavaScript
+
+''' % (this, this)
   exit(0)
 
 # If this is a configure-type thing, just do that
