@@ -95,25 +95,28 @@ emcc can be influenced by a few environment variables:
 import sys
 import os
 import subprocess
+from tools import shared
 
 DEBUG = 0
 
 ################### XXX
-print >> sys.stderr, '***This is a WORK IN PROGRESS***'
+print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
+print >> sys.stderr, '***[%s]***\n' % str(sys.argv)
 ################### XXX
 
 if DEBUG: print >> sys.stderr, 'emcc.py: ', ' '.join(sys.argv)
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
-
 # Handle some global flags
+
+if len(sys.argv) == 1:
+  print 'emcc: no input files'
+  exit(0)
+
 if sys.argv[1] == '--version':
-  print '''emcc 2.X
-This is drop-in compiler replacement for Emscripten
-http://emscripten.org
+  print '''emcc (Emscripten GCC-like replacement) 2.0
+Copyright (C) 2011 the Emscripten authors.
+This is free and open source software under the MIT license.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   '''
   exit(0)
 elif sys.argv[1] == '--help':

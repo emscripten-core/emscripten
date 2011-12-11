@@ -4868,7 +4868,15 @@ TT = %s
 
   class other(RunnerCore):
     def test_emcc(self):
-      pass
+      for compiler in [EMCC, EMXX]:
+        # --version
+        output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate(input)[0]
+        self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
+Copyright (C) 2011 the Emscripten authors.
+This is free and open source software under the MIT license.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+''', output)
+
       # TODO: make sure all of these match gcc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # -- options: check these, warn about errors. valid gcc ones are help, version. Ours should be -- too, not -.
