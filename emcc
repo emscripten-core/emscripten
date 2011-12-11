@@ -92,12 +92,11 @@ emcc can be influenced by a few environment variables:
 
 '''
 
-import sys
-import os
-import subprocess
+import os, sys, shutil
+from subprocess import Popen, PIPE, STDOUT
 from tools import shared
 
-DEBUG = 0
+DEBUG = 1
 
 ################### XXX
 print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
@@ -164,116 +163,140 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
   if DEBUG: print >> sys.stderr, 'emcc.py, just configuring: ', cmd
   exit(os.execvp(compiler, cmd))
 
-try:
-  #f=open('/dev/shm/tmp/waka.txt', 'a')
-  #f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
-  #f.close()
+if os.environ.get('EMMAKEN_COMPILER'):
+  CXX = os.environ['EMMAKEN_COMPILER']
+else:
+  CXX = shared.CLANG
 
-  if os.environ.get('EMMAKEN_COMPILER'):
-    CXX = os.environ['EMMAKEN_COMPILER']
+CC = shared.to_cc(CXX)
+
+# If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
+if os.environ.get('EMMAKEN_CXX'):
+  CC = CXX
+
+CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS # + ['-g']?
+ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
+                     '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
+TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
+
+EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
+if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
+
+# ----------------  End configs -------------
+
+if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
+  # noop ar
+  if DEBUG: print >> sys.stderr, 'emcc.py, just ar'
+  sys.exit(0)
+
+use_cxx = True
+use_linker = True
+header = False # pre-compiled headers. We fake that by just copying the file
+
+opts = []
+files = []
+for i in range(1, len(sys.argv)):
+  arg = sys.argv[i]
+  if arg.startswith('-'):
+    opts.append(arg)
   else:
-    CXX = CLANG
+    files.append(arg)
+    if arg.endswith('.c'):
+      use_cxx = False
+    if arg.endswith(('.c', '.cc', '.cpp', '.dT')):
+      use_linker = False
+    if arg.endswith('.h') and sys.argv[i-1] != '-include':
+      header = True
+      use_linker = False
 
-  CC = to_cc(CXX)
+if '--version' in opts:
+  use_linker = False
 
-  # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
-  if os.environ.get('EMMAKEN_CXX'):
-    CC = CXX
+use_compiler = not use_linker and not header
 
-  CC_ADDITIONAL_ARGS = COMPILER_OPTS # + ['-g']?
-  ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
-                       '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
-  TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
+if set(sys.argv[1]).issubset(set('-cruqs')): # ar
+  sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
+  assert use_linker, 'Linker should be used in this case'
 
-  EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-  if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
+# Check if a target is specified
+target = None
+for i in range(len(sys.argv)-1):
+  if sys.argv[i] == '-o':
+    target = sys.argv[i+1]
+    sys.argv = sys.argv[:i] + sys.argv[i+2:]
+    break
 
-  # ----------------  End configs -------------
-
-  if len(sys.argv) == 2 and 'conftest' not in ' '.join(sys.argv): # Avoid messing with configure, see below too
-    # ranlib
-    sys.exit(0)
-  if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
-    # noop ar
-    sys.exit(0)
-
-  use_cxx = True
-  use_linker = True
-  header = False # pre-compiled headers. We fake that by just copying the file
-
-  opts = []
-  files = []
-  for i in range(1, len(sys.argv)):
+if use_linker:
+  call = LLVM_LD
+  newargs = ['-disable-opt']
+  i = 0
+  while i < len(sys.argv)-1:
+    i += 1
     arg = sys.argv[i]
     if arg.startswith('-'):
-      opts.append(arg)
-    else:
-      files.append(arg)
-      if arg.endswith('.c'):
-        use_cxx = False
-      if arg.endswith(('.c', '.cc', '.cpp', '.dT')):
-        use_linker = False
-      if arg.endswith('.h') and sys.argv[i-1] != '-include':
-        header = True
-        use_linker = False
-
-  if '--version' in opts:
-    use_linker = False
-
-  if set(sys.argv[1]).issubset(set('-cruqs')): # ar
-    sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
-    assert use_linker, 'Linker should be used in this case'
-
-  if use_linker:
-    call = LLVM_LD
-    newargs = ['-disable-opt']
-    found_o = False
-    i = 0
-    while i < len(sys.argv)-1:
-      i += 1
-      arg = sys.argv[i]
-      if found_o:
-        newargs.append('-o=%s' % arg)
-        found_o = False
-        continue
-      if arg.startswith('-'):
-        if arg == '-o':
-          found_o = True
-          continue
-        prefix = arg.split('=')[0]
-        if prefix in ALLOWED_LINK_ARGS:
-          newargs.append(arg)
-        if arg in TWO_PART_DISALLOWED_LINK_ARGS:
-          i += 1
-      elif arg.endswith('.so'):
-        continue # .so's do not exist yet, in many cases
-      else:
-        # not option, so just append
+      prefix = arg.split('=')[0]
+      if prefix in ALLOWED_LINK_ARGS:
         newargs.append(arg)
-  elif not header:
-    call = CXX if use_cxx else CC
-    newargs = sys.argv[1:]
-    for i in range(len(newargs)):
-      if newargs[i].startswith('-O'):
-        if DEBUG: print >> sys.stderr, 'emcc.py: WARNING: Optimization flags (-Ox) are ignored in emcc. Tell emscripten.py to do that, or run LLVM opt.'
-        newargs[i] = ''
-    newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
-    newargs.append('-emit-llvm')
-    if not use_linker:
-      newargs.append('-c') 
-  else:
-    if DEBUG: print >> sys.stderr, 'Just copy.'
-    shutil.copy(sys.argv[-1], sys.argv[-2])
-    exit(0)
-
-  #f=open('/dev/shm/tmp/waka.txt', 'a')
-  #f.write('Calling: ' + ' '.join(newargs) + '\n\n')
-  #f.close()
+      if arg in TWO_PART_DISALLOWED_LINK_ARGS:
+        i += 1
+    elif arg.endswith('.so'):
+      continue # .so's do not exist yet, in many cases
+    else:
+      # not option, so just append
+      newargs.append(arg)
+  if target:
+    newargs.append('-o=' + target)
 
   if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
+  Popen([call] + newargs).communicate()
+  exit(0)
 
-  os.execvp(call, [call] + newargs)
-except Exception, e:
-  print 'Error in emcc.py. (Is the config file ~/.emscripten set up properly?) Error:', e
-  raise
+elif use_compiler:
+  call = CXX if use_cxx else CC
+  newargs = sys.argv[1:]
+  for i in range(len(newargs)):
+    if newargs[i].startswith('-O'):
+      if DEBUG: print >> sys.stderr, 'emcc.py: WARNING: Optimization flags (-Ox) are ignored in emcc. Tell emscripten.py to do that, or run LLVM opt.'
+      newargs[i] = ''
+  newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
+
+  if target is None:
+    # No explicit -o specified, so do the most natural thing, compile to .js
+    target = 'a.out.js'
+
+  target_basename = '.'.join(target.split('.')[:-1])
+  final_suffix = target.split('.')[-1]
+
+  # First, generate LLVM bitcode TODO: handle |emcc a.cpp b.cpp -c| which generate *two* bitcode files
+  newargs = newargs + ['-emit-llvm', '-c', '-o', target_basename + '.bc']
+
+  if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
+  Popen([call] + newargs).communicate()
+
+  # If we were just asked to generate bitcode, stop there
+  if final_suffix in ['o', 'bc']:
+    if final_suffix == 'o':
+      shutil.move(target_basename + '.bc', target_basename + '.o')
+    exit(0)
+
+  # Continue on to create JavaScript
+  temp_files = shared.TempFiles()
+  temp_files.note(target_basename + '.bc')
+  try:
+    shared.Building.emscripten(target_basename + '.bc', append_ext=False)
+    shutil.move(target_basename + '.bc.o.js', target_basename + '.js')
+
+    ## TODO: If we were asked to also generate HTML, do that
+    #if final_suffix == 'html':
+  finally:
+    temp_files.clean()
+
+  exit(0)
+
+else: # header or such
+  if DEBUG: print >> sys.stderr, 'Just copy.'
+  shutil.copy(sys.argv[-1], sys.argv[-2])
+  exit(0)
+
+
 

@@ -4871,6 +4871,7 @@ TT = %s
     def test_emcc(self):
       for compiler in [EMCC, EMXX]:
         shortcompiler = os.path.basename(compiler)
+        suffix = '.c' if compiler == EMCC else '.cpp'
 
         # --version
         output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate(input)
@@ -4914,23 +4915,34 @@ JavaScript in the final linking stage of building.
 
 ''' % (shortcompiler, shortcompiler, shortcompiler), output[0], output[1])
 
+        # emcc src.cpp   or   emcc src.cpp -o src.js ==> should give a .js file
+        try_delete('a.out.js')
+        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate(input)
+        assert len(output[0]) == 0, output[0]
+        #assert len(output[1]) == 0, output[1] # we have some debug warnings there now, FIXME
+        assert os.path.exists('a.out.js'), output # should be created in the current directory just like gcc, with a name similar to a.out
+        self.assertContained('hello, world!', run_js(None, 'a.out.js'))
+
       # TODO: make sure all of these match gcc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
-      # emcc src.cpp   or   emcc src.cpp -o src.js ==> should give a .js file
       # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-      # emcc src.cpp -o src.html ==> should embed the js in an html file for immediate running on the web. only tricky part is sdl
+      # emcc src.cpp -o src.html ==> should embed the js in an html file for immediate running on the web. only tricky part is sdl. TODO: update library_sdl
       # emcc -O0 src.cpp ==> same as without -O0: assertions, etc., and greatest chance of code working: i64 1, ta2, etc., micro-opts
       # emcc -O1 src.cpp ==> no assertions, plus eliminator, plus js optimizer
       # emcc -O2 src.cpp ==> plus reloop (warn about speed)
       # emcc -O3 src.cpp ==> no corrections, relax some other stuff like i64 1 into 0, etc., do closure: dangerous stuff, warn, suggest -O2!
       # emcc --typed-arrays=x .. ==> should use typed arrays. default should be 2
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
+      # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py
       # When doing unsafe opts, can we run -Ox on the source, not just at the very end?
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
+      #   emcc a.cpp b.cpp => one .js
+      #   emcc a.cpp b.cpp -c => two .o files
       #     annotate each .bc with emscripten info, like "compiled with -O2: do the O2 opts when going to final .js"
       #     warn if linking files with different annotations etc.
       #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
+      # TODO: add shebang to generated .js files, using JS_ENGINES[0]? #!/usr/bin/python etc
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()

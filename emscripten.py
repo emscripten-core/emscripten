@@ -20,12 +20,7 @@ import os
 import subprocess
 import re
 import sys
-import tempfile
 from tools import shared
-
-
-# Temporary files that should be deleted once the program is finished.
-TEMP_FILES_TO_CLEAN = []
 
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
@@ -35,14 +30,7 @@ def path_from_root(*pathelems):
   """
   return os.path.join(__rootpath__, *pathelems)
 
-
-def get_temp_file(suffix):
-  """Returns a named temp file  with the given prefix."""
-  named_file = tempfile.NamedTemporaryFile(
-      dir=shared.TEMP_DIR, suffix=suffix, delete=False)
-  TEMP_FILES_TO_CLEAN.append(named_file.name)
-  return named_file
-
+temp_files = shared.TempFiles()
 
 def assemble(filepath):
   """Converts human-readable LLVM assembly to binary LLVM bitcode.
@@ -56,7 +44,7 @@ def assemble(filepath):
   """
   if not filepath.endswith('.bc'):
     command = [shared.LLVM_AS, '-o=-', filepath]
-    with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
+    with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
     if ret != 0: raise RuntimeError('Could not assemble %s.' % filepath)
     filepath = out.name
   return filepath
@@ -74,7 +62,7 @@ def disassemble(filepath):
   """
   if not filepath.endswith('.ll'):
     command = [shared.LLVM_DIS, '-o=-', filepath] + shared.LLVM_DIS_OPTS
-    with get_temp_file('.ll') as out: ret = subprocess.call(command, stdout=out)
+    with temp_files.get('.ll') as out: ret = subprocess.call(command, stdout=out)
     if ret != 0: raise RuntimeError('Could not disassemble %s.' % filepath)
     filepath = out.name
   return filepath
@@ -92,7 +80,7 @@ def optimize(filepath):
   shared.Building.LLVM_OPTS = 1
   shared.Settings.QUANTUM_SIZE = 1 # just so it isn't 4, and we assume we can do things that fail on q1
   command = [shared.LLVM_OPT, '-o=-', filepath] + shared.Building.pick_llvm_opts(3, True)
-  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
+  with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not optimize %s.' % filepath)
   return out.name
 
@@ -107,7 +95,7 @@ def link(*objects):
     The path to the linked file.
   """
   command = [shared.LLVM_LINK] + list(objects)
-  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
+  with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not link %s.' % objects)
   return out.name
 
@@ -121,7 +109,7 @@ def compile_malloc():
   src = path_from_root('src', 'dlmalloc.c')
   includes = '-I' + path_from_root('src', 'include')
   command = [shared.CLANG, '-c', '-g', '-emit-llvm'] + shared.COMPILER_OPTS + ['-o-', includes, src]
-  with get_temp_file('.bc') as out: ret = subprocess.call(command, stdout=out)
+  with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
 
@@ -147,7 +135,7 @@ def emscript(infile, settings, outfile):
       defined in src/settings.js.
     outfile: The file where the output is written.
   """
-  settings_file = get_temp_file('.txt').name # Save settings to a file to work around v8 issue 1579
+  settings_file = temp_files.get('.txt').name # Save settings to a file to work around v8 issue 1579
   s = open(settings_file, 'w')
   s.write(settings)
   s.close()
@@ -287,8 +275,5 @@ if __name__ == '__main__':
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 
-  try:
-    main(keywords)
-  finally:
-    for filename in TEMP_FILES_TO_CLEAN:
-      os.unlink(filename)
+  temp_files.run_and_clean(lambda: main(keywords))
+

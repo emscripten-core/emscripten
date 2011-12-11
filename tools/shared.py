@@ -1,4 +1,4 @@
-import shutil, time, os, json
+import shutil, time, os, json, tempfile
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -80,6 +80,38 @@ if USE_EMSDK:
 if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
   SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
 
+# Temp file utilities
+
+def try_delete(filename):
+  try:
+    os.unlink(filename)
+  except:
+    pass
+
+class TempFiles:
+  def __init__(self):
+    self.to_clean = []
+
+  def note(self, filename):
+    self.to_clean.append(filename)
+
+  def get(self, suffix):
+    """Returns a named temp file  with the given prefix."""
+    named_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR, suffix=suffix, delete=False)
+    self.note(named_file.name)
+    return named_file
+
+  def clean(self):
+    for filename in self.to_clean:
+      try_delete(filename)
+    self.to_clean = []
+
+  def run_and_clean(self, func):
+    try:
+      func()
+    finally:
+      self.clean()
+
 # Utilities
 
 def timeout_run(proc, timeout, note):
@@ -93,6 +125,7 @@ def timeout_run(proc, timeout, note):
   return proc.communicate()[0]
 
 def run_js(engine, filename, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
+  if engine is None: engine = JS_ENGINES[0]
   if type(engine) is not list: engine = [engine]
   return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
                      stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
