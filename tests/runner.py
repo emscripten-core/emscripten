@@ -4938,7 +4938,8 @@ else:
   print 'Benchmarking JS engine:', JS_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
-  POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressions']]
+  # TODO: Use other js optimizer options, like remove assigns to undefined (seems to slow us down more than speed us up)
+  POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'simplifyExpressions']]
 
   TEST_REPS = 10
   TOTAL_TESTS = 7
@@ -4955,6 +4956,7 @@ else:
       Settings.USE_TYPED_ARRAYS = 1
       Settings.QUANTUM_SIZE = 1
       Settings.I64_MODE = 0
+      Settings.DOUBLE_MODE = 0
       Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.PGO = Settings.RUNTIME_TYPE_INFO = 0
       Settings.INVOKE_RUN = 1
       Settings.CORRECT_SIGNS = 0
