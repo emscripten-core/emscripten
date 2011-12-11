@@ -170,14 +170,15 @@ class RunnerCore(unittest.TestCase):
         limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
       ))
 
-  def assertContained(self, values, string):
+  def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
     for value in values:
       if type(string) is not str: string = string()
       if value in string: return # success
-    raise Exception("Expected to find '%s' in '%s', diff:\n\n%s" % (
+    raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
-      limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
+      limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')])),
+      additional_info
     ))
 
   def assertNotContained(self, value, string):
@@ -4872,15 +4873,15 @@ TT = %s
         shortcompiler = os.path.basename(compiler)
 
         # --version
-        output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate(input)[0]
+        output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate(input)
         self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
 Copyright (C) 2011 the Emscripten authors.
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-''', output)
+''', output[0], output[1])
 
         # --help
-        output = Popen([compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate(input)[0]
+        output = Popen([compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate(input)
         self.assertContained('''%s [options] file...
 
 Most normal gcc/g++ options will work, for example:
@@ -4901,16 +4902,20 @@ Options that are modified or new in %s include:
 
 The target file, if specified (-o <target>), defines what will
 be generated:
+
   <name>.js                JavaScript (default)
   <name>.o                 LLVM bitcode
   <name>.bc                LLVM bitcode
   <name>.html              HTML with embedded JavaScript
 
-''' % (shortcompiler, shortcompiler), output)
+The -c option (which tells gcc not to run the linker) will
+also cause LLVM bitcode to be generated, as %s only generates
+JavaScript in the final linking stage of building.
+
+''' % (shortcompiler, shortcompiler, shortcompiler), output[0], output[1])
 
       # TODO: make sure all of these match gcc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
-      # -- options: check these, warn about errors. Ours should be -- too, not -.
       # emcc src.cpp   or   emcc src.cpp -o src.js ==> should give a .js file
       # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
       # emcc src.cpp -o src.html ==> should embed the js in an html file for immediate running on the web. only tricky part is sdl
