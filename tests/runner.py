@@ -4867,9 +4867,6 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
-    def test_reminder(self):
-      raise Exception('update Getting Started to use defaults instead of clang_0_0.\nAdd more i64 bitshift tests.')
-
     def test_emcc(self):
       pass
       # TODO: make sure all of these match gcc
