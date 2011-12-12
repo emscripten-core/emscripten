@@ -4927,13 +4927,6 @@ JavaScript in the final linking stage of building.
         assert os.path.exists('a.out.js'), output
         self.assertContained('hello, world!', run_js('a.out.js'))
 
-        # emcc src.cpp -o something.js
-        clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate(input)
-        assert len(output[0]) == 0, output[0]
-        assert os.path.exists('something.js'), output
-        self.assertContained('hello, world!', run_js('something.js'))
-
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
           target = args[1] if len(args) == 2 else 'a.out.bc'
@@ -4943,9 +4936,13 @@ JavaScript in the final linking stage of building.
           assert os.path.exists(target), output
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
-      # TODO: make sure all of these match gcc
-      # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
-      # emcc src.cpp -o src.html ==> should embed the js in an html file for immediate running on the web. only tricky part is sdl. TODO: update library_sdl
+        # emcc src.cpp -o something.js
+        clear()
+        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate(input)
+        assert len(output[0]) == 0, output[0]
+        assert os.path.exists('something.js'), output
+        self.assertContained('hello, world!', run_js('something.js'))
+
       # emcc -O0 src.cpp ==> same as without -O0: assertions, etc., and greatest chance of code working: i64 1, ta2, etc., micro-opts
       # emcc -O1 src.cpp ==> no assertions, plus eliminator, plus js optimizer
       # emcc -O2 src.cpp ==> plus reloop (warn about speed)
@@ -4962,6 +4959,7 @@ JavaScript in the final linking stage of building.
       #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: add shebang to generated .js files, using JS_ENGINES[0]? #!/usr/bin/python etc
+      # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
 
       # Finally, test HTML generation. (Coincidentally we also test that compiling a .cpp works in EMCC here.)
       clear()
