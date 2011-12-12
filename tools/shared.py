@@ -124,7 +124,7 @@ def timeout_run(proc, timeout, note):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
-def run_js(engine, filename, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
+def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
   if engine is None: engine = JS_ENGINES[0]
   if type(engine) is not list: engine = [engine]
   return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,

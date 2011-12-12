@@ -147,7 +147,7 @@ class RunnerCore(unittest.TestCase):
     except:
       cwd = None
     os.chdir(self.get_dir())
-    run_js(engine, filename, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'))
+    run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'))
     if cwd is not None:
       os.chdir(cwd)
     ret = open(stdout, 'r').read() + open(stderr, 'r').read()
@@ -4915,13 +4915,20 @@ JavaScript in the final linking stage of building.
 
 ''' % (shortcompiler, shortcompiler, shortcompiler), output[0], output[1])
 
-        # emcc src.cpp   or   emcc src.cpp -o src.js ==> should give a .js file
+        # emcc src.cpp ==> writes to a.out.js, much like gcc
         try_delete('a.out.js')
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate(input)
         assert len(output[0]) == 0, output[0]
         #assert len(output[1]) == 0, output[1] # we have some debug warnings there now, FIXME
-        assert os.path.exists('a.out.js'), output # should be created in the current directory just like gcc, with a name similar to a.out
-        self.assertContained('hello, world!', run_js(None, 'a.out.js'))
+        assert os.path.exists('a.out.js'), output
+        self.assertContained('hello, world!', run_js('a.out.js'))
+
+        # emcc src.cpp -o something.js
+        try_delete('something.js')
+        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate(input)
+        assert len(output[0]) == 0, output[0]
+        assert os.path.exists('something.js'), output
+        self.assertContained('hello, world!', run_js('something.js'))
 
       # TODO: make sure all of these match gcc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
@@ -5232,7 +5239,7 @@ if __name__ == '__main__':
 
   def check_engine(engine):
     try:
-      return 'hello, world!' in run_js(engine, path_from_root('tests', 'hello_world.js'))
+      return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
     except Exception, e:
       print 'Checking JS engine %s failed. Check ~/.emscripten. Details: %s' % (str(engine), str(e))
       return False
