@@ -1630,7 +1630,7 @@ LibraryManager.library = {
       var contents = stream.object.contents;
       while (contents.length < offset) contents.push(0);
       for (var i = 0; i < nbyte; i++) {
-        contents[offset + i] = {{{ makeGetValue('buf', 'i', 'i8') }}};
+        contents[offset + i] = {{{ makeGetValue('buf', 'i', 'i8', undefined, 1) }}};
       }
       stream.object.timestamp = Date.now();
       return i;
