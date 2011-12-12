@@ -33,7 +33,7 @@ Example uses:
    emconfiguren.py is a tiny script that just sets some environment vars
    as a convenience. The command just shown is equivalent to
 
-    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emcc.py AR=PATH/emcc.py CXX=PATH/em++.py CC=PATH/emcc.py ./configure [options]
+    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emcc AR=PATH/emcc CXX=PATH/em++ CC=PATH/emcc ./configure [options]
 
    where PATH is the path to this file.
 
@@ -44,14 +44,14 @@ Example uses:
  * With CMake, the same command will work (with cmake instead of ./configure). You may also be
    able to do the following in your CMakeLists.txt:
 
-    SET(CMAKE_C_COMPILER "PATH/emcc.py")
-    SET(CMAKE_CXX_COMPILER "PATH/em++.py")
-    SET(CMAKE_LINKER "PATH/emcc.py")
-    SET(CMAKE_CXX_LINKER "PATH/emcc.py")
-    SET(CMAKE_C_LINK_EXECUTABLE "PATH/emcc.py")
-    SET(CMAKE_CXX_LINK_EXECUTABLE "PATH/emcc.py")
-    SET(CMAKE_AR "PATH/emcc.py")
-    SET(CMAKE_RANLIB "PATH/emcc.py")
+    SET(CMAKE_C_COMPILER "PATH/emcc")
+    SET(CMAKE_CXX_COMPILER "PATH/em++")
+    SET(CMAKE_LINKER "PATH/emcc")
+    SET(CMAKE_CXX_LINKER "PATH/emcc")
+    SET(CMAKE_C_LINK_EXECUTABLE "PATH/emcc")
+    SET(CMAKE_CXX_LINK_EXECUTABLE "PATH/emcc")
+    SET(CMAKE_AR "PATH/emcc")
+    SET(CMAKE_RANLIB "PATH/emcc")
 
  * For SCons the shared.py can be imported like so:
     __file__ = str(Dir('#/project_path_to_emscripten/dummy/dummy'))
@@ -74,7 +74,7 @@ give to Emscripten. Note that this tool doesn't run Emscripten itself. Note
 also that you may need to do some manual fiddling later, for example to
 link files that weren't linked, and them llvm-dis them.
 
-Note the appearance of em++.py instead of emcc.py
+Note the appearance of em++ instead of emcc
 for the C++ compiler. This is needed for cases where we get
 a C++ file with a C extension, in which case CMake can be told
 to run g++ on it despite the .c extension, see
@@ -103,7 +103,7 @@ print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
 print >> sys.stderr, '***[%s]***\n' % str(sys.argv)
 ################### XXX
 
-if DEBUG: print >> sys.stderr, 'emcc.py: ', ' '.join(sys.argv)
+if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 
 # Handle some global flags
 
@@ -160,7 +160,7 @@ CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMak
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
   cmd = [compiler] + EMSDK_OPTS + sys.argv[1:]
-  if DEBUG: print >> sys.stderr, 'emcc.py, just configuring: ', cmd
+  if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', cmd
   exit(os.execvp(compiler, cmd))
 
 if os.environ.get('EMMAKEN_COMPILER'):
@@ -186,7 +186,7 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 
 if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
   # noop ar
-  if DEBUG: print >> sys.stderr, 'emcc.py, just ar'
+  if DEBUG: print >> sys.stderr, 'emcc, just ar'
   sys.exit(0)
 
 use_cxx = True
@@ -256,7 +256,7 @@ elif use_compiler:
   newargs = sys.argv[1:]
   for i in range(len(newargs)):
     if newargs[i].startswith('-O'):
-      if DEBUG: print >> sys.stderr, 'emcc.py: WARNING: Optimization flags (-Ox) are ignored in emcc. Tell emscripten.py to do that, or run LLVM opt.'
+      if DEBUG: print >> sys.stderr, 'emcc: WARNING: Optimization flags (-Ox) are ignored in emcc. Tell emscripten.py to do that, or run LLVM opt.'
       newargs[i] = ''
   newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
 
@@ -265,6 +265,10 @@ elif use_compiler:
     target = 'a.out.js'
 
   target_basename = '.'.join(target.split('.')[:-1])
+
+  if '-c' in newargs: # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
+    target = target_basename + '.bc'
+
   final_suffix = target.split('.')[-1]
 
   # First, generate LLVM bitcode TODO: handle |emcc a.cpp b.cpp -c| which generate *two* bitcode files

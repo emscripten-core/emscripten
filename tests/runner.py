@@ -4869,6 +4869,10 @@ TT = %s
 
   class other(RunnerCore):
     def test_emcc(self):
+      def clear():
+        for name in os.listdir(self.get_dir()):
+          try_delete(name)
+
       for compiler in [EMCC, EMXX]:
         shortcompiler = os.path.basename(compiler)
         suffix = '.c' if compiler == EMCC else '.cpp'
@@ -4916,7 +4920,7 @@ JavaScript in the final linking stage of building.
 ''' % (shortcompiler, shortcompiler, shortcompiler), output[0], output[1])
 
         # emcc src.cpp ==> writes to a.out.js, much like gcc
-        try_delete('a.out.js')
+        clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate(input)
         assert len(output[0]) == 0, output[0]
         #assert len(output[1]) == 0, output[1] # we have some debug warnings there now, FIXME
@@ -4924,15 +4928,23 @@ JavaScript in the final linking stage of building.
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # emcc src.cpp -o something.js
-        try_delete('something.js')
+        clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate(input)
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('something.js'), output
         self.assertContained('hello, world!', run_js('something.js'))
 
+        # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
+        for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
+          target = args[1] if len(args) == 2 else 'a.out.bc'
+          clear()
+          output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate(input)
+          assert len(output[0]) == 0, output[0]
+          assert os.path.exists(target), output
+          self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
+
       # TODO: make sure all of these match gcc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
-      # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
       # emcc src.cpp -o src.html ==> should embed the js in an html file for immediate running on the web. only tricky part is sdl. TODO: update library_sdl
       # emcc -O0 src.cpp ==> same as without -O0: assertions, etc., and greatest chance of code working: i64 1, ta2, etc., micro-opts
       # emcc -O1 src.cpp ==> no assertions, plus eliminator, plus js optimizer
