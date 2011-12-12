@@ -4894,8 +4894,12 @@ Most normal gcc/g++ options will work, for example:
   --version                Display compiler version information
 
 Options that are modified or new in %s include:
-  -O0                      [..] default
-  -OX                      TODO
+  -O0                      No optimizations (default)
+  -O1                      Simple optimizations and no runtime assertions
+  -O2                      As -O1, plus code flow optimization (relooper)
+                           Warning: Compiling with this takes a long time!
+  -O3                      As -O2, plus dangerous optimizations that may
+                           break things
   -s OPTION=VALUE          JavaScript code generation option
                            passed into the emscripten compiler
   --typed-arrays <mode>    0: no typed arrays
@@ -4936,15 +4940,26 @@ JavaScript in the final linking stage of building.
           assert os.path.exists(target), output
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
-        # emcc src.cpp -o something.js
-        clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate(input)
-        assert len(output[0]) == 0, output[0]
-        assert os.path.exists('something.js'), output
-        self.assertContained('hello, world!', run_js('something.js'))
+        # emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
+        for opt_params, opt_level in [([], 0), (['-O0'], 0), (['-O1'], 1), (['-O2'], 2), (['-O3'], 3)]:
+          clear()
+          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'something.js'] + opt_params,
+                         stdout=PIPE, stderr=PIPE).communicate(input)
+          assert len(output[0]) == 0, output[0]
+          assert os.path.exists('something.js'), '\n'.join(output)
+          self.assertContained('hello, world!', run_js('something.js'))
 
-      # emcc -O0 src.cpp ==> same as without -O0: assertions, etc., and greatest chance of code working: i64 1, ta2, etc., micro-opts
-      # emcc -O1 src.cpp ==> no assertions, plus eliminator, plus js optimizer
+          # Verify optimization level in the generated code
+          # XXX these are quite sensitive, and will need updating when code generation changes
+          generated = open('something.js').read() # TODO: parse out the _main function itself, not support code, if the tests below need that some day
+          assert ('while(1) switch(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+          assert ('assert(STACKTOP < STACK_MAX)' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
+          assert ('|0)/2)|0)' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
+          assert 'var $i;' in generated, 'micro opts should always be on'
+          assert 'HEAP32[' in generated, 'typed arrays 2 should be used by default'
+          assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
+
+      # TODO: -O1 plus eliminator, plus js optimizer
       # emcc -O2 src.cpp ==> plus reloop (warn about speed)
       # emcc -O3 src.cpp ==> no corrections, relax some other stuff like i64 1 into 0, etc., do closure: dangerous stuff, warn, suggest -O2!
       # emcc --typed-arrays=x .. ==> should use typed arrays. default should be 2
@@ -4960,6 +4975,7 @@ JavaScript in the final linking stage of building.
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: add shebang to generated .js files, using JS_ENGINES[0]? #!/usr/bin/python etc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
+      # TODO: use -O3 in benchmarks, which will test that -O3 is optimized for max speed
 
       # Finally, test HTML generation. (Coincidentally we also test that compiling a .cpp works in EMCC here.)
       clear()

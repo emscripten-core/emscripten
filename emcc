@@ -128,8 +128,12 @@ Most normal gcc/g++ options will work, for example:
   --version                Display compiler version information
 
 Options that are modified or new in %s include:
-  -O0                      [..] default
-  -OX                      TODO
+  -O0                      No optimizations (default)
+  -O1                      Simple optimizations and no runtime assertions
+  -O2                      As -O1, plus code flow optimization (relooper)
+                           Warning: Compiling with this takes a long time!
+  -O3                      As -O2, plus dangerous optimizations that may
+                           break things
   -s OPTION=VALUE          JavaScript code generation option
                            passed into the emscripten compiler
   --typed-arrays <mode>    0: no typed arrays
@@ -253,10 +257,20 @@ if use_linker:
 
 elif use_compiler:
   call = CXX if use_cxx else CC
+
+  ## Parse args
+
   newargs = sys.argv[1:]
+
+  opt_level = 0
+
   for i in range(len(newargs)):
     if newargs[i].startswith('-O'):
-      if DEBUG: print >> sys.stderr, 'emcc: WARNING: Optimization flags (-Ox) are ignored in emcc. Tell emscripten.py to do that, or run LLVM opt.'
+      try:
+        opt_level = int(newargs[i][2])
+        assert 0 <= opt_level <= 3
+      except:
+        raise Exception('Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
   newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
 
@@ -271,6 +285,8 @@ elif use_compiler:
 
   final_suffix = target.split('.')[-1]
 
+  ## Compile
+
   # First, generate LLVM bitcode TODO: handle |emcc a.cpp b.cpp -c| which generate *two* bitcode files
   newargs = newargs + ['-emit-llvm', '-c', '-o', target_basename + '.bc']
 
@@ -283,7 +299,23 @@ elif use_compiler:
       shutil.move(target_basename + '.bc', target_basename + '.o')
     exit(0)
 
-  # Continue on to create JavaScript
+  ## Continue on to create JavaScript
+
+  # Apply optimization level settings
+  if opt_level >= 1:
+    shared.Settings.ASSERTIONS = 0
+  if opt_level >= 2:
+    shared.Settings.RELOOP = 1
+  if opt_level >= 3:
+    shared.Settings.CORRECT_SIGNS = 0
+    shared.Settings.CORRECT_OVERFLOWS = 0
+    shared.Settings.CORRECT_ROUNDINGS = 0
+    shared.Settings.I64_MODE = 0
+    shared.Settings.DOUBLE_MODE = 0
+    shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+
+  # TODO: apply -s settings in newargs here (after -Ox, so they can override it)
+
   temp_files = shared.TempFiles()
   temp_files.note(target_basename + '.bc')
   try:
