@@ -290,8 +290,14 @@ elif use_compiler:
     shared.Building.emscripten(target_basename + '.bc', append_ext=False)
     shutil.move(target_basename + '.bc.o.js', target_basename + '.js')
 
-    ## TODO: If we were asked to also generate HTML, do that
-    #if final_suffix == 'html':
+    # If we were asked to also generate HTML, do that
+    if final_suffix == 'html':
+      shell = open(shared.path_from_root('src', 'shell.html')).read()
+      html = open(target_basename + '.html', 'w')
+      html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(target_basename + '.js').read()))
+      html.close()
+      temp_files.note(target_basename + '.js')
+
   finally:
     temp_files.clean()
 

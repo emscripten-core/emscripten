@@ -690,12 +690,6 @@ Module['String_copy'] = String_copy;
 
 // Tools
 
-if (typeof console === 'object' && typeof console.log === 'function') {
-  this['print'] = function(x) { console.log(x) }; // web console
-} else if (typeof print === 'undefined') {
-  this['print'] = function(){}; // harmless no-op
-}
-
 // This processes a JS string into a C-line array of numbers, 0-terminated.
 // For LLVM-originating strings, see parser.js:parseLLVMString function
 function intArrayFromString(stringy, dontAddNull) {

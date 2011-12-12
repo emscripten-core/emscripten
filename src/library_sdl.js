@@ -22,8 +22,12 @@
 //        noInitialRun: true
 //      };
 //
-// which is defined BEFORE you load the compiled code. Here
-// is a full example:
+// which is defined BEFORE you load the compiled code.
+
+// The test_emcc test in the tests/runner.py will test this
+// in its last phase, where it generates HTML. You can see
+// a concrete example there. The HTML source is in src/shell.html.
+// Here is a more comprehensive example:
 
 /*
 <html>
@@ -141,19 +145,19 @@ mergeInto(LibraryManager.library, {
     },
 
     makeSurface: function(width, height, flags) {
-      var surf = _malloc(14*QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
+      var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
       var buffer = _malloc(width*height*4);
-      var pixelFormat = _malloc(18*QUANTUM_SIZE);
+      var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
-      {{{ makeSetValue('surf+QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
-      {{{ makeSetValue('surf+QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
-      {{{ makeSetValue('surf+QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
-      {{{ makeSetValue('surf+QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
-      {{{ makeSetValue('surf+QUANTUM_SIZE*4', '0', 'width*4', 'i16') }}}       // SDL_Surface.pitch, assuming RGBA for now,
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width*4', 'i16') }}}       // SDL_Surface.pitch, assuming RGBA for now,
                                                                                // since that is what ImageData gives us in browsers
-      {{{ makeSetValue('surf+QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
-      {{{ makeSetValue('surf+QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
 
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
@@ -239,12 +243,12 @@ mergeInto(LibraryManager.library, {
 
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
-    var ret = _malloc(5*QUANTUM_SIZE);
-    {{{ makeSetValue('ret+QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
-    {{{ makeSetValue('ret+QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
-    {{{ makeSetValue('ret+QUANTUM_SIZE*2', '0', '0', 'void*') }}}
-    {{{ makeSetValue('ret+QUANTUM_SIZE*3', '0', 'SDL.defaults.width', 'i32') }}}
-    {{{ makeSetValue('ret+QUANTUM_SIZE*4', '0', 'SDL.defaults.height', 'i32') }}}
+    var ret = _malloc(5*Runtime.QUANTUM_SIZE);
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'SDL.defaults.width', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'SDL.defaults.height', 'i32') }}}
     return ret;
   },
 
@@ -298,7 +302,7 @@ mergeInto(LibraryManager.library, {
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
     // TODO: Use macros like in library.js
-    {{{ makeSetValue('surf', '5*QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
+    {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
   },
 
   SDL_UnlockSurface: function(surf) {

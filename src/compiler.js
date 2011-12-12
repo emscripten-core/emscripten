@@ -54,6 +54,9 @@ if (ENVIRONMENT_IS_NODE) {
   printErr = function(x) {
     console.log(x);
   };
+  if (typeof print === 'undefined') {
+    print = printErr;
+  }
 
   read = function(url) {
     var xhr = new XMLHttpRequest();

@@ -1,0 +1,32 @@
+<html>
+  <head>
+    <title>Emscripten-Generated Code</title>
+  <body>
+    <center>
+      <canvas id='canvas' width='256' height='256'></canvas>
+    </center>
+    <hr>
+    <div id='output'></div>
+    <hr>
+    <script type='text/javascript'>
+      // implement print
+      var print = (function() {
+        var element = document.getElementById('output');
+        return function(text) {
+          element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+        };
+      })();
+
+      // connect to canvas
+      var Module = {
+        canvas: document.getElementById('canvas'),
+        ctx2D: document.getElementById('canvas').getContext('2d')
+      };
+      if (!Module.ctx2D) alert('Canvas not available :(');
+
+      // The compiled code
+      {{{ SCRIPT_CODE }}}
+    </script>
+  </body>
+</html>
+

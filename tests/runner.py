@@ -12,7 +12,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser
 
 # Setup
 
@@ -4962,6 +4962,18 @@ JavaScript in the final linking stage of building.
       #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: add shebang to generated .js files, using JS_ENGINES[0]? #!/usr/bin/python etc
+
+      # Finally, test HTML generation. (Coincidentally we also test that compiling a .cpp works in EMCC here.)
+      clear()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate(input)
+      assert len(output[0]) == 0, output[0]
+      assert os.path.exists('something.html'), output
+      webbrowser.open_new(os.path.join(self.get_dir(), 'something.html'))
+      print 'A web browser window should have opened a page containing the results of a part of this test.'
+      print 'You need to manually look at the page to see that it works ok: You should see "hello, world!" and a colored cube.'
+      print '(sleeping for a bit to keep the directory alive for the web browser..)'
+      time.sleep(5)
+      print '(moving on..)'
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
