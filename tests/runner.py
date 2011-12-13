@@ -4952,21 +4952,23 @@ JavaScript in the final linking stage of building.
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
 
-          # Verify optimization level in the generated code
+          # Verify optimization level etc. in the generated code
           # XXX these are quite sensitive, and will need updating when code generation changes
           generated = open('something.js').read() # TODO: parse out the _main function itself, not support code, if the tests below need that some day
-          assert ('while(1) switch(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+          assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
           assert ('assert(STACKTOP < STACK_MAX)' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-          assert ('|0)/2)|0)' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
-          assert 'var $i;' in generated, 'micro opts should always be on'
-          assert 'HEAP32[' in generated, 'typed arrays 2 should be used by default'
+          assert ('|0)/2)|0)' in generated or '| 0) / 2 | 0)' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
+          if opt_level < 3: assert 'var $i;' in generated, 'micro opts should always be on' # TODO: find a way to check it even with closure
+          assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
+          assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
+          if opt_level >= 1 and opt_level < 3: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'  # TODO: find a way to check it even with closure
+          if opt_level >= 3: assert 'Module._main = ' in generated, 'closure compiler should have been run'
 
-      # TODO: -O1 plus eliminator, plus js optimizer
-      # emcc --typed-arrays=x .. ==> should use typed arrays. default should be 2
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
       # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py
       # When doing unsafe opts, can we run -Ox on the source, not just at the very end?
+      #  In fact we can run safe opts at that time too, now we are a gcc replacement. Removes the entire need for llvm opts only at the end.
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
       #   emcc a.cpp b.cpp => one .js
       #   emcc a.cpp b.cpp -c => two .o files
@@ -5301,13 +5303,6 @@ if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
 
   # Sanity checks
-
-  def check_engine(engine):
-    try:
-      return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
-    except Exception, e:
-      print 'Checking JS engine %s failed. Check ~/.emscripten. Details: %s' % (str(engine), str(e))
-      return False
 
   if not check_engine(COMPILER_ENGINE):
     print 'WARNING: The JavaScript shell used for compiling does not seem to work'

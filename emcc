@@ -324,6 +324,25 @@ elif use_compiler:
     shared.Building.emscripten(target_basename + '.bc', append_ext=False)
     shutil.move(target_basename + '.bc.o.js', target_basename + '.js')
 
+    if opt_level >= 1:
+      # js optimizer
+      shared.Building.js_optimizer(target_basename + '.js', 'loopOptimizer')
+      shutil.move(target_basename + '.js.jo.js', target_basename + '.js')
+
+      # eliminator
+      shared.Building.eliminator(target_basename + '.js')
+      shutil.move(target_basename + '.js.el.js', target_basename + '.js')
+
+    if opt_level >= 3:
+      # closure
+      shared.Building.closure_compiler(target_basename + '.js')
+      shutil.move(target_basename + '.js.cc.js', target_basename + '.js')
+
+    if opt_level >= 1:
+      # js optimizer
+      shared.Building.js_optimizer(target_basename + '.js', 'simplifyExpressions')
+      shutil.move(target_basename + '.js.jo.js', target_basename + '.js')
+
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
       shell = open(shared.path_from_root('src', 'shell.html')).read()

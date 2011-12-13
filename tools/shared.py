@@ -114,6 +114,14 @@ class TempFiles:
 
 # Utilities
 
+def check_engine(engine):
+  # TODO: we call this several times, perhaps cache the results?
+  try:
+    return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
+  except Exception, e:
+    print 'Checking JS engine %s failed. Check ~/.emscripten. Details: %s' % (str(engine), str(e))
+    return False
+
 def timeout_run(proc, timeout, note):
   start = time.time()
   if timeout is not None:
@@ -446,4 +454,47 @@ class Building:
 
     Building.LLVM_OPT_OPTS = opts
     return opts
+
+  @staticmethod
+  def js_optimizer(filename, passes):
+    if not check_engine(NODE_JS):
+      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
+
+    if type(passes) == str:
+      passes = [passes]
+    input = open(filename, 'r').read()
+    output = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE).communicate(input)[0]
+    filename += '.jo.js'
+    f = open(filename, 'w')
+    f.write(output)
+    f.close()
+
+  @staticmethod
+  def eliminator(filename):
+    if not check_engine(NODE_JS):
+      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
+
+    coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
+    eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
+    input = open(filename, 'r').read()
+    output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+    filename += '.el.js'
+    f = open(filename, 'w')
+    f.write(output)
+    f.close()
+
+  @staticmethod
+  def closure_compiler(filename):
+    if not os.path.exists(CLOSURE_COMPILER):
+      raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
+
+    # Something like this (adjust memory as needed):
+    #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+    cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
+                       '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+                       #'--formatting', 'PRETTY_PRINT',
+                       #'--variable_map_output_file', filename + '.vars',
+                       '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    if 'ERROR' in cc_output:
+      raise Exception('Error in cc output: ' + cc_output)
 
