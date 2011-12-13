@@ -15,14 +15,6 @@ For example, compilation will be translated into calls to clang
 with -emit-llvm, and linking will be translated into calls to llvm-link,
 and so forth.
 
-emcc is only meant to *COMPILE* source code into LLVM bitcode. It does
-not do optimizations (in fact, it will disable -Ox flags and warn you
-about that). The reason is that doing such optimizations early can lead
-to bitcode that Emscripten cannot process properly, or can process but
-not fully optimize. You can (and probably should) still run LLVM
-optimizations though, by telling emscripten.py to do so (or run LLVM
-opt yourself, but be careful with the parameters you pass).
-
 Example uses:
 
  * For configure, instead of ./configure, cmake, etc., run emconfiguren.py
@@ -68,11 +60,7 @@ Example uses:
     env.Replace(LD   = LLVM_LD)
    TODO: Document all relevant setup changes
 
-After setting that up, run your build system normally. It should generate
-LLVM instead of the normal output, and end up with .ll files that you can
-give to Emscripten. Note that this tool doesn't run Emscripten itself. Note
-also that you may need to do some manual fiddling later, for example to
-link files that weren't linked, and them llvm-dis them.
+After setting that up, run your build system normally.
 
 Note the appearance of em++ instead of emcc
 for the C++ compiler. This is needed for cases where we get
@@ -138,10 +126,7 @@ Options that are modified or new in %s include:
                            passed into the emscripten compiler
   --typed-arrays <mode>    0: no typed arrays
                            1: parallel typed arrays
-                           2: shared typed arrays (default)
-  --llvm-opts <mode>       0: none (default)
-                           1: safe/portable
-                           2: unsafe/unportable
+                           2: shared (C-like) typed arrays (default)
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -279,6 +264,11 @@ elif use_compiler:
     if newargs[i] == '-s':
       settings_changes.append(newargs[i+1])
       newargs[i] = newargs[i+1] = ''
+    elif newargs[i].startswith('--typed-arrays'):
+      assert '=' not in newargs[i], 'Invalid typed arrays parameter (do not use "=")'
+      settings_changes.append('USE_TYPED_ARRAYS=' + newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   newargs += CC_ADDITIONAL_ARGS

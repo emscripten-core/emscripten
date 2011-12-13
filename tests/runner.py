@@ -4896,33 +4896,7 @@ Most normal gcc/g++ options will work, for example:
 
 Options that are modified or new in %s include:
   -O0                      No optimizations (default)
-  -O1                      Simple optimizations and no runtime assertions
-  -O2                      As -O1, plus code flow optimization (relooper)
-                           Warning: Compiling with this takes a long time!
-  -O3                      As -O2, plus dangerous optimizations that may
-                           break things
-  -s OPTION=VALUE          JavaScript code generation option
-                           passed into the emscripten compiler
-  --typed-arrays <mode>    0: no typed arrays
-                           1: parallel typed arrays
-                           2: shared typed arrays (default)
-  --llvm-opts <mode>       0: none (default)
-                           1: safe/portable
-                           2: unsafe/unportable
-
-The target file, if specified (-o <target>), defines what will
-be generated:
-
-  <name>.js                JavaScript (default)
-  <name>.o                 LLVM bitcode
-  <name>.bc                LLVM bitcode
-  <name>.html              HTML with embedded JavaScript
-
-The -c option (which tells gcc not to run the linker) will
-also cause LLVM bitcode to be generated, as %s only generates
-JavaScript in the final linking stage of building.
-
-''' % (shortcompiler, shortcompiler, shortcompiler), output[0], output[1])
+''' % (shortcompiler, shortcompiler), output[0], output[1])
 
         # emcc src.cpp ==> writes to a.out.js, much like gcc
         clear()
@@ -4965,12 +4939,15 @@ JavaScript in the final linking stage of building.
           if opt_level >= 1 and opt_level < 3: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'  # TODO: find a way to check it even with closure
           if opt_level >= 3: assert 'Module._main = ' in generated, 'closure compiler should have been run'
 
-        # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py
+        # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
           (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
           (['-s', 'USE_TYPED_ARRAYS=1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
           ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
           (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported')
+          (['--typed-arrays', '0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['--typed-arrays', '1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
         ]:
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params, stdout=PIPE, stderr=PIPE).communicate()
