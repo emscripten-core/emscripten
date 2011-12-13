@@ -4,7 +4,7 @@
 
 extern "C" {
   void dump(char *s) {
-    puts(s);
+    printf("%s\n", s);
   }
 }
 

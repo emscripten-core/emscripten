@@ -319,10 +319,7 @@ class Building:
   @staticmethod
   def llvm_dis(filename):
     # LLVM binary ==> LLVM assembly
-    try:
-      os.remove(filename + '.o.ll')
-    except:
-      pass
+    try_delete(filename + '.o.ll')
     output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
 

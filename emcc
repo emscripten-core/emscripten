@@ -264,6 +264,11 @@ elif use_compiler:
       if opt_level >= 1:
         llvm_opt_level = 1
       newargs[i] = ''
+    elif newargs[i].startswith('--llvm-opts'):
+      assert '=' not in newargs[i], 'Invalid llvm opts parameter (do not use "=")'
+      llvm_opt_level = eval(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   settings_changes = []

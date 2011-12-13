@@ -4933,12 +4933,16 @@ Options that are modified or new in %s include:
           assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
           assert ('assert(STACKTOP < STACK_MAX)' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
           assert ('|0)/2)|0)' in generated or '| 0) / 2 | 0)' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
-          if opt_level < 3: assert 'var $i;' in generated, 'micro opts should always be on' # TODO: find a way to check it even with closure
           assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
-          if opt_level >= 1 and opt_level < 3: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'  # TODO: find a way to check it even with closure
-          if opt_level >= 3: assert 'Module._main = ' in generated, 'closure compiler should have been run'
+          if opt_level >= 3:
+            assert 'Module._main = ' in generated, 'closure compiler should have been run'
+          else:
+            # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
+            assert 'var $i;' in generated, 'micro opts should always be on'
+            if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
+            assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
@@ -4948,7 +4952,8 @@ Options that are modified or new in %s include:
           (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported'),
           (['--typed-arrays', '0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
           (['--typed-arrays', '1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
-          (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected')
+          (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
+          (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params, stdout=PIPE, stderr=PIPE).communicate()
