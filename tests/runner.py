@@ -4966,13 +4966,19 @@ JavaScript in the final linking stage of building.
           if opt_level >= 3: assert 'Module._main = ' in generated, 'closure compiler should have been run'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py
-        clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-s', 'USE_TYPED_ARRAYS=0'], stdout=PIPE, stderr=PIPE).communicate()
-        assert len(output[0]) == 0, output[0]
-        assert os.path.exists('a.out.js'), '\n'.join(output)
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        generated = open('a.out.js').read()
-        assert 'new Int32Array' not in generated, 'asking for no typed arrays should work'
+        for params, test, text in [
+          (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['-s', 'USE_TYPED_ARRAYS=1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
+          (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported')
+        ]:
+          clear()
+          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params, stdout=PIPE, stderr=PIPE).communicate()
+          assert len(output[0]) == 0, output[0]
+          assert os.path.exists('a.out.js'), '\n'.join(output)
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          assert test(open('a.out.js').read()), text
+
 
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
       # When doing unsafe opts, can we run -Ox on the source, not just at the very end?

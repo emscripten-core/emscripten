@@ -2,6 +2,12 @@
 #include<string.h>
 #include<stdlib.h>
 
+extern "C" {
+  void dump(char *s) {
+    puts(s);
+  }
+}
+
 int main() {
   char *original = (char*)"h e l l o ,   w o r l d ! ";
   char *copy = (char*)malloc(strlen(original));
@@ -9,7 +15,7 @@ int main() {
     copy[i/2] = original[i];
   }
   copy[strlen(copy)+1] = (int)&original; // force original to be on the stack
-  puts(copy);
+  dump(copy);
   return 1;
 }
 
