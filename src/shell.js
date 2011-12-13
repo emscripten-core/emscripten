@@ -6,7 +6,8 @@ var arguments_ = [];
 
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
 var ENVIRONMENT_IS_WEB = typeof window === 'object';
-var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE;
+var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
@@ -46,9 +47,6 @@ if (ENVIRONMENT_IS_NODE) {
   printErr = function(x) {
     console.log(x);
   };
-  if (typeof print === 'undefined') {
-    print = printErr;
-  }
 
   read = function(url) {
     var xhr = new XMLHttpRequest();
@@ -60,6 +58,11 @@ if (ENVIRONMENT_IS_NODE) {
   if (this['arguments']) {
     arguments_ = arguments;
   }
+} else if (ENVIRONMENT_IS_WORKER) {
+  // We can do very little here...
+
+  load = importScripts;
+
 } else {
   throw 'Unknown runtime environment. Where are we?';
 }
@@ -68,10 +71,18 @@ function globalEval(x) {
   eval.call(null, x);
 }
 
-if (!this['load']) {
+if (typeof load == 'undefined' && typeof read != 'undefined') {
   load = function(f) {
     globalEval(read(f));
   };
+}
+
+if (typeof printErr === 'undefined') {
+  printErr = function(){};
+}
+
+if (typeof print === 'undefined') {
+  print = printErr;
 }
 // *** Environment setup code ***
 

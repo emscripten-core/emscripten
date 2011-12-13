@@ -4780,6 +4780,7 @@ Child2:9
       '''
       self.do_run(src, 'hello, world!\nExit Status: 118')
 
+
   # Generate tests for everything
   def make_run(name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, defaults=False):
     exec('''
@@ -4977,17 +4978,43 @@ JavaScript in the final linking stage of building.
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # TODO: use -O3 in benchmarks, which will test that -O3 is optimized for max speed
 
-      # Finally, test HTML generation. (Coincidentally we also test that compiling a .cpp works in EMCC here.)
+      # Finally, do some web browser tests
+      def run_browser(html_file, message):
+        webbrowser.open_new(html_file)
+        print 'A web browser window should have opened a page containing the results of a part of this test.'
+        print 'You need to manually look at the page to see that it works ok: ' + message
+        print '(sleeping for a bit to keep the directory alive for the web browser..)'
+        time.sleep(5)
+        print '(moving on..)'
+
+      # test HTML generation.
       clear()
       output = Popen([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate(input)
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      webbrowser.open_new(os.path.join(self.get_dir(), 'something.html'))
-      print 'A web browser window should have opened a page containing the results of a part of this test.'
-      print 'You need to manually look at the page to see that it works ok: You should see "hello, world!" and a colored cube.'
-      print '(sleeping for a bit to keep the directory alive for the web browser..)'
-      time.sleep(5)
-      print '(moving on..)'
+      run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
+
+      # And test running in a web worker
+      clear()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate(input)
+      assert len(output[0]) == 0, output[0]
+      assert os.path.exists('worker.js'), output
+      self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone
+      html_file = open('main.html', 'w')
+      html_file.write('''
+        <html>
+        <body>
+          <script>
+            var worker = new Worker('worker.js');
+            worker.onmessage = function(event) {
+              document.write("<hr>Called back by the worker: " + event.data + "<br><hr>");
+            };
+          </script>
+        </body>
+        </html>
+      ''')
+      html_file.close()
+      run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
