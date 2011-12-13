@@ -4948,6 +4948,7 @@ JavaScript in the final linking stage of building.
                          stdout=PIPE, stderr=PIPE).communicate(input)
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('something.js'), '\n'.join(output)
+          assert ('Warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
           self.assertContained('hello, world!', run_js('something.js'))
 
           # Verify optimization level in the generated code

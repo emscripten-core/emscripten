@@ -306,6 +306,7 @@ elif use_compiler:
     shared.Settings.ASSERTIONS = 0
   if opt_level >= 2:
     shared.Settings.RELOOP = 1
+    print >> sys.stderr, 'Warning: The relooper optimization can be very slow.'
   if opt_level >= 3:
     shared.Settings.CORRECT_SIGNS = 0
     shared.Settings.CORRECT_OVERFLOWS = 0
