@@ -8,12 +8,9 @@ emcc is a drop-in replacement for a compiler like gcc or clang.
 
 Tell your build system to use this instead of the compiler, linker, ar and
 ranlib. All the normal build commands will be sent to this script, which
-will proxy them to the appropriate LLVM build commands, in order to
-generate proper code for Emscripten to later process.
-
-For example, compilation will be translated into calls to clang
-with -emit-llvm, and linking will be translated into calls to llvm-link,
-and so forth.
+will proxy them to the appropriate build commands. For example, compilation
+will be translated into calls to clang with -emit-llvm, and linking will
+be translated into calls to llvm-link, and so forth.
 
 Example uses:
 
@@ -77,7 +74,6 @@ emcc can be influenced by a few environment variables:
                    your system headers will be used.
 
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
-
 '''
 
 import os, sys, shutil
@@ -117,16 +113,24 @@ Most normal gcc/g++ options will work, for example:
 
 Options that are modified or new in %s include:
   -O0                      No optimizations (default)
-  -O1                      Simple optimizations and no runtime assertions
+  -O1                      Simple optimizations, including safe LLVM
+                           optimizations, and no runtime assertions
   -O2                      As -O1, plus code flow optimization (relooper)
                            Warning: Compiling with this takes a long time!
   -O3                      As -O2, plus dangerous optimizations that may
-                           break things
-  -s OPTION=VALUE          JavaScript code generation option
-                           passed into the emscripten compiler
-  --typed-arrays <mode>    0: no typed arrays
-                           1: parallel typed arrays
-                           2: shared (C-like) typed arrays (default)
+                           break the generated code! If that happens, try
+                           -O2 and then adding dangerous optimizations one
+                           by one.
+  -s OPTION=VALUE          JavaScript code generation option passed
+                           into the emscripten compiler
+  --typed-arrays <mode>    0: No typed arrays
+                           1: Parallel typed arrays
+                           2: Shared (C-like) typed arrays (default)
+  --llvm-opts <level>      0: No LLVM optimizations
+                           1: Safe/portable LLVM optimizations
+                           2: Full, unsafe/unportable LLVM optimizations;
+                              this will almost certainly break the
+                              generated code!
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -248,6 +252,7 @@ elif use_compiler:
   newargs = sys.argv[1:]
 
   opt_level = 0
+  llvm_opt_level = 0
 
   for i in range(len(newargs)):
     if newargs[i].startswith('-O'):
@@ -256,6 +261,8 @@ elif use_compiler:
         assert 0 <= opt_level <= 3
       except:
         raise Exception('Invalid optimization level: ' + newargs[i])
+      if opt_level >= 1:
+        llvm_opt_level = 1
       newargs[i] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
@@ -284,22 +291,6 @@ elif use_compiler:
 
   final_suffix = target.split('.')[-1]
 
-  ## Compile
-
-  # First, generate LLVM bitcode TODO: handle |emcc a.cpp b.cpp -c| which generate *two* bitcode files
-  newargs = newargs + ['-emit-llvm', '-c', '-o', target_basename + '.bc']
-
-  if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
-  Popen([call] + newargs).communicate()
-
-  # If we were just asked to generate bitcode, stop there
-  if final_suffix in ['o', 'bc']:
-    if final_suffix == 'o':
-      shutil.move(target_basename + '.bc', target_basename + '.o')
-    exit(0)
-
-  ## Continue on to create JavaScript
-
   # Apply optimization level settings
   if opt_level >= 1:
     shared.Settings.ASSERTIONS = 0
@@ -314,6 +305,26 @@ elif use_compiler:
     shared.Settings.DOUBLE_MODE = 0
     shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
+
+  ## Compile
+
+  # First, generate LLVM bitcode TODO: handle |emcc a.cpp b.cpp -c| which generate *two* bitcode files
+  newargs = newargs + ['-emit-llvm', '-c', '-o', target_basename + '.bc']
+
+  if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
+  Popen([call] + newargs).communicate()
+
+  # Optimize, if asked to
+  if llvm_opt_level > 0:
+    shared.Building.llvm_opt(target_basename + '.bc', 2, safe=llvm_opt_level < 2)
+
+  # If we were just asked to generate bitcode, stop there
+  if final_suffix in ['o', 'bc']:
+    if final_suffix == 'o':
+      shutil.move(target_basename + '.bc', target_basename + '.o')
+    exit(0)
+
+  ## Continue on to create JavaScript
 
   # Apply -s settings in newargs here (after -Ox, so they can override it)
 

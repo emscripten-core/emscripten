@@ -196,6 +196,7 @@ class Settings:
     class Settings2:
       reset = Settings.reset
       load_defaults = Settings.load_defaults
+      QUANTUM_SIZE = 4
     Settings = Settings2
 
   @classmethod
@@ -203,6 +204,7 @@ class Settings:
     ''' Load the JS settings into Python '''
     settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
     exec(settings)
+Settings.reset()
 
 # Building
 
@@ -296,7 +298,13 @@ class Building:
 
   # Optional LLVM optimizations
   @staticmethod
-  def llvm_opts(filename):
+  def llvm_opt(filename, level, safe=True):
+    output = Popen([LLVM_OPT, filename] + Building.pick_llvm_opts(level, safe) + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
+    assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
+    shutil.move(filename + '.opt.bc', filename)
+
+  @staticmethod
+  def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
       output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
@@ -371,8 +379,6 @@ class Building:
       into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
       things that look useful.
     '''
-    if not Building.LLVM_OPTS: return # XXX this makes using this independently from the test runner very unpleasant
-
     opts = []
     if optimization_level > 0:
       #opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining

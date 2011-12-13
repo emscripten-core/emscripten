@@ -81,7 +81,8 @@ class RunnerCore(unittest.TestCase):
         need_post = build_ll_hook(filename)
       Building.llvm_as(filename)
       shutil.move(filename + '.o.ll', filename + '.o.ll.pre') # for comparisons later
-      Building.llvm_opts(filename)
+      if Building.LLVM_OPTS:
+        Building.llvm_opts(filename)
       Building.llvm_dis(filename)
       if build_ll_hook and need_post:
         build_ll_hook(filename)
@@ -4958,8 +4959,7 @@ Options that are modified or new in %s include:
 
 
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
-      # When doing unsafe opts, can we run -Ox on the source, not just at the very end?
-      #  In fact we can run safe opts at that time too, now we are a gcc replacement. Removes the entire need for llvm opts only at the end.
+      # We can run safe opts at each emcc invocation, now we are a gcc replacement. Removes the entire need for llvm opts only at the end.
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
       #   emcc a.cpp b.cpp => one .js
       #   emcc a.cpp b.cpp -c => two .o files
