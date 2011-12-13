@@ -4879,7 +4879,7 @@ TT = %s
         suffix = '.c' if compiler == EMCC else '.cpp'
 
         # --version
-        output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate(input)
+        output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
 Copyright (C) 2011 the Emscripten authors.
 This is free and open source software under the MIT license.
@@ -4887,7 +4887,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''', output[0], output[1])
 
         # --help
-        output = Popen([compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate(input)
+        output = Popen([compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''%s [options] file...
 
 Most normal gcc/g++ options will work, for example:
@@ -4926,7 +4926,7 @@ JavaScript in the final linking stage of building.
 
         # emcc src.cpp ==> writes to a.out.js, much like gcc
         clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate(input)
+        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         #assert len(output[1]) == 0, output[1] # we have some debug warnings there now, FIXME
         assert os.path.exists('a.out.js'), output
@@ -4936,7 +4936,7 @@ JavaScript in the final linking stage of building.
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
           target = args[1] if len(args) == 2 else 'a.out.bc'
           clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate(input)
+          output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target), output
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
@@ -4945,7 +4945,7 @@ JavaScript in the final linking stage of building.
         for opt_params, opt_level in [([], 0), (['-O0'], 0), (['-O1'], 1), (['-O2'], 2), (['-O3'], 3)]:
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'something.js'] + opt_params,
-                         stdout=PIPE, stderr=PIPE).communicate(input)
+                         stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('something.js'), '\n'.join(output)
           assert ('Warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
@@ -4965,8 +4965,16 @@ JavaScript in the final linking stage of building.
           if opt_level >= 1 and opt_level < 3: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'  # TODO: find a way to check it even with closure
           if opt_level >= 3: assert 'Module._main = ' in generated, 'closure compiler should have been run'
 
+        # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py
+        clear()
+        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-s', 'USE_TYPED_ARRAYS=0'], stdout=PIPE, stderr=PIPE).communicate()
+        assert len(output[0]) == 0, output[0]
+        assert os.path.exists('a.out.js'), '\n'.join(output)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+        generated = open('a.out.js').read()
+        assert 'new Int32Array' not in generated, 'asking for no typed arrays should work'
+
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
-      # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py
       # When doing unsafe opts, can we run -Ox on the source, not just at the very end?
       #  In fact we can run safe opts at that time too, now we are a gcc replacement. Removes the entire need for llvm opts only at the end.
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
@@ -4976,7 +4984,6 @@ JavaScript in the final linking stage of building.
       #     warn if linking files with different annotations etc.
       #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
-      # TODO: add shebang to generated .js files, using JS_ENGINES[0]? #!/usr/bin/python etc
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # TODO: use -O3 in benchmarks, which will test that -O3 is optimized for max speed
 
@@ -4991,14 +4998,14 @@ JavaScript in the final linking stage of building.
 
       # test HTML generation.
       clear()
-      output = Popen([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate(input)
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
 
       # And test running in a web worker
       clear()
-      output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate(input)
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('worker.js'), output
       self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone

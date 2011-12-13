@@ -272,7 +272,16 @@ elif use_compiler:
       except:
         raise Exception('Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
-  newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
+  newargs = [ arg for arg in newargs if arg is not '' ]
+
+  settings_changes = []
+  for i in range(len(newargs)):
+    if newargs[i] == '-s':
+      settings_changes.append(newargs[i+1])
+      newargs[i] = newargs[i+1] = ''
+  newargs = [ arg for arg in newargs if arg is not '' ]
+
+  newargs += CC_ADDITIONAL_ARGS
 
   if target is None:
     # No explicit -o specified, so do the most natural thing, compile to .js
@@ -316,7 +325,11 @@ elif use_compiler:
     shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
-  # TODO: apply -s settings in newargs here (after -Ox, so they can override it)
+  # Apply -s settings in newargs here (after -Ox, so they can override it)
+
+  for change in settings_changes:
+    key, value = change.split('=')
+    exec('shared.Settings.' + key + ' = ' + value)
 
   temp_files = shared.TempFiles()
   temp_files.note(target_basename + '.bc')
