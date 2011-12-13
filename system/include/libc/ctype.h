@@ -30,10 +30,12 @@ int _EXFUN(toascii, (int __c));
 #define _toupper(__c) ((unsigned char)(__c) - 'a' + 'A')
 #endif
 
+/* XXX Emscripten
 #ifndef _MB_CAPABLE
 _CONST
 #endif
-/* XXX Emscripten extern	__IMPORT char	*__ctype_ptr__; */
+ extern	__IMPORT char	*__ctype_ptr__;
+*/
 
 #if 0 /* ndef __cplusplus XXX Emscripten: Do not use the macros here. always use the simple functions */
 
