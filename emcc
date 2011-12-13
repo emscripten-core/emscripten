@@ -314,6 +314,7 @@ elif use_compiler:
     shared.Settings.I64_MODE = 0
     shared.Settings.DOUBLE_MODE = 0
     shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+    print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
   # TODO: apply -s settings in newargs here (after -Ox, so they can override it)
 

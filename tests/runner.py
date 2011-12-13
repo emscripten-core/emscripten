@@ -4949,6 +4949,7 @@ JavaScript in the final linking stage of building.
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('something.js'), '\n'.join(output)
           assert ('Warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
+          assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
 
           # Verify optimization level in the generated code
@@ -4962,8 +4963,6 @@ JavaScript in the final linking stage of building.
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
 
       # TODO: -O1 plus eliminator, plus js optimizer
-      # emcc -O2 src.cpp ==> plus reloop (warn about speed)
-      # emcc -O3 src.cpp ==> no corrections, relax some other stuff like i64 1 into 0, etc., do closure: dangerous stuff, warn, suggest -O2!
       # emcc --typed-arrays=x .. ==> should use typed arrays. default should be 2
       # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
       # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py
