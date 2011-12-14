@@ -22,7 +22,7 @@ int main() {
 
   printf("you should see a colored cube.");
 
-  // SDL_Quit(); // Don't call SDL_Quit so that the canvas is not cleared
+  SDL_Quit();
 
   return 0;
 }
