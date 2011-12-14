@@ -80,7 +80,8 @@ import os, sys, shutil
 from subprocess import Popen, PIPE, STDOUT
 from tools import shared
 
-DEBUG = 1
+DEBUG = os.environ.get('EMCC_DEBUG')
+SAVE_FILES = os.environ.get('EMCC_SAVE_FILES') # TODO: use this
 
 ################### XXX
 print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
