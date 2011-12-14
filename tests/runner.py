@@ -4904,16 +4904,16 @@ Options that are modified or new in %s include:
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         #assert len(output[1]) == 0, output[1] # we have some debug warnings there now, FIXME
-        assert os.path.exists('a.out.js'), output
+        assert os.path.exists('a.out.js'), output[1]
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
-          target = args[1] if len(args) == 2 else 'a.out.bc'
+          target = args[1] if len(args) == 2 else 'hello_world.bc'
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
-          assert os.path.exists(target), output
+          assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), output)
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
         # emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
@@ -4962,9 +4962,17 @@ Options that are modified or new in %s include:
           self.assertContained('hello, world!', run_js('a.out.js'))
           assert test(open('a.out.js').read()), text
 
+        ## Compiling two source files TODO: with -o
+        #clear()
+        #output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')],
+        #               stdout=PIPE, stderr=PIPE).communicate()
+        #assert len(output[0]) == 0, output[0]
+        #assert os.path.exists('a.out.js'), '\n'.join(output)
+        #self.assertContained('side got: hello from main, over', run_js('a.out.js'))
+        ##assert os.path.exists('twopart_main.bc'), '\n'.join(output)
+        ##assert os.path.exists('twopart_side.bc'), '\n'.join(output)
+        ##output = Popen([compiler, 'twopart_main.bc', 'twopart_side.bc', '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate() # combine them
 
-      # emcc --llvm-opts=x .. ==> pick level of LLVM optimizations (default is 0, to be safe?)
-      # We can run safe opts at each emcc invocation, now we are a gcc replacement. Removes the entire need for llvm opts only at the end.
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
       #   emcc a.cpp b.cpp => one .js
       #   emcc a.cpp b.cpp -c => two .o files

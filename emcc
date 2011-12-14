@@ -267,6 +267,7 @@ elif use_compiler:
     elif newargs[i].startswith('--llvm-opts'):
       assert '=' not in newargs[i], 'Invalid llvm opts parameter (do not use "=")'
       llvm_opt_level = eval(newargs[i+1])
+      assert 0 <= llvm_opt_level <= 1, 'Only two levels of LLVM optimizations are supported so far, 0 (none) and 1 (safe)'
       newargs[i] = ''
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
@@ -283,13 +284,25 @@ elif use_compiler:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
+  def unsuffixed_basename(name):
+    return os.path.basename('.'.join(name.split('.')[:-1]))
+
+  input_files = []
+  for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
+                                # right now we just assume that what is left contains no more |-x OPT| things
+    arg = newargs[i]
+    if arg.endswith(('.c', '.cpp', '.cxx')):
+      input_files.append(unsuffixed_basename(arg))
+
+  assert len(input_files) > 0, 'emcc: no input files specified'
+
   newargs += CC_ADDITIONAL_ARGS
 
-  if target is None:
-    # No explicit -o specified, so do the most natural thing, compile to .js
-    target = 'a.out.js'
+  specified_target = target
+  target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
+  if specified_target: assert len(input_files) == 1, 'If a target is specified, there should be exactly one input file'
 
-  target_basename = '.'.join(target.split('.')[:-1])
+  target_basename = unsuffixed_basename(target)
 
   if '-c' in newargs: # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
     target = target_basename + '.bc'
@@ -313,23 +326,35 @@ elif use_compiler:
 
   ## Compile
 
-  # First, generate LLVM bitcode TODO: handle |emcc a.cpp b.cpp -c| which generate *two* bitcode files
-  newargs = newargs + ['-emit-llvm', '-c', '-o', target_basename + '.bc']
+  # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
+  newargs = newargs + ['-emit-llvm', '-c']
 
   if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
   Popen([call] + newargs).communicate()
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
-    shared.Building.llvm_opt(target_basename + '.bc', 2, safe=llvm_opt_level < 2)
+    for input_file in input_files:
+      shared.Building.llvm_opt(input_file + '.o', 2, safe=llvm_opt_level < 2)
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix in ['o', 'bc']:
-    if final_suffix == 'o':
-      shutil.move(target_basename + '.bc', target_basename + '.o')
+    if final_suffix == 'bc':
+      for input_file in input_files:
+        shutil.move(input_file + '.o', input_file + '.bc')
+
+    if specified_target:
+      shutil.move(input_files[0] + '.' + final_suffix, unsuffixed_basename(specified_target) + '.' + final_suffix)
+
     exit(0)
 
   ## Continue on to create JavaScript
+
+  # First, combine the bitcode files if there are several
+  if len(input_files) > 1:
+    shared.Building.link(map(lambda input_file: input_file + '.o', input_files), target_basename + '.bc')
+  else:
+    shutil.move(input_files[0] + '.o', target_basename + '.bc')
 
   # Apply -s settings in newargs here (after -Ox, so they can override it)
 
