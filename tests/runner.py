@@ -4961,7 +4961,7 @@ Options that are modified or new in %s include:
           self.assertContained('hello, world!', run_js('a.out.js'))
           assert test(open('a.out.js').read()), text
 
-        '''# Compiling two source files into a final JS.
+        # Compiling two source files into a final JS.
         for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
           clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
@@ -4972,7 +4972,7 @@ Options that are modified or new in %s include:
 
           # Compiling two files with -c will generate separate .bc files
           clear()
-          output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'],
+          output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           if '-o' in args:
             # specifying -o and -c is an error
@@ -4987,12 +4987,13 @@ Options that are modified or new in %s include:
           output = Popen([compiler, 'twopart_main.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           #print '\n'.join(output)
-          self.assertContained('theFunc is undefined', run_js(target))
+          self.assertContained('is not a function', run_js(target, stderr=STDOUT))
+          try_delete(target)
 
           # Combining those bc files into js should work
           output = Popen([compiler, 'twopart_main.bc', 'twopart_side.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
-          self.assertContained('side got: hello from main, over', run_js(target))'''
+          self.assertContained('side got: hello from main, over', run_js(target))
 
 
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
