@@ -4915,12 +4915,20 @@ Options that are modified or new in %s include:
           assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), output)
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
-        # emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
-        for opt_params, opt_level in [([], 0), (['-O0'], 0), (['-O1'], 1), (['-O2'], 2), (['-O3'], 3)]:
+        # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
+        for params, opt_level, bc_params in [ # bc params are used after compiling to bitcode
+          (['-o', 'something.js'], 0, None),
+          (['-o', 'something.js', '-O0'], 0, None),
+          (['-o', 'something.js', '-O1'], 1, None),
+          (['-o', 'something.js', '-O2'], 2, None),
+          (['-o', 'something.js', '-O3'], 3, None),
+        ]:
           clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'something.js'] + opt_params,
+          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
+          if bc_params:
+            output = Popen([compiler, 'something.bc'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('something.js'), '\n'.join(output)
           assert ('Warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
@@ -4995,13 +5003,7 @@ Options that are modified or new in %s include:
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
 
-
-      # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
-      #   emcc a.cpp b.cpp => one .js
-      #   emcc a.cpp b.cpp -c => two .o files
-      #     annotate each .bc with emscripten info, like "compiled with -O2: do the O2 opts when going to final .js"
-      #     warn if linking files with different annotations etc.
-      #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]
+      # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # TODO: wiki docs for using emcc to optimize code
