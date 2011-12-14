@@ -5013,7 +5013,6 @@ Options that are modified or new in %s include:
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
-      # TODO: wiki docs for using emcc to optimize code
 
       # Finally, do some web browser tests
       def run_browser(html_file, message):
