@@ -5262,6 +5262,7 @@ else:
       self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000')
 
     def test_dlmalloc(self):
+      # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_benchmark(src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
 
