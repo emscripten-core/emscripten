@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+
+'''
+emcc - ranlib helper script
+===========================
+
+This script acts as a frontend replacement for ranlib. See emcc.
+'''
+

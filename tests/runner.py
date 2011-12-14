@@ -4974,6 +4974,11 @@ Options that are modified or new in %s include:
           clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'],
                          stdout=PIPE, stderr=PIPE).communicate()
+          if '-o' in args:
+            # specifying -o and -c is an error
+            assert 'fatal error' in output[1], output[1]
+            continue
+
           assert os.path.exists('twopart_main.bc'), '\n'.join(output)
           assert os.path.exists('twopart_side.bc'), '\n'.join(output)
           assert not os.path.exists(target), 'We should only have created bitcode here: ' + '\n'.join(output)

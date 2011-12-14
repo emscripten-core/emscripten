@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+
+'''
+emcc - linker helper script
+===========================
+
+This script acts as a frontend replacement for the ld linker. See emcc.
+'''
+
+ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
+                     '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
+TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
+
+#
+
+# We could use the compiler code for this, but here we want to be careful to use all the linker flags we have been passed, sending them to ld
+call = shared.LLVM_LD
+newargs = ['-disable-opt']
+i = 0
+while i < len(sys.argv)-1:
+  i += 1
+  arg = sys.argv[i]
+  if arg.startswith('-'):
+    prefix = arg.split('=')[0]
+    if prefix in ALLOWED_LINK_ARGS:
+      newargs.append(arg)
+    if arg in TWO_PART_DISALLOWED_LINK_ARGS:
+      i += 1
+  elif arg.endswith('.so'):
+    continue # .so's do not exist yet, in many cases
+  else:
+    # not option, so just append
+    newargs.append(arg)
+if target:
+  actual_target = target
+  if target.endswith('.js'):
+    actual_target = unsuffixed(target) + '.bc'
+  newargs.append('-o=' + actual_target)
+
+if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
+Popen([call] + newargs).communicate()
+

@@ -6,11 +6,8 @@ emcc - compiler helper script
 
 emcc is a drop-in replacement for a compiler like gcc or clang.
 
-Tell your build system to use this instead of the compiler, linker, ar and
-ranlib. All the normal build commands will be sent to this script, which
-will proxy them to the appropriate build commands. For example, compilation
-will be translated into calls to clang with -emit-llvm, and linking will
-be translated into calls to llvm-link, and so forth.
+Tell your build system to use this instead of the compiler, and similarly
+use emar, emld and emranlib instead of the same command without 'em'.
 
 Example uses:
 
@@ -22,7 +19,7 @@ Example uses:
    emconfiguren.py is a tiny script that just sets some environment vars
    as a convenience. The command just shown is equivalent to
 
-    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emcc AR=PATH/emcc CXX=PATH/em++ CC=PATH/emcc ./configure [options]
+    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emranlib AR=PATH/emar CXX=PATH/em++ CC=PATH/emcc ./configure [options]
 
    where PATH is the path to this file.
 
@@ -35,12 +32,12 @@ Example uses:
 
     SET(CMAKE_C_COMPILER "PATH/emcc")
     SET(CMAKE_CXX_COMPILER "PATH/em++")
-    SET(CMAKE_LINKER "PATH/emcc")
-    SET(CMAKE_CXX_LINKER "PATH/emcc")
-    SET(CMAKE_C_LINK_EXECUTABLE "PATH/emcc")
-    SET(CMAKE_CXX_LINK_EXECUTABLE "PATH/emcc")
-    SET(CMAKE_AR "PATH/emcc")
-    SET(CMAKE_RANLIB "PATH/emcc")
+    SET(CMAKE_LINKER "PATH/emld")
+    SET(CMAKE_CXX_LINKER "PATH/emld")
+    SET(CMAKE_C_LINK_EXECUTABLE "PATH/emld")
+    SET(CMAKE_CXX_LINK_EXECUTABLE "PATH/emld")
+    SET(CMAKE_AR "PATH/emar")
+    SET(CMAKE_RANLIB "PATH/emranlib")
 
  * For SCons the shared.py can be imported like so:
     __file__ = str(Dir('#/project_path_to_emscripten/dummy/dummy'))
@@ -169,9 +166,6 @@ if os.environ.get('EMMAKEN_CXX'):
   CC = CXX
 
 CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS # + ['-g']?
-ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
-                     '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
-TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
 
 EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
 if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
@@ -192,33 +186,15 @@ if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
   sys.exit(0)
 
 use_cxx = True
-use_linker = True
 header = False # pre-compiled headers. We fake that by just copying the file
 
-opts = []
-files = []
 for i in range(1, len(sys.argv)):
   arg = sys.argv[i]
-  if arg.startswith('-'):
-    opts.append(arg)
-  else:
-    files.append(arg)
+  if not arg.startswith('-'):
     if arg.endswith('.c'):
       use_cxx = False
-    if arg.endswith(('.c', '.cc', '.cpp', '.dT')):
-      use_linker = False
     if arg.endswith('.h') and sys.argv[i-1] != '-include':
       header = True
-      use_linker = False
-
-if '--version' in opts:
-  use_linker = False
-
-use_compiler = not use_linker and not header
-
-if set(sys.argv[1]).issubset(set('-cruqs')): # ar
-  sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
-  assert use_linker, 'Linker should be used in this case'
 
 # Check if a target is specified
 target = None
@@ -231,44 +207,7 @@ for i in range(len(sys.argv)-1):
     sys.argv = sys.argv[:i] + sys.argv[i+2:]
     break
 
-if use_linker:
-  # We could use the compiler code for this, but here we want to be careful to use all the linker flags we have been passed, sending them to ld
-  call = shared.LLVM_LD
-  newargs = ['-disable-opt']
-  i = 0
-  while i < len(sys.argv)-1:
-    i += 1
-    arg = sys.argv[i]
-    if arg.startswith('-'):
-      prefix = arg.split('=')[0]
-      if prefix in ALLOWED_LINK_ARGS:
-        newargs.append(arg)
-      if arg in TWO_PART_DISALLOWED_LINK_ARGS:
-        i += 1
-    elif arg.endswith('.so'):
-      continue # .so's do not exist yet, in many cases
-    else:
-      # not option, so just append
-      newargs.append(arg)
-  if target:
-    actual_target = target
-    if target.endswith('.js'):
-      actual_target = unsuffixed(target) + '.bc'
-    newargs.append('-o=' + actual_target)
-
-  if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
-  Popen([call] + newargs).communicate()
-
-  # If we were not asked to generate JavaScript, stop
-  if not target.endswith('.js'):
-    exit(0)
-
-  # Do not pass go, go directly to the compiler
-  sys.argv = [sys.argv[0], actual_target]
-  shutil.move(actual_target + '.bc', actual_target)
-  use_compiler = True
-
-if use_compiler:
+if not header:
   call = CXX if use_cxx else CC
 
   ## Parse args
@@ -436,6 +375,4 @@ else: # header or such
   if DEBUG: print >> sys.stderr, 'Just copy.'
   shutil.copy(sys.argv[-1], sys.argv[-2])
   exit(0)
-
-
 
