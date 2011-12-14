@@ -5001,7 +5001,7 @@ Options that are modified or new in %s include:
       #     use llvm metadata, example: !0 = metadata !{i32 720913, i32 0, i32 4, metadata !"/dev/shm/tmp/src.cpp", metadata !"/dev/shm/tmp", metadata !"clang version 3.0 (tags/RELEASE_30/rc3)", i1 true, i1 false, metadata !"EMSCRIPTEN:O3", i32 0, metadata !1, metadata !1, metadata !3, metadata !1} ; [ DW_TAG_compile_unit ]
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
-      # TODO: use -O3 in benchmarks, which will test that -O3 is optimized for max speed
+      # TODO: wiki docs for using emcc to optimize code
 
       # Finally, do some web browser tests
       def run_browser(html_file, message):
@@ -5102,27 +5102,6 @@ else:
   total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
-    def setUp(self):
-      super(benchmark, self).setUp()
-
-      Settings.RELOOP = Settings.MICRO_OPTS = 1
-      Settings.USE_TYPED_ARRAYS = 1
-      Settings.QUANTUM_SIZE = 1
-      Settings.I64_MODE = 0
-      Settings.DOUBLE_MODE = 0
-      Settings.ASSERTIONS = Settings.SAFE_HEAP = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.INIT_STACK = Settings.PGO = Settings.RUNTIME_TYPE_INFO = 0
-      Settings.INVOKE_RUN = 1
-      Settings.CORRECT_SIGNS = 0
-      Settings.CORRECT_ROUNDINGS = 0
-      Settings.CORRECT_OVERFLOWS_LINES = Settings.CORRECT_SIGNS_LINES = Settings.CORRECT_ROUNDINGS_LINES = Settings.SAFE_HEAP_LINES = []
-      Settings.DISABLE_EXCEPTION_CATCHING = 1
-      if Settings.USE_TYPED_ARRAYS:
-        Settings.TOTAL_MEMORY = 100*1024*1024 # XXX Needed for dlmalloc. TODO: Test other values
-      Settings.FAST_MEMORY = 10*1024*1024
-
-      Building.LLVM_OPTS = 1 if Settings.USE_TYPED_ARRAYS != 2 else 2
-      Building.pick_llvm_opts(2, safe=Building.LLVM_OPTS != 2)
-
     def print_stats(self, times, native_times, last=False):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
@@ -5155,48 +5134,17 @@ else:
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, src, args=[], expected_output='FAIL', main_file=None):
+    def do_benchmark(self, src, args=[], expected_output='FAIL', emcc_args=[]):
       dirname = self.get_dir()
       filename = os.path.join(dirname, 'src.cpp')
-      self.build(src, dirname, filename, main_file=main_file)
+      f = open(filename, 'w')
+      f.write(src)
+      f.close()
+      final_filename = os.path.join(dirname, 'src.js')
 
-      final_filename = filename + '.o.js'
-
-      for post in POST_OPTIMIZATIONS:
-        post_args = []
-        if type(post) == list:
-          post_args = post[1:]
-          post = post[0]
-        if post == 'closure':
-          # Something like this (adjust memory as needed):
-          #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-
-          cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
-                             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                             '--formatting', 'PRETTY_PRINT',
-                             '--variable_map_output_file', final_filename + '.vars',
-                             '--js', final_filename, '--js_output_file', final_filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-          if 'ERROR' in cc_output:
-            raise Exception('Error in cc output: ' + cc_output)
-          final_filename += '.cc.js'
-        elif post == 'eliminator':
-          coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
-          eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
-          input = open(final_filename, 'r').read()
-          output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
-          final_filename += '.el.js'
-          f = open(final_filename, 'w')
-          f.write(output)
-          f.close()
-        elif post == 'js-optimizer':
-          input = open(final_filename, 'r').read()
-          output = Popen([NODE_JS, JS_OPTIMIZER] + post_args, stdin=PIPE, stdout=PIPE).communicate(input)[0]
-          final_filename += '.jo.js'
-          f = open(final_filename, 'w')
-          f.write(output)
-          f.close()
-        else:
-          raise Exception('Unknown post-optimization: ' + post)
+      output = Popen([EMCC, filename, '-O3', '-s', 'USE_TYPED_ARRAYS=1', '-s', 'QUANTUM_SIZE=1',
+                      '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
+                      '-o', final_filename] + emcc_args, stdout=PIPE, stderr=PIPE).communicate()
 
       # Run JS
       global total_times, tests_done
@@ -5283,7 +5231,6 @@ else:
       self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.')
 
     def test_corrections(self):
-      Settings.CORRECT_SIGNS = Settings.CORRECT_OVERFLOWS = Settings.CORRECT_ROUNDINGS = 1
       src = r'''
         #include<stdio.h>
         #include<math.h>
@@ -5304,7 +5251,7 @@ else:
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 826:14324.')
+      self.do_benchmark(src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
     def test_fasta(self):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
@@ -5315,12 +5262,9 @@ else:
       self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000')
 
     def test_dlmalloc(self):
-      Building.COMPILER_TEST_OPTS = ['-g']
-      Settings.CORRECT_SIGNS = 2
-      Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
-
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark(src, ['400', '400'], '*400,0*')
+      self.do_benchmark(src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
+
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
