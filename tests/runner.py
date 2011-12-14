@@ -4899,13 +4899,15 @@ Options that are modified or new in %s include:
   -O0                      No optimizations (default)
 ''' % (shortcompiler, shortcompiler), output[0], output[1])
 
-        # emcc src.cpp ==> writes to a.out.js, much like gcc
+        # emcc src.cpp ==> writes a.out.bc. we do not generate JS unless explicitly told to
         clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
-        #assert len(output[1]) == 0, output[1] # we have some debug warnings there now, FIXME
-        assert os.path.exists('a.out.js'), output[1]
-        self.assertContained('hello, world!', run_js('a.out.js'))
+        assert os.path.exists('hello_world.bc'), output[1]
+        self.assertContained('hello, world!', self.run_llvm_interpreter(['hello_world.bc']))
+        output = Popen([compiler, 'hello_world.bc', '-o', 'out.js'], stdout=PIPE, stderr=PIPE).communicate() # compile .bc to .js
+        assert os.path.exists('out.js'), '\n'.join(output)
+        self.assertContained('hello, world!', run_js('out.js'))
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
@@ -4956,13 +4958,13 @@ Options that are modified or new in %s include:
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
           clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
           assert test(open('a.out.js').read()), text
 
-        # Compiling two source files into a final JS.
+        '''# Compiling two source files into a final JS.
         for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
           clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
@@ -4971,10 +4973,25 @@ Options that are modified or new in %s include:
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
 
-        # Compiling two files with -c will generate separate .bc files
-        #assert os.path.exists('twopart_main.bc'), '\n'.join(output)
-        #assert os.path.exists('twopart_side.bc'), '\n'.join(output)
-        #output = Popen([compiler, 'twopart_main.bc', 'twopart_side.bc', '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate() # combine them
+          # Compiling two files with -c will generate separate .bc files
+          clear()
+          output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'],
+                         stdout=PIPE, stderr=PIPE).communicate()
+          assert os.path.exists('twopart_main.bc'), '\n'.join(output)
+          assert os.path.exists('twopart_side.bc'), '\n'.join(output)
+          assert not os.path.exists(target), 'We should only have created bitcode here: ' + '\n'.join(output)
+
+          # Compiling one of them alone is expected to fail
+          output = Popen([compiler, 'twopart_main.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          assert os.path.exists(target), '\n'.join(output)
+          #print '\n'.join(output)
+          self.assertContained('theFunc is undefined', run_js(target))
+
+          # Combining those bc files into js should work
+          output = Popen([compiler, 'twopart_main.bc', 'twopart_side.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          assert os.path.exists(target), '\n'.join(output)
+          self.assertContained('side got: hello from main, over', run_js(target))'''
+
 
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
       #   emcc a.cpp b.cpp => one .js

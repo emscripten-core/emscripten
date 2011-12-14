@@ -135,10 +135,16 @@ Options that are modified or new in %s include:
 The target file, if specified (-o <target>), defines what will
 be generated:
 
-  <name>.js                JavaScript (default)
-  <name>.o                 LLVM bitcode
-  <name>.bc                LLVM bitcode
+  <name>.js                JavaScript
   <name>.html              HTML with embedded JavaScript
+  <name>.bc                LLVM bitcode (default)
+  <name>.o                 LLVM bitcode
+
+If -o <target> is *not* specified, the default is to generate
+bitcode. In other words, to generate JavaScript or HTML, you must
+specify so explicitly. The reason for this is that otherwise
+many build systems would create a lot of JavaScript in
+intermediary stages in a wasteful and inefficient manner.
 
 The -c option (which tells gcc not to run the linker) will
 also cause LLVM bitcode to be generated, as %s only generates
@@ -175,7 +181,15 @@ TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
 EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
 if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 
-# ----------------  End configs -------------
+# ---------------- Utilities ---------------
+
+def unsuffixed(name):
+  return '.'.join(name.split('.')[:-1])
+
+def unsuffixed_basename(name):
+  return os.path.basename(unsuffixed(name))
+
+# ---------------- End configs -------------
 
 if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
   # noop ar
@@ -214,13 +228,17 @@ if set(sys.argv[1]).issubset(set('-cruqs')): # ar
 # Check if a target is specified
 target = None
 for i in range(len(sys.argv)-1):
+  if sys.argv[i].startswith('-o='):
+    raise Exception('Invalid syntax: do not use -o=X, use -o X')
+
   if sys.argv[i] == '-o':
     target = sys.argv[i+1]
     sys.argv = sys.argv[:i] + sys.argv[i+2:]
     break
 
 if use_linker:
-  call = LLVM_LD
+  # We could use the compiler code for this, but here we want to be careful to use all the linker flags we have been passed, sending them to ld
+  call = shared.LLVM_LD
   newargs = ['-disable-opt']
   i = 0
   while i < len(sys.argv)-1:
@@ -238,13 +256,24 @@ if use_linker:
       # not option, so just append
       newargs.append(arg)
   if target:
-    newargs.append('-o=' + target)
+    actual_target = target
+    if target.endswith('.js'):
+      actual_target = unsuffixed(target) + '.bc'
+    newargs.append('-o=' + actual_target)
 
   if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
   Popen([call] + newargs).communicate()
-  exit(0)
 
-elif use_compiler:
+  # If we were not asked to generate JavaScript, stop
+  if not target.endswith('.js'):
+    exit(0)
+
+  # Do not pass go, go directly to the compiler
+  sys.argv = [sys.argv[0], actual_target]
+  shutil.move(actual_target + '.bc', actual_target)
+  use_compiler = True
+
+if use_compiler:
   call = CXX if use_cxx else CC
 
   ## Parse args
@@ -284,22 +313,21 @@ elif use_compiler:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
-  def unsuffixed_basename(name):
-    return os.path.basename('.'.join(name.split('.')[:-1]))
-
   input_files = []
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(('.c', '.cpp', '.cxx')):
-      input_files.append(unsuffixed_basename(arg))
+    if arg.endswith(('.c', '.cpp', '.cxx', '.bc', '.o')): # we already removed -o <target>, so all these should be inputs
+      input_files.append(arg)
+      newargs[i] = ''
+  newargs = [ arg for arg in newargs if arg is not '' ]
 
   assert len(input_files) > 0, 'emcc: no input files specified'
 
   newargs += CC_ADDITIONAL_ARGS
 
   specified_target = target
-  target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
+  target = specified_target if specified_target is not None else 'a.out.bc' # specified_target is the user-specified one, target is what we will generate
 
   target_basename = unsuffixed_basename(target)
 
@@ -323,28 +351,32 @@ elif use_compiler:
     shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
-  ## Compile
+  ## Compile source code to bitcode
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   newargs = newargs + ['-emit-llvm', '-c']
 
-  if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
-  Popen([call] + newargs).communicate()
+  for input_file in input_files:
+    if input_file.endswith(('.c', '.cpp', '.cxx')):
+      if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
+      Popen([call] + newargs + [input_file]).communicate()
+    else:
+      shutil.copyfile(input_file, unsuffixed_basename(input_file) + '.o')
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
     for input_file in input_files:
-      shared.Building.llvm_opt(input_file + '.o', 2, safe=llvm_opt_level < 2)
+      shared.Building.llvm_opt(unsuffixed_basename(input_file) + '.o', 2, safe=llvm_opt_level < 2)
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix in ['o', 'bc']:
     if final_suffix == 'bc':
       for input_file in input_files:
-        shutil.move(input_file + '.o', input_file + '.bc')
+        shutil.move(unsuffixed_basename(input_file) + '.o', unsuffixed_basename(input_file) + '.bc')
 
     if specified_target:
       assert len(input_files) == 1, 'If a target is specified, and we are compiling to bitcode, there should be exactly one input file (c.f. gcc for why)'
-      shutil.move(input_files[0] + '.' + final_suffix, unsuffixed_basename(specified_target) + '.' + final_suffix)
+      shutil.move(unsuffixed_basename(input_files[0]) + '.' + final_suffix, unsuffixed_basename(specified_target) + '.' + final_suffix)
 
     exit(0)
 
@@ -352,9 +384,9 @@ elif use_compiler:
 
   # First, combine the bitcode files if there are several
   if len(input_files) > 1:
-    shared.Building.link(map(lambda input_file: input_file + '.o', input_files), target_basename + '.bc')
+    shared.Building.link(map(lambda input_file: unsuffixed_basename(input_file) + '.o', input_files), target_basename + '.bc')
   else:
-    shutil.move(input_files[0] + '.o', target_basename + '.bc')
+    shutil.move(unsuffixed_basename(input_files[0]) + '.o', target_basename + '.bc')
 
   # Apply -s settings in newargs here (after -Ox, so they can override it)
 
