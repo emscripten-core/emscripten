@@ -4962,16 +4962,19 @@ Options that are modified or new in %s include:
           self.assertContained('hello, world!', run_js('a.out.js'))
           assert test(open('a.out.js').read()), text
 
-        ## Compiling two source files TODO: with -o
-        #clear()
-        #output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')],
-        #               stdout=PIPE, stderr=PIPE).communicate()
-        #assert len(output[0]) == 0, output[0]
-        #assert os.path.exists('a.out.js'), '\n'.join(output)
-        #self.assertContained('side got: hello from main, over', run_js('a.out.js'))
-        ##assert os.path.exists('twopart_main.bc'), '\n'.join(output)
-        ##assert os.path.exists('twopart_side.bc'), '\n'.join(output)
-        ##output = Popen([compiler, 'twopart_main.bc', 'twopart_side.bc', '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate() # combine them
+        # Compiling two source files into a final JS.
+        for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
+          clear()
+          output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
+                         stdout=PIPE, stderr=PIPE).communicate()
+          assert len(output[0]) == 0, output[0]
+          assert os.path.exists(target), '\n'.join(output)
+          self.assertContained('side got: hello from main, over', run_js(target))
+
+        # Compiling two files with -c will generate separate .bc files
+        #assert os.path.exists('twopart_main.bc'), '\n'.join(output)
+        #assert os.path.exists('twopart_side.bc'), '\n'.join(output)
+        #output = Popen([compiler, 'twopart_main.bc', 'twopart_side.bc', '-o', 'something.js'], stdout=PIPE, stderr=PIPE).communicate() # combine them
 
       # linking - TODO. in particular, test normal project linking, static and dynamic: get_library should not need to be told what to link!
       #   emcc a.cpp b.cpp => one .js

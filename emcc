@@ -300,7 +300,6 @@ elif use_compiler:
 
   specified_target = target
   target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
-  if specified_target: assert len(input_files) == 1, 'If a target is specified, there should be exactly one input file'
 
   target_basename = unsuffixed_basename(target)
 
@@ -344,6 +343,7 @@ elif use_compiler:
         shutil.move(input_file + '.o', input_file + '.bc')
 
     if specified_target:
+      assert len(input_files) == 1, 'If a target is specified, and we are compiling to bitcode, there should be exactly one input file (c.f. gcc for why)'
       shutil.move(input_files[0] + '.' + final_suffix, unsuffixed_basename(specified_target) + '.' + final_suffix)
 
     exit(0)
