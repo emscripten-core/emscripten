@@ -4917,19 +4917,26 @@ Options that are modified or new in %s include:
 
         # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
         for params, opt_level, bc_params in [ # bc params are used after compiling to bitcode
-          (['-o', 'something.js'], 0, None),
+          (['-o', 'something.js'],        0, None),
           (['-o', 'something.js', '-O0'], 0, None),
           (['-o', 'something.js', '-O1'], 1, None),
           (['-o', 'something.js', '-O2'], 2, None),
           (['-o', 'something.js', '-O3'], 3, None),
+          # and, test compiling to bitcode first
+          (['-o', 'something.bc'], 0, []),
+          (['-o', 'something.bc'], 0, ['-O0']),
+          (['-o', 'something.bc'], 1, ['-O1']),
+          (['-o', 'something.bc'], 2, ['-O2']),
+          (['-o', 'something.bc'], 3, ['-O3']),
         ]:
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
-          if bc_params:
-            output = Popen([compiler, 'something.bc'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
-          assert os.path.exists('something.js'), '\n'.join(output)
+          if bc_params is not None:
+            assert os.path.exists('something.bc'), output[1]
+            output = Popen([compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
+          assert os.path.exists('something.js'), output[1]
           assert ('Warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
