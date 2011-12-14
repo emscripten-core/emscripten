@@ -136,19 +136,13 @@ Options that are modified or new in %s include:
 The target file, if specified (-o <target>), defines what will
 be generated:
 
-  <name>.js                JavaScript
+  <name>.js                JavaScript (default)
   <name>.html              HTML with embedded JavaScript
-  <name>.bc                LLVM bitcode (default)
+  <name>.bc                LLVM bitcode
   <name>.o                 LLVM bitcode
 
-If -o <target> is *not* specified, the default is to generate
-bitcode. In other words, to generate JavaScript or HTML, you must
-specify so explicitly. The reason for this is that otherwise
-many build systems would create a lot of JavaScript in
-intermediary stages in a wasteful and inefficient manner.
-
 The -c option (which tells gcc not to run the linker) will
-also cause LLVM bitcode to be generated, as %s only generates
+cause LLVM bitcode to be generated, as %s only generates
 JavaScript in the final linking stage of building.
 
 ''' % (this, this, this)
@@ -328,7 +322,7 @@ if use_compiler:
   newargs += CC_ADDITIONAL_ARGS
 
   specified_target = target
-  target = specified_target if specified_target is not None else 'a.out.bc' # specified_target is the user-specified one, target is what we will generate
+  target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
 
   target_basename = unsuffixed_basename(target)
 

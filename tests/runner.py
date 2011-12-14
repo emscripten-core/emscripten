@@ -4899,15 +4899,12 @@ Options that are modified or new in %s include:
   -O0                      No optimizations (default)
 ''' % (shortcompiler, shortcompiler), output[0], output[1])
 
-        # emcc src.cpp ==> writes a.out.bc. we do not generate JS unless explicitly told to
+        # emcc src.cpp ==> writes a.out.js
         clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
-        assert os.path.exists('hello_world.bc'), output[1]
-        self.assertContained('hello, world!', self.run_llvm_interpreter(['hello_world.bc']))
-        output = Popen([compiler, 'hello_world.bc', '-o', 'out.js'], stdout=PIPE, stderr=PIPE).communicate() # compile .bc to .js
-        assert os.path.exists('out.js'), '\n'.join(output)
-        self.assertContained('hello, world!', run_js('out.js'))
+        assert os.path.exists('a.out.js'), '\n'.join(output)
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
