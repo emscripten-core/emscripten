@@ -5027,9 +5027,12 @@ Options that are modified or new in %s include:
           self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
 
       # TODO: compile .ll inputs to emcc into .bc
+      # TODO: dlmalloc in emcc (just pass the arg to emscripten.py)
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
+      # TODO: emscripten tutorial with emcc
+      # TODO: deprecate llvm optimizations etc. in emscripten.py.
 
       # Finally, do some web browser tests
       def run_browser(html_file, message):
