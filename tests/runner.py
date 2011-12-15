@@ -4872,7 +4872,8 @@ TT = %s
   class other(RunnerCore):
     def test_reminder(self):
       raise Exception('''Fix emmaken.py and emconfiguren.py, they should work but mention they are deprecated
-                         Test emconfigure.''')
+                         Test emconfigure
+                         configure in test_zlib looks broken''')
 
     def test_emcc(self):
       def clear():
@@ -4912,7 +4913,7 @@ Options that are modified or new in %s include:
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
-          target = args[1] if len(args) == 2 else 'hello_world.bc'
+          target = args[1] if len(args) == 2 else 'hello_world.o'
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
@@ -4998,19 +4999,19 @@ Options that are modified or new in %s include:
             assert 'fatal error' in output[1], output[1]
             continue
 
-          assert os.path.exists('twopart_main.bc'), '\n'.join(output)
-          assert os.path.exists('twopart_side.bc'), '\n'.join(output)
+          assert os.path.exists('twopart_main.o'), '\n'.join(output)
+          assert os.path.exists('twopart_side.o'), '\n'.join(output)
           assert not os.path.exists(target), 'We should only have created bitcode here: ' + '\n'.join(output)
 
           # Compiling one of them alone is expected to fail
-          output = Popen([compiler, 'twopart_main.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           #print '\n'.join(output)
           self.assertContained('is not a function', run_js(target, stderr=STDOUT))
           try_delete(target)
 
           # Combining those bc files into js should work
-          output = Popen([compiler, 'twopart_main.bc', 'twopart_side.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
 

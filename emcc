@@ -82,7 +82,6 @@ SAVE_FILES = os.environ.get('EMCC_SAVE_FILES') # saves some of the intermediate 
 
 ################### XXX
 print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
-print >> sys.stderr, '***[%s]***\n' % str(sys.argv)
 ################### XXX
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
@@ -150,7 +149,7 @@ CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
-  cmd = [compiler] + EMSDK_OPTS + sys.argv[1:]
+  cmd = [compiler] + shared.EMSDK_OPTS + sys.argv[1:]
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', cmd
   exit(os.execvp(compiler, cmd))
 
@@ -266,7 +265,7 @@ if not header:
   target_basename = unsuffixed_basename(target)
 
   if '-c' in newargs: # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
-    target = target_basename + '.bc'
+    target = target_basename + '.o'
 
   final_suffix = target.split('.')[-1]
 
@@ -295,22 +294,29 @@ if not header:
       if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
       Popen([call] + newargs + [input_file]).communicate()
     else:
-      shutil.copyfile(input_file, unsuffixed_basename(input_file) + '.o')
+      if input_file != unsuffixed_basename(input_file) + '.o':
+        shutil.copyfile(input_file, unsuffixed_basename(input_file) + '.o')
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
     for input_file in input_files:
       shared.Building.llvm_opt(unsuffixed_basename(input_file) + '.o', 2, safe=llvm_opt_level < 2)
 
+  def careful_move(source, dest): # move a file, but just copy if it was a original input file
+    if source not in input_files:
+      shutil.move(source, dest)
+    else:
+      shutil.copyfile(source, dest)
+
   # If we were just asked to generate bitcode, stop there
   if final_suffix in ['o', 'bc']:
     if final_suffix == 'bc':
       for input_file in input_files:
-        shutil.move(unsuffixed_basename(input_file) + '.o', unsuffixed_basename(input_file) + '.bc')
+        careful_move(unsuffixed_basename(input_file) + '.o', unsuffixed_basename(input_file) + '.bc')
 
     if specified_target:
       assert len(input_files) == 1, 'fatal error: cannot specify -o with -c with multiple files'
-      shutil.move(unsuffixed_basename(input_files[0]) + '.' + final_suffix, unsuffixed_basename(specified_target) + '.' + final_suffix)
+      careful_move(unsuffixed_basename(input_files[0]) + '.' + final_suffix, unsuffixed_basename(specified_target) + '.' + final_suffix)
 
     exit(0)
 
@@ -320,7 +326,7 @@ if not header:
   if len(input_files) > 1:
     shared.Building.link(map(lambda input_file: unsuffixed_basename(input_file) + '.o', input_files), target_basename + '.bc')
   else:
-    shutil.move(unsuffixed_basename(input_files[0]) + '.o', target_basename + '.bc')
+    careful_move(unsuffixed_basename(input_files[0]) + '.o', target_basename + '.bc')
 
   # Apply -s settings in newargs here (after -Ox, so they can override it)
 

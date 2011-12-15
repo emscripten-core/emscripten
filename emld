@@ -1,19 +1,37 @@
 #!/usr/bin/env python
 
 '''
-emcc - linker helper script
+emld - linker helper script
 ===========================
 
 This script acts as a frontend replacement for the ld linker. See emcc.
+
+We could use the compiler code for this, but here we want to be careful to use all the linker flags we have been passed, sending them to ld.
 '''
+
+import os, sys
+from tools import shared
+
+DEBUG = os.environ.get('EMCC_DEBUG')
+
+if DEBUG:
+  print >> sys.stderr, 'emld:', sys.argv
 
 ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
                      '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
 TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
 
-#
+# Check for specified target
+target = None
+for i in range(len(sys.argv)-1):
+  if sys.argv[i].startswith('-o='):
+    raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
-# We could use the compiler code for this, but here we want to be careful to use all the linker flags we have been passed, sending them to ld
+  if sys.argv[i] == '-o':
+    target = sys.argv[i+1]
+    sys.argv = sys.argv[:i] + sys.argv[i+2:]
+    break
+
 call = shared.LLVM_LD
 newargs = ['-disable-opt']
 i = 0
@@ -37,6 +55,6 @@ if target:
     actual_target = unsuffixed(target) + '.bc'
   newargs.append('-o=' + actual_target)
 
-if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
-Popen([call] + newargs).communicate()
+if DEBUG: print >> sys.stderr, "emld running:", call, ' '.join(newargs)
+os.execvp(call, [call] + newargs)
 
