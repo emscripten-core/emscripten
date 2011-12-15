@@ -4921,19 +4921,23 @@ Options that are modified or new in %s include:
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
         # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
-        for params, opt_level, bc_params in [ # bc params are used after compiling to bitcode
-          (['-o', 'something.js'],        0, None),
-          (['-o', 'something.js', '-O0'], 0, None),
-          (['-o', 'something.js', '-O1'], 1, None),
-          (['-o', 'something.js', '-O2'], 2, None),
-          (['-o', 'something.js', '-O3'], 3, None),
+        for params, opt_level, bc_params, closure in [ # bc params are used after compiling to bitcode
+          (['-o', 'something.js'],                          0, None, 0),
+          (['-o', 'something.js', '-O0'],                   0, None, 0),
+          (['-o', 'something.js', '-O1'],                   1, None, 0),
+          (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1),
+          (['-o', 'something.js', '-O2'],                   2, None, 1),
+          (['-o', 'something.js', '-O2', '--closure', '0'], 2, None, 0),
+          (['-o', 'something.js', '-O3'],                   3, None, 1),
+          (['-o', 'something.js', '-O3', '--closure', '0'], 3, None, 0),
           # and, test compiling to bitcode first
-          (['-o', 'something.bc'], 0, []),
-          (['-o', 'something.bc'], 0, ['-O0']),
-          (['-o', 'something.bc'], 1, ['-O1']),
-          (['-o', 'something.bc'], 2, ['-O2']),
-          (['-o', 'something.bc'], 3, ['-O3']),
+          (['-o', 'something.bc'], 0, [],      0),
+          (['-o', 'something.bc'], 0, ['-O0'], 0),
+          (['-o', 'something.bc'], 1, ['-O1'], 0),
+          (['-o', 'something.bc'], 2, ['-O2'], 1),
+          (['-o', 'something.bc'], 3, ['-O3'], 1),
         ]:
+          #print params, opt_level, bc_params, closure
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
@@ -4949,16 +4953,16 @@ Options that are modified or new in %s include:
           # Verify optimization level etc. in the generated code
           # XXX these are quite sensitive, and will need updating when code generation changes
           generated = open('something.js').read() # TODO: parse out the _main function itself, not support code, if the tests below need that some day
-          assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
-          assert ('assert(STACKTOP < STACK_MAX)' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
           assert ('|0)/2)|0)' in generated or '| 0) / 2 | 0)' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
           assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
-          if opt_level >= 3:
+          if closure:
             assert 'Module._main = ' in generated, 'closure compiler should have been run'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
+            assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+            assert ('assert(STACKTOP < STACK_MAX)' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert 'var $i;' in generated, 'micro opts should always be on'
             if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'

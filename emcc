@@ -112,7 +112,8 @@ Options that are modified or new in %s include:
   -O0                      No optimizations (default)
   -O1                      Simple optimizations, including safe LLVM
                            optimizations, and no runtime assertions
-  -O2                      As -O1, plus code flow optimization (relooper)
+  -O2                      As -O1, plus the relooper (loop recreation),
+                           plus closure compiler
                            Warning: Compiling with this takes a long time!
   -O3                      As -O2, plus dangerous optimizations that may
                            break the generated code! If that happens, try
@@ -129,6 +130,8 @@ Options that are modified or new in %s include:
                            2: Full, unsafe/unportable LLVM optimizations;
                               this will almost certainly break the
                               generated code!
+  --closure <on>           0: No closure compiler (default in -O0, -O1)
+                           1: Run closure compiler (default in -O2, -O3)
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -226,7 +229,11 @@ try:
   newargs = sys.argv[1:]
 
   opt_level = 0
-  llvm_opt_level = 0
+  llvm_opt_level = None
+  closure = None
+
+  def check_bad_eq(arg):
+    assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
 
   for i in range(len(newargs)):
     if newargs[i].startswith('-O'):
@@ -235,16 +242,22 @@ try:
         assert 0 <= opt_level <= 3
       except:
         raise Exception('Invalid optimization level: ' + newargs[i])
-      if opt_level >= 1:
-        llvm_opt_level = 1
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
-      assert '=' not in newargs[i], 'Invalid llvm opts parameter (do not use "=")'
+      check_bad_eq(newargs[i])
       llvm_opt_level = eval(newargs[i+1])
       assert 0 <= llvm_opt_level <= 1, 'Only two levels of LLVM optimizations are supported so far, 0 (none) and 1 (safe)'
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i].startswith('--closure'):
+      check_bad_eq(newargs[i])
+      closure = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
+
+  if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
+  if closure is None: closure = 1 if opt_level >= 2 else 0
 
   settings_changes = []
   for i in range(len(newargs)):
@@ -292,7 +305,6 @@ try:
     shared.Settings.ASSERTIONS = 0
   if opt_level >= 2:
     shared.Settings.RELOOP = 1
-    print >> sys.stderr, 'Warning: The relooper optimization can be very slow.'
   if opt_level >= 3:
     shared.Settings.CORRECT_SIGNS = 0
     shared.Settings.CORRECT_OVERFLOWS = 0
@@ -355,6 +367,9 @@ try:
     key, value = change.split('=')
     exec('shared.Settings.' + key + ' = ' + value)
 
+  if opt_level >= 2:
+    print >> sys.stderr, 'Warning: The relooper optimization can be very slow.'
+
   final = shared.Building.emscripten(in_temp(target_basename + '.bc'), append_ext=False)
 
   if opt_level >= 1:
@@ -365,8 +380,7 @@ try:
     # eliminator
     final = shared.Building.eliminator(final)
 
-  if opt_level >= 3:
-    # closure
+  if closure:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
 
