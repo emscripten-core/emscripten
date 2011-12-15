@@ -180,9 +180,10 @@ if (FAKE_X86_FP80) {
 var lines = raw.split('\n');
 raw = null;
 
-// Parse metadata
+// Pre-process the LLVM assembly
 
 Debugging.handleMetadata(lines);
+PreProcessor.eliminateUnneededIntrinsics(lines);
 
 // Do it
 

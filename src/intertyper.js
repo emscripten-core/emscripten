@@ -520,7 +520,7 @@ function intertyper(data, sidePass, baseLineNums) {
             });
           }
         } else {
-          if (!item.tokens[3]) throw 'Did you run llvm-dis with -show-annotations? (b)';
+          if (!item.tokens[3]) throw 'Did you run llvm-dis with -show-annotations? (b)'; // XXX: do we still need annotations?
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
           if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
@@ -572,13 +572,11 @@ function intertyper(data, sidePass, baseLineNums) {
   substrate.addActor('Assign', {
     processItem: function(item) {
       var opIndex = findTokenText(item, '=');
-      if (!item.tokens.slice(-1)[0].item) throw 'Did you run llvm-dis with -show-annotations?';
       var commentIndex = getTokenIndexByText(item.tokens, ';');
       var pair = splitItem({
         intertype: 'assign',
         ident: toNiceIdent(combineTokens(item.tokens.slice(0, opIndex)).text),
         lineNum: item.lineNum,
-        uses: parseInt(item.tokens[commentIndex+1].item.tokens[0].text.split('=')[1])
       }, 'value');
       this.forwardItem(pair.parent, 'Reintegrator');
       pair.child.indent = -1;
@@ -972,7 +970,7 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       var ret = {
         intertype: 'indirectbr',
-        pointer: parseLLVMSegment(splitTokenList(item.tokens.slice(1))[0]),
+        value: parseLLVMSegment(splitTokenList(item.tokens.slice(1))[0]),
         type: item.tokens[1].text,
         lineNum: item.lineNum
       };

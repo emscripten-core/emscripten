@@ -410,7 +410,7 @@ function parseLLVMSegment(segment) {
     Types.needAnalysis[type] = 0;
     return {
       intertype: 'structvalue',
-      values: splitTokenList(segment[1].tokens).map(parseLLVMSegment),
+      params: splitTokenList(segment[1].tokens).map(parseLLVMSegment),
       type: type
     };
   } else if (segment[0].text in PARSABLE_LLVM_FUNCTIONS) {
@@ -1458,7 +1458,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     }
     ret = parseNumerical(ret);
   } else if (param.intertype == 'structvalue') {
-    ret = makeLLVMStruct(param.values.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) }));
+    ret = makeLLVMStruct(param.params.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) }));
   } else if (param.intertype === 'blockaddress') {
     return finalizeBlockAddress(param);
   } else if (param.intertype === 'type') {
@@ -1793,7 +1793,7 @@ function processMathop(item) {
 
 // Walks through some intertype data, calling a function at every item. If
 // the function returns true, will stop the walk.
-// TODO: Use this in analyzer, possibly also in jsifier
+// TODO: Use this more in analyzer, possibly also in jsifier
 function walkInterdata(item, pre, post, obj) {
   if (!item || !item.intertype) return false;
   if (pre && pre(item, obj)) return true;

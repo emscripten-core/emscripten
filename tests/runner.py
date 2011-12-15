@@ -3895,7 +3895,7 @@ at function.:blag
 
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
-        #if 'break' not in shortname: continue
+        if '' not in shortname: continue
         print "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
         if Settings.QUANTUM_SIZE == 1:
@@ -3908,6 +3908,11 @@ at function.:blag
           output = 'hello, world!'
         if output.rstrip() != 'skip':
           self.do_ll_run(path_from_root('tests', 'cases', name), output)
+        # Optional source checking, a python script that gets a global generated with the source
+        src_checker = path_from_root('tests', 'cases', shortname + '.py')
+        if os.path.exists(src_checker):
+          generated = open('src.cpp.o.js').read()
+          exec(open(src_checker).read())
 
     # Autodebug the code
     def do_autodebug(self, filename):
