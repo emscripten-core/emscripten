@@ -4870,6 +4870,10 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
+    def test_reminder(self):
+      raise Exception('''Fix emmaken.py and emconfiguren.py, they should work but mention they are deprecated
+                         Test emconfigure.''')
+
     def test_emcc(self):
       def clear():
         for name in os.listdir(self.get_dir()):

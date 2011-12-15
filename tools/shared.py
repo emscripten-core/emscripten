@@ -28,6 +28,10 @@ DEMANGLER = path_from_root('third_party', 'demangler.py')
 NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMCC = path_from_root('emcc')
 EMXX = path_from_root('em++')
+EMAR = path_from_root('emar')
+EMLD = path_from_root('emld')
+EMRANLIB = path_from_root('emranlib')
+EMLIBTOOL = path_from_root('emlibtool')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 DFE = path_from_root('tools', 'dead_function_eliminator.py')
@@ -217,7 +221,11 @@ class Building:
   @staticmethod
   def get_building_env():
     env = os.environ.copy()
-    env['RANLIB'] = env['AR'] = env['CXX'] = env['CC'] = env['LIBTOOL'] = EMMAKEN
+    env['CC'] = EMCC
+    env['CXX'] = EMXX
+    env['AR'] = EMAR
+    env['RANLIB'] = EMRANLIB
+    env['LIBTOOL'] = EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
