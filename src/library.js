@@ -2214,7 +2214,7 @@ LibraryManager.library = {
   _formatString: function(format, varargs) {
     var textIndex = format;
     var argIndex = 0;
-    var getNextArg = function(type) {
+    function getNextArg(type) {
       // NOTE: Explicitly ignoring type safety. Otherwise this fails:
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
@@ -2231,7 +2231,7 @@ LibraryManager.library = {
       }
       argIndex += Runtime.getNativeFieldSize(type);
       return Number(ret);
-    };
+    }
 
     var ret = [];
     var curr, next, currArg;
