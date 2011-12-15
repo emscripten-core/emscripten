@@ -73,7 +73,7 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
-import os, sys, shutil
+import os, sys, shutil, tempfile
 from subprocess import Popen, PIPE, STDOUT
 from tools import shared
 
@@ -206,7 +206,16 @@ for i in range(len(sys.argv)-1):
     sys.argv = sys.argv[:i] + sys.argv[i+2:]
     break
 
-if not header:
+if header: # header or such
+  if DEBUG: print >> sys.stderr, 'Just copy.'
+  shutil.copy(sys.argv[-1], sys.argv[-2])
+  exit(0)
+
+temp_dir = tempfile.mkdtemp()
+def in_temp(name):
+  return os.path.join(temp_dir, name)
+
+try:
   call = CXX if use_cxx else CC
 
   ## Parse args
@@ -291,32 +300,25 @@ if not header:
 
   for input_file in input_files:
     if input_file.endswith(('.c', '.cpp', '.cxx')):
-      if DEBUG: print >> sys.stderr, "Running:", call, ' '.join(newargs)
-      Popen([call] + newargs + [input_file]).communicate()
+      args = newargs + [input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
+      if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
+      Popen([call] + args).communicate()
     else:
-      if input_file != unsuffixed_basename(input_file) + '.o':
-        shutil.copyfile(input_file, unsuffixed_basename(input_file) + '.o')
+      shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
     for input_file in input_files:
-      shared.Building.llvm_opt(unsuffixed_basename(input_file) + '.o', 2, safe=llvm_opt_level < 2)
-
-  def careful_move(source, dest): # move a file, but just copy if it was a original input file
-    if source not in input_files:
-      shutil.move(source, dest)
-    else:
-      shutil.copyfile(source, dest)
+      shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), 2, safe=llvm_opt_level < 2)
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix in ['o', 'bc']:
-    if final_suffix == 'bc':
+    if not specified_target:
       for input_file in input_files:
-        careful_move(unsuffixed_basename(input_file) + '.o', unsuffixed_basename(input_file) + '.bc')
-
-    if specified_target:
+        shutil.move(in_temp(unsuffixed_basename(input_file) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
+    else:
       assert len(input_files) == 1, 'fatal error: cannot specify -o with -c with multiple files'
-      careful_move(unsuffixed_basename(input_files[0]) + '.' + final_suffix, unsuffixed_basename(specified_target) + '.' + final_suffix)
+      shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), specified_target)
 
     exit(0)
 
@@ -324,9 +326,9 @@ if not header:
 
   # First, combine the bitcode files if there are several
   if len(input_files) > 1:
-    shared.Building.link(map(lambda input_file: unsuffixed_basename(input_file) + '.o', input_files), target_basename + '.bc')
+    shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files), in_temp(target_basename + '.bc'))
   else:
-    careful_move(unsuffixed_basename(input_files[0]) + '.o', target_basename + '.bc')
+    shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
 
   # Apply -s settings in newargs here (after -Ox, so they can override it)
 
@@ -334,51 +336,39 @@ if not header:
     key, value = change.split('=')
     exec('shared.Settings.' + key + ' = ' + value)
 
-  temp_files = shared.TempFiles()
-  temp_files.note(target_basename + '.bc')
-  try:
-    shared.Building.emscripten(target_basename + '.bc', append_ext=False)
-    shutil.move(target_basename + '.bc.o.js', target_basename + '.js')
-    if SAVE_FILES: shutil.copyfile(target_basename + '.js', 'save_' + target_basename + '.js')
+  final = shared.Building.emscripten(in_temp(target_basename + '.bc'), append_ext=False)
 
-    if opt_level >= 1:
-      # js optimizer
-      shared.Building.js_optimizer(target_basename + '.js', 'loopOptimizer')
-      shutil.move(target_basename + '.js.jo.js', target_basename + '.js')
-      if SAVE_FILES: shutil.copyfile(target_basename + '.js', 'save_' + target_basename + '.jo.js')
+  if opt_level >= 1:
+    # js optimizer
+    final = shared.Building.js_optimizer(final, 'loopOptimizer')
 
-      # eliminator
-      shared.Building.eliminator(target_basename + '.js')
-      shutil.move(target_basename + '.js.el.js', target_basename + '.js')
-      if SAVE_FILES: shutil.copyfile(target_basename + '.js', 'save_' + target_basename + '.jo.el.js')
+    # eliminator
+    final = shared.Building.eliminator(final)
 
-    if opt_level >= 3:
-      # closure
-      shared.Building.closure_compiler(target_basename + '.js')
-      shutil.move(target_basename + '.js.cc.js', target_basename + '.js')
-      if SAVE_FILES: shutil.copyfile(target_basename + '.js', 'save_' + target_basename + '.jo.el.cc.js')
+  if opt_level >= 3:
+    # closure
+    final = shared.Building.closure_compiler(final)
 
-    if opt_level >= 1:
-      # js optimizer
-      shared.Building.js_optimizer(target_basename + '.js', 'simplifyExpressions')
-      shutil.move(target_basename + '.js.jo.js', target_basename + '.js')
-      if SAVE_FILES: shutil.copyfile(target_basename + '.js', 'save_' + target_basename + '.jo.el.cc.jo.js')
+  if opt_level >= 1:
+    # js optimizer
+    final = shared.Building.js_optimizer(final, 'simplifyExpressions')
 
-    # If we were asked to also generate HTML, do that
-    if final_suffix == 'html':
-      shell = open(shared.path_from_root('src', 'shell.html')).read()
-      html = open(target_basename + '.html', 'w')
-      html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(target_basename + '.js').read()))
-      html.close()
-      temp_files.note(target_basename + '.js')
+  # If we were asked to also generate HTML, do that
+  if final_suffix == 'html':
+    shell = open(shared.path_from_root('src', 'shell.html')).read()
+    html = open(target_basename + '.html', 'w')
+    html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
+    html.close()
+  else:
+    # copy final JS to output
+    shutil.move(final, target_basename + '.js')
 
-  finally:
-    temp_files.clean()
-
-  exit(0)
-
-else: # header or such
-  if DEBUG: print >> sys.stderr, 'Just copy.'
-  shutil.copy(sys.argv[-1], sys.argv[-2])
-  exit(0)
+finally:
+  if not SAVE_FILES:
+    try:
+      shutil.rmtree(temp_dir)
+    except:
+      pass
+  else:
+    print >> sys.stderr, 'emcc saved files are in:', temp_dir
 

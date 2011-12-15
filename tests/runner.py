@@ -4917,7 +4917,7 @@ Options that are modified or new in %s include:
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
-          assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), output)
+          assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), '\n'.join(output))
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
         # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting

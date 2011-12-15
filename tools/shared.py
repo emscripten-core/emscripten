@@ -377,6 +377,8 @@ class Building:
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
+    return filename + '.o.js'
+
   @staticmethod
   def pick_llvm_opts(optimization_level, safe=True):
     '''
@@ -480,6 +482,7 @@ class Building:
     f = open(filename, 'w')
     f.write(output)
     f.close()
+    return filename
 
   @staticmethod
   def eliminator(filename):
@@ -494,6 +497,7 @@ class Building:
     f = open(filename, 'w')
     f.write(output)
     f.close()
+    return filename
 
   @staticmethod
   def closure_compiler(filename):
@@ -509,4 +513,6 @@ class Building:
                        '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
     if 'ERROR' in cc_output:
       raise Exception('Error in cc output: ' + cc_output)
+
+    return filename + '.cc.js'
 
