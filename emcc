@@ -296,6 +296,8 @@ try:
 
   ## Compile source code to bitcode
 
+  if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'
+
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   newargs = newargs + ['-emit-llvm', '-c']
 
@@ -309,11 +311,12 @@ try:
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
+    if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
     for input_file in input_files:
       shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), 2, safe=llvm_opt_level < 2)
 
   # If we were just asked to generate bitcode, stop there
-  if final_suffix in ['o', 'bc']:
+  if final_suffix not in ['js', 'html']:
     if not specified_target:
       for input_file in input_files:
         shutil.move(in_temp(unsuffixed_basename(input_file) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
@@ -324,6 +327,8 @@ try:
     exit(0)
 
   ## Continue on to create JavaScript
+
+  if DEBUG: print >> sys.stderr, 'emcc: generating JavaScript'
 
   # First, combine the bitcode files if there are several
   if len(input_files) > 1:
@@ -341,6 +346,7 @@ try:
 
   if opt_level >= 1:
     # js optimizer
+    if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
     final = shared.Building.js_optimizer(final, 'loopOptimizer')
 
     # eliminator
@@ -348,14 +354,17 @@ try:
 
   if opt_level >= 3:
     # closure
+    if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
 
   if opt_level >= 1:
     # js optimizer
+    if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     final = shared.Building.js_optimizer(final, 'simplifyExpressions')
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
+    if DEBUG: print >> sys.stderr, 'emcc: generating HTML'
     shell = open(shared.path_from_root('src', 'shell.html')).read()
     html = open(target_basename + '.html', 'w')
     html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
