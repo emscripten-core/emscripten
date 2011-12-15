@@ -83,7 +83,7 @@
 //    solution here is to have a singleIteration() function which is a single loop
 //    iteration, and from JS to do something like      setInterval(_singleIteration, 1/30)
 //
-//  * SQL_Quit does nothing.
+//  * SDL_Quit does nothing.
 
 mergeInto(LibraryManager.library, {
   $SDL__deps: ['$Browser'],
@@ -265,7 +265,7 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Quit: function() {
-    print('SQL_Quit called (and ignored)');
+    print('SDL_Quit called (and ignored)');
   },
 
   SDL_LockSurface: function(surf) {
