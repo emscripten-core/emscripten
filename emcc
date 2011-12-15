@@ -78,7 +78,7 @@ from subprocess import Popen, PIPE, STDOUT
 from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
-SAVE_FILES = os.environ.get('EMCC_SAVE_FILES') # saves some of the intermediate files
+TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 
 ################### XXX
 print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
@@ -217,7 +217,13 @@ if header: # header or such
   shutil.copy(sys.argv[-1], sys.argv[-2])
   exit(0)
 
-temp_dir = tempfile.mkdtemp()
+if TEMP_DIR:
+  temp_dir = TEMP_DIR
+  if not os.path.exists(temp_dir):
+    os.makedirs(temp_dir)
+else:
+  temp_dir = tempfile.mkdtemp()
+
 def in_temp(name):
   return os.path.join(temp_dir, name)
 
@@ -401,7 +407,7 @@ try:
     shutil.move(final, target_basename + '.js')
 
 finally:
-  if not SAVE_FILES:
+  if not TEMP_DIR:
     try:
       shutil.rmtree(temp_dir)
     except:
