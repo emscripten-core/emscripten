@@ -5025,8 +5025,8 @@ Options that are modified or new in %s include:
           output = Popen([compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('combined.bc'), '\n'.join(output)
           self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
-         
 
+      # TODO: compile .ll inputs to emcc into .bc
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
