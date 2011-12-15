@@ -172,6 +172,8 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 
 # ---------------- Utilities ---------------
 
+SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx')
+
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
 
@@ -257,12 +259,15 @@ try:
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   input_files = []
+  has_source_inputs = False
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(('.c', '.cpp', '.cxx', '.bc', '.o')): # we already removed -o <target>, so all these should be inputs
+    if arg.endswith(SOURCE_SUFFIXES + ('.bc', '.o')): # we already removed -o <target>, so all these should be inputs
       input_files.append(arg)
       newargs[i] = ''
+      if arg.endswith(SOURCE_SUFFIXES):
+        has_source_inputs = True
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   assert len(input_files) > 0, 'emcc: no input files specified'
@@ -274,7 +279,10 @@ try:
 
   target_basename = unsuffixed_basename(target)
 
-  if '-c' in newargs: # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
+  # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
+  has_dash_c = '-c' in newargs
+  if has_dash_c:
+    assert has_source_inputs, 'Must have source code inputs to use -c'
     target = target_basename + '.o'
 
   final_suffix = target.split('.')[-1]
@@ -321,8 +329,13 @@ try:
       for input_file in input_files:
         shutil.move(in_temp(unsuffixed_basename(input_file) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
     else:
-      assert len(input_files) == 1, 'fatal error: cannot specify -o with -c with multiple files'
-      shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), specified_target)
+      if len(input_files) == 1:
+        shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), specified_target)
+      else:
+        assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files'
+        # We have a specified target (-o <target>), which is not JavaScript or HTML, and
+        # we have multiple files: Link them. TODO: Pass complex linker args along
+        shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files), specified_target)
 
     exit(0)
 

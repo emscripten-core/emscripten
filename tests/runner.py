@@ -5015,6 +5015,14 @@ Options that are modified or new in %s include:
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
 
+          # Combining bc files into another bc should also work
+          try_delete(target)
+          assert not os.path.exists(target)
+          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          assert os.path.exists('combined.bc'), '\n'.join(output)
+          self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
+         
+
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
