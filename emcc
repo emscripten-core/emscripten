@@ -310,7 +310,7 @@ try:
   newargs = newargs + ['-emit-llvm', '-c']
 
   for input_file in input_files:
-    if input_file.endswith(('.c', '.cpp', '.cxx')):
+    if input_file.endswith(SOURCE_SUFFIXES):
       args = newargs + [input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
       Popen([call] + args).communicate()
