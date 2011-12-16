@@ -219,8 +219,9 @@ if header: # header or such
 
 if TEMP_DIR:
   temp_dir = TEMP_DIR
-  if not os.path.exists(temp_dir):
-    os.makedirs(temp_dir)
+  if os.path.exists(temp_dir):
+    shutil.rmtree(temp_dir) # clear it
+  os.makedirs(temp_dir)
 else:
   temp_dir = tempfile.mkdtemp()
 
@@ -386,14 +387,17 @@ try:
     # eliminator
     final = shared.Building.eliminator(final)
 
+    # js optimizer pre-pass
+    final = shared.Building.js_optimizer(final, 'simplifyExpressionsPre')
+
   if closure:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
 
   if opt_level >= 1:
-    # js optimizer
+    # js optimizer post-pass
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
-    final = shared.Building.js_optimizer(final, 'simplifyExpressions')
+    final = shared.Building.js_optimizer(final, 'simplifyExpressionsPost')
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':

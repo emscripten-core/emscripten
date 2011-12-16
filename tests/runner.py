@@ -4953,7 +4953,6 @@ Options that are modified or new in %s include:
           # Verify optimization level etc. in the generated code
           # XXX these are quite sensitive, and will need updating when code generation changes
           generated = open('something.js').read() # TODO: parse out the _main function itself, not support code, if the tests below need that some day
-          assert ('|0)/2)|0)' in generated or '| 0) / 2 | 0)' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
           assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
@@ -4961,6 +4960,8 @@ Options that are modified or new in %s include:
             assert 'Module._main = ' in generated, 'closure compiler should have been run'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
+            assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
+            # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
             assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
             assert ('assert(STACKTOP < STACK_MAX)' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert 'var $i;' in generated, 'micro opts should always be on'
@@ -5081,7 +5082,7 @@ Options that are modified or new in %s include:
     def test_js_optimizer(self):
       input = open(path_from_root('tools', 'test-js-optimizer.js')).read()
       expected = open(path_from_root('tools', 'test-js-optimizer-output.js')).read()
-      output = Popen([NODE_JS, JS_OPTIMIZER, 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressions', 'loopOptimizer'],
+      output = Popen([NODE_JS, JS_OPTIMIZER, 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost', 'loopOptimizer'],
                      stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
@@ -5122,8 +5123,6 @@ else:
   print 'Benchmarking JS engine:', JS_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
-  # TODO: Use other js optimizer options, like remove assigns to undefined (seems to slow us down more than speed us up)
-  POST_OPTIMIZATIONS = [['js-optimizer', 'loopOptimizer'], 'eliminator', 'closure', ['js-optimizer', 'simplifyExpressions']]
 
   TEST_REPS = 10
   TOTAL_TESTS = 7

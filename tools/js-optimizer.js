@@ -260,7 +260,44 @@ function removeUnneededLabelSettings(ast) {
 }
 
 // Various expression simplifications
-function simplifyExpressions(ast) {
+function simplifyExpressionsPre(ast) {
+  // When there is a bunch of math like (((8+5)|0)+12)|0, only the external |0 is needed, one correction is enough.
+  // At each node, ((X|0)+Y)|0 can be transformed into (X+Y): The inner corrections are not needed
+  // TODO: Is the same is true for 0xff, 0xffff?
+
+  function simplifyBitops(ast) {
+    var SAFE_BINARY_OPS = set('+', '-', '*', '/', '%', '|');
+    var ZERO = ['num', 0];
+    var rerun = true;
+    while (rerun) {
+      rerun = false;
+      traverseGenerated(ast, function(node, type, stack) {
+        if (type == 'binary' && node[1] == '|' && (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO))) {
+          stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
+
+          // We might be able to remove this correction
+          for (var i = stack.length-2; i >= 0; i--) {
+            if (stack[i] == 1) {
+              // Great, we can eliminate
+              rerun = true;
+              return jsonCompare(node[2], ZERO) ? node[3] : node[2];
+            } else if (stack[i] == -1) {
+              break; // Too bad, we can't
+            }
+          }
+        } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
+          stack.push(0); // This node is safe in that it does not interfere with this optimization
+        } else {
+          stack.push(-1); // This node is dangerous! Give up if you see this before you see '1'
+        }
+      }, null, []);
+    }
+  }
+
+  simplifyBitops(ast);
+}
+
+function simplifyExpressionsPost(ast) {
   // We often have branchings that are simplified so one end vanishes, and
   // we then get
   //   if (!(x < 5))
@@ -373,7 +410,8 @@ var passes = {
   unGlobalize: unGlobalize,
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
-  simplifyExpressions: simplifyExpressions,
+  simplifyExpressionsPre: simplifyExpressionsPre,
+  simplifyExpressionsPost: simplifyExpressionsPost,
   loopOptimizer: loopOptimizer
 };
 
