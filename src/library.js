@@ -3382,6 +3382,12 @@ LibraryManager.library = {
     return __parseInt(str, endptr, base, 0, 18446744073709551615, 64, true);  // ULONG_MAX; imprecise.
   },
 
+  atof: function(ptr) {
+    var str = Pointer_stringify(ptr);
+    var ret = parseFloat(str);
+    return isNaN(ret) ? 0 : ret;
+  },
+
   qsort__deps: ['memcpy'],
   qsort: function(base, num, size, comparator) {
     if (num == 0 || size == 0) return;

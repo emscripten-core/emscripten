@@ -2882,6 +2882,7 @@ at function.:blag
       src = r'''
         #include <stdio.h>
         #include <string.h>
+        #include <stdlib.h>
 
         int main () {
           #define CHECK(str) \
@@ -2895,6 +2896,8 @@ at function.:blag
           CHECK("en-us 2");
           CHECK("en-r");
           CHECK("en 3");
+
+          printf("%f, %f\n", atof("1.234567"), atof("cheez"));
 
           return 0;
         }
