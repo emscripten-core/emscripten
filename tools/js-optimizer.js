@@ -78,6 +78,7 @@ function traverse(node, pre, post, stack) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
     if (result == true) return true;
+    if (typeof result == 'object') node = result; // Continue processing on this node
     if (stack && len == stack.length) stack.push(0);
   }
   for (var i = 0; i < node.length; i++) {
@@ -259,7 +260,8 @@ function removeUnneededLabelSettings(ast) {
   });
 }
 
-// Various expression simplifications
+// Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
+
 function simplifyExpressionsPre(ast) {
   // When there is a bunch of math like (((8+5)|0)+12)|0, only the external |0 is needed, one correction is enough.
   // At each node, ((X|0)+Y)|0 can be transformed into (X+Y): The inner corrections are not needed
@@ -294,7 +296,35 @@ function simplifyExpressionsPre(ast) {
     }
   }
 
+  // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
+  // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
+  function joinAdditions(ast) {
+    var rerun = true;
+    while (rerun) {
+      rerun = false;
+      traverseGenerated(ast, function(node, type) {
+        if (type == 'binary' && node[1] == '+') {
+          if (node[2][0] == 'num' && node[3][0] == 'num') {
+            rerun = true;
+            return ['num', node[2][1] + node[3][1]];
+          }
+          for (var i = 2; i <= 3; i++) {
+            var ii = 5-i;
+            for (var j = 2; j <= 3; j++) {
+              if (node[i][0] == 'num' && node[ii][0] == 'binary' && node[ii][1] == '+' && node[ii][j][0] == 'num') {
+                rerun = true;
+                node[ii][j][1] += node[i][1];
+                return node[ii];
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
   simplifyBitops(ast);
+  joinAdditions(ast);
 }
 
 function simplifyExpressionsPost(ast) {

@@ -82,6 +82,8 @@ function bits() {
   print((($s & 65535) + (($f & 65535) << 16 >> 16) * (($f & 65535) << 16 >> 16) % 256 | 0) & 65535);
 }
 function maths() {
-  __ZN6b2Vec2C1Ev($this1 + 20 + 8 + 8 + 8 + 8 + 8 + 8 + 8 | 0);
+  check(17);
+  check(95);
+  __ZN6b2Vec2C1Ev($this1 + 76 | 0);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths"]
