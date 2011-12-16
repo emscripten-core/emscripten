@@ -18,6 +18,7 @@ function cleanFunc(func) {
 // Handy sets
 
 var BRANCH_INVOKE = set('branch', 'invoke');
+var SIDE_EFFECT_CAUSERS = set('call', 'invoke');
 
 // Analyzer
 
@@ -265,8 +266,6 @@ function analyzer(data) {
       // Function locals
 
       item.functions.forEach(function(func) {
-        dprint('vars', 'Analyzing variables in ' + func.ident);
-
         func.variables = {};
 
         // LLVM is SSA, so we always have a single assignment/write. We care about
@@ -280,22 +279,21 @@ function analyzer(data) {
               type: param.type,
               origin: 'funcparam',
               lineNum: func.lineNum,
-              uses: null
+              rawLinesIndex: -1
             };
           }
         });
 
         // Normal variables
-        func.lines.forEach(function(item) {
+        func.lines.forEach(function(item, i) {
           if (item.intertype === 'assign') {
             var variable = func.variables[item.ident] = {
               ident: item.ident,
               type: item.value.type,
               origin: item.value.intertype,
               lineNum: item.lineNum,
-              uses: item.uses
+              rawLinesIndex: i
             };
-            assert(isNumber(variable.uses), 'Failed to find the # of uses of var: ' + item.ident);
             if (variable.origin === 'alloca') {
               variable.allocatedNum = item.value.allocatedNum;
             }
@@ -324,41 +322,74 @@ function analyzer(data) {
           });
         }
 
+        // Analyze variable uses
+
+        function analyzeVariableUses() {
+          dprint('vars', 'Analyzing variables for ' + func.ident + '\n');
+
+          for (vname in func.variables) {
+            var variable = func.variables[vname];
+
+            // Whether the value itself is used. For an int, always yes. For a pointer,
+            // we might never use the pointer's value - we might always just store to it /
+            // read from it. If so, then we can optimize away the pointer.
+            variable.hasValueTaken = false;
+
+            variable.pointingLevels = pointingLevels(variable.type);
+
+            variable.uses = 0;
+          }
+
+          // TODO: improve the analysis precision. bitcast, for example, means we take the value, but perhaps we only use it to load/store
+          var inNoop = 0;
+          func.lines.forEach(function(line) {
+            walkInterdata(line, function(item) {
+              if (item.intertype == 'noop') inNoop++;
+              if (!inNoop) {
+                if (item.ident in func.variables && item.intertype != 'assign') {
+                  func.variables[item.ident].uses++;
+
+                  if (item.intertype != 'load' && item.intertype != 'store') {
+                    func.variables[item.ident].hasValueTaken = true;
+                  }
+                }
+              }
+            }, function(item) {
+              if (item.intertype == 'noop') inNoop--;
+            });
+          });
+        }
+
+        // Filter out no longer used variables, collapsing more as we go
+        while (true) {
+          analyzeVariableUses();
+
+          var recalc = false;
+
+          keys(func.variables).forEach(function(vname) {
+            var variable = func.variables[vname];
+            if (variable.uses == 0 && variable.origin != 'funcparam') {
+              // Eliminate this variable if we can
+              var sideEffects = false;
+              walkInterdata(func.lines[variable.rawLinesIndex].value, function(item) {
+                if (item.intertype in SIDE_EFFECT_CAUSERS) sideEffects = true;
+              });
+              if (!sideEffects) {
+                dprint('vars', 'Eliminating ' + vname);
+                func.lines[variable.rawLinesIndex].intertype = func.lines[variable.rawLinesIndex].value.intertype = 'noop';
+                delete func.variables[vname];
+                recalc = true;
+              }
+            }
+          });
+
+          if (!recalc) break;
+        }
+
+        // Decision time
+
         for (vname in func.variables) {
           var variable = func.variables[vname];
-
-          // Whether the value itself is used. For an int, always yes. For a pointer,
-          // we might never use the pointer's value - we might always just store to it /
-          // read from it. If so, then we can optimize away the pointer.
-          variable.hasValueTaken = false;
-          // Whether our address was used. If not, then we do not need to bother with
-          // implementing this variable in a way that other functions can access it.
-          variable.hasAddrTaken = false;
-
-          variable.pointingLevels = pointingLevels(variable.type);
-
-          // Analysis!
-
-          if (variable.pointingLevels > 0) {
-            // Pointers
-            variable.loads = 0;
-            variable.stores = 0;
-
-            func.lines.forEach(function(line) {
-              if (line.intertype == 'store' && line.ident == vname) {
-                variable.stores ++;
-              } else if (line.intertype == 'assign' && line.value.intertype == 'load' && line.value.ident == vname) {
-                variable.loads ++;
-              }
-            });
-
-            variable.otherUses = variable.uses - variable.loads - variable.stores;
-            if (variable.otherUses > 0)
-              variable.hasValueTaken = true;
-          }
- 
-          // Decision time
-
           var pointedType = pointingLevels(variable.type) > 0 ? removePointing(variable.type) : null;
           if (variable.origin == 'getelementptr') {
             // Use our implementation that emulates pointers etc.
@@ -369,10 +400,10 @@ function analyzer(data) {
             variable.impl = VAR_EMULATED;
           } else if (variable.type == 'i64*' && I64_MODE == 1) {
             variable.impl = VAR_EMULATED;
-          } else if (MICRO_OPTS && variable.pointingLevels === 0 && !variable.hasAddrTaken) {
+          } else if (MICRO_OPTS && variable.pointingLevels === 0) {
             // A simple int value, can be implemented as a native variable
             variable.impl = VAR_NATIVE;
-          } else if (MICRO_OPTS && variable.origin === 'alloca' && !variable.hasAddrTaken && !variable.hasValueTaken &&
+          } else if (MICRO_OPTS && variable.origin === 'alloca' && !variable.hasValueTaken &&
                      variable.allocatedNum === 1 &&
                      (Runtime.isNumberType(pointedType) || Runtime.isPointerType(pointedType))) {
             // A pointer to a value which is only accessible through this pointer. Basically
@@ -423,7 +454,7 @@ function analyzer(data) {
       item.functions.forEach(function(func) {
         func.lines.forEach(function(line, i) {
           if (line.intertype === 'assign' && line.value.intertype === 'load') {
-            var data = func.variables[line.ident]
+            var data = func.variables[line.ident];
             if (data.type === 'i1') {
               line.value.unsigned = true;
               return;

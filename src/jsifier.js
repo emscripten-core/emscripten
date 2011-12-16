@@ -706,6 +706,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     });
   }
+  makeFuncLineActor('noop', function(item) {
+    return ';';
+  });
   makeFuncLineActor('var', function(item) { // assigns into phis become simple vars when MICRO_OPTS
     return 'var ' + item.ident + ';';
   });
@@ -953,7 +956,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
   });
   makeFuncLineActor('indirectbr', function(item) {
-    return makeBranch(finalizeLLVMParameter(item.pointer), item.currLabelId, true);
+    return makeBranch(finalizeLLVMParameter(item.value), item.currLabelId, true);
   });
   makeFuncLineActor('alloca', function(item) {
     if (typeof item.allocatedIndex === 'number') {

@@ -209,6 +209,28 @@ var Debugging = {
   }
 };
 
+var PreProcessor = {
+  eliminateUnneededIntrinsics: function(lines) {
+    // LLVM sometimes aggresively adds lifetime annotations, for example
+    //
+    //    %0 = bitcast %"class.std::__1::__tree"** %this.addr.i to i8* ; [#uses=1 type=i8*]
+    //    call void @llvm.lifetime.start(i64 -1, i8* %0) nounwind
+    //    [..]
+    //    %6 = bitcast float* %__x.addr.i to i8*          ; [#uses=1 type=i8*]
+    //    call void @llvm.lifetime.end(i64 -1, i8* %6) nounwind
+    //
+    // This greatly hurts us if we do not eliminate it ahead of time, because while we
+    // will correctly do nothing for the lifetime intrinsic itself, the bitcast of the
+    // parameter to it will prevent nativization of the variable being cast (!)
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (/call void @llvm.lifetime.(start|end)\(i\d+ -1, i8\* %(\d+)\).*/.exec(line)) {
+        lines[i] = ';';
+      }
+    }
+  }
+};
+
 var Variables = {
   globals: {}
 };
