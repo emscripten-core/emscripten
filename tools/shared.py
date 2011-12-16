@@ -221,11 +221,11 @@ class Building:
   @staticmethod
   def get_building_env():
     env = os.environ.copy()
-    env['CC'] = EMCC
-    env['CXX'] = EMXX
-    env['AR'] = EMAR
-    env['RANLIB'] = EMRANLIB
-    env['LIBTOOL'] = EMLIBTOOL
+    env['CC'] = EMMAKEN #EMCC
+    env['CXX'] = EMMAKEN #EMXX
+    env['AR'] = EMMAKEN #EMAR
+    env['RANLIB'] = EMMAKEN #EMRANLIB
+    env['LIBTOOL'] = EMMAKEN #EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
