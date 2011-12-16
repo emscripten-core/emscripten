@@ -1,4 +1,4 @@
-import shutil, time, os, json, tempfile
+import shutil, time, os, sys, json, tempfile
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -18,6 +18,7 @@ LLVM_LD=os.path.join(LLVM_ROOT, 'llvm-ld')
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
+LLVM_NM=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-nm'))
 LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to do just    []
 LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
@@ -341,6 +342,22 @@ class Building:
       pass
     output = Popen([LLVM_AS, filename + '.o.ll', '-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.o'), 'Could not create bc file: ' + output
+
+  @staticmethod
+  def llvm_nm(filename):
+    # LLVM binary ==> list of symbols
+    output = Popen([LLVM_NM, filename], stdout=PIPE).communicate()[0]
+    class ret:
+      defs = []
+      undefs = []
+    for line in output.split('\n'):
+      if len(line) == 0: continue
+      status, symbol = filter(lambda seg: len(seg) > 0, line.split(' '))
+      if status == 'U':
+        ret.undefs.append(symbol)
+      else:
+        ret.defs.append(symbol)
+    return ret
 
   @staticmethod # TODO: make this use emcc instead of emmaken
   def emmaken(filename, args=[], stdout=None, stderr=None, env=None):

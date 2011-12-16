@@ -186,6 +186,8 @@ def unsuffixed(name):
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
+LLVM_INTERNAL_OPT_LEVEL = 2
+
 # ---------------- End configs -------------
 
 if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
@@ -272,6 +274,7 @@ try:
   settings_changes = []
   for i in range(len(newargs)):
     if newargs[i] == '-s':
+      assert '=' in newargs[i+1], 'Incorrect syntax for -s (use -s OPT=VAL): ' + newargs[i+1]
       settings_changes.append(newargs[i+1])
       newargs[i] = newargs[i+1] = ''
     elif newargs[i].startswith('--typed-arrays'):
@@ -324,6 +327,11 @@ try:
     shared.Settings.DOUBLE_MODE = 0
     print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
+  # Apply -s settings in newargs here (after optimization levels, so they can override them)
+  for change in settings_changes:
+    key, value = change.split('=')
+    exec('shared.Settings.' + key + ' = ' + value)
+
   ## Compile source code to bitcode
 
   if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'
@@ -343,7 +351,7 @@ try:
   if llvm_opt_level > 0:
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
     for input_file in input_files:
-      shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), 2, safe=llvm_opt_level < 2)
+      shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in ['js', 'html']:
@@ -354,7 +362,7 @@ try:
       if len(input_files) == 1:
         shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), specified_target)
       else:
-        assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files'
+        assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them. TODO: Pass complex linker args along
         shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files), specified_target)
@@ -365,18 +373,46 @@ try:
 
   if DEBUG: print >> sys.stderr, 'emcc: generating JavaScript'
 
+  extra_files_to_link = []
+
+  # Check if we need to include dlmalloc. Note that we assume a single symbol is enough to know if we have/do not have dlmalloc. If you
+  # include just a few symbols but want the rest, this will not work.
+  need_dlmalloc = False
+  has_dlmalloc = False
+  for input_file in input_files:
+    symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
+    for malloc_def in ['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc']:
+      if malloc_def in symbols.undefs:
+        need_dlmalloc = True
+      if malloc_def in symbols.defs:
+        has_dlmalloc = True
+  if need_dlmalloc and not has_dlmalloc:
+    # We need to build and link dlmalloc in
+    if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
+    Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')]).communicate()
+    if llvm_opt_level > 0:
+      shared.Building.llvm_opt(in_temp('dlmalloc.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+    extra_files_to_link.append(in_temp('dlmalloc.o'))
+
+    # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
+    try:
+      if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
+    except: # we fail if equal to 0 - so we need to switch to 2 - or if CORRECT_SIGNS is not even in Settings
+      shared.Settings.CORRECT_SIGNS = 2
+    if shared.Settings.CORRECT_SIGNS == 2:
+      shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
+    # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
+    # so all is well anyhow too.
+
   # First, combine the bitcode files if there are several
-  if len(input_files) > 1:
-    shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files), in_temp(target_basename + '.bc'))
+  if len(input_files) + len(extra_files_to_link) > 1:
+    shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + extra_files_to_link,
+                         in_temp(target_basename + '.bc'))
+    # TODO: LLVM link-time opts?
   else:
     shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
 
-  # Apply -s settings in newargs here (after -Ox, so they can override it)
-
-  for change in settings_changes:
-    key, value = change.split('=')
-    exec('shared.Settings.' + key + ' = ' + value)
-
+  # Emscripten
   if opt_level >= 2:
     print >> sys.stderr, 'Warning: The relooper optimization can be very slow.'
 

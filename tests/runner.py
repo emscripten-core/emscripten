@@ -3560,6 +3560,17 @@ at function.:blag
       self.do_run(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
       self.do_run(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
 
+      if self.use_defaults: # TODO: do this in other passes too, passing their opts into emcc
+        # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
+
+        try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
+        # XXX find out why we fail without TOTAL_MEMORY here. that should not happen!
+        output = Popen([EMCC, '-g', '-s', 'TOTAL_MEMORY=104857600', path_from_root('tests', 'dlmalloc_test.c'),
+                        '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=PIPE).communicate()
+
+        self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
+        self.do_run('x', '*400,0*', ['400', '400'], no_build=True)
+
     def test_libcxx(self):
       self.do_run(path_from_root('tests', 'libcxx'),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
@@ -4928,26 +4939,36 @@ Options that are modified or new in %s include:
           assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), '\n'.join(output))
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
+        # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
+        # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
+        for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
+          clear()
+          output = Popen([compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
+          assert os.path.exists('a.out.js'), '\n'.join(output)
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          generated = open('a.out.js').read()
+          assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
+
         # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
-        for params, opt_level, bc_params, closure in [ # bc params are used after compiling to bitcode
-          (['-o', 'something.js'],                          0, None, 0),
-          (['-o', 'something.js', '-O0'],                   0, None, 0),
-          (['-o', 'something.js', '-O1'],                   1, None, 0),
-          (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1),
-          (['-o', 'something.js', '-O2'],                   2, None, 1),
-          (['-o', 'something.js', '-O2', '--closure', '0'], 2, None, 0),
-          (['-o', 'something.js', '-O3'],                   3, None, 1),
-          (['-o', 'something.js', '-O3', '--closure', '0'], 3, None, 0),
+        for params, opt_level, bc_params, closure, has_malloc in [ # bc params are used after compiling to bitcode
+          (['-o', 'something.js'],                          0, None, 0, 1),
+          (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
+          (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
+          (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1, 0),
+          (['-o', 'something.js', '-O2'],                   2, None, 1, 1),
+          (['-o', 'something.js', '-O2', '--closure', '0'], 2, None, 0, 0),
+          (['-o', 'something.js', '-O3'],                   3, None, 1, 1),
+          (['-o', 'something.js', '-O3', '--closure', '0'], 3, None, 0, 0),
           # and, test compiling to bitcode first
-          (['-o', 'something.bc'], 0, [],      0),
-          (['-o', 'something.bc'], 0, ['-O0'], 0),
-          (['-o', 'something.bc'], 1, ['-O1'], 0),
-          (['-o', 'something.bc'], 2, ['-O2'], 1),
-          (['-o', 'something.bc'], 3, ['-O3'], 1),
+          (['-o', 'something.bc'], 0, [],      0, 0),
+          (['-o', 'something.bc'], 0, ['-O0'], 0, 0),
+          (['-o', 'something.bc'], 1, ['-O1'], 0, 0),
+          (['-o', 'something.bc'], 2, ['-O2'], 1, 0),
+          (['-o', 'something.bc'], 3, ['-O3'], 1, 0),
         ]:
           #print params, opt_level, bc_params, closure
           clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp')] + params,
+          output = Popen([compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           if bc_params is not None:
@@ -4975,6 +4996,7 @@ Options that are modified or new in %s include:
             assert 'var $i;' in generated, 'micro opts should always be on'
             if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
+            assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
@@ -5036,7 +5058,6 @@ Options that are modified or new in %s include:
           self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
 
       # TODO: compile .ll inputs to emcc into .bc
-      # TODO: dlmalloc in emcc (just pass the arg to emscripten.py)
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
