@@ -112,6 +112,9 @@ Options that are modified or new in %s include:
   -O0                      No optimizations (default)
   -O1                      Simple optimizations, including safe LLVM
                            optimizations, and no runtime assertions
+                           or C++ exception catching (to re-enable
+                           C++ exception catching, use
+                           -s DISABLE_EXCEPTION_CATCHING=0 )
   -O2                      As -O1, plus the relooper (loop recreation),
                            plus closure compiler
                            Warning: Compiling with this takes a long time!
@@ -310,6 +313,7 @@ try:
   # Apply optimization level settings
   if opt_level >= 1:
     shared.Settings.ASSERTIONS = 0
+    shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
   if opt_level >= 2:
     shared.Settings.RELOOP = 1
   if opt_level >= 3:
@@ -318,7 +322,6 @@ try:
     shared.Settings.CORRECT_ROUNDINGS = 0
     shared.Settings.I64_MODE = 0
     shared.Settings.DOUBLE_MODE = 0
-    shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
   ## Compile source code to bitcode
