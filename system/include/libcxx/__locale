@@ -57,7 +57,7 @@ public:
     */
 
     // construct/copy/destroy:
-    locale()  _NOEXCEPT;
+    locale()  _NOEXCEPT {} /* XXX EMScripten */
     locale(const locale&)  _NOEXCEPT;
     explicit locale(const char*);
     explicit locale(const string&);
@@ -67,7 +67,7 @@ public:
         _LIBCPP_INLINE_VISIBILITY locale(const locale&, _Facet*);
     locale(const locale&, const locale&, category);
 
-    ~locale();
+    ~locale() {} /* XXX EMScripten */
 
     const locale& operator=(const locale&)  _NOEXCEPT;
 
@@ -92,7 +92,7 @@ private:
     void __install_ctor(const locale&, facet*, long);
     static locale& __global();
     bool has_facet(id&) const;
-    const facet* use_facet(id&) const;
+    const facet* use_facet(id&) const { return 0; } /* XXX EMScripten */
 
     template <class _Facet> friend bool has_facet(const locale&)  _NOEXCEPT;
     template <class _Facet> friend const _Facet& use_facet(const locale&);
