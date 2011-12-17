@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#raise Exception('emconfiguren is deprecated!')
+raise Exception('emconfiguren is deprecated! use "emconfigure" (no "n")')
 
 '''
 This is a helper script for emmaken.py. See docs in that file for more info.
