@@ -17,5 +17,6 @@ newargs = [shared.EMLD] + sys.argv[3:] + ['-o='+sys.argv[2]]
 if DEBUG:
   print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
 
-os.execvp(shared.EMLD, newargs)
+if len(newargs) > 2:
+  os.execvp(shared.EMLD, newargs)
 

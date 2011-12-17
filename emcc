@@ -295,13 +295,16 @@ try:
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
     if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES): # we already removed -o <target>, so all these should be inputs
-      input_files.append(arg)
       newargs[i] = ''
-      if arg.endswith(SOURCE_SUFFIXES):
-        has_source_inputs = True
+      if os.path.exists(arg):
+        input_files.append(arg)
+        if arg.endswith(SOURCE_SUFFIXES):
+          has_source_inputs = True
+      else:
+        print >> sys.stderr, 'emcc: %s: No such file or directory' % arg
   newargs = [ arg for arg in newargs if arg is not '' ]
 
-  assert len(input_files) > 0, 'emcc: no input files specified'
+  assert len(input_files) > 0, 'emcc: no input files'
 
   newargs += CC_ADDITIONAL_ARGS
 
@@ -339,7 +342,7 @@ try:
 
   ## Compile source code to bitcode
 
-  if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'
+  if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode (%s)' % str(sys.argv)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
@@ -357,7 +360,11 @@ try:
   if llvm_opt_level > 0:
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
     for input_file in input_files:
-      shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+      try:
+        shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+      except:
+        # This might be an invalid input, which will get ignored during linking later anyhow
+        print >> sys.stderr, 'emcc: warning: LLVM opt failed to run on %s, continuing without optimization' % input_file
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in ['js', 'html']:
