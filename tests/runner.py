@@ -3782,7 +3782,7 @@ at function.:blag
       freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
-                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0.bc'),
+                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
                                   os.path.join('goo', '.libs', 'libgoo.a.bc'),
                                   os.path.join('fofi', '.libs', 'libfofi.a.bc'),
                                   os.path.join('splash', '.libs', 'libsplash.a.bc'),
