@@ -77,6 +77,8 @@ if USE_EMSDK:
   '-U__APPLE__'
 ]
   COMPILER_OPTS += EMSDK_OPTS
+else:
+  EMSDK_OPTS = []
 
 # Engine tweaks
 
@@ -345,9 +347,9 @@ class Building:
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
 
   @staticmethod
-  def llvm_nm(filename):
+  def llvm_nm(filename, stdout=PIPE, stderr=None):
     # LLVM binary ==> list of symbols
-    output = Popen([LLVM_NM, filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
     class ret:
       defs = []
       undefs = []
@@ -533,4 +535,17 @@ class Building:
       raise Exception('Error in cc output: ' + cc_output)
 
     return filename + '.cc.js'
+
+  @staticmethod
+  def is_bitcode(filename):
+    # checks if a file contains LLVM bitcode
+    # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
+    try:
+      defs = Building.llvm_nm(filename, stderr=PIPE)
+      assert len(defs.defs + defs.undefs) > 0
+    except:
+      return False
+    # look for magic signature
+    b = open(filename, 'r').read(4)
+    return b[0] == 'B' and b[1] == 'C'
 
