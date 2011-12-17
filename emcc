@@ -155,11 +155,14 @@ or LLVM assembly files in human-readable form.
 ''' % (this, this, this)
   exit(0)
 
-# If this is a configure-type thing, just do that
+# If this is a configure-type thing, do not compile to JavaScript, instead use clang
+# to compile to a native binary (using our headers, so things make sense later)
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
-  compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
+  compiler = shared.CLANG
+  if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX'):
+    compiler = shared.to_cc(compiler)
   cmd = [compiler] + shared.EMSDK_OPTS + sys.argv[1:]
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', cmd
   exit(os.execvp(compiler, cmd))
@@ -271,6 +274,12 @@ try:
       closure = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
+      f = open(newargs[i+1], 'w')
+      f.write('\n')
+      f.close()
+      newargs[i] = ''
+      newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
@@ -297,9 +306,15 @@ try:
     if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
       if os.path.exists(arg):
-        input_files.append(arg)
         if arg.endswith(SOURCE_SUFFIXES):
+          input_files.append(arg)
           has_source_inputs = True
+        else:
+          # this should be bitcode, make sure it is valid
+          if arg.endswith('.ll') or shared.Building.is_bitcode(arg):
+            input_files.append(arg)
+          else:
+            print >> sys.stderr, 'emcc: %s: Not valid LLVM bitcode' % arg
       else:
         print >> sys.stderr, 'emcc: %s: No such file or directory' % arg
   newargs = [ arg for arg in newargs if arg is not '' ]
