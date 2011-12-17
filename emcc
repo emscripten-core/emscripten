@@ -389,7 +389,7 @@ try:
   if need_dlmalloc and not has_dlmalloc:
     # We need to build and link dlmalloc in
     if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
-    Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')]).communicate()
+    Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
     if llvm_opt_level > 0:
       shared.Building.llvm_opt(in_temp('dlmalloc.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
     extra_files_to_link.append(in_temp('dlmalloc.o'))
