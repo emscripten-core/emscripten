@@ -10,7 +10,7 @@ var RuntimeGenerator = {
   alloc: function(size, type, init) {
     var ret = type + 'TOP';
     if (ASSERTIONS) {
-      ret += '; assert(' + size + ' > 0, "Trying to allocate 0")';
+      ret += '; assert(' + size + ' != 0, "Trying to allocate 0")';
     }
     if (init) {
       ret += '; _memset(' + type + 'TOP, 0, ' + size + ')';
@@ -54,11 +54,10 @@ var RuntimeGenerator = {
     return ret += 'STACKTOP = __stackBase__';
   },
 
-  // An allocation that cannot be free'd
+  // An allocation that cannot normally be free'd (except through sbrk, which once
+  // called, takes control of STATICTOP)
   staticAlloc: function(size) {
-    var ret = '';
-    if (USE_TYPED_ARRAYS) ret += 'LAST_STATICTOP = STATICTOP;'
-    ret += RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
+    var ret = RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
     if (USE_TYPED_ARRAYS) ret += '; if (STATICTOP >= TOTAL_MEMORY) enlargeMemory();'
     return ret;
   },

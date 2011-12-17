@@ -2111,15 +2111,12 @@ LibraryManager.library = {
     // TODO: We could in theory slice off the top of the HEAP when
     //       sbrk gets a negative increment in |bytes|...
     var self = _sbrk;
-    if (!self.STATICTOP) {
-      STATICTOP = alignMemoryPage(STATICTOP);
-      self.STATICTOP = STATICTOP;
-      self.DATASIZE = 0;
-    } else {
-      assert(self.STATICTOP == STATICTOP, "No one should touch the heap!");
+    if (!self.called) {
+      STATICTOP = alignMemoryPage(STATICTOP); // make sure we start out aligned
+      self.called = true;
     }
-    var ret = STATICTOP + self.DATASIZE;
-    self.DATASIZE += alignMemoryPage(bytes);
+    var ret = STATICTOP;
+    if (bytes != 0) Runtime.staticAlloc(bytes);
     return ret;  // Previous break location.
   },
   open64: 'open',

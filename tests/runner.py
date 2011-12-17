@@ -3564,9 +3564,9 @@ at function.:blag
         # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
-        # XXX find out why we fail without TOTAL_MEMORY here. that should not happen!
-        output = Popen([EMCC, '-g', '-s', 'TOTAL_MEMORY=104857600', path_from_root('tests', 'dlmalloc_test.c'),
+        output = Popen([EMCC, path_from_root('tests', 'dlmalloc_test.c'),
                         '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=PIPE).communicate()
+        #print output
 
         self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
         self.do_run('x', '*400,0*', ['400', '400'], no_build=True)
@@ -5062,7 +5062,8 @@ Options that are modified or new in %s include:
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # TODO: emscripten tutorial with emcc
-      # TODO: deprecate llvm optimizations etc. in emscripten.py.
+      # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
+      # TODO: hide output from compiling dlmalloc internally
 
       # Finally, do some web browser tests
       def run_browser(html_file, message):
