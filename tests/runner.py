@@ -3482,12 +3482,12 @@ at function.:blag
 
         int main()
         {
-          std::cout << "hello world";
+          std::cout << "hello world" << std::endl << 77 << "." << std::endl;
           return 0;
         }
       '''
 
-      self.do_run(src, 'hello world')
+      self.do_run(src, 'hello world\n77.\n')
 
     def test_stdvec(self):
       src = '''

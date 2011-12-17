@@ -1181,6 +1181,7 @@ basic_ostream<_CharT, _Traits>::seekp(off_type __off, ios_base::seekdir __dir)
     return *this;
 }
 
+*/
 template <class _CharT, class _Traits>
 inline _LIBCPP_INLINE_VISIBILITY
 basic_ostream<_CharT, _Traits>&
@@ -1209,6 +1210,7 @@ flush(basic_ostream<_CharT, _Traits>& __os)
     return __os;
 }
 
+/*
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _Stream, class _Tp>

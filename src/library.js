@@ -4320,6 +4320,16 @@ LibraryManager.library = {
     _fputs(str, _stdout); // XXX stderr etc.
   },
 
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi__deps: ['fputs', '$libcxx'],
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi: function(stream, num) {
+    _fputs(allocate(intArrayFromString(num.toString()), 'i8', ALLOC_STACK), _stdout);
+  },
+
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPFRS3_S4_E__deps: ['fputc', '$libcxx'],
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPFRS3_S4_E: function(stream, x) {
+    _fputc('\n'.charCodeAt(0), _stdout);
+  },
+
   // glibc
 
   _ZNSt8ios_base4InitC1Ev: function() {
