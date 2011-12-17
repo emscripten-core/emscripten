@@ -342,11 +342,9 @@ try:
   if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
-  newargs = newargs + ['-emit-llvm', '-c']
-
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
-      args = newargs + [input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
+      args = newargs + ['-emit-llvm', '-c', input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
       Popen([call] + args).communicate()
     else: # bitcode
@@ -372,9 +370,12 @@ try:
       else:
         assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
-        # we have multiple files: Link them. TODO: Pass complex linker args along
-        shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files), specified_target)
-
+        # we have multiple files: Link them TODO: llvm link-time opts?
+        ld_args = map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + \
+                  ['-o', specified_target]
+                  #[arg.split('-Wl,')[1] for arg in filter(lambda arg: arg.startswith('-Wl,'), sys.argv)]
+        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(ld_args)
+        Popen([shared.LLVM_LINK] + ld_args).communicate()
     exit(0)
 
   ## Continue on to create JavaScript
@@ -416,7 +417,7 @@ try:
   if len(input_files) + len(extra_files_to_link) > 1:
     shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + extra_files_to_link,
                          in_temp(target_basename + '.bc'))
-    # TODO: LLVM link-time opts?
+    # TODO: LLVM link-time opts? here and/or elsewhere?
   else:
     shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
 
