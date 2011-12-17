@@ -24,8 +24,13 @@ var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
 
+#if USE_TYPED_ARRAYS
+  // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
+  // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
+  // JS array so it will work (potentially slowly, depending on the engine).
   assert(dest < STATICTOP);
   assert(STATICTOP <= TOTAL_MEMORY);
+#endif
 
 #if USE_TYPED_ARRAYS == 2
   return; // It is legitimate to violate the load-store assumption in this case
