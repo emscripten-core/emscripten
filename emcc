@@ -161,10 +161,10 @@ CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = shared.CLANG
-  if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX'):
+  if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
   cmd = [compiler] + shared.EMSDK_OPTS + sys.argv[1:]
-  if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', cmd
+  if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', compiler, cmd
   exit(os.execvp(compiler, cmd))
 
 if os.environ.get('EMMAKEN_COMPILER'):
