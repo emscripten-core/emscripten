@@ -4939,6 +4939,13 @@ Options that are modified or new in %s include:
           assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), '\n'.join(output))
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
+        # emcc src.ll ==> generates .js
+        clear()
+        output = Popen([compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
+        assert len(output[0]) == 0, output[0]
+        assert os.path.exists('a.out.js'), '\n'.join(output)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+
         # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
@@ -5057,13 +5064,11 @@ Options that are modified or new in %s include:
           assert os.path.exists('combined.bc'), '\n'.join(output)
           self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
 
-      # TODO: compile .ll inputs to emcc into .bc
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: when ready, switch tools/shared building to use emcc over emmaken
       # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # TODO: emscripten tutorial with emcc
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
-      # TODO: hide output from compiling dlmalloc internally
 
       # Finally, do some web browser tests
       def run_browser(html_file, message):

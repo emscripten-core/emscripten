@@ -334,14 +334,15 @@ class Building:
     assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
 
   @staticmethod
-  def llvm_as(filename):
+  def llvm_as(input_filename, output_filename=None):
     # LLVM assembly ==> LLVM binary
-    try:
-      os.remove(target)
-    except:
-      pass
-    output = Popen([LLVM_AS, filename + '.o.ll', '-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
-    assert os.path.exists(filename + '.o'), 'Could not create bc file: ' + output
+    if output_filename is None:
+      # use test runner conventions
+      output_filename = input_filename + '.o'
+      input_filename = input_filename + '.o.ll'
+    try_delete(output_filename)
+    output = Popen([LLVM_AS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
+    assert os.path.exists(output_filename), 'Could not create bc file: ' + output
 
   @staticmethod
   def llvm_nm(filename):

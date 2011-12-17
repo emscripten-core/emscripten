@@ -11,12 +11,12 @@ use emar, emld and emranlib instead of the same command without 'em'.
 
 Example uses:
 
- * For configure, instead of ./configure, cmake, etc., run emconfiguren.py
+ * For configure, instead of ./configure, cmake, etc., run emconfigure.py
    with that command as an argument, for example
 
-    emconfiguren.py ./configure [options]
+    emconfigure.py ./configure [options]
   
-   emconfiguren.py is a tiny script that just sets some environment vars
+   emconfigure.py is a tiny script that just sets some environment vars
    as a convenience. The command just shown is equivalent to
 
     EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emranlib AR=PATH/emar CXX=PATH/em++ CC=PATH/emcc ./configure [options]
@@ -148,6 +148,10 @@ The -c option (which tells gcc not to run the linker) will
 cause LLVM bitcode to be generated, as %s only generates
 JavaScript in the final linking stage of building.
 
+The input file(s) can be either source code files that
+Clang can handle (C or C++), LLVM bitcode in binary form,
+or LLVM assembly files in human-readable form.
+
 ''' % (this, this, this)
   exit(0)
 
@@ -179,6 +183,7 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 # ---------------- Utilities ---------------
 
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
+BITCODE_SUFFIXES = ('.bc', '.o', '.ll')
 
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
@@ -289,7 +294,7 @@ try:
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(SOURCE_SUFFIXES + ('.bc', '.o')): # we already removed -o <target>, so all these should be inputs
+    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES): # we already removed -o <target>, so all these should be inputs
       input_files.append(arg)
       newargs[i] = ''
       if arg.endswith(SOURCE_SUFFIXES):
@@ -344,8 +349,11 @@ try:
       args = newargs + [input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
       Popen([call] + args).communicate()
-    else:
-      shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+    else: # bitcode
+      if input_file.endswith(('.bc', '.o')):
+        shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+      else: #.ll
+        shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
