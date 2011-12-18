@@ -2111,15 +2111,12 @@ LibraryManager.library = {
     // TODO: We could in theory slice off the top of the HEAP when
     //       sbrk gets a negative increment in |bytes|...
     var self = _sbrk;
-    if (!self.STATICTOP) {
-      STATICTOP = alignMemoryPage(STATICTOP);
-      self.STATICTOP = STATICTOP;
-      self.DATASIZE = 0;
-    } else {
-      assert(self.STATICTOP == STATICTOP, "No one should touch the heap!");
+    if (!self.called) {
+      STATICTOP = alignMemoryPage(STATICTOP); // make sure we start out aligned
+      self.called = true;
     }
-    var ret = STATICTOP + self.DATASIZE;
-    self.DATASIZE += alignMemoryPage(bytes);
+    var ret = STATICTOP;
+    if (bytes != 0) Runtime.staticAlloc(bytes);
     return ret;  // Previous break location.
   },
   open64: 'open',
@@ -4321,6 +4318,16 @@ LibraryManager.library = {
   _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPKv__deps: ['fputs', '$libcxx'],
   _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPKv: function(stream, str) {
     _fputs(str, _stdout); // XXX stderr etc.
+  },
+
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi__deps: ['fputs', '$libcxx'],
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi: function(stream, num) {
+    _fputs(allocate(intArrayFromString(num.toString()), 'i8', ALLOC_STACK), _stdout);
+  },
+
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPFRS3_S4_E__deps: ['fputc', '$libcxx'],
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPFRS3_S4_E: function(stream, x) {
+    _fputc('\n'.charCodeAt(0), _stdout);
   },
 
   // glibc

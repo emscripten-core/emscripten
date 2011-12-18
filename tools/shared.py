@@ -77,6 +77,8 @@ if USE_EMSDK:
   '-U__APPLE__'
 ]
   COMPILER_OPTS += EMSDK_OPTS
+else:
+  EMSDK_OPTS = []
 
 # Engine tweaks
 
@@ -222,11 +224,11 @@ class Building:
   @staticmethod
   def get_building_env():
     env = os.environ.copy()
-    env['CC'] = EMMAKEN #EMCC
-    env['CXX'] = EMMAKEN #EMXX
-    env['AR'] = EMMAKEN #EMAR
-    env['RANLIB'] = EMMAKEN #EMRANLIB
-    env['LIBTOOL'] = EMMAKEN #EMLIBTOOL
+    env['CC'] = EMCC
+    env['CXX'] = EMXX
+    env['AR'] = EMAR
+    env['RANLIB'] = EMRANLIB
+    env['LIBTOOL'] = EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
@@ -334,19 +336,20 @@ class Building:
     assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
 
   @staticmethod
-  def llvm_as(filename):
+  def llvm_as(input_filename, output_filename=None):
     # LLVM assembly ==> LLVM binary
-    try:
-      os.remove(target)
-    except:
-      pass
-    output = Popen([LLVM_AS, filename + '.o.ll', '-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
-    assert os.path.exists(filename + '.o'), 'Could not create bc file: ' + output
+    if output_filename is None:
+      # use test runner conventions
+      output_filename = input_filename + '.o'
+      input_filename = input_filename + '.o.ll'
+    try_delete(output_filename)
+    output = Popen([LLVM_AS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
+    assert os.path.exists(output_filename), 'Could not create bc file: ' + output
 
   @staticmethod
-  def llvm_nm(filename):
+  def llvm_nm(filename, stdout=PIPE, stderr=None):
     # LLVM binary ==> list of symbols
-    output = Popen([LLVM_NM, filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
     class ret:
       defs = []
       undefs = []
@@ -359,13 +362,10 @@ class Building:
         ret.defs.append(symbol)
     return ret
 
-  @staticmethod # TODO: make this use emcc instead of emmaken
-  def emmaken(filename, args=[], stdout=None, stderr=None, env=None):
-    try:
-      os.remove(filename + '.o')
-    except:
-      pass
-    Popen([EMMAKEN, filename] + args + ['-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
+  @staticmethod
+  def emcc(filename, args=[], stdout=None, stderr=None, env=None):
+    try_delete(filename + '.o')
+    Popen([EMCC, filename] + args + ['-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
     assert os.path.exists(filename + '.o'), 'Could not create bc file'
 
   @staticmethod
@@ -532,4 +532,17 @@ class Building:
       raise Exception('Error in cc output: ' + cc_output)
 
     return filename + '.cc.js'
+
+  @staticmethod
+  def is_bitcode(filename):
+    # checks if a file contains LLVM bitcode
+    # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
+    try:
+      defs = Building.llvm_nm(filename, stderr=PIPE)
+      assert len(defs.defs + defs.undefs) > 0
+    except:
+      return False
+    # look for magic signature
+    b = open(filename, 'r').read(4)
+    return b[0] == 'B' and b[1] == 'C'
 

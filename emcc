@@ -11,12 +11,12 @@ use emar, emld and emranlib instead of the same command without 'em'.
 
 Example uses:
 
- * For configure, instead of ./configure, cmake, etc., run emconfiguren.py
+ * For configure, instead of ./configure, cmake, etc., run emconfigure.py
    with that command as an argument, for example
 
-    emconfiguren.py ./configure [options]
+    emconfigure.py ./configure [options]
   
-   emconfiguren.py is a tiny script that just sets some environment vars
+   emconfigure.py is a tiny script that just sets some environment vars
    as a convenience. The command just shown is equivalent to
 
     EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emranlib AR=PATH/emar CXX=PATH/em++ CC=PATH/emcc ./configure [options]
@@ -79,10 +79,6 @@ from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
-
-################### XXX
-print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
-################### XXX
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 
@@ -148,16 +144,23 @@ The -c option (which tells gcc not to run the linker) will
 cause LLVM bitcode to be generated, as %s only generates
 JavaScript in the final linking stage of building.
 
+The input file(s) can be either source code files that
+Clang can handle (C or C++), LLVM bitcode in binary form,
+or LLVM assembly files in human-readable form.
+
 ''' % (this, this, this)
   exit(0)
 
-# If this is a configure-type thing, just do that
+# If this is a configure-type thing, do not compile to JavaScript, instead use clang
+# to compile to a native binary (using our headers, so things make sense later)
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
-  compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
+  compiler = shared.CLANG
+  if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
+    compiler = shared.to_cc(compiler)
   cmd = [compiler] + shared.EMSDK_OPTS + sys.argv[1:]
-  if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', cmd
+  if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', compiler, cmd
   exit(os.execvp(compiler, cmd))
 
 if os.environ.get('EMMAKEN_COMPILER'):
@@ -179,6 +182,7 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 # ---------------- Utilities ---------------
 
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
+BITCODE_SUFFIXES = ('.bc', '.o', '.ll')
 
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
@@ -266,6 +270,12 @@ try:
       closure = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
+      f = open(newargs[i+1], 'w')
+      f.write('\n')
+      f.close()
+      newargs[i] = ''
+      newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
@@ -289,14 +299,23 @@ try:
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(SOURCE_SUFFIXES + ('.bc', '.o')): # we already removed -o <target>, so all these should be inputs
-      input_files.append(arg)
+    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
-      if arg.endswith(SOURCE_SUFFIXES):
-        has_source_inputs = True
+      if os.path.exists(arg):
+        if arg.endswith(SOURCE_SUFFIXES):
+          input_files.append(arg)
+          has_source_inputs = True
+        else:
+          # this should be bitcode, make sure it is valid
+          if arg.endswith('.ll') or shared.Building.is_bitcode(arg):
+            input_files.append(arg)
+          else:
+            print >> sys.stderr, 'emcc: %s: Not valid LLVM bitcode' % arg
+      else:
+        print >> sys.stderr, 'emcc: %s: No such file or directory' % arg
   newargs = [ arg for arg in newargs if arg is not '' ]
 
-  assert len(input_files) > 0, 'emcc: no input files specified'
+  assert len(input_files) > 0, 'emcc: no input files'
 
   newargs += CC_ADDITIONAL_ARGS
 
@@ -334,24 +353,29 @@ try:
 
   ## Compile source code to bitcode
 
-  if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'
+  if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode (%s)' % str(sys.argv)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
-  newargs = newargs + ['-emit-llvm', '-c']
-
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
-      args = newargs + [input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
+      args = newargs + ['-emit-llvm', '-c', input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
       Popen([call] + args).communicate()
-    else:
-      shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+    else: # bitcode
+      if input_file.endswith(('.bc', '.o')):
+        shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+      else: #.ll
+        shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
     for input_file in input_files:
-      shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+      try:
+        shared.Building.llvm_opt(in_temp(unsuffixed_basename(input_file) + '.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+      except:
+        # This might be an invalid input, which will get ignored during linking later anyhow
+        print >> sys.stderr, 'emcc: warning: LLVM opt failed to run on %s, continuing without optimization' % input_file
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in ['js', 'html']:
@@ -364,9 +388,12 @@ try:
       else:
         assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
-        # we have multiple files: Link them. TODO: Pass complex linker args along
-        shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files), specified_target)
-
+        # we have multiple files: Link them TODO: llvm link-time opts?
+        ld_args = map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + \
+                  ['-o', specified_target]
+                  #[arg.split('-Wl,')[1] for arg in filter(lambda arg: arg.startswith('-Wl,'), sys.argv)]
+        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(ld_args)
+        Popen([shared.LLVM_LINK] + ld_args).communicate()
     exit(0)
 
   ## Continue on to create JavaScript
@@ -389,7 +416,7 @@ try:
   if need_dlmalloc and not has_dlmalloc:
     # We need to build and link dlmalloc in
     if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
-    Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')]).communicate()
+    Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
     if llvm_opt_level > 0:
       shared.Building.llvm_opt(in_temp('dlmalloc.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
     extra_files_to_link.append(in_temp('dlmalloc.o'))
@@ -408,7 +435,7 @@ try:
   if len(input_files) + len(extra_files_to_link) > 1:
     shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + extra_files_to_link,
                          in_temp(target_basename + '.bc'))
-    # TODO: LLVM link-time opts?
+    # TODO: LLVM link-time opts? here and/or elsewhere?
   else:
     shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
 

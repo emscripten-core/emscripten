@@ -23,6 +23,15 @@ var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 
 function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
+
+#if USE_TYPED_ARRAYS
+  // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
+  // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
+  // JS array so it will work (potentially slowly, depending on the engine).
+  assert(dest < STATICTOP);
+  assert(STATICTOP <= TOTAL_MEMORY);
+#endif
+
 #if USE_TYPED_ARRAYS == 2
   return; // It is legitimate to violate the load-store assumption in this case
 #endif
@@ -452,9 +461,9 @@ function allocate(slab, types, allocator) {
     size = slab.length;
   }
 
-  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, 1));
-
   var singleType = typeof types === 'string' ? types : null;
+
+  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
 
   var i = 0, type;
   while (i < size) {
@@ -533,12 +542,11 @@ var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
 var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
 #if USE_TYPED_ARRAYS
-var LAST_STATICTOP;
 function enlargeMemory() {
-  // LAST_STATICTOP is the previous top, TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
+  // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
   printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
-  assert(STATICTOP >= TOTAL_MEMORY && LAST_STATICTOP < TOTAL_MEMORY);
+  assert(STATICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
   while (TOTAL_MEMORY <= STATICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
@@ -610,6 +618,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
                                          // Also this ensures we leave 0 as an invalid address, 'NULL'
+STATICTOP = base.length;
 for (var i = 0; i < base.length; i++) {
   {{{ makeSetValue(0, 'i', 'base[i]', 'i8') }}}
 }

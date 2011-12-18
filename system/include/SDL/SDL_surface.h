@@ -59,7 +59,9 @@ extern "C" {
 /**
  *  Evaluates to true if the surface needs to be locked before access.
  */
-#define SDL_MUSTLOCK(S)	(((S)->flags & SDL_RLEACCEL) != 0)
+#define SDL_MUSTLOCK(S)	1
+                        /* XXX Emscripten: we always need to lock.
+                               (((S)->flags & SDL_RLEACCEL) != 0) */
 
 /**
  * \brief A collection of pixels used in software blitting.

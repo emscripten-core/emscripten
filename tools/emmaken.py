@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#raise Exception('emmaken is deprecated!')
+raise Exception('emmaken is deprecated! use "emcc"')
 
 '''
 emmaken - the emscripten make proxy tool
