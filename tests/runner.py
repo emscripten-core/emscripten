@@ -1964,8 +1964,8 @@ if 'benchmark' not in str(sys.argv):
         main_name = os.path.join(self.get_dir(), 'main.cpp')
         open(main_name, 'w').write(main)
 
-        Building.emmaken(supp_name)
-        Building.emmaken(main_name)
+        Building.emcc(supp_name)
+        Building.emcc(main_name)
         all_name = os.path.join(self.get_dir(), 'all.bc')
         Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
@@ -4484,8 +4484,8 @@ Child2:9
       main_name = os.path.join(self.get_dir(), 'main.cpp')
       open(main_name, 'w').write(main)
 
-      Building.emmaken(module_name, ['-g'])
-      Building.emmaken(main_name, ['-g'])
+      Building.emcc(module_name, ['-g'])
+      Building.emcc(main_name, ['-g'])
       all_name = os.path.join(self.get_dir(), 'all.bc')
       Building.link([module_name + '.o', main_name + '.o'], all_name)
 

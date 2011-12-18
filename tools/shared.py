@@ -362,13 +362,10 @@ class Building:
         ret.defs.append(symbol)
     return ret
 
-  @staticmethod # TODO: make this use emcc instead of emmaken
-  def emmaken(filename, args=[], stdout=None, stderr=None, env=None):
-    try:
-      os.remove(filename + '.o')
-    except:
-      pass
-    Popen([EMMAKEN, filename] + args + ['-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
+  @staticmethod
+  def emcc(filename, args=[], stdout=None, stderr=None, env=None):
+    try_delete(filename + '.o')
+    Popen([EMCC, filename] + args + ['-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
     assert os.path.exists(filename + '.o'), 'Could not create bc file'
 
   @staticmethod
