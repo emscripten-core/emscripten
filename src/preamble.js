@@ -461,9 +461,9 @@ function allocate(slab, types, allocator) {
     size = slab.length;
   }
 
-  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, 1));
-
   var singleType = typeof types === 'string' ? types : null;
+
+  var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
 
   var i = 0, type;
   while (i < size) {
