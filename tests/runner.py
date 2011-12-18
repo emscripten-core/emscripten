@@ -5338,7 +5338,10 @@ elif 'sanity' in str(sys.argv):
 
   sys.argv = filter(lambda x: x != 'sanity', sys.argv)
 
-  print 'Running sanity checks. WARNING: This will modify ~/.emscripten, and in theory can break it. A backup will be saved in ~/.emscripten_backup'
+  print
+  print 'Running sanity checks.'
+  print 'WARNING: This will modify ~/.emscripten, and in theory can break it although it should be restored properly. A backup will be saved in ~/.emscripten_backup'
+  print
 
   assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) ~/.emscripten file to already exist'
 
@@ -5346,9 +5349,11 @@ elif 'sanity' in str(sys.argv):
   def restore():
     shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
 
+  SANITY_FILE = CONFIG_FILE + '_sanity'
+
   def wipe():
     try_delete(CONFIG_FILE)
-    try_delete(CONFIG_FILE + '_sanity')
+    try_delete(SANITY_FILE)
 
   commands = [[EMCC], ['python', path_from_root('tests', 'runner.py'), 'blahblah']]
 
@@ -5359,21 +5364,33 @@ elif 'sanity' in str(sys.argv):
     def tearDown(self):
       restore()
 
-    def test_normal(self):
+    def do(self, command):
+      if type(command) is not list:
+        command = [command]
+
+      return Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+
+    def check_working(self, command):
+      if type(command) is not list:
+        command = [command]
+
+      output = self.do(command)
+      if command[0] == EMCC:
+        self.assertContained('no input files', output)
+      else:
+        self.assertContained("has no attribute 'blahblah'", output)
+      return output
+
+    def test_aaa_normal(self): # this should be the very first thing that runs. if this fails, everything else is irrelevant!
       for command in commands:
         # Your existing ~/.emscripten should work!
         restore()
-        output = Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
-
-        if command[0] == EMCC:
-          self.assertContained('no input files', output)
-        else:
-          self.assertContained("has no attribute 'blahblah'", output)
+        self.check_working(command)
 
     def test_firstrun(self):
       for command in commands:
         wipe()
-        output = Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+        output = self.do(command)
 
         self.assertContained('Welcome to Emscripten!', output)
         self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
@@ -5389,12 +5406,53 @@ elif 'sanity' in str(sys.argv):
           f = open(CONFIG_FILE, 'w')
           f.write(settings)
           f.close()
-          output = Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+          output = self.do(command)
 
           if 'LLVM_ROOT' not in settings:
             self.assertContained('Error in evaluating ~/.emscripten', output)
           else:
-            self.assertContained('FATAL', output)
+            self.assertContained('FATAL', output) # sanity check should fail
+
+    def test_emcc(self):
+      def mtime(filename):
+        return os.stat(filename).st_mtime
+
+      SANITY_MESSAGE = 'Emscripten: Running sanity checks'
+      SANITY_FAIL_MESSAGE = 'sanity check failed to run'
+
+      # emcc should check sanity if no ~/.emscripten_sanity
+      restore()
+      time.sleep(0.1)
+      assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity
+      output = self.check_working(EMCC)
+      self.assertContained(SANITY_MESSAGE, output)
+      assert os.path.exists(SANITY_FILE) # EMCC should have checked sanity successfully
+      assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
+      self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+      # emcc run again should not sanity check, because the sanity file is newer
+      output = self.check_working(EMCC)
+      self.assertNotContained(SANITY_MESSAGE, output)
+      self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+      # But the test runner should
+      output = self.check_working(commands[1])
+      self.assertContained(SANITY_MESSAGE, output)
+      self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+      # Make sure the test runner didn't do anything to the setup
+      output = self.check_working(EMCC)
+      self.assertNotContained(SANITY_MESSAGE, output)
+      self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+      # emcc should also check sanity if the file is outdated
+      time.sleep(0.1)
+      restore()
+      assert mtime(SANITY_FILE) < mtime(CONFIG_FILE)
+      output = self.check_working(EMCC)
+      self.assertContained(SANITY_MESSAGE, output)
+      assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
+      self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
 else:
   raise Exception('Test runner is confused: ' + str(sys.argv))

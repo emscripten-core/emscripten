@@ -43,10 +43,12 @@ def check_sanity(force=False):
       sanity_file = CONFIG_FILE + '_sanity'
       try:
         sanity_mtime = os.stat(sanity_file).st_mtime
+        if sanity_mtime > settings_mtime:
+          return # sanity has been checked
       except:
-        sanity_mtime = None
-      if sanity_mtime is not None and sanity_mtime > settings_mtime:
-        return # sanity has been checked
+        pass
+
+    print >> sys.stderr, '(Emscripten: Running sanity checks)'
 
     if not check_engine(COMPILER_ENGINE):
       print >> sys.stderr, 'FATAL: The JavaScript shell used for compiling (%s) does not seem to work, check the paths in ~/.emscripten' % COMPILER_ENGINE
