@@ -217,7 +217,7 @@ class RunnerCore(unittest.TestCase):
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
-if 'benchmark' not in str(sys.argv):
+if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
   # Tests
 
   print "Running Emscripten tests..."
@@ -5114,7 +5114,7 @@ Options that are modified or new in %s include:
                      stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
-else:
+elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.
 
@@ -5150,7 +5150,7 @@ else:
   JS_ENGINE = JS_ENGINES[0]
   for i in range(1, len(sys.argv)):
     arg = sys.argv[i]
-    if not arg.startswith('test_'):
+    if not arg.startswith('benchmark.test_'):
       JS_ENGINE = eval(arg)
       sys.argv[i] = None
   sys.argv = filter(lambda arg: arg is not None, sys.argv)
@@ -5206,9 +5206,11 @@ else:
       f.close()
       final_filename = os.path.join(dirname, 'src.js')
 
+      try_delete(final_filename)
       output = Popen([EMCC, filename, '-O3', '-s', 'USE_TYPED_ARRAYS=1', '-s', 'QUANTUM_SIZE=1',
                       '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=PIPE).communicate()
+      assert os.path.exists(final_filename), 'Failed to compile file: ' + '\n'.join(output)
 
       # Run JS
       global total_times, tests_done
@@ -5330,14 +5332,79 @@ else:
       src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_benchmark(src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
 
+elif 'sanity' in str(sys.argv):
+
+  # Run some sanity checks on the test runner and emcc.
+
+  sys.argv = filter(lambda x: x != 'sanity', sys.argv)
+
+  print 'Running sanity checks. WARNING: This will modify ~/.emscripten, and in theory can break it. A backup will be saved in ~/.emscripten_backup'
+
+  assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) ~/.emscripten file to already exist'
+
+  shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
+  def restore():
+    shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
+
+  def wipe():
+    try_delete(CONFIG_FILE)
+    try_delete(CONFIG_FILE + '_sanity')
+
+  commands = [[EMCC], ['python', path_from_root('tests', 'runner.py'), 'blahblah']]
+
+  class sanity(RunnerCore):
+    def setUp(self):
+      wipe()
+
+    def tearDown(self):
+      restore()
+
+    def test_normal(self):
+      for command in commands:
+        # Your existing ~/.emscripten should work!
+        restore()
+        output = Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+
+        if command[0] == EMCC:
+          self.assertContained('no input files', output)
+        else:
+          self.assertContained("has no attribute 'blahblah'", output)
+
+    def test_firstrun(self):
+      for command in commands:
+        wipe()
+        output = Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+
+        self.assertContained('Welcome to Emscripten!', output)
+        self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
+        self.assertContained('A settings file has been copied to ~/.emscripten, at absolute path: %s' % CONFIG_FILE, output)
+        self.assertContained('Please edit that file and change the paths to fit your system', output)
+        self.assertContained('make sure LLVM_ROOT and NODE_JS are correct', output)
+        self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
+        assert output.replace('\n', '').endswith('===='), 'We should have stopped: ' + output
+        assert (open(CONFIG_FILE).read() == open(path_from_root('settings.py')).read()), 'Settings should be copied from settings.py'
+
+        # Second run, with bad ~/.emscripten
+        for settings in ['blah', 'LLVM_ROOT="blah"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
+          f = open(CONFIG_FILE, 'w')
+          f.write(settings)
+          f.close()
+          output = Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+
+          if 'LLVM_ROOT' not in settings:
+            self.assertContained('Error in evaluating ~/.emscripten', output)
+          else:
+            self.assertContained('FATAL', output)
+
+else:
+  raise Exception('Test runner is confused: ' + str(sys.argv))
 
 if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
 
   # Sanity checks
 
-  if not check_engine(COMPILER_ENGINE):
-    print 'WARNING: The JavaScript shell used for compiling does not seem to work'
+  check_sanity(force=True)
 
   total_engines = len(JS_ENGINES)
   JS_ENGINES = filter(check_engine, JS_ENGINES)
@@ -5345,10 +5412,6 @@ if __name__ == '__main__':
     print 'WARNING: None of the JS engines in JS_ENGINES appears to work.'
   elif len(JS_ENGINES) < total_engines:
     print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
-
-  for cmd in [CLANG, LLVM_DIS]:
-    if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
-      print 'WARNING: Cannot find', cmd
 
   # Go
 

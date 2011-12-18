@@ -5,10 +5,77 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
+# Config file
+
 CONFIG_FILE = os.path.expanduser('~/.emscripten')
 if not os.path.exists(CONFIG_FILE):
   shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
-exec(open(CONFIG_FILE, 'r').read())
+  print >> sys.stderr, '''
+==============================================================================
+Welcome to Emscripten!
+
+This is the first time any of the Emscripten tools has been run.
+
+A settings file has been copied to ~/.emscripten, at absolute path: %s
+
+Please edit that file and change the paths to fit your system. Specifically,
+make sure LLVM_ROOT and NODE_JS are correct.
+
+This command will now exit. When you are done editing those paths, re-run it.
+==============================================================================
+''' % CONFIG_FILE
+  sys.exit(0)
+try:
+  exec(open(CONFIG_FILE, 'r').read())
+except Exception, e:
+  print >> sys.stderr, 'Error in evaluating ~/.emscripten (at %s): %s' % (CONFIG_FILE, str(e))
+  sys.exit(1)
+
+# Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
+# exists.
+# The test runner always does this check (through |force|). emcc does this less frequently,
+# only when ~/.emscripten_sanity does not exist or is older than ~/.emscripten (so,
+# we re-check sanity when the settings are changed)
+def check_sanity(force=False):
+  try:
+    if not force:
+      settings_mtime = os.stat(CONFIG_FILE).st_mtime
+      sanity_file = CONFIG_FILE + '_sanity'
+      try:
+        sanity_mtime = os.stat(sanity_file).st_mtime
+      except:
+        sanity_mtime = None
+      if sanity_mtime is not None and sanity_mtime > settings_mtime:
+        return # sanity has been checked
+
+    if not check_engine(COMPILER_ENGINE):
+      print >> sys.stderr, 'FATAL: The JavaScript shell used for compiling (%s) does not seem to work, check the paths in ~/.emscripten' % COMPILER_ENGINE
+      sys.exit(0)
+
+    if NODE_JS != COMPILER_ENGINE:
+      if not check_engine(NODE_JS):
+        print >> sys.stderr, 'FATAL: Node.js (%s) does not seem to work, check the paths in ~/.emscripten' % NODE_JS
+        sys.exit(0)
+
+    for cmd in [CLANG, LLVM_DIS]:
+      if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
+        print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in ~/.emscripten' % cmd
+        sys.exit(0)
+
+    if not os.path.exists(CLOSURE_COMPILER):
+      print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in ~/.emscripten. -O2 and above will fail' % CLOSURE_COMPILER
+
+    # Sanity check passed!
+
+    if not force:
+      # Only create/update this file if the sanity check succeeded, i.e., we got here
+      f = open(sanity_file, 'w')
+      f.write('certified\n')
+      f.close()
+
+  except Exception, e:
+    # Any error here is not worth failing on
+    print 'WARNING: sanity check failed to run', e
 
 # Tools/paths
 

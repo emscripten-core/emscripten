@@ -82,6 +82,8 @@ TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 
+shared.check_sanity()
+
 # Handle some global flags
 
 if len(sys.argv) == 1:
@@ -280,6 +282,9 @@ try:
 
   if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
   if closure is None: closure = 1 if opt_level >= 2 else 0
+
+  if closure:
+    assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % CLOSURE_COMPILER
 
   settings_changes = []
   for i in range(len(newargs)):
