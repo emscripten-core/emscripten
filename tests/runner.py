@@ -5153,8 +5153,14 @@ else:
 
   Building.COMPILER = CLANG
 
-  # Pick the JS engine to benchmark
-  JS_ENGINE = JS_ENGINES[1]
+  # Pick the JS engine to benchmark. If you specify one, it will be picked. For example, python tests/runner.py benchmark SPIDERMONKEY_ENGINE
+  JS_ENGINE = JS_ENGINES[0]
+  for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
+    if not arg.startswith('test_'):
+      JS_ENGINE = eval(arg)
+      sys.argv[i] = None
+  sys.argv = filter(lambda arg: arg is not None, sys.argv)
   print 'Benchmarking JS engine:', JS_ENGINE
 
   Building.COMPILER_TEST_OPTS = []
