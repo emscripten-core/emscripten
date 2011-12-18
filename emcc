@@ -80,10 +80,6 @@ from tools import shared
 DEBUG = os.environ.get('EMCC_DEBUG')
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 
-################### XXX
-print >> sys.stderr, '\n***This is a WORK IN PROGRESS***'
-################### XXX
-
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 
 # Handle some global flags
