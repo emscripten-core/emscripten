@@ -5370,15 +5370,17 @@ elif 'sanity' in str(sys.argv):
 
       return Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
-    def check_working(self, command):
+    def check_working(self, command, expected=None):
       if type(command) is not list:
         command = [command]
+      if expected is None:
+        if command[0] == EMCC:
+          expected = 'no input files'
+        else:
+          expected = "has no attribute 'blahblah'"
 
       output = self.do(command)
-      if command[0] == EMCC:
-        self.assertContained('no input files', output)
-      else:
-        self.assertContained("has no attribute 'blahblah'", output)
+      self.assertContained(expected, output)
       return output
 
     def test_aaa_normal(self): # this should be the very first thing that runs. if this fails, everything else is irrelevant!
@@ -5412,6 +5414,34 @@ elif 'sanity' in str(sys.argv):
             self.assertContained('Error in evaluating ~/.emscripten', output)
           else:
             self.assertContained('FATAL', output) # sanity check should fail
+
+    def test_closure_compiler(self):
+      CLOSURE_FATAL = 'fatal: Closure compiler'
+      CLOSURE_WARNING = 'WARNING: Closure compiler'
+
+      # Sanity check should find closure
+      restore()
+      output = self.check_working(EMCC)
+      self.assertNotContained(CLOSURE_FATAL, output)
+      self.assertNotContained(CLOSURE_WARNING, output)
+
+      # Append a bad path for closure, will warn
+      f = open(CONFIG_FILE, 'a')
+      f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
+      f.close()
+      output = self.check_working(EMCC, CLOSURE_WARNING)
+
+      # And if you actually try to use the bad path, will be fatal
+      f = open(CONFIG_FILE, 'a')
+      f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
+      f.close()
+      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+
+      # With a working path, all is well
+      restore()
+      try_delete('a.out.js')
+      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], 'The relooper optimization can be very slow')
+      assert os.path.exists('a.out.js')
 
     def test_emcc(self):
       def mtime(filename):

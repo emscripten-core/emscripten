@@ -284,7 +284,7 @@ try:
   if closure is None: closure = 1 if opt_level >= 2 else 0
 
   if closure:
-    assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % CLOSURE_COMPILER
+    assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
 
   settings_changes = []
   for i in range(len(newargs)):
