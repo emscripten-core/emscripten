@@ -4925,6 +4925,19 @@ Options that are modified or new in %s include:
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
 
+        # properly report source code errors, and stop there
+        clear()
+        assert not os.path.exists('a.out.js')
+        output = Popen([compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
+        assert len(output[0]) == 0, output[0]
+        self.assertNotContained('IOError', output[1]) # no python stack
+        self.assertNotContained('Traceback', output[1]) # no python stack
+        self.assertContained('error: invalid preprocessing directive', output[1])
+        self.assertContained('''error: use of undeclared identifier 'cheez''', output[1])
+        self.assertContained('2 errors generated', output[1])
+        assert output[1].split('2 errors generated.')[1].replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
+
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
