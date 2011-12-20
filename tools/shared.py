@@ -563,7 +563,8 @@ class Building:
     if type(passes) == str:
       passes = [passes]
     input = open(filename, 'r').read()
-    output = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE).communicate(input)[0]
+    output, err = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
+    assert len(output) > 0, 'Error in js optimizer: ' + err + '\n\n' + output
     filename += '.jo.js'
     f = open(filename, 'w')
     f.write(output)
@@ -578,7 +579,8 @@ class Building:
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
-    output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+    output, err = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
+    assert len(output) > 0, 'Error in eliminator: ' + err + '\n\n' + output
     filename += '.el.js'
     f = open(filename, 'w')
     f.write(output)
