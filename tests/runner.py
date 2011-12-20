@@ -5123,7 +5123,7 @@ Options that are modified or new in %s include:
     def test_js_optimizer(self):
       input = open(path_from_root('tools', 'test-js-optimizer.js')).read()
       expected = open(path_from_root('tools', 'test-js-optimizer-output.js')).read()
-      output = Popen([NODE_JS, JS_OPTIMIZER, 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost', 'loopOptimizer'],
+      output = Popen([NODE_JS, JS_OPTIMIZER, 'hoistMultiples', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost', 'loopOptimizer'],
                      stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output.replace('\n\n', '\n'))
 

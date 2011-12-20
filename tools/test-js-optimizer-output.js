@@ -86,4 +86,63 @@ function maths() {
   check(95);
   __ZN6b2Vec2C1Ev($this1 + 76 | 0);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths"]
+function hoisting() {
+  if ($i < $N) {
+    __label__ = 2;
+    callOther();
+  }
+  pause(1);
+  $for_body3$$for_end$5 : do {
+    if ($i < $N) {
+      __label__ = 2;
+      while (true) {
+        break $for_body3$$for_end$5;
+      }
+      callOther();
+    } else {
+      __label__ = 3;
+    }
+  } while (0);
+  pause(2);
+  do {
+    if ($i < $N) {
+      __label__ = 2;
+      if (callOther()) break;
+    } else {
+      __label__ = 3;
+    }
+  } while (0);
+  pause(3);
+  if ($i < $N) {
+    __label__ = 2;
+    callOther();
+  } else {
+    __label__ = 3;
+  }
+  pause(4);
+  if ($i < $N) {
+    __label__ = 2;
+    callOther();
+  } else {
+    __label__ = 3;
+    somethingElse();
+  }
+  pause(5);
+  if ($i < $N) {
+    __label__ = 2;
+  } else {
+    __label__ = 3;
+    somethingElse();
+  }
+  if (__label__ == 55) {
+    callOther();
+  }
+  pause(6);
+  if ($i < $N) {
+    __label__ = 2;
+  } else {
+    __label__ = 3;
+    somethingElse();
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting"]

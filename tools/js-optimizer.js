@@ -357,6 +357,136 @@ function simplifyExpressionsPost(ast) {
   simplifyNotComps(ast);
 }
 
+// Multiple blocks from the relooper are, in general, implemented by
+//   if (__label__ == x) { } else if ..
+// and branching into them by
+//   if (condition) { __label__ == x } else ..
+// We can hoist the multiple block into the condition, thus removing code and one 'if' check
+function hoistMultiples(ast) {
+  ast[1].forEach(function(node, i) {
+    var type = node[0];
+    if (type == 'defun') {
+      var statements = node[3];
+      for (var i = 0; i < statements.length-1; i++) {
+        var modified = false;
+        var pre = statements[i];
+        if (pre[0] != 'if') continue;
+        var post = statements[i+1];
+        // Look into some block types. shell() will then recreate the shell that we looked into
+        var postInner = post;
+        var shell = function(x) { return x };
+        while (true) {
+          /*if (postInner[0] == 'block') {
+            postInner = postInner[1][0];
+          } else */if (postInner[0] == 'label') {
+            shell = (function(oldShell, oldPostInner) {
+              return function(x) {
+                return oldShell(['label', oldPostInner[1], x]);
+              };
+            })(shell, postInner);
+            postInner = postInner[2];
+          } else if (postInner[0] == 'do') {
+            shell = (function(oldShell, oldPostInner) {
+              return function(x) {
+                return oldShell(['do', copy(oldPostInner[1]), ['block', [x]]]);
+              }
+            })(shell, postInner);;
+            postInner = postInner[2][1][0];
+          } else {
+            break; // give up
+          }
+        }
+        if (postInner[0] != 'if') continue;
+        // Look into this if, and its elseifs
+        while (postInner) {
+          assert(postInner[0] == 'if');
+          var cond = postInner[1];
+          if (cond[0] == 'binary' && cond[1] == '==' && cond[2][0] == 'name' && cond[2][1] == '__label__') {
+            assert(cond[3][0] == 'num');
+            // We have a valid Multiple check here. Try to hoist it, look for the source in |pre| and its else's
+            var labelNum = cond[3][1];
+            var labelBlock = postInner[2];
+            assert(labelBlock[0] == 'block');
+            var found = false;
+            traverse(pre, function(preNode, preType) {
+              if (!found && preType == 'assign' && preNode[2][0] == 'name' && preNode[2][1] == '__label__') {
+                assert(preNode[3][0] == 'num');
+                if (preNode[3][1] == labelNum) {
+                  // That's it! Hoist away
+                  found = true;
+                  modified = true;
+                  postInner[2] = ['block', []];
+                  return ['block', [preNode].concat(labelBlock[1])];
+                }
+              }
+            });
+          }
+          postInner = postInner[3]; // Proceed to look in the else clause
+        }
+        if (modified) {
+          statements[i] = shell(pre);
+        }
+      }
+    }
+  });
+
+  // Clear out empty ifs and blocks, and redundant blocks/stats
+  var more = true;
+  while (more) {
+    more = false;
+    traverse(ast, function(node, type) {
+      if (type == 'if' && node[2][0] == 'block' && node[2][1].length == 0) {
+        more = true;
+        if (node[2][2]) { // if there is an else, return that
+          return node[2][2];
+        } else {
+          return emptyNode();
+        }
+      } else if (type == 'block' && !node[1]) {
+        return emptyNode();
+      } else if (type == 'block' && (node[1].length == 0 || (node[1].length == 1 && jsonCompare(node[1][0], emptyNode())))) {
+        more = true;
+        return emptyNode();
+      } else if (type == 'block' && node[1].length == 1 && node[1][0][0] == 'block') {
+        more = true;
+        return node[1][0];
+      } else if (type == 'stat' && node[1][0] == 'block') {
+        more = true;
+        return node[1];
+      } else if (type == 'block') {
+        var pre = node[1].length;
+        node[1] = node[1].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
+        if (node[1].length < pre) {
+          more = true;
+          return node;
+        }
+      } else if (type == 'defun' && node[3].length == 1 && node[3][0][0] == 'block') {
+        more = true;
+        node[3] = node[3][0][1];
+        return node;
+      } else if (type == 'defun') {
+        var pre = node[3].length;
+        node[3] = node[3].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
+        if (node[3].length < pre) {
+          more = true;
+          return node;
+        }
+      } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
+        more = true;
+        return emptyNode();
+      } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
+        more = true;
+        return emptyNode();
+      } else if (type == 'if' && jsonCompare(node[3], emptyNode())) { // empty else clauses
+        node[3] = null;
+        return node;
+      }
+    });
+  }
+}
+
+// Simplifies loops
+// WARNING: This assumes all loops and breaks/continues are labelled
 function loopOptimizer(ast) {
   // Remove unneeded labels and one-time (do while(0)) loops. It is convenient to do these both at once.
   function passTwo(ast) {
@@ -442,6 +572,7 @@ var passes = {
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressionsPre: simplifyExpressionsPre,
   simplifyExpressionsPost: simplifyExpressionsPost,
+  hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer
 };
 
@@ -457,16 +588,7 @@ if (metadata) setGeneratedFunctions(metadata);
 arguments.forEach(function(arg) {
   passes[arg](ast);
 });
-/* TODO: run only on generated functions (but, some passes look at globals...)
-arguments.forEach(function(arg) {
-  ast[1].forEach(function(node, i) {
-    if (node[0] == 'defun' && isGenerated(node[1])) {
-      passes[arg](node);
-    }
-  });
-});
-*/
-
+ast = srcToAst(astToSrc(ast)); // re-parse, to simplify a little
 print(astToSrc(ast));
 if (metadata) print(metadata + '\n');
 
