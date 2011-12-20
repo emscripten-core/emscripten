@@ -597,8 +597,8 @@ class Building:
                        #'--formatting', 'PRETTY_PRINT',
                        #'--variable_map_output_file', filename + '.vars',
                        '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    if 'ERROR' in cc_output:
-      raise Exception('Error in cc output: ' + cc_output)
+    if 'ERROR' in cc_output or not os.path.exists(filename + '.cc.js'):
+      raise Exception('closure compiler error: ' + cc_output)
 
     return filename + '.cc.js'
 
