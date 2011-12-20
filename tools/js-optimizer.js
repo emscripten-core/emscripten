@@ -398,8 +398,7 @@ function hoistMultiples(ast) {
         }
         if (postInner[0] != 'if') continue;
         // Look into this if, and its elseifs
-        while (postInner) {
-          assert(postInner[0] == 'if');
+        while (postInner && postInner[0] == 'if') {
           var cond = postInner[1];
           if (cond[0] == 'binary' && cond[1] == '==' && cond[2][0] == 'name' && cond[2][1] == '__label__') {
             assert(cond[3][0] == 'num');
