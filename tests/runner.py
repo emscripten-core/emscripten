@@ -2738,8 +2738,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
 
-    def test_strtok(self):
-      src = r'''
+    def strtoks_setup(self):
+      header = r'''
         #include<stdio.h>
         #include<string.h>
 
@@ -2749,7 +2749,16 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           char *word, *phrase, *brkt, *brkb;
 
           strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
+        '''
 
+      strtok_src = header + r'''
+          for (word = strtok(test, sep); word; word = strtok(NULL, sep)) {
+            printf("at %s\n", word);
+          }
+        }
+        '''
+
+      strtok_r_src = header + r'''
           for (word = strtok_r(test, sep, &brkt); word; word = strtok_r(NULL, sep, &brkt)) {
             strcpy(blah, "blah:blat:blab:blag");
             for (phrase = strtok_r(blah, sep, &brkb); phrase; phrase = strtok_r(NULL, sep, &brkb)) {
@@ -2758,9 +2767,18 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           }
           return 1;
         }
-      '''
+        '''
 
-      expected = '''at This:blah
+      expected_strtok = '''at This
+at is.a
+at test
+at of
+at the
+at string
+at tokenizer
+at function.
+'''
+      expected_strtok_r = '''at This:blah
 at This:blat
 at This:blab
 at This:blag
@@ -2793,7 +2811,17 @@ at function.:blat
 at function.:blab
 at function.:blag
 '''
-      self.do_run(src, expected)
+      return (strtok_src, expected_strtok, strtok_r_src, expected_strtok_r)
+
+    def test_strtok(self):
+      strtok_src, expected_strtok, _, _ = self.strtoks_setup()
+
+      self.do_run(strtok_src, expected_strtok)
+
+    def test_strtok_r(self):
+      _, _, strtok_r_src, expected_strtok_r = self.strtoks_setup()
+
+      self.do_run(strtok_r_src, expected_strtok_r)
 
     def test_parseInt(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
