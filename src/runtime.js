@@ -9,9 +9,6 @@
 var RuntimeGenerator = {
   alloc: function(size, type, init) {
     var ret = type + 'TOP';
-    if (ASSERTIONS) {
-      ret += '; assert(' + size + ' != 0, "Trying to allocate 0")';
-    }
     if (init) {
       ret += '; _memset(' + type + 'TOP, 0, ' + size + ')';
     }

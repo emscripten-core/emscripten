@@ -284,7 +284,7 @@ try:
   if closure is None: closure = 1 if opt_level >= 2 else 0
 
   if closure:
-    assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % CLOSURE_COMPILER
+    assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
 
   settings_changes = []
   for i in range(len(newargs)):
@@ -363,9 +363,13 @@ try:
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
-      args = newargs + ['-emit-llvm', '-c', input_file, '-o', in_temp(unsuffixed_basename(input_file) + '.o')]
+      output_file = in_temp(unsuffixed_basename(input_file) + '.o')
+      args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
-      Popen([call] + args).communicate()
+      Popen([call] + args).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+      if not os.path.exists(output_file):
+        print >> sys.stderr, 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
+        sys.exit(1)
     else: # bitcode
       if input_file.endswith(('.bc', '.o')):
         shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))

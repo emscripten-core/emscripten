@@ -4925,6 +4925,19 @@ Options that are modified or new in %s include:
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
 
+        # properly report source code errors, and stop there
+        clear()
+        assert not os.path.exists('a.out.js')
+        output = Popen([compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
+        assert len(output[0]) == 0, output[0]
+        self.assertNotContained('IOError', output[1]) # no python stack
+        self.assertNotContained('Traceback', output[1]) # no python stack
+        self.assertContained('error: invalid preprocessing directive', output[1])
+        self.assertContained('''error: use of undeclared identifier 'cheez''', output[1])
+        self.assertContained('2 errors generated', output[1])
+        assert output[1].split('2 errors generated.')[1].replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
+
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
@@ -5370,15 +5383,17 @@ elif 'sanity' in str(sys.argv):
 
       return Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
-    def check_working(self, command):
+    def check_working(self, command, expected=None):
       if type(command) is not list:
         command = [command]
+      if expected is None:
+        if command[0] == EMCC:
+          expected = 'no input files'
+        else:
+          expected = "has no attribute 'blahblah'"
 
       output = self.do(command)
-      if command[0] == EMCC:
-        self.assertContained('no input files', output)
-      else:
-        self.assertContained("has no attribute 'blahblah'", output)
+      self.assertContained(expected, output)
       return output
 
     def test_aaa_normal(self): # this should be the very first thing that runs. if this fails, everything else is irrelevant!
@@ -5412,6 +5427,34 @@ elif 'sanity' in str(sys.argv):
             self.assertContained('Error in evaluating ~/.emscripten', output)
           else:
             self.assertContained('FATAL', output) # sanity check should fail
+
+    def test_closure_compiler(self):
+      CLOSURE_FATAL = 'fatal: Closure compiler'
+      CLOSURE_WARNING = 'WARNING: Closure compiler'
+
+      # Sanity check should find closure
+      restore()
+      output = self.check_working(EMCC)
+      self.assertNotContained(CLOSURE_FATAL, output)
+      self.assertNotContained(CLOSURE_WARNING, output)
+
+      # Append a bad path for closure, will warn
+      f = open(CONFIG_FILE, 'a')
+      f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
+      f.close()
+      output = self.check_working(EMCC, CLOSURE_WARNING)
+
+      # And if you actually try to use the bad path, will be fatal
+      f = open(CONFIG_FILE, 'a')
+      f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
+      f.close()
+      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+
+      # With a working path, all is well
+      restore()
+      try_delete('a.out.js')
+      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], 'The relooper optimization can be very slow')
+      assert os.path.exists('a.out.js')
 
     def test_emcc(self):
       def mtime(filename):

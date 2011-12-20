@@ -563,7 +563,8 @@ class Building:
     if type(passes) == str:
       passes = [passes]
     input = open(filename, 'r').read()
-    output = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE).communicate(input)[0]
+    output, err = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
+    assert len(output) > 0, 'Error in js optimizer: ' + err + '\n\n' + output
     filename += '.jo.js'
     f = open(filename, 'w')
     f.write(output)
@@ -578,7 +579,8 @@ class Building:
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
-    output = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)[0]
+    output, err = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
+    assert len(output) > 0, 'Error in eliminator: ' + err + '\n\n' + output
     filename += '.el.js'
     f = open(filename, 'w')
     f.write(output)
@@ -597,8 +599,8 @@ class Building:
                        #'--formatting', 'PRETTY_PRINT',
                        #'--variable_map_output_file', filename + '.vars',
                        '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    if 'ERROR' in cc_output:
-      raise Exception('Error in cc output: ' + cc_output)
+    if 'ERROR' in cc_output or not os.path.exists(filename + '.cc.js'):
+      raise Exception('closure compiler error: ' + cc_output)
 
     return filename + '.cc.js'
 
