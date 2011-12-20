@@ -3843,6 +3843,12 @@ LibraryManager.library = {
     return 0;
   },
 
+  __strtok_state: 0,
+  strtok__deps: ['__strtok_state', 'strtok_r'],
+  strtok: function(s, delim) {
+    return _strtok_r(s, delim, ___strtok_state);
+  },
+
   // Translated from newlib; for the original source and licensing, see library_strtok_r.c
   strtok_r: function(s, delim, lasts) {
     var skip_leading_delim = 1;
