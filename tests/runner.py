@@ -21,6 +21,8 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
+sys.path += [path_from_root('')]
+
 # Sanity check for config
 
 try:
@@ -4475,6 +4477,10 @@ def process(filename):
 
       post = '''
 def process(filename):
+  import re, shutil
+  from subprocess import Popen, PIPE, STDOUT
+  import tools.shared as shared
+
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     \'\'\'
@@ -4483,7 +4489,7 @@ def process(filename):
   )
   open(filename, 'w').write(src)
 
-  Popen(['java', '-jar', CLOSURE_COMPILER,
+  Popen(['java', '-jar', shared.CLOSURE_COMPILER,
                  '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
                  '--formatting', 'PRETTY_PRINT',
                  '--variable_map_output_file', filename + '.vars',
