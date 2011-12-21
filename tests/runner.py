@@ -1645,7 +1645,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 def process(filename):
   src = open(filename, 'r').read()
   # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
-        '''
+'''
 
         self.do_run(src, 'hello world!\n*100*', post_build=check)
 
