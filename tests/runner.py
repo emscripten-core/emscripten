@@ -3337,9 +3337,10 @@ def process(filename):
     def test_unistd_access(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'access.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'access.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
@@ -3350,9 +3351,10 @@ def process(filename):
     def test_unistd_curdir(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
@@ -3373,9 +3375,10 @@ def process(filename):
     def test_unistd_ttyname(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
@@ -3396,9 +3399,10 @@ def process(filename):
     def test_unistd_truncate(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
@@ -3414,9 +3418,10 @@ def process(filename):
     def test_unistd_isatty(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
@@ -3437,9 +3442,10 @@ def process(filename):
     def test_unistd_unlink(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
@@ -3450,9 +3456,10 @@ def process(filename):
     def test_unistd_links(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'links.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'links.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
@@ -3468,9 +3475,10 @@ def process(filename):
     def test_unistd_io(self):
       add_pre_run = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'unistd', 'io.js'), 'r').read()
+    open(shared.path_from_root('tests', 'unistd', 'io.js'), 'r').read()
   )
   open(filename, 'w').write(src)
 '''
