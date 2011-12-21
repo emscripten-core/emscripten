@@ -269,18 +269,41 @@ def read_pgo_data(filename):
 class Settings:
   @classmethod
   def reset(self):
-    global Settings
     class Settings2:
-      reset = Settings.reset
-      load_defaults = Settings.load_defaults
       QUANTUM_SIZE = 4
-    Settings = Settings2
+      reset = Settings.reset
 
-  @classmethod
-  def load_defaults(self):
-    ''' Load the JS settings into Python '''
-    settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
-    exec(settings)
+      @classmethod
+      def load_settings(self, args):
+        # Load the JS defaults into python
+        settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
+        exec settings in globals()
+
+        # Apply additional settings. First -O, then -s
+        for i in range(len(args)):
+          if args[i].startswith('-O'):
+            level = eval(args[i][2])
+            Settings.apply_opt_level(level)
+        for i in range(len(args)):
+          if args[i] == '-s':
+            exec 'Settings.' + args[i+1] in globals() # execute the setting
+
+      @classmethod
+      def apply_opt_level(self, opt_level, noisy=False):
+        if opt_level >= 1:
+          Settings.ASSERTIONS = 0
+          Settings.DISABLE_EXCEPTION_CATCHING = 1
+        if opt_level >= 2:
+          Settings.RELOOP = 1
+        if opt_level >= 3:
+          Settings.CORRECT_SIGNS = 0
+          Settings.CORRECT_OVERFLOWS = 0
+          Settings.CORRECT_ROUNDINGS = 0
+          Settings.I64_MODE = 0
+          Settings.DOUBLE_MODE = 0
+          if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
+    global Settings
+    Settings = Settings2
 Settings.reset()
 
 # Building
@@ -432,13 +455,15 @@ class Building:
     return ret
 
   @staticmethod
-  def emcc(filename, args=[], stdout=None, stderr=None, env=None):
-    try_delete(filename + '.o')
-    Popen([EMCC, filename] + args + ['-o', filename + '.o'], stdout=stdout, stderr=stderr, env=env).communicate()[0]
-    assert os.path.exists(filename + '.o'), 'Could not create bc file'
+  def emcc(filename, args=[], output_filename=None, stdout=None, stderr=None, env=None):
+    if output_filename is None:
+      output_filename = filename + '.o'
+    try_delete(output_filename)
+    Popen([EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
-  def emscripten(filename, output_processor=None, append_ext=True, extra_args=[]):
+  def emscripten(filename, append_ext=True, extra_args=[]):
     # Add some headers by default. TODO: remove manually adding these in each test
     if '-H' not in extra_args:
       extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
@@ -459,9 +484,6 @@ class Building:
     # Detect compilation crashes and errors
     if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
     assert os.path.exists(filename + '.o.js') and len(open(filename + '.o.js', 'r').read()) > 0, 'Emscripten failed to generate .js: ' + str(compiler_output)
-
-    if output_processor is not None:
-      output_processor(open(filename + '.o.js').read())
 
     return filename + '.o.js'
 
@@ -564,7 +586,7 @@ class Building:
       passes = [passes]
     input = open(filename, 'r').read()
     output, err = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
-    assert len(output) > 0, 'Error in js optimizer: ' + err + '\n\n' + output
+    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + err + '\n\n' + output
     filename += '.jo.js'
     f = open(filename, 'w')
     f.write(output)

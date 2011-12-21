@@ -338,18 +338,7 @@ try:
   final_suffix = target.split('.')[-1]
 
   # Apply optimization level settings
-  if opt_level >= 1:
-    shared.Settings.ASSERTIONS = 0
-    shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
-  if opt_level >= 2:
-    shared.Settings.RELOOP = 1
-  if opt_level >= 3:
-    shared.Settings.CORRECT_SIGNS = 0
-    shared.Settings.CORRECT_OVERFLOWS = 0
-    shared.Settings.CORRECT_ROUNDINGS = 0
-    shared.Settings.I64_MODE = 0
-    shared.Settings.DOUBLE_MODE = 0
-    print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
+  shared.Settings.apply_opt_level(opt_level, noisy=True)
 
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:

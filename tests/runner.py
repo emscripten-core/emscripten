@@ -138,7 +138,14 @@ class RunnerCore(unittest.TestCase):
     # Finalize
     self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
-    Building.emscripten(filename, output_processor, extra_args=extra_emscripten_args)
+    # BC => JS
+    if self.emcc_args is None:
+      Building.emscripten(filename, output_processor, extra_args=extra_emscripten_args)
+    else:
+      Building.emcc(filename + '.o.ll', self.emcc_args, filename + '.o.js')
+
+    if output_processor is not None:
+      output_processor(open(filename + '.o.js').read())
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
@@ -3560,7 +3567,7 @@ at function.:blag
       self.do_run(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
       self.do_run(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
 
-      if self.use_defaults: # TODO: do this in other passes too, passing their opts into emcc
+      if self.emcc_args == []: # TODO: do this in other passes too, passing their opts into emcc
         # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
@@ -3742,7 +3749,7 @@ at function.:blag
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      if not self.use_defaults: return self.skip('very slow, we only do this in default')
+      if not self.emcc_args == []: return self.skip('very slow, we only do this in default')
 
       Settings.SAFE_HEAP = 0 # Has variable object
 
@@ -4802,7 +4809,7 @@ Child2:9
 
 
   # Generate tests for everything
-  def make_run(name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, defaults=False):
+  def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):
     exec('''
 class %s(T):
   def tearDown(self):
@@ -4815,9 +4822,9 @@ class %s(T):
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = %r
 
-    self.use_defaults = %d
-    if self.use_defaults:
-      Settings.load_defaults()
+    self.emcc_args = %s
+    if self.emcc_args is not None:
+      Settings.load_settings(self.emcc_args)
       Building.LLVM_OPTS = 0
       return
 
@@ -4827,7 +4834,8 @@ class %s(T):
     # TODO: Move much of these to a init() function in shared.py, and reuse that
     Settings.USE_TYPED_ARRAYS = %d
     Settings.INVOKE_RUN = 1
-    Settings.RELOOP = Settings.MICRO_OPTS = embetter
+    Settings.RELOOP = 0 # we only do them in the "o2" pass
+    Settings.MICRO_OPTS = embetter
     Settings.QUANTUM_SIZE = quantum_size
     Settings.ASSERTIONS = 1-embetter
     Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
@@ -4856,18 +4864,20 @@ class %s(T):
     else:
       Settings.I64_MODE = 0
 
-    if Settings.USE_TYPED_ARRAYS != 2 or Building.LLVM_OPTS == 2:
-      Settings.RELOOP = 0 # XXX Would be better to use this, but it isn't really what we test in these cases, and is very slow
-
     Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
 
 TT = %s
-''' % (fullname, fullname, fullname, compiler, defaults, llvm_opts, embetter, quantum_size, typed_arrays, fullname))
+''' % (fullname, fullname, fullname, compiler, str(emcc_args), llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
   # Make one run with the defaults
-  fullname = 'default'
-  exec(fullname + ' = make_run(compiler=CLANG, defaults=True)')
+  exec('default = make_run("default", compiler=CLANG, emcc_args=[])')
+
+  # Make one run with -O1, with safe heap
+  exec('o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "SAFE_HEAP=1"])')
+
+  # Make one run with -O2, but without closure (we enable closure in specific tests, otherwise on everything it is too slow)
+  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "--closure", "0"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -4877,14 +4887,11 @@ TT = %s
     (CLANG, 4, 0, 0, 1),
     (CLANG, 4, 1, 1, 0),
     (CLANG, 4, 1, 1, 1),
-    (CLANG, 4, 1, 2, 0),
-    (CLANG, 4, 1, 2, 1),
-    #(CLANG, 4, 1, 2, 2),
   ]:
     fullname = 's_%d_%d%s%s' % (
       llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
     )
-    exec('%s = make_run(%r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
+    exec('%s = make_run(fullname, %r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
