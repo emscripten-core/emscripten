@@ -3889,13 +3889,13 @@ def process(filename):
         Settings.CORRECT_SIGNS = 2
         Settings.CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
 
-      original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
-
       post = '''
 def process(filename):
+  import tools.shared as shared
+  original_j2k = shared.path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'image.j2k', %s, true, false);FS.root.write = true;" % line_splitter(str(
+    "FS.createDataFile('/', 'image.j2k', %s, true, false);FS.root.write = true;" % shared.line_splitter(str(
       map(ord, open(original_j2k, 'rb').read())
     ))
   ).replace(
