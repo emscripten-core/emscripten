@@ -3322,9 +3322,10 @@ def process(filename):
       try:
         addJS = '''
 def process(filename):
+  import tools.shared as shared
   src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
     '// {{PRE_RUN_ADDITIONS}}',
-    open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
+    open(shared.path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
   open(filename, 'w').write(src)
 '''
         src = 'int main() {return 0;}\n'
@@ -3724,11 +3725,12 @@ def process(filename):
 
       post = '''
 def process(filename):
+  import tools.shared as shared
   # Embed the font into the document
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     "FS.createDataFile('/', 'font.ttf', %s, true, false);" % str(
-      map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
+      map(ord, open(shared.path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
     )
   )
   open(filename, 'w').write(src)
