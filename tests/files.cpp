@@ -28,6 +28,18 @@ int main()
   fclose (file);
   free (buffer);
 
+  // Do it again, with a loop on feof
+
+  printf("loop: ");
+  file = fopen("somefile.binary", "rb");
+  assert(file);
+  while (!feof(file)) {
+    char c = fgetc(file);
+    if (c != EOF) printf("%d ", c);
+  }
+  fclose (file);
+  printf("\n");
+
   // Standard streams
 
   printf("input:%s\n", gets((char*)malloc(1024)));
