@@ -4649,7 +4649,7 @@ def process(filename):
         }
       '''
       try:
-        post = '''
+        post = r'''
 def process(filename):
   lines = open(filename, 'r').readlines()
   lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
