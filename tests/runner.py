@@ -2677,7 +2677,7 @@ def process(filename):
 def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"g
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
   )
   open(filename, 'w').write(src)
 '''
