@@ -2381,7 +2381,7 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
       self.do_run(src, 'Constructing main object.\nConstructing lib object.\n',
-                   post_build=add_pre_run_and_checks)
+                  post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
       if Settings.USE_TYPED_ARRAYS == 2:
@@ -2461,15 +2461,17 @@ def process(filename):
         '''
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.EXPORTED_FUNCTIONS = ['_main']
-      def add_pre_run_and_checks(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+  )
+  open(filename, 'w').write(src)
+'''
       self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
-                   output_nicerizer=lambda x: x.replace('\n', '*'),
-                   post_build=add_pre_run_and_checks)
+                  output_nicerizer=lambda x: x.replace('\n', '*'),
+                  post_build=add_pre_run_and_checks)
 
     def test_dlfcn_data_and_fptr(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
@@ -2559,12 +2561,14 @@ def process(filename):
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.EXPORTED_FUNCTIONS = ['_main']
       Settings.EXPORTED_GLOBALS = []
-      def add_pre_run_and_checks(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+  )
+  open(filename, 'w').write(src)
+'''
       self.do_run(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
                    output_nicerizer=lambda x: x.replace('\n', '*'),
                    post_build=add_pre_run_and_checks)
@@ -2607,16 +2611,18 @@ def process(filename):
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.INCLUDE_FULL_LIBRARY = 1
       Settings.EXPORTED_FUNCTIONS = ['_main']
-      def add_pre_run_and_checks(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+  )
+  open(filename, 'w').write(src)
+'''
       self.do_run(src, 'Parent global: 123.*Parent global: 456.*',
-                   output_nicerizer=lambda x: x.replace('\n', '*'),
-                   post_build=add_pre_run_and_checks,
-                   extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
+                  output_nicerizer=lambda x: x.replace('\n', '*'),
+                  post_build=add_pre_run_and_checks,
+                  extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
       Settings.INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
@@ -2665,14 +2671,16 @@ def process(filename):
         '''
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.EXPORTED_FUNCTIONS = ['_main']
-      def add_pre_run_and_checks(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"g
+  )
+  open(filename, 'w').write(src)
+'''
       self.do_run(src, '100\n200\n13\n42\n',
-                   post_build=add_pre_run_and_checks)
+                  post_build=add_pre_run_and_checks)
 
     def test_rand(self):
       src = r'''
@@ -2944,22 +2952,23 @@ at function.:blag
 
     def test_files(self):
       Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
-      def post(filename):
-        src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''
-            FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
-            FS.createLazyFile('/', 'test.file', 'test.file', true, false);
-            FS.root.write = true;
-            var test_files_input = 'hi there!';
-            var test_files_input_index = 0;
-            FS.init(function() {
-              return test_files_input.charCodeAt(test_files_input_index++) || null;
-            });
-          '''
-        )
-        open(filename, 'w').write(src)
-
+      post = '''
+def process(filename):
+  src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
+    '// {{PRE_RUN_ADDITIONS}}',
+    \'\'\'
+      FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
+      FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+      FS.root.write = true;
+      var test_files_input = 'hi there!';
+      var test_files_input_index = 0;
+      FS.init(function() {
+        return test_files_input.charCodeAt(test_files_input_index++) || null;
+      });
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
+'''
       other = open(os.path.join(self.get_dir(), 'test.file'), 'w')
       other.write('some data');
       other.close()
@@ -2969,20 +2978,21 @@ at function.:blag
                    post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_folders(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''
-            FS.createFolder('/', 'test', true, false);
-            FS.createPath('/', 'test/hello/world/', true, false);
-            FS.createPath('/test', 'goodbye/world/', true, false);
-            FS.createPath('/test/goodbye', 'noentry', false, false);
-            FS.createDataFile('/test', 'freeforall.ext', 'abc', true, true);
-            FS.createDataFile('/test', 'restricted.ext', 'def', false, false);
-          '''
-        )
-        open(filename, 'w').write(src)
-
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    \'\'\'
+      FS.createFolder('/', 'test', true, false);
+      FS.createPath('/', 'test/hello/world/', true, false);
+      FS.createPath('/test', 'goodbye/world/', true, false);
+      FS.createPath('/test/goodbye', 'noentry', false, false);
+      FS.createDataFile('/test', 'freeforall.ext', 'abc', true, true);
+      FS.createDataFile('/test', 'restricted.ext', 'def', false, false);
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
+'''
       src = r'''
         #include <stdio.h>
         #include <dirent.h>
@@ -3047,69 +3057,79 @@ at function.:blag
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
 
     def test_stat(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''
-            var f1 = FS.createFolder('/', 'test', true, true);
-            var f2 = FS.createDataFile(f1, 'file', 'abcdef', true, true);
-            var f3 = FS.createLink(f1, 'link', 'file', true, true);
-            var f4 = FS.createDevice(f1, 'device', function(){}, function(){});
-            f1.timestamp = f2.timestamp = f3.timestamp = f4.timestamp = new Date(1200000000000);
-          '''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    \'\'\'
+      var f1 = FS.createFolder('/', 'test', true, true);
+      var f2 = FS.createDataFile(f1, 'file', 'abcdef', true, true);
+      var f3 = FS.createLink(f1, 'link', 'file', true, true);
+      var f4 = FS.createDevice(f1, 'device', function(){}, function(){});
+      f1.timestamp = f2.timestamp = f3.timestamp = f4.timestamp = new Date(1200000000000);
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'stat', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          "FS.createDataFile('/', 'test', 'abcdef', true, true);"
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_open(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''
-            FS.createDataFile('/', 'test-file', 'abcdef', true, true);
-            FS.createFolder('/', 'test-folder', true, true);
-            FS.root.write = true;
-          '''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    \'\'\'
+      FS.createDataFile('/', 'test-file', 'abcdef', true, true);
+      FS.createFolder('/', 'test-folder', true, true);
+      FS.root.write = true;
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_misc(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          "FS.createDataFile('/', 'test', 'abcdef', true, true);"
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_poll(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''
-            FS.createDataFile('/', 'file', 'abcdef', true, true);
-            FS.createDevice('/', 'device', function() {}, function() {});
-          '''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    \'\'\'
+      FS.createDataFile('/', 'file', 'abcdef', true, true);
+      FS.createDevice('/', 'device', function() {}, function() {});
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
+'''
       src = r'''
         #include <stdio.h>
         #include <errno.h>
@@ -3251,22 +3271,23 @@ at function.:blag
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_utime(self):
-      def add_pre_run_and_checks(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''
-            var TEST_F1 = FS.createFolder('/', 'writeable', true, true);
-            var TEST_F2 = FS.createFolder('/', 'unwriteable', true, false);
-          '''
-        ).replace(
-          '// {{POST_RUN_ADDITIONS}}',
-          '''
-            print('first changed: ' + (TEST_F1.timestamp == 1200000000000));
-            print('second changed: ' + (TEST_F2.timestamp == 1200000000000));
-          '''
-        )
-        open(filename, 'w').write(src)
-
+      add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    \'\'\'
+      var TEST_F1 = FS.createFolder('/', 'writeable', true, true);
+      var TEST_F2 = FS.createFolder('/', 'unwriteable', true, false);
+    \'\'\'
+  ).replace(
+    '// {{POST_RUN_ADDITIONS}}',
+    \'\'\'
+      print('first changed: ' + (TEST_F1.timestamp == 1200000000000));
+      print('second changed: ' + (TEST_F2.timestamp == 1200000000000));
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
+'''
       src = r'''
         #include <stdio.h>
         #include <errno.h>
@@ -3297,11 +3318,13 @@ at function.:blag
     def test_fs_base(self):
       Settings.INCLUDE_FULL_LIBRARY = 1
       try:
-        def addJS(filename):
-          src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
-            '// {{PRE_RUN_ADDITIONS}}',
-            open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
-          open(filename, 'w').write(src)
+        addJS = '''
+def process(filename):
+  src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
+  open(filename, 'w').write(src)
+'''
         src = 'int main() {return 0;}\n'
         expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
         self.do_run(src, expected, post_build=addJS, extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
@@ -3309,23 +3332,27 @@ at function.:blag
         Settings.INCLUDE_FULL_LIBRARY = 0
 
     def test_unistd_access(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'access.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'access.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_curdir(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
@@ -3341,12 +3368,14 @@ at function.:blag
       self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
 
     def test_unistd_ttyname(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'ttyname.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
@@ -3362,12 +3391,14 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_unistd_truncate(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
@@ -3378,12 +3409,14 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_unistd_isatty(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'isatty.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
@@ -3399,23 +3432,27 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_unistd_unlink(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'unlink.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
 
     def test_unistd_links(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'links.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'links.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
@@ -3426,12 +3463,14 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_unistd_io(self):
-      def add_pre_run(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          open(path_from_root('tests', 'unistd', 'io.js'), 'r').read()
-        )
-        open(filename, 'w').write(src)
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    open(path_from_root('tests', 'unistd', 'io.js'), 'r').read()
+  )
+  open(filename, 'w').write(src)
+'''
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
       self.do_run(src, expected, post_build=add_pre_run)
@@ -3681,16 +3720,17 @@ at function.:blag
 
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
-      def post(filename):
-        # Embed the font into the document
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''FS.createDataFile('/', 'font.ttf', %s, true, false);''' % str(
-            map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
-          )
-        )
-        open(filename, 'w').write(src)
-
+      post = '''
+def process(filename):
+  # Embed the font into the document
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createDataFile('/', 'font.ttf', %s, true, false);" % str(
+      map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
+    )
+  )
+  open(filename, 'w').write(src)
+'''
       # Main
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
@@ -3718,18 +3758,20 @@ at function.:blag
 
       Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
 
-      def post(filename):
-        src = open(filename, 'a')
-        src.write('''
-          FS.init();
-          FS.root.write = true;
-          FS.ignorePermissions = true; // /dev is read-only
-          FS.createPath('/', 'dev/shm/tmp', true, true);
-          FS.ignorePermissions = false;
-          FS.currentPath = '/dev/shm/tmp';
-          run();
-        ''')
-        src.close()
+      post = '''
+def process(filename):
+  src = open(filename, 'a')
+  src.write(\'\'\'
+    FS.init();
+    FS.root.write = true;
+    FS.ignorePermissions = true; // /dev is read-only
+    FS.createPath('/', 'dev/shm/tmp', true, true);
+    FS.ignorePermissions = false;
+    FS.currentPath = '/dev/shm/tmp';
+    run();
+  \'\'\')
+  src.close()
+'''
 
       self.do_run(r'''
                         #define SQLITE_DISABLE_LFS
@@ -3795,20 +3837,22 @@ at function.:blag
       input_file.write(str(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())))
       input_file.close()
 
-      def post(filename):
-        # To avoid loading this large file to memory and altering it, we simply append to the end
-        src = open(filename, 'a')
-        src.write(
-          '''
-            FS.ignorePermissions = true;
-            FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
-            FS.root.write = true;
-            FS.ignorePermissions = false;
-            run();
-            print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
-          '''
-        )
-        src.close()
+      post = '''
+def process(filename):
+  # To avoid loading this large file to memory and altering it, we simply append to the end
+  src = open(filename, 'a')
+  src.write(
+    \'\'\'
+      FS.ignorePermissions = true;
+      FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
+      FS.root.write = true;
+      FS.ignorePermissions = false;
+      run();
+      print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
+    \'\'\'
+  )
+  src.close()
+'''
 
       #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
 
@@ -3843,17 +3887,19 @@ at function.:blag
 
       original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
 
-      def post(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''FS.createDataFile('/', 'image.j2k', %s, true, false);FS.root.write = true;''' % line_splitter(str(
-            map(ord, open(original_j2k, 'rb').read())
-          ))
-        ).replace(
-          '// {{POST_RUN_ADDITIONS}}',
-          '''print("Data: " + JSON.stringify(FS.root.contents['image.raw'].contents));'''
-        )
-        open(filename, 'w').write(src)
+      post = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createDataFile('/', 'image.j2k', %s, true, false);FS.root.write = true;" % line_splitter(str(
+      map(ord, open(original_j2k, 'rb').read())
+    ))
+  ).replace(
+    '// {{POST_RUN_ADDITIONS}}',
+    "print("Data: " + JSON.stringify(FS.root.contents['image.raw'].contents));"
+  )
+  open(filename, 'w').write(src)
+'''
 
       shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
 
@@ -4055,12 +4101,14 @@ at function.:blag
           }
         '''
 
-      def post1(filename):
-        src = open(filename, 'a')
-        src.write('''
-          Profiling.dump();
-        ''')
-        src.close()
+      post1 = '''
+def process(filename):
+  src = open(filename, 'a')
+  src.write(\'\'\'
+    Profiling.dump();
+  \'\'\')
+  src.close()
+'''
 
       self.do_run(src, '''Profiling data:
 Block 0: ''', post_build=post1)
@@ -4102,16 +4150,18 @@ Block 0: ''', post_build=post1)
           }
         '''
 
-      def post(filename):
-        src = open(filename, 'a')
-        src.write('''
-          startProfiling();
-          run();
-          stopProfiling();
-          printProfiling();
-          print('*ok*');
-        ''')
-        src.close()
+      post = '''
+def process(filename):
+  src = open(filename, 'a')
+  src.write(\'\'\'
+    startProfiling();
+    run();
+    stopProfiling();
+    printProfiling();
+    print('*ok*');
+  \'\'\')
+  src.close()
+'''
 
       self.do_run(src, ': __Z6inner1i (5000)\n', post_build=post)
 
@@ -4150,15 +4200,17 @@ Block 0: ''', post_build=post1)
           _free(sme);
           print('*ok*');
         '''
-        def post(filename):
-          Popen(['python', DEMANGLER, filename], stdout=open(filename + '.tmp', 'w')).communicate()
-          Popen(['python', NAMESPACER, filename, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
-          src = open(filename, 'r').read().replace(
-            '// {{MODULE_ADDITIONS}',
-            'Module["_"] = ' + open(filename + '.tmp2', 'r').read().replace('var ModuleNames = ', '').rstrip() + ';\n\n' + script_src + '\n\n' +
-              '// {{MODULE_ADDITIONS}'
-          )
-          open(filename, 'w').write(src)
+        post = '''
+def process(filename):
+  Popen(['python', DEMANGLER, filename], stdout=open(filename + '.tmp', 'w')).communicate()
+  Popen(['python', NAMESPACER, filename, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
+  src = open(filename, 'r').read().replace(
+    '// {{MODULE_ADDITIONS}',
+    'Module["_"] = ' + open(filename + '.tmp2', 'r').read().replace('var ModuleNames = ', '').rstrip() + ';\n\n' + script_src + '\n\n' +
+      '// {{MODULE_ADDITIONS}'
+  )
+  open(filename, 'w').write(src)
+'''
         # XXX disable due to possible v8 bug -- self.do_run(src, '*166*\n*ok*', post_build=post)
 
         # Way 2: use CppHeaderParser
@@ -4299,13 +4351,16 @@ Block 0: ''', post_build=post1)
           print('*ok*');
         '''
 
-        def post2(filename):
-          src = open(filename, 'r').read().replace(
-            '// {{MODULE_ADDITIONS}',
-            open(os.path.join(self.get_dir(), 'bindingtest.js')).read() + '\n\n' + script_src_2 + '\n\n' + 
-              '// {{MODULE_ADDITIONS}'
-          )
-          open(filename, 'w').write(src)
+        post2 = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{MODULE_ADDITIONS}',
+    open(os.path.join(self.get_dir(), 'bindingtest.js')).read() + '\n\n' + script_src_2 + '\n\n' + 
+      '// {{MODULE_ADDITIONS}'
+  )
+  open(filename, 'w').write(src)
+'''
+
         self.do_run(src, '''*
 84
 c1
@@ -4372,21 +4427,24 @@ Child2:9
         }
       '''
 
-      def post(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{POST_RUN_ADDITIONS}}',
-          '''
-            if (Runtime.typeInfo) {
-              print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
-              var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
-              print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
-              print('|' + JSON.stringify(Runtime.generateStructInfo(null, 'UserStruct')) + '|');
-            } else {
-              print('No type info.');
-            }
-          '''
-        )
-        open(filename, 'w').write(src)
+      post = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{POST_RUN_ADDITIONS}}',
+    \'\'\'
+      if (Runtime.typeInfo) {
+        print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
+        var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
+        print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
+        print('|' + JSON.stringify(Runtime.generateStructInfo(null, 'UserStruct')) + '|');
+      } else {
+        print('No type info.');
+      }
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
+'''
+
       self.do_run(src,
                    '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
                    post_build=post)
@@ -4415,26 +4473,28 @@ Child2:9
         }
       '''
 
-      def post(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''
-            FS.createDataFile('/', 'somefile.binary', [100, 1, 50, 25, 10, 77, 123], true, false);
-          '''
-        )
-        open(filename, 'w').write(src)
+      post = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    \'\'\'
+      FS.createDataFile('/', 'somefile.binary', [100, 1, 50, 25, 10, 77, 123], true, false);
+    \'\'\'
+  )
+  open(filename, 'w').write(src)
 
-        Popen(['java', '-jar', CLOSURE_COMPILER,
-                       '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                       '--formatting', 'PRETTY_PRINT',
-                       '--variable_map_output_file', filename + '.vars',
-                       '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()
-        assert not re.search('function \w\(', open(filename, 'r').read()) # closure generates this kind of stuff - functions with single letters. Normal doesn't.
-        src = open(filename + '.cc.js', 'r').read()
-        assert re.search('function \w\(', src) # see before
-        assert 'function _main()' not in src # closure should have wiped it out
-        shutil.move(filename, filename + '.old.js')
-        open(filename, 'w').write(src)
+  Popen(['java', '-jar', CLOSURE_COMPILER,
+                 '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+                 '--formatting', 'PRETTY_PRINT',
+                 '--variable_map_output_file', filename + '.vars',
+                 '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()
+  assert not re.search('function \w\(', open(filename, 'r').read()) # closure generates this kind of stuff - functions with single letters. Normal doesn't.
+  src = open(filename + '.cc.js', 'r').read()
+  assert re.search('function \w\(', src) # see before
+  assert 'function _main()' not in src # closure should have wiped it out
+  shutil.move(filename, filename + '.old.js')
+  open(filename, 'w').write(src)
+'''
 
       self.do_run(src, '*closured*\ndata: 100,1,50,25\n', post_build=post)
 
@@ -4583,13 +4643,15 @@ Child2:9
         }
       '''
       try:
-        def post(filename):
-          lines = open(filename, 'r').readlines()
-          lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
-          found_line_num = any(('//@line 7 "' in line) for line in lines)
-          found_filename = any(('src.cpp"\n' in line) for line in lines)
-          assert found_line_num, 'Must have debug info with the line number'
-          assert found_filename, 'Must have debug info with the filename'
+        post = '''
+def process(filename):
+  lines = open(filename, 'r').readlines()
+  lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
+  found_line_num = any(('//@line 7 "' in line) for line in lines)
+  found_filename = any(('src.cpp"\n' in line) for line in lines)
+  assert found_line_num, 'Must have debug info with the line number'
+  assert found_filename, 'Must have debug info with the filename'
+'''
         self.do_run(src, '*nothingatall*', post_build=post)
       except Exception, e:
         # This test *should* fail
