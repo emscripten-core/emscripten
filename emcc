@@ -79,6 +79,10 @@ from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
+LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
+                                                           # Not recommended, this is mainly for the test runner, or if you have some other
+                                                           # specific need.
+                                                           # One major limitation with this mode is that dlmalloc will not be added in.
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 
@@ -347,7 +351,7 @@ try:
 
   ## Compile source code to bitcode
 
-  if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode (%s)' % str(sys.argv)
+  if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
@@ -363,7 +367,8 @@ try:
       if input_file.endswith(('.bc', '.o')):
         shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
       else: #.ll
-        shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+        if not LEAVE_INPUTS_RAW:
+          shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
   # Optimize, if asked to
   if llvm_opt_level > 0:
@@ -400,34 +405,35 @@ try:
 
   extra_files_to_link = []
 
-  # Check if we need to include dlmalloc. Note that we assume a single symbol is enough to know if we have/do not have dlmalloc. If you
-  # include just a few symbols but want the rest, this will not work.
-  need_dlmalloc = False
-  has_dlmalloc = False
-  for input_file in input_files:
-    symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
-    for malloc_def in ['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc']:
-      if malloc_def in symbols.undefs:
-        need_dlmalloc = True
-      if malloc_def in symbols.defs:
-        has_dlmalloc = True
-  if need_dlmalloc and not has_dlmalloc:
-    # We need to build and link dlmalloc in
-    if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
-    Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
-    if llvm_opt_level > 0:
-      shared.Building.llvm_opt(in_temp('dlmalloc.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
-    extra_files_to_link.append(in_temp('dlmalloc.o'))
+  if not LEAVE_INPUTS_RAW:
+    # Check if we need to include dlmalloc. Note that we assume a single symbol is enough to know if we have/do not have dlmalloc. If you
+    # include just a few symbols but want the rest, this will not work.
+    need_dlmalloc = False
+    has_dlmalloc = False
+    for input_file in input_files:
+      symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
+      for malloc_def in ['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc']:
+        if malloc_def in symbols.undefs:
+          need_dlmalloc = True
+        if malloc_def in symbols.defs:
+          has_dlmalloc = True
+    if need_dlmalloc and not has_dlmalloc:
+      # We need to build and link dlmalloc in
+      if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
+      Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
+      if llvm_opt_level > 0:
+        shared.Building.llvm_opt(in_temp('dlmalloc.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+      extra_files_to_link.append(in_temp('dlmalloc.o'))
 
-    # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
-    try:
-      if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
-    except: # we fail if equal to 0 - so we need to switch to 2 - or if CORRECT_SIGNS is not even in Settings
-      shared.Settings.CORRECT_SIGNS = 2
-    if shared.Settings.CORRECT_SIGNS == 2:
-      shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
-    # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
-    # so all is well anyhow too.
+      # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
+      try:
+        if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
+      except: # we fail if equal to 0 - so we need to switch to 2 - or if CORRECT_SIGNS is not even in Settings
+        shared.Settings.CORRECT_SIGNS = 2
+      if shared.Settings.CORRECT_SIGNS == 2:
+        shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
+      # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
+      # so all is well anyhow too.
 
   # First, combine the bitcode files if there are several
   if len(input_files) + len(extra_files_to_link) > 1:
@@ -435,13 +441,19 @@ try:
                          in_temp(target_basename + '.bc'))
     # TODO: LLVM link-time opts? here and/or elsewhere?
   else:
-    shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
+    if not LEAVE_INPUTS_RAW:
+      shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
 
   # Emscripten
   if opt_level >= 2:
     print >> sys.stderr, 'Warning: The relooper optimization can be very slow.'
 
-  final = shared.Building.emscripten(in_temp(target_basename + '.bc'), append_ext=False)
+  if not LEAVE_INPUTS_RAW:
+    emscripten_input = in_temp(target_basename + '.bc')
+  else:
+    assert len(input_files) == 1
+    emscripten_input = input_files[0]
+  final = shared.Building.emscripten(emscripten_input, append_ext=False)
 
   # Apply a source code transformation, if requested
   source_transform = os.environ.get('EMCC_JS_PROCESSOR')

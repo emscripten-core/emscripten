@@ -4001,31 +4001,37 @@ def process(filename):
     # They are only valid enough for us to read for test purposes, not for llvm-as
     # to process.
     def test_cases(self):
-      self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
+      try:
+        self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
 
-      Settings.CHECK_OVERFLOWS = 0
-      if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
+        os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
 
-      for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
-        shortname = name.replace('.ll', '')
-        if '' not in shortname: continue
-        print "Testing case '%s'..." % shortname
-        output_file = path_from_root('tests', 'cases', shortname + '.txt')
-        if Settings.QUANTUM_SIZE == 1:
-          q1_output_file = path_from_root('tests', 'cases', shortname + '_q1.txt')
-          if os.path.exists(q1_output_file):
-            output_file = q1_output_file
-        if os.path.exists(output_file):
-          output = open(output_file, 'r').read()
-        else:
-          output = 'hello, world!'
-        if output.rstrip() != 'skip':
-          self.do_ll_run(path_from_root('tests', 'cases', name), output)
-        # Optional source checking, a python script that gets a global generated with the source
-        src_checker = path_from_root('tests', 'cases', shortname + '.py')
-        if os.path.exists(src_checker):
-          generated = open('src.cpp.o.js').read()
-          exec(open(src_checker).read())
+        Settings.CHECK_OVERFLOWS = 0
+        if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
+
+        for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
+          shortname = name.replace('.ll', '')
+          if '' not in shortname: continue
+          print "Testing case '%s'..." % shortname
+          output_file = path_from_root('tests', 'cases', shortname + '.txt')
+          if Settings.QUANTUM_SIZE == 1:
+            q1_output_file = path_from_root('tests', 'cases', shortname + '_q1.txt')
+            if os.path.exists(q1_output_file):
+              output_file = q1_output_file
+          if os.path.exists(output_file):
+            output = open(output_file, 'r').read()
+          else:
+            output = 'hello, world!'
+          if output.rstrip() != 'skip':
+            self.do_ll_run(path_from_root('tests', 'cases', name), output)
+          # Optional source checking, a python script that gets a global generated with the source
+          src_checker = path_from_root('tests', 'cases', shortname + '.py')
+          if os.path.exists(src_checker):
+            generated = open('src.cpp.o.js').read()
+            exec(open(src_checker).read())
+
+      finally:
+        del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
     # Autodebug the code
     def do_autodebug(self, filename):
