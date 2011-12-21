@@ -140,7 +140,7 @@ class RunnerCore(unittest.TestCase):
 
     # BC => JS
     if self.emcc_args is None:
-      Building.emscripten(filename, output_processor, extra_args=extra_emscripten_args)
+      Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
     else:
       Building.emcc(filename + '.o.ll', self.emcc_args, filename + '.o.js')
 
