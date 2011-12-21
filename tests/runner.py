@@ -92,8 +92,29 @@ class RunnerCore(unittest.TestCase):
         shutil.move(filename + '.o.ll', filename + '.o.ll.post') # for comparisons later
         Building.llvm_dis(filename)
 
+  # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
+  # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
+  # emcc, it would not apply on the optimized/minified JS)
+  def ll_to_js(self, filename, extra_emscripten_args, post_build):
+    if self.emcc_args is None:
+      Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
+      if post_build is not None:
+        exec post_build in locals()
+        shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
+        process(filename + '.o.js')
+    else:
+      if post_build is not None:
+        os.environ['EMCC_JS_PROCESSOR'] = post_build
+      else:
+        try:
+          del os.environ['EMCC_JS_PROCESSOR']
+        except:
+          pass
+      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args, filename + '.o.js')
+
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
+
     # Copy over necessary files for compiling the source
     if main_file is None:
       f = open(filename, 'w')
@@ -141,21 +162,7 @@ class RunnerCore(unittest.TestCase):
     self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
     # BC => JS
-    if self.emcc_args is None:
-      Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
-      if post_build is not None:
-        exec post_build in locals()
-        shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
-        process(filename + '.o.js')
-    else:
-      if post_build is not None:
-        os.environ['EMCC_JS_PROCESSOR'] = post_build
-      else:
-        try:
-          del os.environ['EMCC_JS_PROCESSOR']
-        except:
-          pass
-      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args, filename + '.o.js')
+    self.ll_to_js(filename, extra_emscripten_args, post_build)
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
@@ -278,18 +285,19 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
     def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
-
       filename = os.path.join(self.get_dir(), 'src.cpp')
 
       self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
-      Building.emscripten(filename, extra_args=extra_emscripten_args)
+
+      self.ll_to_js(filename, extra_emscripten_args, post_build)
+
       self.do_run(None,
                    expected_output,
                    args,
                    no_build=True,
                    js_engines=js_engines,
                    output_nicerizer=output_nicerizer,
-                   post_build=post_build)
+                   post_build=None) # post_build was already done in ll_to_js, this do_run call is just to test the output
 
     def test_hello_world(self):
         src = '''
