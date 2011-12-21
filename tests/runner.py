@@ -2054,6 +2054,20 @@ def process(filename):
 
         self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*malloc(0)!=0:1*\n*cleaned*')
 
+        src = r'''
+          #include <stdio.h>
+          #include <stdbool.h>
+
+          int main() {
+            bool x = true;
+            bool y = false;
+            printf("*%d*\n", x != y);
+            return 0;
+          }
+        '''
+
+        self.do_run(src, '*1*', force_c=True)
+
     def test_time(self):
       # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
