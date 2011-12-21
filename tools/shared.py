@@ -273,8 +273,9 @@ class Settings:
       QUANTUM_SIZE = 4
       reset = Settings.reset
 
+      # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
       @classmethod
-      def load_settings(self, args):
+      def load(self, args):
         # Load the JS defaults into python
         settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
         exec settings in globals()
@@ -287,6 +288,16 @@ class Settings:
         for i in range(len(args)):
           if args[i] == '-s':
             exec 'Settings.' + args[i+1] in globals() # execute the setting
+
+      # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
+      # the reverse of load_settings, except for -Ox which is relevant there but not here
+      @classmethod
+      def serialize(self):
+        ret = []
+        for key, value in Settings.__dict__.iteritems():
+          if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
+            ret += ['-s', key + '=' + json.dumps(value)]
+        return ret
 
       @classmethod
       def apply_opt_level(self, opt_level, noisy=False):
@@ -469,15 +480,7 @@ class Building:
       extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
 
     # Run Emscripten
-    exported_settings = {}
-    for setting in ['QUANTUM_SIZE', 'RELOOP', 'MICRO_OPTS', 'ASSERTIONS', 'USE_TYPED_ARRAYS', 'SAFE_HEAP', 'CHECK_OVERFLOWS', 'CORRECT_OVERFLOWS', 'CORRECT_SIGNS', 'CHECK_SIGNS', 'CORRECT_OVERFLOWS_LINES', 'CORRECT_SIGNS_LINES', 'CORRECT_ROUNDINGS', 'CORRECT_ROUNDINGS_LINES', 'INVOKE_RUN', 'SAFE_HEAP_LINES', 'INIT_STACK', 'PGO', 'EXPORTED_FUNCTIONS', 'EXPORTED_GLOBALS', 'BUILD_AS_SHARED_LIB', 'RUNTIME_LINKED_LIBS', 'INCLUDE_FULL_LIBRARY', 'RUNTIME_TYPE_INFO', 'DISABLE_EXCEPTION_CATCHING', 'TOTAL_MEMORY', 'FAST_MEMORY', 'EXCEPTION_DEBUG', 'PROFILE', 'I64_MODE', 'EMULATE_UNALIGNED_ACCESSES', 'CATCH_EXIT_CODE', 'USE_FHEAP']:
-      try:
-        value = eval('Settings.' + setting)
-        if value is not None:
-          exported_settings[setting] = value
-      except:
-        pass
-    settings = ['-s %s=%s' % (k, json.dumps(v)) for k, v in exported_settings.items()]
+    settings = Settings.serialize()
     compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 

@@ -433,52 +433,57 @@ function hoistMultiples(ast) {
   var more = true;
   while (more) {
     more = false;
-    traverse(ast, function(node, type) {
-      if (type == 'if' && node[2][0] == 'block' && node[2][1].length == 0) {
-        more = true;
-        if (node[2][2]) { // if there is an else, return that
-          return node[2][2];
-        } else {
-          return emptyNode();
-        }
-      } else if (type == 'block' && !node[1]) {
-        return emptyNode();
-      } else if (type == 'block' && (node[1].length == 0 || (node[1].length == 1 && jsonCompare(node[1][0], emptyNode())))) {
-        more = true;
-        return emptyNode();
-      } else if (type == 'block' && node[1].length == 1 && node[1][0][0] == 'block') {
-        more = true;
-        return node[1][0];
-      } else if (type == 'stat' && node[1][0] == 'block') {
-        more = true;
-        return node[1];
-      } else if (type == 'block') {
-        var pre = node[1].length;
-        node[1] = node[1].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
-        if (node[1].length < pre) {
-          more = true;
-          return node;
-        }
-      } else if (type == 'defun' && node[3].length == 1 && node[3][0][0] == 'block') {
-        more = true;
-        node[3] = node[3][0][1];
-        return node;
-      } else if (type == 'defun') {
-        var pre = node[3].length;
-        node[3] = node[3].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
-        if (node[3].length < pre) {
-          more = true;
-          return node;
-        }
-      } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
-        more = true;
-        return emptyNode();
-      } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
-        more = true;
-        return emptyNode();
-      } else if (type == 'if' && jsonCompare(node[3], emptyNode())) { // empty else clauses
-        node[3] = null;
-        return node;
+    ast[1].forEach(function(node, i) {
+      var type = node[0];
+      if (type == 'defun') {
+        traverse(node, function(node, type) {
+          if (type == 'if' && node[2][0] == 'block' && node[2][1].length == 0) {
+            more = true;
+            if (node[2][2]) { // if there is an else, return that
+              return node[2][2];
+            } else {
+              return emptyNode();
+            }
+          } else if (type == 'block' && !node[1]) {
+            return emptyNode();
+          } else if (type == 'block' && (node[1].length == 0 || (node[1].length == 1 && jsonCompare(node[1][0], emptyNode())))) {
+            more = true;
+            return emptyNode();
+          } else if (type == 'block' && node[1].length == 1 && node[1][0][0] == 'block') {
+            more = true;
+            return node[1][0];
+          } else if (type == 'stat' && node[1][0] == 'block') {
+            more = true;
+            return node[1];
+          } else if (type == 'block') {
+            var pre = node[1].length;
+            node[1] = node[1].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
+            if (node[1].length < pre) {
+              more = true;
+              return node;
+            }
+          } else if (type == 'defun' && node[3].length == 1 && node[3][0][0] == 'block') {
+            more = true;
+            node[3] = node[3][0][1];
+            return node;
+          } else if (type == 'defun') {
+            var pre = node[3].length;
+            node[3] = node[3].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
+            if (node[3].length < pre) {
+              more = true;
+              return node;
+            }
+          } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
+            more = true;
+            return emptyNode();
+          } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
+            more = true;
+            return emptyNode();
+          } else if (type == 'if' && jsonCompare(node[3], emptyNode())) { // empty else clauses
+            node[3] = null;
+            return node;
+          }
+        });
       }
     });
   }

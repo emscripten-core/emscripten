@@ -443,6 +443,14 @@ try:
 
   final = shared.Building.emscripten(in_temp(target_basename + '.bc'), append_ext=False)
 
+  # Apply a source code transformation, if requested
+  source_transform = os.environ.get('EMCC_JS_PROCESSOR')
+  if source_transform:
+    exec source_transform in locals()
+    shutil.copyfile(final, final + '.tr.js')
+    final += '.tr.js'
+    process(final)
+
   if opt_level >= 1:
     # js optimizer
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'

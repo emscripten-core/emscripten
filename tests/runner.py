@@ -91,7 +91,7 @@ class RunnerCore(unittest.TestCase):
         Building.llvm_dis(filename)
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[]):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
     # Copy over necessary files for compiling the source
     if main_file is None:
       f = open(filename, 'w')
@@ -141,8 +141,19 @@ class RunnerCore(unittest.TestCase):
     # BC => JS
     if self.emcc_args is None:
       Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
+      if post_build is not None:
+        exec post_build in locals()
+        shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
+        process(filename + '.o.js')
     else:
-      Building.emcc(filename + '.o.ll', self.emcc_args, filename + '.o.js')
+      if post_build is not None:
+        os.environ['EMCC_JS_PROCESSOR'] = post_build
+      else:
+        try:
+          del os.environ['EMCC_JS_PROCESSOR']
+        except:
+          pass
+      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args, filename + '.o.js')
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
@@ -240,10 +251,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         filename = os.path.join(dirname, basename)
         if not no_build:
           self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                     build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args)
-
-        if post_build is not None:
-          post_build(filename + '.o.js')
+                     build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
 
         # If not provided with expected output, then generate it right now, using lli
         if expected_output is None:
@@ -1631,9 +1639,11 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           }
           '''
 
-        def check(filename):
-          src = open(filename, 'r').read()
-          # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
+        check = '''
+def process(filename):
+  src = open(filename, 'r').read()
+  # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
+        '''
 
         self.do_run(src, 'hello world!\n*100*', post_build=check)
 
@@ -2348,12 +2358,14 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         }
         '''
       Settings.BUILD_AS_SHARED_LIB = 0
-      def add_pre_run_and_checks(filename):
-        src = open(filename, 'r').read().replace(
-          '// {{PRE_RUN_ADDITIONS}}',
-          '''FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);'''
-        )
-        open(filename, 'w').write(src)
+      add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+  )
+  open(filename, 'w').write(src)
+'''
       self.do_run(src, 'Constructing main object.\nConstructing lib object.\n',
                    post_build=add_pre_run_and_checks)
 
@@ -4824,7 +4836,7 @@ class %s(T):
 
     self.emcc_args = %s
     if self.emcc_args is not None:
-      Settings.load_settings(self.emcc_args)
+      Settings.load(self.emcc_args)
       Building.LLVM_OPTS = 0
       return
 
@@ -4855,8 +4867,7 @@ class %s(T):
     Settings.BUILD_AS_SHARED_LIB = 0
     Settings.RUNTIME_LINKED_LIBS = []
     Settings.CATCH_EXIT_CODE = 0
-    Settings.TOTAL_MEMORY = Settings.FAST_MEMORY = None
-    Settings.EMULATE_UNALIGNED_ACCESSES = Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2
+    Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.I64_MODE = 1

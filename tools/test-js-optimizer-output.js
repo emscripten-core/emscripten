@@ -145,4 +145,23 @@ function hoisting() {
     somethingElse();
   }
 }
+var FS = {
+  absolutePath: (function(relative, base) {
+    if (typeof relative !== "string") return null;
+    if (base === undefined) base = FS.currentPath;
+    if (relative && relative[0] == "/") base = "";
+    var full = base + "/" + relative;
+    var parts = full.split("/").reverse();
+    var absolute = [ "" ];
+    while (parts.length) {
+      var part = parts.pop();
+      if (part == "" || part == ".") {} else if (part == "..") {
+        if (absolute.length > 1) absolute.pop();
+      } else {
+        absolute.push(part);
+      }
+    }
+    return absolute.length == 1 ? "/" : absolute.join("/");
+  })
+};
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting"]
