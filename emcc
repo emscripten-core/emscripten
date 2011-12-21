@@ -83,6 +83,7 @@ LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll 
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
                                                            # specific need.
                                                            # One major limitation with this mode is that dlmalloc will not be added in.
+                                                           # LLVM optimizations will also not be done.
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 
@@ -371,7 +372,7 @@ try:
           shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
   # Optimize, if asked to
-  if llvm_opt_level > 0:
+  if llvm_opt_level > 0 and not LEAVE_INPUTS_RAW:
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
     for input_file in input_files:
       try:
