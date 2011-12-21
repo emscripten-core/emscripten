@@ -4271,7 +4271,9 @@ def process(filename):
           #include "bindingtest.cpp"
         '''
 
-        script_src_2 = '''
+        post2 = '''
+def process(filename):
+  script_src_2 = \'\'\'
           var sme = new Parent(42);
           sme.mulVal(2);
           print('*')
@@ -4353,13 +4355,10 @@ def process(filename):
           c2.virtualFunc2();
 
           print('*ok*');
-        '''
-
-        post2 = '''
-def process(filename):
+        \'\'\'
   src = open(filename, 'r').read().replace(
     '// {{MODULE_ADDITIONS}',
-    open(os.path.join(self.get_dir(), 'bindingtest.js')).read() + '\n\n' + script_src_2 + '\n\n' + 
+    open('bindingtest.js').read() + '\\n\\n' + script_src_2 + '\\n\\n' + 
       '// {{MODULE_ADDITIONS}'
   )
   open(filename, 'w').write(src)
