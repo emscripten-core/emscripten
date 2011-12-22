@@ -5305,7 +5305,7 @@ elif 'benchmark' in str(sys.argv):
   Building.COMPILER_TEST_OPTS = []
 
   TEST_REPS = 10
-  TOTAL_TESTS = 8
+  TOTAL_TESTS = 7
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
