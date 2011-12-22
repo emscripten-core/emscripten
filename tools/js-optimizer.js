@@ -437,7 +437,7 @@ function hoistMultiples(ast) {
       var type = node[0];
       if (type == 'defun' && isGenerated(node[1])) {
         traverse(node, function(node, type) {
-          if (type == 'if' && node[2][0] == 'block' && node[2][1].length == 0) {
+          if (type == 'if' && node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) {
             more = true;
             if (node[2][2]) { // if there is an else, return that
               return node[2][2];
