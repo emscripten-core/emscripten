@@ -365,7 +365,7 @@ function simplifyExpressionsPost(ast) {
 function hoistMultiples(ast) {
   ast[1].forEach(function(node, i) {
     var type = node[0];
-    if (type == 'defun') {
+    if (type == 'defun' && isGenerated(node[1])) {
       var statements = node[3];
       for (var i = 0; i < statements.length-1; i++) {
         var modified = false;
@@ -435,7 +435,7 @@ function hoistMultiples(ast) {
     more = false;
     ast[1].forEach(function(node, i) {
       var type = node[0];
-      if (type == 'defun') {
+      if (type == 'defun' && isGenerated(node[1])) {
         traverse(node, function(node, type) {
           if (type == 'if' && node[2][0] == 'block' && node[2][1].length == 0) {
             more = true;

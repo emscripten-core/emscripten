@@ -181,4 +181,10 @@ var FS = {
     return absolute.length == 1 ? '/' : absolute.join('/');
   }
 }
+function sleep() {
+  while (Date.now() - start < msec) {
+    // Do nothing. This empty block should remain untouched (c.f. _usleep)
+  }
+  return 0;
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting"]
