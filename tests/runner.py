@@ -1999,8 +1999,9 @@ def process(filename):
         except Exception, e:
           # Check for warning in the generated code
           generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-          assert 'Casting a function pointer type to another with a different number of arguments.' in generated, 'Missing expected warning'
-          assert 'void (i32, i32)* ==> void (%struct.point.0*)*' in generated, 'Missing expected warning details'
+          if self.emcc_args is None or self.emcc_args == []: # Optimized code is missing the warning comments
+            assert 'Casting a function pointer type to another with a different number of arguments.' in generated, 'Missing expected warning'
+            assert 'void (i32, i32)* ==> void (%struct.point.0*)*' in generated, 'Missing expected warning details'
           return
         raise Exception('We should not have gotten to here!')
 
