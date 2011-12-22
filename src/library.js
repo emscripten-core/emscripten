@@ -147,6 +147,56 @@ LibraryManager.library = {
         return null;
       }
     },
+    
+    prefetch: {
+      is: function(node, url) {
+        return node.getAttribute('rel') == 'prefetch' && node.getAttribute('href') == url;
+      },
+      hasDocument: function() {
+        try {
+          document.toString();
+          return true;
+        } catch( e ) {
+          return false;
+        }
+      },
+      get: function(url) {
+        if( FS.prefetch.hasDocument() ) {
+          var nodes = document.getElementsById("link");
+        
+          for( var node in nodes ) {
+            if( FS.prefetch.is(node, url) )
+              return node;
+          }
+        }
+        
+        return null;
+      },
+      create: function(url) {
+        var node = FS.prefetch.get(url);
+        
+        if( node )
+          return;
+        
+        if( !FS.prefetch.hasDocument() )
+          return;
+        
+        var head = document.getElementById("head");
+        node = document.createElement("link");
+        node.setAttribute("rel", "prefetch");
+        node.setAttribute("href", url);
+        head.appendChild(node);
+      },
+      delete: function(url) {
+        var node = FS.prefetch.get(url);
+        
+        if( !node )
+          return;
+        
+        node.parentNode.removeChild(node);
+      }
+    },
+    
     // Creates a file system record: file, link, device or folder.
     createObject: function(parent, name, properties, canRead, canWrite) {
       if (!parent) parent = '/';
@@ -184,9 +234,13 @@ LibraryManager.library = {
           parent.contents[name][key] = properties[key];
         }
       }
-
+      
+      if( properties['prefetch'] )
+        FS.prefetch.create(properties['url']);
+      
       return parent.contents[name];
     },
+    
     // Creates a folder.
     createFolder: function(parent, name, canRead, canWrite) {
       var properties = {isFolder: true, isDevice: false, contents: {}};
@@ -224,8 +278,8 @@ LibraryManager.library = {
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Creates a file record for lazy-loading from a URL.
-    createLazyFile: function(parent, name, url, canRead, canWrite) {
-      var properties = {isDevice: false, url: url};
+    createLazyFile: function(parent, name, url, canRead, canWrite, prefetch) {
+      var properties = {isDevice: false, url: url, prefetch: prefetch};
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Creates a link to a sepcific local path.
@@ -1539,6 +1593,7 @@ LibraryManager.library = {
       return -1;
     } else {
       delete path.parentObject.contents[path.name];
+      //TODO: Remove potential prefetch
       return 0;
     }
   },
