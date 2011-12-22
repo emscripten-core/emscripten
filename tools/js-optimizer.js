@@ -430,10 +430,28 @@ function hoistMultiples(ast) {
   });
 
   // Clear out empty ifs and blocks, and redundant blocks/stats
+  var ret;
   var more = true;
   while (more) {
     more = false;
     ast[1].forEach(function(node, i) {
+      function simplifyList(node, i) {
+        var changed = false;
+        var pre = node[i].length;
+        node[i] = node[i].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
+        if (node[i].length < pre) changed = true;
+        // Also, seek blocks with single items we can simplify
+        node[i] = node[i].map(function(subNode) {
+          if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
+            return subNode[1][0];
+          }
+          return subNode;
+        });
+        if (changed) {
+          more = true;
+          return node;
+        }
+      }
       var type = node[0];
       if (type == 'defun' && isGenerated(node[1])) {
         traverse(node, function(node, type) {
@@ -456,23 +474,15 @@ function hoistMultiples(ast) {
             more = true;
             return node[1];
           } else if (type == 'block' && typeof node[1] == 'object') {
-            var pre = node[1].length;
-            node[1] = node[1].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
-            if (node[1].length < pre) {
-              more = true;
-              return node;
-            }
+            ret = simplifyList(node, 1);
+            if (ret) return ret;
           } else if (type == 'defun' && node[3].length == 1 && node[3][0][0] == 'block') {
             more = true;
             node[3] = node[3][0][1];
             return node;
           } else if (type == 'defun') {
-            var pre = node[3].length;
-            node[3] = node[3].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
-            if (node[3].length < pre) {
-              more = true;
-              return node;
-            }
+            ret = simplifyList(node, 3);
+            if (ret) return ret;
           } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
             more = true;
             return emptyNode();

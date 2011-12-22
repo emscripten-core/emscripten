@@ -187,4 +187,26 @@ function sleep() {
   }
   return 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting"]
+function demangle($cmp) {
+  if ($cmp) {
+    __label__ = 3;
+  } else {
+    __label__ = 1;
+  }
+  $if_then$$lor_lhs_false$2 : do {
+    if (__label__ == 1) {
+      if (something()) {
+        __label__ = 3;
+        break $if_then$$lor_lhs_false$2;
+      }
+      more();
+      break $if_then$$lor_lhs_false$2;
+    }
+  } while (0);
+  $if_then$$return$6 : do {
+    if (__label__ == 3) {
+      final();
+    }
+  } while (0);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle"]
