@@ -3867,6 +3867,9 @@ def process(filename):
                    post_build=post)#,build_ll_hook=self.do_autodebug)
 
     def test_zlib(self):
+      if self.emcc_args is not None and '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+
       Settings.CORRECT_SIGNS = 1
 
       self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
