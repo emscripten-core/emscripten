@@ -2961,6 +2961,9 @@ at function.:blag
       self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
     def test_files(self):
+      if self.emcc_args is not None and '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
+
       Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       post = '''
 def process(filename):
@@ -4479,53 +4482,6 @@ def process(filename):
       self.do_run(src, 'No type info.', post_build=post)
 
     ### Tests for tools
-
-    def test_closure_compiler(self):
-      src = '''
-        #include<stdio.h>
-        int main() {
-          printf("*closured*\\n");
-
-          FILE *file = fopen("somefile.binary", "rb");
-          char buffer[1024];
-          size_t read = fread(buffer, 1, 4, file);
-          printf("data: %d", buffer[0]);
-          for (int i = 1; i < 4; i++)
-            printf(",%d", buffer[i]);
-          printf("\\n");
-
-          return 0;
-        }
-      '''
-
-      post = '''
-def process(filename):
-  import re, shutil
-  from subprocess import Popen, PIPE, STDOUT
-  import tools.shared as shared
-
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      FS.createDataFile('/', 'somefile.binary', [100, 1, 50, 25, 10, 77, 123], true, false);
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-
-  Popen(['java', '-jar', shared.CLOSURE_COMPILER,
-                 '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                 '--formatting', 'PRETTY_PRINT',
-                 '--variable_map_output_file', filename + '.vars',
-                 '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()
-  assert not re.search('function \w\(', open(filename, 'r').read()) # closure generates this kind of stuff - functions with single letters. Normal doesn't.
-  src = open(filename + '.cc.js', 'r').read()
-  assert re.search('function \w\(', src) # see before
-  assert 'function _main()' not in src # closure should have wiped it out
-  shutil.move(filename, filename + '.old.js')
-  open(filename, 'w').write(src)
-'''
-
-      self.do_run(src, '*closured*\ndata: 100,1,50,25\n', post_build=post)
 
     def test_safe_heap(self):
       if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
