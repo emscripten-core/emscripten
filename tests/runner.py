@@ -5473,7 +5473,7 @@ elif 'benchmark' in str(sys.argv):
     def test_fasta(self):
       self.fasta()
 
-    def test_fasta_t2(self):
+    def zzztest_fasta_t2(self):
       self.fasta(emcc_args=['-s', 'USE_TYPED_ARRAYS=2', '-s', 'QUANTUM_SIZE=4'])
 
     def test_skinning(self):
