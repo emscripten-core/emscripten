@@ -121,7 +121,7 @@ class RunnerCore(unittest.TestCase):
                      ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
                      map(lambda include: '-I' + include, includes) + 
                      ['-c', f, '-o', f + '.o'],
-                     stdout=PIPE, stderr=STDOUT).communicate()[0]
+                     stdout=PIPE).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
 
     os.chdir(cwd)
@@ -156,7 +156,7 @@ class RunnerCore(unittest.TestCase):
     return ret
 
   def run_llvm_interpreter(self, args):
-    return Popen([EXEC_LLVM] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
+    return Popen([EXEC_LLVM] + args, stdout=PIPE).communicate()[0]
 
   def build_native(self, filename):
     Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE).communicate()[0]
@@ -3630,7 +3630,7 @@ at function.:blag
 
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
         output = Popen([EMCC, path_from_root('tests', 'dlmalloc_test.c'),
-                        '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=PIPE).communicate()
+                        '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE).communicate()
         #print output
 
         self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
@@ -3995,7 +3995,7 @@ at function.:blag
 
     # Autodebug the code
     def do_autodebug(self, filename):
-      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE).communicate()[0]
       assert 'Success.' in output, output
       self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc # TODO: use code in do_autodebug_post for this
 
@@ -4007,7 +4007,7 @@ at function.:blag
         return True
       print 'Autodebugging during post time'
       delattr(self, 'post')
-      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE).communicate()[0]
       assert 'Success.' in output, output
       shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
       Building.llvm_as(filename)
@@ -4234,7 +4234,7 @@ Block 0: ''', post_build=post1)
         open(header_filename, 'w').write(header)
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
-        output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE).communicate()[0]
         #print output
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
@@ -4460,7 +4460,7 @@ Child2:9
                        '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
                        '--formatting', 'PRETTY_PRINT',
                        '--variable_map_output_file', filename + '.vars',
-                       '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()
+                       '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE).communicate()
         assert not re.search('function \w\(', open(filename, 'r').read()) # closure generates this kind of stuff - functions with single letters. Normal doesn't.
         src = open(filename + '.cc.js', 'r').read()
         assert re.search('function \w\(', src) # see before
@@ -4964,7 +4964,7 @@ TT = %s
         suffix = '.c' if compiler == EMCC else '.cpp'
 
         # --version
-        output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen([compiler, '--version'], stdout=PIPE).communicate()
         self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
 Copyright (C) 2011 the Emscripten authors.
 This is free and open source software under the MIT license.
@@ -4972,7 +4972,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''', output[0], output[1])
 
         # --help
-        output = Popen([compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen([compiler, '--help'], stdout=PIPE).communicate()
         self.assertContained('''%s [options] file...
 
 Most normal gcc/g++ options will work, for example:
@@ -4985,7 +4985,7 @@ Options that are modified or new in %s include:
 
         # emcc src.cpp ==> writes a.out.js
         clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -4993,7 +4993,7 @@ Options that are modified or new in %s include:
         # properly report source code errors, and stop there
         clear()
         assert not os.path.exists('a.out.js')
-        output = Popen([compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen([compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE).communicate()
         assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
         assert len(output[0]) == 0, output[0]
         self.assertNotContained('IOError', output[1]) # no python stack
@@ -5007,14 +5007,14 @@ Options that are modified or new in %s include:
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
           clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), '\n'.join(output))
           self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
 
         # emcc src.ll ==> generates .js
         clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen([compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -5023,7 +5023,7 @@ Options that are modified or new in %s include:
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
           clear()
-          output = Popen([compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, path_from_root('tests', source)], stdout=PIPE).communicate()
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
           generated = open('a.out.js').read()
@@ -5049,11 +5049,11 @@ Options that are modified or new in %s include:
           #print params, opt_level, bc_params, closure
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
-                         stdout=PIPE, stderr=PIPE).communicate()
+                         stdout=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           if bc_params is not None:
             assert os.path.exists('something.bc'), output[1]
-            output = Popen([compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
+            output = Popen([compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE).communicate()
           assert os.path.exists('something.js'), output[1]
           assert ('Warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
@@ -5090,7 +5090,7 @@ Options that are modified or new in %s include:
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
           clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
@@ -5100,7 +5100,7 @@ Options that are modified or new in %s include:
         for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
           clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
-                         stdout=PIPE, stderr=PIPE).communicate()
+                         stdout=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
@@ -5108,7 +5108,7 @@ Options that are modified or new in %s include:
           # Compiling two files with -c will generate separate .bc files
           clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
-                         stdout=PIPE, stderr=PIPE).communicate()
+                         stdout=PIPE).communicate()
           if '-o' in args:
             # specifying -o and -c is an error
             assert 'fatal error' in output[1], output[1]
@@ -5119,21 +5119,21 @@ Options that are modified or new in %s include:
           assert not os.path.exists(target), 'We should only have created bitcode here: ' + '\n'.join(output)
 
           # Compiling one of them alone is expected to fail
-          output = Popen([compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, 'twopart_main.o'] + args, stdout=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           #print '\n'.join(output)
-          self.assertContained('is not a function', run_js(target, stderr=STDOUT))
+          self.assertContained('is not a function', run_js(target))
           try_delete(target)
 
           # Combining those bc files into js should work
-          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
 
           # Combining bc files into another bc should also work
           try_delete(target)
           assert not os.path.exists(target)
-          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE).communicate()
           assert os.path.exists('combined.bc'), '\n'.join(output)
           self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
 
@@ -5152,14 +5152,14 @@ Options that are modified or new in %s include:
 
       # test HTML generation.
       clear()
-      output = Popen([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
 
       # And test running in a web worker
       clear()
-      output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('worker.js'), output
       self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone
@@ -5287,7 +5287,7 @@ elif 'benchmark' in str(sys.argv):
       try_delete(final_filename)
       output = Popen([EMCC, filename, '-O3', '-s', 'USE_TYPED_ARRAYS=1', '-s', 'QUANTUM_SIZE=1',
                       '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
-                      '-o', final_filename] + emcc_args, stdout=PIPE, stderr=PIPE).communicate()
+                      '-o', final_filename] + emcc_args, stdout=PIPE).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + '\n'.join(output)
 
       # Run JS
@@ -5446,7 +5446,7 @@ elif 'sanity' in str(sys.argv):
       if type(command) is not list:
         command = [command]
 
-      return Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+      return Popen(command, stdout=PIPE).communicate()[0]
 
     def check_working(self, command, expected=None):
       if type(command) is not list:
