@@ -3734,8 +3734,10 @@ def process(filename):
         ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
 
     def test_cubescript(self):
-      Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
+      if self.emcc_args is not None and '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
+      Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
       Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
       # Overflows happen in hash loop
