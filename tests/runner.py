@@ -1142,6 +1142,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
     def test_exceptions(self):
         self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
+        Settings.DISABLE_EXCEPTION_CATCHING = 0
 
         src = '''
           #include <stdio.h>
