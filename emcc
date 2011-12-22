@@ -357,6 +357,7 @@ try:
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
+      if DEBUG: print >> sys.stderr, 'emcc: compiling source file: ', input_file
       output_file = in_temp(unsuffixed_basename(input_file) + '.o')
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
@@ -366,9 +367,11 @@ try:
         sys.exit(1)
     else: # bitcode
       if input_file.endswith(('.bc', '.o')):
+        if DEBUG: print >> sys.stderr, 'emcc: copying bitcode file: ', input_file
         shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
       else: #.ll
         if not LEAVE_INPUTS_RAW:
+          if DEBUG: print >> sys.stderr, 'emcc: assembling assembly file: ', input_file
           shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
   # Optimize, if asked to
@@ -438,7 +441,9 @@ try:
 
   # First, combine the bitcode files if there are several
   if len(input_files) + len(extra_files_to_link) > 1:
-    shared.Building.link(map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + extra_files_to_link,
+    linker_inputs = map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + extra_files_to_link
+    if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
+    shared.Building.link(linker_inputs,
                          in_temp(target_basename + '.bc'))
     # TODO: LLVM link-time opts? here and/or elsewhere?
   else:
