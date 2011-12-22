@@ -455,7 +455,7 @@ function hoistMultiples(ast) {
           } else if (type == 'stat' && node[1][0] == 'block') {
             more = true;
             return node[1];
-          } else if (type == 'block') {
+          } else if (type == 'block' && typeof node[1] == 'object') {
             var pre = node[1].length;
             node[1] = node[1].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
             if (node[1].length < pre) {
