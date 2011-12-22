@@ -807,10 +807,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         '''
         self.do_run(src, '*yes*')
 
-        # Test for issue 39
-        if not Building.LLVM_OPTS:
-          self.do_ll_run(path_from_root('tests', 'issue_39.ll'), '*yes*')
-
     def test_if_else(self):
         src = '''
           #include <stdio.h>
