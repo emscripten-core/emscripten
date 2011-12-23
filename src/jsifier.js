@@ -870,18 +870,28 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('switch', function(item) {
     // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
     var phiSets = calcPhiSets(item);
+    // Consolidate checks that go to the same label. This is important because it makes the
+    // js optimizer hoistMultiples much easier to implement (we hoist into one place, not
+    // many).
+    var targetLabels = {}; // for each target label, the list of values going to it
+    item.switchLabels.forEach(function(switchLabel) {
+      if (!targetLabels[switchLabel.label]) {
+        targetLabels[switchLabel.label] = [];
+      }
+      targetLabels[switchLabel.label].push(switchLabel.value);
+    });
     var ret = '';
     var first = true;
-    item.switchLabels.forEach(function(switchLabel) {
+    for (var targetLabel in targetLabels) {
       if (!first) {
         ret += 'else ';
       } else {
         first = false;
       }
-      ret += 'if (' + item.ident + ' == ' + switchLabel.value + ') {\n';
-      ret += '  ' + getPhiSetsForLabel(phiSets, switchLabel.label) + makeBranch(switchLabel.label, item.currLabelId || null) + '\n';
+      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return item.ident + ' == ' + value }).join(' || ') + ') {\n';
+      ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
-    });
+    }
     if (item.switchLabels.length > 0) ret += 'else {\n';
     ret += getPhiSetsForLabel(phiSets, item.defaultLabel) + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
     if (item.switchLabels.length > 0) ret += '}\n';
