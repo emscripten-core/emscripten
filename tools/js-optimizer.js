@@ -359,6 +359,12 @@ function simplifyExpressionsPost(ast) {
 
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
 function vacuum(ast) {
+  function isEmpty(node) {
+    if (!node) return true;
+    if (jsonCompare(node, emptyNode())) return true;
+    if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
+    return false;
+  }
   var ret;
   var more = true;
   while (more) {
@@ -367,7 +373,14 @@ function vacuum(ast) {
       function simplifyList(node, i) {
         var changed = false;
         var pre = node[i].length;
-        node[i] = node[i].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
+        node[i] = node[i].filter(function(node) {
+          var type = node[0];
+          if (isEmpty(node)) {
+            return false;
+          }
+          if (jsonCompare(node, emptyNode())) return false;
+          return true;
+        });
         if (node[i].length < pre) changed = true;
         // Also, seek blocks with single items we can simplify
         node[i] = node[i].map(function(subNode) {
@@ -384,18 +397,17 @@ function vacuum(ast) {
       var type = node[0];
       if (type == 'defun' && isGenerated(node[1])) {
         traverse(node, function(node, type) {
-          if (type == 'if' && ((node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) ||
-                               jsonCompare(node[2], emptyNode()))) {
-            more = true;
-            if (node[3]) { // if there is an else, return that
-              return node[3];
-            } else {
+          if (type == 'if') {
+            if (((node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) ||
+                  jsonCompare(node[2], emptyNode())) && !node[3]) {
+              more = true;
               return emptyNode();
+            } else if (node[3] && isEmpty(node[3])) {
+              more = true;
+              node[3] = null;
+              return node;
             }
           } else if (type == 'block' && !node[1]) {
-            more = true;
-            return emptyNode();
-          } else if (type == 'block' && (node[1].length == 0 || (node[1].length == 1 && jsonCompare(node[1][0], emptyNode())))) {
             more = true;
             return emptyNode();
           } else if (type == 'block' && node[1].length == 1 && node[1][0][0] == 'block') {
@@ -618,6 +630,8 @@ if (metadata) setGeneratedFunctions(metadata);
 arguments.forEach(function(arg) {
   passes[arg](ast);
 });
+//printErr('output: ' + dump(ast));
+//printErr('output: ' + astToSrc(ast));
 ast = srcToAst(astToSrc(ast)); // re-parse, to simplify a little
 print(astToSrc(ast));
 if (metadata) print(metadata + '\n');

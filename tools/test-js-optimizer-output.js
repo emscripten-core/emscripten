@@ -204,5 +204,15 @@ function lua() {
       }
     } while (0);
   }
+  pause();
+  if ($1435 == 0) {
+    __label__ = 176;
+  } else if ($1435 == 1) {} else {
+    __label__ = 180;
+  }
+  pause();
+  if ($1435 == 0) {
+    __label__ = 176;
+  }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua"]
