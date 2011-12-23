@@ -209,4 +209,25 @@ function demangle($cmp) {
     }
   } while (0);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle"]
+function lua() {
+  $5$98 : while (1) {
+    if ($14) {
+      __label__ = 3;
+    } else {
+      __label__ = 4;
+    }
+    $15$$16$101 : do {
+      if (__label__ == 3) {} else if (__label__ == 4) {
+        var $17 = $i;
+        var $18 = $3;
+        var $19 = $18 + ($17 << 2) | 0;
+        var $20 = HEAP32[$19 >> 2];
+        var $21 = $20 + 1 | 0;
+        var $22 = HEAP8[$21];
+        var $23 = $22 << 24 >> 24;
+        break $15$$16$101;
+      }
+    } while(0);
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua"]

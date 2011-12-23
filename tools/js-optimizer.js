@@ -384,14 +384,16 @@ function vacuum(ast) {
       var type = node[0];
       if (type == 'defun' && isGenerated(node[1])) {
         traverse(node, function(node, type) {
-          if (type == 'if' && node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) {
+          if (type == 'if' && ((node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) ||
+                               jsonCompare(node[2], emptyNode()))) {
             more = true;
-            if (node[2][2]) { // if there is an else, return that
-              return node[2][2];
+            if (node[3]) { // if there is an else, return that
+              return node[3];
             } else {
               return emptyNode();
             }
           } else if (type == 'block' && !node[1]) {
+            more = true;
             return emptyNode();
           } else if (type == 'block' && (node[1].length == 0 || (node[1].length == 1 && jsonCompare(node[1][0], emptyNode())))) {
             more = true;
@@ -435,11 +437,18 @@ function vacuum(ast) {
 // We can hoist the multiple block into the condition, thus removing code and one 'if' check
 function hoistMultiples(ast) {
   ast[1].forEach(function(node, i) {
-    var type = node[0];
-    if (type == 'defun' && isGenerated(node[1])) {
-      var statements = node[3];
+    if (!(node[0] == 'defun' && isGenerated(node[1]))) return;
+    traverse(node, function(node, type) {
+      var statements = null;
+      if (type == 'defun') {
+        statements = node[3];
+      } else if (type == 'block') {
+        statements = node[1];
+      }
+      if (!statements) return;
+      var modified = false;
       for (var i = 0; i < statements.length-1; i++) {
-        var modified = false;
+        var modifiedI = false;
         var pre = statements[i];
         if (pre[0] != 'if') continue;
         var post = statements[i+1];
@@ -484,7 +493,7 @@ function hoistMultiples(ast) {
                 if (preNode[3][1] == labelNum) {
                   // That's it! Hoist away
                   found = true;
-                  modified = true;
+                  modifiedI = true;
                   postInner[2] = ['block', []];
                   return ['block', [preNode].concat(labelBlock[1])];
                 }
@@ -493,11 +502,12 @@ function hoistMultiples(ast) {
           }
           postInner = postInner[3]; // Proceed to look in the else clause
         }
-        if (modified) {
+        if (modifiedI) {
           statements[i] = shell(pre);
         }
       }
-    }
+      if (modified) return node;
+    });
   });
 
   vacuum(ast);
