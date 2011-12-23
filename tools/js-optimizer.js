@@ -373,14 +373,7 @@ function vacuum(ast) {
       function simplifyList(node, i) {
         var changed = false;
         var pre = node[i].length;
-        node[i] = node[i].filter(function(node) {
-          var type = node[0];
-          if (isEmpty(node)) {
-            return false;
-          }
-          if (jsonCompare(node, emptyNode())) return false;
-          return true;
-        });
+        node[i] = node[i].filter(function(node) { return !isEmpty(node) });
         if (node[i].length < pre) changed = true;
         // Also, seek blocks with single items we can simplify
         node[i] = node[i].map(function(subNode) {
@@ -407,10 +400,7 @@ function vacuum(ast) {
               node[3] = null;
               return node;
             }
-          } else if (type == 'block' && !node[1]) {
-            more = true;
-            return emptyNode();
-          } else if (type == 'block' && node[1].length == 1 && node[1][0][0] == 'block') {
+          } else if (type == 'block' && node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
             more = true;
             return node[1][0];
           } else if (type == 'stat' && node[1][0] == 'block') {
@@ -432,7 +422,7 @@ function vacuum(ast) {
           } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
             more = true;
             return emptyNode();
-          } else if (type == 'if' && jsonCompare(node[3], emptyNode())) { // empty else clauses
+          } else if (type == 'if' && isEmpty(node[3])) { // empty else clauses
             node[3] = null;
             return node;
           }
