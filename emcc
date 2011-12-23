@@ -473,6 +473,7 @@ try:
     process(final)
 
   if DEBUG:
+    print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
     shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-0.js'))
     final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit, so comparisons to later passes are simpler
     shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-1.js'))
