@@ -357,6 +357,77 @@ function simplifyExpressionsPost(ast) {
   simplifyNotComps(ast);
 }
 
+// Clear out empty ifs and blocks, and redundant blocks/stats and so forth
+function vacuum(ast) {
+  var ret;
+  var more = true;
+  while (more) {
+    more = false;
+    ast[1].forEach(function(node, i) {
+      function simplifyList(node, i) {
+        var changed = false;
+        var pre = node[i].length;
+        node[i] = node[i].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
+        if (node[i].length < pre) changed = true;
+        // Also, seek blocks with single items we can simplify
+        node[i] = node[i].map(function(subNode) {
+          if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
+            return subNode[1][0];
+          }
+          return subNode;
+        });
+        if (changed) {
+          more = true;
+          return node;
+        }
+      }
+      var type = node[0];
+      if (type == 'defun' && isGenerated(node[1])) {
+        traverse(node, function(node, type) {
+          if (type == 'if' && node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) {
+            more = true;
+            if (node[2][2]) { // if there is an else, return that
+              return node[2][2];
+            } else {
+              return emptyNode();
+            }
+          } else if (type == 'block' && !node[1]) {
+            return emptyNode();
+          } else if (type == 'block' && (node[1].length == 0 || (node[1].length == 1 && jsonCompare(node[1][0], emptyNode())))) {
+            more = true;
+            return emptyNode();
+          } else if (type == 'block' && node[1].length == 1 && node[1][0][0] == 'block') {
+            more = true;
+            return node[1][0];
+          } else if (type == 'stat' && node[1][0] == 'block') {
+            more = true;
+            return node[1];
+          } else if (type == 'block' && typeof node[1] == 'object') {
+            ret = simplifyList(node, 1);
+            if (ret) return ret;
+          } else if (type == 'defun' && node[3].length == 1 && node[3][0][0] == 'block') {
+            more = true;
+            node[3] = node[3][0][1];
+            return node;
+          } else if (type == 'defun') {
+            ret = simplifyList(node, 3);
+            if (ret) return ret;
+          } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
+            more = true;
+            return emptyNode();
+          } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
+            more = true;
+            return emptyNode();
+          } else if (type == 'if' && jsonCompare(node[3], emptyNode())) { // empty else clauses
+            node[3] = null;
+            return node;
+          }
+        });
+      }
+    });
+  }
+}
+
 // Multiple blocks from the relooper are, in general, implemented by
 //   if (__label__ == x) { } else if ..
 // and branching into them by
@@ -429,74 +500,7 @@ function hoistMultiples(ast) {
     }
   });
 
-  // Clear out empty ifs and blocks, and redundant blocks/stats
-  var ret;
-  var more = true;
-  while (more) {
-    more = false;
-    ast[1].forEach(function(node, i) {
-      function simplifyList(node, i) {
-        var changed = false;
-        var pre = node[i].length;
-        node[i] = node[i].filter(function(blockItem) { return !jsonCompare(blockItem, emptyNode()) });
-        if (node[i].length < pre) changed = true;
-        // Also, seek blocks with single items we can simplify
-        node[i] = node[i].map(function(subNode) {
-          if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
-            return subNode[1][0];
-          }
-          return subNode;
-        });
-        if (changed) {
-          more = true;
-          return node;
-        }
-      }
-      var type = node[0];
-      if (type == 'defun' && isGenerated(node[1])) {
-        traverse(node, function(node, type) {
-          if (type == 'if' && node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) {
-            more = true;
-            if (node[2][2]) { // if there is an else, return that
-              return node[2][2];
-            } else {
-              return emptyNode();
-            }
-          } else if (type == 'block' && !node[1]) {
-            return emptyNode();
-          } else if (type == 'block' && (node[1].length == 0 || (node[1].length == 1 && jsonCompare(node[1][0], emptyNode())))) {
-            more = true;
-            return emptyNode();
-          } else if (type == 'block' && node[1].length == 1 && node[1][0][0] == 'block') {
-            more = true;
-            return node[1][0];
-          } else if (type == 'stat' && node[1][0] == 'block') {
-            more = true;
-            return node[1];
-          } else if (type == 'block' && typeof node[1] == 'object') {
-            ret = simplifyList(node, 1);
-            if (ret) return ret;
-          } else if (type == 'defun' && node[3].length == 1 && node[3][0][0] == 'block') {
-            more = true;
-            node[3] = node[3][0][1];
-            return node;
-          } else if (type == 'defun') {
-            ret = simplifyList(node, 3);
-            if (ret) return ret;
-          } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
-            more = true;
-            return emptyNode();
-          } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
-            more = true;
-            return emptyNode();
-          } else if (type == 'if' && jsonCompare(node[3], emptyNode())) { // empty else clauses
-            node[3] = null;
-            return node;
-          }
-        });
-      }
-    });
-  }
+  vacuum(ast);
 }
 
 // Simplifies loops
@@ -576,6 +580,8 @@ function loopOptimizer(ast) {
   // TODO: pass 1: Removal of unneeded continues, breaks if they get us to where we are already going. That will
   //               help the next pass.
   passTwo(ast);
+
+  vacuum(ast);
 }
 
 // Passes table
