@@ -451,8 +451,11 @@ try:
       shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
 
   # Emscripten
-  if opt_level >= 2:
-    print >> sys.stderr, 'Warning: The relooper optimization can be very slow.'
+  try:
+    if shared.Settings.RELOOP:
+      print >> sys.stderr, 'Warning: The relooper optimization can be very slow.'
+  except:
+    pass
 
   if not LEAVE_INPUTS_RAW:
     emscripten_input = in_temp(target_basename + '.bc')
