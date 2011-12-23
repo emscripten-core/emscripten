@@ -110,6 +110,15 @@ EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
+# Temp dir
+
+EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_test')
+if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
+  try:
+    os.makedirs(EMSCRIPTEN_TEMP_DIR)
+  except Exception, e:
+    print >> sys.stderr, 'Warning: Could not create temp dir (%s): %s' % (EMSCRIPTEN_TEMP_DIR, str(e))
+
 # ~/.emscripten stuff
 
 try:

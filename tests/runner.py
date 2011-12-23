@@ -40,9 +40,9 @@ class RunnerCore(unittest.TestCase):
     Settings.reset()
     self.banned_js_engines = []
     if not self.save_dir:
-      dirname = tempfile.mkdtemp(prefix="ems_" + self.__class__.__name__ + "_", dir=TEMP_DIR)
+      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
     else:
-      dirname = os.path.join(TEMP_DIR, 'tmp')
+      dirname = EMSCRIPTEN_TEMP_DIR
     if not os.path.exists(dirname):
       os.makedirs(dirname)
     self.working_dir = dirname
