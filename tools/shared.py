@@ -112,12 +112,16 @@ JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 # Temp dir
 
-EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_test')
-if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
-  try:
-    os.makedirs(EMSCRIPTEN_TEMP_DIR)
-  except Exception, e:
-    print >> sys.stderr, 'Warning: Could not create temp dir (%s): %s' % (EMSCRIPTEN_TEMP_DIR, str(e))
+try:
+  EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
+  if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
+    try:
+      os.makedirs(EMSCRIPTEN_TEMP_DIR)
+    except Exception, e:
+      print >> sys.stderr, 'Warning: Could not create temp dir (%s): %s' % (EMSCRIPTEN_TEMP_DIR, str(e))
+except:
+  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_')
+  print >> sys.stderr, 'Warning: TEMP_DIR not defined in ~/.emscripten, using %s' % EMSCRIPTEN_TEMP_DIR
 
 # ~/.emscripten stuff
 
