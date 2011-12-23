@@ -483,26 +483,26 @@ try:
     final = shared.Building.js_optimizer(final, ['hoistMultiples'])
     if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-2.js'))
     final = shared.Building.js_optimizer(final, ['loopOptimizer'])
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-2.5.js'))
+    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-3.js'))
 
     # eliminator
     final = shared.Building.eliminator(final)
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-3.js'))
+    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-4.js'))
 
     # js optimizer pre-pass
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPre')
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-4.js'))
+    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-5.js'))
 
   if closure:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-5.js'))
+    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-6.js'))
 
   if opt_level >= 1:
     # js optimizer post-pass
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPost')
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-6.js'))
+    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-7.js'))
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
