@@ -2204,6 +2204,8 @@ def process(filename):
         self.do_run(src)
 
     def test_bsearch(self):
+      if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
+
       src = '''
           #include <stdlib.h>
           #include <stdio.h>
