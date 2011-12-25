@@ -2132,9 +2132,14 @@ LibraryManager.library = {
   // stdio.h
   // ==========================================================================
 
+  _isFloat: function(text) {
+    return !!(/^[+]?[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?$/.exec(text));
+  },
+
   // TODO: Document.
+  _scanString__deps: ['_isFloat'],
   _scanString: function(format, get, unget, varargs) {
-    // Supports %x, %4x, %d.%d, %s.
+    // Supports %x, %4x, %d.%d, %s, %f, %lf.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
     var formatIndex = 0;
@@ -2157,22 +2162,43 @@ LibraryManager.library = {
           max_ = parseInt(format.slice(maxSpecifierStart, formatIndex), 10);
         }
         // TODO: Handle type size modifier.
+        var long_ = false;
+        if (format[formatIndex] == 'l') {
+          long_ = true;
+          formatIndex++;
+        }
         var type = format[formatIndex];
         formatIndex++;
         var curr = 0;
         var buffer = [];
-        while ((curr < max_ || isNaN(max_)) && next > 0) {
-          if ((type === 'd' && next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-              (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
-                                next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
-                                next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
-              (type === 's') &&
-              (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
+        // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
+        if (type == 'f') {
+          var last = -1;
+          while (next > 0) {
             buffer.push(String.fromCharCode(next));
+            if (__isFloat(buffer.join(''))) {
+              last = buffer.length;
+            }
             next = get();
-            curr++;
-          } else {
-            break;
+          }
+          while (buffer.length > last) {
+            buffer.pop();
+            unget();
+          }
+        } else {
+          while ((curr < max_ || isNaN(max_)) && next > 0) {
+            if ((type === 'd' && next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
+                                  next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
+                                  next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
+                (type === 's') &&
+                (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
+              buffer.push(String.fromCharCode(next));
+              next = get();
+              curr++;
+            } else {
+              break;
+            }
           }
         }
         if (buffer.length === 0) return 0;  // Failure.
@@ -2185,6 +2211,13 @@ LibraryManager.library = {
             break;
           case 'x':
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
+            break;
+          case 'f':
+            if (long_) {
+              {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'double') }}}
+            } else {
+              {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'float') }}}
+            }
             break;
           case 's':
             var array = intArrayFromString(text);
@@ -2215,7 +2248,7 @@ LibraryManager.library = {
       // NOTE: Explicitly ignoring type safety. Otherwise this fails:
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
-      if (type === 'float' || type === 'double') {
+      if (type === 'double') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
 #if I64_MODE == 1
       } else if (type == 'i64') {
@@ -2224,6 +2257,7 @@ LibraryManager.library = {
         ret = unSign(ret[0], 32) + unSign(ret[1], 32)*Math.pow(2, 32); // Unsigned in this notation. Signed later if needed. // XXX - loss of precision
 #endif
       } else {
+        type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
       argIndex += Runtime.getNativeFieldSize(type);
@@ -2313,9 +2347,9 @@ LibraryManager.library = {
             var nextNext = {{{ makeGetValue(0, 'textIndex+2', 'i8') }}};
             if (nextNext == 'h'.charCodeAt(0)) {
               textIndex++;
-              argSize = 1; // char
+              argSize = 1; // char (actually i32 in varargs)
             } else {
-              argSize = 2; // short
+              argSize = 2; // short (actually i32 in varargs)
             }
             break;
           case 'l':
@@ -2427,7 +2461,7 @@ LibraryManager.library = {
           });
         } else if (['f', 'F', 'e', 'E', 'g', 'G'].indexOf(String.fromCharCode(next)) != -1) {
           // Float.
-          var currArg = getNextArg(argSize === 4 ? 'float' : 'double');
+          var currArg = getNextArg('double');
           var argText;
 
           if (isNaN(currArg)) {

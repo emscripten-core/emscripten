@@ -3007,45 +3007,55 @@ at function.:blag
       self.do_run(src)
 
       # Part 2: doubles (issue 148)
-      return # TODO: Make the second part here work
-      src = r'''
-        #include <stdio.h>
+      if Settings.USE_TYPED_ARRAYS == 2:
+        for ftype in ['float', 'double']:
+          src = r'''
+            #include <stdio.h>
 
-        int main(){
-            char strval1[] = "1.2345678901";
-            char strval2[] = "1.23456789e5";
-            char strval3[] = "1.23456789E5";
-            char strval4[] = "1.2345678e-5";
-            char strval5[] = "1.2345678E-5";
-            double dblval = 1.2345678901;
-            double tstval;
+            int main(){
+                char strval1[] = "1.2345678901";
+                char strval2[] = "1.23456789e5";
+                char strval3[] = "1.23456789E5";
+                char strval4[] = "1.2345678e-5";
+                char strval5[] = "1.2345678E-5";
+                double dblval = 1.2345678901;
+                double tstval;
 
-            sscanf(strval1, "%lf", &tstval);
-            if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
-            else printf("Pass: %lf %lf\n", tstval, dblval);
+                sscanf(strval1, "%lf", &tstval);
+                if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
+                else printf("Pass: %lf %lf\n", tstval, dblval);
 
-            sscanf(strval2, "%lf", &tstval);
-            dblval = 123456.789;
-            if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
-            else printf("Pass: %lf %lf\n", tstval, dblval);
+                sscanf(strval2, "%lf", &tstval);
+                dblval = 123456.789;
+                if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
+                else printf("Pass: %lf %lf\n", tstval, dblval);
 
-            sscanf(strval3, "%lf", &tstval);
-            dblval = 123456.789;
-            if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
-            else printf("Pass: %lf %lf\n", tstval, dblval);
+                sscanf(strval3, "%lf", &tstval);
+                dblval = 123456.789;
+                if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
+                else printf("Pass: %lf %lf\n", tstval, dblval);
 
-            sscanf(strval4, "%lf", &tstval);
-            dblval = 0.000012345678;
-            if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
-            else printf("Pass: %lf %lf\n", tstval, dblval);
+                sscanf(strval4, "%lf", &tstval);
+                dblval = 0.000012345678;
+                if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
+                else printf("Pass: %lf %lf\n", tstval, dblval);
 
-            sscanf(strval5, "%lf", &tstval);
-            dblval = 0.000012345678;
-            if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
-            else printf("Pass: %lf %lf\n", tstval, dblval);
-        }
-      '''
-      self.do_run(src)
+                sscanf(strval5, "%lf", &tstval);
+                dblval = 0.000012345678;
+                if(dblval != tstval) printf("FAIL: Values are not equal: %lf %lf\n", dblval, tstval);
+                else printf("Pass: %lf %lf\n", tstval, dblval);
+
+                return 0;
+            }
+          '''
+          if ftype == 'float':
+            self.do_run(src.replace('%lf', '%f').replace('double', 'float'), '''Pass: 1.234568 1.234568
+Pass: 123456.789063 123456.789063
+Pass: 123456.789063 123456.789063
+Pass: 0.000012 0.000012
+Pass: 0.000012 0.000012''')
+          else:
+            self.do_run(src)
 
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
