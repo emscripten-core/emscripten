@@ -2255,6 +2255,9 @@ LibraryManager.library = {
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
         ret = unSign(ret[0], 32) + unSign(ret[1], 32)*Math.pow(2, 32); // Unsigned in this notation. Signed later if needed. // XXX - loss of precision
+#else
+      } else if (type == 'i64') {
+        ret = {{{ makeGetValue('varargs', 'argIndex', 'i64', undefined, undefined, true) }}};
 #endif
       } else {
         type = 'i32'; // varargs are always i32, i64, or double
