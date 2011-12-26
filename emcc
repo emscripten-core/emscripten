@@ -474,36 +474,42 @@ try:
 
   if DEBUG:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
-    shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-0.js'))
+
+    intermediate_counter = 0
+    def save_intermediate():
+      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d.js' % intermediate_counter))
+      intermediate_counter += 1
+
+    save_intermediate()
     final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit, so comparisons to later passes are simpler
-    shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-1.js'))
+    save_intermediate()
 
   if opt_level >= 1:
     # js optimizer
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
     final = shared.Building.js_optimizer(final, ['hoistMultiples'])
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-2.js'))
+    if DEBUG: save_intermediate()
     final = shared.Building.js_optimizer(final, ['loopOptimizer'])
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-3.js'))
+    if DEBUG: save_intermediate()
 
     # eliminator
     final = shared.Building.eliminator(final)
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-4.js'))
+    if DEBUG: save_intermediate()
 
     # js optimizer pre-pass
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPre')
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-5.js'))
+    if DEBUG: save_intermediate()
 
   if closure:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-6.js'))
+    if DEBUG: save_intermediate()
 
   if opt_level >= 1:
     # js optimizer post-pass
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPost')
-    if DEBUG: shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-7.js'))
+    if DEBUG: save_intermediate()
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
