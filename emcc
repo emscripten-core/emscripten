@@ -477,6 +477,7 @@ try:
 
     intermediate_counter = 0
     def save_intermediate():
+      global intermediate_counter
       shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d.js' % intermediate_counter))
       intermediate_counter += 1
 
