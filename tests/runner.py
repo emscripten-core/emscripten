@@ -5312,11 +5312,12 @@ Options that are modified or new in %s include:
       self.assertIdentical(expected, output)
 
     def test_js_optimizer(self):
-      input = open(path_from_root('tools', 'test-js-optimizer.js')).read()
-      expected = open(path_from_root('tools', 'test-js-optimizer-output.js')).read()
-      output = Popen([NODE_JS, JS_OPTIMIZER, 'hoistMultiples', 'loopOptimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost'],
-                     stdin=PIPE, stdout=PIPE).communicate(input)[0]
-      self.assertIdentical(expected, output.replace('\n\n', '\n'))
+      for input, expected, passes in [
+        (open(path_from_root('tools', 'test-js-optimizer.js')).read(), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
+         ['hoistMultiples', 'loopOptimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost'])
+      ]:
+        output = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE).communicate(input)[0]
+        self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
