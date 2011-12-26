@@ -1657,7 +1657,7 @@ function processMathop(item) {
       case 'sub': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)), bits);
       case 'sdiv': case 'udiv': warnI64_1(); return splitI64(makeRounding(mergeI64(ident1) + '/' + mergeI64(ident2), bits, op[0] === 's'));
       case 'mul': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '*' + mergeI64(ident2)), bits);
-      case 'urem': warnI64_1(); return splitI64(mergeI64(ident1) + '%' + mergeI64(ident2));
+      case 'urem': case 'srem': warnI64_1(); return splitI64(mergeI64(ident1) + '%' + mergeI64(ident2));
       default: throw 'Unsupported i64 mode 1 op: ' + item.op;
     }
   }
