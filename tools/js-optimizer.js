@@ -266,9 +266,12 @@ function simplifyExpressionsPre(ast) {
   // When there is a bunch of math like (((8+5)|0)+12)|0, only the external |0 is needed, one correction is enough.
   // At each node, ((X|0)+Y)|0 can be transformed into (X+Y): The inner corrections are not needed
   // TODO: Is the same is true for 0xff, 0xffff?
+  // Likewise, if we have |0 inside a block that will be >>'d, then the |0 is unnecessary because some
+  // 'useful' mathops already |0 anyhow.
 
   function simplifyBitops(ast) {
-    var SAFE_BINARY_OPS = set('+', '-', '*', '/', '%', '|');
+    var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
+    var SAFE_BINARY_OPS = set('+', '-', '*', '/', '%');
     var ZERO = ['num', 0];
     var rerun = true;
     while (rerun) {
@@ -287,6 +290,8 @@ function simplifyExpressionsPre(ast) {
               break; // Too bad, we can't
             }
           }
+        } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
+          stack.push(1);
         } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
           stack.push(0); // This node is safe in that it does not interfere with this optimization
         } else {
