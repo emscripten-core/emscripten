@@ -476,9 +476,9 @@ try:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
 
     intermediate_counter = 0
-    def save_intermediate():
+    def save_intermediate(name=None):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d.js' % intermediate_counter))
+      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.js' % (intermediate_counter, '' if name is None else '-' + name)))
       intermediate_counter += 1
 
     save_intermediate()
@@ -489,9 +489,9 @@ try:
     # js optimizer
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
     final = shared.Building.js_optimizer(final, ['hoistMultiples'])
-    if DEBUG: save_intermediate()
+    if DEBUG: save_intermediate('hoistMultiples')
     final = shared.Building.js_optimizer(final, ['loopOptimizer'])
-    if DEBUG: save_intermediate()
+    if DEBUG: save_intermediate('loopOptimizer')
 
     # eliminator
     final = shared.Building.eliminator(final)
@@ -499,18 +499,18 @@ try:
 
     # js optimizer pre-pass
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPre')
-    if DEBUG: save_intermediate()
+    if DEBUG: save_intermediate('simplifyExpressionsPre')
 
   if closure:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
-    if DEBUG: save_intermediate()
+    if DEBUG: save_intermediate('closure')
 
   if opt_level >= 1:
     # js optimizer post-pass
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPost')
-    if DEBUG: save_intermediate()
+    if DEBUG: save_intermediate('simplifyExpressionsPost')
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
