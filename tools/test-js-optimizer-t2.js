@@ -64,5 +64,7 @@ function shifty($id) {
     q(HEAP32[($parameters_addr + 5624 + (($res_spec242 - 1 | 0) << 2) | 0) >> 2]);
     q(HEAP32[(HEAP32[($cp + 108 | 0) >> 2] + $tileno * 5588 + 420 | 0) >> 2]);
   }
+  pause(6);
+  q($idx << 1 << 2);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

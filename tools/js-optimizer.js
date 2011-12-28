@@ -527,6 +527,10 @@ function optimizeShifts(ast) {
             var total = 0;
             if (node[3][0] == 'num' && node[2][3][0] == 'num') {
               total = ['num', sign1*node[3][1] + sign2*node[2][3][1]];
+              if (total[1] < 0) {
+                combinedShift = '<<';
+                total[1] *= -1;
+              }
               if (total[1] == 0) {
                 // XXX this may be wrong, if we removed a |0 that assumed we had this >> which |0's anyhow!
                 return node[2][2];
