@@ -108,6 +108,14 @@ function traverseGenerated(ast, pre, post, stack) {
   });
 }
 
+function traverseGeneratedFunctions(ast, callback) {
+  ast[1].forEach(function(node, i) {
+    if (node[0] == 'defun' && isGenerated(node[1])) {
+      callback(node);
+    }
+  });
+}
+
 // Walk the ast in a simple way, with an understanding of which JS variables are defined)
 function traverseWithVariables(ast, callback) {
   traverse(ast, function(node, type, stack) {
@@ -139,6 +147,16 @@ function emptyNode() {
 }
 
 // Passes
+
+// Dump the AST. Useful for debugging. For example,
+//  echo "HEAP[(a+b+c)>>2]" | node tools/js-optimizer.js dump
+function dumpAst(ast) {
+  printErr(JSON.stringify(ast));
+}
+
+function dumpSrc(ast) {
+  printErr(astToSrc(ast));
+}
 
 // Undos closure's creation of global variables with values true, false,
 // undefined, null. These cut down on size, but do not affect gzip size
@@ -330,6 +348,239 @@ function simplifyExpressionsPre(ast) {
 
   simplifyBitops(ast);
   joinAdditions(ast);
+}
+
+// In typed arrays mode 2, we can have
+//  HEAP[x >> 2]
+// very often. We can in some cases do the shift on the variable itself when it is set,
+// to greatly reduce the number of shift operations.
+function optimizeShifts(ast) {
+  traverseGeneratedFunctions(ast, function(fun) {
+    // Recognize variables and parameters
+    var vars = {};
+    function newVar(name, param, addUse) {
+      if (!vars[name]) {
+        vars[name] = {
+          param: param,
+          defs: addUse ? 1 : 0,
+          uses: 0,
+          timesShifted: [0, 0, 0, 0], // zero shifts of size 0, 1, 2, 3
+          benefit: 0,
+          primaryShift: -1
+        };
+      }
+    }
+    // params
+    if (fun[2]) {
+      fun[2].forEach(function(arg) {
+        newVar(arg, true, true);
+      });
+    }
+    // vars
+    // XXX if var has >>=, ignore it here? That means a previous pass already optimized it
+    traverse(fun, function(node, type) {
+      if (type == 'var') {
+        node[1].forEach(function(arg) {
+          newVar(arg[0], false, arg[1]);
+        });
+      }
+    });
+    // uses and defs TODO: weight uses by being inside a loop (powers). without that, we
+    // optimize for code size, not speed.
+    traverse(fun, function(node, type, stack) {
+      stack.push(node);
+      if (type == 'name' && vars[node[1]] && stack[stack.length-2][0] != 'assign') {
+        vars[node[1]].uses++;
+      } else if (type == 'assign' && node[2][0] == 'name' && vars[node[2][1]]) {
+        vars[node[2][1]].defs++;
+      }
+    }, null, []);
+    // First, break up elements inside a shift. This lets us see clearly what to do next.
+    traverse(fun, function(node, type) {
+      if (type == 'binary' && node[1] == '>>' && node[3][0] == 'num') {
+        var shifts = node[3][1];
+        // Push the >> inside the value elements, doing some simplification while we are there
+        function addShift(subNode) {
+          if (subNode[0] == 'binary' && subNode[1] == '+') {
+            subNode[2] = addShift(subNode[2]);
+            subNode[3] = addShift(subNode[3]);
+            return subNode;
+          }
+          if (subNode[0] == 'binary' && subNode[1] == '<<' && subNode[3][0] == 'num') {
+            if (subNode[3][1] > shifts) {
+              subNode[3][1] -= shifts;
+              return subNode;
+            }
+            // fall through to >> case
+            subNode[1] = '>>';
+            subNode[3][1] *= -1;
+          }
+          if (subNode[0] == 'binary' && subNode[1] == '>>') {
+            if (subNode[3][0] == 'num') {
+              subNode[3][1] += shifts;
+            } else {
+              subNode[3] = ['binary', '+', subNode[3], ['num', shifts]];
+            }
+            return subNode;
+          }
+          if (subNode[0] == 'num') {
+            assert(subNode[1] % Math.pow(2, shifts) == 0, subNode);
+            subNode[1] /= Math.pow(2, shifts); // bake the shift in
+            return subNode;
+          }
+          if (subNode[0] == 'name' && !subNode[2]) { // names are returned with a shift, but we also note their being shifted
+            var name = subNode[1];
+            if (vars[name]) {
+              vars[name].timesShifted[shifts]++;
+              subNode[2] = true;
+            }
+          }
+          return ['binary', '>>', subNode, ['num', shifts]];
+        }
+        return addShift(node[2]);
+      }
+    });
+    traverse(fun, function(node, type) {
+      if (node[0] == 'name' && node[2]) {
+        return node.slice(0, 2); // clean up our notes
+      }
+    });
+    // At this point, shifted expressions are split up, and we know who the vars are and their info, so we can decide
+    // TODO: vars that depend on other vars
+    for (var name in vars) {
+      var data = vars[name];
+      var totalTimesShifted = sum(data.timesShifted);
+      if (totalTimesShifted == 0) {
+        continue;
+      }
+      if (totalTimesShifted != Math.max.apply(null, data.timesShifted)) {
+        // TODO: Handle multiple different shifts
+        continue;
+      }
+      if (totalTimesShifted != data.uses) {
+        // TODO: Handle also being used unshifted
+      }
+      // We have one shift size. Consider replacing this variable with a shifted clone. If
+      // the estimated benefit is >0, we will replace
+      data.benefit = totalTimesShifted - data.defs*2;
+      if (data.benefit > 0) {
+        for (var i = 0; i < 4; i++) {
+          if (data.timesShifted[i]) {
+            data.primaryShift = i;
+          }
+        }
+      }
+    }
+    function cleanNotes() { // We need to mark 'name' nodes as 'processed' in some passes here; this cleans the notes up
+      traverse(fun, function(node, type) {
+        if (node[0] == 'name' && node[2]) {
+          return node.slice(0, 2);
+        }
+      });
+    }
+    cleanNotes();
+    // Apply changes
+    for (var name in vars) { // add shifts for params
+      var data = vars[name];
+      if (data.primaryShift >= 0 && data.param) {
+        fun[3].unshift(['stat', ['assign', '>>', ['name', name], ['num', data.primaryShift]]]);
+      }
+    }
+    function needsShift(name) {
+      return vars[name] && vars[name].primaryShift >= 0;
+    }
+
+    traverse(fun, function(node, type) { // add shift to assignments
+      if (node[0] == 'assign' && node[1] === true && node[2][0] == 'name' && needsShift(node[2][1])) {
+        node[3] = ['binary', '>>', node[3], ['num', vars[node[2][1]].primaryShift]];
+        return node;
+      } else if (node[0] == 'var') {
+        node[1].forEach(function(arg) {
+          if (arg[1] && needsShift(arg[0])) {
+            arg[1] = ['binary', '>>', arg[1], ['num', vars[arg[0]].primaryShift]];
+          }
+        });
+        return node;
+      }
+    });
+    traverse(fun, function(node, type, stack) { // replace name with unshifted name, making everything valid again by balancing the assign changes
+      stack.push(node);
+      if (node[0] == 'name' && !node[2] && vars[node[1]] && vars[node[1]].primaryShift >= 0 && stack[stack.length-2][0] != 'assign') {
+        node[2] = true;
+        return ['binary', '<<', node, ['num', vars[node[1]].primaryShift]];
+      }
+    }, null, []);
+    cleanNotes();
+    var more = true;
+    var SIMPLE_SHIFTS = set('<<', '>>');
+    while (more) {
+      more = false;
+      traverse(fun, function(node, type) { // collapse shifts and unshifts, completing the optimization
+        if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] == 'binary' && node[2][1] in SIMPLE_SHIFTS) {
+          more = true;
+          var combinedShift = '>>';
+          var sign1 = node[1] == '>>' ? 1 : -1;
+          var sign2 = node[2][1] == '>>' ? 1 : -1;
+          var total = 0;
+          if (node[3][0] == 'num' && node[2][3][0] == 'num') {
+            total = ['num', sign1*node[3][1] + sign2*node[2][3][1]];
+            if (total[1] == 0) {
+              // XXX this may be wrong, if we removed a |0 that assumed we had this >> which |0's anyhow!
+              return node[2][2];
+            }
+          } else {
+            combinedShift = node[1];
+            total = ['binary', sign1 == sign2 ? '+' : '-', node[3], node[2][3]]; 
+          }
+          return ['binary', combinedShift, node[2][2], total];
+        }
+      });
+    }
+    // Re-combine remaining shifts, to undo the breaking up we did before. may require reordering inside +'s
+    traverse(fun, function(node, type, stack) {
+      stack.push(node);
+      if (type == 'binary' && node[1] == '+') {
+        // 'Flatten' added items
+        var addedItems = [];
+        function flatten(node) {
+          if (node[0] == 'binary' && node[1] == '+') {
+            flatten(node[2]);
+            flatten(node[3]);
+          } else {
+            addedItems.push(node);
+          }
+        }
+        flatten(node);
+        function key(node) { // a unique value for all relevant shifts for recombining, non-unique for stuff we don't need to bother with
+          if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS) {
+            if (node[3][0] == 'num' && node[3][1] >= 0 && node[3][1] <= 3) return 2*node[3][1] + (node[1] == '>>' ? 100 : 0); // 0-106
+            return node[1] == '>>' ? 2000 : 1000;
+          }
+          if (node[0] == 'num') return -1000;
+          return -1;
+        }
+        addedItems.sort(function(node1, node2) {
+          return key(node1) - key(node2);
+        });
+        // Regenerate items, now sorted
+        var i = 0;
+        while (i < addedItems.length-1) { // re-combine inside addedItems
+          var k = key(addedItems[i]), k1 = key(addedItems[i+1]);
+          if (k == k1 && k >= 0 && k1 <= 106) {
+            addedItems[i] = ['binary', addedItems[i][1], ['binary', '+', addedItems[i][2], addedItems[i+1][2]], addedItems[i][3]];
+            addedItems.splice(i+1, 1);
+          } else {
+            i++;
+          }
+        }
+        var ret = addedItems.pop();
+        while (addedItems.length > 0) { // re-create AST from addedItems
+          ret = ['binary', '+', ret, addedItems.pop()];
+        }
+        return ret;
+      }
+    }, null, []);
+  });
 }
 
 function simplifyExpressionsPost(ast) {
@@ -604,10 +855,13 @@ function loopOptimizer(ast) {
 // Passes table
 
 var passes = {
+  dumpAst: dumpAst,
+  dumpSrc: dumpSrc,
   unGlobalize: unGlobalize,
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressionsPre: simplifyExpressionsPre,
+  optimizeShifts: optimizeShifts,
   simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer
