@@ -67,5 +67,6 @@ function shifty($id) {
   pause(6);
   q($idx << 1 << 2);
   q(1 << $idx << 1); // Do not turn this into the slower 1 << $idx + 1 (which is identical though)
+  print(INDENT + "Entering: _main" + "hi"); // this order should not be modified
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

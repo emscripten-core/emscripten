@@ -422,6 +422,7 @@ function optimizeShifts(ast) {
               if (subNode[3][0] == 'num') {
                 subNode[3][1] += shifts;
                 // XXX this may be wrong, if we removed a |0 that assumed we had this >> which |0's anyhow!
+                //     should we only do this if CORRECT_OVERFLOWS is false? need more metadata for that
                 if (subNode[3][1] == 0) return subNode[2];
               } else {
                 subNode[3] = ['binary', '+', subNode[3], ['num', shifts]];
@@ -584,6 +585,9 @@ function optimizeShifts(ast) {
             }
             if (node[0] == 'num') return -1000;
             return -1;
+          }
+          for (var i = 0; i < addedItems.length; i++) {
+            if (addedItems[i][0] == 'string') return; // this node is not relevant for us
           }
           addedItems.sort(function(node1, node2) {
             return key(node1) - key(node2);

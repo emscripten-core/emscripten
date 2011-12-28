@@ -59,5 +59,6 @@ function shifty($id) {
   pause(6);
   q($idx << 3);
   q(1 << $idx << 1);
+  print(INDENT + "Entering: _main" + "hi");
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]
