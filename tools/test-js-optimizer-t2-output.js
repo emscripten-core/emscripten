@@ -3,10 +3,10 @@ function shifty($id) {
   q(HEAP32[$id]);
   q(HEAP32[$id + 10]);
   q(HEAP32[$id + 20]);
-  q(HEAP32[(unknown2 + unknown1 >> 2) + $id]);
-  q(HEAP32[(unknown2 + unknown1 >> 2) + $id]);
+  q(HEAP32[(unknown1 + unknown2 >> 2) + $id]);
+  q(HEAP32[(unknown1 + unknown2 >> 2) + $id]);
   var localUnchanged1 = get(1), localUnchanged2 = get(1);
-  q(HEAP32[(localUnchanged2 + localUnchanged1 >> 2) + $id]);
+  q(HEAP32[(localUnchanged1 + localUnchanged2 >> 2) + $id]);
   q($id >> _something_ - 2);
   q($id << _somethingElse_ + 2);
   pause(-1);
@@ -15,5 +15,46 @@ function shifty($id) {
   q(HEAP32[$id2]);
   q(HEAP32[$id2 + 20]);
   q(HEAP32[$id2 + 40]);
+  var $id3 = get(74) >> 3;
+  q(HEAP32[$id3]);
+  q(HEAP32[$id3 + 5]);
+  q(HEAP32[$id3 + 10]);
+  pause(0);
+  var _idents = get("abc") >> 2;
+  q(HEAP32[(HEAP32[_idents] >> 2) + 2]);
+  q(HEAP32[(HEAP32[_idents] >> 2) + 2]);
+  q(HEAP32[(HEAP32[_idents] >> 2) + 2]);
+  pause(1);
+  var $sn_addr = get(12), $a_addr = get(999) >> 2;
+  var $i = get(112233);
+  q(HEAP32[($sn_addr - 1 << 1) + $a_addr + 1]);
+  q(HEAP32[($i - 1 << 1) + $a_addr + 1]);
+  $a_addr = $a_addr + 1;
+  q(HEAP32[($i << 1) + $a_addr]);
+  q(HEAP32[$a_addr + $i]);
+  q($a_addr, z($a_addr));
+  pause(2);
+  var $level = HEAP[get(322) >> 2];
+  var _dwt_norms_real = get("a") >> 2, $orient = get("cheez");
+  q(HEAP32[($level << 1) + _dwt_norms_real + $orient * 20]);
+  q(HEAP32[($level << 1) + _dwt_norms_real + $orient * 20 + 1]);
+  q(HEAP32[($level << 1) + _dwt_norms_real + $orient * 20 + 2]);
+  pause(3);
+  var $wavelet38 = get(38) >> 2;
+  $k = $a_addr;
+  q(HEAPF32[(HEAP32[$wavelet38] >> 2) + ($k << 2) + 2]);
+  q(HEAPF32[(HEAP32[$wavelet38] >> 2) + ($k << 2) + 3]);
+  q(HEAPF32[(HEAP32[$wavelet38] >> 2) + ($k << 2) + 100]);
+  pause(4);
+  var $p = $k, $parameters_addr = get("burger") >> 2;
+  q(HEAP32[$parameters_addr + $p + 1406]);
+  q(HEAP32[$parameters_addr + $p + 1411]);
+  q(HEAP32[$parameters_addr + $p + 1416]);
+  pause(5);
+  var $res_spec242 = get($real), $cp = get("b"), $tileno = arguments[2];
+  while (get(1)) {
+    q(HEAP32[$parameters_addr + ($res_spec242 - 1) + 1406]);
+    q(HEAP32[(HEAP32[($cp >> 2) + 27] >> 2) + $tileno * 1397 + 105]);
+  }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]
