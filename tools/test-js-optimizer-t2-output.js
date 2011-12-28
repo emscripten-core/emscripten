@@ -7,8 +7,8 @@ function shifty($id) {
   q(HEAP32[(unknown1 + unknown2 >> 2) + $id]);
   var localUnchanged1 = get(1), localUnchanged2 = get(1);
   q(HEAP32[(localUnchanged1 + localUnchanged2 >> 2) + $id]);
-  q($id >> _something_ - 2);
-  q($id << _somethingElse_ + 2);
+  q($id << 2 >> _something_);
+  q($id << 2 << _somethingElse_);
   pause(-1);
   var $id2;
   $id2 = get(54) >> 1;
@@ -58,5 +58,6 @@ function shifty($id) {
   }
   pause(6);
   q($idx << 3);
+  q(1 << $idx << 1);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

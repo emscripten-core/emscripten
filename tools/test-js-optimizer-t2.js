@@ -66,5 +66,6 @@ function shifty($id) {
   }
   pause(6);
   q($idx << 1 << 2);
+  q(1 << $idx << 1); // Do not turn this into the slower 1 << $idx + 1 (which is identical though)
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

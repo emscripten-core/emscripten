@@ -492,7 +492,6 @@ function optimizeShifts(ast) {
       function needsShift(name) {
         return vars[name] && vars[name].primaryShift >= 0;
       }
-
       traverse(fun, function(node, type) { // add shift to assignments
         if (node[0] == 'assign' && node[1] === true && node[2][0] == 'name' && needsShift(node[2][1])) {
           node[3] = ['binary', '>>', node[3], ['num', vars[node[2][1]].primaryShift]];
@@ -519,25 +518,21 @@ function optimizeShifts(ast) {
       while (more) { // collapse shifts and unshifts, completing the optimization
         more = false;
         traverse(fun, function(node, type) {
-          if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] == 'binary' && node[2][1] in SIMPLE_SHIFTS) {
+          if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] == 'binary' && node[2][1] in SIMPLE_SHIFTS &&
+              node[3][0] == 'num' && node[2][3][0] == 'num') { // do not turn a << b << c into a << b + c; while logically identical, it is slower
             more = true;
             var combinedShift = '>>';
             var sign1 = node[1] == '>>' ? 1 : -1;
             var sign2 = node[2][1] == '>>' ? 1 : -1;
             var total = 0;
-            if (node[3][0] == 'num' && node[2][3][0] == 'num') {
-              total = ['num', sign1*node[3][1] + sign2*node[2][3][1]];
-              if (total[1] < 0) {
-                combinedShift = '<<';
-                total[1] *= -1;
-              }
-              if (total[1] == 0) {
-                // XXX this may be wrong, if we removed a |0 that assumed we had this >> which |0's anyhow!
-                return node[2][2];
-              }
-            } else {
-              combinedShift = node[1];
-              total = ['binary', sign1 == sign2 ? '+' : '-', node[3], node[2][3]]; 
+            total = ['num', sign1*node[3][1] + sign2*node[2][3][1]];
+            if (total[1] < 0) {
+              combinedShift = '<<';
+              total[1] *= -1;
+            }
+            if (total[1] == 0) {
+              // XXX this may be wrong, if we removed a |0 that assumed we had this >> which |0's anyhow!
+              return node[2][2];
             }
             return ['binary', combinedShift, node[2][2], total];
           }
