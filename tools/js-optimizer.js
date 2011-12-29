@@ -441,7 +441,10 @@ function optimizeShifts(ast) {
         }
         // We have one shift size (and possible unshifted uses). Consider replacing this variable with a shifted clone. If
         // the estimated benefit is >0, we will replace
-        data.benefit = totalTimesShifted - data.defs*2 - (data.uses-totalTimesShifted);
+        // Each time we are shifted, we can save 1 shift. Each addition nonshifted use is a cost of an additional shift.
+        // Each definition is an additional shift. If we are a parameter, we have an additional cost since we add an
+        // entire statement to shift ourselves
+        data.benefit = totalTimesShifted - (data.uses-totalTimesShifted) - data.defs - (data.param ? 1 : 0);
         if (data.benefit > 0) {
           funMore = true; // We will reprocess this function
           for (var i = 0; i < 4; i++) {
@@ -451,6 +454,7 @@ function optimizeShifts(ast) {
           }
         }
       }
+      //printErr(dump(vars));
       function cleanNotes() { // We need to mark 'name' nodes as 'processed' in some passes here; this cleans the notes up
         traverse(fun, function(node, type) {
           if (node[0] == 'name' && node[2]) {
