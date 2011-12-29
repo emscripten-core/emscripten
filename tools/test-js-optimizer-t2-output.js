@@ -47,13 +47,13 @@ function shifty($id) {
   q(HEAPF32[(HEAP32[$wavelet38] >> 2) + ($k << 2) + 100]);
   pause(4);
   var $p = $k, $parameters_addr = get("burger") >> 2;
-  q(HEAP32[$parameters_addr + $p + 1406]);
-  q(HEAP32[$parameters_addr + $p + 1411]);
-  q(HEAP32[$parameters_addr + $p + 1416]);
+  q(HEAP32[$parameters_addr + 1406 + $p]);
+  q(HEAP32[$parameters_addr + 1411 + $p]);
+  q(HEAP32[$parameters_addr + 1416 + $p]);
   pause(5);
   var $res_spec242 = get($real), $cp = get("b"), $tileno = arguments[2];
   while (get(1)) {
-    q(HEAP32[$parameters_addr + ($res_spec242 - 1) + 1406]);
+    q(HEAP32[$parameters_addr + 1406 + ($res_spec242 - 1)]);
     q(HEAP32[(HEAP32[($cp >> 2) + 27] >> 2) + $tileno * 1397 + 105]);
   }
   pause(6);

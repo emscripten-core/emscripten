@@ -569,13 +569,16 @@ function optimizeShifts(ast) {
             }
           }
           flatten(node);
+          var originalOrder = addedItems.slice();
           function key(node) { // a unique value for all relevant shifts for recombining, non-unique for stuff we don't need to bother with
+            function originalOrderKey(item) {
+              return -originalOrder.indexOf(item);
+            }
             if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS) {
               if (node[3][0] == 'num' && node[3][1] >= 0 && node[3][1] <= 3) return 2*node[3][1] + (node[1] == '>>' ? 100 : 0); // 0-106
-              return node[1] == '>>' ? 2000 : 1000;
+              return (node[1] == '>>' ? 20000 : 10000) + originalOrderKey(node);
             }
-            if (node[0] == 'num') return -1000;
-            return -1;
+            return -10000 + originalOrderKey(node); // Don't modify the original order if we don't modify anything
           }
           for (var i = 0; i < addedItems.length; i++) {
             if (addedItems[i][0] == 'string') return; // this node is not relevant for us
