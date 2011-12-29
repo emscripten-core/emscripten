@@ -70,5 +70,8 @@ function shifty($id) {
   HEAP32[$tp] = 5;
   HEAP32[HEAP[$tp]] = 5;
   HEAP32[HEAP[$tp] >> 2] = 5;
+  pause(7);
+  q(go());
+  q(go() >> 8 << 8);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

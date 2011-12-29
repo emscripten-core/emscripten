@@ -497,7 +497,8 @@ function optimizeShifts(ast) {
         more = false;
         traverse(fun, function(node, type) {
           if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] == 'binary' && node[2][1] in SIMPLE_SHIFTS &&
-              node[3][0] == 'num' && node[2][3][0] == 'num') { // do not turn a << b << c into a << b + c; while logically identical, it is slower
+              node[3][0] == 'num' && node[2][3][0] == 'num' && // do not turn a << b << c into a << b + c; while logically identical, it is slower
+              Math.abs(node[3][1]) < 8 && Math.abs(node[2][3][1]) < 8) { // do not modify things like x << 24 >> 24 (which removes some bits)
             more = true;
             var combinedShift = '>>';
             var sign1 = node[1] == '>>' ? 1 : -1;
