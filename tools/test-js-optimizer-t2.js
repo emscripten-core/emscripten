@@ -60,10 +60,8 @@ function shifty($id) {
   pause(5);
   // loops count as more uses!
   var $res_spec242 = get($real), $cp = get('b'), $tileno = arguments[2];
-  while (get(1)) {
-    q(HEAP32[($parameters_addr + 5624 + (($res_spec242 - 1 | 0) << 2) | 0) >> 2]);
-    q(HEAP32[(HEAP32[($cp + 108 | 0) >> 2] + $tileno * 5588 + 420 | 0) >> 2]);
-  }
+  q(HEAP32[($parameters_addr + 5624 + (($res_spec242 - 1 | 0) << 2) | 0) >> 2]);
+  q(HEAP32[(HEAP32[($cp + 108 | 0) >> 2] + $tileno * 5588 + 420 | 0) >> 2]);
   pause(6);
   q($idx << 1 << 2);
   q(1 << $idx << 1); // Do not turn this into the slower 1 << $idx + 1 (which is identical though)

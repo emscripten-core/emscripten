@@ -52,10 +52,8 @@ function shifty($id) {
   q(HEAP32[$parameters_addr + 1416 + $p]);
   pause(5);
   var $res_spec242 = get($real), $cp = get("b"), $tileno = arguments[2];
-  while (get(1)) {
-    q(HEAP32[$parameters_addr + 1406 + ($res_spec242 - 1)]);
-    q(HEAP32[(HEAP32[($cp >> 2) + 27] >> 2) + $tileno * 1397 + 105]);
-  }
+  q(HEAP32[$parameters_addr + 1406 + ($res_spec242 - 1)]);
+  q(HEAP32[(HEAP32[($cp >> 2) + 27] >> 2) + $tileno * 1397 + 105]);
   pause(6);
   q($idx << 3);
   q(1 << $idx << 1);

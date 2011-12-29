@@ -354,7 +354,7 @@ function simplifyExpressionsPre(ast) {
 //  HEAP[x >> 2]
 // very often. We can in some cases do the shift on the variable itself when it is set,
 // to greatly reduce the number of shift operations.
-// XXX x << 24 >> 24 - are we breaking that? only optimize small shifts!
+// TODO: when shifting a variable, if there are other uses, keep an unshifted version too, to prevent slowdowns?
 function optimizeShifts(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     var funMore = true;
@@ -403,23 +403,25 @@ function optimizeShifts(ast) {
       traverse(fun, function(node, type) {
         if (type == 'binary' && node[1] == '>>' && node[3][0] == 'num') {
           var shifts = node[3][1];
-          // Push the >> inside the value elements, doing some simplification while we are there
-          function addShift(subNode) {
-            if (subNode[0] == 'binary' && subNode[1] == '+') {
-              subNode[2] = addShift(subNode[2]);
-              subNode[3] = addShift(subNode[3]);
-              return subNode;
-            }
-            if (subNode[0] == 'name' && !subNode[2]) { // names are returned with a shift, but we also note their being shifted
-              var name = subNode[1];
-              if (vars[name]) {
-                vars[name].timesShifted[shifts]++;
-                subNode[2] = true;
+          if (shifts >= 0 && shifts <= 3) {
+            // Push the >> inside the value elements
+            function addShift(subNode) {
+              if (subNode[0] == 'binary' && subNode[1] == '+') {
+                subNode[2] = addShift(subNode[2]);
+                subNode[3] = addShift(subNode[3]);
+                return subNode;
               }
+              if (subNode[0] == 'name' && !subNode[2]) { // names are returned with a shift, but we also note their being shifted
+                var name = subNode[1];
+                if (vars[name]) {
+                  vars[name].timesShifted[shifts]++;
+                  subNode[2] = true;
+                }
+              }
+              return ['binary', '>>', subNode, ['num', shifts]];
             }
-            return ['binary', '>>', subNode, ['num', shifts]];
+            return addShift(node[2]);
           }
-          return addShift(node[2]);
         }
       });
       traverse(fun, function(node, type) {
@@ -454,7 +456,7 @@ function optimizeShifts(ast) {
           }
         }
       }
-      //printErr(dump(vars));
+      //printErr(JSON.stringify(vars));
       function cleanNotes() { // We need to mark 'name' nodes as 'processed' in some passes here; this cleans the notes up
         traverse(fun, function(node, type) {
           if (node[0] == 'name' && node[2]) {
