@@ -410,31 +410,6 @@ function optimizeShifts(ast) {
               subNode[3] = addShift(subNode[3]);
               return subNode;
             }
-            if (subNode[0] == 'binary' && subNode[1] == '<<' && subNode[3][0] == 'num') {
-              if (subNode[3][1] > shifts) {
-                subNode[3][1] -= shifts;
-                return subNode;
-              }
-              // fall through to >> case
-              subNode[1] = '>>';
-              subNode[3][1] *= -1;
-            }
-            if (subNode[0] == 'binary' && subNode[1] == '>>') {
-              if (subNode[3][0] == 'num') {
-                subNode[3][1] += shifts;
-                // XXX this may be wrong, if we removed a |0 that assumed we had this >> which |0's anyhow!
-                //     should we only do this if CORRECT_OVERFLOWS is false? need more metadata for that
-                if (subNode[3][1] == 0) return subNode[2];
-              } else {
-                subNode[3] = ['binary', '+', subNode[3], ['num', shifts]];
-              }
-              return subNode;
-            }
-            if (subNode[0] == 'num') {
-              assert(subNode[1] % Math.pow(2, shifts) == 0, subNode);
-              subNode[1] /= Math.pow(2, shifts); // bake the shift in
-              return subNode;
-            }
             if (subNode[0] == 'name' && !subNode[2]) { // names are returned with a shift, but we also note their being shifted
               var name = subNode[1];
               if (vars[name]) {
@@ -543,6 +518,13 @@ function optimizeShifts(ast) {
       }
       // Before recombining, do some additional optimizations
       traverse(fun, function(node, type) {
+        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
+          var subNode = node[2];
+          var shifts = node[3][1];
+          assert(subNode[1] % Math.pow(2, shifts) == 0, subNode);
+          subNode[1] /= Math.pow(2, shifts); // bake the shift in
+          return subNode;
+        }
         // Optimize the case of ($a*80)>>2
         if (type == 'binary' && node[1] in SIMPLE_SHIFTS &&
             node[2][0] == 'binary' && node[2][1] == '*') {
