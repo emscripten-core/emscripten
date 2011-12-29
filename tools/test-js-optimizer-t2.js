@@ -68,5 +68,15 @@ function shifty($id) {
   q($idx << 1 << 2);
   q(1 << $idx << 1); // Do not turn this into the slower 1 << $idx + 1 (which is identical though)
   print(INDENT + "Entering: _main" + "hi"); // this order should not be modified
+  pause(7);
+  var $tp = get('tp');
+  q($tp >> 2);
+  q($tp >> 2);
+  q($tp >> 2);
+  HEAP32[$H400] = $tp;
+  HEAP32[$tp] = 5;
+  HEAP32[$tp >> 2] = 5;
+  HEAP32[HEAP[$tp >> 2]] = 5;
+  HEAP32[HEAP[$tp >> 2] >> 2] = 5;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

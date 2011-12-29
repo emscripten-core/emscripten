@@ -41,7 +41,7 @@ function shifty($id) {
   q(HEAP32[($level << 1) + _dwt_norms_real + $orient * 20 + 2]);
   pause(3);
   var $wavelet38 = get(38) >> 2;
-  $k = $a_addr;
+  $k = $a_addr << 2;
   q(HEAPF32[(HEAP32[$wavelet38] >> 2) + ($k << 2) + 2]);
   q(HEAPF32[(HEAP32[$wavelet38] >> 2) + ($k << 2) + 3]);
   q(HEAPF32[(HEAP32[$wavelet38] >> 2) + ($k << 2) + 100]);
@@ -60,5 +60,15 @@ function shifty($id) {
   q($idx << 3);
   q(1 << $idx << 1);
   print(INDENT + "Entering: _main" + "hi");
+  pause(7);
+  var $tp = get("tp") >> 2;
+  q($tp);
+  q($tp);
+  q($tp);
+  HEAP32[$H400] = $tp << 2;
+  HEAP32[$tp << 2] = 5;
+  HEAP32[$tp] = 5;
+  HEAP32[HEAP[$tp]] = 5;
+  HEAP32[HEAP[$tp] >> 2] = 5;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

@@ -149,7 +149,7 @@ function emptyNode() {
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
-//  echo "HEAP[(a+b+c)>>2]" | node tools/js-optimizer.js dump
+//  echo "HEAP[(a+b+c)>>2]" | node tools/js-optimizer.js dumpAst
 function dumpAst(ast) {
   printErr(JSON.stringify(ast));
 }
@@ -354,6 +354,7 @@ function simplifyExpressionsPre(ast) {
 //  HEAP[x >> 2]
 // very often. We can in some cases do the shift on the variable itself when it is set,
 // to greatly reduce the number of shift operations.
+// XXX x << 24 >> 24 - are we breaking that? only optimize small shifts!
 function optimizeShifts(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     var funMore = true;
@@ -508,7 +509,8 @@ function optimizeShifts(ast) {
       });
       traverse(fun, function(node, type, stack) { // replace name with unshifted name, making everything valid again by balancing the assign changes
         stack.push(node);
-        if (node[0] == 'name' && !node[2] && vars[node[1]] && vars[node[1]].primaryShift >= 0 && stack[stack.length-2][0] != 'assign') {
+        if (node[0] == 'name' && !node[2] && vars[node[1]] && vars[node[1]].primaryShift >= 0 &&
+            (stack[stack.length-2][0] != 'assign' || stack[stack.length-2][2] != node)) { // ignore changing VAR in |VAR = something|
           node[2] = true;
           return ['binary', '<<', node, ['num', vars[node[1]].primaryShift]];
         }
