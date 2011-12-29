@@ -73,5 +73,6 @@ function shifty($id) {
   pause(7);
   q(go());
   q(go() >> 8 << 8);
+  q(go() + 2 >> 2);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

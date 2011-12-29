@@ -522,9 +522,11 @@ function optimizeShifts(ast) {
         if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
           var subNode = node[2];
           var shifts = node[3][1];
-          assert(subNode[1] % Math.pow(2, shifts) == 0, subNode);
-          subNode[1] /= Math.pow(2, shifts); // bake the shift in
-          return subNode;
+          var result = subNode[1] / Math.pow(2, shifts);
+          if (result % 1 == 0) {
+            subNode[1] = result;
+            return subNode;
+          }
         }
         // Optimize the case of ($a*80)>>2
         if (type == 'binary' && node[1] in SIMPLE_SHIFTS &&
