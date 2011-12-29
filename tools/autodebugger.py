@@ -212,7 +212,7 @@ for i in range(len(lines)):
       lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
       lines_added += 1
     elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
-      lines[i] += '\n  %%ead.%d = ptrtoint %s %%%s to i32' % (index, m.group('type'), m.group('var'))
+      lines[i] += '\n  %%ead.%d = ptrtoint %s %s to i32' % (index, m.group('type'), m.group('var'))
       lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
       lines_added += 2
     continue
