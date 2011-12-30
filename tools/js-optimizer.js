@@ -355,7 +355,7 @@ function simplifyExpressionsPre(ast) {
 // very often. We can in some cases do the shift on the variable itself when it is set,
 // to greatly reduce the number of shift operations.
 // TODO: when shifting a variable, if there are other uses, keep an unshifted version too, to prevent slowdowns?
-function optimizeShifts(ast) {
+function optimizeShiftsInternal(ast, conservative) {
   traverseGeneratedFunctions(ast, function(fun) {
     var funMore = true;
     var funFinished = {};
@@ -446,13 +446,18 @@ function optimizeShifts(ast) {
         if (funFinished[name]) continue;
         // We have one shift size (and possible unshifted uses). Consider replacing this variable with a shifted clone. If
         // the estimated benefit is >0, we will do it
-        data.replaceOriginal = data.uses == totalTimesShifted; // if always shifted, replace the original
-        if (!data.replaceOriginal) {
-          data.benefit = totalTimesShifted - (data.uses-totalTimesShifted) - data.defs - (data.param ? 1 : 0);
+        data.replaceOriginal = false; // Let later passes remove unneeded new variables. The only case where that might not
+                                      // work perfectly is with parameters, but inlining can fix even that
+        if (data.replaceOriginal) {
+          assert(0);
+          data.benefit = totalTimesShifted - ((data.uses-totalTimesShifted) + data.defs + (data.param ? 1 : 0));
         } else {
           // We keep the original around, so there is some additional cost for each def, but none for unshifted uses
-          data.benefit = totalTimesShifted - 2*(data.defs + (data.param ? 1 : 0));
+          if (data.defs == 1) { // bad 11  12  ok
+            data.benefit = totalTimesShifted - 11;
+          }
         }
+        if (conservative) data.benefit = 0;
         if (data.benefit > 0) {
           funMore = true; // We will reprocess this function
           for (var i = 0; i < 4; i++) {
@@ -475,13 +480,17 @@ function optimizeShifts(ast) {
       function needsShift(name) {
         return vars[name] && vars[name].primaryShift >= 0;
       }
-      for (var name in vars) { // add shifts for params
+      for (var name in vars) { // add shifts for params and var's for all new variables
         var data = vars[name];
-        if (data.param && needsShift(name)) {
-          if (data.replaceOriginal) {
-            fun[3].unshift(['stat', ['assign', '>>', ['name', name], ['num', data.primaryShift]]]);
+        if (needsShift(name)) {
+          if (data.param) {
+            if (data.replaceOriginal) {
+              fun[3].unshift(['stat', ['assign', '>>', ['name', name], ['num', data.primaryShift]]]);
+            } else {
+              fun[3].unshift(['var', [[name + '$s' + data.primaryShift, ['binary', '>>', ['name', name], ['num', data.primaryShift]]]]]);
+            }
           } else {
-            fun[3].unshift(['var', [[name + '$s' + data.primaryShift, ['binary', '>>', ['name', name], ['num', data.primaryShift]]]]]);
+            fun[3].unshift(['var', [[name + '$s' + data.primaryShift]]]);
           }
         }
       }
@@ -696,6 +705,14 @@ function optimizeShifts(ast) {
       }
     }
   });
+}
+
+function optimizeShiftsConservative(ast) {
+  optimizeShiftsInternal(ast, true);
+}
+
+function optimizeShiftsAggressive(ast) {
+  optimizeShiftsInternal(ast, false);
 }
 
 function simplifyExpressionsPost(ast) {
@@ -976,7 +993,8 @@ var passes = {
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressionsPre: simplifyExpressionsPre,
-  optimizeShifts: optimizeShifts,
+  optimizeShiftsConservative: optimizeShiftsConservative,
+  optimizeShiftsAggressive: optimizeShiftsAggressive,
   simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer
