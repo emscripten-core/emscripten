@@ -481,9 +481,9 @@ try:
       shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.js' % (intermediate_counter, '' if name is None else '-' + name)))
       intermediate_counter += 1
 
-    save_intermediate()
+    save_intermediate('original')
     final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit, so comparisons to later passes are simpler
-    save_intermediate()
+    save_intermediate('pretty')
 
   if opt_level >= 1:
     # js optimizer
@@ -495,11 +495,17 @@ try:
 
     # eliminator
     final = shared.Building.eliminator(final)
-    if DEBUG: save_intermediate()
+    if DEBUG: save_intermediate('eliminator')
 
     # js optimizer pre-pass
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPre')
     if DEBUG: save_intermediate('simplifyExpressionsPre')
+    final = shared.Building.js_optimizer(final, 'optimizeShiftsConservative')
+    if DEBUG: save_intermediate('optimizeShiftsConservative')
+    #final = shared.Building.js_optimizer(final, 'optimizeShiftsAggressive')
+    #if DEBUG: save_intermediate('optimizeShiftsAggressive')
+    #final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
+    #if DEBUG: save_intermediate('eliminator')
 
   if closure:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
