@@ -358,6 +358,7 @@ function simplifyExpressionsPre(ast) {
 function optimizeShifts(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     var funMore = true;
+    var funFinished = {};
     while (funMore) {
       funMore = false;
       // Recognize variables and parameters
@@ -370,7 +371,8 @@ function optimizeShifts(ast) {
             uses: 0,
             timesShifted: [0, 0, 0, 0], // zero shifts of size 0, 1, 2, 3
             benefit: 0,
-            primaryShift: -1
+            primaryShift: -1,
+            replaceOriginal: false
           };
         }
       }
@@ -441,12 +443,16 @@ function optimizeShifts(ast) {
           // TODO: Handle multiple different shifts
           continue;
         }
+        if (funFinished[name]) continue;
         // We have one shift size (and possible unshifted uses). Consider replacing this variable with a shifted clone. If
-        // the estimated benefit is >0, we will replace
-        // Each time we are shifted, we can save 1 shift. Each addition nonshifted use is a cost of an additional shift.
-        // Each definition is an additional shift. If we are a parameter, we have an additional cost since we add an
-        // entire statement to shift ourselves
-        data.benefit = totalTimesShifted - (data.uses-totalTimesShifted) - data.defs - (data.param ? 1 : 0);
+        // the estimated benefit is >0, we will do it
+        data.replaceOriginal = data.uses == totalTimesShifted; // if always shifted, replace the original
+        if (!data.replaceOriginal) {
+          data.benefit = totalTimesShifted - (data.uses-totalTimesShifted) - data.defs - (data.param ? 1 : 0);
+        } else {
+          // We keep the original around, so there is some additional cost for each def, but none for unshifted uses
+          data.benefit = totalTimesShifted - 2*(data.defs + (data.param ? 1 : 0));
+        }
         if (data.benefit > 0) {
           funMore = true; // We will reprocess this function
           for (var i = 0; i < 4; i++) {
@@ -466,34 +472,74 @@ function optimizeShifts(ast) {
       }
       cleanNotes();
       // Apply changes
-      for (var name in vars) { // add shifts for params
-        var data = vars[name];
-        if (data.primaryShift >= 0 && data.param) {
-          fun[3].unshift(['stat', ['assign', '>>', ['name', name], ['num', data.primaryShift]]]);
-        }
-      }
       function needsShift(name) {
         return vars[name] && vars[name].primaryShift >= 0;
       }
-      traverse(fun, function(node, type) { // add shift to assignments
-        if (node[0] == 'assign' && node[1] === true && node[2][0] == 'name' && needsShift(node[2][1])) {
-          node[3] = ['binary', '>>', node[3], ['num', vars[node[2][1]].primaryShift]];
-          return node;
-        } else if (node[0] == 'var') {
-          node[1].forEach(function(arg) {
-            if (arg[1] && needsShift(arg[0])) {
-              arg[1] = ['binary', '>>', arg[1], ['num', vars[arg[0]].primaryShift]];
+      for (var name in vars) { // add shifts for params
+        var data = vars[name];
+        if (data.param && needsShift(name)) {
+          if (data.replaceOriginal) {
+            fun[3].unshift(['stat', ['assign', '>>', ['name', name], ['num', data.primaryShift]]]);
+          } else {
+            fun[3].unshift(['var', [[name + '$s' + data.primaryShift, ['binary', '>>', ['name', name], ['num', data.primaryShift]]]]]);
+          }
+        }
+      }
+      traverse(fun, function(node, type, stack) { // add shift to assignments
+        stack.push(node);
+        if (node[0] == 'assign' && node[1] === true && node[2][0] == 'name' && needsShift(node[2][1]) && !node[2][2]) {
+          var name = node[2][1];
+          var data = vars[name];
+          if (data.replaceOriginal) {
+            node[3] = ['binary', '>>', node[3], ['num', vars[name].primaryShift]];
+            return node;
+          } else {
+            var parent = stack[stack.length-3];
+            var parentIndex;
+            if (parent[0] == 'defun') {
+              parentIndex = 3;
+            } else if (parent[0] == 'block') {
+              parentIndex = 1;
+            } else {
+              throw 'Invalid parent for assign-shift: ' + dump(parent);
             }
-          });
+            var i = parent[parentIndex].indexOf(stack[stack.length-2]);
+            parent[parentIndex].splice(i+1, 0, ['stat', ['assign', true, ['name', name + '$s' + data.primaryShift], ['binary', '>>', ['name', name, true], ['num', data.primaryShift]]]]);
+          }
+        } else if (node[0] == 'var') {
+          var args = node[1];
+          for (var i = 0; i < args.length; i++) {
+            var arg = args[i];
+            var name = arg[0];
+            var data = vars[name];
+            if (arg[1] && needsShift(name)) {
+              if (data.replaceOriginal) {
+                arg[1] = ['binary', '>>', arg[1], ['num', data.primaryShift]];
+              } else {
+                args.splice(i+1, 0, [name + '$s' + data.primaryShift, ['binary', '>>', ['name', name, true], ['num', data.primaryShift]]]);
+              }
+            }
+          }
           return node;
         }
-      });
+      }, null, []);
+      cleanNotes();
       traverse(fun, function(node, type, stack) { // replace name with unshifted name, making everything valid again by balancing the assign changes
         stack.push(node);
-        if (node[0] == 'name' && !node[2] && vars[node[1]] && vars[node[1]].primaryShift >= 0 &&
-            (stack[stack.length-2][0] != 'assign' || stack[stack.length-2][2] != node)) { // ignore changing VAR in |VAR = something|
+        if (node[0] == 'name' && !node[2] && needsShift(node[1]) &&
+            !((stack[stack.length-2][0] == 'assign' && stack[stack.length-2][2] == node) || // ignore changing VAR in |VAR = something|
+              (stack[stack.length-2][0] == 'binary' && stack[stack.length-3][0] == 'assign' && // ignore changing name$sX = name >> X;
+               stack[stack.length-3][2][0] == 'name' && stack[stack.length-3][2][1] == node[1] + '$s' + vars[node[1]].primaryShift) ||
+              (stack[stack.length-2][0] == 'binary' && // ignore changing name$sX = name >> X;
+               stack[stack.length-3][0] == node[1] + '$s' + vars[node[1]].primaryShift) )) {
+          var name = node[1];
+          var data = vars[name];
           node[2] = true;
-          return ['binary', '<<', node, ['num', vars[node[1]].primaryShift]];
+          if (!data.replaceOriginal) {
+            node[1] += '$s' + data.primaryShift; // When this node is shifted, the collapse will get to the optimal case. But when it is
+                                                 // unshifted, we just added an (un)shift. We remove that later.
+          }
+          return ['binary', '<<', node, ['num', data.primaryShift]];
         }
       }, null, []);
       cleanNotes();
@@ -523,6 +569,16 @@ function optimizeShifts(ast) {
           }
         });
       }
+      traverse(fun, function(node, type) { // collapse name$sX << X into name
+        if (type == 'binary' && node[1] == '<<' && node[2][0] == 'name' && node[3][0] == 'num') {
+          var shifts = node[3][1];
+          var full = node[2][1]
+          var raw = full.substr(0, full.length-3);
+          if (raw + '$s' + shifts == full) {
+            return ['name', raw];
+          }
+        }
+      });
       // Before recombining, do some additional optimizations
       traverse(fun, function(node, type) {
         if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
@@ -606,6 +662,10 @@ function optimizeShifts(ast) {
           return ret;
         }
       }, null, []);
+      // Note finished variables
+      for (var name in vars) {
+        funFinished[name] = true;
+      }
     }
   });
 }

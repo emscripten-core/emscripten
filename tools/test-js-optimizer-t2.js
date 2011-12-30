@@ -10,6 +10,7 @@ function shifty($id) {
   var localUnchanged1 = get(1), localUnchanged2 = get(1);
   q(HEAP32[(localUnchanged1 + $id + localUnchanged2) >> 2]); // unknowns should be shifted together
   q($id >> _something_); // non-fixed shift
+  $id = q('..');
   q($id << _somethingElse_); // non-fixed shift
   pause(-1);
   var $id2;
@@ -21,6 +22,7 @@ function shifty($id) {
   q(HEAP32[$id3 >> 3]);
   q(HEAP32[($id3 + 40) >> 3]);
   q(HEAP32[($id3 + 80 | 0) >> 3]);
+  q($id3);
   pause(0);
   // similar, but inside another HEAP
   var _idents = get('abc');
