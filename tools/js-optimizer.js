@@ -543,8 +543,8 @@ function optimizeShifts(ast) {
         }
       }, null, []);
       cleanNotes();
-      var more = true;
       var SIMPLE_SHIFTS = set('<<', '>>');
+      var more = true;
       while (more) { // collapse shifts and unshifts, completing the optimization
         more = false;
         traverse(fun, function(node, type) {
@@ -590,7 +590,7 @@ function optimizeShifts(ast) {
             return subNode;
           }
         }
-        // Optimize the case of ($a*80)>>2
+        // Optimize the case of ($a*80)>>2 into ($a*20)|0
         if (type == 'binary' && node[1] in SIMPLE_SHIFTS &&
             node[2][0] == 'binary' && node[2][1] == '*') {
           var mulNode = node[2];
@@ -602,11 +602,15 @@ function optimizeShifts(ast) {
           if (mulNode[3][0] == 'num') {
             if (node[1] == '<<') {
               mulNode[3][1] *= Math.pow(2, node[3][1]);
-              return mulNode;
+              node[1] = '|';
+              node[3][1] = 0;
+              return node;
             } else {
               if (mulNode[3][1] % Math.pow(2, node[3][1]) == 0) {
                 mulNode[3][1] /= Math.pow(2, node[3][1]);
-                return mulNode;
+                node[1] = '|';
+                node[3][1] = 0;
+                return node;
               }
             }
           }
@@ -615,7 +619,7 @@ function optimizeShifts(ast) {
       // Re-combine remaining shifts, to undo the breaking up we did before. may require reordering inside +'s
       traverse(fun, function(node, type, stack) {
         stack.push(node);
-        if (type == 'binary' && node[1] == '+') {
+        if (type == 'binary' && node[1] == '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] != '+')) {
           // 'Flatten' added items
           var addedItems = [];
           function flatten(node) {
@@ -636,6 +640,7 @@ function optimizeShifts(ast) {
               if (node[3][0] == 'num' && node[3][1] >= 0 && node[3][1] <= 3) return 2*node[3][1] + (node[1] == '>>' ? 100 : 0); // 0-106
               return (node[1] == '>>' ? 20000 : 10000) + originalOrderKey(node);
             }
+            if (node[0] == 'num') return -20000 + node[1];
             return -10000 + originalOrderKey(node); // Don't modify the original order if we don't modify anything
           }
           for (var i = 0; i < addedItems.length; i++) {
@@ -653,6 +658,29 @@ function optimizeShifts(ast) {
               addedItems.splice(i+1, 1);
             } else {
               i++;
+            }
+          }
+          var num = 0;
+          for (i = 0; i < addedItems.length; i++) { // combine all numbers into one
+            if (addedItems[i][0] == 'num') {
+              num += addedItems[i][1];
+              addedItems.splice(i, 1);
+              i--;
+            }
+          }
+          if (num != 0) { // add the numbers into an existing shift, we 
+                          // prefer (x+5)>>7 over (x>>7)+5 , since >>'s result is known to be 32-bit and is more easily optimized.
+                          // Also, in the former we can avoid the parentheses, which saves a little space (the number will be bigger,
+                          // so it might take more space, but normally at most one more digit).
+            var added = false;
+            for (i = 0; i < addedItems.length; i++) {
+              if (addedItems[i][0] == 'binary' && addedItems[i][1] == '>>' && addedItems[i][3][0] == 'num') {
+                addedItems[i] = ['binary', '>>', ['binary', '+', addedItems[i][2], ['num', num << addedItems[i][3][1]]], addedItems[i][3]];
+                added = true;
+              }
+            }
+            if (!added) {
+              addedItems.unshift(['num', num]);
             }
           }
           var ret = addedItems.pop();
