@@ -80,8 +80,13 @@ function shifty($id2) {
   HEAP32[HEAP[$tp >> 2] >> 2] = 5;
   pause(7);
   q(go() >> 1 << 1);
+  q(go() << 1 >> 1);
+  q(go() >> 1 >> 1);
+  q(go() << 1 << 1);
   q(go() >> 8 << 8);
+  q(go() << 8 >> 8);
+  q(go() >> 8 >> 8);
+  q(go() << 8 << 8);
   q((go() + 2) >> 2); // the 2 >> 2 can't be simplified
-  pause(7.5);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

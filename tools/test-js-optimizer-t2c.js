@@ -13,5 +13,6 @@ function shifty() {
   q($13 + $15 + 12 >> 2);
   q(HEAPF32[$output + ($j37 << 4) + 4 >> 2]);
   q(5 + $13 + 8 << 2);
+  q(((h() | 0) >> 2) << 2); // removing the shifts is dangerous
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]
