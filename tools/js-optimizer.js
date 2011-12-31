@@ -356,6 +356,7 @@ function simplifyExpressionsPre(ast) {
 // to greatly reduce the number of shift operations.
 // TODO: when shifting a variable, if there are other uses, keep an unshifted version too, to prevent slowdowns?
 function optimizeShiftsInternal(ast, conservative) {
+  var MAX_SHIFTS = 3;
   traverseGeneratedFunctions(ast, function(fun) {
     var funMore = true;
     var funFinished = {};
@@ -405,7 +406,7 @@ function optimizeShiftsInternal(ast, conservative) {
       traverse(fun, function(node, type) {
         if (type == 'binary' && node[1] == '>>' && node[3][0] == 'num') {
           var shifts = node[3][1];
-          if (shifts >= 0 && shifts <= 3) {
+          if (shifts <= MAX_SHIFTS) {
             // Push the >> inside the value elements
             function addShift(subNode) {
               if (subNode[0] == 'binary' && subNode[1] == '+') {
@@ -559,7 +560,7 @@ function optimizeShiftsInternal(ast, conservative) {
         traverse(fun, function(node, type) {
           if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] == 'binary' && node[2][1] in SIMPLE_SHIFTS &&
               node[3][0] == 'num' && node[2][3][0] == 'num' && // do not turn a << b << c into a << b + c; while logically identical, it is slower
-              Math.abs(node[3][1]) < 8 && Math.abs(node[2][3][1]) < 8) { // do not modify things like x << 24 >> 24 (which removes some bits)
+              Math.abs(node[3][1]) <= MAX_SHIFTS && Math.abs(node[2][3][1]) <= MAX_SHIFTS) { // do not modify things like x << 24 >> 24 (which is reSign)
             more = true;
             var combinedShift = '>>';
             var sign1 = node[1] == '>>' ? 1 : -1;
@@ -590,7 +591,7 @@ function optimizeShiftsInternal(ast, conservative) {
       });
       // Before recombining, do some additional optimizations
       traverse(fun, function(node, type) {
-        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
+        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num' && node[3][0] <= MAX_SHIFTS) {
           var subNode = node[2];
           var shifts = node[3][1];
           var result = subNode[1] / Math.pow(2, shifts);
@@ -646,7 +647,7 @@ function optimizeShiftsInternal(ast, conservative) {
               return -originalOrder.indexOf(item);
             }
             if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS) {
-              if (node[3][0] == 'num' && node[3][1] >= 0 && node[3][1] <= 3) return 2*node[3][1] + (node[1] == '>>' ? 100 : 0); // 0-106
+              if (node[3][0] == 'num' && node[3][1] <= MAX_SHIFTS) return 2*node[3][1] + (node[1] == '>>' ? 100 : 0); // 0-106
               return (node[1] == '>>' ? 20000 : 10000) + originalOrderKey(node);
             }
             if (node[0] == 'num') return -20000 + node[1];
@@ -683,7 +684,7 @@ function optimizeShiftsInternal(ast, conservative) {
                           // so it might take more space, but normally at most one more digit).
             var added = false;
             for (i = 0; i < addedItems.length; i++) {
-              if (addedItems[i][0] == 'binary' && addedItems[i][1] == '>>' && addedItems[i][3][0] == 'num') {
+              if (addedItems[i][0] == 'binary' && addedItems[i][1] == '>>' && addedItems[i][3][0] == 'num' && addedItems[i][3][0] <= MAX_SHIFTS) {
                 addedItems[i] = ['binary', '>>', ['binary', '+', addedItems[i][2], ['num', num << addedItems[i][3][1]]], addedItems[i][3]];
                 added = true;
               }

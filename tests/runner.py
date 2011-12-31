@@ -5315,6 +5315,8 @@ Options that are modified or new in %s include:
       for input, expected, passes in [
         (open(path_from_root('tools', 'test-js-optimizer.js')).read(), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
          ['hoistMultiples', 'loopOptimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost']),
+        (open(path_from_root('tools', 'test-js-optimizer-t2c.js')).read(), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
+         ['simplifyExpressionsPre', 'optimizeShiftsConservative']),
         #(open(path_from_root('tools', 'test-js-optimizer-t2.js')).read(), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
         # ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
       ]:
