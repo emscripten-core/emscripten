@@ -451,11 +451,11 @@ function optimizeShiftsInternal(ast, conservative) {
                                       // work perfectly is with parameters, but inlining can fix even that
         if (data.replaceOriginal) {
           assert(0);
-          data.benefit = totalTimesShifted - ((data.uses-totalTimesShifted) + data.defs + (data.param ? 1 : 0));
+          //data.benefit = totalTimesShifted - ((data.uses-totalTimesShifted) + data.defs + (data.param ? 1 : 0));
         } else {
           // We keep the original around, so there is some additional cost for each def, but none for unshifted uses
-          if (data.defs == 1) { // bad 11  12  ok
-            data.benefit = totalTimesShifted - 11;
+          if (data.defs == 1) {
+            data.benefit = totalTimesShifted - 2*(data.defs + (data.param ? 1 : 0));
           }
         }
         if (conservative) data.benefit = 0;
@@ -591,7 +591,7 @@ function optimizeShiftsInternal(ast, conservative) {
       });
       // Before recombining, do some additional optimizations
       traverse(fun, function(node, type) {
-        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num' && node[3][0] <= MAX_SHIFTS) {
+        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num' && node[3][1] <= MAX_SHIFTS) {
           var subNode = node[2];
           var shifts = node[3][1];
           var result = subNode[1] / Math.pow(2, shifts);
@@ -684,7 +684,7 @@ function optimizeShiftsInternal(ast, conservative) {
                           // so it might take more space, but normally at most one more digit).
             var added = false;
             for (i = 0; i < addedItems.length; i++) {
-              if (addedItems[i][0] == 'binary' && addedItems[i][1] == '>>' && addedItems[i][3][0] == 'num' && addedItems[i][3][0] <= MAX_SHIFTS) {
+              if (addedItems[i][0] == 'binary' && addedItems[i][1] == '>>' && addedItems[i][3][0] == 'num' && addedItems[i][3][1] <= MAX_SHIFTS) {
                 addedItems[i] = ['binary', '>>', ['binary', '+', addedItems[i][2], ['num', num << addedItems[i][3][1]]], addedItems[i][3]];
                 added = true;
               }
