@@ -77,11 +77,5 @@ function shifty($id) {
   q(go() >> 8 << 8);
   q(go() + 2 >> 2);
   pause(7.5);
-  q($13 + 8 >> 2);
-  q($13 + 28 >> 2);
-  q($13 + 60 >> 2);
-  q($13 + $15 + 12 >> 2);
-  q(HEAPF32[($output + 4 >> 2) + ($j37 << 2)]);
-  q($13 + 13 << 2);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]

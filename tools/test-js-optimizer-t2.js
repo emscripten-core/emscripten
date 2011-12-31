@@ -83,12 +83,5 @@ function shifty($id) {
   q(go() >> 8 << 8);
   q((go() + 2) >> 2); // the 2 >> 2 can't be simplified
   pause(7.5);
-  // We prefer to do additions then shifts, so the shift happens last, because the shift output is known to be 32-bit. So these should not change
-  q($13 + 8 >> 2);
-  q(28 + $13 >> 2);
-  q(48 + $13 + 12 >> 2);
-  q($13 + $15 + 12 >> 2);
-  q(HEAPF32[$output + ($j37 << 4) + 4 >> 2]);
-  q(5 + $13 + 8 << 2);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]
