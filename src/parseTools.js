@@ -463,8 +463,7 @@ function parseLLVMFunctionCall(segment) {
   if (type === '?') {
     if (intertype === 'getelementptr') {
       type = '*'; // a pointer, we can easily say, this is
-    } else if (intertype === 'bitcast') {
-      assert(segment[2].item.tokens.slice(-2)[0].text === 'to');
+    } else if (segment[2].item.tokens.slice(-2)[0].text === 'to') {
       type = segment[2].item.tokens.slice(-1)[0].text;
     }
   }
@@ -1586,7 +1585,7 @@ function processMathop(item) {
   if (item.type[0] === 'i') {
     bits = parseInt(item.type.substr(1));
   }
-  var bitsLeft = item.param2 ? item.param2.ident.substr(1) : null; // remove i to leave number. This value is important in float ops
+  var bitsLeft = parseInt((item.param2 ? item.param2.ident : item.type).substr(1)); // remove i to leave the number of bits left after this operation
 
   function integerizeBignum(value) {
     return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigIntI');
@@ -1768,14 +1767,6 @@ function processMathop(item) {
     // then unsigning that i32... which would give something huge.
     case 'zext': case 'fpext': case 'sext': return ident1;
     case 'fptrunc': return ident1;
-    case 'trunc': {
-      // Unlike extending, which we just 'do' (by doing nothing),
-      // truncating can change the number, e.g. by truncating to an i1
-      // in order to get the first bit
-      assert(ident2[1] == 'i');
-      assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
-      return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
-    }
     case 'select': return ident1 + ' ? ' + ident2 + ' : ' + ident3;
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
@@ -1784,9 +1775,17 @@ function processMathop(item) {
                  'The safest thing is to investigate every appearance, and modify the source code to avoid this. ' +
                  'Emscripten will print a list of the .ll lines, and also annotate the .js.');
         dprint('  ' + op + ' on .ll line ' + item.lineNum);
-        ret = ' /* Warning: ' + op + ', .ll line ' + item.lineNum + ' */';
+        ident1 += ' /* Warning: ' + op + ', .ll line ' + item.lineNum + ' */';
       }
-      return ident1 + ret;
+      if (op == 'inttoptr' || bitsLeft >= 32) return ident1;
+      // For ptrtoint and <32 bits, fall through into trunc since we need to truncate here
+    }
+    case 'trunc': {
+      // Unlike extending, which we just 'do' (by doing nothing),
+      // truncating can change the number, e.g. by truncating to an i1
+      // in order to get the first bit
+      assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
+      return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
     }
     case 'bitcast': return ident1;
     default: throw 'Unknown mathcmp op: ' + item.op;
