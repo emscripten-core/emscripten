@@ -1026,6 +1026,8 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
     return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
     return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ');
+    //return '(print("set:"+(' + value + ')+":"+(' + getHeapOffset(offset, type) + ')),' + 
+    //        makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ') + ')';
   }
 }
 

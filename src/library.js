@@ -3517,13 +3517,13 @@ LibraryManager.library = {
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
       for (var j = 0; j < line.length; j++) {
-        {{{ makeSetValue('poolPtr', 'j', 'line.charCodeAt(j)', 'i8') }}}
+        {{{ makeSetValue('poolPtr', 'j', 'line.charCodeAt(j)', 'i8') }}};
       }
-      {{{ makeSetValue('poolPtr', 'j', '0', 'i8') }}}
-      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}}
+      {{{ makeSetValue('poolPtr', 'j', '0', 'i8') }}};
+      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
-    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}}
+    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   $ENV__deps: ['__buildEnvironment'],
   $ENV__postset: '___buildEnvironment(ENV);',
