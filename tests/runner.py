@@ -5317,8 +5317,8 @@ Options that are modified or new in %s include:
          ['hoistMultiples', 'loopOptimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost']),
         (open(path_from_root('tools', 'test-js-optimizer-t2c.js')).read(), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
          ['simplifyExpressionsPre', 'optimizeShiftsConservative']),
-        #(open(path_from_root('tools', 'test-js-optimizer-t2.js')).read(), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
-        # ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
+        (open(path_from_root('tools', 'test-js-optimizer-t2.js')).read(), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
+         ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
       ]:
         output = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE).communicate(input)[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))

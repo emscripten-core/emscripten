@@ -1,7 +1,7 @@
 // TODO also with >> 1 and >> 3
 //      also HEAP*U*, and HEAP8, 16
-function shifty($id) {
-  // $id is a param, $id2 is a local. both should be replaced with a shifted version
+function shifty($id2) {
+  // $id is a non-ssa, $id2 is a param. both should be replaced with a shifted version
   q(HEAP32[$id >> 2]);
   q(HEAP32[($id + 40) >> 2]);
   q(HEAP32[($id + 80 | 0) >> 2]);
@@ -13,8 +13,9 @@ function shifty($id) {
   $id = q('..');
   q($id << _somethingElse_); // non-fixed shift
   pause(-1);
-  var $id2;
-  $id2 = get(54);
+  q(HEAP32[$id2 >> 1]);
+  q(HEAP32[$id2 >> 1]);
+  q(HEAP32[$id2 >> 1]);
   q(HEAP32[$id2 >> 1]);
   q(HEAP32[($id2 + 40) >> 1]);
   q(HEAP32[($id2 + 80 | 0) >> 1]);
@@ -30,13 +31,12 @@ function shifty($id) {
   q(HEAP32[(HEAP32[_idents >> 2] + 8 | 0) >> 2]);
   q(HEAP32[(HEAP32[_idents >> 2] + 8 | 0) >> 2]);
   pause(1);
-  // $a_addr is *not* ssa. $i's shifts should consolidate (the last should be 0..?
+  // $i's shifts should consolidate (the last should be 0..?
   // since we may have had |0 in the middle!)
   var $sn_addr = get(12), $a_addr = get(999);
   var $i = get(112233);
   q(HEAP32[($a_addr + ((($sn_addr - 1 << 1) + 1 | 0) << 2) | 0) >> 2]);
   q(HEAP32[($a_addr + ((($i - 1 << 1) + 1 | 0) << 2) | 0) >> 2]);
-  $a_addr = $a_addr + 4;
   q(HEAP32[($a_addr + (($i << 1 | 0) << 2) | 0) >> 2]);
   q(HEAP32[($a_addr + ($i << 2)) >> 2]);
   q($a_addr >> 2, z($a_addr >> 2));
