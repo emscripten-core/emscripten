@@ -1652,7 +1652,7 @@ function processMathop(item) {
         return '((' + ident1 + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
       case 'select': return ident1 + ' ? ' + makeCopyI64(ident2) + ' : ' + makeCopyI64(ident3);
-      case 'ptrtoint': throw 'Pointers cannot be 64-bit!';
+      case 'ptrtoint': return makeI64(ident1, 0);
       case 'inttoptr': return '(' + ident1 + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)), bits);

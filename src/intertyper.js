@@ -815,8 +815,10 @@ function intertyper(data, sidePass, baseLineNums) {
       } else {
         item.type = item.param1.type;
       }
-      for (var i = 1; i <= 4; i++) {
-        if (item['param'+i]) item['param'+i].type = item.type; // All params have the same type, normally
+      if (item.op != 'ptrtoint') {
+        for (var i = 1; i <= 4; i++) {
+          if (item['param'+i]) item['param'+i].type = item.type; // All params have the same type, normally
+        }
       }
       if (item.op in LLVM.EXTENDS) {
         item.type = item.param2.ident;
