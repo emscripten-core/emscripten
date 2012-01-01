@@ -256,6 +256,7 @@ function set() {
   }
   return ret;
 }
+var unset = keys;
 
 function setSub(x, y) {
   var ret = set(keys(x));
