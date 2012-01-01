@@ -829,6 +829,15 @@ function analyzer(data) {
     return ret;
   }
 
+  function isReachable(label, otherLabels, ignoreLabel) { // is label reachable by otherLabels, ignoring ignoreLabel in those otherLabels
+    var reachable = false;
+    otherLabels.forEach(function(otherLabel) {
+      reachable = reachable || (otherLabel !== ignoreLabel && (label.ident == otherLabel.ident ||
+                                                               label.ident in otherLabel.allOutLabels));
+    });
+    return reachable;
+  }
+
   // ReLooper - reconstruct nice loops, as much as possible
   substrate.addActor('Relooper', {
     processItem: function(item) {
@@ -846,29 +855,20 @@ function analyzer(data) {
             label.inLabels = [];
             label.hasReturn = false;
             label.hasBreak = false;
-            if (!label.originalOutlabels) {
-              label.originalOutLabels = [];
-              label.needOriginalOutLabels = true;
-            }
           });
         });
         // Find direct branchings
         labels.forEach(function(label) {
-          [label.lines[label.lines.length-1]].forEach(function(line) {
-            operateOnLabels(line, function process(item, id) {
-              if (item[id][0] == 'B') { // BREAK, BCONT, BNOPP, BJSET
-                label.hasBreak = true;
-              } else {
-                label.outLabels.push(item[id]);
-                labelsDict[item[id]].inLabels.push(label.ident);
-              }
-              if (label.needOriginalOutLabels) {
-                label.originalOutLabels.push(item[id]);
-              }
-            });
-            label.needOriginalOutLabels = false;
-            label.hasReturn |= line.intertype == 'return';
+          var line = label.lines[label.lines.length-1];
+          operateOnLabels(line, function process(item, id) {
+            if (item[id][0] == 'B') { // BREAK, BCONT, BNOPP, BJSET
+              label.hasBreak = true;
+            } else {
+              label.outLabels.push(item[id]);
+              labelsDict[item[id]].inLabels.push(label.ident);
+            }
           });
+          label.hasReturn |= line.intertype == 'return';
         });
         // Find all incoming and all outgoing - recursively
         labels.forEach(function(label) {
@@ -903,7 +903,6 @@ function analyzer(data) {
             dprint('//        ' + label.ident + ' :in       : ' + JSON.stringify(label.inLabels));
             dprint('//        ' + label.ident + ' :ALL out  : ' + JSON.stringify(label.allOutLabels));
             dprint('//        ' + label.ident + ' :ALL in   : ' + JSON.stringify(label.allInLabels));
-            dprint('//        ' + label.ident + ' :origOut  : ' + JSON.stringify(label.originalOutLabels));
           }
 
           // Convert to set, for speed (we mainly do lookups here) and code clarity (x in Xlabels)
@@ -1018,38 +1017,91 @@ function analyzer(data) {
 
           // Find internal and external labels
           var split_ = splitter(labels, function(label) {
+            // External labels are those that are (1) not an entry, and (2) cannot reach an entry. In other words,
+            // the labels inside the loop are the entries and those that can return to the entries.
             return !(label.ident in s_entries) && values(setIntersect(s_entries, label.allOutLabels)).length == 0;
           });
           var externals = split_.splitOut;
           var internals = split_.leftIn;
-          var currExitLabels = set(getLabelIds(externals));
+          var externalsLabels = set(getLabelIds(externals));
 
-          if (dcheck('relooping')) dprint('   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(currExitLabels));
+          if (dcheck('relooping')) dprint('   Creating reloop: Inner: ' + dump(getLabelIds(internals)) + ', Exxer: ' + dump(externalsLabels));
 
-          // Verify that no external can reach an internal
-          var inLabels = set(getLabelIds(internals));
-          externals.forEach(function(external) {
-            if (values(setIntersect(external.outLabels, inLabels)).length > 0) {
-              dprint('relooping', 'Found an external that wants to reach an internal, fallback to emulated?');
-              throw "Spaghetti label flow";
-            }
-          });
+          if (ASSERTIONS) {
+            // Verify that no external can reach an internal
+            var inLabels = set(getLabelIds(internals));
+            externals.forEach(function(external) {
+              if (values(setIntersect(external.outLabels, inLabels)).length > 0) {
+                dprint('relooping', 'Found an external that wants to reach an internal, fallback to emulated?');
+                throw "Spaghetti label flow";
+              }
+            });
+          }
 
           // We will be in a loop, |continue| gets us back to the entry
           entries.forEach(function(entry) {
             replaceLabelLabels(internals, set(entries), 'BCONT|' + blockId);
           });
 
+          // Find the entries of the external labels
+          var externalsEntries = {};
+          internals.forEach(function(internal) {
+            mergeInto(externalsEntries, setIntersect(internal.outLabels, externalsLabels));
+          });
+          externalsEntries = keys(externalsEntries);
+
+          // We also want to include additional labels inside the loop. If the loop has just one exit label,
+          // then that is fine - keep the loop small by having the next code outside, and do not set __label__ in
+          // that break. If there is more than one, though, we can avoid __label__ checks in a multiple outside
+          // by hoisting labels into the loop. It is ok to hoist into the loop as long as no exit label
+          // can reach it (including that label - we do not want to hoist loops).
+          if (externalsEntries.length > 1) {
+            (function() {
+              var avoid = externalsEntries.map(function(l) { return labelsDict[l] });
+              var additionalExternalsEntries = [];
+              for (var i = 0; i < externalsEntries.length; i++) {
+                var exitLabel = labelsDict[externalsEntries[i]];
+                if (!isReachable(exitLabel, avoid, null)) {
+                  function tryHoist(label) {
+                    // We can hoist this, but prefer to only hoist small amounts of labels, in order to keep loops small
+                    if (keys(label.outLabels).length > 1) return false;
+                    dprint('relooping', 'Hoisting into loop: ' + label.ident);
+                    internals.push(label);
+                    externals = externals.filter(function(l) { return l != label }); // not very efficient at all TODO: optimize
+                    // Try to hoist targets. We can hoist if they are only reachable from this exit label, and do not loop
+                    for (var outLabelId in label.outLabels) {
+                      var outLabel = labelsDict[outLabelId];
+                      if (!(outLabelId in outLabel.allInLabels) && !isReachable(outLabel, avoid, exitLabel)) {
+                        if (tryHoist(outLabel)) continue;
+                      }
+                      // This is an entry of our exit labels then
+                      additionalExternalsEntries.push(outLabelId);
+                    }
+                    return true;
+                  }
+                  if (tryHoist(exitLabel)) {
+                    externalsEntries.splice(i, 1);
+                    i--;
+                  }
+                }
+              }
+              externalsLabels = set(getLabelIds(externals));
+              externalsEntries = keys(set(externalsEntries.concat(additionalExternalsEntries)));
+              assert(externalsEntries.length > 0 || externals.length == 0);
+            })();
+          }
+
           // To get to any of our (not our parents') exit labels, we will break.
-          if (dcheck('relooping')) dprint('for exit purposes, Replacing: ' + dump(currExitLabels));
-          var enteredExitLabels = {};
+          if (dcheck('relooping')) dprint('for exit purposes, Replacing: ' + dump(externalsLabels));
           if (externals.length > 0) {
-            entries.forEach(function(entry) {
-              mergeInto(enteredExitLabels, set(replaceLabelLabels(internals, currExitLabels, 'BREAK|' + blockId)));
-            });
-            enteredExitLabels = keys(enteredExitLabels).map(cleanLabel);
-            if (dcheck('relooping')) dprint('enteredExitLabels: ' + dump(enteredExitLabels));
-            assert(enteredExitLabels.length > 0);
+            assert(externalsEntries.length > 0);
+            var pattern = 'BREAK|' + blockId;
+            if (externalsEntries.length == 1) {
+              // We are breaking out of a loop and have one entry after it, so we don't need to set __label__ - keep the third field empty
+              //pattern += '||';
+            }
+            replaceLabelLabels(internals, externalsLabels, pattern);
+            if (dcheck('relooping')) dprint('externalsEntries: ' + dump(externalsEntries));
           }
 
           // inner
@@ -1057,12 +1109,13 @@ function analyzer(data) {
 
           if (externals.length > 0) {
             // outer
-            ret.next = makeBlock(externals, enteredExitLabels, labelsDict);
+            ret.next = makeBlock(externals, externalsEntries, labelsDict);
           }
 
           return ret;
         }
 
+        // XXX change this logic?
         if (entries.length === 1 && canReturn) return makeLoop();
 
         // === handle multiple branches from the entry with a 'multiple' ===
@@ -1083,15 +1136,6 @@ function analyzer(data) {
           function tryAdd(label) {
             if (label.ident in visited) return;
             visited[label.ident] = true;
-            function isReachable(label, otherLabels, ignoreLabel) { // is label reachable by otherLabels, ignoring ignoreLabel in those otherLabels
-              var reachable = false;
-              otherLabels.forEach(function(otherLabel) {
-                reachable = reachable || (otherLabel !== ignoreLabel && (label.ident == otherLabel.ident ||
-                                                                         label.ident in otherLabel.allOutLabels));
-              });
-              return reachable;
-            }
-
             if (!isReachable(label, shouldNotReach, entryLabel)) {
               entryLabel.blockChildren.push(label);
               handlingNow.push(label);
