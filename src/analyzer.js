@@ -1053,40 +1053,61 @@ function analyzer(data) {
           // We also want to include additional labels inside the loop. If the loop has just one exit label,
           // then that is fine - keep the loop small by having the next code outside, and do not set __label__ in
           // that break. If there is more than one, though, we can avoid __label__ checks in a multiple outside
-          // by hoisting labels into the loop. It is ok to hoist into the loop as long as no exit label
-          // can reach it (including that label - we do not want to hoist loops).
+          // by hoisting labels into the loop.
           if (externalsEntries.length > 1) {
             (function() {
+              // If an external entry would double the size of the loop, that is too much
+              var maxHoist = sum(internals.map(function(internal) { return internal.lines.length }));
               var avoid = externalsEntries.map(function(l) { return labelsDict[l] });
-              var additionalExternalsEntries = [];
+              var totalNewEntries = {};
               for (var i = 0; i < externalsEntries.length; i++) {
                 var exitLabel = labelsDict[externalsEntries[i]];
-                if (!isReachable(exitLabel, avoid, null)) {
-                  function tryHoist(label) {
-                    // We can hoist this, but prefer to only hoist small amounts of labels, in order to keep loops small
-                    if (keys(label.outLabels).length > 1) return false;
+                // Check if hoisting this external entry is worthwhile. We first do a dry run, aborting on
+                // loops (which we never hoist, to avoid over-nesting) or on seeing too many labels would be hoisted
+                // (to avoid enlarging loops too much). If the dry run succeeded, it will stop when it reaches
+                // places where we rejoin other external entries. Hoisting removes one entry, so if we add more than
+                // one this would be a net loss, and we do not hoist.
+                var seen, newEntries;
+                function prepare() {
+                  seen = {};
+                  newEntries = {};
+                }
+                function hoist(label, dryRun) { // returns false if aborting
+                  if (seen[label.ident]) return true;
+                  seen[label.ident] = true;
+                  if (label.ident in label.allInLabels) return false; // loop, abort
+                  if (isReachable(label, avoid, exitLabel)) {
+                    // We rejoined, so this is a new external entry
+                    newEntries[label.ident] = true;
+                    return true;
+                  }
+                  // Hoistable.
+                  if (!dryRun) {
                     dprint('relooping', 'Hoisting into loop: ' + label.ident);
                     internals.push(label);
                     externals = externals.filter(function(l) { return l != label }); // not very efficient at all TODO: optimize
-                    // Try to hoist targets. We can hoist if they are only reachable from this exit label, and do not loop
-                    for (var outLabelId in label.outLabels) {
-                      var outLabel = labelsDict[outLabelId];
-                      if (!(outLabelId in outLabel.allInLabels) && !isReachable(outLabel, avoid, exitLabel)) {
-                        if (tryHoist(outLabel)) continue;
-                      }
-                      // This is an entry of our exit labels then
-                      additionalExternalsEntries.push(outLabelId);
-                    }
-                    return true;
                   }
-                  if (tryHoist(exitLabel)) {
+                  for (var outLabelId in label.outLabels) {
+                    var outLabel = labelsDict[outLabelId];
+                    if (!hoist(outLabel, dryRun)) return false;
+                  }
+                  return true;
+                }
+                prepare();
+                if (hoist(exitLabel, true)) {
+                  var seenList = unset(seen);
+                  var num = sum(seenList.map(function(seen) { return labelsDict[seen].lines.length }));
+                  if (seenList.length > 1 && num <= maxHoist) {
+                    prepare();
+                    hoist(exitLabel);
+                    mergeInto(totalNewEntries, newEntries);
                     externalsEntries.splice(i, 1);
                     i--;
                   }
                 }
               }
               externalsLabels = set(getLabelIds(externals));
-              externalsEntries = keys(set(externalsEntries.concat(additionalExternalsEntries)));
+              externalsEntries = keys(set(externalsEntries.concat(unset(totalNewEntries))));
               assert(externalsEntries.length > 0 || externals.length == 0);
             })();
           }

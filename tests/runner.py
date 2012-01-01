@@ -829,13 +829,23 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           int main()
           {
             int x = 5;
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 6; i++) {
               x += x*i;
+              if (x > 1000) {
+                if (x % 7 == 0) printf("cheez\\n");
+                x /= 2;
+                break;
+              }
+            }
             printf("*%d*\\n", x);
             return 0;
           }
         '''
-        self.do_run(src, '*3600*')
+
+        self.do_run(src)
+
+        generated = open('src.cpp.o.js', 'r').read()
+        assert '__label__ ==' not in generated, 'We should hoist into the loop'
 
     def test_stack(self):
         src = '''
