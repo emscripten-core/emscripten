@@ -52,11 +52,7 @@ if (ENVIRONMENT_IS_NODE) {
   }
 
 } else if (ENVIRONMENT_IS_WEB) {
-  // Warning: We do not override print here, so that you can define it before
-  //          this code runs. However, if you do not define it and it is actually
-  //          called, it will try to print to a printer, and/or give odd errors.
-
-  printErr = function(x) {
+  print = printErr = function(x) {
     console.log(x);
   };
 
