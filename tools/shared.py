@@ -445,11 +445,16 @@ class Building:
       #  shutil.move(filename + '.tmp.bc', filename + '.o')
 
   @staticmethod
-  def llvm_dis(filename):
+  def llvm_dis(input_filename, output_filename=None):
     # LLVM binary ==> LLVM assembly
-    try_delete(filename + '.o.ll')
-    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
+    if output_filename is None:
+      # use test runner conventions
+      output_filename = input_filename + '.o.ll'
+      input_filename = input_filename + '.o'
+    try_delete(output_filename)
+    output = Popen([LLVM_DIS, input_filename ] + LLVM_DIS_OPTS + ['-o=' + output_filename], stdout=PIPE).communicate()[0]
+    assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
+    return output_filename
 
   @staticmethod
   def llvm_as(input_filename, output_filename=None):
@@ -461,6 +466,7 @@ class Building:
     try_delete(output_filename)
     output = Popen([LLVM_AS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
+    return output_filename
 
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=None):

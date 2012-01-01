@@ -457,12 +457,25 @@ try:
   except:
     pass
 
+  if DEBUG:
+    print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
+
+    intermediate_counter = 0
+    def save_intermediate(name=None):
+      global intermediate_counter
+      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.js' % (intermediate_counter, '' if name is None else '-' + name)))
+      intermediate_counter += 1
+
   if not LEAVE_INPUTS_RAW:
-    emscripten_input = in_temp(target_basename + '.bc')
+    final = in_temp(target_basename + '.bc')
+    if DEBUG:
+      final = shared.Building.llvm_dis(final, final + '.ll')
+      save_intermediate('ll')
   else:
     assert len(input_files) == 1
-    emscripten_input = input_files[0]
-  final = shared.Building.emscripten(emscripten_input, append_ext=False)
+    final = input_files[0]
+
+  final = shared.Building.emscripten(final, append_ext=False)
 
   # Apply a source code transformation, if requested
   source_transform = os.environ.get('EMCC_JS_PROCESSOR')
@@ -473,14 +486,6 @@ try:
     process(final)
 
   if DEBUG:
-    print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
-
-    intermediate_counter = 0
-    def save_intermediate(name=None):
-      global intermediate_counter
-      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.js' % (intermediate_counter, '' if name is None else '-' + name)))
-      intermediate_counter += 1
-
     save_intermediate('original')
     final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit, so comparisons to later passes are simpler
     save_intermediate('pretty')
