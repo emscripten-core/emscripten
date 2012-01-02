@@ -288,7 +288,7 @@ class Settings:
 
       # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
       @classmethod
-      def load(self, args):
+      def load(self, args=[]):
         # Load the JS defaults into python
         settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
         exec settings in globals()
@@ -326,8 +326,11 @@ class Settings:
           Settings.I64_MODE = 0
           Settings.DOUBLE_MODE = 0
           if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
+
     global Settings
     Settings = Settings2
+    Settings.load() # load defaults
+
 Settings.reset()
 
 # Building
