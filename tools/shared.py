@@ -148,13 +148,13 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:
   EMSDK_OPTS = [ '-nostdinc',
-  '-I' + path_from_root('system', 'include'),
-  '-I' + path_from_root('system', 'include', 'bsd'), # posix stuff
-  '-I' + path_from_root('system', 'include', 'libc'),
-  '-I' + path_from_root('system', 'include', 'libcxx'),
-  '-I' + path_from_root('system', 'include', 'gfx'),
-  '-I' + path_from_root('system', 'include', 'net'),
-  '-I' + path_from_root('system', 'include', 'SDL'),
+  '-idirafter' + path_from_root('system', 'include'),
+  '-idirafter' + path_from_root('system', 'include', 'bsd'), # posix stuff
+  '-idirafter' + path_from_root('system', 'include', 'libc'),
+  '-idirafter' + path_from_root('system', 'include', 'libcxx'),
+  '-idirafter' + path_from_root('system', 'include', 'gfx'),
+  '-idirafter' + path_from_root('system', 'include', 'net'),
+  '-idirafter' + path_from_root('system', 'include', 'SDL'),
 ] + [
   '-U__APPLE__'
 ]
