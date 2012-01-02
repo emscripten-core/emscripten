@@ -1039,8 +1039,13 @@ function analyzer(data) {
           }
 
           // We will be in a loop, |continue| gets us back to the entry
+          var pattern = 'BCONT|' + blockId;
+          if (entries.length == 1) {
+            // We are returning to a loop that has one entry, so we don't need to set __label__
+            pattern = 'BCNOL|' + blockId;
+          }
           entries.forEach(function(entry) {
-            replaceLabelLabels(internals, set(entries), 'BCONT|' + blockId);
+            replaceLabelLabels(internals, set(entries), pattern);
           });
 
           // Find the entries of the external labels
@@ -1118,7 +1123,7 @@ function analyzer(data) {
             assert(externalsEntries.length > 0);
             var pattern = 'BREAK|' + blockId;
             if (externalsEntries.length == 1) {
-              // We are breaking out of a loop and have one entry after it, so we don't need to set __label__ - keep the third field empty
+              // We are breaking out of a loop and have one entry after it, so we don't need to set __label__ 
               pattern = 'BRNOL|' + blockId;
             }
             replaceLabelLabels(internals, externalsLabels, pattern);
@@ -1280,6 +1285,7 @@ function analyzer(data) {
           replaceLabelLabels(block.labels, set('BCONT|*|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BRNOL|*|' + block.willGetTo), 'BNOPP');
+          replaceLabelLabels(block.labels, set('BCNOL|*|' + block.willGetTo), 'BNOPP');
         }
       }
 
