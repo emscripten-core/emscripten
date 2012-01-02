@@ -468,14 +468,14 @@ try:
 
   if not LEAVE_INPUTS_RAW:
     final = in_temp(target_basename + '.bc')
-    if DEBUG:
-      final = shared.Building.llvm_dis(final, final + '.ll')
-      save_intermediate('ll')
+    final = shared.Building.llvm_dis(final, final + '.ll')
+    if DEBUG: save_intermediate('ll')
   else:
     assert len(input_files) == 1
     final = input_files[0]
 
   final = shared.Building.emscripten(final, append_ext=False)
+  if DEBUG: save_intermediate('original')
 
   # Apply a source code transformation, if requested
   source_transform = os.environ.get('EMCC_JS_PROCESSOR')
@@ -484,14 +484,13 @@ try:
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
     process(final)
-
-  if DEBUG:
-    save_intermediate('original')
-    final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit, so comparisons to later passes are simpler
-    save_intermediate('pretty')
+    if DEBUG: save_intermediate('transformed')
 
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
+
+    final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit
+    if DEBUG: save_intermediate('pretty')
 
     if shared.Settings.RELOOP:
       # js optimizer
