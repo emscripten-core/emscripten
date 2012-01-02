@@ -1182,9 +1182,15 @@ function analyzer(data) {
           actualEntryLabels.forEach(function(actualEntryLabel) {
             if (dcheck('relooping')) dprint('      creating sub-block in multiple for ' + actualEntryLabel.ident + ' : ' + getLabelIds(actualEntryLabel.blockChildren) + ' ::: ' + actualEntryLabel.blockChildren.length);
 
+            var pattern = 'BREAK|' + blockId;
+            if (keys(postEntryLabels).length == 1) {
+              // We are breaking out of a multiple and have one entry after it, so we don't need to set __label__
+              pattern = 'BRNOL|' + blockId;
+            }
             keys(postEntryLabels).forEach(function(post) {
-              replaceLabelLabels(actualEntryLabel.blockChildren, set(post), 'BREAK|' + blockId);
+              replaceLabelLabels(actualEntryLabel.blockChildren, set(post), pattern);
             });
+
             // Create child block
             actualEntryLabel.block = makeBlock(actualEntryLabel.blockChildren, [actualEntryLabel.blockChildren[0].ident], labelsDict);
           });
@@ -1273,6 +1279,7 @@ function analyzer(data) {
           replaceLabelLabels(block.labels, set('BJSET|*|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BCONT|*|' + block.willGetTo), 'BNOPP');
           replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
+          replaceLabelLabels(block.labels, set('BRNOL|*|' + block.willGetTo), 'BNOPP');
         }
       }
 
