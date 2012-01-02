@@ -251,4 +251,19 @@ function lua() {
     __label__ = 176;
   } else if ($1435 == 1) {}
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua"]
+function moreLabels() {
+  $for_cond$2 : while (1) { // even this label should vanish
+    if (!$cmp) {
+      break $for_cond$2;
+    }
+    $if_then$$for_inc$5 : do {
+      if ($cmp1) {
+        break $for_cond$2;
+      } else {
+        inc();
+      }
+    } while (0);
+    $if_then$$for_inc$5 : do {} while (0);
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels"]

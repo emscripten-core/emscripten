@@ -226,4 +226,16 @@ function lua() {
     __label__ = 176;
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua"]
+function moreLabels() {
+  while (1) {
+    if (!$cmp) {
+      break;
+    }
+    if ($cmp1) {
+      break;
+    } else {
+      inc();
+    }
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels"]

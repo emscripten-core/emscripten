@@ -869,7 +869,7 @@ function loopOptimizer(ast) {
         node[1] = '+' + node[1];
       } else if (type in LOOP) {
         stack.push(node);
-      } else if (type in LOOP_FLOW && node[1]) { // only care about break/continue with an explicit label
+      } else if (type in LOOP_FLOW) {
         // Find topmost loop, and its label if there is one
         var lastLabel = null, lastLoop = null, i = stack.length-1;
         while (i >= 0 && !lastLoop) {
@@ -882,25 +882,33 @@ function loopOptimizer(ast) {
           if (stack[i][0] == 'label') lastLabel = stack[i];
           i--;
         }
-        var ident = node[1];
+        var ident = node[1]; // there may not be a label ident if this is a simple break; or continue;
         var plus = '+' + ident;
-        if (lastLabel && (ident == lastLabel[1] || plus == lastLabel[1])) {
+        if (lastLabel && ident && (ident == lastLabel[1] || plus == lastLabel[1])) {
           // If this is a 'do' loop, this break means we actually need it.
           neededDos.push(lastLoop);
           // We don't need the control flow command to have a label - it's referring to the current loop
           return [node[0]];
         } else {
-          // Find the label node that needs to stay alive
-          stack.forEach(function(label) {
-            if (!label) return;
-            if (label[1] == plus) label[1] = label[1].substr(1); // Remove '+', marking it as needed
-          });
+          if (!ident) {
+            // No label on the break/continue, so keep the last loop alive (no need for its label though)
+            neededDos.push(lastLoop);
+          } else {
+            // Find the label node that needs to stay alive
+            stack.forEach(function(label) {
+              if (!label) return;
+              if (label[1] == plus) label[1] = label[1].substr(1); // Remove '+', marking it as needed
+            });
+          }
         }
       }
     }, null, []);
+    // We return whether another pass is necessary
+    var more = false;
     // Remove unneeded labels
     traverseGenerated(ast, function(node, type) {
       if (type == 'label' && node[1][0] == '+') {
+        more = true;
         var ident = node[1].substr(1);
         // Remove label from loop flow commands
         traverse(node[2], function(node2, type) {
@@ -922,16 +930,23 @@ function loopOptimizer(ast) {
     traverseGenerated(ast, function(node, type) {
       if (type == 'do' && neededDos.indexOf(node) < 0) {
         assert(jsonCompare(node[1], ['num', 0]), 'Trying to remove a one-time do loop that is not one of our generated ones.;');
+        more = true;
         return node[2];
       }
     });
+    return more;
   }
 
   // Go
 
   // TODO: pass 1: Removal of unneeded continues, breaks if they get us to where we are already going. That will
   //               help the next pass.
-  passTwo(ast);
+
+  // Multiple pass two runs may be needed, as we remove one-time loops and so forth
+  do {
+    var more = passTwo(ast);
+    vacuum(ast);
+  } while (more);
 
   vacuum(ast);
 }
