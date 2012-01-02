@@ -137,14 +137,13 @@ class RunnerCore(unittest.TestCase):
       try:
         # Make sure we notice if compilation steps failed
         os.remove(f + '.o')
-        os.remove(f + '.o.ll')
       except:
         pass
-      output = Popen([Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS +
-                     ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
-                     map(lambda include: '-I' + include, includes) + 
-                     ['-c', f, '-o', f + '.o'],
-                     stdout=PIPE, stderr=STDOUT).communicate()[0]
+      args = [Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
+             ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+             map(lambda include: '-I' + include, includes) + \
+             ['-c', f, '-o', f + '.o']
+      output = Popen(args, stdout=PIPE).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
 
     os.chdir(cwd)
@@ -1390,6 +1389,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
     def test_alloca(self):
       src = '''
         #include <stdio.h>
+        #include <stdlib.h>
 
         int main() {
           char *pc;
