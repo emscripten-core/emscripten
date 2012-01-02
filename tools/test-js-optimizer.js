@@ -106,7 +106,6 @@ function hoisting() {
   if (__label__ == 2) {
     callOther();
   }
-// ok /*
   pause(1);
   if ($i < $N) {
     __label__ = 2;
@@ -170,6 +169,53 @@ function hoisting() {
   if (__label__ == 3) {
     somethingElse();
   }
+  pause(7);
+  free: while (1) {
+    if ($i < $N) {
+      __label__ = 2;
+    } else {
+      __label__ = 3; // this cannot be removed!
+      break;
+    }
+    if (__label__ == 2) {
+      somethingElse();
+    }
+    if ($i < $N) {
+      __label__ = 2;
+    } else {
+      __label__ = 3; // this can be removed!
+    }
+    if (__label__ == 2) {
+      somethingElse();
+    }
+    nothing();
+  }
+  pause(8);
+  var $cmp95 = $69 == -1;
+  if ($cmp95) {
+    __label__ = 35;
+  } else {
+    __label__ = 38;
+  }
+  $if_then96$$if_end110thread_pre_split$48 : do {
+    if (__label__ == 35) {
+      if (!$cmp103) {
+        __label__ = 38;
+        break $if_then96$$if_end110thread_pre_split$48;
+      }
+      if (!$cmp106) {
+        __label__ = 38;
+        break $if_then96$$if_end110thread_pre_split$48;
+      }
+      __label__ = 39;
+      break $if_then96$$if_end110thread_pre_split$48;
+    }
+  } while (0);
+  $if_end110$$if_end110thread_pre_split$52 : do {
+    if (__label__ == 38) {
+      var $79 = $_pr6;
+    }
+  } while (0);
 }
 var FS = {
   absolutePath: function(relative, base) { // Don't touch this!
@@ -243,12 +289,15 @@ function lua() {
   pause();
   if ($1435 == 0) {
     __label__ = 176;
+    cheez();
   } else if ($1435 == 1) {} else {
     __label__ = 180;
+    cheez();
   }
   pause();
   if ($1435 == 0) {
     __label__ = 176;
+    cheez();
   } else if ($1435 == 1) {}
 }
 function moreLabels() {

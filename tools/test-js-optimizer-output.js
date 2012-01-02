@@ -99,61 +99,79 @@ function maths() {
 }
 function hoisting() {
   if ($i < $N) {
-    __label__ = 2;
     callOther();
   }
   pause(1);
   $for_body3$$for_end$5 : do {
     if ($i < $N) {
-      __label__ = 2;
       while (true) {
         break $for_body3$$for_end$5;
       }
       callOther();
-    } else {
-      __label__ = 3;
     }
   } while (0);
   pause(2);
   do {
     if ($i < $N) {
-      __label__ = 2;
       if (callOther()) break;
-    } else {
-      __label__ = 3;
     }
   } while (0);
   pause(3);
   if ($i < $N) {
-    __label__ = 2;
     callOther();
-  } else {
-    __label__ = 3;
   }
   pause(4);
   if ($i < $N) {
-    __label__ = 2;
     callOther();
   } else {
-    __label__ = 3;
     somethingElse();
   }
   pause(5);
   if ($i < $N) {
     __label__ = 2;
   } else {
-    __label__ = 3;
     somethingElse();
   }
   if (__label__ == 55) {
     callOther();
   }
   pause(6);
-  if ($i < $N) {
-    __label__ = 2;
-  } else {
-    __label__ = 3;
+  if ($i >= $N) {
     somethingElse();
+  }
+  pause(7);
+  while (1) {
+    if ($i < $N) {
+      somethingElse();
+    } else {
+      __label__ = 3;
+      break;
+    }
+    if ($i < $N) {
+      somethingElse();
+    }
+    nothing();
+  }
+  pause(8);
+  var $cmp95 = $69 == -1;
+  do {
+    if ($cmp95) {
+      if (!$cmp103) {
+        __label__ = 38;
+        break;
+      }
+      if (!$cmp106) {
+        __label__ = 38;
+        break;
+      }
+      __label__ = 39;
+      break;
+    } else {
+      __label__ = 38;
+    }
+  } while (0);
+  if (__label__ == 38) {
+    var $79 = $_pr6;
   }
 }
 var FS = {
@@ -184,7 +202,6 @@ function demangle($cmp) {
     if ($cmp) {
       __label__ = 3;
     } else {
-      __label__ = 1;
       if (something()) {
         __label__ = 3;
         break;
@@ -200,10 +217,7 @@ function demangle($cmp) {
 function lua() {
   while (1) {
     do {
-      if ($14) {
-        __label__ = 3;
-      } else {
-        __label__ = 4;
+      if (!$14) {
         var $17 = $i;
         var $18 = $3;
         var $19 = $18 + ($17 << 2) | 0;
@@ -218,12 +232,15 @@ function lua() {
   pause();
   if ($1435 == 0) {
     __label__ = 176;
-  } else if ($1435 == 1) {} else {
+    cheez();
+  } else if ($1435 != 1) {
     __label__ = 180;
+    cheez();
   }
   pause();
   if ($1435 == 0) {
     __label__ = 176;
+    cheez();
   }
 }
 function moreLabels() {
