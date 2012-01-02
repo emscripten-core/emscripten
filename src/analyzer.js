@@ -1119,7 +1119,7 @@ function analyzer(data) {
             var pattern = 'BREAK|' + blockId;
             if (externalsEntries.length == 1) {
               // We are breaking out of a loop and have one entry after it, so we don't need to set __label__ - keep the third field empty
-              pattern += '||';
+              pattern = 'BRNOL|' + blockId;
             }
             replaceLabelLabels(internals, externalsLabels, pattern);
             if (dcheck('relooping')) dprint('externalsEntries: ' + dump(externalsEntries));
