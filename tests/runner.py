@@ -35,6 +35,8 @@ except:
 class RunnerCore(unittest.TestCase):
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
+  stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
+                           # Change this to None to get stderr reporting, for debugging purposes
 
   def setUp(self):
     Settings.reset()
@@ -137,14 +139,13 @@ class RunnerCore(unittest.TestCase):
       try:
         # Make sure we notice if compilation steps failed
         os.remove(f + '.o')
-        os.remove(f + '.o.ll')
       except:
         pass
-      output = Popen([Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS +
-                     ['-I', dirname, '-I', os.path.join(dirname, 'include')] +
-                     map(lambda include: '-I' + include, includes) + 
-                     ['-c', f, '-o', f + '.o'],
-                     stdout=PIPE, stderr=STDOUT).communicate()[0]
+      args = [Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
+             ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+             map(lambda include: '-I' + include, includes) + \
+             ['-c', f, '-o', f + '.o']
+      output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
 
     os.chdir(cwd)
@@ -183,7 +184,7 @@ class RunnerCore(unittest.TestCase):
     return ret
 
   def run_llvm_interpreter(self, args):
-    return Popen([EXEC_LLVM] + args, stdout=PIPE, stderr=STDOUT).communicate()[0]
+    return Popen([EXEC_LLVM] + args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
 
   def build_native(self, filename):
     Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE).communicate()[0]
@@ -829,13 +830,23 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           int main()
           {
             int x = 5;
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 6; i++) {
               x += x*i;
+              if (x > 1000) {
+                if (x % 7 == 0) printf("cheez\\n");
+                x /= 2;
+                break;
+              }
+            }
             printf("*%d*\\n", x);
             return 0;
           }
         '''
-        self.do_run(src, '*3600*')
+
+        self.do_run(src)
+
+        generated = open('src.cpp.o.js', 'r').read()
+        assert '__label__ ==' not in generated, 'We should hoist into the loop'
 
     def test_stack(self):
         src = '''
@@ -1380,6 +1391,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
     def test_alloca(self):
       src = '''
         #include <stdio.h>
+        #include <stdlib.h>
 
         int main() {
           char *pc;
@@ -3761,7 +3773,7 @@ def process(filename):
 
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
         output = Popen([EMCC, path_from_root('tests', 'dlmalloc_test.c'),
-                        '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=PIPE).communicate()
+                        '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect).communicate()
         #print output
 
         self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
@@ -4150,7 +4162,7 @@ def process(filename):
 
     # Autodebug the code
     def do_autodebug(self, filename):
-      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert 'Success.' in output, output
       self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc # TODO: use code in do_autodebug_post for this
 
@@ -4162,7 +4174,7 @@ def process(filename):
         return True
       print 'Autodebugging during post time'
       delattr(self, 'post')
-      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert 'Success.' in output, output
       shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
       Building.llvm_as(filename)
@@ -4395,7 +4407,7 @@ def process(filename):
         open(header_filename, 'w').write(header)
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
-        output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=STDOUT).communicate()[0]
+        output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
         #print output
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
@@ -5418,7 +5430,7 @@ elif 'benchmark' in str(sys.argv):
       try_delete(final_filename)
       output = Popen([EMCC, filename, '-O3', '-s', 'USE_TYPED_ARRAYS=1', '-s', 'QUANTUM_SIZE=1',
                       '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
-                      '-o', final_filename] + emcc_args, stdout=PIPE, stderr=PIPE).communicate()
+                      '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + '\n'.join(output)
 
       # Run JS

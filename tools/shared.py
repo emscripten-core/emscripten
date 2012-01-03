@@ -147,7 +147,9 @@ COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:
-  EMSDK_OPTS = [ '-nostdinc',
+  # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
+  # allows projects to override them)
+  EMSDK_OPTS = [ '-nostdinc', '-nostdinc++',
   '-idirafter' + path_from_root('system', 'include'),
   '-idirafter' + path_from_root('system', 'include', 'bsd'), # posix stuff
   '-idirafter' + path_from_root('system', 'include', 'libc'),
@@ -288,7 +290,7 @@ class Settings:
 
       # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
       @classmethod
-      def load(self, args):
+      def load(self, args=[]):
         # Load the JS defaults into python
         settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
         exec settings in globals()
@@ -326,8 +328,11 @@ class Settings:
           Settings.I64_MODE = 0
           Settings.DOUBLE_MODE = 0
           if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
+
     global Settings
     Settings = Settings2
+    Settings.load() # load defaults
+
 Settings.reset()
 
 # Building
@@ -445,11 +450,16 @@ class Building:
       #  shutil.move(filename + '.tmp.bc', filename + '.o')
 
   @staticmethod
-  def llvm_dis(filename):
+  def llvm_dis(input_filename, output_filename=None):
     # LLVM binary ==> LLVM assembly
-    try_delete(filename + '.o.ll')
-    output = Popen([LLVM_DIS, filename + '.o'] + LLVM_DIS_OPTS + ['-o=' + filename + '.o.ll'], stdout=PIPE).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Could not create .ll file: ' + output
+    if output_filename is None:
+      # use test runner conventions
+      output_filename = input_filename + '.o.ll'
+      input_filename = input_filename + '.o'
+    try_delete(output_filename)
+    output = Popen([LLVM_DIS, input_filename ] + LLVM_DIS_OPTS + ['-o=' + output_filename], stdout=PIPE).communicate()[0]
+    assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
+    return output_filename
 
   @staticmethod
   def llvm_as(input_filename, output_filename=None):
@@ -461,6 +471,7 @@ class Building:
     try_delete(output_filename)
     output = Popen([LLVM_AS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
+    return output_filename
 
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=None):

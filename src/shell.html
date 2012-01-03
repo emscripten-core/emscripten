@@ -9,23 +9,21 @@
     <div id='output'></div>
     <hr>
     <script type='text/javascript'>
-      // implement print
-      var print = (function() {
-        var element = document.getElementById('output');
-        return function(text) {
-          element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
-        };
-      })();
-
       // connect to canvas
       var Module = {
+        print: (function() {
+          var element = document.getElementById('output');
+          return function(text) {
+            element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+          };
+        })(),
         canvas: document.getElementById('canvas')
       };
       try {
         Module.ctx2D = Module.canvas.getContext('2d');
         if (!Module.ctx2D) throw 'Could not create canvas :(';
       } catch (e) {
-        print('(canvas not available)');
+        Module.print('(canvas not available)');
       }
 
       // The compiled code

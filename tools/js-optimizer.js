@@ -667,34 +667,42 @@ function optimizeShiftsAggressive(ast) {
   optimizeShiftsInternal(ast, false);
 }
 
-function simplifyExpressionsPost(ast) {
-  // We often have branchings that are simplified so one end vanishes, and
-  // we then get
-  //   if (!(x < 5))
-  // or such. Simplifying these saves space and time.
-  function simplifyNotComps(ast) {
-    traverse(ast, function(node, type) {
-      if (type == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
-        if (node[2][1] == '<') {
-          return ['binary', '>=', node[2][2], node[2][3]];
-        } else if (node[2][1] == '>') {
-          return ['binary', '<=', node[2][2], node[2][3]];
-        } else if (node[2][1] == '==') {
-          return ['binary', '!=', node[2][2], node[2][3]];
-        } else if (node[2][1] == '!=') {
-          return ['binary', '==', node[2][2], node[2][3]];
-        } else if (node[2][1] == '===') {
-          return ['binary', '!==', node[2][2], node[2][3]];
-        } else if (node[2][1] == '!==') {
-          return ['binary', '===', node[2][2], node[2][3]];
-        }
+// We often have branchings that are simplified so one end vanishes, and
+// we then get
+//   if (!(x < 5))
+// or such. Simplifying these saves space and time.
+function simplifyNotComps(ast) {
+  traverse(ast, function(node, type) {
+    if (type == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
+      if (node[2][1] == '<') {
+        return ['binary', '>=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '>') {
+        return ['binary', '<=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '==') {
+        return ['binary', '!=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '!=') {
+        return ['binary', '==', node[2][2], node[2][3]];
+      } else if (node[2][1] == '===') {
+        return ['binary', '!==', node[2][2], node[2][3]];
+      } else if (node[2][1] == '!==') {
+        return ['binary', '===', node[2][2], node[2][3]];
       }
-    });
-  }
+    }
+  });
+}
 
-  // Go
-
+function simplifyExpressionsPost(ast) {
   simplifyNotComps(ast);
+}
+
+function hasSideEffects(node) { // this is 99% incomplete and wrong! It just works on __label__ == X and number literals
+  if (node[0] == 'num') return false;
+  if (node[0] == 'binary' && (node[1] == '==' || node[1] == '!=') && node[2][0] == 'name' &&
+      node[3][0] == 'num') {
+    return false;
+  } else {
+    return true;
+  }
 }
 
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
@@ -729,18 +737,9 @@ function vacuum(ast) {
       }
       var type = node[0];
       if (type == 'defun' && isGenerated(node[1])) {
+        simplifyNotComps(node);
         traverse(node, function(node, type) {
-          if (type == 'if') {
-            if (((node[2][0] == 'block' && (!node[2][1] || node[2][1].length == 0)) ||
-                  jsonCompare(node[2], emptyNode())) && !node[3]) {
-              more = true;
-              return emptyNode();
-            } else if (node[3] && isEmpty(node[3])) {
-              more = true;
-              node[3] = null;
-              return node;
-            }
-          } else if (type == 'block' && node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
+          if (type == 'block' && node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
             more = true;
             return node[1][0];
           } else if (type == 'stat' && node[1][0] == 'block') {
@@ -762,13 +761,39 @@ function vacuum(ast) {
           } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
             more = true;
             return emptyNode();
-          } else if (type == 'if' && isEmpty(node[3])) { // empty else clauses
-            node[3] = null;
-            return node;
+          } else if (type == 'if') {
+            var empty2 = isEmpty(node[2]), empty3 = isEmpty(node[3]), has3 = node.length == 4;
+            if (!empty2 && empty3 && has3) { // empty else clauses
+              more = true;
+              return node.slice(0, 3);
+            } else if (empty2 && !empty3) { // empty if blocks
+              more = true;
+              return ['if', ['unary-prefix', '!', node[1]], node[3]];
+            } else if (empty2 && empty3) {
+              more = true;
+              if (hasSideEffects(node[1])) {
+                return ['stat', node[1]];
+              } else {
+                return emptyNode();
+              }
+            }
+          } else if (type == 'do' && isEmpty(node[2]) && !hasSideEffects(node[1])) {
+            more = true;
+            return emptyNode();
           }
         });
       }
     });
+  }
+}
+
+function getStatements(node) {
+  if (node[0] == 'defun') {
+    return node[3];
+  } else if (node[0] == 'block') {
+    return node[1];
+  } else {
+    return null;
   }
 }
 
@@ -781,12 +806,7 @@ function hoistMultiples(ast) {
   ast[1].forEach(function(node, i) {
     if (!(node[0] == 'defun' && isGenerated(node[1]))) return;
     traverse(node, function(node, type) {
-      var statements = null;
-      if (type == 'defun') {
-        statements = node[3];
-      } else if (type == 'block') {
-        statements = node[1];
-      }
+      var statements = getStatements(node);
       if (!statements) return;
       var modified = false;
       for (var i = 0; i < statements.length-1; i++) {
@@ -833,11 +853,11 @@ function hoistMultiples(ast) {
               if (!found && preType == 'assign' && preNode[2][0] == 'name' && preNode[2][1] == '__label__') {
                 assert(preNode[3][0] == 'num');
                 if (preNode[3][1] == labelNum) {
-                  // That's it! Hoist away
+                  // That's it! Hoist away. We can also throw away the __label__ setting as its goal has already been achieved
                   found = true;
                   modifiedI = true;
                   postInner[2] = ['block', []];
-                  return ['block', [preNode].concat(labelBlock[1])];
+                  return labelBlock;
                 }
               }
             });
@@ -849,6 +869,45 @@ function hoistMultiples(ast) {
         }
       }
       if (modified) return node;
+    });
+
+    // After hoisting in this function, it is safe to remove { __label__ = x; } blocks, because
+    // if they were leading to the next code right after them, they would be hoisted, and if they
+    // are going to some other place entirely, they would break or continue. The only risky
+    // situation is if the code after us is a multiple, in which case we might be checking for
+    // this label inside it (or in a later multiple, even)
+    function tryEliminate(node) {
+      if (node[0] == 'if') {
+        if (tryEliminate(node[2])) node[2] = emptyNode();
+        if (node[3] && tryEliminate(node[3])) node[3] = emptyNode();
+      } else {
+        if (node[0] == 'block' && node[1] && node[1].length == 1) {
+          var subNode = node[1][0];
+          if (subNode[0] == 'stat' && subNode[1][0] == 'assign' && subNode[1][2][0] == 'name' &&
+              subNode[1][2][1] == '__label__' && subNode[1][3][0] == 'num') {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    function getActualStatement(node) { // find the actual active statement, ignoring a label and one-time do loop
+      if (node[0] == 'label') node = node[2];
+      if (node[0] == 'do') node = node[2];
+      if (node[0] == 'block' && node[1].length == 1) node = node[1][0];
+      return node;
+    }
+    vacuum([0, [node]]);
+    traverse(node, function(node, type) {
+      var statements = getStatements(node);
+      if (!statements) return;
+      for (var i = 0; i < statements.length-1; i++) {
+        var curr = getActualStatement(statements[i]);
+        var next = statements[i+1];
+        if (curr[0] == 'if' && next[0] != 'if' && next[0] != 'label' && next[0] != 'do' && next[0] != 'while') {
+          tryEliminate(curr);
+        }
+      }
     });
   });
 
@@ -869,7 +928,7 @@ function loopOptimizer(ast) {
         node[1] = '+' + node[1];
       } else if (type in LOOP) {
         stack.push(node);
-      } else if (type in LOOP_FLOW && node[1]) { // only care about break/continue with an explicit label
+      } else if (type in LOOP_FLOW) {
         // Find topmost loop, and its label if there is one
         var lastLabel = null, lastLoop = null, i = stack.length-1;
         while (i >= 0 && !lastLoop) {
@@ -882,25 +941,33 @@ function loopOptimizer(ast) {
           if (stack[i][0] == 'label') lastLabel = stack[i];
           i--;
         }
-        var ident = node[1];
+        var ident = node[1]; // there may not be a label ident if this is a simple break; or continue;
         var plus = '+' + ident;
-        if (lastLabel && (ident == lastLabel[1] || plus == lastLabel[1])) {
+        if (lastLabel && ident && (ident == lastLabel[1] || plus == lastLabel[1])) {
           // If this is a 'do' loop, this break means we actually need it.
           neededDos.push(lastLoop);
           // We don't need the control flow command to have a label - it's referring to the current loop
           return [node[0]];
         } else {
-          // Find the label node that needs to stay alive
-          stack.forEach(function(label) {
-            if (!label) return;
-            if (label[1] == plus) label[1] = label[1].substr(1); // Remove '+', marking it as needed
-          });
+          if (!ident) {
+            // No label on the break/continue, so keep the last loop alive (no need for its label though)
+            neededDos.push(lastLoop);
+          } else {
+            // Find the label node that needs to stay alive
+            stack.forEach(function(label) {
+              if (!label) return;
+              if (label[1] == plus) label[1] = label[1].substr(1); // Remove '+', marking it as needed
+            });
+          }
         }
       }
     }, null, []);
+    // We return whether another pass is necessary
+    var more = false;
     // Remove unneeded labels
     traverseGenerated(ast, function(node, type) {
       if (type == 'label' && node[1][0] == '+') {
+        more = true;
         var ident = node[1].substr(1);
         // Remove label from loop flow commands
         traverse(node[2], function(node2, type) {
@@ -922,16 +989,23 @@ function loopOptimizer(ast) {
     traverseGenerated(ast, function(node, type) {
       if (type == 'do' && neededDos.indexOf(node) < 0) {
         assert(jsonCompare(node[1], ['num', 0]), 'Trying to remove a one-time do loop that is not one of our generated ones.;');
+        more = true;
         return node[2];
       }
     });
+    return more;
   }
 
   // Go
 
   // TODO: pass 1: Removal of unneeded continues, breaks if they get us to where we are already going. That will
   //               help the next pass.
-  passTwo(ast);
+
+  // Multiple pass two runs may be needed, as we remove one-time loops and so forth
+  do {
+    var more = passTwo(ast);
+    vacuum(ast);
+  } while (more);
 
   vacuum(ast);
 }

@@ -760,8 +760,14 @@ function JSify(data, functionsOnly, givenFunctions) {
       var labelSetting = oldLabel ? '__label__ = ' + getLabelId(oldLabel) + ';' +
                          (SHOW_LABELS ? ' /* to: ' + cleanLabel(oldLabel) + ' */' : '') : ''; // TODO: optimize away the setting
       if (label[1] == 'R') {
+        if (label[2] == 'N') { // BRNOL: break, no label setting
+          labelSetting = '';
+        }
         return pre + labelSetting + 'break ' + trueLabel + ';';
       } else if (label[1] == 'C') { // CONT
+        if (label[2] == 'N') { // BCNOL: continue, no label setting
+          labelSetting = '';
+        }
         return pre + labelSetting + 'continue ' + trueLabel + ';';
       } else if (label[1] == 'N') { // NOPP
         return pre + ';'; // Returning no text might confuse this parser

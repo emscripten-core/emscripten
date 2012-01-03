@@ -457,21 +457,6 @@ try:
   except:
     pass
 
-  if not LEAVE_INPUTS_RAW:
-    emscripten_input = in_temp(target_basename + '.bc')
-  else:
-    assert len(input_files) == 1
-    emscripten_input = input_files[0]
-  final = shared.Building.emscripten(emscripten_input, append_ext=False)
-
-  # Apply a source code transformation, if requested
-  source_transform = os.environ.get('EMCC_JS_PROCESSOR')
-  if source_transform:
-    exec source_transform in locals()
-    shutil.copyfile(final, final + '.tr.js')
-    final += '.tr.js'
-    process(final)
-
   if DEBUG:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
 
@@ -481,17 +466,38 @@ try:
       shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.js' % (intermediate_counter, '' if name is None else '-' + name)))
       intermediate_counter += 1
 
-    save_intermediate('original')
-    final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit, so comparisons to later passes are simpler
-    save_intermediate('pretty')
+  if not LEAVE_INPUTS_RAW:
+    final = in_temp(target_basename + '.bc')
+    final = shared.Building.llvm_dis(final, final + '.ll')
+    if DEBUG: save_intermediate('ll')
+  else:
+    assert len(input_files) == 1
+    final = input_files[0]
+
+  final = shared.Building.emscripten(final, append_ext=False)
+  if DEBUG: save_intermediate('original')
+
+  # Apply a source code transformation, if requested
+  source_transform = os.environ.get('EMCC_JS_PROCESSOR')
+  if source_transform:
+    exec source_transform in locals()
+    shutil.copyfile(final, final + '.tr.js')
+    final += '.tr.js'
+    process(final)
+    if DEBUG: save_intermediate('transformed')
 
   if opt_level >= 1:
-    # js optimizer
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
-    final = shared.Building.js_optimizer(final, ['hoistMultiples'])
-    if DEBUG: save_intermediate('hoistMultiples')
-    final = shared.Building.js_optimizer(final, ['loopOptimizer'])
-    if DEBUG: save_intermediate('loopOptimizer')
+
+    final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit
+    if DEBUG: save_intermediate('pretty')
+
+    if shared.Settings.RELOOP:
+      # js optimizer
+      final = shared.Building.js_optimizer(final, ['hoistMultiples'])
+      if DEBUG: save_intermediate('hoistMultiples')
+      final = shared.Building.js_optimizer(final, ['loopOptimizer'])
+      if DEBUG: save_intermediate('loopOptimizer')
 
     # eliminator
     final = shared.Building.eliminator(final)
