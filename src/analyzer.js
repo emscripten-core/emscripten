@@ -1061,8 +1061,8 @@ function analyzer(data) {
           // by hoisting labels into the loop.
           if (externalsEntries.length > 1) {
             (function() {
-              // If an external entry would double the size of the loop, that is too much
-              var maxHoist = sum(internals.map(function(internal) { return internal.lines.length }));
+              // If an external entry would make the loop too big, don't hoist
+              var maxHoist = Infinity; //sum(internals.map(function(internal) { return internal.lines.length }));
               var avoid = externalsEntries.map(function(l) { return labelsDict[l] });
               var totalNewEntries = {};
               for (var i = 0; i < externalsEntries.length; i++) {
