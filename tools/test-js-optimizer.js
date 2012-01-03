@@ -314,5 +314,28 @@ function moreLabels() {
     } while (0);
     $if_then$$for_inc$5 : do {} while (0);
   }
+  pause(999);
+  $while_body$$while_end$31 : do {
+    if ($cmp3) {
+      var $6 = $5;
+      {
+        while (1) {
+          var $6;
+          $iter = $6 + 3;
+          if (FHEAP[$iter + 1] < $pct_addr) {
+            var $6 = $iter;
+          } else {
+            var $_lcssa = $iter;
+            break $while_body$$while_end$31;
+          }
+        }
+      }
+    } else {
+      var $_lcssa = $5;
+      __label__ = 2;
+    }
+  } while (0);
+  var $_lcssa;
+  cheez();
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels"]

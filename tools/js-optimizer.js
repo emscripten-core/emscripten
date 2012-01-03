@@ -878,14 +878,20 @@ function hoistMultiples(ast) {
     // this label inside it (or in a later multiple, even)
     function tryEliminate(node) {
       if (node[0] == 'if') {
-        if (tryEliminate(node[2])) node[2] = emptyNode();
-        if (node[3] && tryEliminate(node[3])) node[3] = emptyNode();
+        var replaced;
+        if (replaced = tryEliminate(node[2])) node[2] = replaced;
+        if (node[3] && (replaced = tryEliminate(node[3]))) node[3] = replaced;
       } else {
-        if (node[0] == 'block' && node[1] && node[1].length == 1) {
-          var subNode = node[1][0];
+        if (node[0] == 'block' && node[1] && node[1].length > 0) {
+          var subNode = node[1][node[1].length-1];
           if (subNode[0] == 'stat' && subNode[1][0] == 'assign' && subNode[1][2][0] == 'name' &&
               subNode[1][2][1] == '__label__' && subNode[1][3][0] == 'num') {
-            return true;
+            if (node[1].length == 1) {
+              return emptyNode();
+            } else {
+              node[1].splice(node[1].length-1, 1);
+              return node;
+            }
           }
         }
       }
