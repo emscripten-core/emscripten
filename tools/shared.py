@@ -664,5 +664,11 @@ class Building:
       return False
     # look for magic signature
     b = open(filename, 'r').read(4)
-    return b[0] == 'B' and b[1] == 'C'
+    if b[0] == 'B' and b[1] == 'C':
+      return True
+    elif ord(b[0]) == 222 and ord(b[1]) == 192 and ord(b[2]) == 23 and ord(b[3]) == 11:
+      b = open(filename, 'r').read(24)
+      return b[20] == 'B' and b[21] == 'C'
+    
+    return False
 
