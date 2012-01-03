@@ -1070,8 +1070,7 @@ function analyzer(data) {
                 // Check if hoisting this external entry is worthwhile. We first do a dry run, aborting on
                 // loops (which we never hoist, to avoid over-nesting) or on seeing too many labels would be hoisted
                 // (to avoid enlarging loops too much). If the dry run succeeded, it will stop when it reaches
-                // places where we rejoin other external entries. Hoisting removes one entry, so if we add more than
-                // one this would be a net loss, and we do not hoist.
+                // places where we rejoin other external entries.
                 var seen, newEntries;
                 function prepare() {
                   seen = {};
@@ -1102,7 +1101,8 @@ function analyzer(data) {
                 if (hoist(exitLabel, true)) {
                   var seenList = unset(seen);
                   var num = sum(seenList.map(function(seen) { return labelsDict[seen].lines.length }));
-                  if (seenList.length > 1 && num <= maxHoist) {
+                  // Only hoist if the sizes make sense
+                  if (seenList.length >= 1 && num <= maxHoist) { // && unset(newEntries).length <= 1) {
                     prepare();
                     hoist(exitLabel);
                     mergeInto(totalNewEntries, newEntries);
