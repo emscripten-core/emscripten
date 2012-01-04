@@ -5275,8 +5275,8 @@ Options that are modified or new in %s include:
           assert os.path.exists('combined.bc'), '\n'.join(output)
           self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
 
+      # TODO: Add an argument for EMCC_JS_PROCESSOR to make it simpler to use, other simplifications there (allow non-py, just run it if not .py)
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
-      # TODO: when this is done, more test runner to test these (i.e., test all -Ox thoroughly)
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
       # Finally, do some web browser tests
