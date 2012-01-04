@@ -14,7 +14,7 @@ extern "C" {
 
 typedef unsigned long sigset_t;
 
-#if defined(__rtems__)
+#if defined(__rtems__) || defined(EMSCRIPTEN)
 
 #if defined(_POSIX_REALTIME_SIGNALS)
 
@@ -71,6 +71,8 @@ typedef struct {
 #define SA_NOCLDSTOP 1   /* Do not generate SIGCHLD when children stop */
 #define SA_SIGINFO   2   /* Invoke the signal catching function with */
                          /*   three arguments instead of one. */
+#define SA_NODEFER   4   /* XXX Emscripten */
+#define SA_RESETHAND 8   /* XXX Emscripten */
 
 /* struct sigaction notes from POSIX:
  *
@@ -80,7 +82,7 @@ typedef struct {
  *      application should not use both simultaneously.
  */
 
-typedef void (*_sig_func_ptr)();
+typedef void (*_sig_func_ptr)(int); /* XXX Emscripten */
 
 struct sigaction {
   int         sa_flags;       /* Special flags to affect behavior of signal */

@@ -74,7 +74,7 @@ size_t	 _EXFUN(strnlen,(const char *, size_t));
 char 	*_EXFUN(strsep,(char **, const char *));
 char	*_EXFUN(strlwr,(char *));
 char	*_EXFUN(strupr,(char *));
-#ifdef __CYGWIN__
+#if defined(__CYGWIN__) || defined(EMSCRIPTEN)
 #ifndef DEFS_H	/* Kludge to work around problem compiling in gdb */
 char  *_EXFUN(strsignal, (int __signo));
 #endif

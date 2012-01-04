@@ -7,6 +7,7 @@
 
 #include <_ansi.h>
 #include <sys/types.h>
+#include <time.h> /* XXX Emscripten */
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +41,7 @@ struct  itimerval {
 };
 
 /* BSD time macros used by RTEMS code */
-#if defined (__rtems__) || defined (__CYGWIN__)
+#if defined (__rtems__) || defined (__CYGWIN__) || defined (EMSCRIPTEN)
 
 /* Convenience macros for operations on timevals.
    NOTE: `timercmp' does not work for >= or <=.  */

@@ -116,6 +116,7 @@ int     _EXFUN(linkat, (int __dirfd1, const char *__path1, int __dirfd2, const c
 int	_EXFUN(nice, (int __nice_value ));
 #if !defined(__INSIDE_CYGWIN__)
 off_t   _EXFUN(lseek, (int __fildes, off_t __offset, int __whence ));
+off_t   _EXFUN(lseek64, (int __fildes, off_t __offset, int __whence )); /* XXX Emscripten */
 #endif
 #if defined(EMSCRIPTEN) || defined(__SPU__) || defined(__CYGWIN__)
 #define F_ULOCK	0
