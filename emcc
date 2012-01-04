@@ -481,15 +481,15 @@ try:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
 
     intermediate_counter = 0
-    def save_intermediate(name=None):
+    def save_intermediate(name=None, suffix='js'):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.js' % (intermediate_counter, '' if name is None else '-' + name)))
+      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
 
   if not LEAVE_INPUTS_RAW:
     final = in_temp(target_basename + '.bc')
     final = shared.Building.llvm_dis(final, final + '.ll')
-    if DEBUG: save_intermediate('ll')
+    if DEBUG: save_intermediate('ll', 'll')
   else:
     assert len(input_files) == 1
     final = input_files[0]
