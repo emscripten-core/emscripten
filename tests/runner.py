@@ -111,7 +111,8 @@ class RunnerCore(unittest.TestCase):
         transform = open(transform_filename, 'w')
         transform.write('''
 import sys
-''')
+sys.path += ['%s']
+''' % path_from_root(''))
         transform.write(post_build)
         transform.write('''
 process(sys.argv[1])
