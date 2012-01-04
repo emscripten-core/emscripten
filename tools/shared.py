@@ -151,17 +151,17 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  EMSDK_OPTS = [ '-nostdinc', '-nostdinc++',
-  '-idirafter' + path_from_root('system', 'include'),
-  '-idirafter' + path_from_root('system', 'include', 'bsd'), # posix stuff
-  '-idirafter' + path_from_root('system', 'include', 'libc'),
-  '-idirafter' + path_from_root('system', 'include', 'libcxx'),
-  '-idirafter' + path_from_root('system', 'include', 'gfx'),
-  '-idirafter' + path_from_root('system', 'include', 'net'),
-  '-idirafter' + path_from_root('system', 'include', 'SDL'),
-] + [
-  '-U__APPLE__'
-]
+  EMSDK_OPTS = ['-nostdinc', '-nostdinc++', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdinc++', '-Xclang', '-nostdsysteminc',
+    '-Xclang', '-isystem' + path_from_root('system', 'include'),
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
+  ] + [
+    '-U__APPLE__'
+  ]
   COMPILER_OPTS += EMSDK_OPTS
 else:
   EMSDK_OPTS = []
