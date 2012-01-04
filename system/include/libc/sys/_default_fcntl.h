@@ -186,6 +186,7 @@ struct eflock {
 #include <sys/stat.h>		/* sigh. for the mode bits for open/creat */
 
 extern int open _PARAMS ((const char *, int, ...));
+extern int open64 _PARAMS ((const char *, int, ...)); /* XXX Emscripten */
 extern int creat _PARAMS ((const char *, mode_t));
 extern int fcntl _PARAMS ((int, int, ...));
 #ifdef __CYGWIN__

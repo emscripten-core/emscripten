@@ -37,6 +37,8 @@
 #ifndef _SYS_MMAN_H_
 #define _SYS_MMAN_H_
 
+#include <stddef.h> /* XXX Emscripten for size_t */
+
 /* XXX Emscripten #include <sys/_posix.h> */
 
 /*
