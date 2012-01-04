@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+#include <time.h> /* XXX Emscripten */
+
 struct utimbuf 
 {
   time_t actime;

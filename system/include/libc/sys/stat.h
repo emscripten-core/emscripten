@@ -145,13 +145,16 @@ struct	stat
 int	_EXFUN(chmod,( const char *__path, mode_t __mode ));
 int     _EXFUN(fchmod,(int __fd, mode_t __mode));
 int	_EXFUN(fstat,( int __fd, struct stat *__sbuf ));
+int	_EXFUN(fstat64,( int __fd, struct stat *__sbuf )); /* XXX Emscripten */
 int	_EXFUN(mkdir,( const char *_path, mode_t __mode ));
 int	_EXFUN(mkfifo,( const char *__path, mode_t __mode ));
 int	_EXFUN(stat,( const char *__path, struct stat *__sbuf ));
+int	_EXFUN(stat64,( const char *__path, struct stat *__sbuf )); /* XXX Emscripten */
 mode_t	_EXFUN(umask,( mode_t __mask ));
 
 #if defined(EMSCRIPTEN) || defined (__SPU__) || defined(__rtems__) || defined(__CYGWIN__) && !defined(__INSIDE_CYGWIN__) 
 int	_EXFUN(lstat,( const char *__path, struct stat *__buf ));
+int	_EXFUN(lstat64,( const char *__path, struct stat *__buf )); /* XXX Emscripten */
 int	_EXFUN(mknod,( const char *__path, mode_t __mode, dev_t __dev ));
 #endif
 

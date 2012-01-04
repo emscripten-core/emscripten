@@ -148,6 +148,7 @@ _VOID	_EXFUN(_Exit,(int __status)); /* _ATTRIBUTE ((noreturn))); */
 int	_EXFUN(putenv,(char *__string));
 int	_EXFUN(_putenv_r,(struct _reent *, char *__string));
 _PTR	_EXFUN(_reallocf_r,(struct _reent *, _PTR, size_t));
+char *realpath(const char *file_name, char *resolved_name); /* XXX Emscripten */
 int	_EXFUN(setenv,(const char *__string, const char *__value, int __overwrite));
 int	_EXFUN(_setenv_r,(struct _reent *, const char *__string, const char *__value, int __overwrite));
 
