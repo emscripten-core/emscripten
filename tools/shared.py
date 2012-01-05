@@ -81,7 +81,9 @@ def check_sanity(force=False):
 
 # Tools/paths
 
-CLANG=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
+CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
+CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
+CLANG=CLANG_CPP
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 LLVM_LD=os.path.join(LLVM_ROOT, 'llvm-ld')
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
@@ -355,6 +357,10 @@ class Building:
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+    env['HOST_CC'] = CLANG_CC
+    env['HOST_CXX'] = CLANG_CPP
+    env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
+    env['HOST_CXXFLAGS'] = "-W" #if set to nothing, CXXFLAGS is used, which we don't want
     return env
 
   @staticmethod
