@@ -8,6 +8,8 @@ var VAR_NATIVE = 'native';
 var VAR_NATIVIZED = 'nativized';
 var VAR_EMULATED = 'emulated';
 
+var ENTRY_IDENT = toNiceIdent('%0');
+
 function cleanFunc(func) {
   func.lines = func.lines.filter(function(line) { return line.intertype !== null });
   func.labels.forEach(function(label) {
@@ -72,7 +74,7 @@ function analyzer(data, sidePass) {
           if (item.items[i+1].intertype !== 'label') {
             item.items.splice(i+1, 0, {
               intertype: 'label',
-              ident: toNiceIdent('%1'),
+              ident: ENTRY_IDENT,
               lineNum: subItem.lineNum + '.5'
             });
           }
@@ -706,6 +708,8 @@ function analyzer(data, sidePass) {
           // MICRO_OPTS == 1: Properly implement phis, by pushing them back into the branch
           // that leads to here. We will only have the |var| definition in this location.
 
+          var unknownEntry = null;
+
           // First, push phis back
           func.labels.forEach(function(label) {
             label.lines.forEach(function(line) {
@@ -715,6 +719,15 @@ function analyzer(data, sidePass) {
                   var param = phi.params[i];
                   var sourceLabelId = param.label;
                   var sourceLabel = func.labelsDict[sourceLabelId];
+                  if (!sourceLabel) {
+                    // The entry might not have an explicit label, and there is no consistent naming convention for it.
+                    // So we need to handle that in a special way here.
+                    assert(!unknownEntry, 'More than one unknown label in phi, so both cannot be an unlabelled entry, in ' + func.ident);
+                    unknownEntry = sourceLabelId;
+                    sourceLabelId = ENTRY_IDENT;
+                    sourceLabel = func.labelsDict[sourceLabelId];
+                    assert(sourceLabel, 'Cannot find entry label when looking for it after seeing an unknown label in a phi');
+                  }
                   var lastLine = sourceLabel.lines.slice(-1)[0];
                   if (lastLine.intertype == 'assign') lastLine = lastLine.value;
                   assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
