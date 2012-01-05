@@ -360,7 +360,10 @@ try:
     assert has_source_inputs, 'Must have source code inputs to use -c'
     target = target_basename + '.o'
 
-  final_suffix = target.split('.')[-1]
+  if '.' in target:
+    final_suffix = target.split('.')[-1]
+  else:
+    final_suffix = ''
 
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
