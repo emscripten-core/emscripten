@@ -350,6 +350,9 @@ int	_EXFUN(pthread_rwlock_timedwrlock,
 
 #endif /* defined(_POSIX_READER_WRITER_LOCKS) */
 
+/* Added for emscripten, missing getattr_np function  */
+int _EXFUN(pthread_getattr_np,(pthread_t __th, pthread_attr_t *__attr));
+
 
 #ifdef __cplusplus
 }
