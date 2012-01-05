@@ -55,7 +55,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   if (mainPass) {
     // Handle unparsed types TODO: Batch them
-    analyzer(intertyper(data.unparsedTypess[0].lines, true));
+    analyzer(intertyper(data.unparsedTypess[0].lines, true), true);
     data.unparsedTypess = null;
 
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
@@ -120,7 +120,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
                                ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
     if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
-    JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums)), true, Functions);
+    JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true, Functions);
     if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
   }
   currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
@@ -1150,7 +1150,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     print(postParts[0]);
 
     // Print out global variables and postsets TODO: batching
-    JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true)), true, Functions);
+    JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true), true, Functions);
     data.unparsedGlobalss = null;
 
     print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
