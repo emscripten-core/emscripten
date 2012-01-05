@@ -69,10 +69,10 @@ function analyzer(data, sidePass) {
           subItem.labels = [];
 
           // no explicit 'entry' label in clang on LLVM 2.8 - most of the time, but not all the time! - so we add one if necessary
-          if (LLVM_STYLE == 'new' && item.items[i+1].intertype !== 'label') {
+          if (item.items[i+1].intertype !== 'label') {
             item.items.splice(i+1, 0, {
               intertype: 'label',
-              ident: toNiceIdent('%0'),
+              ident: toNiceIdent('%1'),
               lineNum: subItem.lineNum + '.5'
             });
           }
