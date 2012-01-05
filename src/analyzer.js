@@ -22,7 +22,9 @@ var SIDE_EFFECT_CAUSERS = set('call', 'invoke');
 
 // Analyzer
 
-function analyzer(data) {
+function analyzer(data, sidePass) {
+  var mainPass = !sidePass;
+
   // Substrate
   var substrate = new Substrate('Analyzer');
 
@@ -46,6 +48,7 @@ function analyzer(data) {
       var temp = splitter(item.items, function(item) { return item.intertype == 'type' });
       item.items = temp.leftIn;
       temp.splitOut.forEach(function(type) {
+        //dprint('types', 'adding defined type: ' + type.name_);
         Types.types[type.name_] = type;
         if (QUANTUM_SIZE === 1) {
           Types.fatTypes[type.name_] = copy(type);
@@ -175,10 +178,14 @@ function analyzer(data) {
   // Typevestigator
   substrate.addActor('Typevestigator', {
     processItem: function(data) {
-      for (var type in Types.needAnalysis) {
-        if (type) addType(type, data);
+      if (sidePass) { // Do not investigate in the main pass - it is only valid to start to do so in the first side pass,
+                      // which handles type definitions, and later. Doing so before the first side pass will result in
+                      // making bad guesses about types which are actually defined
+        for (var type in Types.needAnalysis) {
+          if (type) addType(type, data);
+        }
+        Types.needAnalysis = {};
       }
-      Types.needAnalysis = {};
       this.forwardItem(data, 'Typeanalyzer');
     }
   });

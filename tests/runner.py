@@ -105,14 +105,21 @@ class RunnerCore(unittest.TestCase):
         shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
         process(filename + '.o.js')
     else:
-      if post_build is not None:
-        os.environ['EMCC_JS_PROCESSOR'] = post_build
-      else:
-        try:
-          del os.environ['EMCC_JS_PROCESSOR']
-        except:
-          pass
-      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args, filename + '.o.js')
+      transform_args = []
+      if post_build:
+        transform_filename = os.path.join(self.get_dir(), 'transform.py')
+        transform = open(transform_filename, 'w')
+        transform.write('''
+import sys
+sys.path += ['%s']
+''' % path_from_root(''))
+        transform.write(post_build)
+        transform.write('''
+process(sys.argv[1])
+''')
+        transform.close()
+        transform_args = ['--js-transform', "python %s" % transform_filename]
+      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args, filename + '.o.js')
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
@@ -5142,7 +5149,8 @@ Options that are modified or new in %s include:
         assert output[1].split('2 errors generated.')[1].replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-        for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc']]:
+        #      regression check: -o js should create "js", with bitcode content
+        for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'js']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
           clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
@@ -5275,8 +5283,21 @@ Options that are modified or new in %s include:
           assert os.path.exists('combined.bc'), '\n'.join(output)
           self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
 
-      # TODO: Add an argument for EMCC_JS_PROCESSOR to make it simpler to use, other simplifications there (allow non-py, just run it if not .py)
-      #       Add in files test a clear example of using disablePermissions, and link to it from the wiki
+        # --js-transform <transform>
+        clear()
+        trans = os.path.join(self.get_dir(), 't.py')
+        trans_file = open(trans, 'w')
+        trans_file.write('''
+import sys
+f = open(sys.argv[1], 'w')
+f.write('transformed!')
+f.close()
+''')
+        trans_file.close()
+        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', 'python t.py'], stdout=PIPE, stderr=PIPE).communicate()
+        assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
+
+      # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 

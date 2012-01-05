@@ -138,6 +138,20 @@ Options that are modified or new in %s include:
                               generated code!
   --closure <on>           0: No closure compiler (default in -O0, -O1)
                            1: Run closure compiler (default in -O2, -O3)
+  --js-transform <cmd>     <cmd> will be called on the generated code
+                           before it is optimized. This lets you modify
+                           the JavaScript, for example adding some code
+                           or removing some code, in a way that those
+                           modifications will be optimized together with
+                           the generated code properly. <cmd> will be
+                           called with the filename of the generated
+                           code as a parameter; to modify the code, you
+                           can read the original data and then append to
+                           it or overwrite it with the modified data.
+                           <cmd> is interpreted as a space-separated
+                           list of arguments, for example, <cmd> of
+                           "python processor.py" will cause a python
+                           script to be run.
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -254,6 +268,7 @@ try:
   opt_level = 0
   llvm_opt_level = None
   closure = None
+  js_transform = None
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -275,6 +290,11 @@ try:
     elif newargs[i].startswith('--closure'):
       check_bad_eq(newargs[i])
       closure = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--js-transform'):
+      check_bad_eq(newargs[i])
+      js_transform = newargs[i+1]
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
@@ -340,7 +360,10 @@ try:
     assert has_source_inputs, 'Must have source code inputs to use -c'
     target = target_basename + '.o'
 
-  final_suffix = target.split('.')[-1]
+  if '.' in target:
+    final_suffix = target.split('.')[-1]
+  else:
+    final_suffix = ''
 
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
@@ -461,15 +484,15 @@ try:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
 
     intermediate_counter = 0
-    def save_intermediate(name=None):
+    def save_intermediate(name=None, suffix='js'):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.js' % (intermediate_counter, '' if name is None else '-' + name)))
+      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
 
   if not LEAVE_INPUTS_RAW:
     final = in_temp(target_basename + '.bc')
     final = shared.Building.llvm_dis(final, final + '.ll')
-    if DEBUG: save_intermediate('ll')
+    if DEBUG: save_intermediate('ll', 'll')
   else:
     assert len(input_files) == 1
     final = input_files[0]
@@ -478,12 +501,11 @@ try:
   if DEBUG: save_intermediate('original')
 
   # Apply a source code transformation, if requested
-  source_transform = os.environ.get('EMCC_JS_PROCESSOR')
-  if source_transform:
-    exec source_transform in locals()
+  if js_transform:
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
-    process(final)
+    if DEBUG: print >> sys.stderr, 'emcc: applying transform: %s' % js_transform
+    Popen(js_transform.split(' ') + [os.path.abspath(final)]).communicate()
     if DEBUG: save_intermediate('transformed')
 
   if opt_level >= 1:
