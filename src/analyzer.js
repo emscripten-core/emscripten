@@ -662,6 +662,21 @@ function analyzer(data, sidePass) {
           }
         });
 
+        // The entry might not have an explicit label, and there is no consistent naming convention for it.
+        // So we need to handle that in a special way here.
+        var unknownEntry = null;
+        function getActualLabelId(labelId) {
+          var label = func.labelsDict[labelId];
+          if (!label) {
+            assert(!unknownEntry, 'More than one unknown label in phi, so both cannot be an unlabelled entry, in ' + func.ident);
+            unknownEntry = labelId;
+            labelId = ENTRY_IDENT;
+            label = func.labelsDict[labelId];
+            assert(label, 'Cannot find entry label when looking for it after seeing an unknown label in a phi');
+          }
+          return labelId;
+        }
+
         if (!MICRO_OPTS) {
           // 'Emulate' phis, by doing an if where the phi appears in the .ll. For this
           // we need __lastLabel__.
@@ -671,7 +686,7 @@ function analyzer(data, sidePass) {
             label.lines.forEach(function(line) {
               if ((phi = line.value) && phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
-                  var sourceLabelId = phi.params[i].label;
+                  var sourceLabelId = getActualLabelId(phi.params[i].label);
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
                   if (lastLine.intertype == 'assign') lastLine = lastLine.value;
@@ -708,8 +723,6 @@ function analyzer(data, sidePass) {
           // MICRO_OPTS == 1: Properly implement phis, by pushing them back into the branch
           // that leads to here. We will only have the |var| definition in this location.
 
-          var unknownEntry = null;
-
           // First, push phis back
           func.labels.forEach(function(label) {
             label.lines.forEach(function(line) {
@@ -717,17 +730,8 @@ function analyzer(data, sidePass) {
               if ((phi = line.value) && phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
                   var param = phi.params[i];
-                  var sourceLabelId = param.label;
+                  var sourceLabelId = getActualLabelId(param.label);
                   var sourceLabel = func.labelsDict[sourceLabelId];
-                  if (!sourceLabel) {
-                    // The entry might not have an explicit label, and there is no consistent naming convention for it.
-                    // So we need to handle that in a special way here.
-                    assert(!unknownEntry, 'More than one unknown label in phi, so both cannot be an unlabelled entry, in ' + func.ident);
-                    unknownEntry = sourceLabelId;
-                    sourceLabelId = ENTRY_IDENT;
-                    sourceLabel = func.labelsDict[sourceLabelId];
-                    assert(sourceLabel, 'Cannot find entry label when looking for it after seeing an unknown label in a phi');
-                  }
                   var lastLine = sourceLabel.lines.slice(-1)[0];
                   if (lastLine.intertype == 'assign') lastLine = lastLine.value;
                   assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
