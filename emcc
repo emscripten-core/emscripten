@@ -550,12 +550,12 @@ try:
   if final_suffix == 'html':
     if DEBUG: print >> sys.stderr, 'emcc: generating HTML'
     shell = open(shared.path_from_root('src', 'shell.html')).read()
-    html = open(target_basename + '.html', 'w')
+    html = open(target, 'w')
     html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     html.close()
   else:
     # copy final JS to output
-    shutil.move(final, target_basename + '.js')
+    shutil.move(final, target)
 
 finally:
   if not TEMP_DIR:
