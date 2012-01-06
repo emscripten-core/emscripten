@@ -5165,6 +5165,23 @@ Options that are modified or new in %s include:
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
 
+        # emcc [..] -o [path] ==> should work with absolute paths
+        try:
+          os.mkdir('a_dir')
+          os.chdir('a_dir')
+          os.mkdir('b_dir')
+          for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
+            clear()
+            output = Popen([compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
+            assert os.path.exists(path), path + ' does not exist; ' + '\n'.join(output)
+            self.assertContained('hello, world!', run_js(path))
+        finally:
+          os.chdir(self.get_dir())
+          try:
+            shutil.rmtree('a_dir')
+          except:
+            pass
+
         # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:

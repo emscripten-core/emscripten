@@ -344,7 +344,7 @@ Settings.reset()
 class Building:
   COMPILER = CLANG
   LLVM_OPTS = False
-  COMPILER_TEST_OPTS = []
+  COMPILER_TEST_OPTS = [] # For use of the test runner
 
   @staticmethod
   def get_building_env():
@@ -356,7 +356,7 @@ class Building:
     env['LIBTOOL'] = EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(COMPILER_OPTS + Building.COMPILER_TEST_OPTS) # Normal CFLAGS is ignored by some configure's.
+    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
     env['HOST_CC'] = CLANG_CC
     env['HOST_CXX'] = CLANG_CPP
     env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
