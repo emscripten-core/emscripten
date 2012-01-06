@@ -578,6 +578,7 @@ function enlargeMemory() {
 }
 #endif
 
+var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
@@ -641,7 +642,6 @@ Module['HEAPF32'] = HEAPF32;
 #endif
 
 STACK_ROOT = STACKTOP = alignMemoryPage(10);
-var TOTAL_STACK = 1024*1024; // XXX: Changing this value can lead to bad perf on v8!
 STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
 STATICTOP = alignMemoryPage(STACK_MAX);

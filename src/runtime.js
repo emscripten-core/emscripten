@@ -34,7 +34,7 @@ var RuntimeGenerator = {
     if (USE_TYPED_ARRAYS === 2) initial = Runtime.forceAlign(initial);
     var ret = 'var __stackBase__  = STACKTOP; STACKTOP += ' + initial;
     if (ASSERTIONS) {
-      ret += '; assert(STACKTOP < STACK_MAX)';
+      ret += '; assert(STACKTOP < STACK_MAX, "Ran out of stack")';
     }
     if (INIT_STACK) {
       ret += '; _memset(__stackBase__, 0, ' + initial + ')';

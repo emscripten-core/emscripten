@@ -8,6 +8,8 @@ var VAR_NATIVE = 'native';
 var VAR_NATIVIZED = 'nativized';
 var VAR_EMULATED = 'emulated';
 
+var ENTRY_IDENT = toNiceIdent('%0');
+
 function cleanFunc(func) {
   func.lines = func.lines.filter(function(line) { return line.intertype !== null });
   func.labels.forEach(function(label) {
@@ -69,10 +71,10 @@ function analyzer(data, sidePass) {
           subItem.labels = [];
 
           // no explicit 'entry' label in clang on LLVM 2.8 - most of the time, but not all the time! - so we add one if necessary
-          if (LLVM_STYLE == 'new' && item.items[i+1].intertype !== 'label') {
+          if (item.items[i+1].intertype !== 'label') {
             item.items.splice(i+1, 0, {
               intertype: 'label',
-              ident: toNiceIdent('%0'),
+              ident: ENTRY_IDENT,
               lineNum: subItem.lineNum + '.5'
             });
           }
@@ -660,6 +662,21 @@ function analyzer(data, sidePass) {
           }
         });
 
+        // The entry might not have an explicit label, and there is no consistent naming convention for it.
+        // So we need to handle that in a special way here.
+        var unknownEntry = null;
+        function getActualLabelId(labelId) {
+          var label = func.labelsDict[labelId];
+          if (!label) {
+            assert(!unknownEntry, 'More than one unknown label in phi, so both cannot be an unlabelled entry, in ' + func.ident);
+            unknownEntry = labelId;
+            labelId = ENTRY_IDENT;
+            label = func.labelsDict[labelId];
+            assert(label, 'Cannot find entry label when looking for it after seeing an unknown label in a phi');
+          }
+          return labelId;
+        }
+
         if (!MICRO_OPTS) {
           // 'Emulate' phis, by doing an if where the phi appears in the .ll. For this
           // we need __lastLabel__.
@@ -669,7 +686,7 @@ function analyzer(data, sidePass) {
             label.lines.forEach(function(line) {
               if ((phi = line.value) && phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
-                  var sourceLabelId = phi.params[i].label;
+                  var sourceLabelId = getActualLabelId(phi.params[i].label);
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
                   if (lastLine.intertype == 'assign') lastLine = lastLine.value;
@@ -713,7 +730,7 @@ function analyzer(data, sidePass) {
               if ((phi = line.value) && phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
                   var param = phi.params[i];
-                  var sourceLabelId = param.label;
+                  var sourceLabelId = getActualLabelId(param.label);
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
                   if (lastLine.intertype == 'assign') lastLine = lastLine.value;

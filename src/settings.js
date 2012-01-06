@@ -31,11 +31,15 @@ var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the gene
                     // code in your own, and will call run() yourself at the right time
 var INIT_STACK = 0; // Whether to initialize memory on the stack to 0.
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
-var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
-                               // in a flat array. This only matters in non-typed array builds.
+var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
+                               // value must be large enough for the program's requirements. If
+                               // assertions are on, we will assert on not exceeding this, otherwise,
+                               // it will fail silently.
 var TOTAL_MEMORY = 10*1024*1024; // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
+var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
+                               // in a flat array. This only matters in non-typed array builds.
 
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables

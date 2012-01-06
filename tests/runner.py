@@ -5218,7 +5218,7 @@ Options that are modified or new in %s include:
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
             # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
             assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
-            assert ('assert(STACKTOP < STACK_MAX)' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
+            assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert 'var $i;' in generated, 'micro opts should always be on'
             if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
