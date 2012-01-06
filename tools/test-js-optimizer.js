@@ -217,6 +217,16 @@ function hoisting() {
     }
   } while (0);
 }
+function innerShouldAlsoBeHoisted() {
+  function hoisting() {
+    if ($i < $N) {
+      __label__ = 2;
+    }
+    if (__label__ == 2) {
+      callOther();
+    }
+  }
+}
 var FS = {
   absolutePath: function(relative, base) { // Don't touch this!
     if (typeof relative !== 'string') return null;

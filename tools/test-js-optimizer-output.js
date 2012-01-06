@@ -174,6 +174,13 @@ function hoisting() {
     var $79 = $_pr6;
   }
 }
+function innerShouldAlsoBeHoisted() {
+  function hoisting() {
+    if ($i < $N) {
+      callOther();
+    }
+  }
+}
 var FS = {
   absolutePath: (function(relative, base) {
     if (typeof relative !== "string") return null;
