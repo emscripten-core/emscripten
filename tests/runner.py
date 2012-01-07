@@ -3869,6 +3869,7 @@ def process(filename):
         ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
         
     def test_static_variable(self):
+      Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
       src = '''
         #include <stdio.h>
 

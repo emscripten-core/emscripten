@@ -4203,11 +4203,14 @@ LibraryManager.library = {
   },
 
   __cxa_guard_acquire: function(variable) {
-    return !{{{ makeGetValue(0, 'variable', 'i8') }}}
+    if (!{{{ makeGetValue(0, 'variable', 'i8', null, null, 1) }}}) { // ignore SAFE_HEAP stuff because llvm mixes i64 and i8 here
+      {{{ makeSetValue(0, 'variable', '1', 'i8') }}};
+      return 1;
+    }
+    return 0;
   },
-  __cxa_guard_release: function(variable) {
-    {{{ makeSetValue(0, 'variable', '1', 'i8') }}}
-  },
+  __cxa_guard_release: function() {},
+  __cxa_guard_abort: function() {},
 
   _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
   _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
