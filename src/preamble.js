@@ -178,6 +178,7 @@ var CorrectionsMonitor = {
 #endif
   },
 
+#if PGO
   print: function() {
     var items = [];
     for (var sig in this.sigs) {
@@ -194,6 +195,7 @@ var CorrectionsMonitor = {
       print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
     }
   }
+#end
 };
 
 #if CHECK_OVERFLOWS
@@ -659,7 +661,9 @@ function __shutdownRuntime__() {
   // allow browser to GC, set heaps to null?
 
   // Print summary of correction activity
+#if PGO
   CorrectionsMonitor.print();
+#endif
 }
 
 
