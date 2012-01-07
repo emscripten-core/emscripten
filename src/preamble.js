@@ -178,8 +178,8 @@ var CorrectionsMonitor = {
 #endif
   },
 
-#if PGO
   print: function() {
+#if PGO
     var items = [];
     for (var sig in this.sigs) {
       items.push({
@@ -194,8 +194,8 @@ var CorrectionsMonitor = {
       var item = items[i];
       print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
     }
+#endif
   }
-#end
 };
 
 #if CHECK_OVERFLOWS
