@@ -3804,6 +3804,35 @@ def process(filename):
           return 1;
         }
         ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
+        
+    def test_static_variable(self):
+      src = '''
+        #include <stdio.h>
+
+        struct DATA
+        {
+            int value;
+    
+            DATA()
+            {
+                value = 0;
+            }
+        };
+
+        DATA & GetData()
+        {
+            static DATA data;
+    
+            return data;
+        }
+
+        int main()
+        {
+            GetData().value = 10;
+            printf( "value:%i", GetData().value );
+        }
+      '''
+      self.do_run(src, 'value:10')
 
     def test_cubescript(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:
