@@ -4192,11 +4192,11 @@ LibraryManager.library = {
     throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [Pointer_stringify(filename), line, Pointer_stringify(func)];
   },
 
-  __cxa_guard_acquire: function( variable ) {
-    return !HEAP8[((variable))];
+  __cxa_guard_acquire: function(variable) {
+    return !{{{ makeGetValue(0, 'variable', 'i8') }}}
   },
-  __cxa_guard_release: function( variable ) {
-    HEAP8[((variable))] = 1;
+  __cxa_guard_release: function(variable) {
+    {{{ makeSetValue(0, 'variable', '1', 'i8') }}}
   },
 
   _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
