@@ -3177,7 +3177,10 @@ LibraryManager.library = {
 
   mmap__deps: ['$FS'],
   mmap: function(start, num, prot, flags, stream, offset) {
-    // FIXME: Leaky and non-shared.
+    // FIXME: Leaky and non-share
+    if( stream == -1) {
+      return allocate(num,'i8', ALLOC_NORMAL);
+    }
     var info = FS.streams[stream];
     if (!info) return -1;
     return allocate(info.object.contents.slice(offset, offset+num),
