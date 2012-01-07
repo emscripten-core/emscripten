@@ -1863,6 +1863,10 @@ LibraryManager.library = {
       return 0;
     }
   },
+  getpagesize: function() {
+    // int getpagesize(void);
+    return PAGE_SIZE;
+  },
   getopt: function(argc, argv, optstring) {
     // int getopt(int argc, char * const argv[], const char *optstring);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getopt.html
@@ -5593,6 +5597,34 @@ LibraryManager.library = {
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
   pthread_cond_broadcast: function() {},
+  pthread_self: function() {
+    //FIXME: assumes only a single thread
+    return 0;
+  },
+  pthread_attr_init: function(attr) {
+    /* int pthread_attr_init(pthread_attr_t *attr); */
+    //FIXME: should allocate a pthread_attr_t
+    return 0;
+  },
+  pthread_getattr_np: function(thread, attr) {
+    /* int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr); */
+    //FIXME: should fill in attributes of the given thread in pthread_attr_t
+    return 0;
+  },
+  pthread_attr_destroy: function(attr) {
+    /* int pthread_attr_destroy(pthread_attr_t *attr); */
+    //FIXME: should destroy the pthread_attr_t struct
+    return 0;
+  },
+  pthread_attr_getstack: function(attr, stackaddr, stacksize) {
+    /* int pthread_attr_getstack(const pthread_attr_t *restrict attr,
+       void **restrict stackaddr, size_t *restrict stacksize); */
+    /*FIXME: assumes that there is only one thread, and that attr is the
+      current thread*/
+    {{{ makeSetValue('stackaddr', '0', 'STACK_ROOT', 'i8*') }}}
+    {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}}
+    return 0;
+  },
 
   // ==========================================================================
   // malloc.h
