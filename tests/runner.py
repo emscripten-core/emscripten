@@ -5671,7 +5671,7 @@ elif 'benchmark' in str(sys.argv):
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'sum:3588\n')
+      self.do_benchmark(src, [], 'sum:3588\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
