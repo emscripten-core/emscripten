@@ -29,8 +29,8 @@ var RuntimeGenerator = {
     return ret;
   },
 
-  stackEnter: function(initial) {
-    if (initial === 0 && SKIP_STACK_IN_SMALL) return '';
+  stackEnter: function(initial, force) {
+    if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     if (USE_TYPED_ARRAYS === 2) initial = Runtime.forceAlign(initial);
     var ret = 'var __stackBase__  = STACKTOP; STACKTOP += ' + initial;
     if (ASSERTIONS) {
@@ -42,8 +42,8 @@ var RuntimeGenerator = {
     return ret;
   },
 
-  stackExit: function(initial) {
-    if (initial === 0 && SKIP_STACK_IN_SMALL) return '';
+  stackExit: function(initial, force) {
+    if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     var ret = '';
     if (SAFE_HEAP) {
       ret += 'for (var i = __stackBase__; i < STACKTOP; i++) SAFE_HEAP_CLEAR(i);';

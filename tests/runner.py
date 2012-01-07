@@ -1409,6 +1409,56 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
       '''
       self.do_run(src, 'z:1*', force_c=True)
 
+      if self.emcc_args is not None: # too slow in other modes
+        # We should not blow up the stack with numerous allocas
+
+        src = '''
+          #include <stdio.h>
+          #include <stdlib.h>
+
+          func(int i) {
+            char *pc = (char *)alloca(100);
+            *pc = i;
+            (*pc)++;
+            return (*pc) % 10;
+          }
+          int main() {
+            int total = 0;
+            for (int i = 0; i < 1024*1024; i++)
+              total += func(i);
+            printf("ok:%d*\\n", total);
+            return 0;
+          }
+        '''
+        self.do_run(src, 'ok:-32768*', force_c=True)
+
+        # We should also not blow up the stack with byval arguments
+        src = r'''
+          #include<stdio.h>
+          struct vec {
+            int x, y, z;
+            vec(int x_, int y_, int z_) : x(x_), y(y_), z(z_) {}
+            static vec add(vec a, vec b) {
+              return vec(a.x+b.x, a.y+b.y, a.z+b.z);
+            }
+          };
+          int main() {
+            int total = 0;
+            for (int i = 0; i < 1000; i++) {
+              for (int j = 0; j < 1000; j++) {
+                vec c(i+i%10, j*2, i%255);
+                vec d(j*2, j%255, i%120);
+                vec f = vec::add(c, d);
+                total += (f.x + f.y + f.z) % 100;
+                total %= 10240;
+              }
+            }
+            printf("sum:%d*\n", total);
+            return 1;
+          }
+        '''
+        self.do_run(src, 'sum:9780*')
+
     def test_array2(self):
         src = '''
           #include <stdio.h>
@@ -5558,7 +5608,6 @@ elif 'benchmark' in str(sys.argv):
       self.do_benchmark(src, [], 'lastprime: 1297001.')
 
     def test_memops(self):
-      # memcpy would also be interesting, however native code uses SSE/NEON/etc. and is much, much faster than JS can be
       src = '''
         #include<stdio.h>
         #include<string.h>

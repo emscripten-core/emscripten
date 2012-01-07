@@ -785,6 +785,26 @@ function analyzer(data, sidePass) {
           delete item.allocatedSize;
         }
         func.initialStack = index;
+        // We need to note if stack allocations other than initial allocs can happen here
+        // (for example, via alloca). If so, we need to rewind the stack when we leave.
+        func.otherStackAllocations = false;
+        var finishedInitial = false;
+        for (var i = 0; i < lines.length; i++) {
+          var item = lines[i].value;
+          if (!item || item.intertype != 'alloca') {
+            finishedInitial = true;
+            continue;
+          }
+          if (item.intertype == 'alloca' && finishedInitial) {
+            func.otherStackAllocations = true;
+          }
+        }
+        // by-value params are also causes of additional allocas (although we could in theory make them normal allocas too)
+        func.params.forEach(function(param) {
+          if (param.byVal) {
+            func.otherStackAllocations = true;
+          }
+        });
       });
       this.forwardItem(data, 'Relooper');
     }
