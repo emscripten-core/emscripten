@@ -3702,7 +3702,9 @@ LibraryManager.library = {
       src += num;
       dest += num;
       while (num--) {
-        {{{ makeSetValue('--dest', '0', makeGetValue('--src', '0', 'i8'), 'i8') }}};
+        dest--;
+        src--;
+        {{{ makeCopyValues('dest', 'src', 1, 'null') }}};
       }
     } else {
       {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};

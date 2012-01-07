@@ -1121,6 +1121,7 @@ function makeCopyValues(dest, src, num, type, modifier) {
              '}';
     }
   } else { // USE_TYPED_ARRAYS == 2
+    // TODO: optimize, add unrolling, etc.
     var ret = '' +
       'var src, dest, stop, stop4;\n' +
       'src = ' + src + ';\n' +
