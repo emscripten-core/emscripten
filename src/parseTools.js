@@ -1055,25 +1055,25 @@ function makeSetValues(ptr, pos, value, type, num) {
            '  HEAP8[' + getFastValue(ptr, '+', pos) + '+mspi] = ' + value + safety() + '\n}';
 */
     return '' +
-      'var dest, stop, stop4, fast, value;\n' +
-      'dest = ' + getFastValue(ptr, '+', pos) + ';\n' +
-      'stop = dest + ' + num + ';\n' +
-      'value = ' + value + ';\n' +
-      'if (value < 0) value += 256;\n' +
-      'value = value + (value<<8) + (value<<16) + (value*16777216);\n' + 
-      'while (dest%4 !== 0 && dest < stop) {\n' +
-      '  ' + safety('dest') + '; HEAP8[dest++] = ' + value + ';\n' +
+      'var dest_, stop_, stop4_, fast_, value_;\n' +
+      'dest_ = ' + getFastValue(ptr, '+', pos) + ';\n' +
+      'stop_ = dest_ + ' + num + ';\n' +
+      'value_ = ' + value + ';\n' +
+      'if (value_ < 0) value_ += 256;\n' +
+      'value_ = value_ + (value_<<8) + (value_<<16) + (value_*16777216);\n' + 
+      'while (dest_%4 !== 0 && dest_ < stop_) {\n' +
+      '  ' + safety('dest_') + '; HEAP8[dest_++] = ' + value + ';\n' +
       '}\n' +
-      'dest >>= 2;\n' +
-      'stop4 = stop >> 2;\n' +
-      'while (dest < stop4) {\n' +
-         safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
-         safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-      '  HEAP32[dest++] = value;\n' + // this is the fast inner loop we try hard to stay in
+      'dest_ >>= 2;\n' +
+      'stop4_ = stop_ >> 2;\n' +
+      'while (dest_ < stop4_) {\n' +
+         safety('(dest_<<2)+0', '(src_<<2)+0') + ';' + safety('(dest_<<2)+1', '(src_<<2)+1') + ';' + 
+         safety('(dest_<<2)+2', '(src_<<2)+2') + ';' + safety('(dest_<<2)+3', '(src_<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
+      '  HEAP32[dest_++] = value_;\n' + // this is the fast inner loop we try hard to stay in
       '}\n' +
-      'dest <<= 2;\n' +
-      'while (dest < stop) {\n' +
-      '  ' + safety('dest') + '; HEAP8[dest++] = ' + value + ';\n' +
+      'dest_ <<= 2;\n' +
+      'while (dest_ < stop_) {\n' +
+      '  ' + safety('dest_') + '; HEAP8[dest_++] = ' + value + ';\n' +
       '}'
   }
 }
@@ -1123,33 +1123,33 @@ function makeCopyValues(dest, src, num, type, modifier) {
   } else { // USE_TYPED_ARRAYS == 2
     // TODO: optimize, add unrolling, etc.
     var ret = '' +
-      'var src, dest, stop, stop4;\n' +
-      'src = ' + src + ';\n' +
-      'dest = ' + dest + ';\n' +
-      'stop = src + ' + num + ';\n' +
-      'if ((dest%4) == (src%4) && ' + num + ' > 8) {\n' +
-      '  while (src%4 !== 0 && src < stop) {\n' +
-      '    ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
+      'var src_, dest_, stop_, stop4_;\n' +
+      'src_ = ' + src + ';\n' +
+      'dest_ = ' + dest + ';\n' +
+      'stop_ = src_ + ' + num + ';\n' +
+      'if ((dest_%4) == (src_%4) && ' + num + ' > 8) {\n' +
+      '  while (src_%4 !== 0 && src_ < stop_) {\n' +
+      '    ' + safety('dest_', 'src_') + '; HEAP8[dest_++] = HEAP8[src_++];\n' +
       '  }\n';
     if (SAFE_HEAP || !(isNumber(num) && parseInt(num) >= TYPED_ARRAY_SET_MIN)) {
-      ret += '  src >>= 2;\n' +
-             '  dest >>= 2;\n' +
-             '  stop4 = stop >> 2;\n' +
-             '  while (src < stop4) {\n' +
-                  safety('(dest<<2)+0', '(src<<2)+0') + ';' + safety('(dest<<2)+1', '(src<<2)+1') + ';' + 
-                  safety('(dest<<2)+2', '(src<<2)+2') + ';' + safety('(dest<<2)+3', '(src<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-             '    HEAP32[dest++] = HEAP32[src++];\n' +
+      ret += '  src_ >>= 2;\n' +
+             '  dest_ >>= 2;\n' +
+             '  stop4_ = stop_ >> 2;\n' +
+             '  while (src_ < stop4_) {\n' +
+                  safety('(dest_<<2)+0', '(src_<<2)+0') + ';' + safety('(dest_<<2)+1', '(src_<<2)+1') + ';' + 
+                  safety('(dest_<<2)+2', '(src_<<2)+2') + ';' + safety('(dest_<<2)+3', '(src_<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
+             '    HEAP32[dest_++] = HEAP32[src_++];\n' +
              '  }\n' +
-             '  src <<= 2;\n' +
-             '  dest <<= 2;\n';
+             '  src_ <<= 2;\n' +
+             '  dest_ <<= 2;\n';
     } else {
-      ret += '  var src4 = src >> 2, stop4 = stop >> 2, num4 = (stop4 - src4) << 2;\n' +
-             '  HEAP32.set(HEAP32.subarray(src4, stop4), dest >> 2);\n' +
-             '  src += num4; dest += num4;\n';
+      ret += '  var src4_ = src_ >> 2, stop4_ = stop_ >> 2, num4_ = (stop4_ - src4_) << 2;\n' +
+             '  HEAP32.set(HEAP32.subarray(src4_, stop4_), dest_ >> 2);\n' +
+             '  src_ += num4_; dest_ += num4_;\n';
     }
     ret += '}' +
-      'while (src < stop) {\n' +
-      '  ' + safety('dest', 'src') + '; HEAP8[dest++] = HEAP8[src++];\n' +
+      'while (src_ < stop_) {\n' +
+      '  ' + safety('dest_', 'src_') + '; HEAP8[dest_++] = HEAP8[src_++];\n' +
       '}';
     return ret;
   }
