@@ -3696,14 +3696,17 @@ LibraryManager.library = {
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
 
-  memmove__deps: ['memcpy'],
   memmove: function(dest, src, num, idunno) {
-    // not optimized!
-    if (num === 0) return; // will confuse malloc if 0
-    var tmp = _malloc(num);
-    _memcpy(tmp, src, num);
-    _memcpy(dest, tmp, num);
-    _free(tmp);
+    if (src < dest && dest < src + num) {
+      // Copy backwards in a safe manner
+      src += num;
+      dest += num;
+      while (num--) {
+        {{{ makeSetValue('--dest', '0', makeGetValue('--src', '0', 'i8'), 'i8') }}};
+      }
+    } else {
+      {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};
+    }
   },
   llvm_memmove_i32: 'memmove',
   llvm_memmove_i64: 'memmove',

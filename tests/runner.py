@@ -2272,6 +2272,19 @@ def process(filename):
           '''
         self.do_run(src)
 
+    def test_memmove(self):
+      src = '''
+        #include <stdio.h>
+        #include <string.h>
+        int main() {
+          char str[] = "memmove can be very useful....!";
+          memmove (str+20, str+15, 11);
+          puts(str);
+          return 0;
+        }
+      '''
+      self.do_run(src)
+
     def test_bsearch(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
 
