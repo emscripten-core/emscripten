@@ -661,9 +661,7 @@ function __shutdownRuntime__() {
   // allow browser to GC, set heaps to null?
 
   // Print summary of correction activity
-#if PGO
   CorrectionsMonitor.print();
-#endif
 }
 
 
