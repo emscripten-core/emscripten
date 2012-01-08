@@ -439,7 +439,7 @@ try:
     has_dlmalloc = False
     for input_file in input_files:
       symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
-      for malloc_def in ['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc']:
+      for malloc_def in ['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm']:
         if malloc_def in symbols.undefs:
           need_dlmalloc = True
         if malloc_def in symbols.defs:

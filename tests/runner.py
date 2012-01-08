@@ -3844,10 +3844,20 @@ def process(filename):
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
         output = Popen([EMCC, path_from_root('tests', 'dlmalloc_test.c'),
                         '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect).communicate()
-        #print output
 
         self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
         self.do_run('x', '*400,0*', ['400', '400'], no_build=True)
+
+        # The same for new and all its variants
+        src = open(path_from_root('tests', 'new.cpp')).read()
+        for new, delete in [
+          ('malloc(100)', 'free'),
+          ('new char[100]', 'delete[]'),
+          ('new Structy', 'delete'),
+          ('new int', 'delete'),
+          ('new Structy[10]', 'delete[]'),
+        ]:
+          self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
     def test_libcxx(self):
       self.do_run(path_from_root('tests', 'libcxx'),
