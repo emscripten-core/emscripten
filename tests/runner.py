@@ -5311,6 +5311,7 @@ Options that are modified or new in %s include:
           (['-o', 'something.bc'], 1, ['-O1'], 0, 0),
           (['-o', 'something.bc'], 2, ['-O2'], 1, 0),
           (['-o', 'something.bc'], 3, ['-O3'], 1, 0),
+          (['-O1', '-o', 'something.bc'], 0, [], 0, 0), # -Ox is ignored and warned about
         ]:
           #print params, opt_level, bc_params, closure
           clear()
@@ -5318,10 +5319,12 @@ Options that are modified or new in %s include:
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           if bc_params is not None:
+            if '-O1' in params and 'something.bc' in params:
+              assert 'warning: -Ox flags ignored, since not generating JavaScript' in output[1]
             assert os.path.exists('something.bc'), output[1]
             output = Popen([compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('something.js'), output[1]
-          assert ('Warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
+          assert ('warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
 
