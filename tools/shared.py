@@ -507,10 +507,6 @@ class Building:
 
   @staticmethod
   def emscripten(filename, append_ext=True, extra_args=[]):
-    # Add some headers by default. TODO: remove manually adding these in each test
-    if '-H' not in extra_args:
-      extra_args += ['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h']
-
     # Run Emscripten
     settings = Settings.serialize()
     compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')

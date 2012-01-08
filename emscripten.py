@@ -232,11 +232,11 @@ def main(args):
         defines[key] = str(value)
       else:
         del defines[key]
-    settings['C_DEFINES'] = defines
+    #print >> sys.stderr, 'new defs:', str(defines).replace(',', ',\n  '), '\n\n'
+    settings.setdefault('C_DEFINES', {}).update(defines)
 
   # Compile the assembly to Javascript.
   emscript(args.infile, json.dumps(settings), args.outfile)
-
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
