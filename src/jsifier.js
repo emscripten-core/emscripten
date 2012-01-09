@@ -520,7 +520,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           var type = removePointing(param.type);
           var typeInfo = Types.types[type];
           func.JS += '  var tempParam = ' + param.ident + '; ' + param.ident + ' = ' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
-                     makeCopyValues(param.ident, 'tempParam', typeInfo.flatSize, 'null', null, 1) + ';\n';
+                     makeCopyValues(param.ident, 'tempParam', typeInfo.flatSize, 'null', null, param.byVal) + ';\n';
         }
       });
 

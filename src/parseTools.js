@@ -314,12 +314,14 @@ function parseParamTokens(params) {
     var segment = params.slice(0, i);
     params = params.slice(i+1);
     segment = cleanSegment(segment);
-    var byVal = false;
+    var byVal = 0;
     if (segment[1] && segment[1].text === 'byval') {
-      // handle 'byval' and 'byval align X'
-      byVal = true;
+      // handle 'byval' and 'byval align X'. We store the alignment in 'byVal'
+      byVal = QUANTUM_SIZE;
       segment.splice(1, 1);
       if (segment[1] && segment[1].text === 'align') {
+        assert(isNumber(segment[2].text));
+        byVal = parseInt(segment[2].text);
         segment.splice(1, 2);
       }
     }
