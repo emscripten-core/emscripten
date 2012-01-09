@@ -1086,15 +1086,23 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
   function unroll(type, num, jump) {
     jump = jump || 1;
     return range(num).map(function(i) {
-      return makeSetValue(dest, i*jump, makeGetValue(src, i*jump, type), type);
+      if (USE_TYPED_ARRAYS == 1 && type === 'null') {
+        // Null is special-cased: We copy over all heaps
+        return makeGetSlabs(dest, 'null', true).map(function(slab) {
+          return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']'; // TODO: Add SAFE_HEAP stuff
+        }).join('; ');
+      } else {
+        return makeSetValue(dest, i*jump, makeGetValue(src, i*jump, type), type);
+      }
     }).join('; ');
   }
   if (USE_TYPED_ARRAYS <= 1) {
     if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
       return unroll(type, num);
     }
-    return 'for (var $$i = 0; $$i < ' + num + '; $$i++) {\n' +
-      makeSetValue(dest, '$$i', makeGetValue(src, i, type), type) + '\n}';
+    dest = dest + '+$$i';
+    src = src + '+$$i';
+    return 'for (var $$i = 0; $$i < ' + num + '; $$i++) {\n' + unroll(type, 1) + ' }';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
