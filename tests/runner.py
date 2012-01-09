@@ -4249,7 +4249,7 @@ def process(filename):
         for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
           shortname = name.replace('.ll', '')
           if '' not in shortname: continue
-          print "Testing case '%s'..." % shortname
+          print >> sys.stderr, "Testing case '%s'..." % shortname
           output_file = path_from_root('tests', 'cases', shortname + '.txt')
           if Settings.QUANTUM_SIZE == 1:
             q1_output_file = path_from_root('tests', 'cases', shortname + '_q1.txt')
