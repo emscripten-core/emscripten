@@ -1034,10 +1034,11 @@ var SEEK_OPTIMAL_ALIGN_MIN = 40;
 var UNROLL_LOOP_MAX = 5;
 
 function makeSetValues(ptr, pos, value, type, num, align) {
-  function unroll(type, num, jump) {
+  function unroll(type, num, jump, value$) {
     jump = jump || 1;
+    value$ = value$ || value;
     return range(num).map(function(i) {
-      return makeSetValue(ptr, getFastValue(pos, '+', i*jump), value, type);
+      return makeSetValue(ptr, getFastValue(pos, '+', i*jump), value$, type);
     }).join('; ');
   }
   if (USE_TYPED_ARRAYS <= 1) {
@@ -1048,21 +1049,30 @@ function makeSetValues(ptr, pos, value, type, num, align) {
       makeSetValue(ptr, getFastValue(pos, '+', '$$i'), value, type) + '\n}';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
-    if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
+    // TODO: optimize the case of numeric num but non-numeric value
+    if (!isNumber(num) || !isNumber(value) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
       return '_memset(' + getFastValue(ptr, '+', pos) + ', ' + value + ', ' + num + ', ' + align + ')';
     }
     num = parseInt(num);
+    value = parseInt(value);
+    if (value < 0) value += 256; // make it unsigned
+    var values = {
+      1: value,
+      2: value | (value << 8), 
+      4: value | (value << 8) | (value << 16) | (value << 24)
+    };
     var ret = [];
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
         if (num <= UNROLL_LOOP_MAX*possibleAlign) {
-          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
+          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         } else {
           ret.push('for (var $$i = 0, $$base = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + 
                    '; $$i < ' + Math.floor(num/possibleAlign) + '; $$i++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$base+$$i] = ' + value + '\n}');
+                   '  HEAP' + (possibleAlign*8) + '[$$base+$$i] = ' + values[possibleAlign] + '\n}');
         }
+        pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
       }
     });
@@ -1103,6 +1113,8 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
                    '$$i < ' + Math.floor(num/possibleAlign) + '; $$i++) {\n' +
                    '  HEAP' + (possibleAlign*8) + '[$$dest+$$i] = HEAP' + (possibleAlign*8) + '[$$src+$$i]\n}');
         }
+        src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
+        dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
       }
     });
