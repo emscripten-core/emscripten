@@ -1068,9 +1068,9 @@ function makeSetValues(ptr, pos, value, type, num, align) {
         if (num <= UNROLL_LOOP_MAX*possibleAlign) {
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         } else {
-          ret.push('for (var $$i = 0, $$base = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + 
-                   '; $$i < ' + Math.floor(num/possibleAlign) + '; $$i++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$base+$$i] = ' + values[possibleAlign] + '\n}');
+          ret.push('for (var $$i = 0, $$dest = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
+                            '$$stop = $$dest + ' + Math.floor(num/possibleAlign) + '; $$dest < $$stop; $$dest++) {\n' +
+                   '  HEAP' + (possibleAlign*8) + '[$$dest] = ' + values[possibleAlign] + '\n}');
         }
         pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
@@ -1116,10 +1116,10 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
         if (num <= UNROLL_LOOP_MAX*possibleAlign) {
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
         } else {
-          ret.push('for (var $$i = 0, $$src = ' + src + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                                     '$$dest = ' + dest + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + '; ' +
-                   '$$i < ' + Math.floor(num/possibleAlign) + '; $$i++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest+$$i] = HEAP' + (possibleAlign*8) + '[$$src+$$i]\n}');
+          ret.push('for (var $$src = ' + src + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
+                            '$$dest = ' + dest + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
+                            '$$stop = $$src + ' + Math.floor(num/possibleAlign) + '; $$src < $$stop; $$src++, $$dest++) {\n' +
+                   '  HEAP' + (possibleAlign*8) + '[$$dest] = HEAP' + (possibleAlign*8) + '[$$src]\n}');
         }
         src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
         dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
