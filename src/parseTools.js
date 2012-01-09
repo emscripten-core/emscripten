@@ -1030,130 +1030,84 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
   }
 }
 
+var SEEK_OPTIMAL_ALIGN_MIN = 40;
 var UNROLL_LOOP_MAX = 5;
 
-var ZERO_ONE = set(0, 1);
-
-function makeSetValues(ptr, pos, value, type, num) {
-  function safety(where) {
-    where = where || getFastValue(ptr, '+', pos) + '+mspi';
-    return ';' + (SAFE_HEAP ? 'SAFE_HEAP_ACCESS(' + where + ', ' + type + ', 1)' : '');
+function makeSetValues(ptr, pos, value, type, num, align) {
+  function unroll(type, num, jump) {
+    jump = jump || 1;
+    return range(num).map(function(i) {
+      return makeSetValue(ptr, getFastValue(pos, '+', i*jump), value, type);
+    }).join('; ');
   }
-  if (USE_TYPED_ARRAYS in ZERO_ONE) {
-    if (isNumber(num)) {
-      if (parseInt(num) <= UNROLL_LOOP_MAX) {
-        return range(num).map(function(i) {
-          return makeSetValue(ptr, getFastValue(pos, '+', i), value, type);
-        }).join('; ');
-      }
+  if (USE_TYPED_ARRAYS <= 1) {
+    if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
+      return unroll(type, num);
     }
-    return 'for (var mspi = 0; mspi < ' + num + '; mspi++) {\n' +
-      makeSetValue(ptr, getFastValue(pos, '+', 'mspi'), value, type) + '\n}';
+    return 'for (var $$i = 0; $$i < ' + num + '; $$i++) {\n' +
+      makeSetValue(ptr, getFastValue(pos, '+', '$$i'), value, type) + '\n}';
   } else { // USE_TYPED_ARRAYS == 2
-/*
-    return 'for (var mspi = 0; mspi < ' + num + '; mspi++) {\n' +
-           '  HEAP8[' + getFastValue(ptr, '+', pos) + '+mspi] = ' + value + safety() + '\n}';
-*/
-    return '' +
-      'var dest_, stop_, stop4_, fast_, value_;\n' +
-      'dest_ = ' + getFastValue(ptr, '+', pos) + ';\n' +
-      'stop_ = dest_ + ' + num + ';\n' +
-      'value_ = ' + value + ';\n' +
-      'if (value_ < 0) value_ += 256;\n' +
-      'value_ = value_ + (value_<<8) + (value_<<16) + (value_*16777216);\n' + 
-      'while (dest_%4 !== 0 && dest_ < stop_) {\n' +
-      '  ' + safety('dest_') + '; HEAP8[dest_++] = ' + value + ';\n' +
-      '}\n' +
-      'dest_ >>= 2;\n' +
-      'stop4_ = stop_ >> 2;\n' +
-      'while (dest_ < stop4_) {\n' +
-         safety('(dest_<<2)+0', '(src_<<2)+0') + ';' + safety('(dest_<<2)+1', '(src_<<2)+1') + ';' + 
-         safety('(dest_<<2)+2', '(src_<<2)+2') + ';' + safety('(dest_<<2)+3', '(src_<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-      '  HEAP32[dest_++] = value_;\n' + // this is the fast inner loop we try hard to stay in
-      '}\n' +
-      'dest_ <<= 2;\n' +
-      'while (dest_ < stop_) {\n' +
-      '  ' + safety('dest_') + '; HEAP8[dest_++] = ' + value + ';\n' +
-      '}'
+    // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
+    if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
+      return '_memset(' + getFastValue(ptr, '+', pos) + ', ' + value + ', ' + num + ', ' + align + ')';
+    }
+    num = parseInt(num);
+    var ret = [];
+    [4, 2, 1].forEach(function(possibleAlign) {
+      if (num == 0) return;
+      if (align >= possibleAlign) {
+        if (num <= UNROLL_LOOP_MAX*possibleAlign) {
+          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
+        } else {
+          ret.push('for (var $$i = 0, $$base = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + 
+                   '; $$i < ' + Math.floor(num/possibleAlign) + '; $$i++) {\n' +
+                   '  HEAP' + (possibleAlign*8) + '[$$base+$$i] = ' + value + '\n}');
+        }
+        num %= possibleAlign;
+      }
+    });
+    return ret.join('; ');
   }
 }
 
 var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
 
-function makeCopyValues(dest, src, num, type, modifier) {
-  function safety(to, from) {
-    to = to || (dest + '+' + 'mcpi');
-    from = from || (src + '+' + 'mcpi');
-    return (SAFE_HEAP ? 'SAFE_HEAP_COPY_HISTORY(' + to + ', ' + from + ')' : '');
+function makeCopyValues(dest, src, num, type, modifier, align) {
+  function unroll(type, num, jump) {
+    jump = jump || 1;
+    return range(num).map(function(i) {
+      return makeSetValue(dest, i*jump, makeGetValue(src, i*jump, type), type);
+    }).join('; ');
   }
   if (USE_TYPED_ARRAYS <= 1) {
-    if (isNumber(num)) {
-      if (parseInt(num) <= UNROLL_LOOP_MAX) {
-        return range(num).map(function(i) {
-          return type !== 'null' ? makeSetValue(dest, i, makeGetValue(src, i, type) + (modifier || ''), type)
-                           : // Null is special-cased: We copy over all heaps
-                            makeGetSlabs(dest, 'null', true).map(function(slab) {
-                              return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']';
-                            }).join('; ') + '; ' + safety(dest + '+' + i, src + '+' + i)
-        }).join('; ');
-      }
+    if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
+      return unroll(type, num);
     }
-    if (SAFE_HEAP) {
-      return 'for (var mcpi = 0; mcpi < ' + num + '; mcpi++) {\n' +
-        (type !== 'null' ? makeSetValue(dest, 'mcpi', makeGetValue(src, 'mcpi', type) + (modifier || ''), type)
-                         : // Null is special-cased: We copy over all heaps
-                          makeGetSlabs(dest, 'null', true).map(function(slab) {
-                            return slab + '[' + dest + '+mcpi]=' + slab + '[' + src + '+mcpi]'
-                          }).join('; ') + '; ' + safety()
-        ) + '\n' + '}';
-    }
-    if (USE_TYPED_ARRAYS == 0) {
-      return 'for (var mcpi_s=' + src + ',mcpi_e=' + src + '+' + num + ',mcpi_d=' + dest + '; mcpi_s<mcpi_e; mcpi_s++, mcpi_d++) {\n' +
-             '  HEAP[mcpi_d] = HEAP[mcpi_s];\n' +
-             '}';
-    } else { // USE_TYPED_ARRAYS == 1
-      if (isNumber(num) && parseInt(num) >= TYPED_ARRAY_SET_MIN) {
-        return 'IHEAP.set(IHEAP.subarray(' + src + ',' + src + '+' + num + '), ' + dest + '); ' +
-               'FHEAP.set(FHEAP.subarray(' + src + ',' + src + '+' + num + '), ' + dest + ')';
-      }
-      return 'for (var mcpi_s=' + src + ',mcpi_e=' + src + '+' + num + ',mcpi_d=' + dest + '; mcpi_s<mcpi_e; mcpi_s++, mcpi_d++) {\n' +
-             '  IHEAP[mcpi_d] = IHEAP[mcpi_s];' + (USE_FHEAP ? ' FHEAP[mcpi_d] = FHEAP[mcpi_s];' : '') + '\n' +
-             '}';
-    }
+    return 'for (var $$i = 0; $$i < ' + num + '; $$i++) {\n' +
+      makeSetValue(dest, '$$i', makeGetValue(src, i*jump, type), type) + '\n}';
   } else { // USE_TYPED_ARRAYS == 2
-    // TODO: optimize, add unrolling, etc.
-    var ret = '' +
-      'var src_, dest_, stop_, stop4_;\n' +
-      'src_ = ' + src + ';\n' +
-      'dest_ = ' + dest + ';\n' +
-      'stop_ = src_ + ' + num + ';\n' +
-      'if ((dest_%4) == (src_%4) && ' + num + ' > 8) {\n' +
-      '  while (src_%4 !== 0 && src_ < stop_) {\n' +
-      '    ' + safety('dest_', 'src_') + '; HEAP8[dest_++] = HEAP8[src_++];\n' +
-      '  }\n';
-    if (SAFE_HEAP || !(isNumber(num) && parseInt(num) >= TYPED_ARRAY_SET_MIN)) {
-      ret += '  src_ >>= 2;\n' +
-             '  dest_ >>= 2;\n' +
-             '  stop4_ = stop_ >> 2;\n' +
-             '  while (src_ < stop4_) {\n' +
-                  safety('(dest_<<2)+0', '(src_<<2)+0') + ';' + safety('(dest_<<2)+1', '(src_<<2)+1') + ';' + 
-                  safety('(dest_<<2)+2', '(src_<<2)+2') + ';' + safety('(dest_<<2)+3', '(src_<<2)+3') + (SAFE_HEAP ? ';\n' : '') +
-             '    HEAP32[dest_++] = HEAP32[src_++];\n' +
-             '  }\n' +
-             '  src_ <<= 2;\n' +
-             '  dest_ <<= 2;\n';
-    } else {
-      ret += '  var src4_ = src_ >> 2, stop4_ = stop_ >> 2, num4_ = (stop4_ - src4_) << 2;\n' +
-             '  HEAP32.set(HEAP32.subarray(src4_, stop4_), dest_ >> 2);\n' +
-             '  src_ += num4_; dest_ += num4_;\n';
+    // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
+    if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
+      return '_memcpy(' + dest + ', ' + src + ', ' + num + ', ' + align + ')';
     }
-    ret += '}' +
-      'while (src_ < stop_) {\n' +
-      '  ' + safety('dest_', 'src_') + '; HEAP8[dest_++] = HEAP8[src_++];\n' +
-      '}';
-    return ret;
+    num = parseInt(num);
+    var ret = [];
+    [4, 2, 1].forEach(function(possibleAlign) {
+      if (num == 0) return;
+      if (align >= possibleAlign) {
+        if (num <= UNROLL_LOOP_MAX*possibleAlign) {
+          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
+        } else {
+          ret.push('for (var $$i = 0, $$src = ' + src + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
+                                     '$$dest = ' + dest + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + '; ' +
+                   '$$i < ' + Math.floor(num/possibleAlign) + '; $$i++) {\n' +
+                   '  HEAP' + (possibleAlign*8) + '[$$dest+$$i] = HEAP' + (possibleAlign*8) + '[$$src+$$i]\n}');
+        }
+        num %= possibleAlign;
+      }
+    });
+    return ret.join('; ');
   }
-  return null;
 }
 
 var PLUS_MUL = set('+', '*');

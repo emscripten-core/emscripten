@@ -302,3 +302,7 @@ function sleep(secs) {
   while (Date.now() - start < secs*1000) {};
 }
 
+function log2(x) {
+  return Math.log(x)/Math.LN2;
+}
+
