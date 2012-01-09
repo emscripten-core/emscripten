@@ -1045,8 +1045,8 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
       return unroll(type, num);
     }
-    return 'for (var $$i = 0; $$i < ' + num + '; $$i++) {\n' +
-      makeSetValue(ptr, getFastValue(pos, '+', '$$i'), value, type) + '\n}';
+    return 'for (var $$dest = ' + getFastValue(ptr, '+', pos) + ', $$stop = $$dest + ' + num + '; $$dest < $$stop; $$dest++) {\n' +
+      makeSetValue('$$dest', '0', value, type) + '\n}';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     // TODO: optimize the case of numeric num but non-numeric value
@@ -1068,7 +1068,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
         if (num <= UNROLL_LOOP_MAX*possibleAlign) {
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         } else {
-          ret.push('for (var $$i = 0, $$dest = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
+          ret.push('for (var $$dest = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
                             '$$stop = $$dest + ' + Math.floor(num/possibleAlign) + '; $$dest < $$stop; $$dest++) {\n' +
                    '  HEAP' + (possibleAlign*8) + '[$$dest] = ' + values[possibleAlign] + '\n}');
         }
@@ -1100,9 +1100,11 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
     if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
       return unroll(type, num);
     }
-    dest = dest + '+$$i';
-    src = src + '+$$i';
-    return 'for (var $$i = 0; $$i < ' + num + '; $$i++) {\n' + unroll(type, 1) + ' }';
+    var oldDest = dest, oldSrc = src;
+    dest = '$$dest';
+    src = '$$src';
+    return 'for ($$src = ' + oldSrc + ', $$dest = ' + oldDest + ', $$stop = $$src + ' + num + '; $$src < $$stop; $$src++, $$dest++) {\n' +
+            unroll(type, 1) + ' }';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
