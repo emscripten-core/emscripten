@@ -1086,11 +1086,11 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
   function unroll(type, num, jump) {
     jump = jump || 1;
     return range(num).map(function(i) {
-      if (USE_TYPED_ARRAYS == 1 && type === 'null') {
+      if (USE_TYPED_ARRAYS <= 1 && type === 'null') {
         // Null is special-cased: We copy over all heaps
         return makeGetSlabs(dest, 'null', true).map(function(slab) {
-          return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']'; // TODO: Add SAFE_HEAP stuff
-        }).join('; ');
+          return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']';
+        }).join('; ') + (SAFE_HEAP ? '; ' + 'SAFE_HEAP_COPY_HISTORY(' + getFastValue(dest, '+', i) + ', ' +  getFastValue(src, '+', i) + ')' : '');
       } else {
         return makeSetValue(dest, i*jump, makeGetValue(src, i*jump, type), type);
       }
