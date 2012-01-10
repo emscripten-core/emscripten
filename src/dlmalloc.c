@@ -588,7 +588,10 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #define INSECURE 0
 #endif  /* INSECURE */
 #ifndef HAVE_MMAP
-#define HAVE_MMAP 1
+/* XXX Emscripten
+ * mmap uses malloc, so malloc can't use mmap
+ */
+#define HAVE_MMAP 0
 #endif  /* HAVE_MMAP */
 #ifndef MMAP_CLEARS
 #define MMAP_CLEARS 1
