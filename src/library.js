@@ -3177,10 +3177,13 @@ LibraryManager.library = {
 
   mmap__deps: ['$FS'],
   mmap: function(start, num, prot, flags, stream, offset) {
-    // FIXME: Leaky and non-share
-    //if (stream == -1) { // XXX We should handle -1 here, but this code leads to an infinite loop
-    //  return allocate(num, 'i8', ALLOC_NORMAL);
-    //}
+    /* FIXME: Since mmap is normally implemented at the kernel level,
+     * this implementation simply uses malloc underneath the call to
+     * mmap.
+     */
+    if (stream == -1) {
+      return allocate(num, 'i8', ALLOC_NORMAL);
+    }
     var info = FS.streams[stream];
     if (!info) return -1;
     return allocate(info.object.contents.slice(offset, offset+num),
@@ -3189,7 +3192,6 @@ LibraryManager.library = {
   __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
-    // FIXME: Not really correct at all.
     _free(start);
   },
 
@@ -3200,7 +3202,13 @@ LibraryManager.library = {
   // ==========================================================================
 
   malloc: function(bytes) {
-    return Runtime.staticAlloc(bytes || 1); // accept 0 as an input because libc implementations tend to
+    /* Over-allocate to make sure it is byte-aligned by 8.
+     * This will leak memory, but this is only the dummy
+     * implementation (replaced by dlmalloc normally) so
+     * not an issue.
+     */
+    ptr = Runtime.staticAlloc(bytes + 8);
+    return (ptr+8) & 0xFFFFFFF8;
   },
   _Znwj: 'malloc',
   _Znaj: 'malloc',
