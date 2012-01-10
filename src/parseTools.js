@@ -779,6 +779,7 @@ function generateStructTypes(type) {
     var start = index;
     for (var i = 0; i < typeData.fields.length; i++) {
       var type = typeData.fields[i];
+      if (!SAFE_HEAP && isPointerType(type)) type = '*'; // do not include unneeded type names without safe heap
       if (Runtime.isNumberType(type) || isPointerType(type)) {
         if (I64_MODE == 1 && type == 'i64') {
           ret[index++] = 'i64';
