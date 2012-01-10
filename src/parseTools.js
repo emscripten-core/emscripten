@@ -1032,8 +1032,8 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
   }
 }
 
-var SEEK_OPTIMAL_ALIGN_MIN = 40;
-var UNROLL_LOOP_MAX = 5;
+var SEEK_OPTIMAL_ALIGN_MIN = 20;
+var UNROLL_LOOP_MAX = 8;
 
 function makeSetValues(ptr, pos, value, type, num, align) {
   function unroll(type, num, jump, value$) {

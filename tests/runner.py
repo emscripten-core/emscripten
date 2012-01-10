@@ -5525,7 +5525,7 @@ elif 'benchmark' in str(sys.argv):
   Building.COMPILER_TEST_OPTS = []
 
   TEST_REPS = 10
-  TOTAL_TESTS = 7
+  TOTAL_TESTS = 8
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
@@ -5657,7 +5657,7 @@ elif 'benchmark' in str(sys.argv):
       '''
       self.do_benchmark(src, [], 'final: 720.')
 
-    def zzztest_copy(self):
+    def test_copy(self):
       src = r'''
         #include<stdio.h>
         struct vec {
@@ -5679,7 +5679,7 @@ elif 'benchmark' in str(sys.argv):
         };
         int main() {
           int total = 0;
-          for (int i = 0; i < 2500; i++) {
+          for (int i = 0; i < 1250; i++) {
             for (int j = 0; j < 1000; j++) {
               vec c(i, i+i%10, j*2, i%255, j%120, i%15);
               vec d(j+i%10, j*2, j%255, i%120, j%15, j);
@@ -5698,7 +5698,7 @@ elif 'benchmark' in str(sys.argv):
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'sum:3588\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
+      self.do_benchmark(src, [], 'sum:9928\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
