@@ -1564,7 +1564,7 @@ function processMathop(item) {
   if (item.type[0] === 'i') {
     bits = parseInt(item.type.substr(1));
   }
-  var bitsLeft = parseInt((item.param2 ? item.param2.ident : item.type).substr(1)); // remove i to leave the number of bits left after this operation
+  var bitsLeft = parseInt(((item.param2 && item.param2.ident) ? item.param2.ident : item.type).substr(1)); // remove i to leave the number of bits left after this operation
 
   function integerizeBignum(value) {
     return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigIntI');
