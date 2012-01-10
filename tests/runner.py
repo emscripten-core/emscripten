@@ -5465,7 +5465,7 @@ f.close()
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
-      output = Popen([COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+      output = Popen([NODE_JS, COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output)
 
     def test_js_optimizer(self):

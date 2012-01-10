@@ -632,7 +632,7 @@ class Building:
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
-    output, err = Popen([coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
+    output, err = Popen([NODE_JS, coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
     assert len(output) > 0, 'Error in eliminator: ' + err + '\n\n' + output
     filename += '.el.js'
     f = open(filename, 'w')
