@@ -774,12 +774,15 @@ function analyzer(data, sidePass) {
           assert(isNumber(item.allocatedNum));
           item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
             calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
+          if (USE_TYPED_ARRAYS === 2) {
+            // We need to keep the stack aligned
+            item.allocatedSize = Runtime.forceAlign(item.allocatedSize, QUANTUM_SIZE);
+          }
         }
         var index = 0;
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i].value;
           if (!item || item.intertype != 'alloca') break;
-          if (USE_TYPED_ARRAYS === 2) index = Runtime.forceAlign(index, Math.min(item.allocatedSize, QUANTUM_SIZE));
           item.allocatedIndex = index;
           index += item.allocatedSize;
           delete item.allocatedSize;

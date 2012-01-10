@@ -7,14 +7,14 @@
 // itself is as optimized as possible - no unneeded runtime checks).
 
 var RuntimeGenerator = {
-  alloc: function(size, type, init, sep) {
+  alloc: function(size, type, init, sep, ignoreAlign) {
     sep = sep || ';';
     var ret = type + 'TOP';
     if (init) {
       ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
     }
     ret += sep + type + 'TOP += ' + size;
-    if ({{{ QUANTUM_SIZE }}} > 1) {
+    if ({{{ QUANTUM_SIZE }}} > 1 && !ignoreAlign) {
       ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
     }
     return ret;
@@ -24,7 +24,8 @@ var RuntimeGenerator = {
   stackAlloc: function(size, sep) {
     sep = sep || ';';
     if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + sep;
-    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep);
+    //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
+    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
       ret += sep + 'assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
     }
@@ -33,8 +34,13 @@ var RuntimeGenerator = {
 
   stackEnter: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
-    if (USE_TYPED_ARRAYS === 2) initial = Runtime.forceAlign(initial);
     var ret = 'var __stackBase__  = STACKTOP; STACKTOP += ' + initial;
+    if (USE_TYPED_ARRAYS == 2) {
+      assert(initial % QUANTUM_SIZE == 0);
+      if (ASSERTIONS) {
+        ret += '; assert(STACKTOP % {{{ QUANTUM_SIZE }}} == 0, "Stack is unaligned")';
+      }
+    }
     if (ASSERTIONS) {
       ret += '; assert(STACKTOP < STACK_MAX, "Ran out of stack")';
     }

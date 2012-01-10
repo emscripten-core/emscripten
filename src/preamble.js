@@ -643,7 +643,7 @@ Module['HEAPU32'] = HEAPU32;
 Module['HEAPF32'] = HEAPF32;
 #endif
 
-STACK_ROOT = STACKTOP = alignMemoryPage(10);
+STACK_ROOT = STACKTOP = Runtime.alignMemory(STATICTOP);
 STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
 STATICTOP = alignMemoryPage(STACK_MAX);
