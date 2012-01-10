@@ -1063,7 +1063,18 @@ function JSify(data, functionsOnly, givenFunctions) {
         varargs = [0];
         varargsTypes = ['i32'];
       }
-      varargs = makePointer('[' + varargs + ']', 0, 'ALLOC_STACK', varargsTypes);
+      var offset = 0;
+      varargs = '(tempInt=' + RuntimeGenerator.stackAlloc(varargs.length, ',') + ',' +
+                varargs.map(function(arg, i) {
+                  var type = varargsTypes[i];
+                  if (type == 0) return null;
+                  if (I64_MODE == 1 && type == 'i64') type = 'i32'; // We have [i64, 0, 0, 0, i32, 0, 0, 0] in the layout at this point
+                  var ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE);
+                  offset += Runtime.getNativeFieldSize(type);
+                  return ret;
+                }).filter(function(arg) {
+                  return arg !== null;
+                }).join(',') + ',tempInt)';
     }
 
     args = args.concat(varargs);

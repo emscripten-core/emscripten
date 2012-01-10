@@ -7,24 +7,26 @@
 // itself is as optimized as possible - no unneeded runtime checks).
 
 var RuntimeGenerator = {
-  alloc: function(size, type, init) {
+  alloc: function(size, type, init, sep) {
+    sep = sep || ';';
     var ret = type + 'TOP';
     if (init) {
-      ret += '; _memset(' + type + 'TOP, 0, ' + size + ')';
+      ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
     }
-    ret += '; ' + type + 'TOP += ' + size;
+    ret += sep + type + 'TOP += ' + size;
     if ({{{ QUANTUM_SIZE }}} > 1) {
-      ret += ';' + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
+      ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
     }
     return ret;
   },
 
   // An allocation that lives as long as the current function call
-  stackAlloc: function(size) {
-    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ';';
-    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK);
+  stackAlloc: function(size, sep) {
+    sep = sep || ';';
+    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + sep;
+    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep);
     if (ASSERTIONS) {
-      ret += '; assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
+      ret += sep + 'assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
     }
     return ret;
   },
@@ -63,7 +65,7 @@ var RuntimeGenerator = {
     if (typeof quantum !== 'number') {
       quantum = '(quantum ? quantum : {{{ QUANTUM_SIZE }}})';
     }
-    return target + ' = ' + Runtime.forceAlign(target, quantum) + ';';
+    return target + ' = ' + Runtime.forceAlign(target, quantum);
   }
 };
 
