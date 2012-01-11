@@ -5468,6 +5468,14 @@ f.close()
       output = Popen([NODE_JS, COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
       self.assertIdentical(expected, output)
 
+    def test_fix_closure(self):
+      input = path_from_root('tests', 'test-fix-closure.js')
+      expected = path_from_root('tests', 'test-fix-closure.out.js')
+      Popen(['python', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
+      output = open('out.js').read()
+      assert '0,uninline_Q_269,0' in output
+      assert run_js(input) == run_js('out.js')
+
     def test_js_optimizer(self):
       for input, expected, passes in [
         (open(path_from_root('tools', 'test-js-optimizer.js')).read(), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
