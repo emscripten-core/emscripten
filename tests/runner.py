@@ -1189,6 +1189,42 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
         Settings.DISABLE_EXCEPTION_CATCHING = 1
         self.do_run(src, 'Compiled code throwing an exception')
+        
+        src = '''
+        #include <iostream>
+		
+		class MyException
+		{
+			
+		};
+		
+		int function()
+		{
+			throw MyException();
+		}
+		
+		int function2()
+		{
+			return function();
+		}
+		
+		int main()
+		{
+			try 
+			{
+				function2();
+			}
+			catch (MyException e)
+			{
+				std::cout << "Exception catched" ;
+			}
+		
+			return 0;
+		}
+		'''
+        
+        Settings.DISABLE_EXCEPTION_CATCHING = 0
+        self.do_run(src, 'Exception catched')
 
     def test_typed_exceptions(self):
         return self.skip('TODO: fix this for llvm 3.0')

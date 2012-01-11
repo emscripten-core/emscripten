@@ -945,7 +945,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
   makeFuncLineActor('landingpad', function(item) {
     // Just a stub
-    return '{ f0: 0, f1: 0 }';
+    return '{ f0: ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') +
+	 	   ', f1:' + makeGetValue('_llvm_eh_exception.buf', '4', 'void*') + ' }';
   });
   makeFuncLineActor('load', function(item) {
     var value = finalizeLLVMParameter(item.pointer);
