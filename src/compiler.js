@@ -8,7 +8,7 @@ try {
 } catch(e) {}
 
 
-// The environment setup code appears here, in shell.js, and in tests/hello_world.js because it can't be shared. Keep them in sync!
+// The environment setup code appears here, in shell.js, in js_optimizer.js and in tests/hello_world.js because it can't be shared. Keep them in sync!
 // *** Environment setup code ***
 var arguments_ = [];
 
