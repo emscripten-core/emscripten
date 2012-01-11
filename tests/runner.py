@@ -5479,14 +5479,14 @@ f.close()
 
     def test_js_optimizer(self):
       for input, expected, passes in [
-        (open(path_from_root('tools', 'test-js-optimizer.js')).read(), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
+        (path_from_root('tools', 'test-js-optimizer.js'), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
          ['hoistMultiples', 'loopOptimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost']),
-        (open(path_from_root('tools', 'test-js-optimizer-t2c.js')).read(), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
+        (path_from_root('tools', 'test-js-optimizer-t2c.js'), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
          ['simplifyExpressionsPre', 'optimizeShiftsConservative']),
-        (open(path_from_root('tools', 'test-js-optimizer-t2.js')).read(), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
+        (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
          ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
       ]:
-        output = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE).communicate(input)[0]
+        output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
 elif 'benchmark' in str(sys.argv):

@@ -615,8 +615,7 @@ class Building:
 
     if type(passes) == str:
       passes = [passes]
-    input = open(filename, 'r').read()
-    output, err = Popen([NODE_JS, JS_OPTIMIZER] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
+    output, err = Popen([NODE_JS, JS_OPTIMIZER, filename] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + err + '\n\n' + output
     filename += '.jo.js'
     f = open(filename, 'w')
