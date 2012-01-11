@@ -5473,7 +5473,7 @@ f.close()
       expected = path_from_root('tests', 'test-fix-closure.out.js')
       Popen(['python', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
       output = open('out.js').read()
-      assert '0,uninline_Q_14782,0' in output
+      assert '0,zzz_Q_39fa,0' in output
       assert 'function(a,c)' not in output # should be uninlined, so it gets a name
       assert run_js(input) == run_js('out.js')
 

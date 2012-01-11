@@ -71,9 +71,9 @@ while True:
       text = line[curr:next]
       #print 'zz func!', text
       assert text.startswith('function(')
-      ident = 'uninline_' + target + '_' + str(curr) # these idents should be unique, but might in theory collide with the rest of the JS code! XXX
+      ident = 'zzz_' + target + '_' + hex(curr)[2:] # these idents should be unique, but might in theory collide with the rest of the JS code! XXX
       line = line[:curr] + ident + line[next:]
-      add += 'function ' + ident + '(' + text[len('function('):]
+      add += 'function ' + ident + '(' + text[len('function('):] + '\n'
       #print 'zz after func fix:', line[curr:curr+100]
     while line[curr] != ',' and line[curr] != ']':
       curr += 1
@@ -81,7 +81,7 @@ while True:
   curr += 1
   assert line[curr] == ';', 'odd char: ' + str([line[curr], line[curr-10:curr+10]])
   curr += 1
-  line = line[:curr] + ''.join(add) + line[curr:]
+  line = line[:curr] + '\n' + ''.join(add) + line[curr:]
 
 outfile.write(line)
 outfile.close()
