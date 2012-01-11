@@ -136,6 +136,12 @@ except:
     print 'ERROR: ~/.emscripten does not seem to have JS_ENGINES or JS_ENGINE set up'
     raise
 
+try:
+  NODE_JS_SAFE # Workaround for node issue 2476. Use node trunk as NODE_JS_SAFE, it is slower, but it doesn't suffer from that bug.
+               # Define NODE_JS_SAFE in ~/.emscripten to use that workaround
+except:
+  NODE_JS_SAFE = NODE_JS
+
 # Additional compiler options
 
 try:
@@ -615,7 +621,7 @@ class Building:
 
     if type(passes) == str:
       passes = [passes]
-    output, err = Popen([NODE_JS, JS_OPTIMIZER, filename] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
+    output, err = Popen([NODE_JS_SAFE, JS_OPTIMIZER, filename] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + err + '\n\n' + output
     filename += '.jo.js'
     f = open(filename, 'w')
