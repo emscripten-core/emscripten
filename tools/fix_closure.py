@@ -22,6 +22,7 @@ class ObjectParser:
     '''
     assert line[s-1] == ',' # we are a new element, after a comma
     curly = 0
+    paren = 0
     string = 0
     is_func = 0
     i = s
@@ -35,7 +36,11 @@ class ObjectParser:
           curly += 1
         elif c == '}':
           curly -= 1
-        elif not curly:
+        elif c == '(':
+          paren += 1
+        elif c == ')':
+          paren -= 1
+        elif not curly and not paren:
           if c in [',', ']']:
             return (i, is_func and line[s:i].startswith('function('))
       else:

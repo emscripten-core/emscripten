@@ -5474,6 +5474,7 @@ f.close()
       Popen(['python', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
       output = open('out.js').read()
       assert '0,uninline_Q_269,0' in output
+      assert 'function(a,c)' not in output # should be uninlined, so it gets a name
       assert run_js(input) == run_js('out.js')
 
     def test_js_optimizer(self):
