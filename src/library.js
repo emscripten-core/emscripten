@@ -4312,8 +4312,8 @@ LibraryManager.library = {
     print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
 #endif
     {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
-    {{{ makeSetValue('_llvm_eh_exception.buf', '4', 'type', 'void*') }}}
-    {{{ makeSetValue('_llvm_eh_exception.buf', '8', 'destructor', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'destructor', 'void*') }}}
     throw ptr;
   },
   __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
@@ -4327,7 +4327,7 @@ LibraryManager.library = {
   },
   llvm_eh_selector__jsargs: true,
   llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = {{{ makeGetValue('_llvm_eh_exception.buf', '4', 'void*') }}}
+    var type = {{{ makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') }}}
     for (var i = 2; i < arguments.length; i++) {
       if (arguments[i] ==  type) return type;
     }
@@ -4351,13 +4351,13 @@ LibraryManager.library = {
     // Clear state flag.
     __THREW__ = false;
     // Clear type.
-    {{{ makeSetValue('_llvm_eh_exception.buf', '4', '0', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, '0', 'void*') }}}
     // Call destructor if one is registered then clear it.
     var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
-    var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', '8', 'void*') }}};
+    var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'void*') }}};
     if (destructor) {
       FUNCTION_TABLE[destructor](ptr);
-      {{{ makeSetValue('_llvm_eh_exception.buf', '8', '0', 'i32') }}}
+      {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}}
     }
     // Free ptr if it isn't null.
     if (ptr) {
