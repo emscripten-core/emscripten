@@ -1459,6 +1459,26 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         '''
         self.do_run(src, 'sum:9780*')
 
+        # We should not blow up the stack with numerous varargs
+
+        src = r'''
+          #include <stdio.h>
+          #include <stdlib.h>
+
+          void func(int i) {
+            printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+          }
+          int main() {
+            for (int i = 0; i < 1024; i++)
+              func(i);
+            printf("ok!\n");
+            return 0;
+          }
+        '''
+        Settings.TOTAL_STACK = 1024
+        self.do_run(src, 'ok!')
+
     def test_array2(self):
         src = '''
           #include <stdio.h>

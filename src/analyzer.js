@@ -788,26 +788,49 @@ function analyzer(data, sidePass) {
           delete item.allocatedSize;
         }
         func.initialStack = index;
-        // We need to note if stack allocations other than initial allocs can happen here
-        // (for example, via alloca). If so, we need to rewind the stack when we leave.
         func.otherStackAllocations = false;
-        var finishedInitial = false;
-        for (var i = 0; i < lines.length; i++) {
-          var item = lines[i].value;
-          if (!item || item.intertype != 'alloca') {
-            finishedInitial = true;
-            continue;
+        while (func.initialStack == 0) { // one-time loop with possible abort in the middle
+          // If there is no obvious need for stack management, perhaps we don't need it
+          // (we try to optimize that way with SKIP_STACK_IN_SMALL). However,
+          // we need to note if stack allocations other than initial allocs can happen here
+          // If so, we need to rewind the stack when we leave.
+
+          // By-value params are causes of additional allocas (although we could in theory make them normal allocas too)
+          func.params.forEach(function(param) {
+            if (param.byVal) {
+              func.otherStackAllocations = true;
+            }
+          });
+          if (func.otherStackAllocations) break;
+
+          // Allocas
+          var finishedInitial = false;
+          for (var i = 0; i < lines.length; i++) {
+            var item = lines[i].value;
+            if (!item || item.intertype != 'alloca') {
+              finishedInitial = true;
+              continue;
+            }
+            if (item.intertype == 'alloca' && finishedInitial) {
+              func.otherStackAllocations = true;
+              break;
+            }
           }
-          if (item.intertype == 'alloca' && finishedInitial) {
-            func.otherStackAllocations = true;
+          if (func.otherStackAllocations) break;
+
+          // Varargs
+          for (var i = 0; i < lines.length; i++) {
+            var item = lines[i];
+            if (item.value) item = item.value;
+            if (item.intertype == 'call' && isVarArgsFunctionType(item.type)) {
+              func.otherStackAllocations = true;
+              break;
+            }
           }
+          if (func.otherStackAllocations) break;
+
+          break;
         }
-        // by-value params are also causes of additional allocas (although we could in theory make them normal allocas too)
-        func.params.forEach(function(param) {
-          if (param.byVal) {
-            func.otherStackAllocations = true;
-          }
-        });
       });
       this.forwardItem(data, 'Relooper');
     }
