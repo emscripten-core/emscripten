@@ -1192,49 +1192,49 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         
         src = '''
         #include <iostream>
-		
-		class MyException
-		{
-		public:
-			MyException(){ std::cout << "Construct..."; }
+        
+        class MyException
+        {
+        public:
+            MyException(){ std::cout << "Construct..."; }
             MyException( const MyException & ) { std::cout << "Copy..."; }
-			~MyException(){ std::cout << "Destruct..."; }
-		};
-		
-		int function()
-		{
-			std::cout << "Throw...";
-			throw MyException();
-		}
-		
-		int function2()
-		{
-			return function();
-		}
-		
-		int main()
-		{
-			try 
-			{
-				function2();
-			}
-			catch (MyException & e)
-			{
-				std::cout << "Catched...";
-			}
+            ~MyException(){ std::cout << "Destruct..."; }
+        };
+        
+        int function()
+        {
+            std::cout << "Throw...";
+            throw MyException();
+        }
+        
+        int function2()
+        {
+            return function();
+        }
+        
+        int main()
+        {
+            try 
+            {
+                function2();
+            }
+            catch (MyException & e)
+            {
+                std::cout << "Catched...";
+            }
              
             try 
-			{
-				function2();
-			}
-			catch (MyException e)
-			{
-				std::cout << "Catched...";
-			}
-		
-			return 0;
-		}
-		'''
+            {
+                function2();
+            }
+            catch (MyException e)
+            {
+                std::cout << "Catched...";
+            }
+        
+            return 0;
+        }
+        '''
         
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
