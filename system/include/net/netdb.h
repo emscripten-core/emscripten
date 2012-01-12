@@ -1,4 +1,11 @@
 
+#ifndef _NET_NETDB_H
+#define _NET_NETDB_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct addrinfo
 {
   int ai_flags;
@@ -24,4 +31,10 @@ struct hostent
   int    h_length;
   char **h_addr_list;
 };
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 
