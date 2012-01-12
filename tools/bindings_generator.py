@@ -33,6 +33,9 @@ We generate the following:
                     you to run something like closure compiler advanced opts on
                     the library+bindings, and the bindings will remain accessible.
 
+            prevent_dfe: If true, will use all the generated C functions, to prevent
+                         dead function elimination from removing them.
+
           For example, JSON can be { "ignored": "class1,class2::func" }.
 
 The C bindings file is basically a tiny C wrapper around the C++ code.
@@ -63,6 +66,7 @@ basename = sys.argv[1]
 ignored = []
 type_processor = lambda t: t
 export = 0
+prevent_dfe = 0
 
 if '--' in sys.argv:
   index = sys.argv.index('--')
@@ -75,6 +79,8 @@ if '--' in sys.argv:
     type_processor = eval(json['type_processor'])
   if json.get('export'):
     export = json['export']
+  if json.get('prevent_dfe'):
+    prevent_dfe = eval(json['prevent_dfe'])
 
   print 'zz ignoring', ignored
 
@@ -163,7 +169,7 @@ for classname, clazz in classes.iteritems():
         method['operator'] = '  return *self *= arg0;'
       elif 'mul' in method['name']:
         method['name'] = 'op_mul'
-        method['operator'] = '  static %s ret = *self * arg0; return ret;' % method['returns']
+        method['operator'] = '  static %s ret; ret = *self * arg0; return ret;' % method['returns']
       elif 'div' in method['name']:
         method['name'] = 'op_div'
         method['operator'] = '  return *self /= arg0;'
@@ -598,7 +604,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         if method.get('operator'):
           gen_c.write(method['operator'])
         else:
-          gen_c.write('''  static %s ret = %s%s(%s);
+          gen_c.write('''  static %s ret; ret = %s%s(%s);
   return ret;''' % (method['returns'],
         callprefix, actualmname,
         ', '.join(justargs(args)[:i])))
@@ -754,29 +760,34 @@ for classname, clazz in classes.iteritems():
 # Finish up
 
 gen_c.write('''
+
 }
-
-#include <stdio.h>
-
-struct EmscriptenEnsurer
-{
-  EmscriptenEnsurer() {
-    // Actually use the binding functions, so DFE will not eliminate them
-    // FIXME: A negative side effect of this is that they take up space in FUNCTION_TABLE
-    int sum = 0;
-    void *seen = (void*)%s;
-''' % c_funcs[0])
-
-for func in c_funcs[1:]:
-  gen_c.write('''    sum += (void*)%s == seen;
-''' % func)
-
-gen_c.write('''    printf("(%d)\\n", sum);
-  }
-};
-
-EmscriptenEnsurer emscriptenEnsurer;
 ''')
+
+if prevent_dfe:
+  gen_c.write('''
+
+  #include <stdio.h>
+
+  struct EmscriptenEnsurer
+  {
+    EmscriptenEnsurer() {
+      // Actually use the binding functions, so DFE will not eliminate them
+      // FIXME: A negative side effect of this is that they take up space in FUNCTION_TABLE
+      int sum = 0;
+      void *seen = (void*)%s;
+  ''' % c_funcs[0])
+
+  for func in c_funcs[1:]:
+    gen_c.write('''    sum += (void*)%s == seen;
+  ''' % func)
+
+  gen_c.write('''    printf("(%d)\\n", sum);
+    }
+  };
+
+  EmscriptenEnsurer emscriptenEnsurer;
+  ''')
 
 gen_c.close()
 gen_js.close()
