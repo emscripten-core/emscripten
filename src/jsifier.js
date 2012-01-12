@@ -926,7 +926,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
-    return (EXCEPTION_DEBUG ? 'print("Resuming exception");' : '') + 'throw [0,0];';
+    return (EXCEPTION_DEBUG ? 'print("Resuming exception");' : '') + 
+    	'throw ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') + ';';
   });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
