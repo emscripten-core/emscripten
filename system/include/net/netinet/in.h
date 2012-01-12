@@ -6,6 +6,12 @@
 extern "C" {
 #endif
 
+enum {
+    IPPROTO_IP = 0,
+#define IPPROTO_IP IPPROTO_IP
+    IPPROTO_MAX
+};
+
 #define INET_ADDRSTRLEN 16
 
 #define INADDR_ANY 0
