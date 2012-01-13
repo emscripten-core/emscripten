@@ -155,6 +155,14 @@ Options that are modified or new in %s include:
                            list of arguments, for example, <cmd> of
                            "python processor.py" will cause a python
                            script to be run.
+  --compress <on>          0: Do not compress the generated JavaScript's
+                              whitespace (default if closure compiler
+                              will not be run)
+                           1: Compress the generated JavaScript's
+                              whitespace (default if closure compiler
+                              will be run). Note that this by itself
+                              will not minify the code (closure does
+                              that)
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -272,6 +280,7 @@ try:
   llvm_opt_level = None
   closure = None
   js_transform = None
+  compress_whitespace = None
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -300,6 +309,11 @@ try:
       js_transform = newargs[i+1]
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i].startswith('--compress'):
+      check_bad_eq(newargs[i])
+      compress_whitespace = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
     elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
       f = open(newargs[i+1], 'w')
       f.write('\n')
@@ -310,6 +324,8 @@ try:
 
   if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
   if closure is None: closure = 1 if opt_level >= 2 else 0
+  if compress_whitespace is None:
+    compress_whitespace = closure # if closure is run, compress whitespace
 
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
@@ -545,6 +561,10 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     final = shared.Building.js_optimizer(final, 'simplifyExpressionsPost')
     if DEBUG: save_intermediate('simplifyExpressionsPost')
+
+  if compress_whitespace:
+    final = shared.Building.js_optimizer(final, 'compress')
+    if DEBUG: save_intermediate('compress')
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':

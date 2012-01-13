@@ -5404,7 +5404,7 @@ Options that are modified or new in %s include:
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
           if closure:
-            assert 'Module._main = ' in generated, 'closure compiler should have been run'
+            assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
@@ -5415,6 +5415,7 @@ Options that are modified or new in %s include:
             if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
+            assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [

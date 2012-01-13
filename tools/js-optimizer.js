@@ -127,10 +127,10 @@ function srcToAst(src) {
   return uglify.parser.parse(src);
 }
 
-function astToSrc(ast) {
+function astToSrc(ast, compress) {
     return uglify.uglify.gen_code(ast, {
     ascii_only: true,
-    beautify: true,
+    beautify: !compress,
     indent_level: 2
   });
 }
@@ -1091,6 +1091,8 @@ function loopOptimizer(ast) {
 
 // Passes table
 
+var compress = false;
+
 var passes = {
   dumpAst: dumpAst,
   dumpSrc: dumpSrc,
@@ -1102,7 +1104,8 @@ var passes = {
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
-  loopOptimizer: loopOptimizer
+  loopOptimizer: loopOptimizer,
+  compress: function() { compress = true; }
 };
 
 // Main
@@ -1120,6 +1123,6 @@ arguments_.slice(1).forEach(function(arg) {
 //printErr('output: ' + dump(ast));
 //printErr('output: ' + astToSrc(ast));
 ast = srcToAst(astToSrc(ast)); // re-parse, to simplify a little
-print(astToSrc(ast));
+print(astToSrc(ast, compress));
 if (metadata) print(metadata + '\n');
 
