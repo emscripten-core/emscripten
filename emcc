@@ -309,10 +309,11 @@ try:
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
-  if closure is None: closure = 1 if opt_level >= 2 else 0
 
-  if closure:
-    assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
+  if closure is None: closure = 1 if opt_level >= 2 else 0
+  if closure and not os.path.exists(shared.CLOSURE_COMPILER):
+    print >> sys.stderr, 'emcc: warning: not running Closure compiler, it does not exist at %s' % shared.CLOSURE_COMPILER
+    closure = 0
 
   settings_changes = []
   for i in range(len(newargs)):
