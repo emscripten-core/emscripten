@@ -42,7 +42,13 @@ int __flt_rounds(void);
 __END_DECLS
 
 #define FLT_RADIX	2		/* b */
-#define FLT_ROUNDS	__flt_rounds()
+/*
+ * XXX Emscripten
+ * See float.h documentation for these values
+ * 1 seems best for JavaScript instead of:
+ * #define FLT_ROUNDS	__flt_rounds()
+ */
+#define FLT_ROUNDS	1
 #if __ISO_C_VISIBLE >= 1999
 #define FLT_EVAL_METHOD	2		/* long double */
 #endif
