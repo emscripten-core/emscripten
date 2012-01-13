@@ -27,6 +27,13 @@ DIR  *readdir(DIR *);
 int   closedir(DIR *dirp);
 void  rewinddir(DIR *dirp);
 
+enum {
+  DT_UNKNOWN = 0,
+#define DT_UNKNOWN DT_UNKNOWN
+  DT_DIR = 4
+#define DT_DIR DT_DIR
+};
+
 #ifdef __cplusplus
 }
 #endif
