@@ -947,10 +947,12 @@ function analyzer(data, sidePass) {
         });
 
         // First, find allInLabels
-        var worked = true;
-        while (worked) {
-          worked = false;
-          labels.forEach(function(label) {
+        var more = true, nextModified, modified = set(getLabelIds(labels));
+        while (more) {
+          more = false;
+          nextModified = {};
+          for (var labelId in modified) {
+            var label = labelsDict[labelId];
             var temp = label.inLabels;
             label.inLabels.forEach(function(label2Id) {
               temp = temp.concat(labelsDict[label2Id].allInLabels);
@@ -958,9 +960,13 @@ function analyzer(data, sidePass) {
             temp = dedup(temp);
             if (temp.length > label.allInLabels.length) {
               label.allInLabels = temp;
-              worked = true;
+              for (var i = 0; i < label.outLabels.length; i++) {
+                nextModified[label.outLabels[i]] = true;
+              }
+              more = true;
             }
-          });
+          }
+          modified = nextModified;
         }
 
         // Infer allOutLabels from allInLabels, they are mirror images
