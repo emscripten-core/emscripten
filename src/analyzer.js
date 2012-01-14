@@ -951,7 +951,7 @@ function analyzer(data, sidePass) {
           worked = false;
           labels.forEach(function(label) {
             function inout(s, l) {
-              var temp = label[s].slice(0);
+              var temp = label[s];
               label[s].forEach(function(label2Id) {
                 temp = temp.concat(labelsDict[label2Id][l]);
               });
