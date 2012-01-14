@@ -283,6 +283,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
         if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check ~/.emscripten and settings.py and the paths therein.')
         for engine in js_engines:
+          engine = filter(lambda arg: arg != '-n', engine) # SpiderMonkey issue 716255
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
               js_output = output_nicerizer(js_output)
