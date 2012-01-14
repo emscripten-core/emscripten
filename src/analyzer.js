@@ -956,8 +956,7 @@ function analyzer(data, sidePass) {
                 temp = temp.concat(labelsDict[label2Id][l]);
               });
               temp = dedup(temp);
-              temp.sort();
-              if (JSON.stringify(label[l]) != JSON.stringify(temp)) {
+              if (temp.length > label[l].length) {
                 label[l] = temp;
                 worked = true;
               }
