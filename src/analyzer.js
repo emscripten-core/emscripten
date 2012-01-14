@@ -946,25 +946,24 @@ function analyzer(data, sidePass) {
           label.allOutLabels = [];
         });
 
+        // First, find allInLabels
         var worked = true;
         while (worked) {
           worked = false;
           labels.forEach(function(label) {
-            function inout(s, l) {
-              var temp = label[s];
-              label[s].forEach(function(label2Id) {
-                temp = temp.concat(labelsDict[label2Id][l]);
-              });
-              temp = dedup(temp);
-              if (temp.length > label[l].length) {
-                label[l] = temp;
-                worked = true;
-              }
+            var temp = label.inLabels;
+            label.inLabels.forEach(function(label2Id) {
+              temp = temp.concat(labelsDict[label2Id].allInLabels);
+            });
+            temp = dedup(temp);
+            if (temp.length > label.allInLabels.length) {
+              label.allInLabels = temp;
+              worked = true;
             }
-            inout('inLabels', 'allInLabels');
           });
         }
 
+        // Infer allOutLabels from allInLabels, they are mirror images
         labels.forEach(function(label) {
           label.allInLabels.forEach(function(inLabelId) {
             labelsDict[inLabelId].allOutLabels.push(label.ident);
