@@ -962,9 +962,14 @@ function analyzer(data, sidePass) {
               }
             }
             inout('inLabels', 'allInLabels');
-            inout('outLabels', 'allOutLabels');
           });
         }
+
+        labels.forEach(function(label) {
+          label.allInLabels.forEach(function(inLabelId) {
+            labelsDict[inLabelId].allOutLabels.push(label.ident);
+          });
+        });
 
         labels.forEach(function(label) {
           if (dcheck('relooping')) {
