@@ -786,7 +786,7 @@ function hasSideEffects(node) { // this is 99% incomplete and wrong! It just wor
 function vacuum(ast) {
   function isEmpty(node) {
     if (!node) return true;
-    if (jsonCompare(node, emptyNode())) return true;
+    if (node[0] == 'toplevel' && (!node[1] || node[1].length == 0)) return true;
     if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
     return false;
   }
@@ -830,10 +830,10 @@ function vacuum(ast) {
         } else if (type == 'defun') {
           ret = simplifyList(node, 3);
           if (ret) return ret;
-        } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
+        } else if (type == 'do' && node[1][0] == 'num' && node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
           more = true;
           return emptyNode();
-        } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
+        } else if (type == 'label' && node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
           more = true;
           return emptyNode();
         } else if (type == 'if') {
