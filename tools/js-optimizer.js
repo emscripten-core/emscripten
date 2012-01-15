@@ -911,23 +911,13 @@ function hoistMultiples(ast) {
         var post = statements[i+1];
         // Look into some block types. shell() will then recreate the shell that we looked into
         var postInner = post;
-        var shell = function(x) { return x };
+        var shellLabel = false, shellDo = false;
         while (true) {
-          /*if (postInner[0] == 'block') {
-            postInner = postInner[1][0];
-          } else */if (postInner[0] == 'label') {
-            shell = (function(oldShell, oldPostInner) {
-              return function(x) {
-                return oldShell(['label', oldPostInner[1], x]);
-              };
-            })(shell, postInner);
+          if (postInner[0] == 'label') {
+            shellLabel = postInner[1];
             postInner = postInner[2];
           } else if (postInner[0] == 'do') {
-            shell = (function(oldShell, oldPostInner) {
-              return function(x) {
-                return oldShell(['do', copy(oldPostInner[1]), ['block', [x]]]);
-              }
-            })(shell, postInner);;
+            shellDo = postInner[1];
             postInner = postInner[2][1][0];
           } else {
             break; // give up
@@ -960,7 +950,12 @@ function hoistMultiples(ast) {
           postInner = postInner[3]; // Proceed to look in the else clause
         }
         if (modifiedI) {
-          statements[i] = shell(pre);
+          if (shellDo) {
+            statements[i] = ['do', shellDo, ['block', [statements[i]]]];
+          }
+          if (shellLabel) {
+            statements[i] = ['label', shellLabel, statements[i]];
+          }
         }
       }
       if (modified) return node;
