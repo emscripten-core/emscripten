@@ -795,27 +795,27 @@ function vacuum(ast) {
     if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
     return false;
   }
-  var more = true;
-  while (more) {
-    more = false;
-    function simplifyList(node, i) {
-      var changed = false;
-      var pre = node[i].length;
-      node[i] = node[i].filter(function(node) { return !isEmpty(node) });
-      if (node[i].length < pre) changed = true;
-      // Also, seek blocks with single items we can simplify
-      node[i] = node[i].map(function(subNode) {
-        if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
-          return subNode[1][0];
+  traverseGeneratedFunctions(ast, function(node) {
+    var more = true;
+    while (more) {
+      more = false;
+      function simplifyList(node, i) {
+        var changed = false;
+        var pre = node[i].length;
+        node[i] = node[i].filter(function(node) { return !isEmpty(node) });
+        if (node[i].length < pre) changed = true;
+        // Also, seek blocks with single items we can simplify
+        node[i] = node[i].map(function(subNode) {
+          if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
+            return subNode[1][0];
+          }
+          return subNode;
+        });
+        if (changed) {
+          more = true;
+          return node;
         }
-        return subNode;
-      });
-      if (changed) {
-        more = true;
-        return node;
       }
-    }
-    traverseGeneratedFunctions(ast, function(node) {
       simplifyNotComps(node);
       traverse(node, function(node, type) {
         var ret;
@@ -879,8 +879,8 @@ function vacuum(ast) {
           } break;
         }
       });
-    });
-  }
+    }
+  });
 }
 
 function getStatements(node) {
@@ -998,7 +998,7 @@ function hoistMultiples(ast) {
       if (node[0] == 'block' && node[1].length == 1) node = node[1][0];
       return node;
     }
-    vacuum([0, [node]]);
+    vacuum(node);
     traverse(node, function(node, type) {
       var statements = getStatements(node);
       if (!statements) return;
