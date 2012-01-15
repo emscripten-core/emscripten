@@ -919,13 +919,11 @@ function analyzer(data, sidePass) {
       // Tools
 
       function calcLabelBranchingData(labels, labelsDict) {
-        item.functions.forEach(function(func) {
-          labels.forEach(function(label) {
-            label.outLabels = [];
-            label.inLabels = [];
-            label.hasReturn = false;
-            label.hasBreak = false;
-          });
+        labels.forEach(function(label) {
+          label.outLabels = [];
+          label.inLabels = [];
+          label.hasReturn = false;
+          label.hasBreak = false;
         });
         // Find direct branchings
         labels.forEach(function(label) {
