@@ -141,7 +141,8 @@ function astToSrc(ast, compress) {
 //   @arg pre: The pre to call for each node. This will be called with
 //     the node as the first argument and its type as the second. If true is
 //     returned, the traversal is stopped. If an object is returned,
-//     it replaces the passed node in the tree.
+//     it replaces the passed node in the tree. If null is returned, we stop
+//     traversing the subelements (but continue otherwise).
 //   @arg post: A callback to call after traversing all children.
 //   @arg stack: If true, a stack will be implemented: If pre does not push on
 //               the stack, we push a 0. We pop when we leave the node. The
@@ -155,15 +156,17 @@ function traverse(node, pre, post, stack) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
     if (result == true) return true;
-    if (typeof result == 'object') node = result; // Continue processing on this node
+    if (result !== null && typeof result == 'object') node = result; // Continue processing on this node
     if (stack && len == stack.length) stack.push(0);
   }
-  for (var i = 0; i < node.length; i++) {
-    var subnode = node[i];
-    if (typeof subnode == 'object' && subnode && subnode.length) {
-      var subresult = traverse(subnode, pre, post, stack);
-      if (subresult == true) return true;
-      if (typeof subresult == 'object') node[i] = subresult;
+  if (result !== null) {
+    for (var i = 0; i < node.length; i++) {
+      var subnode = node[i];
+      if (typeof subnode == 'object' && subnode && subnode.length) {
+        var subresult = traverse(subnode, pre, post, stack);
+        if (subresult == true) return true;
+        if (subresult !== null && typeof subresult == 'object') node[i] = subresult;
+      }
     }
   }
   if (relevant) {
@@ -181,6 +184,7 @@ function traverseGenerated(ast, pre, post, stack) {
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       traverse(node, pre, post, stack);
+      return null;
     }
   });
 }
@@ -189,6 +193,7 @@ function traverseGeneratedFunctions(ast, callback) {
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       callback(node);
+      return null;
     }
   });
 }
