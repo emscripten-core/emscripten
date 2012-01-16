@@ -802,93 +802,78 @@ function vacuum(ast) {
     if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
     return false;
   }
-  function vacuumInternal(node) {
-    var more = true;
-    while (more) {
-      more = false;
-      function simplifyList(node, i) {
-        var changed = false;
-        var pre = node[i].length;
-        node[i] = node[i].filter(function(node) { return !isEmpty(node) });
-        if (node[i].length < pre) changed = true;
-        // Also, seek blocks with single items we can simplify
-        node[i] = node[i].map(function(subNode) {
-          if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
-            return subNode[1][0];
-          }
-          return subNode;
-        });
-        if (changed) {
-          more = true;
-          return node;
-        }
+  function simplifyList(node, i) {
+    var changed = false;
+    var pre = node[i].length;
+    node[i] = node[i].filter(function(node) { return !isEmpty(node) });
+    if (node[i].length < pre) changed = true;
+    // Also, seek blocks with single items we can simplify
+    node[i] = node[i].map(function(subNode) {
+      if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
+        return subNode[1][0];
       }
-      simplifyNotComps(node);
-      traverse(node, function(node, type) {
-        var ret;
-        switch(type) {
-          case 'block': {
-            if (node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
-              more = true;
-              return node[1][0];
-            } else if (typeof node[1] == 'object') {
-              ret = simplifyList(node, 1);
-              if (ret) return ret;
-            }
-          } break;
-          case 'stat': {
-            if (node[1][0] == 'block') {
-              more = true;
-              return node[1];
-            }
-          } break;
-          case 'defun': {
-            if (node[3].length == 1 && node[3][0][0] == 'block') {
-              more = true;
-              node[3] = node[3][0][1];
-              return node;
-            } else {
-              ret = simplifyList(node, 3);
-              if (ret) return ret;
-            }
-          } break;
-          case 'do': {
-            if (node[1][0] == 'num' && node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
-              more = true;
-              return emptyNode();
-            } else if (isEmpty(node[2]) && !hasSideEffects(node[1])) {
-              more = true;
-              return emptyNode();
-            }
-          } break;
-          case 'label': {
-            if (node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
-              more = true;
-              return emptyNode();
-            }
-          } break;
-          case 'if': {
-            var empty2 = isEmpty(node[2]), empty3 = isEmpty(node[3]), has3 = node.length == 4;
-            if (!empty2 && empty3 && has3) { // empty else clauses
-              more = true;
-              return node.slice(0, 3);
-            } else if (empty2 && !empty3) { // empty if blocks
-              more = true;
-              return ['if', ['unary-prefix', '!', node[1]], node[3]];
-            } else if (empty2 && empty3) {
-              more = true;
-              if (hasSideEffects(node[1])) {
-                return ['stat', node[1]];
-              } else {
-                return emptyNode();
-              }
-            }
-          } break;
+      return subNode;
+    });
+    if (changed) {
+      return node;
+    }
+  }
+  function vacuumInternal(node) {
+    traverseChildren(node, vacuumInternal);
+    var ret;
+    switch(node[0]) {
+      case 'block': {
+        if (node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
+          return node[1][0];
+        } else if (typeof node[1] == 'object') {
+          ret = simplifyList(node, 1);
+          if (ret) return ret;
         }
-      });
+      } break;
+      case 'stat': {
+        if (node[1][0] == 'block') {
+          return node[1];
+        }
+      } break;
+      case 'defun': {
+        if (node[3].length == 1 && node[3][0][0] == 'block') {
+          node[3] = node[3][0][1];
+          return node;
+        } else {
+          ret = simplifyList(node, 3);
+          if (ret) return ret;
+        }
+      } break;
+      case 'do': {
+        if (node[1][0] == 'num' && node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
+          return emptyNode();
+        } else if (isEmpty(node[2]) && !hasSideEffects(node[1])) {
+          return emptyNode();
+        }
+      } break;
+      case 'label': {
+        if (node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
+          return emptyNode();
+        }
+      } break;
+      case 'if': {
+        var empty2 = isEmpty(node[2]), empty3 = isEmpty(node[3]), has3 = node.length == 4;
+        if (!empty2 && empty3 && has3) { // empty else clauses
+          return node.slice(0, 3);
+        } else if (empty2 && !empty3) { // empty if blocks
+          return ['if', ['unary-prefix', '!', node[1]], node[3]];
+        } else if (empty2 && empty3) {
+          if (hasSideEffects(node[1])) {
+            return ['stat', node[1]];
+          } else {
+            return emptyNode();
+          }
+        }
+      } break;
     }
   }
   traverseGeneratedFunctions(ast, function(node) {
+    simplifyNotComps(node);
     vacuumInternal(node);
   });
 }
