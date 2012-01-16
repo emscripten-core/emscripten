@@ -32,12 +32,12 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  __globalConstructor__();
+  initRuntime();
 
   var ret = null;
   if (Module['_main']) {
     ret = Module.callMain(args);
-    __shutdownRuntime__();
+    exitRuntime();
   }
   return ret;
 }

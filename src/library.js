@@ -1763,7 +1763,7 @@ LibraryManager.library = {
     ExitStatus.prototype.constructor = ExitStatus;
 #endif
 
-    __shutdownRuntime__();
+    exitRuntime();
     ABORT = true;
 
 #if CATCH_EXIT_CODE

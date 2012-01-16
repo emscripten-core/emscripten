@@ -4,7 +4,7 @@
 {{GLOBAL_VARS}}
 
 function run(args) {
-  __globalConstructor__();
+  initRuntime();
 }
 Module['run'] = run;
 

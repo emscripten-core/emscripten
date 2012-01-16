@@ -333,12 +333,7 @@ Module['printXULProfiling'] = printXULProfiling;
 // Runtime essentials
 //========================================
 
-var __globalConstructor__ = function globalConstructor() {
-};
-
 var __THREW__ = false; // Used in checking for thrown exceptions.
-
-var __ATEXIT__ = [];
 
 var ABORT = false;
 
@@ -648,17 +643,26 @@ STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
 STATICTOP = alignMemoryPage(STACK_MAX);
 
-function __shutdownRuntime__() {
-  while(__ATEXIT__.length > 0) {
-    var atexit = __ATEXIT__.pop();
-    var func = atexit.func;
+function callRuntimeCallbacks(callbacks) {
+  while(callbacks.length > 0) {
+    var callback = callbacks.pop();
+    var func = callback.func;
     if (typeof func === 'number') {
       func = FUNCTION_TABLE[func];
     }
-    func(atexit.arg === undefined ? null : atexit.arg);
+    func(callback.arg === undefined ? null : callback.arg);
   }
+}
 
-  // allow browser to GC, set heaps to null?
+var __ATINIT__ = []; // functions called during startup
+var __ATEXIT__ = []; // functions called during shutdown
+
+function initRuntime() {
+  callRuntimeCallbacks(__ATINIT__);
+}
+
+function exitRuntime() {
+  callRuntimeCallbacks(__ATEXIT__);
 
   // Print summary of correction activity
   CorrectionsMonitor.print();
