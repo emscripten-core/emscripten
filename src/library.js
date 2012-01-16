@@ -291,7 +291,7 @@ LibraryManager.library = {
       // The main file system tree. All the contents are inside this.
       FS.root = {
         read: true,
-        write: false,
+        write: true,
         isFolder: true,
         isDevice: false,
         timestamp: Date.now(),

@@ -3226,7 +3226,6 @@ def process(filename):
     \'\'\'
       FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
       FS.createLazyFile('/', 'test.file', 'test.file', true, false);
-      FS.root.write = true;
       var test_files_input = 'hi there!';
       var test_files_input_index = 0;
       FS.init(function() {
@@ -3363,7 +3362,6 @@ def process(filename):
     \'\'\'
       FS.createDataFile('/', 'test-file', 'abcdef', true, true);
       FS.createFolder('/', 'test-folder', true, true);
-      FS.root.write = true;
     \'\'\'
   )
   open(filename, 'w').write(src)
@@ -4084,7 +4082,6 @@ def process(filename):
   src = open(filename, 'a')
   src.write(\'\'\'
     FS.init();
-    FS.root.write = true;
     FS.createPath('/', 'dev/shm/tmp', true, true);
     FS.currentPath = '/dev/shm/tmp';
     run();
@@ -4166,7 +4163,6 @@ def process(filename):
   src.write(
     \'\'\'
       FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
-      FS.root.write = true;
       run();
       print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
     \'\'\'
@@ -4211,7 +4207,7 @@ def process(filename):
   original_j2k = shared.path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'image.j2k', %s, true, false);FS.root.write = true;" % shared.line_splitter(str(
+    "FS.createDataFile('/', 'image.j2k', %s, true, false);" % shared.line_splitter(str(
       map(ord, open(original_j2k, 'rb').read())
     ))
   ).replace(
