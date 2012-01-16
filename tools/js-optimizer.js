@@ -135,6 +135,19 @@ function astToSrc(ast, compress) {
   });
 }
 
+// Traverses the children of a node. If the traverse function returns an object,
+// replaces the child. If it returns true, stop the traversal and return true.
+function traverseChildren(node, traverse, pre, post, stack) {
+  for (var i = 0; i < node.length; i++) {
+    var subnode = node[i];
+    if (typeof subnode == 'object' && subnode && subnode.length) {
+      var subresult = traverse(subnode, pre, post, stack);
+      if (subresult == true) return true;
+      if (subresult !== null && typeof subresult == 'object') node[i] = subresult;
+    }
+  }
+}
+
 // Traverses a JavaScript syntax tree rooted at the given node calling the given
 // callback for each node.
 //   @arg node: The root of the AST.
@@ -160,14 +173,7 @@ function traverse(node, pre, post, stack) {
     if (stack && len == stack.length) stack.push(0);
   }
   if (result !== null) {
-    for (var i = 0; i < node.length; i++) {
-      var subnode = node[i];
-      if (typeof subnode == 'object' && subnode && subnode.length) {
-        var subresult = traverse(subnode, pre, post, stack);
-        if (subresult == true) return true;
-        if (subresult !== null && typeof subresult == 'object') node[i] = subresult;
-      }
-    }
+    if (traverseChildren(node, traverse, pre, post, stack) == true) return true;
   }
   if (relevant) {
     if (post) {
@@ -788,6 +794,7 @@ function hasSideEffects(node) { // this is 99% incomplete and wrong! It just wor
 }
 
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
+// Operates on generated functions only
 function vacuum(ast) {
   function isEmpty(node) {
     if (!node) return true;
@@ -795,7 +802,7 @@ function vacuum(ast) {
     if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
     return false;
   }
-  traverseGeneratedFunctions(ast, function(node) {
+  function vacuumInternal(node) {
     var more = true;
     while (more) {
       more = false;
@@ -880,6 +887,9 @@ function vacuum(ast) {
         }
       });
     }
+  }
+  traverseGeneratedFunctions(ast, function(node) {
+    vacuumInternal(node);
   });
 }
 
