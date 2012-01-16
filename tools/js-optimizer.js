@@ -873,8 +873,8 @@ function vacuum(ast) {
     }
   }
   traverseGeneratedFunctions(ast, function(node) {
-    simplifyNotComps(node);
     vacuumInternal(node);
+    simplifyNotComps(node);
   });
 }
 
