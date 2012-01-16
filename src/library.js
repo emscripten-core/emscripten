@@ -26,7 +26,7 @@ LibraryManager.library = {
   _impure_ptr: 0,
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: 'FS.init(); __ATEXIT__.push({ func: function() { FS.quit() } });',
+  $FS__postset: '__ATINIT__.push({ func: function() { FS.ignorePermissions = false } }); FS.init(); __ATEXIT__.push({ func: function() { FS.quit() } });',
   $FS: {
     // The path to the current folder.
     currentPath: '/',
@@ -39,6 +39,8 @@ LibraryManager.library = {
     streams: [null],
     // Whether we are currently ignoring permissions. Useful when preparing the
     // filesystem and creating files inside read-only folders.
+    // This is set to false when the runtime is initialized, allowing you
+    // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
     // Converts any path to an absolute path. Resolves embedded "." and ".."
     // parts.

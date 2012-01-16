@@ -4085,9 +4085,7 @@ def process(filename):
   src.write(\'\'\'
     FS.init();
     FS.root.write = true;
-    FS.ignorePermissions = true; // /dev is read-only
     FS.createPath('/', 'dev/shm/tmp', true, true);
-    FS.ignorePermissions = false;
     FS.currentPath = '/dev/shm/tmp';
     run();
   \'\'\')
@@ -4167,10 +4165,8 @@ def process(filename):
   src = open(filename, 'a')
   src.write(
     \'\'\'
-      FS.ignorePermissions = true;
       FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
       FS.root.write = true;
-      FS.ignorePermissions = false;
       run();
       print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
     \'\'\'

@@ -45,11 +45,6 @@ Module['run'] = run;
 
 // {{PRE_RUN_ADDITIONS}}
 
-// In a hackish way, we disable permissions until now, so setup code works, but enable them for runtime so compile code works with permissions
-try {
-  FS.ignorePermissions = false;
-} catch(e){}
-
 #if INVOKE_RUN
 #else
 Module['noInitialRun'] = true;
