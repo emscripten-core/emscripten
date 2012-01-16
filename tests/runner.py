@@ -4039,8 +4039,6 @@ def process(filename):
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      if Building.LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and MICRO_OPTS though
-
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
       post = '''
@@ -4067,7 +4065,6 @@ def process(filename):
     def test_sqlite(self):
       # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
-      Settings.RELOOP = 0 # too slow
 
       pgo_data = read_pgo_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
 
@@ -4294,7 +4291,6 @@ def process(filename):
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
-      Settings.RELOOP = 0 # Too slow; we do care about typed arrays and MICRO_OPTS though
       Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
       Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
