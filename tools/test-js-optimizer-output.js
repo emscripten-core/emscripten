@@ -173,6 +173,8 @@ function hoisting() {
   if (__label__ == 38) {
     var $79 = $_pr6;
   }
+  pause(9);
+  var $cmp70 = ($call69 | 0) != 0;
 }
 function innerShouldAlsoBeHoisted() {
   function hoisting() {

@@ -216,6 +216,16 @@ function hoisting() {
       var $79 = $_pr6;
     }
   } while (0);
+  pause(9);
+  var $cmp70 = ($call69 | 0) != 0;
+  if ($cmp70) {
+    __label__ = 40;
+  } else {
+    __label__ = 41;
+  }
+  $if_then72$$if_end73$126 : do {
+    if (__label__ == 40) {} else if (__label__ == 41) {}
+  } while (0);
 }
 function innerShouldAlsoBeHoisted() {
   function hoisting() {
