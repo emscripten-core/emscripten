@@ -306,3 +306,22 @@ function log2(x) {
   return Math.log(x)/Math.LN2;
 }
 
+function Benchmarker() {
+  var starts = {}, times = {}, counts = {};
+  this.start = function(id) {
+    //printErr(['+', id, starts[id]]);
+    starts[id] = (starts[id] || []).concat([Date.now()]);
+  };
+  this.end = function(id) {
+    //printErr(['-', id, starts[id]]);
+    assert(starts[id], new Error().stack);
+    times[id] = (times[id] || 0) + Date.now() - starts[id].pop();
+    counts[id] = (counts[id] || 0) + 1;
+  };
+  this.print = function() {
+    var ids = keys(times);
+    ids.sort(function(a, b) { return times[b] - times[a] });
+    printErr('times: \n' + ids.map(function(id) { return id + ' : ' + counts[id] + ' times, ' + times[id] + ' ms' }).join('\n'));
+  };
+};
+

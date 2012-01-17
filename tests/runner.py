@@ -285,6 +285,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
         if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check ~/.emscripten and settings.py and the paths therein.')
         for engine in js_engines:
+          engine = filter(lambda arg: arg != '-n', engine) # SpiderMonkey issue 716255
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
               js_output = output_nicerizer(js_output)
@@ -1191,6 +1192,55 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
         Settings.DISABLE_EXCEPTION_CATCHING = 1
         self.do_run(src, 'Compiled code throwing an exception')
+        
+        src = '''
+        #include <iostream>
+        
+        class MyException
+        {
+        public:
+            MyException(){ std::cout << "Construct..."; }
+            MyException( const MyException & ) { std::cout << "Copy..."; }
+            ~MyException(){ std::cout << "Destruct..."; }
+        };
+        
+        int function()
+        {
+            std::cout << "Throw...";
+            throw MyException();
+        }
+        
+        int function2()
+        {
+            return function();
+        }
+        
+        int main()
+        {
+            try 
+            {
+                function2();
+            }
+            catch (MyException & e)
+            {
+                std::cout << "Catched...";
+            }
+             
+            try 
+            {
+                function2();
+            }
+            catch (MyException e)
+            {
+                std::cout << "Catched...";
+            }
+        
+            return 0;
+        }
+        '''
+        
+        Settings.DISABLE_EXCEPTION_CATCHING = 0
+        self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
     def test_typed_exceptions(self):
         return self.skip('TODO: fix this for llvm 3.0')
@@ -1460,6 +1510,26 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           }
         '''
         self.do_run(src, 'sum:9780*')
+
+        # We should not blow up the stack with numerous varargs
+
+        src = r'''
+          #include <stdio.h>
+          #include <stdlib.h>
+
+          void func(int i) {
+            printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+          }
+          int main() {
+            for (int i = 0; i < 1024; i++)
+              func(i);
+            printf("ok!\n");
+            return 0;
+          }
+        '''
+        Settings.TOTAL_STACK = 1024
+        self.do_run(src, 'ok!')
 
     def test_array2(self):
         src = '''
@@ -3971,8 +4041,6 @@ def process(filename):
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
 
-      if Building.LLVM_OPTS: Settings.RELOOP = 0 # Too slow; we do care about typed arrays and MICRO_OPTS though
-
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
       post = '''
@@ -3999,7 +4067,6 @@ def process(filename):
     def test_sqlite(self):
       # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
-      Settings.RELOOP = 0 # too slow
 
       pgo_data = read_pgo_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
 
@@ -4226,7 +4293,6 @@ def process(filename):
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
-      Settings.RELOOP = 0 # Too slow; we do care about typed arrays and MICRO_OPTS though
       Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
       Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
@@ -5337,7 +5403,7 @@ Options that are modified or new in %s include:
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
           if closure:
-            assert 'Module._main = ' in generated, 'closure compiler should have been run'
+            assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
@@ -5348,6 +5414,7 @@ Options that are modified or new in %s include:
             if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
+            assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
@@ -5475,7 +5542,7 @@ f.close()
       expected = path_from_root('tests', 'test-fix-closure.out.js')
       Popen(['python', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
       output = open('out.js').read()
-      assert '0,uninline_Q_14782,0' in output
+      assert '0,zzz_Q_39fa,0' in output
       assert 'function(a,c)' not in output # should be uninlined, so it gets a name
       assert run_js(input) == run_js('out.js')
 

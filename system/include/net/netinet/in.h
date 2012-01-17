@@ -1,4 +1,17 @@
 
+#ifndef _NET_NETINET_IN_H
+#define _NET_NETINET_IN_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum {
+    IPPROTO_IP = 0,
+#define IPPROTO_IP IPPROTO_IP
+    IPPROTO_MAX
+};
+
 #define INET_ADDRSTRLEN 16
 
 #define INADDR_ANY 0
@@ -25,4 +38,10 @@ struct sockaddr_in6 {
   struct in6_addr sin6_addr;
   int             sin6_scope_id;
 };
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 

@@ -155,6 +155,14 @@ Options that are modified or new in %s include:
                            list of arguments, for example, <cmd> of
                            "python processor.py" will cause a python
                            script to be run.
+  --compress <on>          0: Do not compress the generated JavaScript's
+                              whitespace (default if closure compiler
+                              will not be run)
+                           1: Compress the generated JavaScript's
+                              whitespace (default if closure compiler
+                              will be run). Note that this by itself
+                              will not minify the code (closure does
+                              that)
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -272,6 +280,7 @@ try:
   llvm_opt_level = None
   closure = None
   js_transform = None
+  compress_whitespace = None
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -300,6 +309,11 @@ try:
       js_transform = newargs[i+1]
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i].startswith('--compress'):
+      check_bad_eq(newargs[i])
+      compress_whitespace = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
     elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
       f = open(newargs[i+1], 'w')
       f.write('\n')
@@ -310,6 +324,8 @@ try:
 
   if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
   if closure is None: closure = 1 if opt_level >= 2 else 0
+  if compress_whitespace is None:
+    compress_whitespace = closure # if closure is run, compress whitespace
 
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
@@ -508,34 +524,47 @@ try:
     Popen(js_transform.split(' ') + [os.path.abspath(final)]).communicate()
     if DEBUG: save_intermediate('transformed')
 
+  # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
+  js_optimizer_queue = []
+  def flush_js_optimizer_queue():
+    global final, js_optimizer_queue
+    if len(js_optimizer_queue) > 0:
+      if not DEBUG:
+        final = shared.Building.js_optimizer(final, js_optimizer_queue)
+      else:
+        for name in js_optimizer_queue:
+          print >> sys.stderr, 'emcc: applying js optimization pass:', name
+          final = shared.Building.js_optimizer(final, [name])
+          save_intermediate(name)
+      js_optimizer_queue = []
+
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
 
-    final = shared.Building.js_optimizer(final, []) # Clean up the syntax a bit
-    if DEBUG: save_intermediate('pretty')
+    if DEBUG:
+      # Clean up the syntax a bit
+      final = shared.Building.js_optimizer(final, [])
+      if DEBUG: save_intermediate('pretty')
 
     if shared.Settings.RELOOP:
-      # js optimizer
-      final = shared.Building.js_optimizer(final, ['hoistMultiples'])
-      if DEBUG: save_intermediate('hoistMultiples')
-      final = shared.Building.js_optimizer(final, ['loopOptimizer'])
-      if DEBUG: save_intermediate('loopOptimizer')
+      js_optimizer_queue += ['hoistMultiples', 'loopOptimizer']
+
+    flush_js_optimizer_queue()
 
     # eliminator
+    if DEBUG: print >> sys.stderr, 'emcc: running variable eliminator'
     final = shared.Building.eliminator(final)
     if DEBUG: save_intermediate('eliminator')
 
     # js optimizer pre-pass
-    final = shared.Building.js_optimizer(final, 'simplifyExpressionsPre')
-    if DEBUG: save_intermediate('simplifyExpressionsPre')
-    final = shared.Building.js_optimizer(final, 'optimizeShiftsConservative')
-    if DEBUG: save_intermediate('optimizeShiftsConservative')
-    #final = shared.Building.js_optimizer(final, 'optimizeShiftsAggressive')
-    #if DEBUG: save_intermediate('optimizeShiftsAggressive')
-    #final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
-    #if DEBUG: save_intermediate('eliminator')
+    js_optimizer_queue += ['simplifyExpressionsPre', 'optimizeShiftsConservative']
+    ###js_optimizer_queue += ['optimizeShiftsAggressive']
+    ###final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
+    ###if DEBUG: save_intermediate('eliminator')
 
   if closure:
+    flush_js_optimizer_queue()
+
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
@@ -543,8 +572,12 @@ try:
   if opt_level >= 1:
     # js optimizer post-pass
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
-    final = shared.Building.js_optimizer(final, 'simplifyExpressionsPost')
-    if DEBUG: save_intermediate('simplifyExpressionsPost')
+    js_optimizer_queue += ['simplifyExpressionsPost']
+
+  if compress_whitespace:
+    js_optimizer_queue += ['compress']
+
+  flush_js_optimizer_queue()
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':

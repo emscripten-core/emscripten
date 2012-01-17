@@ -89,7 +89,7 @@ class _LIBCPP_EXCEPTION_ABI exception
 {
 public:
     _LIBCPP_INLINE_VISIBILITY exception() _NOEXCEPT {}
-    virtual ~exception() _NOEXCEPT;
+    virtual ~exception() _NOEXCEPT{}
     virtual const char* what() const _NOEXCEPT;
 };
 

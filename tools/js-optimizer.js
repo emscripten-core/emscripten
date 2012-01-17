@@ -127,12 +127,25 @@ function srcToAst(src) {
   return uglify.parser.parse(src);
 }
 
-function astToSrc(ast) {
+function astToSrc(ast, compress) {
     return uglify.uglify.gen_code(ast, {
     ascii_only: true,
-    beautify: true,
+    beautify: !compress,
     indent_level: 2
   });
+}
+
+// Traverses the children of a node. If the traverse function returns an object,
+// replaces the child. If it returns true, stop the traversal and return true.
+function traverseChildren(node, traverse, pre, post, stack) {
+  for (var i = 0; i < node.length; i++) {
+    var subnode = node[i];
+    if (typeof subnode == 'object' && subnode && subnode.length) {
+      var subresult = traverse(subnode, pre, post, stack);
+      if (subresult == true) return true;
+      if (subresult !== null && typeof subresult == 'object') node[i] = subresult;
+    }
+  }
 }
 
 // Traverses a JavaScript syntax tree rooted at the given node calling the given
@@ -141,7 +154,8 @@ function astToSrc(ast) {
 //   @arg pre: The pre to call for each node. This will be called with
 //     the node as the first argument and its type as the second. If true is
 //     returned, the traversal is stopped. If an object is returned,
-//     it replaces the passed node in the tree.
+//     it replaces the passed node in the tree. If null is returned, we stop
+//     traversing the subelements (but continue otherwise).
 //   @arg post: A callback to call after traversing all children.
 //   @arg stack: If true, a stack will be implemented: If pre does not push on
 //               the stack, we push a 0. We pop when we leave the node. The
@@ -155,16 +169,11 @@ function traverse(node, pre, post, stack) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
     if (result == true) return true;
-    if (typeof result == 'object') node = result; // Continue processing on this node
+    if (result !== null && typeof result == 'object') node = result; // Continue processing on this node
     if (stack && len == stack.length) stack.push(0);
   }
-  for (var i = 0; i < node.length; i++) {
-    var subnode = node[i];
-    if (typeof subnode == 'object' && subnode && subnode.length) {
-      var subresult = traverse(subnode, pre, post, stack);
-      if (subresult == true) return true;
-      if (typeof subresult == 'object') node[i] = subresult;
-    }
+  if (result !== null) {
+    if (traverseChildren(node, traverse, pre, post, stack) == true) return true;
   }
   if (relevant) {
     if (post) {
@@ -181,6 +190,7 @@ function traverseGenerated(ast, pre, post, stack) {
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       traverse(node, pre, post, stack);
+      return null;
     }
   });
 }
@@ -189,6 +199,7 @@ function traverseGeneratedFunctions(ast, callback) {
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       callback(node);
+      return null;
     }
   });
 }
@@ -783,82 +794,88 @@ function hasSideEffects(node) { // this is 99% incomplete and wrong! It just wor
 }
 
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
+// Operates on generated functions only
 function vacuum(ast) {
   function isEmpty(node) {
     if (!node) return true;
-    if (jsonCompare(node, emptyNode())) return true;
+    if (node[0] == 'toplevel' && (!node[1] || node[1].length == 0)) return true;
     if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
     return false;
   }
-  var ret;
-  var more = true;
-  while (more) {
-    more = false;
-    function simplifyList(node, i) {
-      var changed = false;
-      var pre = node[i].length;
-      node[i] = node[i].filter(function(node) { return !isEmpty(node) });
-      if (node[i].length < pre) changed = true;
-      // Also, seek blocks with single items we can simplify
-      node[i] = node[i].map(function(subNode) {
-        if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
-          return subNode[1][0];
-        }
-        return subNode;
-      });
-      if (changed) {
-        more = true;
-        return node;
+  function simplifyList(node, i) {
+    var changed = false;
+    var pre = node[i].length;
+    node[i] = node[i].filter(function(node) { return !isEmpty(node) });
+    if (node[i].length < pre) changed = true;
+    // Also, seek blocks with single items we can simplify
+    node[i] = node[i].map(function(subNode) {
+      if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
+        return subNode[1][0];
       }
+      return subNode;
+    });
+    if (changed) {
+      return node;
     }
-    traverseGeneratedFunctions(ast, function(node) {
-      simplifyNotComps(node);
-      traverse(node, function(node, type) {
-        if (type == 'block' && node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
-          more = true;
+  }
+  function vacuumInternal(node) {
+    traverseChildren(node, vacuumInternal);
+    var ret;
+    switch(node[0]) {
+      case 'block': {
+        if (node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
           return node[1][0];
-        } else if (type == 'stat' && node[1][0] == 'block') {
-          more = true;
-          return node[1];
-        } else if (type == 'block' && typeof node[1] == 'object') {
+        } else if (typeof node[1] == 'object') {
           ret = simplifyList(node, 1);
           if (ret) return ret;
-        } else if (type == 'defun' && node[3].length == 1 && node[3][0][0] == 'block') {
-          more = true;
+        }
+      } break;
+      case 'stat': {
+        if (node[1][0] == 'block') {
+          return node[1];
+        }
+      } break;
+      case 'defun': {
+        if (node[3].length == 1 && node[3][0][0] == 'block') {
           node[3] = node[3][0][1];
           return node;
-        } else if (type == 'defun') {
+        } else {
           ret = simplifyList(node, 3);
           if (ret) return ret;
-        } else if (type == 'do' && node[1][0] == 'num' && jsonCompare(node[2], emptyNode())) {
-          more = true;
+        }
+      } break;
+      case 'do': {
+        if (node[1][0] == 'num' && node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
           return emptyNode();
-        } else if (type == 'label' && jsonCompare(node[2], emptyNode())) {
-          more = true;
-          return emptyNode();
-        } else if (type == 'if') {
-          var empty2 = isEmpty(node[2]), empty3 = isEmpty(node[3]), has3 = node.length == 4;
-          if (!empty2 && empty3 && has3) { // empty else clauses
-            more = true;
-            return node.slice(0, 3);
-          } else if (empty2 && !empty3) { // empty if blocks
-            more = true;
-            return ['if', ['unary-prefix', '!', node[1]], node[3]];
-          } else if (empty2 && empty3) {
-            more = true;
-            if (hasSideEffects(node[1])) {
-              return ['stat', node[1]];
-            } else {
-              return emptyNode();
-            }
-          }
-        } else if (type == 'do' && isEmpty(node[2]) && !hasSideEffects(node[1])) {
-          more = true;
+        } else if (isEmpty(node[2]) && !hasSideEffects(node[1])) {
           return emptyNode();
         }
-      });
-    });
+      } break;
+      case 'label': {
+        if (node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
+          return emptyNode();
+        }
+      } break;
+      case 'if': {
+        var empty2 = isEmpty(node[2]), empty3 = isEmpty(node[3]), has3 = node.length == 4;
+        if (!empty2 && empty3 && has3) { // empty else clauses
+          return node.slice(0, 3);
+        } else if (empty2 && !empty3) { // empty if blocks
+          return ['if', ['unary-prefix', '!', node[1]], node[3]];
+        } else if (empty2 && empty3) {
+          if (hasSideEffects(node[1])) {
+            return ['stat', node[1]];
+          } else {
+            return emptyNode();
+          }
+        }
+      } break;
+    }
   }
+  traverseGeneratedFunctions(ast, function(node) {
+    vacuumInternal(node);
+    simplifyNotComps(node);
+  });
 }
 
 function getStatements(node) {
@@ -889,23 +906,13 @@ function hoistMultiples(ast) {
         var post = statements[i+1];
         // Look into some block types. shell() will then recreate the shell that we looked into
         var postInner = post;
-        var shell = function(x) { return x };
+        var shellLabel = false, shellDo = false;
         while (true) {
-          /*if (postInner[0] == 'block') {
-            postInner = postInner[1][0];
-          } else */if (postInner[0] == 'label') {
-            shell = (function(oldShell, oldPostInner) {
-              return function(x) {
-                return oldShell(['label', oldPostInner[1], x]);
-              };
-            })(shell, postInner);
+          if (postInner[0] == 'label') {
+            shellLabel = postInner[1];
             postInner = postInner[2];
           } else if (postInner[0] == 'do') {
-            shell = (function(oldShell, oldPostInner) {
-              return function(x) {
-                return oldShell(['do', copy(oldPostInner[1]), ['block', [x]]]);
-              }
-            })(shell, postInner);;
+            shellDo = postInner[1];
             postInner = postInner[2][1][0];
           } else {
             break; // give up
@@ -938,7 +945,12 @@ function hoistMultiples(ast) {
           postInner = postInner[3]; // Proceed to look in the else clause
         }
         if (modifiedI) {
-          statements[i] = shell(pre);
+          if (shellDo) {
+            statements[i] = ['do', shellDo, ['block', [statements[i]]]];
+          }
+          if (shellLabel) {
+            statements[i] = ['label', shellLabel, statements[i]];
+          }
         }
       }
       if (modified) return node;
@@ -976,7 +988,7 @@ function hoistMultiples(ast) {
       if (node[0] == 'block' && node[1].length == 1) node = node[1][0];
       return node;
     }
-    vacuum([0, [node]]);
+    vacuum(node);
     traverse(node, function(node, type) {
       var statements = getStatements(node);
       if (!statements) return;
@@ -1091,6 +1103,8 @@ function loopOptimizer(ast) {
 
 // Passes table
 
+var compress = false;
+
 var passes = {
   dumpAst: dumpAst,
   dumpSrc: dumpSrc,
@@ -1102,7 +1116,8 @@ var passes = {
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
-  loopOptimizer: loopOptimizer
+  loopOptimizer: loopOptimizer,
+  compress: function() { compress = true; }
 };
 
 // Main
@@ -1120,6 +1135,6 @@ arguments_.slice(1).forEach(function(arg) {
 //printErr('output: ' + dump(ast));
 //printErr('output: ' + astToSrc(ast));
 ast = srcToAst(astToSrc(ast)); // re-parse, to simplify a little
-print(astToSrc(ast));
+print(astToSrc(ast, compress));
 if (metadata) print(metadata + '\n');
 

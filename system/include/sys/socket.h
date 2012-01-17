@@ -1,4 +1,9 @@
-/* */
+#ifndef _SYS_SOCKET_H
+#define _SYS_SOCKET_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define SOMAXCONN 128
 #define PF_INET 2
@@ -52,4 +57,10 @@ struct msghdr
   size_t        msg_controllen;
   int           msg_flags;
 };
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 

@@ -506,7 +506,7 @@ mergeInto(LibraryManager.library, {
       SDL.audio.pushAudio = function(ptr, size) {
         var mozBuffer = SDL.audio.mozBuffer;
         for (var i = 0; i < totalSamples; i++) {
-          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 1) }}} / 65536)-1; // hardcoded 16-bit audio
+          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
         }
         SDL.audio.mozOutput['mozWriteAudio'](mozBuffer);
       }
