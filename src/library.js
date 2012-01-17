@@ -4462,60 +4462,6 @@ LibraryManager.library = {
   llvm_lifetime_end: function() {},
 
   // ==========================================================================
-  // iostream.h
-  // ==========================================================================
-
-  // libc++
-
-  $libcxx__postset: 'try { __ZNSt3__14coutE = 1 } catch(e){}; try { __ZNSt3__14cerrE = 2 } catch(e){};',
-  $libcxx: {},
-
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPKv__deps: ['fputs', '$libcxx'],
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPKv: function(stream, str) {
-    _fputs(str, _stdout); // XXX stderr etc.
-  },
-
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi__deps: ['fputs', '$libcxx'],
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi: function(stream, num) {
-    _fputs(allocate(intArrayFromString(num.toString()), 'i8', ALLOC_STACK), _stdout);
-  },
-
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPFRS3_S4_E__deps: ['fputc', '$libcxx'],
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEPFRS3_S4_E: function(stream, x) {
-    _fputc('\n'.charCodeAt(0), _stdout);
-  },
-
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_: function() {},
-  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryD1Ev: function() {},
-
-  // glibc
-
-  _ZNSt8ios_base4InitC1Ev: function() {
-    // need valid 'file descriptors' for glibc
-    //__ZSt4cout = 1;
-    //__ZSt4cerr = 2;
-  },
-  _ZNSt8ios_base4InitD1Ev: '_ZNSt8ios_base4InitC1Ev',
-  _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_: 0, // endl
-  _ZNSolsEd__deps: ['putchar'],
-  _ZNSolsEd: function(undefined_stream, data) {
-    _putchar('\n'.charCodeAt(0));
-  },
-  _ZNSolsEPFRSoS_E: '_ZNSolsEd',
-  _ZNSolsEi__deps: ['putchar'],
-  _ZNSolsEi: function(undefined_stream, data) {
-    var str = String(data);
-    for (var i = 0; i < str.length; i++) {
-      _putchar(str.charCodeAt(i));
-    }
-  },
-  _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc__deps: ['fputs', 'stdout'],
-  _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc: function(undefined_stream, data) {
-    _fputs(data, {{{ makeGetValue('_stdout', '0', 'void*') }}});
-  },
-  _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_i: '_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc',
-
-  // ==========================================================================
   // math.h
   // ==========================================================================
 
