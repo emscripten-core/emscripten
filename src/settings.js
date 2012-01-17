@@ -200,7 +200,7 @@ var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run t
                            // to more easily perform operations from handwritten JS on
                            // objects with structures etc.
 
-var FAKE_X86_FP80 = 0; // Replaces x86_fp80 with double. This loses precision. It is better,
+var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. It is better,
                        // if you can, to get the original source code to build without x86_fp80
                        // (which is nonportable anyhow).
 
