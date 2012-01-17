@@ -19,7 +19,21 @@ int isxdigit_l(int c, locale_t locale);
 int isdigit_l(int c, locale_t locale);
 int toupper_l(int c, locale_t locale);
 int tolower_l(int c, locale_t locale);
+
 int iswspace_l(wint_t wc, locale_t locale);
+int iswupper_l(wint_t wc, locale_t locale);
+int iswlower_l(wint_t wc, locale_t locale);
+int iswprint_l(wint_t wc, locale_t locale);
+int iswcntrl_l(wint_t wc, locale_t locale);
+int iswalpha_l(wint_t wc, locale_t locale);
+int iswdigit_l(wint_t wc, locale_t locale);
+int iswpunct_l(wint_t wc, locale_t locale);
+int iswblank_l(wint_t wc, locale_t locale);
+int iswxdigit_l(wint_t wc, locale_t locale);
+int towupper_l(wint_t wc, locale_t locale);
+int towlower_l(wint_t wc, locale_t locale);
+
+size_t strftime_l(char *s, size_t maxsize, const char *format, const struct tm *timeptr, locale_t locale);
 
 #endif /* _LOCALE_H_ */
 
