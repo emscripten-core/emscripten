@@ -129,7 +129,11 @@ process(sys.argv[1])
       f = open(filename, 'w')
       f.write(src)
       f.close()
-      assert len(additional_files) == 0
+      final_additional_files = []
+      for f in additional_files:
+        final_additional_files.append(os.path.join(dirname, os.path.basename(f)))
+        shutil.copyfile(f, final_additional_files[-1])
+      additional_files = final_additional_files
     else:
       # copy whole directory, and use a specific main .cpp file
       shutil.rmtree(dirname)
@@ -139,8 +143,6 @@ process(sys.argv[1])
       additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
 
     # C++ => LLVM binary
-    os.chdir(dirname)
-    cwd = os.getcwd()
 
     for f in [filename] + additional_files:
       try:
@@ -154,8 +156,6 @@ process(sys.argv[1])
              ['-c', f, '-o', f + '.o']
       output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
-
-    os.chdir(cwd)
 
     # Link all files
     if len(additional_files) + len(libraries) > 0:
