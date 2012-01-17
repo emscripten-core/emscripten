@@ -944,6 +944,20 @@ function JSify(data, functionsOnly, givenFunctions) {
             + ' } else { ' + getPhiSetsForLabel(phiSets, item.unwindLabel)  + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
+  makeFuncLineActor('atomic', function(item) {
+    var type = item.params[0].type;
+    var param1 = finalizeLLVMParameter(item.params[0]);
+    var param2 = finalizeLLVMParameter(item.params[1]);
+    switch (item.op) {
+      case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type) + ',tempValue)';
+      case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type) + ',tempValue)';
+      case 'cmpxchg': {
+        var param3 = finalizeLLVMParameter(item.params[2]);
+        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' && (' + makeSetValue(param1, 0, param3, type) + ')),tempValue)';
+      }
+      default: throw 'unhandled atomic op: ' + item.op;
+    }
+  });
   makeFuncLineActor('landingpad', function(item) {
     // Just a stub
     return '{ f0: ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') +

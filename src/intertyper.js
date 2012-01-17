@@ -366,6 +366,8 @@ function intertyper(data, sidePass, baseLineNums) {
             return '/dev/null';
           if (tokensLength >= 3 && token0Text == 'invoke')
             return 'Invoke';
+          if (tokensLength >= 3 && token0Text == 'atomicrmw' || token0Text == 'cmpxchg')
+            return 'Atomic';
         } else {
           // Already intertyped
           if (item.parentSlot)
@@ -737,6 +739,21 @@ function intertyper(data, sidePass, baseLineNums) {
       }
       if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
       return result.ret;
+    }
+  });
+  substrate.addActor('Atomic', {
+    processItem: function(item) {
+      item.intertype = 'atomic';
+      if (item.tokens[0].text == 'atomicrmw') {
+        item.op = item.tokens[1].text;
+        item.tokens.splice(1, 1);
+      } else {
+        assert(item.tokens[0].text == 'cmpxchg')
+        item.op = 'cmpxchg';
+      }
+      var last = getTokenIndexByText(item.tokens, ';');
+      item.params = splitTokenList(item.tokens.slice(1, last)).map(parseLLVMSegment);
+      this.forwardItem(item, 'Reintegrator');
     }
   });
   // 'landingpad' - just a stub implementation
