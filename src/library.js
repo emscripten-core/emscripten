@@ -4485,6 +4485,9 @@ LibraryManager.library = {
     _fputc('\n'.charCodeAt(0), _stdout);
   },
 
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_: function() {},
+  _ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryD1Ev: function() {},
+
   // glibc
 
   _ZNSt8ios_base4InitC1Ev: function() {
