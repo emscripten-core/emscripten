@@ -8,8 +8,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-//class locale; // XXX Emscripten
-
 #ifndef _LIBCPP___LOCALE
 #define _LIBCPP___LOCALE
 
@@ -24,7 +22,7 @@
 #if _WIN32
 # include <support/win32/locale.h>
 #else  // _WIN32
-/* XXX EMSCRIPTEN # include <xlocale.h> */
+# include <xlocale.h>
 #endif  // _WIN32
 
 #pragma GCC system_header
@@ -44,7 +42,6 @@ public:
     class id;
 
     typedef int category;
-    /* XXX Emscripten
     static const category // values assigned here are for exposition only
         none     = 0,
         collate  = LC_COLLATE_MASK,
@@ -54,7 +51,6 @@ public:
         time     = LC_TIME_MASK,
         messages = LC_MESSAGES_MASK,
         all = collate | ctype | monetary | numeric | time | messages;
-    */
 
     // construct/copy/destroy:
     locale()  _NOEXCEPT;
@@ -335,9 +331,9 @@ public:
     static const mask xdigit = _HEX;
     static const mask blank  = _BLANK;
 #else  // __GLIBC__ || _WIN32
-#if __APPLE__
+#if defined(__APPLE__) || defined(EMSCRIPTEN)
     typedef __uint32_t mask;
-#elif defined(__FreeBSD__) or defined(EMSCRIPTEN)
+#elif __FreeBSD__
     typedef unsigned long mask;
 #endif
     static const mask space  = _CTYPE_S;

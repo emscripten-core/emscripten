@@ -31,7 +31,7 @@ extern "C" {
 
 #include <sys/types.h>
 #include <time.h>
-#include <sys/sched.h>
+#include <sched.h> /* XXX Emscripten: removed sys/ */
 
 /* Register Fork Handlers */
 int	_EXFUN(pthread_atfork,(void (*prepare)(void), void (*parent)(void),

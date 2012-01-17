@@ -21,6 +21,15 @@
 #define LC_TIME     5
 #define LC_MESSAGES 6
 
+/* XXX Emscripten: add masks */
+#define LC_ALL_MASK      (1 << LC_ALL)
+#define LC_COLLATE_MASK  (1 << LC_COLLATE)
+#define LC_CTYPE_MASK    (1 << LC_CTYPE)
+#define LC_MONETARY_MASK (1 << LC_MONETARY)
+#define LC_NUMERIC_MASK  (1 << LC_NUMERIC)
+#define LC_TIME_MASK     (1 << LC_TIME)
+#define LC_MESSAGES_MASK (1 << LC_MESSAGES)
+
 _BEGIN_STD_C
 
 struct lconv
