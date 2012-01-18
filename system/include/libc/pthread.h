@@ -46,7 +46,7 @@ int	_EXFUN(pthread_mutexattr_getpshared,
 int	_EXFUN(pthread_mutexattr_setpshared,
 		(pthread_mutexattr_t *__attr, int __pshared));
 
-#if defined(_UNIX98_THREAD_MUTEX_ATTRIBUTES)
+#if defined(_UNIX98_THREAD_MUTEX_ATTRIBUTES) || defined(EMSCRIPTEN)
 
 /* Single UNIX Specification 2 Mutex Attributes types */
 
