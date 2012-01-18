@@ -439,10 +439,14 @@ class Building:
     output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
 
-  # Optional LLVM optimizations
+  # LLVM optimizations
+  # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
+  #            optimization passes passed to llvm opt
   @staticmethod
-  def llvm_opt(filename, level, safe=True):
-    output = Popen([LLVM_OPT, filename] + Building.pick_llvm_opts(level, safe) + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
+  def llvm_opt(filename, opts, safe=True):
+    if type(opts) is int:
+      opts = Building.pick_llvm_opts(opts, safe)
+    output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
     shutil.move(filename + '.opt.bc', filename)
 
@@ -533,6 +537,10 @@ class Building:
       (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
       into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
       things that look useful.
+
+      An easy way to see LLVM's standard list of passes is
+
+        llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
     opts = []
     if optimization_level > 0:
@@ -551,6 +559,9 @@ class Building:
         if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
           opts.append('-tbaa')
           opts.append('-basicaa') # makes fannkuch slow but primes fast
+
+        if not Settings.BUILD_AS_SHARED_LIB:
+          opts.append('-internalize')
 
         opts.append('-globalopt')
         opts.append('-ipsccp')
@@ -609,7 +620,8 @@ class Building:
 
         opts.append('-strip-dead-prototypes')
 
-        if optimization_level > 2: opts.append('-globaldce')
+        if not Settings.BUILD_AS_SHARED_LIB:
+          opts.append('-globaldce')
 
         if optimization_level > 1: opts.append('-constmerge')
 
