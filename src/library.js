@@ -3680,6 +3680,32 @@ LibraryManager.library = {
     }
   },
 
+  mbtowc: function(pwc, pmb, maxx) {
+    // XXX doesn't really handle multibyte at all
+    if (!pmb) return 0;
+    maxx = Math.min({{{ cDefine('_NL_CTYPE_MB_CUR_MAX') }}}, maxx);
+    var i;
+    for (i = 0; i < maxx; i++) {
+      var curr = {{{ makeGetValue('pmb', 0, 'i8') }}};
+      if (pwc) {
+        {{{ makeSetValue('pwc', '0', 'curr', 'i8') }}};
+        {{{ makeSetValue('pwc', '1', '0', 'i8') }}};
+        pwc += 2;
+      }
+      pmb++;
+      if (!curr) break;
+    }
+    return i;
+  },
+
+  wcrtomb: function(s, wc, ps) {
+    // XXX doesn't really handle multibyte at all
+    if (s) {
+      {{{ makeSetValue('s', '0', 'wc', 'i8') }}};
+    }
+    return 1;
+  },
+
   // ==========================================================================
   // string.h
   // ==========================================================================
@@ -5210,6 +5236,14 @@ LibraryManager.library = {
   // ==========================================================================
   // locale.h
   // ==========================================================================
+
+  newlocale: function(mask, locale, base) {
+    return 0;
+  },
+
+  uselocale: function(locale) {
+    return 0;
+  },
 
   setlocale: function(category, locale) {
     if (!_setlocale.ret) _setlocale.ret = allocate([0], 'i8', ALLOC_NORMAL);
