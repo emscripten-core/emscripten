@@ -6019,6 +6019,7 @@ elif 'sanity' in str(sys.argv):
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname, otherlibname in [('hello_malloc.cpp', 'dlmalloc', 'libcxx'), ('hello_libcxx.cpp', 'libcxx', 'dlmalloc')]:
           for i in range(3):
+            try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-bc.bc')) # we might need to check this file later
             output = self.do([EMCC, path_from_root('tests', filename)])
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             assert INCLUDING_MESSAGE.replace('X', otherlibname) not in output
@@ -6026,6 +6027,9 @@ elif 'sanity' in str(sys.argv):
             self.assertContained('hello, world!', run_js('a.out.js'))
             assert os.path.exists(EMCC_CACHE)
             assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
+            if libname == 'libcxx':
+              assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 4000000, 'libc++ is big'
+              assert os.stat(os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-bc.bc')).st_size < 2000000, 'Dead code elimination must remove most of libc++'
       finally:
         if emcc_debug:
           os.environ['EMCC_DEBUG'] = emcc_debug
