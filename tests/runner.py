@@ -5994,8 +5994,8 @@ elif 'sanity' in str(sys.argv):
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     def test_emcc_caching(self):
-      INCLUDING_DLMALLOC_MESSAGE = 'emcc: including dlmalloc'
-      BUILDING_DLMALLOC_MESSAGE = 'emcc: building dlmalloc for cache'
+      INCLUDING_MESSAGE = 'emcc: including X'
+      BUILDING_MESSAGE = 'emcc: building X for cache'
 
       EMCC_CACHE = Cache.dirname
 
@@ -6010,20 +6010,21 @@ elif 'sanity' in str(sys.argv):
 
         # Building a file that doesn't need cached stuff should not trigger cache generation
         output = self.do([EMCC, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_DLMALLOC_MESSAGE not in output
-        assert BUILDING_DLMALLOC_MESSAGE not in output
+        assert INCLUDING_MESSAGE.replace('X', 'dlmalloc') not in output
+        assert BUILDING_MESSAGE.replace('X', 'dlmalloc') not in output
         self.assertContained('hello, world!', run_js('a.out.js'))
         assert not os.path.exists(EMCC_CACHE)
         try_delete('a.out.js')
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
-        for i in range(3):
-          output = self.do([EMCC, path_from_root('tests', 'hello_malloc.cpp')])
-          assert INCLUDING_DLMALLOC_MESSAGE in output
-          assert (BUILDING_DLMALLOC_MESSAGE in output) == (i == 0), 'Must only build the first time'
-          self.assertContained('hello, world!', run_js('a.out.js'))
-          assert os.path.exists(EMCC_CACHE)
-          assert os.path.exists(os.path.join(EMCC_CACHE, 'dlmalloc.bc'))
+        for filename, libname in [('hello_malloc.cpp', 'dlmalloc')]:
+          for i in range(3):
+            output = self.do([EMCC, path_from_root('tests', filename)])
+            assert INCLUDING_MESSAGE.replace('X', libname) in output
+            assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+            self.assertContained('hello, world!', run_js('a.out.js'))
+            assert os.path.exists(EMCC_CACHE)
+            assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
       finally:
         if emcc_debug:
           os.environ['EMCC_DEBUG'] = emcc_debug
