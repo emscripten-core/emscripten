@@ -3978,6 +3978,7 @@ def process(filename):
       
     def test_mmap(self):
       src = '''
+        #include <stdio.h>
         #include <sys/types.h>
         #include <sys/mman.h>
         #include <assert.h>
@@ -4001,12 +4002,13 @@ def process(filename):
             }
         
             assert(munmap(map, NUM_BYTES) == 0);
-        
+            
+            printf("hello,world");
             return 0;
         }
       '''
-      self.do_run(src, '')
-      self.do_run(src, '', force_c=True)
+      self.do_run(src, 'hello,world')
+      self.do_run(src, 'hello,world', force_c=True)
 
     def test_cubescript(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:
