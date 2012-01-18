@@ -3979,7 +3979,6 @@ def process(filename):
     def test_mmap(self):
       src = '''
         #include <stdio.h>
-        #include <sys/types.h>
         #include <sys/mman.h>
         #include <assert.h>
         
