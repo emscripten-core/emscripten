@@ -3858,7 +3858,7 @@ def process(filename):
       '''
 
       self.do_run(src, 'hello world\n77.\n',
-                  additional_files=map(lambda f: path_from_root('system', 'lib', 'libcxx', f+'.cpp'), ['ios', 'iostream', 'locale'])) # XXX temporary
+                  additional_files=map(lambda f: path_from_root('system', 'lib', 'libcxx', f+'.cpp'), ['ios', 'iostream', 'locale', 'string', 'mutex', 'future', 'memory', 'stdexcept', 'system_error'])) # XXX temporary
 
     def test_stdvec(self):
       src = '''
