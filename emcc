@@ -478,8 +478,8 @@ try:
         # We need to build and link the library in
         if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
         extra_files_to_link.append(shared.Cache.get(name, create))
-      if fix:
-        fix()
+        if fix:
+          fix()
 
   # First, combine the bitcode files if there are several
   if len(input_files) + len(extra_files_to_link) > 1:
