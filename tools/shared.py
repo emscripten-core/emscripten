@@ -671,7 +671,7 @@ class Building:
     # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
     try:
       defs = Building.llvm_nm(filename, stderr=PIPE)
-      assert len(defs.defs + defs.undefs) > 0
+      assert len(defs.defs) + len(defs.undefs) + len(defs.commons) > 0
     except:
       return False
     # look for magic signature
