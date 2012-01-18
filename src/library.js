@@ -3197,6 +3197,7 @@ LibraryManager.library = {
 
   munmap: function(start, num) {
     _free(start);
+    return 0;
   },
 
   // TODO: Implement mremap.
