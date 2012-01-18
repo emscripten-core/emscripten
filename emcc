@@ -464,7 +464,7 @@ try:
         shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
       # so all is well anyhow too.
-    dlmalloc_symbols = ('malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm')
+    dlmalloc_symbols = set(['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm'])
 
     # libcxx
     def create_libcxx():
@@ -475,7 +475,9 @@ try:
       # libcxx probably needs sign correction. # If we are in mode 0, switch to 2. We will add our lines
       shared.Settings.CORRECT_SIGNS = 1
       print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_SIGNS'
-    libcxx_symbols = ('blarg')
+    libcxx_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxx', 'symbols')).readlines())
+    libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
+    libcxx_symbols = set(libcxx_symbols)
 
     for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
                                               #('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols)]:
