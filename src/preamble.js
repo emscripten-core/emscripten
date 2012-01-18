@@ -462,9 +462,14 @@ function allocate(slab, types, allocator) {
 
   var ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
 
+  if (zeroinit) {
+      _memset(ret, 0, size);
+      return ret;
+  }
+  
   var i = 0, type;
   while (i < size) {
-    var curr = zeroinit ? 0 : slab[i];
+    var curr = slab[i];
 
     if (typeof curr === 'function') {
       curr = Runtime.getFunctionIndex(curr);
