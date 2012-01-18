@@ -3184,7 +3184,9 @@ LibraryManager.library = {
      * mmap.
      */
     if (stream == -1) {
-      return allocate(num, 'i8', ALLOC_NORMAL);
+      var ptr = _malloc(num);
+      _memset(ptr, 0, num);
+      return ptr;
     }
     var info = FS.streams[stream];
     if (!info) return -1;
