@@ -5866,6 +5866,9 @@ elif 'sanity' in str(sys.argv):
 
   commands = [[EMCC], ['python', path_from_root('tests', 'runner.py'), 'blahblah']]
 
+  def mtime(filename):
+    return os.stat(filename).st_mtime
+
   class sanity(RunnerCore):
     def setUp(self):
       wipe()
@@ -5953,9 +5956,6 @@ elif 'sanity' in str(sys.argv):
       assert os.path.exists('a.out.js')
 
     def test_emcc(self):
-      def mtime(filename):
-        return os.stat(filename).st_mtime
-
       SANITY_MESSAGE = 'Emscripten: Running sanity checks'
       SANITY_FAIL_MESSAGE = 'sanity check failed to run'
 
@@ -5992,6 +5992,41 @@ elif 'sanity' in str(sys.argv):
       self.assertContained(SANITY_MESSAGE, output)
       assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+    def test_emcc_caching(self):
+      INCLUDING_DLMALLOC_MESSAGE = 'emcc: including dlmalloc'
+      BUILDING_DLMALLOC_MESSAGE = 'emcc: building dlmalloc for cache'
+
+      EMCC_CACHE = Cache.dirname
+
+      restore()
+
+      Cache.erase()
+      assert not os.path.exists(EMCC_CACHE)
+
+      try:
+        emcc_debug = os.environ.get('EMCC_DEBUG')
+        os.environ['EMCC_DEBUG'] ='1'
+
+        # Building a file that doesn't need cached stuff should not trigger cache generation
+        output = self.do([EMCC, path_from_root('tests', 'hello_world.cpp')])
+        assert INCLUDING_DLMALLOC_MESSAGE not in output
+        assert BUILDING_DLMALLOC_MESSAGE not in output
+        self.assertContained('hello, world!', run_js('a.out.js'))
+        assert not os.path.exists(EMCC_CACHE)
+        try_delete('a.out.js')
+
+        # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
+        for i in range(3):
+          output = self.do([EMCC, path_from_root('tests', 'hello_malloc.cpp')])
+          assert INCLUDING_DLMALLOC_MESSAGE in output
+          assert (BUILDING_DLMALLOC_MESSAGE in output) == (i == 0), 'Must only build the first time'
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          assert os.path.exists(EMCC_CACHE)
+          assert os.path.exists(os.path.join(EMCC_CACHE, 'dlmalloc.bc'))
+      finally:
+        if emcc_debug:
+          os.environ['EMCC_DEBUG'] = emcc_debug
 
 else:
   raise Exception('Test runner is confused: ' + str(sys.argv))

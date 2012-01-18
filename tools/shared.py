@@ -381,7 +381,8 @@ class Building:
   def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
-        for different compilers) '''
+        for different compilers).
+        This cache is just during the test runner. There is a different concept of caching as well, see |Cache|. '''
 
     if type(generated_libs) is not list: generated_libs = [generated_libs]
 
@@ -676,4 +677,28 @@ class Building:
       return b[20] == 'B' and b[21] == 'C'
     
     return False
+
+# Permanent cache for dlmalloc and stdlibc++
+class Cache:
+  dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+
+  @staticmethod
+  def erase():
+    try:
+      shutil.rmtree(Cache.dirname)
+    except:
+      pass
+
+  # Request a cached file. If it isn't in the cache, it will be created with
+  # the given creator function
+  @staticmethod
+  def get(shortname, creator):
+    if not shortname.endswith('.bc'): shortname += '.bc'
+    cachename = os.path.join(Cache.dirname, shortname)
+    if os.path.exists(cachename):
+      return cachename
+    if not os.path.exists(Cache.dirname):
+      os.makedirs(Cache.dirname)
+    shutil.copyfile(creator(), cachename)
+    return cachename
 

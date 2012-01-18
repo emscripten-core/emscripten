@@ -458,10 +458,11 @@ try:
     if need_dlmalloc and not has_dlmalloc:
       # We need to build and link dlmalloc in
       if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
-      Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
-      if llvm_opt_level > 0:
-        shared.Building.llvm_opt(in_temp('dlmalloc.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
-      extra_files_to_link.append(in_temp('dlmalloc.o'))
+      def create_dlmalloc():
+        print >> sys.stderr, 'emcc: building dlmalloc for cache'
+        Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
+        return in_temp('dlmalloc.o')
+      extra_files_to_link.append(shared.Cache.get('dlmalloc', create_dlmalloc))
 
       # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
