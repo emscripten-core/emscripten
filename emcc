@@ -448,6 +448,8 @@ try:
     # compile a malloc implementation and stdlibc++.)
     # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
     # include just a few symbols but want the rest, this will not work.
+
+    # dlmalloc
     def create_dlmalloc():
       print >> sys.stderr, 'emcc: building dlmalloc for cache'
       Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
@@ -464,7 +466,19 @@ try:
       # so all is well anyhow too.
     dlmalloc_symbols = ('malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm')
 
-    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
+    # libcxx
+    def create_libcxx():
+      print >> sys.stderr, 'emcc: building libcxx for cache'
+      shared.Building.build_library('libcxx', EMSCRIPTEN_TEMP_DIR, EMSCRIPTEN_TEMP_DIR, ['libcxx.bc'], configure=None, copy_project=True)
+      return in_temp('libcxx.bc')
+    def fix_libcxx():
+      # libcxx probably needs sign correction. # If we are in mode 0, switch to 2. We will add our lines
+      shared.Settings.CORRECT_SIGNS = 1
+      print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_SIGNS'
+    libcxx_symbols = ('blarg')
+
+    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:,
+                                              #('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols)]:
       need = False
       has = False
       for input_file in input_files:
