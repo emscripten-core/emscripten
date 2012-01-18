@@ -477,7 +477,7 @@ try:
       print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_SIGNS'
     libcxx_symbols = ('blarg')
 
-    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:,
+    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
                                               #('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols)]:
       need = False
       has = False
