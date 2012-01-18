@@ -3975,6 +3975,38 @@ def process(filename):
         }
       '''
       self.do_run(src, 'value:10')
+      
+    def test_mmap(self):
+      src = '''
+        #include <sys/types.h>
+        #include <sys/mman.h>
+        #include <assert.h>
+        
+        int main(int argc, char *argv[]) {
+            const int NUM_BYTES = 8 * 1024 * 1024;
+            const int NUM_INTS = NUM_BYTES / sizeof(int);
+        
+            int* map = (int*)mmap(0, NUM_BYTES, PROT_READ | PROT_WRITE,
+                    MAP_SHARED | MAP_ANON, -1, 0);
+            assert(map != MAP_FAILED);
+        
+            int i;
+        
+            for (i = 0; i < NUM_INTS; i++) {
+                map[i] = i;
+            }
+        
+            for (i = 0; i < NUM_INTS; i++) {
+                assert(map[i] == i);
+            }
+        
+            assert(munmap(map, NUM_BYTES) == 0);
+        
+            return 0;
+        }
+      '''
+      self.do_run(src, '')
+      self.do_run(src, '', force_c=True)
 
     def test_cubescript(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:
