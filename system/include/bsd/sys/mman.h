@@ -38,6 +38,7 @@
 #define _SYS_MMAN_H_
 
 #include <stddef.h> /* XXX Emscripten for size_t */
+#include <sys/types.h> /* XXX Emscripten for C++ compilation, not just C */
 
 /* XXX Emscripten #include <sys/_posix.h> */
 
