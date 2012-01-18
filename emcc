@@ -444,26 +444,15 @@ try:
   extra_files_to_link = []
 
   if not LEAVE_INPUTS_RAW:
-    # Check if we need to include dlmalloc. Note that we assume a single symbol is enough to know if we have/do not have dlmalloc. If you
+    # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
+    # compile a malloc implementation and stdlibc++.)
+    # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
     # include just a few symbols but want the rest, this will not work.
-    need_dlmalloc = False
-    has_dlmalloc = False
-    for input_file in input_files:
-      symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
-      for malloc_def in ['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm']:
-        if malloc_def in symbols.undefs:
-          need_dlmalloc = True
-        if malloc_def in symbols.defs:
-          has_dlmalloc = True
-    if need_dlmalloc and not has_dlmalloc:
-      # We need to build and link dlmalloc in
-      if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
-      def create_dlmalloc():
-        print >> sys.stderr, 'emcc: building dlmalloc for cache'
-        Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
-        return in_temp('dlmalloc.o')
-      extra_files_to_link.append(shared.Cache.get('dlmalloc', create_dlmalloc))
-
+    def create_dlmalloc():
+      print >> sys.stderr, 'emcc: building dlmalloc for cache'
+      Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
+      return in_temp('dlmalloc.o')
+    def fix_dlmalloc():
       # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
         if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
@@ -473,6 +462,24 @@ try:
         shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
       # so all is well anyhow too.
+    dlmalloc_symbols = ('malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm')
+
+    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
+      need = False
+      has = False
+      for input_file in input_files:
+        symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
+        for malloc_def in library_symbols:
+          if malloc_def in symbols.undefs:
+            need = True
+          if malloc_def in symbols.defs:
+            has = True
+      if need and not has:
+        # We need to build and link the library in
+        if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
+        extra_files_to_link.append(shared.Cache.get(name, create))
+      if fix:
+        fix()
 
   # First, combine the bitcode files if there are several
   if len(input_files) + len(extra_files_to_link) > 1:
