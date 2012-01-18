@@ -378,20 +378,21 @@ class Building:
     Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers).
         This cache is just during the test runner. There is a different concept of caching as well, see |Cache|. '''
 
     if type(generated_libs) is not list: generated_libs = [generated_libs]
+    if source_dir is None: source_dir = path_from_root('tests', name)
 
     temp_dir = build_dir
     if copy_project:
       project_dir = os.path.join(temp_dir, name)
       if os.path.exists(project_dir):
         shutil.rmtree(project_dir)
-      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out, and two lines above
+      shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
     else:
       project_dir = build_dir
     try:
@@ -489,15 +490,19 @@ class Building:
     class ret:
       defs = []
       undefs = []
+      commons = []
     for line in output.split('\n'):
       if len(line) == 0: continue
       status, symbol = filter(lambda seg: len(seg) > 0, line.split(' '))
       if status == 'U':
         ret.undefs.append(symbol)
-      else:
+      elif status != 'C':
         ret.defs.append(symbol)
+      else:
+        ret.commons.append(symbol)
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
+    ret.commons = set(ret.commons)
     return ret
 
   @staticmethod

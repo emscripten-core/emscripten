@@ -469,8 +469,8 @@ try:
     # libcxx
     def create_libcxx():
       print >> sys.stderr, 'emcc: building libcxx for cache'
-      shared.Building.build_library('libcxx', EMSCRIPTEN_TEMP_DIR, EMSCRIPTEN_TEMP_DIR, ['libcxx.bc'], configure=None, copy_project=True)
-      return in_temp('libcxx.bc')
+      shared.Building.build_library('libcxx', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxx.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxx'))
+      return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxx', 'libcxx.bc')
     def fix_libcxx():
       # libcxx probably needs sign correction. # If we are in mode 0, switch to 2. We will add our lines
       shared.Settings.CORRECT_SIGNS = 1
@@ -479,8 +479,8 @@ try:
     libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
 
-    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
-                                              #('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols)]:
+    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols),
+                                               ('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols)]:
       need = False
       has = False
       for input_file in input_files:
