@@ -483,10 +483,10 @@ try:
       has = False
       for input_file in input_files:
         symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
-        for malloc_def in library_symbols:
-          if malloc_def in symbols.undefs:
+        for library_symbol in library_symbols:
+          if library_symbol in symbols.undefs:
             need = True
-          if malloc_def in symbols.defs:
+          if library_symbol in symbols.defs:
             has = True
       if need and not has:
         # We need to build and link the library in

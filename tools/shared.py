@@ -487,15 +487,15 @@ class Building:
     # LLVM binary ==> list of symbols
     output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
     class ret:
-      defs = []
-      undefs = []
+      defs = {}
+      undefs = {}
     for line in output.split('\n'):
       if len(line) == 0: continue
       status, symbol = filter(lambda seg: len(seg) > 0, line.split(' '))
       if status == 'U':
-        ret.undefs.append(symbol)
+        ret.undefs[symbol] = True
       else:
-        ret.defs.append(symbol)
+        ret.defs[symbol] = True
     return ret
 
   @staticmethod
