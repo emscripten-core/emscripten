@@ -560,7 +560,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (block.entries.length == 1) {
               ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + block.entries[0] + ' */' : '') + '\n';
             } // otherwise, should have been set before!
-            ret += indent + 'while(1) switch(__label__) {\n';
+            ret += indent + 'while(1) outer_switch_label__: switch(__label__) {\n';
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n'
                             + getLabelLines(label, indent + '    ');
@@ -779,7 +779,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     } else {
       if (!labelIsVariable) label = getLabelId(label);
-      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(label) + ' */' : '') + ' break;';
+      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(label) + ' */' : '') + ' break outer_switch_label__;';
     }
   }
 
@@ -875,7 +875,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('switch', function(item) {
-    // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
+    // TODO: Find a case where switch is important, and benchmark that.
+    var SWITCH_IN_SWITCH = 1; 
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the
     // js optimizer hoistMultiples much easier to implement (we hoist into one place, not
@@ -891,17 +892,23 @@ function JSify(data, functionsOnly, givenFunctions) {
     var first = true;
     for (var targetLabel in targetLabels) {
       if (!first) {
-        ret += 'else ';
+        if(!SWITCH_IN_SWITCH) ret += 'else ';
       } else {
+        if(SWITCH_IN_SWITCH) ret += 'SL' + item.ident + '_$: do { switch (' + item.ident + ') {\n';  
         first = false;
       }
-      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return item.ident + ' == ' + value }).join(' || ') + ') {\n';
-      ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
-      ret += '}\n';
+      if(SWITCH_IN_SWITCH) {
+        ret += targetLabels[targetLabel].map(function(value) { return '  case ' + value + ':' }).join('\n') + '\n';
+      } else {
+        ret += 'if (' + targetLabels[targetLabel].map(function(value) { return item.ident + ' == ' + value }).join(' || ') + ') {\n';
+      }
+      var labelBranch = getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null);
+      ret += '    ' + labelBranch + '\n';
+      ret += SWITCH_IN_SWITCH ? '    break SL' + item.ident + '_$;\n' : '}\n';
     }
-    if (item.switchLabels.length > 0) ret += 'else {\n';
-    ret += getPhiSetsForLabel(phiSets, item.defaultLabel) + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-    if (item.switchLabels.length > 0) ret += '}\n';
+    if (item.switchLabels.length > 0) ret += SWITCH_IN_SWITCH ? '  default:\n' : 'else {\n';
+    ret += '    ' + getPhiSetsForLabel(phiSets, item.defaultLabel) + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+    if (item.switchLabels.length > 0) ret += SWITCH_IN_SWITCH ? '    break SL' + item.ident + '_$;\n} } while(0);\n' : '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
     }
