@@ -482,8 +482,10 @@ try:
     libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
 
-    for name, create, fix, library_symbols in [('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols),
-                                               ('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols)]:
+    force = False # If we have libcxx, we must force inclusion of dlmalloc, since libcxx uses new internally. Note: this is kind of hacky
+
+    for name, create, fix, library_symbols in [('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols),
+                                               ('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
       need = False
       has = False
       for input_file in input_files:
@@ -493,10 +495,11 @@ try:
             need = True
           if library_symbol in symbols.defs:
             has = True
-      if need and not has:
+      if force or (need and not has):
         # We need to build and link the library in
         if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
         extra_files_to_link.append(shared.Cache.get(name, create))
+        force = True
         if fix:
           fix()
 
