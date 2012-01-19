@@ -6052,12 +6052,15 @@ elif 'sanity' in str(sys.argv):
         try_delete('a.out.js')
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
-        for filename, libname, otherlibname in [('hello_malloc.cpp', 'dlmalloc', 'libcxx'), ('hello_libcxx.cpp', 'libcxx', 'dlmalloc')]:
+        for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
             try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-bc.bc')) # we might need to check this file later
             output = self.do([EMCC, path_from_root('tests', filename)])
             assert INCLUDING_MESSAGE.replace('X', libname) in output
-            assert INCLUDING_MESSAGE.replace('X', otherlibname) not in output
+            if libname == 'dlmalloc':
+              assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
+            else:
+              assert INCLUDING_MESSAGE.replace('X', 'dlmalloc') in output # libcxx always forces inclusion of dlmalloc
             assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
             self.assertContained('hello, world!', run_js('a.out.js'))
             assert os.path.exists(EMCC_CACHE)
