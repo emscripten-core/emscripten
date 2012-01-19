@@ -3928,7 +3928,7 @@ def process(filename):
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       Settings.TOTAL_MEMORY = 100*1024*1024 # needed with typed arrays
 
-      src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
+      src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_run(src, '*1,0*', ['200', '1'])
       self.do_run(src, '*400,0*', ['400', '400'], no_build=True)
 
@@ -5876,7 +5876,7 @@ elif 'benchmark' in str(sys.argv):
 
     def test_dlmalloc(self):
       # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
-      src = open(path_from_root('src', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
+      src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_benchmark(src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
 
 elif 'sanity' in str(sys.argv):

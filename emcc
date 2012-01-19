@@ -452,7 +452,7 @@ try:
     # dlmalloc
     def create_dlmalloc():
       print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
+      Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
       return in_temp('dlmalloc.o')
     def fix_dlmalloc():
       # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
