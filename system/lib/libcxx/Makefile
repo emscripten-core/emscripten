@@ -20,7 +20,6 @@ OBJECTS = \
   exception.bc \
   ios.bc \
   locale.bc \
-  new.bc \
   regex.bc \
   strstream.bc \
   typeinfo.bc

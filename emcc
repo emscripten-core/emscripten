@@ -451,9 +451,12 @@ try:
 
     # dlmalloc
     def create_dlmalloc():
-      print >> sys.stderr, 'emcc: building dlmalloc for cache'
+      if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
       Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
-      return in_temp('dlmalloc.o')
+      # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
+      Popen([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=PIPE, stderr=PIPE).communicate()
+      shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
+      return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
       # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
@@ -464,11 +467,11 @@ try:
         shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
       # so all is well anyhow too.
-    dlmalloc_symbols = set(['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm'])
+    dlmalloc_symbols = open(shared.path_from_root('system', 'lib', 'dlmalloc.symbols')).read().split('\n')
 
     # libcxx
     def create_libcxx():
-      print >> sys.stderr, 'emcc: building libcxx for cache'
+      if DEBUG: print >> sys.stderr, 'emcc: building libcxx for cache'
       shared.Building.build_library('libcxx', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxx.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxx'))
       return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxx', 'libcxx.bc')
     def fix_libcxx():

@@ -257,6 +257,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
   print "Running Emscripten tests..."
 
+  Cache.erase() # Wipe the cache, so that we always test populating it in the test runner
+
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_run(self, src, expected_output=None, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):

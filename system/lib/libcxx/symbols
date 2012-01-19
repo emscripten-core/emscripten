@@ -49,7 +49,6 @@
          d _ZGVZNSt3__1L11init_wam_pmEvE5am_pm
          d _ZGVZNSt3__1L11init_wweeksEvE5weeks
          d _ZGVZNSt3__1L12init_wmonthsEvE6months
-         d _ZL13__new_handler
          d _ZL19__terminate_handler
          d _ZL20__unexpected_handler
          T _ZN12_GLOBAL__N_114__libcpp_nmstrC1EPKc
@@ -66,7 +65,6 @@
          T _ZNKSt13bad_exception4whatEv
          T _ZNKSt13runtime_error4whatEv
          T _ZNKSt16nested_exception14rethrow_nestedEv
-         T _ZNKSt20bad_array_new_length4whatEv
          T _ZNKSt3__110__time_put8__do_putEPcRS1_PK2tmcc
          T _ZNKSt3__110__time_put8__do_putEPwRS1_PK2tmcc
          T _ZNKSt3__110error_code7messageEv
@@ -770,7 +768,6 @@
          W _ZNKSt3__19money_putIwNS_19ostreambuf_iteratorIwNS_11char_traitsIwEEEEE6do_putES4_bRNS_8ios_baseEwRKNS_12basic_stringIwS3_NS_9allocatorIwEEEE
          W _ZNKSt3__19money_putIwNS_19ostreambuf_iteratorIwNS_11char_traitsIwEEEEE6do_putES4_bRNS_8ios_baseEwe
          T _ZNKSt8bad_cast4whatEv
-         T _ZNKSt9bad_alloc4whatEv
          T _ZNKSt9exception4whatEv
          T _ZNSt10bad_typeidC1Ev
          T _ZNSt10bad_typeidC2Ev
@@ -831,11 +828,6 @@
          T _ZNSt16nested_exceptionD0Ev
          T _ZNSt16nested_exceptionD1Ev
          T _ZNSt16nested_exceptionD2Ev
-         T _ZNSt20bad_array_new_lengthC1Ev
-         T _ZNSt20bad_array_new_lengthC2Ev
-         T _ZNSt20bad_array_new_lengthD0Ev
-         ? _ZNSt20bad_array_new_lengthD1Ev
-         T _ZNSt20bad_array_new_lengthD2Ev
          C _ZNSt3__110__find_endIRNS_11__traits_eqINS_11char_traitsIcEEEEPKcS7_EET0_S8_S8_T1_S9_T_NS_26random_access_iterator_tagESB_
          C _ZNSt3__110__find_endIRNS_11__traits_eqINS_11char_traitsIwEEEEPKwS7_EET0_S8_S8_T1_S9_T_NS_26random_access_iterator_tagESB_
          C _ZNSt3__110__sscanf_lEPKcPvS1_z
@@ -2574,11 +2566,6 @@
          T _ZNSt8bad_castD0Ev
          T _ZNSt8bad_castD1Ev
          T _ZNSt8bad_castD2Ev
-         T _ZNSt9bad_allocC1Ev
-         T _ZNSt9bad_allocC2Ev
-         T _ZNSt9bad_allocD0Ev
-         T _ZNSt9bad_allocD1Ev
-         T _ZNSt9bad_allocD2Ev
          T _ZNSt9exceptionD0Ev
          T _ZNSt9exceptionD1Ev
          T _ZNSt9exceptionD2Ev
@@ -2587,9 +2574,6 @@
          T _ZSt13set_terminatePFvvE
          T _ZSt14get_unexpectedv
          T _ZSt14set_unexpectedPFvvE
-         T _ZSt15get_new_handlerv
-         T _ZSt15set_new_handlerPFvvE
-         T _ZSt17__throw_bad_allocv
          T _ZSt17current_exceptionv
          T _ZSt17rethrow_exceptionSt13exception_ptr
          C _ZSt18make_exception_ptrINSt3__112future_errorEESt13exception_ptrT_
@@ -2737,9 +2721,7 @@
          D _ZTISt15underflow_error
          D _ZTISt16invalid_argument
          D _ZTISt16nested_exception
-         D _ZTISt20bad_array_new_length
          D _ZTISt8bad_cast
-         D _ZTISt9bad_alloc
          D _ZTISt9exception
          C _ZTSNSt3__110__stdinbufIcEE
          C _ZTSNSt3__110__stdinbufIwEE
@@ -2875,9 +2857,7 @@
          D _ZTSSt15underflow_error
          D _ZTSSt16invalid_argument
          D _ZTSSt16nested_exception
-         D _ZTSSt20bad_array_new_length
          D _ZTSSt8bad_cast
-         D _ZTSSt9bad_alloc
          D _ZTSSt9exception
          D _ZTTNSt3__110istrstreamE
          D _ZTTNSt3__110ostrstreamE
@@ -3002,9 +2982,7 @@
          D _ZTVSt15underflow_error
          D _ZTVSt16invalid_argument
          D _ZTVSt16nested_exception
-         D _ZTVSt20bad_array_new_length
          D _ZTVSt8bad_cast
-         D _ZTVSt9bad_alloc
          D _ZTVSt9exception
          W _ZThn8_NKSt3__115time_get_bynameIcNS_19istreambuf_iteratorIcNS_11char_traitsIcEEEEE3__XEv
          W _ZThn8_NKSt3__115time_get_bynameIcNS_19istreambuf_iteratorIcNS_11char_traitsIcEEEEE3__cEv
@@ -3119,11 +3097,3 @@
          d _ZZNSt3__1L11init_wam_pmEvE5am_pm
          d _ZZNSt3__1L11init_wweeksEvE5weeks
          d _ZZNSt3__1L12init_wmonthsEvE6months
-         W _ZdaPv
-         W _ZdaPvRKSt9nothrow_t
-         W _ZdlPv
-         W _ZdlPvRKSt9nothrow_t
-         W _Znaj
-         W _ZnajRKSt9nothrow_t
-         W _Znwj
-         W _ZnwjRKSt9nothrow_t
