@@ -3960,13 +3960,9 @@ def process(filename):
           self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
     def test_libcxx(self):
-      self.do_run(path_from_root('tests', 'libcxx'),
-                   'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march',
-                   main_file='main.cpp', additional_files=['hash.cpp'])
+      self.do_run(open(path_from_root('tests', 'hashtest.cpp')).read(),
+                   'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march')
 
-      # This will fail without using libcxx, as libstdc++ (gnu c++ lib) will use but not link in 
-      # __ZSt29_Rb_tree_insert_and_rebalancebPSt18_Rb_tree_node_baseS0_RS_
-      # So a way to avoid that problem is to include libcxx, as done here
       self.do_run('''
         #include <set>
         #include <stdio.h>
@@ -3976,7 +3972,7 @@ def process(filename):
           printf("hello world\\n");
           return 1;
         }
-        ''', 'hello world', includes=[path_from_root('tests', 'libcxx', 'include')]);
+        ''', 'hello world');
         
     def test_static_variable(self):
       Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
