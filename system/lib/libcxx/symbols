@@ -2579,7 +2579,6 @@
          C _ZSt18make_exception_ptrINSt3__112future_errorEESt13exception_ptrT_
          T _ZSt18uncaught_exceptionv
          D _ZSt7nothrow
-         T _ZSt9terminatev
          D _ZTCNSt3__110istrstreamE0_NS_13basic_istreamIcNS_11char_traitsIcEEEE
          D _ZTCNSt3__110ostrstreamE0_NS_13basic_ostreamIcNS_11char_traitsIcEEEE
          W _ZTCNSt3__114basic_iostreamIcNS_11char_traitsIcEEEE0_NS_13basic_istreamIcS2_EE
