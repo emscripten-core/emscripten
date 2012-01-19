@@ -560,7 +560,7 @@ class Building:
           opts.append('-tbaa')
           opts.append('-basicaa') # makes fannkuch slow but primes fast
 
-        if not Settings.BUILD_AS_SHARED_LIB:
+        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
           opts.append('-internalize')
 
         opts.append('-globalopt')
@@ -620,7 +620,7 @@ class Building:
 
         opts.append('-strip-dead-prototypes')
 
-        if not Settings.BUILD_AS_SHARED_LIB:
+        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
           opts.append('-globaldce')
 
         if optimization_level > 1: opts.append('-constmerge')

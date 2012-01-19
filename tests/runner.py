@@ -2488,6 +2488,9 @@ def process(filename):
 
     def test_runtimelink(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
+
+      Settings.LINKABLE = 1
+
       self.banned_js_engines = [NODE_JS] # node's global scope behaves differently than everything else, needs investigation FIXME
 
       header = r'''
@@ -2688,6 +2691,8 @@ def process(filename):
 
     def test_dlfcn_data_and_fptr(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
+
+      Settings.LINKABLE = 1
 
       lib_src = '''
         #include <stdio.h>

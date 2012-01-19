@@ -514,7 +514,7 @@ try:
     shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
   else:
     # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-    if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB:
+    if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:
       if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
 

@@ -194,6 +194,16 @@ var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 
                               // BUILD_AS_SHARED_LIB == 2.
                               // NOTE: LLVM optimizations run separately on the main file and
                               //       linked libraries can break things.
+var LINKABLE = 0; // If set to 1, this file can be linked with others, either as a shared
+                  // library or as the main file that calls a shared library. To enable that,
+                  // we will not internalize all symbols and cull the unused ones, in other
+                  // words, we will not remove unused functions and globals, which might be
+                  // used by another module we are linked with.
+                  // BUILD_AS_SHARED_LIB > 0 implies this, so it is only importand to set this to 1
+                  // when building the main file, and *if* that main file has symbols that
+                  // the library it will open will then access through an extern.
+                  // LINKABLE of 0 is very useful in that we can reduce the size of the
+                  // generated code very significantly, by removing everything not actually used.
 
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you
