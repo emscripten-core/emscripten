@@ -3865,8 +3865,7 @@ def process(filename):
       '''
 
       # FIXME: should not have so many newlines in output here
-      self.do_run(src, 'hello world\n\n77.\n',
-                  additional_files=map(lambda f: path_from_root('system', 'lib', 'libcxx', f+'.cpp'), ['ios', 'iostream', 'locale', 'string', 'mutex', 'future', 'memory', 'stdexcept', 'system_error'])) # XXX temporary
+      self.do_run(src, 'hello world\n\n77.\n')
 
     def test_stdvec(self):
       src = '''
