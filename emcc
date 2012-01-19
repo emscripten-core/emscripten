@@ -82,8 +82,8 @@ TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
                                                            # specific need.
-                                                           # One major limitation with this mode is that dlmalloc will not be added in.
-                                                           # LLVM optimizations will also not be done.
+                                                           # One major limitation with this mode is that dlmalloc and libc++ cannot be
+                                                           # added in. Also, LLVM optimizations will not be done, nor dead code elimination
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 
@@ -514,7 +514,7 @@ try:
     shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
   else:
     # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-    if not shared.Settings.BUILD_AS_SHARED_LIB:
+    if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB:
       if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
 
