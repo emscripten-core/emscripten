@@ -141,6 +141,7 @@ process(sys.argv[1])
       shutil.move(os.path.join(dirname, main_file), filename)
       # the additional files were copied; alter additional_files to point to their full paths now
       additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
+      os.chdir(self.get_dir())
 
     # C++ => LLVM binary
 
