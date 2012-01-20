@@ -19,38 +19,6 @@
         })(),
         canvas: document.getElementById('canvas')
       };
-      // Define the 2D and WebGL contexts lazily, because a canvas can only
-      // have one context type.
-      Module.__defineGetter__("ctx2D", function() {
-        try {
-          var ctx = Module.canvas.getContext('2d');
-          if (!ctx) throw 'Could not create canvas :(';
-          delete Module["ctxGL"];
-          Module.__defineGetter__("ctxGL", function() {
-            throw 'Could not create a WebGL context for a 2D canvas :(';
-          });
-          delete Module["ctx2D"];
-          return Module["ctx2D"] = ctx;
-        } catch (e) {
-          Module.print('(canvas not available)');
-          return null;
-        }
-      });
-      Module.__defineGetter__("ctxGL", function() {
-        try {
-          var ctx = Module.canvas.getContext('experimental-webgl');
-          if (!ctx) throw 'Could not create canvas :(';
-          delete Module["ctx2D"];
-          Module.__defineGetter__("ctx2D", function() {
-            throw 'Could not create a 2D context for a WebGL canvas :(';
-          });
-          delete Module["ctxGL"];
-          return Module["ctxGL"] = ctx;
-        } catch (e) {
-          Module.print('(canvas not available)');
-          return null;
-        }
-      });
 
       // The compiled code
       {{{ SCRIPT_CODE }}}
