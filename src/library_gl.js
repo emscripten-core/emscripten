@@ -66,6 +66,22 @@ var LibraryGL = {
     Module.ctxGL.bindTexture(target, GL.textures[texture]);
   },
 
+  glClearColor: function(red, green, blue, alpha) {
+    Module.ctxGL.clearColor(red, green, blue, alpha);
+  },
+
+  glClear: function(mask) {
+    Module.ctxGL.clear(mask);
+  },
+
+  glEnable: function(cap) {
+    Module.ctxGL.enable(cap);
+  },
+
+  glScissor: function(x, y, width, height) {
+    Module.ctxGL.scissor(x, y, width, height);
+  },
+
 };
 
 // Ignored stubs for fixed-function pipeline. We will need to emulate this
