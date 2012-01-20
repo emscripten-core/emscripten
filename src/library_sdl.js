@@ -1,16 +1,14 @@
 //"use strict";
 
 // To use emscripten's SDL library here, you need to define
-// Module.canvas and at least one of Module.ctx2D, Module.ctxGL.
+// Module.canvas.
 //
-// More specifically, for 2D our SDL implementation will look for
-// Module.canvas and Module.ctx2D. You should fill them using
-// something like
+// More specifically, our SDL implementation will look for
+// Module.canvas. You should fill it using something like
 //
 //      function onLoad() {
 //        // Pass canvas and context to the generated code
 //        Module.canvas = document.getElementById('canvas');
-//        Module.ctx2D = Module.canvas.getContext('2d');
 //      }
 //
 // Note that this must be called during onload, since you will
@@ -49,11 +47,6 @@
       function onLoad() {
         // Pass canvas and context to the generated code, and do the actual run() here
         Module.canvas = document.getElementById('canvas');
-        Module.ctx2D = Module.canvas.getContext('2d');
-        if (!Module.ctx2D) {
-          alert('Canvas not available :(');
-          return;
-        }
         Module.run();
       }
     </script>
@@ -69,9 +62,6 @@
 // Other stuff to take into account:
 //
 //  * Make sure alpha values are proper in your input. If they are all 0, everything will be transparent!
-//
-//  * It's best to set the ctx stuff in your html file, as above. Otherwise you will need
-//    to edit the generated .js file each time you generate it.
 //
 //  * Your code should not write a 32-bit value and expect that to set an RGBA pixel.
 //    The reason is that that data will be read as 8-bit values, and according to the
@@ -166,17 +156,31 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', '0xff', 'i32') }}}
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', '0xff', 'i32') }}}
 
+      // Decide if we want to use WebGL or not
+      var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
+
       SDL.surfaces[surf] = {
         width: width,
         height: height,
         canvas: Module['canvas'],
-        ctx: Module['ctx2D'],
+        ctx: SDL.createContext(useWebGL),
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
         alpha: 255
       };
       return surf;
+    },
+
+    createContext: function(useWebGL) {
+      try {
+        var ctx = Module.canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
+        if (!ctx) throw 'Could not create canvas :(';
+        return Module.ctx = ctx;
+      } catch (e) {
+        Module.print('(canvas not available)');
+        return null;
+      }
     },
 
     freeSurface: function(surf) {
