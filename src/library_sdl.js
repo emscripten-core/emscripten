@@ -166,11 +166,14 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', '0xff', 'i32') }}}
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', '0xff', 'i32') }}}
 
+      // Decide if we want to use WebGL or not
+      var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
+
       SDL.surfaces[surf] = {
         width: width,
         height: height,
         canvas: Module['canvas'],
-        ctx: Module['ctx2D'],
+        ctx: useWebGL ? Module['ctxGL'] : Module['ctx2D'],
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
