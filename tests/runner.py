@@ -4429,6 +4429,7 @@ def process(filename):
 
       # Compare to each other, and to expected output
       self.do_ll_run(path_from_root('tests', filename+'.o.ll.ll'))
+      assert open('stdout').read().startswith('AD:-1'), 'We must note when we enter functions'
 
       # Test using build_ll_hook
       src = '''

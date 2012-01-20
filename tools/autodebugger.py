@@ -201,26 +201,44 @@ for.end:                                          ; preds = %for.body, %entry
 
 lines_added = 0
 lines = data.split('\n')
+in_func = False
 for i in range(len(lines)):
   if MEMCPY:
     if not lines[i].startswith('declare void'):
       lines[i] = lines[i].replace('@llvm.memcpy.p0i8.p0i8.i32', '@emscripten_memcpy')
-  m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
-  if m:
-    index = i+1+lines_added
-    if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
-      lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+
+  try:
+    pre = ''
+    if lines[i].startswith('define '):
+      in_func = True
+    elif lines[i].startswith('}'):
+      in_func = False
+    elif in_func and ' = alloca' not in lines[i] and lines[i].startswith('  '):
+      # This is a good place to mark entry to this function
+      in_func = False
+      index = i+1+lines_added
+      pre = '  call void @emscripten_autodebug_i32(i32 -1, i32 %d)' % index
+
+    m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
+    if m:
+      index = i+1+lines_added
+      if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
+        lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+        lines_added += 1
+      elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
+        lines[i] += '\n  %%ead.%d = ptrtoint %s %s to i32' % (index, m.group('type'), m.group('var'))
+        lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
+        lines_added += 2
+      continue
+    m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
+    if m:
+      index = i+1+lines_added
+      lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
       lines_added += 1
-    elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
-      lines[i] += '\n  %%ead.%d = ptrtoint %s %s to i32' % (index, m.group('type'), m.group('var'))
-      lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
-      lines_added += 2
-    continue
-  m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
-  if m:
-    index = i+1+lines_added
-    lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
-    lines_added += 1
+  finally:
+    if len(pre) > 0:
+      lines[i] = pre + '\n' + lines[i]
+      lines_added += 1
 
 f = open(ofilename, 'w')
 f.write('\n'.join(lines) + '\n' + POSTAMBLE + '\n')
