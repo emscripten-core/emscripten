@@ -1167,6 +1167,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
     def test_exceptions(self):
         self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
+        if self.emcc_args is None: self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
 
         src = '''
           #include <stdio.h>
@@ -3865,6 +3866,8 @@ def process(filename):
     # libc++ tests
 
     def test_iostream(self):
+      if self.emcc_args is None: self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
+
       src = '''
         #include <iostream>
 
@@ -3936,6 +3939,8 @@ def process(filename):
           self.do_run(src, j, [str(i)], lambda x: x.replace('\n', '*'), no_build=i>1)
 
     def test_dlmalloc(self):
+      if self.emcc_args is None: self.emcc_args = [] # dlmalloc auto-inclusion is only done if we use emcc
+
       Settings.CORRECT_SIGNS = 2
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       Settings.TOTAL_MEMORY = 100*1024*1024 # needed with typed arrays
