@@ -307,11 +307,6 @@ class Settings:
           if args[i] == '-s':
             exec 'Settings.' + args[i+1] in globals() # execute the setting
 
-        # Save the defaults for later comparisons, including the -O changes. This way
-        # we only pass the relevant -s flags that actually change things after -O to emcc
-        # in the test runner
-        Settings.defaults = copy.copy(Settings.__dict__)
-
       # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
       # the reverse of load_settings, except for -Ox which is relevant there but not here
       @classmethod
@@ -320,9 +315,7 @@ class Settings:
         for key, value in Settings.__dict__.iteritems():
           if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
             jsoned = json.dumps(value)
-            # Only add if it actually modifies a default
-            if key not in Settings.defaults or jsoned != json.dumps(Settings.defaults[key]):
-              ret += ['-s', key + '=' + jsoned]
+            ret += ['-s', key + '=' + jsoned]
         return ret
 
       @classmethod
