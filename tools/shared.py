@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile
+import shutil, time, os, sys, json, tempfile, copy
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -298,6 +298,7 @@ class Settings:
         # Load the JS defaults into python
         settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
         exec settings in globals()
+        Settings.defaults = copy.copy(Settings.__dict__) # save the defaults for later comparisons
 
         # Apply additional settings. First -O, then -s
         for i in range(len(args)):
@@ -315,7 +316,10 @@ class Settings:
         ret = []
         for key, value in Settings.__dict__.iteritems():
           if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
-            ret += ['-s', key + '=' + json.dumps(value)]
+            jsoned = json.dumps(value)
+            # Only add if it actually modifies a default
+            if jsoned != json.dumps(Settings.defaults[key]):
+              ret += ['-s', key + '=' + jsoned]
         return ret
 
       @classmethod
