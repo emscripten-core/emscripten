@@ -4452,28 +4452,6 @@ def process(filename):
       self.do_run(src, build_ll_hook=self.do_autodebug)
       self.do_run(src, 'AD:', build_ll_hook=self.do_autodebug)
 
-    def test_dfe(self):
-      def hook(filename):
-        ll = open(filename + '.o.ll').read()
-        assert 'unneeded' not in ll, 'DFE should remove the unneeded function'
-
-      src = '''
-          #include <stdio.h>
-
-          void unneeded()
-          {
-            printf("some totally useless stuff\\n");
-          }
-
-          int main()
-          {
-            printf("*hello slim world*\\n");
-            return 0;
-          }
-        '''
-      # Using build_ll_hook forces a recompile, which leads to DFE being done even without opts
-      self.do_run(src, '*hello slim world*', build_ll_hook=hook)
-
     def test_profiling(self):
       src = '''
           #include <emscripten.h>

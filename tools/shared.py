@@ -106,7 +106,6 @@ EMRANLIB = path_from_root('emranlib')
 EMLIBTOOL = path_from_root('emlibtool')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-DFE = path_from_root('tools', 'dead_function_eliminator.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
@@ -439,9 +438,7 @@ class Building:
     #                 open(filename + '.o.ll', 'r').readlines())
     #os.unlink(filename + '.o.ll')
     #open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
-    shutil.move(filename + '.o.ll', filename + '.o.ll.orig')
-    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
+    pass
 
   # LLVM optimizations
   # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
