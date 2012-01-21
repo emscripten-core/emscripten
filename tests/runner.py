@@ -4150,6 +4150,7 @@ def process(filename):
 
     def test_sqlite(self):
       # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
+      if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
 
       pgo_data = read_pgo_data(path_from_root('tests', 'sqlite', 'sqlite-autooptimize.fails.txt'))
@@ -4187,7 +4188,6 @@ def process(filename):
                    open(path_from_root('tests', 'sqlite', 'benchmark.txt'), 'r').read(),
                    includes=[path_from_root('tests', 'sqlite')],
                    force_c=True,
-                   extra_emscripten_args=['-m'],
                    js_engines=[SPIDERMONKEY_ENGINE], # V8 is slow
                    post_build=post)#,build_ll_hook=self.do_autodebug)
 
@@ -4377,8 +4377,7 @@ def process(filename):
 
       self.do_ll_run(path_from_root('tests', 'python', 'python.ll'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
-                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''],
-                      extra_emscripten_args=['-m'])
+                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
     # Test cases in separate files. Note that these files may contain invalid .ll!
     # They are only valid enough for us to read for test purposes, not for llvm-as
