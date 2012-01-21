@@ -490,15 +490,16 @@ try:
 
     for name, create, fix, library_symbols in [('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols),
                                                ('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
-      need = False
-      has = False
+      need = []
+      has = []
       for input_file in input_files:
         symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
         for library_symbol in library_symbols:
           if library_symbol in symbols.undefs:
-            need = True
+            need.append(library_symbol)
           if library_symbol in symbols.defs:
-            has = True
+            has.append(library_symbol)
+      if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need |%s| and have |%s|' % (name, str(need), str(has))
       if force or (need and not has):
         # We need to build and link the library in
         if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
