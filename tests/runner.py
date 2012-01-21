@@ -253,12 +253,12 @@ process(sys.argv[1])
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
+Cache.erase() # Wipe the cache, so that we always test populating it in the tests, benchmarks, etc.
+
 if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
   # Tests
 
   print "Running Emscripten tests..."
-
-  Cache.erase() # Wipe the cache, so that we always test populating it in the test runner
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
