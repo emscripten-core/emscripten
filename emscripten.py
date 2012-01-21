@@ -68,23 +68,6 @@ def disassemble(filepath):
   return filepath
 
 
-def optimize(filepath):
-  """Runs LLVM's optimization passes on a given bitcode file.
-
-  Args:
-    filepath: The path to the bitcode file to optimize.
-
-  Returns:
-    The path to the optimized file.
-  """
-  shared.Building.LLVM_OPTS = 1
-  shared.Settings.QUANTUM_SIZE = 1 # just so it isn't 4, and we assume we can do things that fail on q1
-  command = [shared.LLVM_OPT, '-o=-', filepath] + shared.Building.pick_llvm_opts(3, True)
-  with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
-  if ret != 0: raise RuntimeError('Could not optimize %s.' % filepath)
-  return out.name
-
-
 def link(*objects):
   """Links multiple LLVM bitcode files into a single file.
 
@@ -97,20 +80,6 @@ def link(*objects):
   command = [shared.LLVM_LINK] + list(objects)
   with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
   if ret != 0: raise RuntimeError('Could not link %s.' % objects)
-  return out.name
-
-
-def compile_malloc():
-  """Compiles dlmalloc to LLVM bitcode.
-
-  Returns:
-    The path to the compiled dlmalloc as an LLVM bitcode (.bc) file.
-  """
-  src = path_from_root('src', 'dlmalloc.c')
-  includes = '-I' + path_from_root('src', 'include')
-  command = [shared.CLANG, '-c', '-g', '-emit-llvm'] + shared.COMPILER_OPTS + ['-o-', includes, src]
-  with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
-  if ret != 0: raise RuntimeError('Could not compile dlmalloc.')
   return out.name
 
 
@@ -146,31 +115,15 @@ def emscript(infile, settings, outfile):
 
 def main(args):
   # Construct a final linked and disassembled file.
-  if args.dlmalloc or args.optimize or not has_annotations(args.infile):
+  if not has_annotations(args.infile):
     args.infile = assemble(args.infile)
-    if args.dlmalloc:
-      malloc = compile_malloc()
-      args.infile = link(args.infile, malloc)
-    if args.optimize: args.infile = optimize(args.infile)
   args.infile = disassemble(args.infile)
 
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
-    assert name != 'OPTIMIZE', 'OPTIMIZE has been renamed MICRO_OPTS, to not confuse new users. Sorry for any inconvenience.'
     settings[name] = json.loads(value)
-
-  # Adjust sign correction for dlmalloc.
-  if args.dlmalloc:
-    CORRECT_SIGNS = settings.get('CORRECT_SIGNS', 0)
-    if CORRECT_SIGNS in (0, 2):
-      path = path_from_root('src', 'dlmalloc.c')
-      old_lines = settings.get('CORRECT_SIGNS_LINES', [])
-      line_nums = [4816, 4191, 4246, 4199, 4205, 4235, 4227]
-      lines = old_lines + [path + ':' + str(i) for i in line_nums]
-      settings['CORRECT_SIGNS'] = 2
-      settings['CORRECT_SIGNS_LINES'] = lines
 
   # Add header defines to settings
   defines = {}
@@ -244,14 +197,6 @@ if __name__ == '__main__':
       description=('Compile an LLVM assembly file to Javascript. Accepts both '
                    'human-readable (*.ll) and bitcode (*.bc) formats.'),
       epilog='You should have an ~/.emscripten file set up; see settings.py.')
-  parser.add_option('-O', '--optimize',
-                    default=False,
-                    action='store_true',
-                    help='Run LLVM optimizations on the input.')
-  parser.add_option('-m', '--dlmalloc',
-                    default=False,
-                    action='store_true',
-                    help='Use dlmalloc. Without, uses a dummy allocator. Warning: This will force a re-disassembly, so .ll line numbers will change.')
   parser.add_option('-H', '--headers',
                     default=[],
                     action='append',
