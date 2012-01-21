@@ -20,7 +20,7 @@ function cleanFunc(func) {
 // Handy sets
 
 var BRANCH_INVOKE = set('branch', 'invoke');
-var SIDE_EFFECT_CAUSERS = set('call', 'invoke');
+var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
 
 // Analyzer
 
