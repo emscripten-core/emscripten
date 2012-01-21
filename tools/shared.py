@@ -317,7 +317,7 @@ class Settings:
           if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
             jsoned = json.dumps(value)
             # Only add if it actually modifies a default
-            if jsoned != json.dumps(Settings.defaults[key]):
+            if key not in Settings.defaults or jsoned != json.dumps(Settings.defaults[key]):
               ret += ['-s', key + '=' + jsoned]
         return ret
 
