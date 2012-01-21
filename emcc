@@ -477,9 +477,9 @@ try:
       shared.Building.build_library('libcxx', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxx.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxx'))
       return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxx', 'libcxx.bc')
     def fix_libcxx():
-      # libcxx probably needs sign correction. # If we are in mode 0, switch to 2. We will add our lines
-      shared.Settings.CORRECT_SIGNS = 1
-      print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_SIGNS'
+      # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
+      shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
+      print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_* options'
     libcxx_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxx', 'symbols')).readlines())
     libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
