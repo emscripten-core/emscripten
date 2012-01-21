@@ -1171,7 +1171,9 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
         self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
-        if self.emcc_args is None: self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
+        if self.emcc_args is None:
+          if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
+          self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
 
         src = '''
           #include <stdio.h>
@@ -3873,6 +3875,7 @@ def process(filename):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
 
       if self.emcc_args is None:
+        if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
         self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
         Settings.SAFE_HEAP = 0 # Some spurious warnings from libc++ internals
 
