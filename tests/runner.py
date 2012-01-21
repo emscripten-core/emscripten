@@ -1167,6 +1167,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, 'Assertion failed: 1 == false')
 
     def test_exceptions(self):
+        if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
+
         self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         if self.emcc_args is None: self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
@@ -3868,7 +3870,11 @@ def process(filename):
     # libc++ tests
 
     def test_iostream(self):
-      if self.emcc_args is None: self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
+      if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
+
+      if self.emcc_args is None:
+        self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
+        Settings.SAFE_HEAP = 0 # Some spurious warnings from libc++ internals
 
       src = '''
         #include <iostream>
