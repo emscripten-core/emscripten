@@ -126,6 +126,8 @@ process(sys.argv[1])
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
 
+    Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2) # pick llvm opts here, so we include changes to Settings in the test case code
+
     # Copy over necessary files for compiling the source
     if main_file is None:
       f = open(filename, 'w')
