@@ -297,7 +297,6 @@ class Settings:
         # Load the JS defaults into python
         settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
         exec settings in globals()
-        Settings.defaults = copy.copy(Settings.__dict__) # save the defaults for later comparisons
 
         # Apply additional settings. First -O, then -s
         for i in range(len(args)):
@@ -307,6 +306,11 @@ class Settings:
         for i in range(len(args)):
           if args[i] == '-s':
             exec 'Settings.' + args[i+1] in globals() # execute the setting
+
+        # Save the defaults for later comparisons, including the -O changes. This way
+        # we only pass the relevant -s flags that actually change things after -O to emcc
+        # in the test runner
+        Settings.defaults = copy.copy(Settings.__dict__)
 
       # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
       # the reverse of load_settings, except for -Ox which is relevant there but not here
