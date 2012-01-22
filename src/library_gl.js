@@ -250,10 +250,6 @@ var LibraryGL = {
     Module.ctx.clear(mask);
   },
 
-  glEnable: function(cap) {
-    Module.ctx.enable(cap);
-  },
-
   glScissor: function(x, y, width, height) {
     Module.ctx.scissor(x, y, width, height);
   },
