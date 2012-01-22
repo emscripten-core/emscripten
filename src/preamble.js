@@ -752,6 +752,25 @@ function intArrayToString(array) {
 }
 Module['intArrayToString'] = intArrayToString;
 
+// Write a Javascript array to somewhere in the heap
+function writeStringToMemory(string, buffer, dontAddNull) {
+  var i = 0;
+  while (i < string.length) {
+    var chr = string.charCodeAt(i);
+    if (chr > 0xFF) {
+#if ASSERTIONS
+        assert(false, 'Character code ' + chr + ' (' + string[i] + ')  at offset ' + i + ' not in 0x00-0xFF.');
+#endif
+      chr &= 0xFF;
+    }
+    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}}
+    i = i + 1;
+  }
+  if (!dontAddNull) {
+    {{{ makeSetValue('buffer', 'i', '0', 'i8') }}}
+  }
+}
+
 {{{ unSign }}}
 {{{ reSign }}}
 

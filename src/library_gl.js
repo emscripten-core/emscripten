@@ -257,6 +257,50 @@ var LibraryGL = {
     Module.ctx.drawArrays(mode, first, count);
   },
 
+  glCreateShader_deps: ['$GL'],
+  glCreateShader: function(shaderType) {
+    var shader = Module.ctx.createShader(shaderType);
+    return GL.hashtable("shader").add(shader);
+  },
+
+  glShaderSource_deps: ['$GL'],
+  glShaderSource: function(shader, count, string, length) {
+    var source = "";
+    for (var i = 0; i < count; ++i) {
+      var frag = string[i];
+      if (length && IHEAP[length + QUANTUM_SIZE*i]) {
+        var len = IHEAP[length + QUANTUM_SIZE*i];
+        if (len < 0) {
+          frag = Pointer_stringify(IHEAP[string + QUANTUM_SIZE*i]);
+        } else {
+          frag = Pointer_stringify(IHEAP[string + QUANTUM_SIZE*i], len);
+        }
+      } else {
+        frag = Pointer_stringify(IHEAP[string + QUANTUM_SIZE*i]);
+      }
+      if (source.length) {
+        source += "\n";
+      }
+      source += frag;
+    }
+    Module.ctx.shaderSource(GL.hashtable("shader").get(shader), source);
+  },
+
+  glCompileShader_deps: ['$GL'],
+  glCompileShader: function(shader) {
+    Module.ctx.compileShader(GL.hashtable("shader").get(shader));
+  },
+
+  glGetShaderInfoLog_deps: ['$GL'],
+  glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
+    var log = Module.ctx.getShaderInfoLog(GL.hashtable("shader").get(shader));
+    log.slice(0, maxLength - 1);
+    writeStringToMemory(log, infoLog);
+    if (length) {
+      {{{ makeSetValue('length', 'i', 'log.length', 'i32') }}}
+    }
+  },
+
   glClearColor: function(red, green, blue, alpha) {
     Module.ctx.clearColor(red, green, blue, alpha);
   },
