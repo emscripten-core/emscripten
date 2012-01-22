@@ -301,6 +301,37 @@ var LibraryGL = {
     }
   },
 
+  glCreateProgram_deps: ['$GL'],
+  glCreateProgram: function() {
+    return GL.hashtable("program").add(Module.ctx.createProgram());
+  },
+
+  glAttachShader_deps: ['$GL'],
+  glAttachShader: function(program, shader) {
+    Module.ctx.attachShader(GL.hashtable("program").get(program),
+                            GL.hashtable("shader").get(shader));
+  },
+
+  glLinkProgram_deps: ['$GL'],
+  glLinkProgram: function(program) {
+    Module.ctx.linkProgram(GL.hashtable("program").get(program));
+  },
+
+  glGetProgramInfoLog_deps: ['$GL'],
+  glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
+    var log = Module.ctx.getProgramInfoLog(GL.hashtable("program").get(program));
+    log.slice(0, maxLength - 1);
+    writeStringToMemory(log, infoLog);
+    if (length) {
+      {{{ makeSetValue('length', 'i', 'log.length', 'i32') }}}
+    }
+  },
+
+  glUseProgram_deps: ['$Gl'],
+  glUseProgram: function(program) {
+    Module.ctx.useProgram(GL.hashtable("program").get(program));
+  },
+
   glClearColor: function(red, green, blue, alpha) {
     Module.ctx.clearColor(red, green, blue, alpha);
   },
