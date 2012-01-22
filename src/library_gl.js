@@ -6,6 +6,8 @@ var LibraryGL = {
   $GL: {
     textures: {},
     textureCounter: 0,
+    buffers: {},
+    bufferCounter: 0,
   },
 
   glGetString: function(name_) {
@@ -64,6 +66,36 @@ var LibraryGL = {
 
   glBindTexture: function(target, texture) {
     Module.ctx.bindTexture(target, GL.textures[texture]);
+  },
+
+  glGenBuffers__deps: ['$GL'],
+  glGenBuffers: function(n, buffers) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.bufferCounter++;
+      GL.buffers[id] = Module.ctx.createBuffer();
+      IHEAP[buffers+QUANTUM_SIZE*i] = id;
+    }
+  },
+
+  glDeleteBuffers: function(n, buffers) {
+    for (var i = 0; i < n; i++) {
+      var id = IHEAP[buffers+QUANTUM_SIZE*i];
+      Module.ctx.deleteBuffer(GL.buffers[id]);
+      delete GL.buffers[id];
+    }
+  },
+
+  glBufferData: function(target, size, data, usage) {
+    var buf = new ArrayBuffer(size);
+    var dataInBuf = new Uint8Array(buf);
+    for (var i = 0; i < size; ++i) {
+      dataInBuf[i] = IHEAP[data+QUANTUM_SIZE*i];
+    }
+    Module.ctx.bufferData(target, buf, usage);
+  },
+
+  glBindBuffer: function(target, buffer) {
+    Module.ctx.bindBuffer(target, GL.buffers[buffer]);
   },
 
   glClearColor: function(red, green, blue, alpha) {
