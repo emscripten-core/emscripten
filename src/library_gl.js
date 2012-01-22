@@ -238,6 +238,10 @@ var LibraryGL = {
     Module.ctx.disableVertexAttribArray(index);
   },
 
+  glDrawArrays: function(mode, first, count) {
+    Module.ctx.drawArrays(mode, first, count);
+  },
+
   glClearColor: function(red, green, blue, alpha) {
     Module.ctx.clearColor(red, green, blue, alpha);
   },
