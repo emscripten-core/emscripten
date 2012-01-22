@@ -496,16 +496,18 @@ function allocate(slab, types, allocator) {
 }
 Module['allocate'] = allocate;
 
-function Pointer_stringify(ptr) {
+function Pointer_stringify(ptr, /* optional */ length) {
+  var nullTerminated = typeof(length) == "undefined";
   var ret = "";
   var i = 0;
   var t;
   var nullByte = String.fromCharCode(0);
   while (1) {
     t = String.fromCharCode({{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}});
-    if (t == nullByte) { break; } else {}
+    if (nullTerminated && t == nullByte) { break; } else {}
     ret += t;
     i += 1;
+    if (!nullTerminated && i == length) { break; }
   }
   return ret;
 }
