@@ -332,6 +332,12 @@ var LibraryGL = {
     Module.ctx.useProgram(GL.hashtable("program").get(program));
   },
 
+  glBindAttribLocation_deps: ['$GL'],
+  glBindAttribLocation: function(program, index, name) {
+    name = Pointer_stringify(name);
+    Module.ctx.bindAttribLocation(Gl.hashtable("program").get(program), index, name);
+  },
+
   glClearColor: function(red, green, blue, alpha) {
     Module.ctx.clearColor(red, green, blue, alpha);
   },
