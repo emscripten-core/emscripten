@@ -4,10 +4,27 @@
 
 var LibraryGL = {
   $GL: {
-    textures: {},
-    textureCounter: 0,
-    buffers: {},
-    bufferCounter: 0,
+    _hashtables: {},
+    hashtable: function(name) {
+      if (!(name in this._hashtables)) {
+        this._hashtables[name] = {
+          table: {},
+          counter: 0,
+          add: function(obj) {
+            var id = this.counter++;
+            this.table[id] = obj;
+            return id;
+          },
+          get: function(id) {
+            return this.table[id];
+          },
+          remove: function(id) {
+            delete this.table[id];
+          }
+        };
+      }
+      return this._hashtables[name];
+    },
   },
 
   glGetString: function(name_) {
@@ -36,8 +53,7 @@ var LibraryGL = {
   glGenTextures__deps: ['$GL'],
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = GL.textureCounter++;
-      GL.textures[id] = Module.ctx.createTexture();
+      var id = GL.hashtable("texture").add(Module.ctx.createTexture());
       IHEAP[textures+QUANTUM_SIZE*i] = id;
     }
   },
@@ -45,8 +61,8 @@ var LibraryGL = {
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = IHEAP[textures+QUANTUM_SIZE*i];
-      Module.ctx.deleteTexture(GL.textures[id]);
-      delete GL.textures[id];
+      Module.ctx.deleteTexture(GL.hashtable("texture").get(id));
+      GL.hashtable("texture").remove(id);
     }
   },
 
@@ -65,14 +81,13 @@ var LibraryGL = {
   },
 
   glBindTexture: function(target, texture) {
-    Module.ctx.bindTexture(target, GL.textures[texture]);
+    Module.ctx.bindTexture(target, GL.hashtable("texture").get(texture));
   },
 
   glGenBuffers__deps: ['$GL'],
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.bufferCounter++;
-      GL.buffers[id] = Module.ctx.createBuffer();
+      var id = GL.hashtable("buffer").add(Module.ctx.createBuffer());
       IHEAP[buffers+QUANTUM_SIZE*i] = id;
     }
   },
@@ -80,8 +95,8 @@ var LibraryGL = {
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = IHEAP[buffers+QUANTUM_SIZE*i];
-      Module.ctx.deleteBuffer(GL.buffers[id]);
-      delete GL.buffers[id];
+      Module.ctx.deleteBuffer(GL.hashtable("buffer").get(id));
+      GL.hashtable("buffer").remove(id);
     }
   },
 
@@ -187,7 +202,7 @@ var LibraryGL = {
   },
 
   glBindBuffer: function(target, buffer) {
-    Module.ctx.bindBuffer(target, GL.buffers[buffer]);
+    Module.ctx.bindBuffer(target, GL.hashtable("buffer").get(buffer));
   },
 
   glVertexAttrib1f: function(index, v0) {
