@@ -1,17 +1,12 @@
 #!/usr/bin/python
 
 '''
-Run with -h to see usage options.
+You should normally never use this! Use emcc instead.
 
-Notes:
-
-  * Emscripten expects the .ll input to be formatted and annotated the way
-
-      llvm-dis -show-annotations
-
-    does. So if you get .ll from something else, you should run it through
-    llvm-as (to generate LLVM bitcode) and then llvm-dis -show-annotations
-    (to get properly formatted and annotated .ll).
+This is a small wrapper script around the core JS compiler. This calls that
+compiler with the settings given to it. It can also read data from C/C++
+header files (so that the JS compiler can see the constants in those
+headers, for the libc implementation in JS).
 '''
 
 import json
@@ -31,68 +26,6 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 temp_files = shared.TempFiles()
-
-def assemble(filepath):
-  """Converts human-readable LLVM assembly to binary LLVM bitcode.
-
-  Args:
-    filepath: The path to the file to assemble. If the name ends with ".bc", the
-      file is assumed to be in bitcode format already.
-
-  Returns:
-    The path to the assembled file.
-  """
-  if not filepath.endswith('.bc'):
-    command = [shared.LLVM_AS, '-o=-', filepath]
-    with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
-    if ret != 0: raise RuntimeError('Could not assemble %s.' % filepath)
-    filepath = out.name
-  return filepath
-
-
-def disassemble(filepath):
-  """Converts binary LLVM bitcode to human-readable LLVM assembly.
-
-  Args:
-    filepath: The path to the file to disassemble. If the name ends with ".ll",
-      the file is assumed to be in human-readable assembly format already.
-
-  Returns:
-    The path to the disassembled file.
-  """
-  if not filepath.endswith('.ll'):
-    command = [shared.LLVM_DIS, '-o=-', filepath] + shared.LLVM_DIS_OPTS
-    with temp_files.get('.ll') as out: ret = subprocess.call(command, stdout=out)
-    if ret != 0: raise RuntimeError('Could not disassemble %s.' % filepath)
-    filepath = out.name
-  return filepath
-
-
-def link(*objects):
-  """Links multiple LLVM bitcode files into a single file.
-
-  Args:
-    objects: The bitcode files to link.
-
-  Returns:
-    The path to the linked file.
-  """
-  command = [shared.LLVM_LINK] + list(objects)
-  with temp_files.get('.bc') as out: ret = subprocess.call(command, stdout=out)
-  if ret != 0: raise RuntimeError('Could not link %s.' % objects)
-  return out.name
-
-
-def has_annotations(filepath):
-  """Tests whether an assembly file contains annotations.
-
-  Args:
-    filepath: The .ll file containing the assembly to check.
-
-  Returns:
-    Whether the provided file is valid assembly and has annotations.
-  """
-  return filepath.endswith('.ll') and '[#uses=' in open(filepath).read()
 
 
 def emscript(infile, settings, outfile):
@@ -114,11 +47,6 @@ def emscript(infile, settings, outfile):
 
 
 def main(args):
-  # Construct a final linked and disassembled file.
-  if not has_annotations(args.infile):
-    args.infile = assemble(args.infile)
-  args.infile = disassemble(args.infile)
-
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -194,9 +122,9 @@ def main(args):
 if __name__ == '__main__':
   parser = optparse.OptionParser(
       usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
-      description=('Compile an LLVM assembly file to Javascript. Accepts both '
-                   'human-readable (*.ll) and bitcode (*.bc) formats.'),
-      epilog='You should have an ~/.emscripten file set up; see settings.py.')
+      description=('You should normally never use this! Use emcc instead. '
+                   'This is a wrapper around the JS compiler, converting .ll to .js.'),
+      epilog='')
   parser.add_option('-H', '--headers',
                     default=[],
                     action='append',

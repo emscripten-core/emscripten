@@ -5000,26 +5000,6 @@ def process(filename):
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
 
-    def test_autoassemble(self):
-      src = r'''
-        #include <stdio.h>
-
-        int main() {
-          puts("test\n");
-          return 0;
-        }
-        '''
-      dirname = self.get_dir()
-      filename = os.path.join(dirname, 'src.cpp')
-      self.build(src, dirname, filename)
-
-      new_filename = os.path.join(dirname, 'new.bc')
-      shutil.copy(filename + '.o', new_filename)
-      Building.emscripten(new_filename, append_ext=False)
-
-      shutil.copy(filename + '.o.js', os.path.join(self.get_dir(), 'new.cpp.o.js'))
-      self.do_run(None, 'test\n', basename='new.cpp', no_build=True)
-
     def test_linespecific(self):
       Settings.CHECK_SIGNS = 0
       Settings.CHECK_OVERFLOWS = 0

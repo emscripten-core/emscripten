@@ -521,13 +521,12 @@ function intertyper(data, sidePass, baseLineNums) {
               ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
             });
           }
-        } else {
-          if (!item.tokens[3]) throw 'Did you run llvm-dis with -show-annotations? (b)'; // XXX: do we still need annotations?
+        } else if (!external) {
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
           if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
             ret.value = parseLLVMFunctionCall(item.tokens.slice(2));
-          } else if (!external) {
+          } else {
             ret.value = scanConst(item.tokens[3], ret.type);
           }
         }

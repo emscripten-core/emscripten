@@ -414,6 +414,8 @@ try:
         shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
       else: #.ll
         if not LEAVE_INPUTS_RAW:
+          # Note that by assembling the .ll file, then disassembling it later, we will
+          # remove annotations which is a good thing for compilation time
           if DEBUG: print >> sys.stderr, 'emcc: assembling assembly file: ', input_file
           shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
@@ -549,11 +551,12 @@ try:
     final = in_temp(target_basename + '.bc')
     if DEBUG: save_intermediate('bc', 'bc')
     final = shared.Building.llvm_dis(final, final + '.ll')
-    if DEBUG: save_intermediate('ll', 'll')
   else:
     assert len(input_files) == 1
     final = input_files[0]
+  if DEBUG: save_intermediate('ll', 'll')
 
+  if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
   final = shared.Building.emscripten(final, append_ext=False)
   if DEBUG: save_intermediate('original')
 
