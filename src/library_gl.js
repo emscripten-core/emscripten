@@ -374,27 +374,15 @@ var LibraryGL = {
     Module.ctx.bindAttribLocation(GL.hashtable("program").get(program), index, name);
   },
 
-  glClearColor: function(red, green, blue, alpha) {
-    Module.ctx.clearColor(red, green, blue, alpha);
-  },
-
-  glClear: function(mask) {
-    Module.ctx.clear(mask);
-  },
-
-  glScissor: function(x, y, width, height) {
-    Module.ctx.scissor(x, y, width, height);
-  },
-
 };
 
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear'],
  [2, 'pixelStorei'],
  [3, 'texParameteri texParameterf'],
- [4, 'viewport clearColor']].forEach(function(data) {
+ [4, 'viewport clearColor scissor']].forEach(function(data) {
   var num = data[0];
   var names = data[1];
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
