@@ -68,14 +68,14 @@ var LibraryGL = {
 
   glTexImage2D: function(target, level, internalformat, width, height, border, format, type, pixels) {
     if (pixels) {
-      pixels = new Uint8Array(IHEAP.slice(pixels, pixels + width*height*4)); // TODO: optimize
+      pixels = new Uint8Array(Array_copy(pixels, pixels + width*height*4)); // TODO: optimize
     }
     Module.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
   },
 
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
     if (pixels) {
-      pixels = new Uint8Array(IHEAP.slice(pixels, pixels + width*height*4)); // TODO: optimize
+      pixels = new Uint8Array(Array_copy(pixels, pixels + width*height*4)); // TODO: optimize
     }
     Module.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
@@ -158,67 +158,67 @@ var LibraryGL = {
 
   glUniform1fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform1fv(Location, value);
   },
 
   glUniform2fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform2fv(Location, value);
   },
 
   glUniform3fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform3fv(Location, value);
   },
 
   glUniform4fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform4fv(Location, value);
   },
 
   glUniform1fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform1fi(Location, value);
   },
 
   glUniform2fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform2fi(Location, value);
   },
 
   glUniform3fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform3fi(Location, value);
   },
 
   glUniform4fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniform4fi(Location, value);
   },
 
   glUniformMatrix2fv: function(Location, count, transpose, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniformMatrix2fv(Location, transpose, value);
   },
 
   glUniformMatrix3fv: function(Location, count, transpose, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniformMatrix3fv(Location, transpose, value);
   },
 
   glUniformMatrix4fv: function(Location, count, transpose, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(IHEAP.slice(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
     Module.ctx.uniformMatrix4fv(Location, transpose, value);
   },
 
@@ -243,22 +243,22 @@ var LibraryGL = {
   },
 
   glVertexAttrib1fv: function(index, v) {
-    v = new Float32Array(IHEAP.slice(v, value + 1*4)); // TODO: optimize
+    v = new Float32Array(Array_copy(v, value + 1*4)); // TODO: optimize
     Module.ctx.vertexAttrib1fv(index, v);
   },
 
   glVertexAttrib2fv: function(index, v) {
-    v = new Float32Array(IHEAP.slice(v, value + 2*4)); // TODO: optimize
+    v = new Float32Array(Array_copy(v, value + 2*4)); // TODO: optimize
     Module.ctx.vertexAttrib2fv(index, v);
   },
 
   glVertexAttrib3fv: function(index, v) {
-    v = new Float32Array(IHEAP.slice(v, value + 3*4)); // TODO: optimize
+    v = new Float32Array(Array_copy(v, value + 3*4)); // TODO: optimize
     Module.ctx.vertexAttrib3fv(index, v);
   },
 
   glVertexAttrib4fv: function(index, v) {
-    v = new Float32Array(IHEAP.slice(v, value + 4*4)); // TODO: optimize
+    v = new Float32Array(Array_copy(v, value + 4*4)); // TODO: optimize
     Module.ctx.vertexAttrib4fv(index, v);
   },
 
