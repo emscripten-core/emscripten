@@ -356,7 +356,7 @@ var LibraryGL = {
   glBindAttribLocation_deps: ['$GL'],
   glBindAttribLocation: function(program, index, name) {
     name = Pointer_stringify(name);
-    Module.ctx.bindAttribLocation(Gl.hashtable("program").get(program), index, name);
+    Module.ctx.bindAttribLocation(GL.hashtable("program").get(program), index, name);
   },
 
   glClearColor: function(red, green, blue, alpha) {
