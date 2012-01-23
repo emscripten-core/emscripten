@@ -395,7 +395,7 @@ var LibraryGL = {
 });
 
 // Simple pass-through functions
-[[0, 'shadeModel fogi fogfv'],
+[[0, 'shadeModel fogi fogfv getError'],
  [1, 'clearDepth depthFunc enable disable frontFace cullFace'],
  [2, 'pixelStorei'],
  [3, 'texParameteri texParameterf'],
