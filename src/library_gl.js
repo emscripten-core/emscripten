@@ -289,15 +289,15 @@ var LibraryGL = {
     var source = "";
     for (var i = 0; i < count; ++i) {
       var frag = string[i];
-      if (length && IHEAP[length + QUANTUM_SIZE*i]) {
-        var len = IHEAP[length + QUANTUM_SIZE*i];
+      if (length) {
+        var len = {{{ makeGetValue('length', 'i', 'i32') }}};
         if (len < 0) {
-          frag = Pointer_stringify(IHEAP[string + QUANTUM_SIZE*i]);
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
         } else {
-          frag = Pointer_stringify(IHEAP[string + QUANTUM_SIZE*i], len);
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}}, len);
         }
       } else {
-        frag = Pointer_stringify(IHEAP[string + QUANTUM_SIZE*i]);
+        frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
       }
       if (source.length) {
         source += "\n";
