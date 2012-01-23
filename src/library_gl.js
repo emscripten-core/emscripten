@@ -356,7 +356,7 @@ var LibraryGL = {
   glGetProgramInfoLog_deps: ['$GL'],
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
     var log = Module.ctx.getProgramInfoLog(GL.hashtable("program").get(program));
-    log.slice(0, maxLength - 1);
+    log = log.substr(0, maxLength - 1);
     writeStringToMemory(log, infoLog);
     if (length) {
       {{{ makeSetValue('length', 'i', 'log.length', 'i32') }}}
