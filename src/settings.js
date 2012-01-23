@@ -73,13 +73,6 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // then load it aligned, and that load-store will make JS engines alter it if it is being
                      // stored to a typed array for security reasons. That will 'fix' the number from being a
                      // NaN or an infinite number.
-var EMULATE_UNALIGNED_ACCESSES = 0; // If set, the compiler will 'emulate' loads and stores that are not known to
-                                    // be sufficiently aligned, by working on individual bytes. This can be
-                                    // important in USE_TYPED_ARRAYS == 2, where unaligned accesses do not work,
-                                    // specifically in the case where unsafe LLVM optimizations have generated possibly
-                                    // unaligned code. (Without unsafe LLVM optimizations, there should be no
-                                    // need for this option.)
-                                    // Currently this only works for integers, not doubles and floats.
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.

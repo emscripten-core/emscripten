@@ -912,23 +912,30 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
             'tempDoubleF64[0])';
   }
 
-  if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
+  if (USE_TYPED_ARRAYS == 2 && align) {
     // Alignment is important here. May need to split this up
     var bytes = Runtime.getNativeTypeSize(type);
     if (bytes > align) {
-      var ret = '/* unaligned */(';
-      if (bytes <= 4) {
-        for (var i = 0; i < bytes; i++) {
-          ret += 'tempInt' + (i == 0 ? '=' : (i < bytes-1 ? '+=((' : '+(('));
-          ret += makeSignOp(makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, unsigned, ignore), 'i8', 'un', true);
-          if (i > 0) ret += ')<<' + (8*i) + ')';
-          if (i < bytes-1) ret += ',';
+      var ret = '(';
+      if (isIntImplemented(type)) {
+        if (bytes <= 4) {
+          for (var i = 0; i < bytes; i++) {
+            ret += 'tempInt' + (i == 0 ? '=' : (i < bytes-1 ? '+=((' : '+(('));
+            ret += makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore);
+            if (i > 0) ret += ')<<' + (8*i) + ')';
+            if (i < bytes-1) ret += ',';
+          }
+          if (signed) {
+            ret += ',' + makeSignOp('tempInt', type, 're', true);
+          }
+        } else {
+          assert(bytes == 8);
+          ret += 'tempBigInt=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, true, ignore, align) + ',';
+          ret += 'tempBigInt2=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, true, ignore, align) + ',';
+          ret += makeI64('tempBigInt', 'tempBigInt2');
         }
       } else {
-        assert(bytes == 8);
-        ret += 'tempBigInt=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, true, ignore, align) + ',';
-        ret += 'tempBigInt2=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, true, ignore, align) + ',';
-        ret += makeI64('tempBigInt', 'tempBigInt2');
+        assert(0, 'We do not support unaligned float/double reads yet');
       }
       ret += ')';
       return ret;
@@ -994,22 +1001,26 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align) + ')';
   }
 
-  if (EMULATE_UNALIGNED_ACCESSES && USE_TYPED_ARRAYS == 2 && align && isIntImplemented(type)) { // TODO: support unaligned doubles and floats
+  if (USE_TYPED_ARRAYS == 2 && align) {
     // Alignment is important here. May need to split this up
     var bytes = Runtime.getNativeTypeSize(type);
     if (bytes > align) {
-      var ret = '/* unaligned */';
-      if (bytes <= 4) {
-        ret += 'tempBigInt=' + value + ';';
-        for (var i = 0; i < bytes; i++) {
-          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore) + ';';
-          if (i < bytes-1) ret += 'tempBigInt>>=8;';
+      var ret = '';
+      if (isIntImplemented(type)) {
+        if (bytes <= 4) {
+          ret += 'tempBigInt=' + value + ';';
+          for (var i = 0; i < bytes; i++) {
+            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore) + ';';
+            if (i < bytes-1) ret += 'tempBigInt>>=8;';
+          }
+        } else {
+          assert(bytes == 8);
+          ret += 'tempPair=' + ensureI64_1(value) + ';';
+          ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + ';';
+          ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + ';';
         }
       } else {
-        assert(bytes == 8);
-        ret += 'tempPair=' + ensureI64_1(value) + ';';
-        ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + ';';
-        ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + ';';
+        assert(0, 'We do not support unaligned float/double writes yet');
       }
       return ret;
     }

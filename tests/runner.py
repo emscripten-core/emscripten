@@ -5545,6 +5545,9 @@ f.close()
         output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
+    def test_reminder(self):
+      assert False, 'Optimize makeGet/SetValue to do 16-bit reads/writes when possible, not just 8'
+
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.
