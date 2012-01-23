@@ -389,6 +389,9 @@ var LibraryGL = {
   var stub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
   names.split(' ').forEach(function(name_) {
     var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
+#if ASSERTIONS
+    assert(!(cName in LibraryGL), "Cannot reimplement the existing function " + cName);
+#endif
     LibraryGL[cName] = eval(stub.replace('NAME', name_));
     //print(cName + ': ' + LibraryGL[cName]);
   });
