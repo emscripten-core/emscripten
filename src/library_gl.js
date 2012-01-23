@@ -388,11 +388,6 @@ var LibraryGL = {
 
 };
 
-// Ignored stubs for fixed-function pipeline. We will need to emulate this
-'begin end matrixMode loadIdentity ortho color3f texCoord2f vertex2f blendFunc pushMatrix popMatrix translatef scalef color4ub enableClientState disableClientState vertexPointer colorPointer normalPointer texCoordPointer drawArrays clientActiveTexture_'.split(' ').forEach(function(name_) {
-  var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
-  LibraryGL[cName] = function(){};
-});
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError'],
