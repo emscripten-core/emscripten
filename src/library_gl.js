@@ -16,9 +16,15 @@ var LibraryGL = {
             return id;
           },
           get: function(id) {
+#if ASSERTIONS
+            assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
+#endif
             return this.table[id];
           },
           remove: function(id) {
+#if ASSERTIONS
+            assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
+#endif
             delete this.table[id];
           }
         };
