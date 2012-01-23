@@ -43,7 +43,7 @@ var LibraryGL = {
   glGetIntegerv: function(name_, p) {
     switch(name_) {
       case Module.ctx.MAX_TEXTURE_SIZE:
-        IHEAP[p] = Module.ctx.getParameter(name_);
+        {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
         break;
       default:
         throw 'Failure: Invalid glGetIntegerv value: ' + name_;
@@ -54,13 +54,13 @@ var LibraryGL = {
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = GL.hashtable("texture").add(Module.ctx.createTexture());
-      IHEAP[textures+QUANTUM_SIZE*i] = id;
+      {{{ makeSetValue('textures', 'i', 'id', 'i32') }}};
     }
   },
 
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = IHEAP[textures+QUANTUM_SIZE*i];
+      var id = {{{ makeGetValue('textures', 'i', 'i32') }}};
       Module.ctx.deleteTexture(GL.hashtable("texture").get(id));
       GL.hashtable("texture").remove(id);
     }
@@ -88,13 +88,13 @@ var LibraryGL = {
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = GL.hashtable("buffer").add(Module.ctx.createBuffer());
-      IHEAP[buffers+QUANTUM_SIZE*i] = id;
+      {{{ makeSetValue('buffers', 'i', 'id', 'i32') }}};
     }
   },
 
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = IHEAP[buffers+QUANTUM_SIZE*i];
+      var id = {{{ makeGetValue('buffers', 'i', 'i32') }}};
       Module.ctx.deleteBuffer(GL.hashtable("buffer").get(id));
       GL.hashtable("buffer").remove(id);
     }
@@ -104,7 +104,7 @@ var LibraryGL = {
     var buf = new ArrayBuffer(size);
     var dataInBuf = new Uint8Array(buf);
     for (var i = 0; i < size; ++i) {
-      dataInBuf[i] = IHEAP[data+QUANTUM_SIZE*i];
+      dataInBuf[i] = {{{ makeGetValue('data', 'i', 'i32') }}};
     }
     Module.ctx.bufferData(target, buf, usage);
   },
