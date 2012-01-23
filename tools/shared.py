@@ -440,9 +440,9 @@ class Building:
   # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
   #            optimization passes passed to llvm opt
   @staticmethod
-  def llvm_opt(filename, opts, safe=True):
+  def llvm_opt(filename, opts):
     if type(opts) is int:
-      opts = Building.pick_llvm_opts(opts, safe)
+      opts = Building.pick_llvm_opts(opts)
     output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
     shutil.move(filename + '.opt.bc', filename)
@@ -528,7 +528,7 @@ class Building:
     return filename + '.o.js'
 
   @staticmethod
-  def pick_llvm_opts(optimization_level, safe=True):
+  def pick_llvm_opts(optimization_level):
     '''
       It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
       (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
@@ -539,8 +539,9 @@ class Building:
 
         llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
+    safe = Settings.USE_TYPED_ARRAYS != 2 or Settings.BUILD_AS_SHARED_LIB or Settings.LINKABLE
+    print 'LLVM opts, safe?', safe
     opts = []
-    assert safe or Settings.USE_TYPED_ARRAYS == 2, 'Cannot do unsafe LLVM opts without typed arrays in mode 2'
     if optimization_level > 0:
       if not safe:
         opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining, to avoid overly aggressive inlining
