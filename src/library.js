@@ -4707,7 +4707,7 @@ LibraryManager.library = {
   },
   nanf: 'nan',
 
-  sincos: function(cosine, sine, x) {
+  sincos: function(x, sine, cosine) {
     var sineVal = Math.sin(x),
         cosineVal = Math.cos(x);
     {{{ makeSetValue('sine', '0', 'sineVal', 'double') }}};
