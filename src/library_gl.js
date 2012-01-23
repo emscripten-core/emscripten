@@ -483,6 +483,7 @@ var LibraryGLUT = {
         FUNCTION_TABLE[GLUT.idleFunc]();
       }
       FUNCTION_TABLE[func]();
+      _glutDisplayFunc(func);
     }]);
   },
 
