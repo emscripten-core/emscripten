@@ -555,5 +555,15 @@ mergeInto(LibraryManager.library, {
   // SDL Mixer
 
   Mix_OpenAudio: function() { return -1 },
+
+  SDL_AddTimer: function(interval, callback, param) {
+    return window.setTimeout(function() {
+      FUNCTION_TABLE[callback](interval, param);
+    }, interval);
+  },
+  SDL_RemoveTimer: function(id) {
+    window.clearTimeout(id);
+    return true;
+  },
 });
 
