@@ -412,7 +412,7 @@ var LibraryGLUT = {
 
     onKeypress: function(event) {
       if (GLUT.keyboardFunc) {
-        var key
+        var key = null;
         switch (event.keyCode) {
           case event.DOM_VK_F1: key = 1 /* GLUT_KEY_F1 */; break;
           case event.DOM_VK_F2: key = 2 /* GLUT_KEY_F2 */; break;
@@ -437,8 +437,8 @@ var LibraryGLUT = {
           case event.DOM_VK_INSERT: key = 108 /* GLUT_KEY_INSERT */; break;
           default: return;
         };
-        if (event.keyCode in keyMap) {
-          FUNCTION_TABLE[GLUT.keyboardFunc](keyMap[event.keyCode], GLUT.lastX, GLUT.lastY);
+        if (key !== null) {
+          FUNCTION_TABLE[GLUT.keyboardFunc](key, GLUT.lastX, GLUT.lastY);
         }
       }
     },
