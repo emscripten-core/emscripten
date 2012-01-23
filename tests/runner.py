@@ -4500,58 +4500,6 @@ def process(filename):
       self.do_run(src, '''Profiling data:
 Block 0: ''', post_build=post1)
 
-      # Part 2: old JS version
-
-      Settings.PROFILE = 1
-      Settings.INVOKE_RUN = 0
-
-      src = '''
-          #include <stdio.h>
-
-          int inner1(int x) {
-            for (int i = 0; i < 20; i++)
-              x += x/3;
-            return x;
-          }
-          int inner2(int x) {
-            for (int i = 0; i < 10; i++)
-              x -= x/4;
-            return x;
-          }
-          int inner3(int x) {
-            for (int i = 0; i < 5; i++)
-              x += x/2;
-            x = inner1(x) - inner2(x);
-            for (int i = 0; i < 5; i++)
-              x -= x/2;
-            return x;
-          }
-
-          int main()
-          {
-            int total = 0;
-            for (int i = 0; i < 5000; i++)
-              total += inner1(i) - 4*inner3(i);
-            printf("*%d*\\n", total);
-            return 0;
-          }
-        '''
-
-      post = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(\'\'\'
-    startProfiling();
-    run();
-    stopProfiling();
-    printProfiling();
-    print('*ok*');
-  \'\'\')
-  src.close()
-'''
-
-      self.do_run(src, ': __Z6inner1i (5000)\n', post_build=post)
-
     ### Integration tests
 
     def test_scriptaclass(self):
