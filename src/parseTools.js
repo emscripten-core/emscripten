@@ -1290,6 +1290,9 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
 function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
   switch(item.intertype) {
     case 'getelementptr': // TODO finalizeLLVMParameter on the ident and the indexes?
+      if( STRING_IN_TABLE == 1 && item.ident in Variables.globals && Variables.globals[item.ident].isString ) {
+        item.params[0].ident = "STRING_TABLE."+item.ident;
+      }
       return makePointer(makeGetSlabs(item.ident, item.type)[0], getGetElementPtrIndexes(item), null, item.type);
     case 'bitcast':
       // Warn about some types of casts, then fall through to the handling code below

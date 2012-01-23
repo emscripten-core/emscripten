@@ -750,6 +750,10 @@ function intArrayToString(array) {
 }
 Module['intArrayToString'] = intArrayToString;
 
+#if STRING_IN_TABLE
+var STRING_TABLE = [];
+#endif
+
 {{{ unSign }}}
 {{{ reSign }}}
 

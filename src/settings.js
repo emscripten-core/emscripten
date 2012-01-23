@@ -213,6 +213,10 @@ var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run t
 var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. It is better,
                        // if you can, to get the original source code to build without x86_fp80
                        // (which is nonportable anyhow).
+                       
+var STRING_IN_TABLE = 0; // Store all string constants in a table
+                         // Usefull when the script hits the limit of javascript VM 
+                         // variable count
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

@@ -17,6 +17,10 @@ function callRuntimeCallbacks(callbacks) {
 
 var __ATINIT__ = []; // functions called during startup
 
+#if STRING_IN_TABLE
+var STRING_TABLE = [];
+#endif
+
 function initRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
