@@ -71,7 +71,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
     } else {
-      libFuncsToInclude = ['memset', 'malloc', 'free'];
+      libFuncsToInclude = ['memcpy', 'memset', 'malloc', 'free'];
     }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
