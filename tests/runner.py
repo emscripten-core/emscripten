@@ -5180,8 +5180,9 @@ def process(filename):
 
       def check(output):
         # TODO: check the line #
-        assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections: ' + output
-        assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections: ' + output
+        if self.emcc_args is None or self.emcc_args == []: # LLVM full opts optimize out some corrections
+          assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections: ' + output
+          assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections: ' + output
         return output
 
       self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
