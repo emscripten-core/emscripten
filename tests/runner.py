@@ -4790,6 +4790,8 @@ Child2:9
 ''', post_build=post2)
 
     def test_typeinfo(self):
+      if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
+
       Settings.RUNTIME_TYPE_INFO = 1
       if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
 
