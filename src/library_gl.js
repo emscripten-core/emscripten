@@ -396,5 +396,120 @@ var LibraryGL = {
   });
 });
 
+var LibraryGLUT = {
+  $GLUT: {
+    initTime: null,
+    idleFunc: null,
+    keyboardFunc: null,
+    lastX: 0,
+    lastY: 0,
+
+    onMousemove: function(event) {
+      GLUT.lastX = event.clientX;
+      GLUT.lastY = event.clientY;
+    },
+
+    onKeypress: function(event) {
+      if (GLUT.keyboardFunc) {
+        var key
+        switch (event.keyCode) {
+          case event.DOM_VK_F1: key = 1 /* GLUT_KEY_F1 */; break;
+          case event.DOM_VK_F2: key = 2 /* GLUT_KEY_F2 */; break;
+          case event.DOM_VK_F3: key = 3 /* GLUT_KEY_F3 */; break;
+          case event.DOM_VK_F4: key = 4 /* GLUT_KEY_F4 */; break;
+          case event.DOM_VK_F5: key = 5 /* GLUT_KEY_F5 */; break;
+          case event.DOM_VK_F6: key = 6 /* GLUT_KEY_F6 */; break;
+          case event.DOM_VK_F7: key = 7 /* GLUT_KEY_F7 */; break;
+          case event.DOM_VK_F8: key = 8 /* GLUT_KEY_F8 */; break;
+          case event.DOM_VK_F9: key = 9 /* GLUT_KEY_F9 */; break;
+          case event.DOM_VK_F10: key = 10 /* GLUT_KEY_F10 */; break;
+          case event.DOM_VK_F11: key = 11 /* GLUT_KEY_F11 */; break;
+          case event.DOM_VK_F12: key = 12 /* GLUT_KEY_F12 */; break;
+          case event.DOM_VK_LEFT: key = 100 /* GLUT_KEY_LEFT */; break;
+          case event.DOM_VK_UP: key = 101 /* GLUT_KEY_UP */; break;
+          case event.DOM_VK_RIGHT: key = 102 /* GLUT_KEY_RIGHT */; break;
+          case event.DOM_VK_DOWN: key = 103 /* GLUT_KEY_DOWN */; break;
+          case event.DOM_VK_PAGE_UP: key = 104 /* GLUT_KEY_PAGE_UP */; break;
+          case event.DOM_VK_PAGE_DOWN: key = 105 /* GLUT_KEY_PAGE_DOWN */; break;
+          case event.DOM_VK_HOME: key = 106 /* GLUT_KEY_HOME */; break;
+          case event.DOM_VK_END: key = 107 /* GLUT_KEY_END */; break;
+          case event.DOM_VK_INSERT: key = 108 /* GLUT_KEY_INSERT */; break;
+          default: return;
+        };
+        if (event.keyCode in keyMap) {
+          FUNCTION_TABLE[GLUT.keyboardFunc](keyMap[event.keyCode], GLUT.lastX, GLUT.lastY);
+        }
+      }
+    },
+  },
+
+  glutInit__deps: ['$GLUT'],
+  glutInit: function(argcp, argv) {
+    // Ignore arguments
+    GLUT.initTime = Date.now();
+    window.addEventListener("keypress", GLUT.onKeypress, true);
+    window.addEventListener("mousemove", GLUT.onMousemove, true);
+  },
+
+  glutInitWindowSize: function(width, height) {
+    Module['canvas'].width = width;
+    Module['canvas'].height = height;
+  },
+
+  glutGet: function(type) {
+    switch (type) {
+      case 700: /* GLUT_ELAPSED_TIME */
+        var now = Date.now();
+        return now - GLUT.initTime;
+      default:
+        throw "glutGet(" + type + ") not implemented yet";
+    }
+  },
+
+  glutDisplayFunc: function(func) {
+    var RAF = window.setTimeout;
+    if (window.requestAnimationFrame) {
+      RAF = window.requestAnimationFrame;
+    } else if (window.mozRequestAnimationFrame) {
+      RAF = window.mozRequestAnimationFrame;
+    } else if (window.webkitRequestAnimationFrame) {
+      RAF = window.webkitRequestAnimationFrame;
+    } else if (window.msRequestAnimationFrame) {
+      RAF = window.msRequestAnimationFrame;
+    }
+    RAF.apply(window, [function() {
+      if (GLUT.idleFunc) {
+        FUNCTION_TABLE[GLUT.idleFunc]();
+      }
+      FUNCTION_TABLE[func]();
+    }]);
+  },
+
+  glutIdleFunc: function(func) {
+    GLUT.idleFunc = func;
+  },
+
+  glutSpecialFunc: function(func) {
+    GLUT.keyboardFunc = func;
+  },
+
+  glutCreateWindow: function(name) {
+    try {
+      var ctx = Module.canvas.getContext('experimental-webgl');
+      if (!ctx) throw 'Could not create canvas :(';
+      Module.ctx = ctx;
+    } catch (e) {
+      Module.print('(canvas not available)');
+    }
+  },
+
+  glutInitDisplayMode: function(mode) {},
+  glutMainLoop: function() {},
+  glutSwapBuffers: function() {},
+  glutPostRedisplay: function() {},
+  glutReshapeFunc: function(func) {},
+};
+
 mergeInto(LibraryManager.library, LibraryGL);
+mergeInto(LibraryManager.library, LibraryGLUT);
 
