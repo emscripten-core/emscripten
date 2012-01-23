@@ -4707,6 +4707,13 @@ LibraryManager.library = {
   },
   nanf: 'nan',
 
+  sincos: function(cosine, sine, x) {
+    var sineVal = Math.sin(x),
+        cosineVal = Math.cos(x);
+    {{{ makeSetValue('sine', '0', 'sineVal', 'double') }}};
+    {{{ makeSetValue('cosine', '0', 'cosineVal', 'double') }}};
+  },
+
   __fpclassifyf: function(x) {
     if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
     if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
