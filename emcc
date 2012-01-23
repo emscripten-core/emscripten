@@ -77,6 +77,8 @@ import os, sys, shutil, tempfile
 from subprocess import Popen, PIPE, STDOUT
 from tools import shared
 
+MAX_LLVM_OPT_LEVEL = 2
+
 DEBUG = os.environ.get('EMCC_DEBUG')
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
@@ -114,7 +116,7 @@ Most normal gcc/g++ options will work, for example:
 
 Options that are modified or new in %s include:
   -O0                      No optimizations (default)
-  -O1                      Simple optimizations, including safe LLVM
+  -O1                      Simple optimizations, including LLVM -O1
                            optimizations, and no runtime assertions
                            or C++ exception catching (to re-enable
                            C++ exception catching, use
@@ -123,7 +125,8 @@ Options that are modified or new in %s include:
                            compiling to JavaScript, not to intermediate
                            bitcode.
   -O2                      As -O1, plus the relooper (loop recreation),
-                           plus closure compiler advanced opts
+                           plus closure compiler advanced opts, plus
+                           LLVM -O2 optimizations
                            Warning: Compiling with this takes a long time!
   -O3                      As -O2, plus dangerous optimizations that may
                            break the generated code! If that happens, try
@@ -135,11 +138,7 @@ Options that are modified or new in %s include:
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
   --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
-                           1: Safe/portable LLVM optimizations
-                              (default in -O1 and above)
-                           2: Full, unsafe/unportable LLVM optimizations;
-                              this will almost certainly break the
-                              generated code!
+                           1: LLVM optimizations (default in -O1 +)
   --closure <on>           0: No closure compiler (default in -O0, -O1)
                            1: Run closure compiler (default in -O2, -O3)
   --js-transform <cmd>     <cmd> will be called on the generated code
@@ -223,8 +222,6 @@ def unsuffixed(name):
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
-LLVM_INTERNAL_OPT_LEVEL = 2
-
 # ---------------- End configs -------------
 
 if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
@@ -278,7 +275,7 @@ try:
   newargs = sys.argv[1:]
 
   opt_level = 0
-  llvm_opt_level = None
+  llvm_opts = None
   closure = None
   js_transform = None
   compress_whitespace = None
@@ -296,8 +293,7 @@ try:
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
-      llvm_opt_level = eval(newargs[i+1])
-      assert 0 <= llvm_opt_level <= 1, 'Only two levels of LLVM optimizations are supported so far, 0 (none) and 1 (safe)'
+      llvm_opts = eval(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--closure'):
@@ -323,7 +319,7 @@ try:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
-  if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
+  if llvm_opts is None: llvm_opts = 1 if opt_level >= 1 else 0
   if closure is None: closure = 1 if opt_level >= 2 else 0
   if compress_whitespace is None:
     compress_whitespace = closure # if closure is run, compress whitespace
@@ -421,7 +417,7 @@ try:
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in ['js', 'html']:
-    if llvm_opt_level > 0:
+    if llvm_opts > 0:
       print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
     if not specified_target:
       for input_file in input_files:
@@ -522,9 +518,9 @@ try:
       shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
 
   # Optimize, if asked to
-  if llvm_opt_level > 0 and not LEAVE_INPUTS_RAW:
+  if llvm_opts > 0 and opt_level > 0 and not LEAVE_INPUTS_RAW:
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
-    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), min(opt_level, MAX_LLVM_OPT_LEVEL), safe=shared.Settings.USE_TYPED_ARRAYS != 2)
   else:
     # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
     if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:

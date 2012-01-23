@@ -540,13 +540,14 @@ class Building:
         llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
     opts = []
+    assert safe or Settings.USE_TYPED_ARRAYS == 2, 'Cannot do unsafe LLVM opts without typed arrays in mode 2'
     if optimization_level > 0:
-      #opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining
       if not safe:
+        opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining, to avoid overly aggressive inlining
         #opts.append('-O%d' % optimization_level)
         opts.append('-std-compile-opts')
         opts.append('-std-link-opts')
-        print 'Unsafe:', opts,
+        print 'Unsafe:', opts
       else:
         allow_nonportable = not safe
         optimize_size = True
