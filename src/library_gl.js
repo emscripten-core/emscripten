@@ -164,67 +164,76 @@ var LibraryGL = {
 
   glUniform1fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    value = new Float32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform1fv(Location, value);
   },
 
   glUniform2fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 2;
+    value = new Float32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform2fv(Location, value);
   },
 
   glUniform3fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 3;
+    value = new Float32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform3fv(Location, value);
   },
 
   glUniform4fv: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 4;
+    value = new Float32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform4fv(Location, value);
   },
 
   glUniform1fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    value = new Uint32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform1fi(Location, value);
   },
 
   glUniform2fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 2;
+    value = new Uint32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform2fi(Location, value);
   },
 
   glUniform3fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 3;
+    value = new Uint32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform3fi(Location, value);
   },
 
   glUniform4fi: function(Location, count, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 4;
+    value = new Uint32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform4fi(Location, value);
   },
 
   glUniformMatrix2fv: function(Location, count, transpose, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 4;
+    value = new Float32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniformMatrix2fv(Location, transpose, value);
   },
 
   glUniformMatrix3fv: function(Location, count, transpose, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 9;
+    value = new Float32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniformMatrix3fv(Location, transpose, value);
   },
 
   glUniformMatrix4fv: function(Location, count, transpose, value) {
     Location = GL.hashtable("uniform").get(Location);
-    value = new Float32Array(Array_copy(value, value + count*4)); // TODO: optimize
+    count *= 16;
+    value = new Float32Array(Array_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniformMatrix4fv(Location, transpose, value);
   },
 
