@@ -4714,6 +4714,21 @@ LibraryManager.library = {
     {{{ makeSetValue('cosine', '0', 'cosineVal', 'double') }}};
   },
 
+  __div_t_struct_layout: Runtime.generateStructInfo([
+                            ['i32', 'quot'],
+                            ['i32', 'rem'],
+                          ]),
+  div__deps: ['__div_t_struct_layout'],
+  div: function(numer, denom) {
+    var divt = Runtime.stackAlloc(8);
+    var quot = Math.floor(numer / denom);
+    var rem = numer - quot * denom;
+    var offset = ___div_t_struct_layout.rem;
+    {{{ makeSetValue('divt', '0', 'quot', 'i32') }}};
+    {{{ makeSetValue('divt', 'offset', 'rem', 'i32') }}};
+    return divt;
+  },
+
   __fpclassifyf: function(x) {
     if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
     if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
