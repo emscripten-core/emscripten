@@ -5547,6 +5547,7 @@ f.close()
 
     def test_reminder(self):
       assert False, 'Optimize makeGet/SetValue to do 16-bit reads/writes when possible, not just 8'
+      assert False, 'Make sure unaligned loads are not done unnecessarily (add some comments and inspect the source)'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
