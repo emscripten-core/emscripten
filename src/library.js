@@ -4719,8 +4719,7 @@ LibraryManager.library = {
                             ['i32', 'rem'],
                           ]),
   div__deps: ['__div_t_struct_layout'],
-  div: function(numer, denom) {
-    var divt = Runtime.stackAlloc(8);
+  div: function(divt, numer, denom) {
     var quot = Math.floor(numer / denom);
     var rem = numer - quot * denom;
     var offset = ___div_t_struct_layout.rem;
