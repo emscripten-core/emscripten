@@ -511,6 +511,9 @@ var LibraryGLUT = {
       var ctx = Module.canvas.getContext('experimental-webgl');
       if (!ctx) throw 'Could not create canvas :(';
       Module.ctx = ctx;
+      // Set the background of the canvas to black, because glut gives us a
+      // window which has a black background by default.
+      Module.canvas.style.backgroundColor = "black";
     } catch (e) {
       Module.print('(canvas not available)');
     }
