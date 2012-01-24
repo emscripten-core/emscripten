@@ -217,6 +217,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(segment.type, 'Missing type for constant segment!');
         return indexizeFunctions(ret, segment.type);
       };
+
       return tokens.map(handleSegment)
     }
 
@@ -238,6 +239,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   function parseConst(value, type, ident) {
     var constant = makeConst(value, type);
     if (typeof constant === 'object') {
+      debugger;
       constant = flatten(constant).map(function(x) { return parseNumerical(x) })
     }
     return constant;
@@ -247,7 +249,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       function needsPostSet(value) {
-        return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW';
+        return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
+            || value.substr(0, 13) === 'STRING_TABLE.';
       }
 
       item.intertype = 'GlobalVariableStub';
@@ -294,6 +297,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           return ret;
         } else {
+          debugger;
           constant = parseConst(item.value, item.type, item.ident);
           if (typeof constant === 'string' && constant[0] != '[') {
             constant = [constant]; // A single item. We may need a postset for it.
@@ -301,6 +305,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (typeof constant === 'object') {
             // This is a flattened object. We need to find its idents, so they can be assigned to later
             constant.forEach(function(value, i) {
+              debugger;
               if (needsPostSet(value)) { // ident, or expression containing an ident
                 ret.push({
                   intertype: 'GlobalVariablePostSet',
@@ -311,6 +316,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             });
             constant = '[' + constant.join(', ') + ']';
           }
+          
           // NOTE: This is the only place that could potentially create static
           //       allocations in a shared library.
           constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
