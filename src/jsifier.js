@@ -247,7 +247,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       function needsPostSet(value) {
-        return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW';
+        return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
+            || value.substr(0, 13) === 'STRING_TABLE.';
       }
 
       item.intertype = 'GlobalVariableStub';
@@ -264,7 +265,9 @@ function JSify(data, functionsOnly, givenFunctions) {
           // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
-          item.JS = 'var ' + item.ident + ';';
+          if(!(item.ident in Variables.globals ) || !Variables.globals[item.ident].isString) {
+          	item.JS = 'var ' + item.ident + ';';
+          } 
         }
         var constant = null;
         if (item.external) {
@@ -313,7 +316,13 @@ function JSify(data, functionsOnly, givenFunctions) {
           //       allocations in a shared library.
           constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
 
-          var js = item.ident + '=' + constant + ';';
+          var js;
+          
+          if(Variables.globals[ item.ident ].isString) {
+            js = 'STRING_TABLE.' + item.ident + '=' + constant + ';';
+          } else {
+          	js = item.ident + '=' + constant + ';';
+          }
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
             js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
