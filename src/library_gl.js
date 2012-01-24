@@ -293,6 +293,12 @@ var LibraryGL = {
     Module.ctx.drawArrays(mode, first, count);
   },
 
+  glGetAttribLocation: function(program, name) {
+    program = GL.hashtable("program").get(program);
+    name = Pointer_stringify(name);
+    Module.ctx.getAttribLocation(program, name);
+  },
+
   glCreateShader_deps: ['$GL'],
   glCreateShader: function(shaderType) {
     var shader = Module.ctx.createShader(shaderType);
