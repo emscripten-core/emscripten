@@ -643,10 +643,10 @@ STACK_MAX = STACK_ROOT + TOTAL_STACK;
 #if DOUBLE_MODE == 1
 #if USE_TYPED_ARRAYS == 2
 var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
+var tempDoubleI8  = HEAP8.subarray(tempDoublePtr);
 var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
-var tempDoubleF64 = new Float64Array(tempDoubleI32.buffer);
-var tempDoubleF32 = new Float32Array(tempDoubleI32.buffer);
-var tempDoubleI8 = new Int8Array(tempDoubleI32.buffer);
+var tempDoubleF32 = HEAPF32.subarray(tempDoublePtr >> 2);
+var tempDoubleF64 = new Float64Array(HEAP8.buffer).subarray(tempDoublePtr >> 3);
 function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
   tempDoubleI8[0] = HEAP8[ptr];
   tempDoubleI8[1] = HEAP8[ptr+1];
