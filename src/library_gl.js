@@ -487,7 +487,8 @@ var LibraryGLUT = {
     }
     RAF.apply(window, [function() {
       if (GLUT.reshapeFunc) {
-        FUNCTION_TABLE[GLUT.reshapeFunc]();
+        FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
+                                         Module['canvas'].height);
       }
       if (GLUT.idleFunc) {
         FUNCTION_TABLE[GLUT.idleFunc]();
