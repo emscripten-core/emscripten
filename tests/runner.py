@@ -713,7 +713,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
     def test_bitfields(self):
-        Settings.SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
+        if self.emcc_args is None: Settings.SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
         src = '''
           #include <stdio.h>
           struct bitty {
@@ -3877,7 +3877,7 @@ def process(filename):
       if self.emcc_args is None:
         if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
         self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
-        Settings.SAFE_HEAP = 0 # Some spurious warnings from libc++ internals
+        if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Some spurious warnings from libc++ internals
 
       src = '''
         #include <iostream>
@@ -4002,7 +4002,7 @@ def process(filename):
         ''', 'hello world');
         
     def test_static_variable(self):
-      Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
       src = '''
         #include <stdio.h>
 
@@ -4069,7 +4069,7 @@ def process(filename):
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
       Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
-      Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
       # Overflows happen in hash loop
       Settings.CORRECT_OVERFLOWS = 1
@@ -4100,7 +4100,7 @@ def process(filename):
         if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
         # Overflows in luaS_newlstr hash loop
-        Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
+        if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
         Settings.CORRECT_OVERFLOWS = 1
         Settings.CHECK_OVERFLOWS = 0
         Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
@@ -4159,7 +4159,7 @@ def process(filename):
       Settings.CORRECT_SIGNS_LINES = pgo_data['signs_lines']
       Settings.CORRECT_OVERFLOWS = 0
       Settings.CORRECT_ROUNDINGS = 0
-      Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
       Settings.DISABLE_EXCEPTION_CATCHING = 1
       Settings.FAST_MEMORY = 4*1024*1024
       Settings.EXPORTED_FUNCTIONS = ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
@@ -4204,7 +4204,7 @@ def process(filename):
                    force_c=True)
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
-      if Building.LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+      if Building.LLVM_OPTS and self.emcc_args is None: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
@@ -4226,7 +4226,7 @@ def process(filename):
     def test_poppler(self):
       if not self.emcc_args == []: return self.skip('very slow, we only do this in default')
 
-      Settings.SAFE_HEAP = 0 # Has variable object
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has variable object
 
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CORRECT_SIGNS = 1
@@ -4371,7 +4371,7 @@ def process(filename):
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
-      Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
       Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
 
