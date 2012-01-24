@@ -107,12 +107,8 @@ var LibraryGL = {
   },
 
   glBufferData: function(target, size, data, usage) {
-    var buf = new ArrayBuffer(size);
-    var dataInBuf = new Uint8Array(buf);
-    for (var i = 0; i < size; ++i) {
-      dataInBuf[i] = {{{ makeGetValue('data', 'i', 'i32') }}};
-    }
-    Module.ctx.bufferData(target, buf, usage);
+    var floatArray = new Float32Array(TypedArray_copy(data, size));
+    Module.ctx.bufferData(target, floatArray, usage);
   },
 
   glBindAttribLocation_deps: ['$GL'],
