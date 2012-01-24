@@ -473,15 +473,15 @@ var LibraryGLUT = {
   },
 
   glutDisplayFunc: function(func) {
-    var RAF = window.setTimeout;
-    if (window.requestAnimationFrame) {
-      RAF = window.requestAnimationFrame;
-    } else if (window.mozRequestAnimationFrame) {
-      RAF = window.mozRequestAnimationFrame;
-    } else if (window.webkitRequestAnimationFrame) {
-      RAF = window.webkitRequestAnimationFrame;
-    } else if (window.msRequestAnimationFrame) {
-      RAF = window.msRequestAnimationFrame;
+    var RAF = window['setTimeout'];
+    if (window['requestAnimationFrame']) {
+      RAF = window['requestAnimationFrame'];
+    } else if (window['mozRequestAnimationFrame']) {
+      RAF = window['mozRequestAnimationFrame'];
+    } else if (window['webkitRequestAnimationFrame']) {
+      RAF = window['webkitRequestAnimationFrame'];
+    } else if (window['msRequestAnimationFrame']) {
+      RAF = window['msRequestAnimationFrame'];
     }
     RAF.apply(window, [function() {
       if (GLUT.reshapeFunc) {
