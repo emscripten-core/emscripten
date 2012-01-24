@@ -344,14 +344,6 @@ var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI
 #if I64_MODE == 1
 var tempI64, tempI64b;
 #endif
-#if DOUBLE_MODE == 1
-#if USE_TYPED_ARRAYS == 2
-var tempDoubleBuffer = new ArrayBuffer(8);
-//var tempDoubleI8 = new Int8Array(tempDoubleBuffer);
-var tempDoubleI32 = new Int32Array(tempDoubleBuffer);
-var tempDoubleF64 = new Float64Array(tempDoubleBuffer);
-#endif
-#endif
 
 function abort(text) {
   print(text + ':\n' + (new Error).stack);
@@ -646,6 +638,15 @@ Module['HEAPF32'] = HEAPF32;
 
 STACK_ROOT = STACKTOP = Runtime.alignMemory(STATICTOP);
 STACK_MAX = STACK_ROOT + TOTAL_STACK;
+
+#if DOUBLE_MODE == 1
+#if USE_TYPED_ARRAYS == 2
+var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
+var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
+var tempDoubleF64 = new Float64Array(tempDoubleI32.buffer);
+STACK_MAX = tempDoublePtr + 8;
+#endif
+#endif
 
 STATICTOP = alignMemoryPage(STACK_MAX);
 
