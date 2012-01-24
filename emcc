@@ -137,7 +137,7 @@ Options that are modified or new in %s include:
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
-  --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
+  --llvm-opts <on>         0: No LLVM optimizations (default in -O0)
                            1: LLVM optimizations (default in -O1 +)
   --closure <on>           0: No closure compiler (default in -O0, -O1)
                            1: Run closure compiler (default in -O2, -O3)
