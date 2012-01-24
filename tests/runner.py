@@ -4951,6 +4951,8 @@ def process(filename):
         assert 'Assertion failed' in str(e), str(e)
 
     def test_linespecific(self):
+      if self.emcc_args: self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
+
       Settings.CHECK_SIGNS = 0
       Settings.CHECK_OVERFLOWS = 0
 
