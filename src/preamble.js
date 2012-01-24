@@ -362,6 +362,7 @@ function assert(condition, text) {
 // makeSetValue is done at compile-time and generates the needed
 // code then, whereas this function picks the right code at
 // run-time.
+// Note that setValue and getValue only do *aligned* writes and reads!
 
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
