@@ -925,7 +925,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
             if (i > 0) ret += ')<<' + (8*i) + ')';
             if (i < bytes-1) ret += ',';
           }
-          if (signed) {
+          if (!unsigned) {
             ret += ',' + makeSignOp('tempInt', type, 're', true);
           }
         } else {
