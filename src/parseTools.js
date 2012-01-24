@@ -933,7 +933,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
           ret += makeI64('tempBigInt', 'tempBigInt2');
         }
       } else {
-        assert(0, 'We do not support unaligned float/double reads yet');
+        if (type == 'float') {
+          ret += 'copyTempFloat(' + getFastValue(ptr, '+', pos) + '),tempDoubleF32[0]';
+        } else {
+          ret += 'copyTempDouble(' + getFastValue(ptr, '+', pos) + '),tempDoubleF64[0]';
+        }
       }
       ret += ')';
       return ret;
@@ -1018,7 +1022,8 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
           ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + ';';
         }
       } else {
-        assert(0, 'We do not support unaligned float/double writes yet');
+        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + ';';
+        ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align);
       }
       return ret;
     }

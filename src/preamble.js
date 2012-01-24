@@ -644,6 +644,24 @@ STACK_MAX = STACK_ROOT + TOTAL_STACK;
 var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
 var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
 var tempDoubleF64 = new Float64Array(tempDoubleI32.buffer);
+var tempDoubleF32 = new Float32Array(tempDoubleI32.buffer);
+var tempDoubleI8 = new Int8Array(tempDoubleI32.buffer);
+function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
+  tempDoubleI8[0] = HEAP8[ptr];
+  tempDoubleI8[1] = HEAP8[ptr+1];
+  tempDoubleI8[2] = HEAP8[ptr+2];
+  tempDoubleI8[3] = HEAP8[ptr+3];
+}
+function copyTempDouble(ptr) {
+  tempDoubleI8[0] = HEAP8[ptr];
+  tempDoubleI8[1] = HEAP8[ptr+1];
+  tempDoubleI8[2] = HEAP8[ptr+2];
+  tempDoubleI8[3] = HEAP8[ptr+3];
+  tempDoubleI8[4] = HEAP8[ptr+4];
+  tempDoubleI8[5] = HEAP8[ptr+5];
+  tempDoubleI8[6] = HEAP8[ptr+6];
+  tempDoubleI8[7] = HEAP8[ptr+7];
+}
 STACK_MAX = tempDoublePtr + 8;
 #endif
 #endif
