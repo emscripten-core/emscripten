@@ -692,6 +692,18 @@ function Array_copy(ptr, num) {
 }
 Module['Array_copy'] = Array_copy;
 
+// Copies a list of num items on the HEAP into a
+// JavaScript typed array.
+function TypedArray_copy(ptr, num) {
+  // TODO: optimize this!
+  var arr = new Uint8Array(num);
+  for (var i = 0; i < num; ++i) {
+    arr[i] = {{{ makeGetValue('ptr', 'i', 'i8') }}};
+  }
+  return arr.buffer;
+}
+Module['TypedArray_copy'] = TypedArray_copy;
+
 function String_len(ptr) {
   var i = 0;
   while ({{{ makeGetValue('ptr', 'i', 'i8') }}}) i++; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
