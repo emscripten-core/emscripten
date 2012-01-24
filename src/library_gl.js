@@ -408,6 +408,7 @@ var LibraryGLUT = {
     initTime: null,
     idleFunc: null,
     keyboardFunc: null,
+    reshapeFunc: null,
     lastX: 0,
     lastY: 0,
 
@@ -485,6 +486,9 @@ var LibraryGLUT = {
       RAF = window.msRequestAnimationFrame;
     }
     RAF.apply(window, [function() {
+      if (GLUT.reshapeFunc) {
+        FUNCTION_TABLE[GLUT.reshapeFunc]();
+      }
       if (GLUT.idleFunc) {
         FUNCTION_TABLE[GLUT.idleFunc]();
       }
@@ -501,6 +505,10 @@ var LibraryGLUT = {
     GLUT.keyboardFunc = func;
   },
 
+  glutReshapeFunc: function(func) {
+    GLUT.reshapeFunc = func;
+  },
+
   glutCreateWindow: function(name) {
     try {
       var ctx = Module.canvas.getContext('experimental-webgl');
@@ -515,7 +523,6 @@ var LibraryGLUT = {
   glutMainLoop: function() {},
   glutSwapBuffers: function() {},
   glutPostRedisplay: function() {},
-  glutReshapeFunc: function(func) {},
 };
 
 mergeInto(LibraryManager.library, LibraryGL);
