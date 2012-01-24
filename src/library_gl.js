@@ -254,22 +254,22 @@ var LibraryGL = {
   },
 
   glVertexAttrib1fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, value + 1*4)); // TODO: optimize
+    v = new Float32Array(TypedArray_copy(v, 1*4)); // TODO: optimize
     Module.ctx.vertexAttrib1fv(index, v);
   },
 
   glVertexAttrib2fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, value + 2*4)); // TODO: optimize
+    v = new Float32Array(TypedArray_copy(v, 2*4)); // TODO: optimize
     Module.ctx.vertexAttrib2fv(index, v);
   },
 
   glVertexAttrib3fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, value + 3*4)); // TODO: optimize
+    v = new Float32Array(TypedArray_copy(v, 3*4)); // TODO: optimize
     Module.ctx.vertexAttrib3fv(index, v);
   },
 
   glVertexAttrib4fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, value + 4*4)); // TODO: optimize
+    v = new Float32Array(TypedArray_copy(v, 4*4)); // TODO: optimize
     Module.ctx.vertexAttrib4fv(index, v);
   },
 
