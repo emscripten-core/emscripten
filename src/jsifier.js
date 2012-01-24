@@ -264,7 +264,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
-          if( STRING_IN_TABLE == 0 || !(item.ident in Variables.globals ) || !Variables.globals[item.ident].isString) {
+          if(!(item.ident in Variables.globals ) || !Variables.globals[item.ident].isString) {
           	item.JS = 'var ' + item.ident + ';';
           } 
         }
@@ -317,10 +317,9 @@ function JSify(data, functionsOnly, givenFunctions) {
 
           var js;
           
-          if(STRING_IN_TABLE == 1 && Variables.globals[ item.ident ].isString) {
-          	js = 'STRING_TABLE.' + item.ident + ' = ' + constant + ';';
-          }
-          else {
+          if(Variables.globals[ item.ident ].isString) {
+            js = 'STRING_TABLE.' + item.ident + '=' + constant + ';';
+          } else {
           	js = item.ident + '=' + constant + ';';
           }
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
