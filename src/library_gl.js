@@ -4,8 +4,10 @@
 
 var LibraryGL = {
   $GL: {
-    _hashtables: {},
     hashtable: function(name) {
+      if (!this._hashtables) {
+        this._hashtables = {};
+      }
       if (!(name in this._hashtables)) {
         this._hashtables[name] = {
           table: {},
