@@ -90,6 +90,9 @@ LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
 
+stdout = PIPE if not DEBUG else None # suppress output of child processes
+stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
+
 shared.check_sanity()
 
 # Handle some global flags
@@ -451,9 +454,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
+      Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr).communicate()
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      Popen([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=PIPE, stderr=PIPE).communicate()
+      Popen([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr).communicate()
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
