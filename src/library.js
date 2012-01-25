@@ -3449,7 +3449,7 @@ LibraryManager.library = {
   },
   strtoll__deps: ['_parseInt'],
   strtoll: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -9223372036854775808, 9223372036854775807, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
+    return __parseInt(str, endptr, base, -9223372036854775200, 9223372036854775200, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
   },
   strtol__deps: ['_parseInt'],
   strtol: function(str, endptr, base) {
