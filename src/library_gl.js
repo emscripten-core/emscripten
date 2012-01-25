@@ -419,7 +419,7 @@ var LibraryGLUT = {
       GLUT.lastY = event['clientY'];
     },
 
-    onKeypress: function(event) {
+    onKeydown: function(event) {
       if (GLUT.keyboardFunc) {
         var key = null;
         switch (event['keyCode']) {
@@ -457,7 +457,7 @@ var LibraryGLUT = {
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
-    window.addEventListener("keypress", GLUT.onKeypress, true);
+    window.addEventListener("keydown", GLUT.onKeydown, true);
     window.addEventListener("mousemove", GLUT.onMousemove, true);
   },
 
