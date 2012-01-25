@@ -1467,7 +1467,7 @@ function makeSignOp(value, type, op, force, ignore) {
   var bits, full;
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
-    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(correctSpecificSign() && !PGO) + (
+    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign() && !PGO)) + (
       PGO ? ', "' + (ignore ? '' : Debugging.getIdentifier()) + '"' : ''
     ) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
@@ -1475,7 +1475,7 @@ function makeSignOp(value, type, op, force, ignore) {
       return eval(full).toString();
     }
   }
-  if (!correctSigns() && !CHECK_SIGNS && !force) return value;
+  if ((ignore || !correctSigns()) && !CHECK_SIGNS && !force) return value;
   if (type in Runtime.INT_TYPES) {
     // shortcuts
     if (!CHECK_SIGNS || ignore) {
