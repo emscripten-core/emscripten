@@ -2260,7 +2260,6 @@ LibraryManager.library = {
       } else if (type == 'i64') {
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
-        ret = unSign(ret[0], 32) + unSign(ret[1], 32)*Math.pow(2, 32); // Unsigned in this notation. Signed later if needed. // XXX - loss of precision
 #else
       } else if (type == 'i64') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i64', undefined, undefined, true) }}};
@@ -2270,7 +2269,7 @@ LibraryManager.library = {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
       argIndex += Runtime.getNativeFieldSize(type);
-      return Number(ret);
+      return ret;
     }
 
     var ret = [];
@@ -2392,6 +2391,12 @@ LibraryManager.library = {
           var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
+#if I64_MODE == 1
+          // Flatten i64-1 [low, high] into a (slightly rounded) double
+          if (argSize == 8) {
+            currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == 'u'.charCodeAt(0));
+          }
+#endif
           // Truncate to requested size.
           if (argSize <= 4) {
             var limit = Math.pow(256, argSize) - 1;

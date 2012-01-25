@@ -420,6 +420,17 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             #include <stdio.h>
             int main()
             {
+              long long a = 0x2b00505c10;
+              long long b = a >> 29;
+              long long c = a >> 32;
+              long long d = a >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
+              unsigned long long ua = 0x2b00505c10;
+              unsigned long long ub = ua >> 29;
+              unsigned long long uc = ua >> 32;
+              unsigned long long ud = ua >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
+
               long long x = 0x0000def123450789ULL; // any bigger than this, and we
               long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
               printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
@@ -436,7 +447,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
               return 0;
             }
           '''
-          self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
+          self.do_run(src, '*184688860176,344,43,10*\n*184688860176,344,43,10*\n*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
         if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: i64 mode 1 for q1')
 
@@ -505,12 +516,26 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             // global structs with i64s
             printf("*%d,%Ld*\n*%d,%Ld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
 
+            // Bitshifts
+            {
+              int64_t a = -1;
+              int64_t b = a >> 29;
+              int64_t c = a >> 32;
+              int64_t d = a >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\n", a, b, c, d);
+              uint64_t ua = -1;
+              int64_t ub = ua >> 29;
+              int64_t uc = ua >> 32;
+              int64_t ud = ua >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
+            }
+
             // Math mixtures with doubles
             {
               uint64_t a = 5;
               double b = 6.8;
               uint64_t c = a * b;
-              printf("*prod:%llu*\n*%d,%d,%d*", c, (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
+              printf("*prod:%llu*\n*%d,%d,%d*\n", c, (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
             }
 
             // Basic (rounded, for now) math. Just check compilation.
@@ -523,11 +548,21 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
-                         '*18446744073709552000*\n*576460752303423500*\n' +
-                         'm1: 127\n*123*\n*127*\n' +
-                         '*55,17179869201*\n*122,25769803837*\n' +
-                         '*prod:34*\n')
+        self.do_run(src, '*1311918518731868200\n' +
+                         '0,0,0,1,1\n' +
+                         '1,0,1,0,1*\n' +
+                         '*245127260211081*\n' +
+                         '*245127260209443*\n' +
+                         '*18446744073709552000*\n' +
+                         '*576460752303423500*\n' +
+                         'm1: 127\n' +
+                         '*123*\n' +
+                         '*127*\n' +
+                         '*55,17179869201*\n' +
+                         '*122,25769803837*\n' +
+                         '*-1,-1,-1,-1*\n' +
+                         '*-1,34359738367,4294967295,1073741823*\n' +
+                         '*prod:34*')
 
         Settings.CORRECT_SIGNS = 1
 

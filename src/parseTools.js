@@ -558,22 +558,13 @@ function makeInlineCalculation(expression, value, tempVar) {
   return '(' + expression.replace(/VALUE/g, value) + ')';
 }
 
-// Given two 32-bit unsigned parts of an emulated 64-bit number, combine them into a JS number (double).
-// Rounding is inevitable if the number is large. This is a particular problem for small negative numbers
-// (-1 will be rounded!), so handle negatives separately and carefully
-function makeBigInt(low, high) {
-  // here VALUE will be the big part
-  return '(' + high + ' <= 2147483648 ? (' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 'un', 1, 1) + '*4294967296))' +
-                                    ' : (' + makeSignOp(low, 'i32', 're', 1, 1) + '+(1+' + makeSignOp(high, 'i32', 're', 1, 1) + ')*4294967296))';
-}
-
 // Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
 function makeI64(low, high) {
   high = high || '0';
   if (I64_MODE == 1) {
     return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
   } else {
-    if (high) return makeBigInt(low, high);
+    if (high) return RuntimeGenerator.makeBigInt(low, high);
     return low;
   }
 }
@@ -589,7 +580,7 @@ function splitI64(value) {
 }
 function mergeI64(value) {
   assert(I64_MODE == 1);
-  return makeInlineCalculation(makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
+  return makeInlineCalculation(RuntimeGenerator.makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
 }
 
 // Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
@@ -1600,17 +1591,43 @@ function processMathop(item) {
       case 'xor': {
         return '[' + ident1 + '[0] ^ ' + ident2 + '[0], ' + ident1 + '[1] ^ ' + ident2 + '[1]]';
       }
-      case 'shl': {
-        return '[' + ident1 + '[0] << ' + ident2 + ', ' +
-                 '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident1 + '[0]&((Math.pow(2, ' + ident2 + ')-1)<<(32-' + ident2 + '))) >>> (32-' + ident2 + '))]';
-      }
-      case 'ashr': {
-        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1))<<(32-' + ident2 + ')),' +
-                    ident1 + '[1] >>> ' + ident2 + ']';
-      }
+      case 'shl':
+      case 'ashr':
       case 'lshr': {
-        return '[('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&(Math.pow(2, ' + ident2 + ')-1))<<(32-' + ident2 + ')),' +
-                    ident1 + '[1] >>> ' + ident2 + ']';
+        assert(isNumber(ident2));
+        bits = parseInt(ident2);
+        var ander = Math.pow(2, bits)-1;
+        if (bits < 32) {
+          switch (op) {
+            case 'shl':
+              return '[' + ident1 + '[0] << ' + ident2 + ', ' +
+                       '('+ident1 + '[1] << ' + ident2 + ') | ((' + ident1 + '[0]&(' + ander + '<<' + (32 - bits) + ')) >>> (32-' + ident2 + '))]';
+            case 'ashr':
+              return '[((('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&' + ander + ')<<' + (32 - bits) + ')) >> 0) >>> 0,' +
+                          '(' + ident1 + '[1] >> ' + ident2 + ') >>> 0]';
+            case 'lshr':
+              return '[(('+ident1 + '[0] >>> ' + ident2 + ') | ((' + ident1 + '[1]&' + ander + ')<<' + (32 - bits) + ')) >>> 0,' +
+                          ident1 + '[1] >>> ' + ident2 + ']';
+          }
+        } else if (bits == 32) {
+          switch (op) {
+            case 'shl':
+              return '[0, ' + ident1 + '[0]]';
+            case 'ashr':
+              return '[' + ident1 + '[1], (' + ident1 + '[1]|0) < 0 ? ' + ander + ' : 0]';
+            case 'lshr':
+              return '[' + ident1 + '[1], 0]';
+          }
+        } else { // bits > 32
+          switch (op) {
+            case 'shl':
+              return '[0, ' + ident1 + '[0] << ' + (bits - 32) + ']';
+            case 'ashr':
+              return '[(' + ident1 + '[1] >> ' + (bits - 32) + ') >>> 0, (' + ident1 + '[1]|0) < 0 ? ' + ander + ' : 0]';
+            case 'lshr':
+              return '[' + ident1 + '[1] >>> ' + (bits - 32) + ', 0]';
+          }
+        }
       }
       case 'uitofp': case 'sitofp': return ident1 + '[0] + ' + ident1 + '[1]*4294967296';
       case 'fptoui': case 'fptosi': return splitI64(ident1);
