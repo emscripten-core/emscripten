@@ -26,7 +26,6 @@
 #ifndef	_IFADDRS_H_
 #define	_IFADDRS_H_
 
-#include <features.h>
 #include <sys/socket.h>
 
 struct ifaddrs {
