@@ -411,8 +411,8 @@ var LibraryGLUT = {
     lastY: 0,
 
     onMousemove: function(event) {
-      GLUT.lastX = event.clientX;
-      GLUT.lastY = event.clientY;
+      GLUT.lastX = event['clientX'];
+      GLUT.lastY = event['clientY'];
     },
 
     onKeypress: function(event) {
