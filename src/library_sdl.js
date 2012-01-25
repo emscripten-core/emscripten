@@ -176,6 +176,11 @@ mergeInto(LibraryManager.library, {
       try {
         var ctx = Module.canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
         if (!ctx) throw 'Could not create canvas :(';
+        if (useWebGL) {
+          // Set the background of the WebGL canvas to black, because SDL gives us a
+          // window which has a black background by default.
+          Module.canvas.style.backgroundColor = "black";
+        }
         return Module.ctx = ctx;
       } catch (e) {
         Module.print('(canvas not available)');
