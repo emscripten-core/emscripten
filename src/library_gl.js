@@ -360,6 +360,10 @@ var LibraryGL = {
   glGetProgramInfoLog_deps: ['$GL'],
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
     var log = Module.ctx.getProgramInfoLog(GL.hashtable("program").get(program));
+    // Work around a bug in Chromium which causes getProgramInfoLog to return null
+    if (!log) {
+      log = "";
+    }
     log = log.substr(0, maxLength - 1);
     writeStringToMemory(log, infoLog);
     if (length) {
