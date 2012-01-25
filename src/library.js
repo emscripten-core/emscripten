@@ -4714,6 +4714,13 @@ LibraryManager.library = {
     {{{ makeSetValue('cosine', '0', 'cosineVal', 'double') }}};
   },
 
+  sincosf: function(x, sine, cosine) {
+    var sineVal = Math.sin(x),
+        cosineVal = Math.cos(x);
+    {{{ makeSetValue('sine', '0', 'sineVal', 'float') }}};
+    {{{ makeSetValue('cosine', '0', 'cosineVal', 'float') }}};
+  },
+
   __div_t_struct_layout: Runtime.generateStructInfo([
                             ['i32', 'quot'],
                             ['i32', 'rem'],

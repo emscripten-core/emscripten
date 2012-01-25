@@ -760,6 +760,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
     def test_math(self):
         src = '''
           #include <stdio.h>
+          #include <stdlib.h>
           #include <cmath>
           int main()
           {
@@ -772,11 +773,22 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             printf(",%d", isinf(INFINITY) != 0);
             printf(",%d", isinf(-INFINITY) != 0);
             printf(",%d", isinf(12.3) != 0);
+            div_t div_result = div(23, 10);
+            printf(",%d", div_result.quot);
+            printf(",%d", div_result.rem);
+            double sine = -1.0, cosine = -1.0;
+            sincos(0.0, &sine, &cosine);
+            printf(",%1.1lf", sine);
+            printf(",%1.1lf", cosine);
+            float fsine = -1.0f, fcosine = -1.0f;
+            sincosf(0.0, &fsine, &fcosine);
+            printf(",%1.1f", fsine);
+            printf(",%1.1f", fcosine);
             printf("*\\n");
             return 0;
           }
         '''
-        self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0*')
+        self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0,2,3,0.0,1.0,0.0,1.0*')
 
     def test_math_hyperbolic(self):
         src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
