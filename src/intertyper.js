@@ -83,7 +83,7 @@ function intertyper(data, sidePass, baseLineNums) {
             var global = /([@%\w\d\.\" ]+) = .*/.exec(line);
             var globalIdent = toNiceIdent(global[1]);
             var testAlias = /[@%\w\d\.\" ]+ = alias .*/.exec(line);
-            var testString = /^[^"]+c\"[^"]+"/.exec( line );
+            var testString = /^[^"]+c\"[^"]+"/.exec(line);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,

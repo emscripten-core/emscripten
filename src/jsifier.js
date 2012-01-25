@@ -265,7 +265,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
-          if(!(item.ident in Variables.globals ) || !Variables.globals[item.ident].isString) {
+          if (!(item.ident in Variables.globals) || !Variables.globals[item.ident].isString) {
           	item.JS = 'var ' + item.ident + ';';
           } 
         }
@@ -317,12 +317,15 @@ function JSify(data, functionsOnly, givenFunctions) {
           constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
 
           var js;
-          
-          if(Variables.globals[ item.ident ].isString) {
+
+          // Strings are held in STRING_TABLE, to not clutter up the main namespace (in some cases we have
+          // many many strings, possibly exceeding the js engine limit on global vars).
+          if (Variables.globals[item.ident].isString) {
             js = 'STRING_TABLE.' + item.ident + '=' + constant + ';';
           } else {
           	js = item.ident + '=' + constant + ';';
           }
+
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
             js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';

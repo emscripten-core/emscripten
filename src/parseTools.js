@@ -1434,7 +1434,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     }
   } else if (param.intertype == 'value') {
     ret = param.ident;
-    if(ret in Variables.globals && Variables.globals[ret].isString) {
+    if (ret in Variables.globals && Variables.globals[ret].isString) {
       ret = "STRING_TABLE." + ret;
     }
     if (param.type == 'i64' && I64_MODE == 1) {
