@@ -530,7 +530,7 @@ try:
       if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
 
-  # Emscripten
+  # Prepare .ll for Emscripten
   try:
     if shared.Settings.RELOOP:
       print >> sys.stderr, 'emcc: warning: The relooper optimization can be very slow.'
@@ -555,6 +555,12 @@ try:
     final = input_files[0]
   if DEBUG: save_intermediate('ll', 'll')
 
+  if os.environ.get('EMCC_AUTODEBUG'):
+    Popen(['python', shared.AUTODEBUGGER, final, final + '.ad.ll']).communicate()[0]
+    final += '.ad.ll'
+    if DEBUG: save_intermediate('autodebug', 'll')
+
+  # Emscripten
   if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
   final = shared.Building.emscripten(final, append_ext=False)
   if DEBUG: save_intermediate('original')
