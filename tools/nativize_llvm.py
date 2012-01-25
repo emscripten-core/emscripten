@@ -27,5 +27,5 @@ Popen([LLVM_COMPILER, filename + '.clean.bc', '-o=' + filename + '.s']).communic
 print 's => o'
 Popen(['as', filename + '.s', '-o', filename + '.o']).communicate()[0]
 print 'o => runnable'
-Popen(['g++', filename + '.o', '-o', filename + '.run'] + ['-l' + lib for lib in libs]).communicate()[0]
+Popen(['g++', path_from_root('system', 'lib', 'debugging.cpp'), filename + '.o', '-o', filename + '.run'] + ['-l' + lib for lib in libs]).communicate()[0]
 
