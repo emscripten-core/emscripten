@@ -86,6 +86,9 @@ LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll 
                                                            # specific need.
                                                            # One major limitation with this mode is that dlmalloc and libc++ cannot be
                                                            # added in. Also, LLVM optimizations will not be done, nor dead code elimination
+AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
+                                             # Note that this will disable inclusion of libraries. This is useful because including
+                                             # dlmalloc makes it hard to compare native and js builds
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
@@ -445,7 +448,7 @@ try:
 
   extra_files_to_link = []
 
-  if not LEAVE_INPUTS_RAW:
+  if not LEAVE_INPUTS_RAW and not AUTODEBUG:
     # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
     # compile a malloc implementation and stdlibc++.)
     # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
@@ -555,7 +558,7 @@ try:
     final = input_files[0]
   if DEBUG: save_intermediate('ll', 'll')
 
-  if os.environ.get('EMCC_AUTODEBUG'):
+  if AUTODEBUG:
     Popen(['python', shared.AUTODEBUGGER, final, final + '.ad.ll']).communicate()[0]
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
