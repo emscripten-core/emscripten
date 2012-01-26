@@ -4155,7 +4155,7 @@ def process(filename):
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
-      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a.bc'))
+      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
 
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
@@ -4234,7 +4234,7 @@ def process(filename):
 
       self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   libraries=[self.get_library('zlib', os.path.join('libz.a.bc'), make_args=['libz.a'])],
+                   libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
@@ -4251,9 +4251,9 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                     open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read()],
-                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a.bc'),
-                                                          os.path.join('src', '.libs', 'libBulletDynamics.a.bc'),
-                                                          os.path.join('src', '.libs', 'libLinearMath.a.bc')],
+                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
+                                                          os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                                          os.path.join('src', '.libs', 'libLinearMath.a')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking'])],
                    includes=[path_from_root('tests', 'bullet', 'src')],
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
@@ -4299,9 +4299,9 @@ def process(filename):
 
       poppler = self.get_library('poppler',
                                  [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
-                                  os.path.join('goo', '.libs', 'libgoo.a.bc'),
-                                  os.path.join('fofi', '.libs', 'libfofi.a.bc'),
-                                  os.path.join('splash', '.libs', 'libsplash.a.bc'),
+                                  os.path.join('goo', '.libs', 'libgoo.a'),
+                                  os.path.join('fofi', '.libs', 'libfofi.a'),
+                                  os.path.join('splash', '.libs', 'libsplash.a'),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
                                  configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms'])
