@@ -463,6 +463,12 @@ function analyzer(data, sidePass) {
       item.functions.forEach(function(func) {
         func.lines.forEach(function(line, i) {
           if (line.intertype === 'assign' && line.value.intertype === 'load') {
+            // Floats have no concept of signedness. Mark them as 'signed', which is the default, for which we do nothing
+            if (line.value.type in Runtime.FLOAT_TYPES) {
+              line.value.unsigned = false;
+              return;
+            }
+            // Booleans are always unsigned
             var data = func.variables[line.ident];
             if (data.type === 'i1') {
               line.value.unsigned = true;
