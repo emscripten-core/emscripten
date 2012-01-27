@@ -715,7 +715,7 @@ main(int argc, char *argv[])
    glutCreateWindow("es2gears");
 
    /* Set up glut callback functions */
-   glutIdleFunc(gears_idle);
+   gears_idle();
    glutReshapeFunc(gears_reshape);
    glutDisplayFunc(gears_draw);
    glutSpecialFunc(gears_special);
