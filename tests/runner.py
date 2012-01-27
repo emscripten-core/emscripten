@@ -5588,6 +5588,7 @@ f.close()
       assert False, 'Why is libcxx/ created in e.g. test_python, with EMCC_DEBUG, when it does not need libcxx?'
       assert False, 'Make sure Poppler builds with llvm full opts'
       assert False, 'Check if we should use -Ox instead of -std-compile-opts'
+      assert False, 'Make it easy to disable full llvm opts and use just normal ones'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
