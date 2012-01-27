@@ -5389,9 +5389,7 @@ Options that are modified or new in %s include:
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'js']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
           clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
-          assert len(output[0]) == 0, output[0]
-          assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), '\n'.join(output))
+          Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           syms = Building.llvm_nm(target)
           assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
           if target == 'js': # make sure emcc can recognize the target as a bitcode file
@@ -5545,7 +5543,6 @@ Options that are modified or new in %s include:
           try_delete(target)
           assert not os.path.exists(target)
           output = Popen([compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
-          assert os.path.exists('combined.bc'), '\n'.join(output)
           syms = Building.llvm_nm('combined.bc')
           assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
           output = Popen([compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout = PIPE, stderr = PIPE).communicate()
