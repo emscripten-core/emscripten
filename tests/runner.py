@@ -5531,7 +5531,7 @@ f.close()
 
       # Finally, do some web browser tests
       def run_browser(html_file, message):
-        webbrowser.open_new(html_file)
+        webbrowser.open_new(os.path.abspath(html_file))
         print 'A web browser window should have opened a page containing the results of a part of this test.'
         print 'You need to manually look at the page to see that it works ok: ' + message
         print '(sleeping for a bit to keep the directory alive for the web browser..)'
