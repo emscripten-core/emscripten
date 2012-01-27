@@ -419,31 +419,31 @@ var LibraryGLUT = {
       GLUT.lastY = event['clientY'];
     },
 
-    onKeypress: function(event) {
+    onKeydown: function(event) {
       if (GLUT.keyboardFunc) {
         var key = null;
         switch (event['keyCode']) {
-          case event['DOM_VK_F1']: key = 1 /* GLUT_KEY_F1 */; break;
-          case event['DOM_VK_F2']: key = 2 /* GLUT_KEY_F2 */; break;
-          case event['DOM_VK_F3']: key = 3 /* GLUT_KEY_F3 */; break;
-          case event['DOM_VK_F4']: key = 4 /* GLUT_KEY_F4 */; break;
-          case event['DOM_VK_F5']: key = 5 /* GLUT_KEY_F5 */; break;
-          case event['DOM_VK_F6']: key = 6 /* GLUT_KEY_F6 */; break;
-          case event['DOM_VK_F7']: key = 7 /* GLUT_KEY_F7 */; break;
-          case event['DOM_VK_F8']: key = 8 /* GLUT_KEY_F8 */; break;
-          case event['DOM_VK_F9']: key = 9 /* GLUT_KEY_F9 */; break;
-          case event['DOM_VK_F10']: key = 10 /* GLUT_KEY_F10 */; break;
-          case event['DOM_VK_F11']: key = 11 /* GLUT_KEY_F11 */; break;
-          case event['DOM_VK_F12']: key = 12 /* GLUT_KEY_F12 */; break;
-          case event['DOM_VK_LEFT']: key = 100 /* GLUT_KEY_LEFT */; break;
-          case event['DOM_VK_UP']: key = 101 /* GLUT_KEY_UP */; break;
-          case event['DOM_VK_RIGHT']: key = 102 /* GLUT_KEY_RIGHT */; break;
-          case event['DOM_VK_DOWN']: key = 103 /* GLUT_KEY_DOWN */; break;
-          case event['DOM_VK_PAGE_UP']: key = 104 /* GLUT_KEY_PAGE_UP */; break;
-          case event['DOM_VK_PAGE_DOWN']: key = 105 /* GLUT_KEY_PAGE_DOWN */; break;
-          case event['DOM_VK_HOME']: key = 106 /* GLUT_KEY_HOME */; break;
-          case event['DOM_VK_END']: key = 107 /* GLUT_KEY_END */; break;
-          case event['DOM_VK_INSERT']: key = 108 /* GLUT_KEY_INSERT */; break;
+          case 0x70 /*DOM_VK_F1*/: key = 1 /* GLUT_KEY_F1 */; break;
+          case 0x71 /*DOM_VK_F2*/: key = 2 /* GLUT_KEY_F2 */; break;
+          case 0x72 /*DOM_VK_F3*/: key = 3 /* GLUT_KEY_F3 */; break;
+          case 0x73 /*DOM_VK_F4*/: key = 4 /* GLUT_KEY_F4 */; break;
+          case 0x74 /*DOM_VK_F5*/: key = 5 /* GLUT_KEY_F5 */; break;
+          case 0x75 /*DOM_VK_F6*/: key = 6 /* GLUT_KEY_F6 */; break;
+          case 0x76 /*DOM_VK_F7*/: key = 7 /* GLUT_KEY_F7 */; break;
+          case 0x77 /*DOM_VK_F8*/: key = 8 /* GLUT_KEY_F8 */; break;
+          case 0x78 /*DOM_VK_F9*/: key = 9 /* GLUT_KEY_F9 */; break;
+          case 0x79 /*DOM_VK_F10*/: key = 10 /* GLUT_KEY_F10 */; break;
+          case 0x7a /*DOM_VK_F11*/: key = 11 /* GLUT_KEY_F11 */; break;
+          case 0x7b /*DOM_VK_F12*/: key = 12 /* GLUT_KEY_F12 */; break;
+          case 0x25 /*DOM_VK_LEFT*/: key = 100 /* GLUT_KEY_LEFT */; break;
+          case 0x26 /*DOM_VK_UP*/: key = 101 /* GLUT_KEY_UP */; break;
+          case 0x27 /*DOM_VK_RIGHT*/: key = 102 /* GLUT_KEY_RIGHT */; break;
+          case 0x28 /*DOM_VK_DOWN*/: key = 103 /* GLUT_KEY_DOWN */; break;
+          case 0x21 /*DOM_VK_PAGE_UP*/: key = 104 /* GLUT_KEY_PAGE_UP */; break;
+          case 0x22 /*DOM_VK_PAGE_DOWN*/: key = 105 /* GLUT_KEY_PAGE_DOWN */; break;
+          case 0x24 /*DOM_VK_HOME*/: key = 106 /* GLUT_KEY_HOME */; break;
+          case 0x23 /*DOM_VK_END*/: key = 107 /* GLUT_KEY_END */; break;
+          case 0x2d /*DOM_VK_INSERT*/: key = 108 /* GLUT_KEY_INSERT */; break;
           default: return;
         };
         if (key !== null) {
@@ -457,7 +457,7 @@ var LibraryGLUT = {
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
-    window.addEventListener("keypress", GLUT.onKeypress, true);
+    window.addEventListener("keydown", GLUT.onKeydown, true);
     window.addEventListener("mousemove", GLUT.onMousemove, true);
   },
 
