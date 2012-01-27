@@ -9,6 +9,11 @@
     <div id='output'></div>
     <hr>
     <script type='text/javascript'>
+      /**
+       * TODO: Encapsulate this part in a reusable token such as
+       *       EMSCRIPTEN_ENVIRONMENT so that we can share code
+       *       between the default shell and custom ones.
+       */
       // connect to canvas
       var Module = {
         print: (function() {
