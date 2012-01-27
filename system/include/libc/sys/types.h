@@ -300,7 +300,7 @@ typedef __uint32_t pthread_t;            /* identify a thread */
 #define PTHREAD_CREATE_DETACHED 0
 #define PTHREAD_CREATE_JOINABLE  1
 
-#if defined(__XMK__) || defined(__rtems__)
+#if defined(__XMK__) || defined(__rtems__) || defined(EMSCRIPTEN)
 /* The following defines are part of the X/Open System Interface (XSI). */
 
 /* This type of mutex does not detect deadlock. A thread attempting to relock this mutex without first unlocking 

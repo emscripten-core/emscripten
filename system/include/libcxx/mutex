@@ -178,7 +178,6 @@ template<class Callable, class ...Args>
 #ifndef _LIBCPP_HAS_NO_VARIADICS
 #include <tuple>
 #endif
-#include "sched.h" /* XXX Emscripten */
 
 #pragma GCC system_header
 

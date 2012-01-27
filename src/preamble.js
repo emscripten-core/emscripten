@@ -783,6 +783,8 @@ function writeStringToMemory(string, buffer, dontAddNull) {
   }
 }
 
+var STRING_TABLE = [];
+
 {{{ unSign }}}
 {{{ reSign }}}
 

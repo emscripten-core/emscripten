@@ -83,10 +83,12 @@ function intertyper(data, sidePass, baseLineNums) {
             var global = /([@%\w\d\.\" ]+) = .*/.exec(line);
             var globalIdent = toNiceIdent(global[1]);
             var testAlias = /[@%\w\d\.\" ]+ = alias .*/.exec(line);
+            var testString = /^[^"]+c\"[^"]+"/.exec(line);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,
-              impl: VAR_EMULATED
+              impl: VAR_EMULATED,
+              isString : !!testString
             };
             unparsedGlobals.lines.push(line);
           } else {
@@ -366,6 +368,8 @@ function intertyper(data, sidePass, baseLineNums) {
             return '/dev/null';
           if (tokensLength >= 3 && token0Text == 'invoke')
             return 'Invoke';
+          if (tokensLength >= 3 && token0Text == 'atomicrmw' || token0Text == 'cmpxchg')
+            return 'Atomic';
         } else {
           // Already intertyped
           if (item.parentSlot)
@@ -519,13 +523,12 @@ function intertyper(data, sidePass, baseLineNums) {
               ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
             });
           }
-        } else {
-          if (!item.tokens[3]) throw 'Did you run llvm-dis with -show-annotations? (b)'; // XXX: do we still need annotations?
+        } else if (!external) {
           if (item.tokens[3].text == 'c')
             item.tokens.splice(3, 1);
           if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
             ret.value = parseLLVMFunctionCall(item.tokens.slice(2));
-          } else if (!external) {
+          } else {
             ret.value = scanConst(item.tokens[3], ret.type);
           }
         }
@@ -737,6 +740,21 @@ function intertyper(data, sidePass, baseLineNums) {
       }
       if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
       return result.ret;
+    }
+  });
+  substrate.addActor('Atomic', {
+    processItem: function(item) {
+      item.intertype = 'atomic';
+      if (item.tokens[0].text == 'atomicrmw') {
+        item.op = item.tokens[1].text;
+        item.tokens.splice(1, 1);
+      } else {
+        assert(item.tokens[0].text == 'cmpxchg')
+        item.op = 'cmpxchg';
+      }
+      var last = getTokenIndexByText(item.tokens, ';');
+      item.params = splitTokenList(item.tokens.slice(1, last)).map(parseLLVMSegment);
+      this.forwardItem(item, 'Reintegrator');
     }
   });
   // 'landingpad' - just a stub implementation

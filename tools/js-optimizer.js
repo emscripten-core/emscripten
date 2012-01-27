@@ -237,7 +237,7 @@ function emptyNode() {
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
-//  echo "HEAP[(a+b+c)>>2]" | node tools/js-optimizer.js dumpAst
+//  node tools/js-optimizer.js ABSOLUTE_PATH_TO_FILE dumpAst
 function dumpAst(ast) {
   printErr(JSON.stringify(ast));
 }

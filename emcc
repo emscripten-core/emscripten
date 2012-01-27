@@ -82,10 +82,11 @@ TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
                                                            # specific need.
-                                                           # One major limitation with this mode is that dlmalloc will not be added in.
-                                                           # LLVM optimizations will also not be done.
+                                                           # One major limitation with this mode is that dlmalloc and libc++ cannot be
+                                                           # added in. Also, LLVM optimizations will not be done, nor dead code elimination
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
+if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
 
 shared.check_sanity()
 
@@ -413,6 +414,8 @@ try:
         shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
       else: #.ll
         if not LEAVE_INPUTS_RAW:
+          # Note that by assembling the .ll file, then disassembling it later, we will
+          # remove annotations which is a good thing for compilation time
           if DEBUG: print >> sys.stderr, 'emcc: assembling assembly file: ', input_file
           shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
 
@@ -444,25 +447,20 @@ try:
   extra_files_to_link = []
 
   if not LEAVE_INPUTS_RAW:
-    # Check if we need to include dlmalloc. Note that we assume a single symbol is enough to know if we have/do not have dlmalloc. If you
+    # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
+    # compile a malloc implementation and stdlibc++.)
+    # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
     # include just a few symbols but want the rest, this will not work.
-    need_dlmalloc = False
-    has_dlmalloc = False
-    for input_file in input_files:
-      symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
-      for malloc_def in ['malloc', 'free', 'calloc', 'memalign', 'realloc', 'valloc', 'pvalloc', 'mallinfo', 'mallopt', 'malloc_trim', 'malloc_stats', 'malloc_usable_size', 'malloc_footprint', 'malloc_max_footprint', 'independent_calloc', 'independent_comalloc', '_Znwj', '_Znaj', '_Znam', '_Znwm']:
-        if malloc_def in symbols.undefs:
-          need_dlmalloc = True
-        if malloc_def in symbols.defs:
-          has_dlmalloc = True
-    if need_dlmalloc and not has_dlmalloc:
-      # We need to build and link dlmalloc in
-      if DEBUG: print >> sys.stderr, 'emcc: including dlmalloc'
-      Popen([shared.EMCC, shared.path_from_root('src', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
-      if llvm_opt_level > 0:
-        shared.Building.llvm_opt(in_temp('dlmalloc.o'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
-      extra_files_to_link.append(in_temp('dlmalloc.o'))
 
+    # dlmalloc
+    def create_dlmalloc():
+      if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
+      Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
+      # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
+      Popen([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=PIPE, stderr=PIPE).communicate()
+      shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
+      return in_temp('dlmalloc_full.o')
+    def fix_dlmalloc():
       # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
         if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
@@ -472,6 +470,45 @@ try:
         shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
       # so all is well anyhow too.
+    # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
+    #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
+    dlmalloc_symbols = open(shared.path_from_root('system', 'lib', 'dlmalloc.symbols')).read().split('\n')
+
+    # libcxx
+    def create_libcxx():
+      if DEBUG: print >> sys.stderr, 'emcc: building libcxx for cache'
+      shared.Building.build_library('libcxx', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxx.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxx'))
+      return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxx', 'libcxx.bc')
+    def fix_libcxx():
+      assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
+      # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
+      shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
+      print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_* options'
+    libcxx_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxx', 'symbols')).readlines())
+    libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
+    libcxx_symbols = set(libcxx_symbols)
+
+    force = False # If we have libcxx, we must force inclusion of dlmalloc, since libcxx uses new internally. Note: this is kind of hacky
+
+    for name, create, fix, library_symbols in [('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols),
+                                               ('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
+      need = []
+      has = []
+      for input_file in input_files:
+        symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
+        for library_symbol in library_symbols:
+          if library_symbol in symbols.undefs:
+            need.append(library_symbol)
+          if library_symbol in symbols.defs:
+            has.append(library_symbol)
+      if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need |%s| and have |%s|' % (name, str(need), str(has))
+      if force or (need and not has):
+        # We need to build and link the library in
+        if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
+        extra_files_to_link.append(shared.Cache.get(name, create))
+        force = True
+        if fix:
+          fix()
 
   # First, combine the bitcode files if there are several
   if len(input_files) + len(extra_files_to_link) > 1:
@@ -488,6 +525,11 @@ try:
   if llvm_opt_level > 0 and not LEAVE_INPUTS_RAW:
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
     shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
+  else:
+    # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+    if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
 
   # Emscripten
   try:
@@ -507,12 +549,14 @@ try:
 
   if not LEAVE_INPUTS_RAW:
     final = in_temp(target_basename + '.bc')
+    if DEBUG: save_intermediate('bc', 'bc')
     final = shared.Building.llvm_dis(final, final + '.ll')
-    if DEBUG: save_intermediate('ll', 'll')
   else:
     assert len(input_files) == 1
     final = input_files[0]
+  if DEBUG: save_intermediate('ll', 'll')
 
+  if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
   final = shared.Building.emscripten(final, append_ext=False)
   if DEBUG: save_intermediate('original')
 

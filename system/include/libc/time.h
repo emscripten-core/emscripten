@@ -229,7 +229,7 @@ extern "C" {
 
 #endif
 
-#if defined(_POSIX_MONOTONIC_CLOCK)
+#if defined(_POSIX_MONOTONIC_CLOCK) || defined(EMSCRIPTEN)
 
 /*  The identifier for the system-wide monotonic clock, which is defined
  *      as a clock whose value cannot be set via clock_settime() and which 

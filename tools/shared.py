@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile
+import shutil, time, os, sys, json, tempfile, copy
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -90,7 +90,6 @@ LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_NM=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-nm'))
-LLVM_DIS_OPTS = ['-show-annotations'] # For LLVM 2.8+. For 2.7, you may need to do just    []
 LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
 COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
@@ -106,7 +105,6 @@ EMRANLIB = path_from_root('emranlib')
 EMLIBTOOL = path_from_root('emlibtool')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-DFE = path_from_root('tools', 'dead_function_eliminator.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
@@ -315,7 +313,8 @@ class Settings:
         ret = []
         for key, value in Settings.__dict__.iteritems():
           if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
-            ret += ['-s', key + '=' + json.dumps(value)]
+            jsoned = json.dumps(value)
+            ret += ['-s', key + '=' + jsoned]
         return ret
 
       @classmethod
@@ -378,19 +377,21 @@ class Building:
     Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
-        for different compilers) '''
+        for different compilers).
+        This cache is just during the test runner. There is a different concept of caching as well, see |Cache|. '''
 
     if type(generated_libs) is not list: generated_libs = [generated_libs]
+    if source_dir is None: source_dir = path_from_root('tests', name)
 
     temp_dir = build_dir
     if copy_project:
       project_dir = os.path.join(temp_dir, name)
       if os.path.exists(project_dir):
         shutil.rmtree(project_dir)
-      shutil.copytree(path_from_root('tests', name), project_dir) # Useful in debugging sometimes to comment this out, and two lines above
+      shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
     else:
       project_dir = build_dir
     try:
@@ -433,14 +434,16 @@ class Building:
     #                 open(filename + '.o.ll', 'r').readlines())
     #os.unlink(filename + '.o.ll')
     #open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
-    shutil.move(filename + '.o.ll', filename + '.o.ll.orig')
-    output = Popen(['python', DFE, filename + '.o.ll.orig', filename + '.o.ll'], stdout=PIPE).communicate()[0]
-    assert os.path.exists(filename + '.o.ll'), 'Failed to run ll optimizations'
+    pass
 
-  # Optional LLVM optimizations
+  # LLVM optimizations
+  # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
+  #            optimization passes passed to llvm opt
   @staticmethod
-  def llvm_opt(filename, level, safe=True):
-    output = Popen([LLVM_OPT, filename] + Building.pick_llvm_opts(level, safe) + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
+  def llvm_opt(filename, opts, safe=True):
+    if type(opts) is int:
+      opts = Building.pick_llvm_opts(opts, safe)
+    output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
     shutil.move(filename + '.opt.bc', filename)
 
@@ -465,7 +468,7 @@ class Building:
       output_filename = input_filename + '.o.ll'
       input_filename = input_filename + '.o'
     try_delete(output_filename)
-    output = Popen([LLVM_DIS, input_filename ] + LLVM_DIS_OPTS + ['-o=' + output_filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_DIS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
     return output_filename
 
@@ -488,13 +491,19 @@ class Building:
     class ret:
       defs = []
       undefs = []
+      commons = []
     for line in output.split('\n'):
       if len(line) == 0: continue
       status, symbol = filter(lambda seg: len(seg) > 0, line.split(' '))
       if status == 'U':
         ret.undefs.append(symbol)
-      else:
+      elif status != 'C':
         ret.defs.append(symbol)
+      else:
+        ret.commons.append(symbol)
+    ret.defs = set(ret.defs)
+    ret.undefs = set(ret.undefs)
+    ret.commons = set(ret.commons)
     return ret
 
   @staticmethod
@@ -525,6 +534,10 @@ class Building:
       (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
       into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
       things that look useful.
+
+      An easy way to see LLVM's standard list of passes is
+
+        llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
     opts = []
     if optimization_level > 0:
@@ -543,6 +556,9 @@ class Building:
         if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
           opts.append('-tbaa')
           opts.append('-basicaa') # makes fannkuch slow but primes fast
+
+        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+          opts.append('-internalize')
 
         opts.append('-globalopt')
         opts.append('-ipsccp')
@@ -601,7 +617,8 @@ class Building:
 
         opts.append('-strip-dead-prototypes')
 
-        if optimization_level > 2: opts.append('-globaldce')
+        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+          opts.append('-globaldce')
 
         if optimization_level > 1: opts.append('-constmerge')
 
@@ -663,7 +680,7 @@ class Building:
     # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
     try:
       defs = Building.llvm_nm(filename, stderr=PIPE)
-      assert len(defs.defs + defs.undefs) > 0
+      assert len(defs.defs) + len(defs.undefs) + len(defs.commons) > 0
     except:
       return False
     # look for magic signature
@@ -676,4 +693,28 @@ class Building:
       return b[20] == 'B' and b[21] == 'C'
     
     return False
+
+# Permanent cache for dlmalloc and stdlibc++
+class Cache:
+  dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+
+  @staticmethod
+  def erase():
+    try:
+      shutil.rmtree(Cache.dirname)
+    except:
+      pass
+
+  # Request a cached file. If it isn't in the cache, it will be created with
+  # the given creator function
+  @staticmethod
+  def get(shortname, creator):
+    if not shortname.endswith('.bc'): shortname += '.bc'
+    cachename = os.path.join(Cache.dirname, shortname)
+    if os.path.exists(cachename):
+      return cachename
+    if not os.path.exists(Cache.dirname):
+      os.makedirs(Cache.dirname)
+    shutil.copyfile(creator(), cachename)
+    return cachename
 

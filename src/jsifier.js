@@ -247,7 +247,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       function needsPostSet(value) {
-        return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW';
+        return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
+            || value.substr(0, 13) === 'STRING_TABLE.';
       }
 
       item.intertype = 'GlobalVariableStub';
@@ -264,7 +265,9 @@ function JSify(data, functionsOnly, givenFunctions) {
           // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
-          item.JS = 'var ' + item.ident + ';';
+          if (!(item.ident in Variables.globals) || !Variables.globals[item.ident].isString) {
+          	item.JS = 'var ' + item.ident + ';';
+          } 
         }
         var constant = null;
         if (item.external) {
@@ -313,7 +316,16 @@ function JSify(data, functionsOnly, givenFunctions) {
           //       allocations in a shared library.
           constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
 
-          var js = item.ident + '=' + constant + ';';
+          var js;
+
+          // Strings are held in STRING_TABLE, to not clutter up the main namespace (in some cases we have
+          // many many strings, possibly exceeding the js engine limit on global vars).
+          if (Variables.globals[item.ident].isString) {
+            js = 'STRING_TABLE.' + item.ident + '=' + constant + ';';
+          } else {
+          	js = item.ident + '=' + constant + ';';
+          }
+
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
             js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
@@ -943,6 +955,20 @@ function JSify(data, functionsOnly, givenFunctions) {
             + 'return null } })(); if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + getPhiSetsForLabel(phiSets, item.unwindLabel)  + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
+  });
+  makeFuncLineActor('atomic', function(item) {
+    var type = item.params[0].type;
+    var param1 = finalizeLLVMParameter(item.params[0]);
+    var param2 = finalizeLLVMParameter(item.params[1]);
+    switch (item.op) {
+      case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type) + ',tempValue)';
+      case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type) + ',tempValue)';
+      case 'cmpxchg': {
+        var param3 = finalizeLLVMParameter(item.params[2]);
+        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' && (' + makeSetValue(param1, 0, param3, type) + ')),tempValue)';
+      }
+      default: throw 'unhandled atomic op: ' + item.op;
+    }
   });
   makeFuncLineActor('landingpad', function(item) {
     // Just a stub
