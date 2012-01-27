@@ -37,7 +37,6 @@ except:
 class RunnerCore(unittest.TestCase):
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
-  lli_available = False
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
                            # Change this to None to get stderr reporting, for debugging purposes
 
@@ -52,7 +51,6 @@ class RunnerCore(unittest.TestCase):
       os.makedirs(dirname)
     self.working_dir = dirname
     os.chdir(dirname)
-    self.check_lli_available()
     
   def tearDown(self):
     if self.save_JS:
@@ -196,17 +194,6 @@ process(sys.argv[1])
     ret = open(stdout, 'r').read() + open(stderr, 'r').read()
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     return ret
-
-  def check_lli_available(self):
-    target = path_from_root('tests', 'hello_world.ll')
-    p = Popen([LLVM_INTERPRETER, target], stdout=PIPE, stderr=self.stderr_redirect)
-    p.communicate()
-    self.lli_available = p.returncode == 0
-    if not self.lli_available:
-      self.skip("lli does not work on this platform...")
-
-  def run_llvm_interpreter(self, args):
-    return Popen([EXEC_LLVM] + args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
 
   def build_native(self, filename):
     Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE).communicate()[0]
@@ -5375,8 +5362,15 @@ Options that are modified or new in %s include:
           output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target), 'Expected %s to exist since args are %s : %s' % (target, str(args), '\n'.join(output))
-          if self.lli_available:
-            self.assertContained('hello, world!', self.run_llvm_interpreter([target]))
+          syms = Building.llvm_nm(target)
+          assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
+          if target == 'js': # make sure emcc can recognize the target as a bitcode file
+            shutil.move(target, target + '.bc')
+            target += '.bc'
+          output = Popen([compiler, target, '-o', target + '.js'], stdout = PIPE, stderr = PIPE).communicate()
+          assert len(output[0]) == 0, output[0]
+          assert os.path.exists(target + '.js'), 'Expected %s to exist since args are %s : %s' % (target + '.js', str(args), '\n'.join(output))
+          self.assertContained('hello, world!', run_js(target + '.js'))
 
         # emcc src.ll ==> generates .js
         clear()
@@ -5522,8 +5516,15 @@ Options that are modified or new in %s include:
           assert not os.path.exists(target)
           output = Popen([compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('combined.bc'), '\n'.join(output)
-          if self.lli_available:
-            self.assertContained('side got: hello from main, over', self.run_llvm_interpreter(['combined.bc']))
+          syms = Building.llvm_nm('combined.bc')
+          assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
+          if target == 'js': # make sure emcc can recognize the target as a bitcode file
+            shutil.move(target, target + '.bc')
+            target += '.bc'
+          output = Popen([compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout = PIPE, stderr = PIPE).communicate()
+          assert len(output[0]) == 0, output[0]
+          assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
+          self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
 
         # --js-transform <transform>
         clear()
