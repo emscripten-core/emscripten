@@ -4429,6 +4429,9 @@ def process(filename):
         for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
           shortname = name.replace('.ll', '')
           if '' not in shortname: continue
+          if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
+            print self.skip('case only relevant for ta2')
+            continue
           print >> sys.stderr, "Testing case '%s'..." % shortname
           output_file = path_from_root('tests', 'cases', shortname + '.txt')
           if Settings.QUANTUM_SIZE == 1:
