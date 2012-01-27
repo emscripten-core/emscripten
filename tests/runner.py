@@ -14,7 +14,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading
 
 # Setup
 
@@ -5580,13 +5580,32 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+      # For browser tests which report their success
+      def run_test_server(expectedResult):
+        class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+          def do_GET(s):
+            assert s.path == expectedResult, 'Expected %s, got %s' % (expectedResult, s.path)
+            httpd.shutdown()
+          def handle_timeout():
+            assert False, 'Timed out while waiting for the browser test to finish'
+            httpd.shutdown()
+        httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+        httpd.timeout = 5;
+        server_thread = threading.Thread(target=httpd.serve_forever)
+        server_thread.daemon = True
+        server_thread.start()
+        server_thread.join(5.5)
+
       # Finally, do some web browser tests
-      def run_browser(html_file, message):
+      def run_browser(html_file, message, expectedResult = None):
         webbrowser.open_new(os.path.abspath(html_file))
         print 'A web browser window should have opened a page containing the results of a part of this test.'
         print 'You need to manually look at the page to see that it works ok: ' + message
         print '(sleeping for a bit to keep the directory alive for the web browser..)'
-        time.sleep(5)
+        if expectedResult is not None:
+          run_test_server(expectedResult)
+        else:
+          time.sleep(5)
         print '(moving on..)'
 
       # test HTML generation.
@@ -5620,10 +5639,13 @@ f.close()
 
       # test the OpenGL ES implementation
       clear()
-      output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html', '-DHAVE_BUILTIN_SINCOS'], stdout=PIPE, stderr=PIPE).communicate()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS',
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
+                     stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      run_browser('something.html', 'You should see animating gears.')
+      run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
