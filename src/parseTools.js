@@ -129,6 +129,11 @@ function isIntImplemented(type) {
   return type[0] == 'i' || isPointerType(type);
 }
 
+function getBits(type) {
+  if (!type || type[0] != 'i') return 0;
+  return parseInt(type.substr(1));
+}
+
 function isVoidType(type) {
   return type == 'void';
 }
@@ -595,13 +600,10 @@ function makeCopyI64(value) {
   return value + '.slice(0)';
 }
 
-function parseI64Constant(str) {
-  assert(I64_MODE == 1);
-
-  if (!isNumber(str)) {
-    // This is a variable. Copy it, so we do not modify the original
-    return makeCopyI64(str);
-  }
+// Given a string representation of an integer of arbitrary size, return it
+// split up into 32-bit chunks
+function parseArbitraryInt(str, bits) {
+  // We parse the string into a vector of digits, base 10. This is convenient to work on.
 
   function str2vec(s) { // index 0 is the highest value
     var ret = [];
@@ -659,6 +661,7 @@ function parseI64Constant(str) {
 
   if (str[0] == '-') {
     // twos-complement is needed
+    assert(bits == 64, "we only support 64-bit two's complement so far");
     str = str.substr(1);
     v = str2vec('18446744073709551616'); // 2^64
     subtract(v, str2vec(str));
@@ -666,23 +669,30 @@ function parseI64Constant(str) {
     v = str2vec(str);
   }
 
-  var bits = [];
+  var bitsv = [];
   while (!isZero(v)) {
-    bits.push((v[v.length-1] % 2 != 0)+0);
+    bitsv.push((v[v.length-1] % 2 != 0)+0);
     v[v.length-1] = v[v.length-1] & 0xfe;
     divide2(v);
   }
 
-  var low = 0, high = 0;
-  for (var i = 0; i < bits.length; i++) {
-    if (i <= 31) {
-      low += bits[i]*Math.pow(2, i);
-    } else {
-      high += bits[i]*Math.pow(2, i-32);
-    }
+  var ret = zeros(Math.ceil(bits/32));
+  for (var i = 0; i < bitsv.length; i++) {
+    ret[Math.floor(i/32)] += bitsv[i]*Math.pow(2, i % 32);
+  }
+  return ret;
+}
+
+function parseI64Constant(str) {
+  assert(I64_MODE == 1);
+
+  if (!isNumber(str)) {
+    // This is a variable. Copy it, so we do not modify the original
+    return makeCopyI64(str);
   }
 
-  return '[' + low + ',' + high + ']';
+  var parsed = parseArbitraryInt(str, 64);
+  return '[' + parsed[0] + ',' + parsed[1] + ']';
 }
 
 function parseNumerical(value, type) {
