@@ -67,7 +67,7 @@ function analyzer(data, sidePass) {
         if (subItem.intertype == 'function') {
           item.functions.push(subItem);
           subItem.endLineNum = null;
-          subItem.lines = [];
+          subItem.lines = []; // We will fill in the function lines after the legalizer, since it can modify them
           subItem.labels = [];
 
           // no explicit 'entry' label in clang on LLVM 2.8 - most of the time, but not all the time! - so we add one if necessary
@@ -87,7 +87,6 @@ function analyzer(data, sidePass) {
         } else if (item.functions.length > 0 && item.functions.slice(-1)[0].endLineNum === null) {
           // Internal line
           if (!currLabelFinished) {
-            item.functions.slice(-1)[0].lines.push(subItem);
             item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem); // If this line fails, perhaps missing a label? LLVM_STYLE related?
             if (subItem.intertype === 'branch') {
               currLabelFinished = true;
@@ -100,7 +99,35 @@ function analyzer(data, sidePass) {
         }
       }
       delete item.items;
-      this.forwardItem(item, 'Typevestigator');
+      this.forwardItem(item, 'Legalizer');
+    }
+  });
+
+  // Legalize LLVM unrealistic types into realistic types.
+  //
+  // With full LLVM optimizations, it can generate types like i888 which do not exist in
+  // any actual hardware implementation, but are useful during optimization. LLVM then
+  // legalizes these types into real ones during code generation. Sadly, there is no LLVM
+  // IR pass to legalize them, which would have been useful and nice from a design perspective.
+  // The LLVM community is also not interested in receiving patches to implement that
+  // functionality, since it would duplicate existing code from the code generation
+  // component. Therefore, we implement legalization here in Emscripten.
+  //
+  // Currently we just legalize completely unrealistic types into bundles of i32s.
+  // TODO: Expand this also into legalization of i64 into i32,i32, which can then
+  //       replace our i64 mode 1 implementation. Legalizing i64s is harder though
+  //       as they can appear in function arguments and we would also need to implement
+  //       an unfolder (to uninline inline LLVM function calls, so that each LLVM line
+  //       has a single LLVM instruction).
+  substrate.addActor('Legalizer', {
+    processItem: function(data) {
+      // Add function lines to func.lines, after our modifications to the label lines
+      data.functions.forEach(function(func) {
+        func.labels.forEach(function(label) {
+          func.lines = func.lines.concat(label.lines);
+        });
+      });
+      this.forwardItem(data, 'Typevestigator');
     }
   });
 
