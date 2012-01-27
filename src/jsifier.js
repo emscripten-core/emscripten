@@ -824,7 +824,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     labelSets.forEach(function(labelSet) {
       walkInterdata(labelSet.value, function mark(item) {
-        if (item.intertype == 'value' && item.ident in deps) {
+        if (item.intertype == 'value' && item.ident in deps && labelSet.ident != item.ident) {
           deps[labelSet.ident][item.ident] = true;
         }
       });
@@ -845,7 +845,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
       // If we got here, we have circular dependencies, and must break at least one.
-      pre = 'var ' + idents[0] + '$phi = ' + valueJSes[idents[i]] + ';' + pre;
+      pre = 'var ' + idents[0] + '$phi = ' + valueJSes[idents[0]] + ';' + pre;
       post += 'var ' + idents[0] + ' = ' + idents[0] + '$phi;';
       remove(idents[0]);
     }
