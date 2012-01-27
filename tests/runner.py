@@ -5548,9 +5548,6 @@ Options that are modified or new in %s include:
           assert os.path.exists('combined.bc'), '\n'.join(output)
           syms = Building.llvm_nm('combined.bc')
           assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
-          if target == 'js': # make sure emcc can recognize the target as a bitcode file
-            shutil.move(target, target + '.bc')
-            target += '.bc'
           output = Popen([compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout = PIPE, stderr = PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
