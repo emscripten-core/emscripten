@@ -5618,6 +5618,13 @@ f.close()
       html_file.close()
       run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
+      # test the OpenGL ES implementation
+      clear()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html', '-DHAVE_BUILTIN_SINCOS'], stdout=PIPE, stderr=PIPE).communicate()
+      assert len(output[0]) == 0, output[0]
+      assert os.path.exists('something.html'), output
+      run_browser('something.html', 'You should see animating gears.')
+
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
