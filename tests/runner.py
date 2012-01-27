@@ -4457,27 +4457,7 @@ def process(filename):
       self.do_autodebug(filename)
 
       # Compare to each other, and to expected output
-      self.do_ll_run(path_from_root('tests', filename+'.o.ll.ll'), '''AD:-1,15
-AD:15,0
-AD:21,5
-AD:24,6
-AD:27,101
-AD:30,7009
-AD:37,5
-AD:40,10
-AD:45,7009
-AD:48,7008
-AD:54,7008
-AD:57,7018
-AD:60,10
-AD:63,6
-AD:66,101
-AD:69,7018
-AD:73,101
-AD:77,7018
-AD:81,101
-AD:85,7018
-*10,6,101,7018,101,7018,101,7018*''')
+      self.do_ll_run(path_from_root('tests', filename+'.o.ll.ll'), '''AD:-1,1''')
       assert open('stdout').read().startswith('AD:-1'), 'We must note when we enter functions'
 
       # Test using build_ll_hook
@@ -4496,17 +4476,7 @@ AD:85,7018
             return 0;
           }
         '''
-      self.do_run(src, '''AD:-1,13
-AD:13,0
-AD:16,25
-AD:20,51
-AD:23,25
-AD:26,25
-AD:29,11.520000
-AD:31,25
-AD:33,51
-AD:36,11.520000
-*25,51,11.52*''', build_ll_hook=self.do_autodebug)
+      self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
 
     def test_profiling(self):
       src = '''
