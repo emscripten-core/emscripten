@@ -385,7 +385,12 @@ function finalizeParam(param) {
     if (param.type == 'i64' && I64_MODE == 1) {
       return parseI64Constant(param.ident);
     }
-    return toNiceIdent(param.ident);
+    var ret = toNiceIdent(param.ident);
+    if (ret in Variables.globals && Variables.globals[ret].isString) {
+      ret = "STRING_TABLE." + ret;
+    }
+    
+    return ret;
   }
 }
 
