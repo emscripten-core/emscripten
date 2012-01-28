@@ -7,7 +7,10 @@ def path_from_root(*pathelems):
 
 # Config file
 
-CONFIG_FILE = os.path.expanduser('~/.emscripten')
+EM_CONFIG = os.environ.get('EM_CONFIG')
+if not EM_CONFIG:
+  EM_CONFIG = '~/.emscripten'
+CONFIG_FILE = os.path.expanduser(EM_CONFIG)
 if not os.path.exists(CONFIG_FILE):
   shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
   print >> sys.stderr, '''
@@ -16,25 +19,25 @@ Welcome to Emscripten!
 
 This is the first time any of the Emscripten tools has been run.
 
-A settings file has been copied to ~/.emscripten, at absolute path: %s
+A settings file has been copied to %s, at absolute path: %s
 
 Please edit that file and change the paths to fit your system. Specifically,
 make sure LLVM_ROOT and NODE_JS are correct.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % CONFIG_FILE
+''' % (EM_CONFIG, CONFIG_FILE)
   sys.exit(0)
 try:
   exec(open(CONFIG_FILE, 'r').read())
 except Exception, e:
-  print >> sys.stderr, 'Error in evaluating ~/.emscripten (at %s): %s' % (CONFIG_FILE, str(e))
+  print >> sys.stderr, 'Error in evaluating %s (at %s): %s' % (EM_CONFIG, CONFIG_FILE, str(e))
   sys.exit(1)
 
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
-# only when ~/.emscripten_sanity does not exist or is older than ~/.emscripten (so,
+# only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
 # we re-check sanity when the settings are changed)
 def check_sanity(force=False):
   try:
@@ -51,21 +54,21 @@ def check_sanity(force=False):
     print >> sys.stderr, '(Emscripten: Running sanity checks)'
 
     if not check_engine(COMPILER_ENGINE):
-      print >> sys.stderr, 'FATAL: The JavaScript shell used for compiling (%s) does not seem to work, check the paths in ~/.emscripten' % COMPILER_ENGINE
+      print >> sys.stderr, 'FATAL: The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG)
       sys.exit(0)
 
     if NODE_JS != COMPILER_ENGINE:
       if not check_engine(NODE_JS):
-        print >> sys.stderr, 'FATAL: Node.js (%s) does not seem to work, check the paths in ~/.emscripten' % NODE_JS
+        print >> sys.stderr, 'FATAL: Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG)
         sys.exit(0)
 
     for cmd in [CLANG, LLVM_DIS]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
-        print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in ~/.emscripten' % cmd
+        print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG)
         sys.exit(0)
 
     if not os.path.exists(CLOSURE_COMPILER):
-      print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in ~/.emscripten. -O2 and above will fail' % CLOSURE_COMPILER
+      print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG)
 
     # Sanity check passed!
 
@@ -121,9 +124,9 @@ try:
       print >> sys.stderr, 'Warning: Could not create temp dir (%s): %s' % (EMSCRIPTEN_TEMP_DIR, str(e))
 except:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_')
-  print >> sys.stderr, 'Warning: TEMP_DIR not defined in ~/.emscripten, using %s' % EMSCRIPTEN_TEMP_DIR
+  print >> sys.stderr, 'Warning: TEMP_DIR not defined in %s, using %s' % (EM_CONFIG, EMSCRIPTEN_TEMP_DIR)
 
-# ~/.emscripten stuff
+# EM_CONFIG stuff
 
 try:
   JS_ENGINES
@@ -131,13 +134,13 @@ except:
   try:
     JS_ENGINES = [JS_ENGINE]
   except Exception, e:
-    print 'ERROR: ~/.emscripten does not seem to have JS_ENGINES or JS_ENGINE set up'
+    print 'ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG
     raise
 
 # Additional compiler options
 
 try:
-  COMPILER_OPTS # Can be set in ~/.emscripten, optionally
+  COMPILER_OPTS # Can be set in EM_CONFIG, optionally
 except:
   COMPILER_OPTS = []
 # Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
@@ -213,7 +216,7 @@ def check_engine(engine):
   try:
     return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
   except Exception, e:
-    print 'Checking JS engine %s failed. Check ~/.emscripten. Details: %s' % (str(engine), str(e))
+    print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
 
 def timeout_run(proc, timeout, note):
