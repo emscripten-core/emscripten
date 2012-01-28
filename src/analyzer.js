@@ -276,8 +276,8 @@ function analyzer(data, sidePass) {
                           targetBits = sourceBits;
                           break;
                         }
-                        case 'trunc': {
-                          assert(value.param2.intertype == 'type', 'TODO: unfolding');
+                        case 'trunc': case 'zext': {
+                          assert(value.param2.intertype == 'type' || value.param2.intertype == 'value', 'TODO: unfolding');
                           targetBits = getBits(value.param2.ident);
                           break;
                         }

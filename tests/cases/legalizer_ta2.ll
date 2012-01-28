@@ -64,7 +64,8 @@ entry:
   call i32 (i8*)* @puts(i8* %buffer)
 
 ; zext
-  %big = zext i32 6382179 to i104
+  %pre32 = zext i32 6382179 to i32
+  %big = zext i32 %pre32 to i104
   store i104 %big, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
