@@ -115,7 +115,7 @@ function analyzer(data, sidePass) {
   //
   // Currently we just legalize completely unrealistic types into bundles of i32s, and just
   // the most common instructions that can be involved with such types: load, store, shifts,
-  // bitcast, trunc and zext.
+  // trunc and zext.
   //
   // TODO: Expand this also into legalization of i64 into i32,i32, which can then
   //       replace our i64 mode 1 implementation. Legalizing i64s is harder though
@@ -155,54 +155,105 @@ function analyzer(data, sidePass) {
             var i = 0, bits;
             while (i < label.lines.length) {
               var item = label.lines[i];
-              if (item.intertype == 'assign') item = item.value;
-              switch (item.intertype) {
-                case 'store':
-                  if (isIllegalType(item.valueType)) {
-                    bits = getBits(item.valueType);
-                    assert(item.value.intertype == 'value', 'TODO: unfolding');
-                    var elements;
-                    if (isNumber(item.value.ident)) {
-                      elements = getLegalLiterals(item.value.ident, bits);
-                    } else {
-                      elements = getLegalVars(item.value.ident, bits);
-                    }
-                    label.lines.splice(i, 1);
-                    var j = 0;
-                    elements.forEach(function(element) {
-                      var tempVar = '$st$' + j;
-                      label.lines.splice(i+j*2, 0, {
-                        intertype: 'assign',
-                        ident: tempVar,
-                        value: {
-                          intertype: 'getelementptr',
-                          ident: item.pointer.ident,
-                          type: '[0 x i32]*',
-                          params: [
-                            { intertype: 'value', ident: item.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
-                            { intertype: 'value', ident: '0', type: 'i32' },
-                            { intertype: 'value', ident: j.toString(), type: 'i32' }
-                          ],
-                        },
-                        lineNum: item.lineNum + (j/100)
-                      });
-                      var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
-                      label.lines.splice(i+j*2+1, 0, {
-                        intertype: 'store',
-                        valueType: actualSizeType,
-                        value: { intertype: 'value', ident: element.ident, type: actualSizeType },
-                        pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
-                        ident: tempVar,
-                        pointerType: actualSizeType + '*',
-                        align: item.align,
-                        lineNum: item.lineNum + ((j+0.5)/100)
-                      });
-                      j++;
-                    });
-                    Types.needAnalysis['[0 x i32]'] = 0;
-                    i += j*2;
+              if (item.intertype == 'store') {
+                if (isIllegalType(item.valueType)) {
+                  dprint('legalizer', 'Legalizing store at line ' + item.lineNum);
+                  bits = getBits(item.valueType);
+                  assert(item.value.intertype == 'value', 'TODO: unfolding');
+                  var elements;
+                  if (isNumber(item.value.ident)) {
+                    elements = getLegalLiterals(item.value.ident, bits);
+                  } else {
+                    elements = getLegalVars(item.value.ident, bits);
                   }
-                  break;
+                  label.lines.splice(i, 1);
+                  var j = 0;
+                  elements.forEach(function(element) {
+                    var tempVar = '$st$' + i + '$' + j;
+                    label.lines.splice(i+j*2, 0, {
+                      intertype: 'assign',
+                      ident: tempVar,
+                      value: {
+                        intertype: 'getelementptr',
+                        ident: item.pointer.ident,
+                        type: '[0 x i32]*',
+                        params: [
+                          { intertype: 'value', ident: item.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
+                          { intertype: 'value', ident: '0', type: 'i32' },
+                          { intertype: 'value', ident: j.toString(), type: 'i32' }
+                        ],
+                      },
+                      lineNum: item.lineNum + (j/100)
+                    });
+                    var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
+                    label.lines.splice(i+j*2+1, 0, {
+                      intertype: 'store',
+                      valueType: actualSizeType,
+                      value: { intertype: 'value', ident: element.ident, type: actualSizeType },
+                      pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
+                      ident: tempVar,
+                      pointerType: actualSizeType + '*',
+                      align: item.align,
+                      lineNum: item.lineNum + ((j+0.5)/100)
+                    });
+                    j++;
+                  });
+                  Types.needAnalysis['[0 x i32]'] = 0;
+                  i += j*2;
+                  continue;
+                }
+              } else if (item.intertype == 'assign') {
+                var value = item.value;
+                switch (value.intertype) {
+                  case 'load':
+                    if (isIllegalType(value.valueType)) {
+                      dprint('legalizer', 'Legalizing load at line ' + item.lineNum);
+                      bits = getBits(value.valueType);
+                      assert(value.pointer.intertype == 'value', 'TODO: unfolding');
+                      var elements;
+                      elements = getLegalVars(item.ident, bits);
+                      label.lines.splice(i, 1);
+                      var j = 0;
+                      elements.forEach(function(element) {
+                        var tempVar = '$st$' + i + '$' + j;
+                        label.lines.splice(i+j*2, 0, {
+                          intertype: 'assign',
+                          ident: tempVar,
+                          value: {
+                            intertype: 'getelementptr',
+                            ident: value.pointer.ident,
+                            type: '[0 x i32]*',
+                            params: [
+                              { intertype: 'value', ident: value.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
+                              { intertype: 'value', ident: '0', type: 'i32' },
+                              { intertype: 'value', ident: j.toString(), type: 'i32' }
+                            ],
+                          },
+                          lineNum: item.lineNum + (j/100)
+                        });
+                        var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
+                        label.lines.splice(i+j*2+1, 0, {
+                          intertype: 'assign',
+                          ident: element.ident,
+                          value: {
+                            intertype: 'load',
+                            pointerType: actualSizeType + '*',
+                            valueType: actualSizeType,
+                            type: actualSizeType, // XXX why is this missing from intertyper?
+                            pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
+                            ident: tempVar,
+                            pointerType: actualSizeType + '*',
+                            align: value.align,
+                          },
+                          lineNum: item.lineNum + ((j+0.5)/100)
+                        });
+                        j++;
+                      });
+                      Types.needAnalysis['[0 x i32]'] = 0;
+                      i += j*2;
+                      continue;
+                    }
+                }
               }
               i++;
               continue;
