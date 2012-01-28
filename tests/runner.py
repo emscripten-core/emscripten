@@ -14,7 +14,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading
 
 # Setup
 
@@ -757,6 +757,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
     def test_math(self):
         src = '''
           #include <stdio.h>
+          #include <stdlib.h>
           #include <cmath>
           int main()
           {
@@ -769,11 +770,22 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             printf(",%d", isinf(INFINITY) != 0);
             printf(",%d", isinf(-INFINITY) != 0);
             printf(",%d", isinf(12.3) != 0);
+            div_t div_result = div(23, 10);
+            printf(",%d", div_result.quot);
+            printf(",%d", div_result.rem);
+            double sine = -1.0, cosine = -1.0;
+            sincos(0.0, &sine, &cosine);
+            printf(",%1.1lf", sine);
+            printf(",%1.1lf", cosine);
+            float fsine = -1.0f, fcosine = -1.0f;
+            sincosf(0.0, &fsine, &fcosine);
+            printf(",%1.1f", fsine);
+            printf(",%1.1f", fcosine);
             printf("*\\n");
             return 0;
           }
         '''
-        self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0*')
+        self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0,2,3,0.0,1.0,0.0,1.0*')
 
     def test_math_hyperbolic(self):
         src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
@@ -5550,13 +5562,32 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+      # For browser tests which report their success
+      def run_test_server(expectedResult):
+        class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+          def do_GET(s):
+            assert s.path == expectedResult, 'Expected %s, got %s' % (expectedResult, s.path)
+            httpd.shutdown()
+          def handle_timeout():
+            assert False, 'Timed out while waiting for the browser test to finish'
+            httpd.shutdown()
+        httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+        httpd.timeout = 5;
+        server_thread = threading.Thread(target=httpd.serve_forever)
+        server_thread.daemon = True
+        server_thread.start()
+        server_thread.join(5.5)
+
       # Finally, do some web browser tests
-      def run_browser(html_file, message):
+      def run_browser(html_file, message, expectedResult = None):
         webbrowser.open_new(os.path.abspath(html_file))
         print 'A web browser window should have opened a page containing the results of a part of this test.'
         print 'You need to manually look at the page to see that it works ok: ' + message
         print '(sleeping for a bit to keep the directory alive for the web browser..)'
-        time.sleep(5)
+        if expectedResult is not None:
+          run_test_server(expectedResult)
+        else:
+          time.sleep(5)
         print '(moving on..)'
 
       # test HTML generation.
@@ -5587,6 +5618,16 @@ f.close()
       ''')
       html_file.close()
       run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
+
+      # test the OpenGL ES implementation
+      clear()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS',
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
+                     stdout=PIPE, stderr=PIPE).communicate()
+      assert len(output[0]) == 0, output[0]
+      assert os.path.exists('something.html'), output
+      run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()

@@ -496,16 +496,18 @@ function allocate(slab, types, allocator) {
 }
 Module['allocate'] = allocate;
 
-function Pointer_stringify(ptr) {
+function Pointer_stringify(ptr, /* optional */ length) {
+  var nullTerminated = typeof(length) == "undefined";
   var ret = "";
   var i = 0;
   var t;
   var nullByte = String.fromCharCode(0);
   while (1) {
     t = String.fromCharCode({{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}});
-    if (t == nullByte) { break; } else {}
+    if (nullTerminated && t == nullByte) { break; } else {}
     ret += t;
     i += 1;
+    if (!nullTerminated && i == length) { break; }
   }
   return ret;
 }
@@ -690,6 +692,20 @@ function Array_copy(ptr, num) {
 }
 Module['Array_copy'] = Array_copy;
 
+#if USE_TYPED_ARRAYS
+// Copies a list of num items on the HEAP into a
+// JavaScript typed array.
+function TypedArray_copy(ptr, num) {
+  // TODO: optimize this!
+  var arr = new Uint8Array(num);
+  for (var i = 0; i < num; ++i) {
+    arr[i] = {{{ makeGetValue('ptr', 'i', 'i8') }}};
+  }
+  return arr.buffer;
+}
+Module['TypedArray_copy'] = TypedArray_copy;
+#endif
+
 function String_len(ptr) {
   var i = 0;
   while ({{{ makeGetValue('ptr', 'i', 'i8') }}}) i++; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
@@ -749,6 +765,25 @@ function intArrayToString(array) {
   return ret.join('');
 }
 Module['intArrayToString'] = intArrayToString;
+
+// Write a Javascript array to somewhere in the heap
+function writeStringToMemory(string, buffer, dontAddNull) {
+  var i = 0;
+  while (i < string.length) {
+    var chr = string.charCodeAt(i);
+    if (chr > 0xFF) {
+#if ASSERTIONS
+        assert(false, 'Character code ' + chr + ' (' + string[i] + ')  at offset ' + i + ' not in 0x00-0xFF.');
+#endif
+      chr &= 0xFF;
+    }
+    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}}
+    i = i + 1;
+  }
+  if (!dontAddNull) {
+    {{{ makeSetValue('buffer', 'i', '0', 'i8') }}}
+  }
+}
 
 var STRING_TABLE = [];
 

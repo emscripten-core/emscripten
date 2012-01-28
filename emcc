@@ -164,6 +164,13 @@ Options that are modified or new in %s include:
                               will be run). Note that this by itself
                               will not minify the code (closure does
                               that)
+  --shell-path <path>      The path name to a skeleton HTML file used
+                           when generating HTML output. The shell file
+                           used needs to have this token inside it:
+                           {{{ SCRIPT_CODE }}}
+                           Note that this argument is ignored if a
+                           target other than HTML is specified using
+                           the -o option.
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -282,6 +289,7 @@ try:
   closure = None
   js_transform = None
   compress_whitespace = None
+  shell_path = shared.path_from_root('src', 'shell.html')
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -319,6 +327,11 @@ try:
       f = open(newargs[i+1], 'w')
       f.write('\n')
       f.close()
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--shell-file'):
+      check_bad_eq(newargs[i])
+      shell_path = newargs[i+1]
       newargs[i] = ''
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
@@ -626,7 +639,7 @@ try:
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
     if DEBUG: print >> sys.stderr, 'emcc: generating HTML'
-    shell = open(shared.path_from_root('src', 'shell.html')).read()
+    shell = open(shell_path).read()
     html = open(target, 'w')
     html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     html.close()
