@@ -257,9 +257,28 @@ function analyzer(data, sidePass) {
                     if (isIllegalType(value.type)) {
                       dprint('legalizer', 'Legalizing mathop at line ' + item.lineNum);
                       label.lines.splice(i, 1);
+                      var toAdd = [];
                       assert(value.param1.intertype == 'value', 'TODO: unfolding');
                       var sourceBits = getBits(value.param1.type);
-                      var sourceElements = getLegalVars(value.param1.ident, sourceBits);
+                      var sourceElements;
+                      if (sourceBits <= 64) {
+                        // The input is a legal type
+                        if (sourceBits <= 32) {
+                          sourceElements = [{ ident: value.param1.ident, bits: sourceBits }];
+                        } else if (sourceBits == 64 && I64_MODE == 1) {
+                          sourceElements = [{ ident: value.param1.ident + '[0]', bits: 32 },
+                                            { ident: value.param1.ident + '[1]', bits: 32 }];
+                          // Add the source element as a param so that it is not eliminated as unneeded (the idents are not a simple ident here)
+                          toAdd.push({
+                            intertype: 'value', ident: ';', type: 'rawJS',
+                            params: [{ intertype: 'value', ident: value.param1.ident, type: 'i32' }]
+                          });
+                        } else {
+                          throw 'Invalid legal type as source of legalization ' + sourceBits;
+                        }
+                      } else {
+                        sourceElements = getLegalVars(value.param1.ident, sourceBits);
+                      }
                       // All mathops can be parametrized by how many shifts we do, and how big the source is
                       var shifts = 0;
                       var targetBits;
@@ -291,7 +310,6 @@ function analyzer(data, sidePass) {
                       var shiftOpReverse = shifts >= 0 ? 'lshr' : 'shl';
                       var whole = shifts >= 0 ? Math.floor(shifts/32) : Math.ceil(shifts/32);
                       var fraction = Math.abs(shifts % 32);
-                      var toAdd = [];
                       for (var j = 0; j < targetElements.length; j++) {
                         var result = {
                           intertype: 'value',

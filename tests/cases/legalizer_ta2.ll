@@ -64,12 +64,19 @@ entry:
   call i32 (i8*)* @puts(i8* %buffer)
 
 ; zext
-  %pre32 = zext i32 6382179 to i32
+  store i104 0, i104* %bundled, align 4 ; wipe it out
+  %pre32 = or i32 6382179, 0
   %big = zext i32 %pre32 to i104
   store i104 %big, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
-; TODO: extend an i64, and extend an i32
+  store i104 0, i104* %bundled, align 4 ; wipe it out
+  %pre64 = zext i32 1684366951 to i64
+  %post64 = shl i64 %pre64, 32
+  %big64 = or i64 %pre64, %post64
+  %bigb = zext i64 %big64 to i104
+  store i104 %bigb, i104* %bundled, align 4
+  call i32 (i8*)* @puts(i8* %buffer)
 
   ret i32 1
 }
