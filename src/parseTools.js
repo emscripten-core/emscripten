@@ -1464,6 +1464,8 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     return finalizeBlockAddress(param);
   } else if (param.intertype === 'type') {
     return param.ident; // we don't really want the type here
+  } else if (param.intertype == 'mathop') {
+    return processMathop(param);
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }

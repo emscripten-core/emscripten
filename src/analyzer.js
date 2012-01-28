@@ -254,7 +254,7 @@ function analyzer(data, sidePass) {
                     }
                   }
                   case 'mathop': {
-                    if (isIllegalType(value.valueType)) {
+                    if (isIllegalType(value.type)) {
                       dprint('legalizer', 'Legalizing mathop at line ' + item.lineNum);
                       bits = getBits(value.type);
                       var targetElements = getLegalVars(item.ident, bits);
@@ -263,6 +263,57 @@ function analyzer(data, sidePass) {
                       label.lines.splice(i, 1);
                       switch (value.op) {
                         case 'lshr': {
+                          assert(value.param2.intertype == 'value', 'TODO: unfolding');
+                          var shifts = parseInt(value.param2.ident);
+                          assert(isNumber(shifts), 'TODO: handle nonconstant shifts');
+                          // Shift right makes values smaller. Towards the 0 index of the elements
+                          var whole = Math.floor(shifts/32);
+                          var fraction = shifts % 32;
+                          var toAdd = [];
+                          for (var j = 0; j < targetElements.length; j++) {
+                            var result = {
+                              intertype: 'value',
+                              ident: (j + whole) < sourceElements.length ? sourceElements[j + whole].ident : '0',
+                              type: 'i32',
+                            };
+                            if (fraction > 0) {
+                              var other = {
+                                intertype: 'value',
+                                ident: (j + 1 + whole) < sourceElements.length ? sourceElements[j + 1 + whole].ident : '0',
+                                type: 'i32',
+                              };
+                              other = {
+                                intertype: 'mathop',
+                                op: 'shl',
+                                type: 'i32',
+                                param1: other,
+                                param2: { intertype: 'value', ident: (32 - fraction).toString(), type: 'i32' }
+                              };
+                              result = {
+                                intertype: 'mathop',
+                                op: 'lshr',
+                                type: 'i32',
+                                param1: result,
+                                param2: { intertype: 'value', ident: fraction.toString(), type: 'i32' }
+                              };
+                              result = {
+                                intertype: 'mathop',
+                                op: 'or',
+                                type: 'i32',
+                                param1: result,
+                                param2: other
+                              }
+                            }
+                            toAdd.push({
+                              intertype: 'assign',
+                              ident: targetElements[j].ident,
+                              value: result,
+                              lineNum: item.lineNum + (j/100)
+                            });
+                          }
+                          Array.prototype.splice.apply(label.lines, [i, 0].concat(toAdd));
+                          i += toAdd.length;
+                          continue;
                         }
                         default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum];
                       }

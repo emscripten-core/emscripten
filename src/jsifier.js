@@ -719,6 +719,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     });
   }
+  makeFuncLineActor('value', function(item) {
+    return item.ident;
+  });
   makeFuncLineActor('noop', function(item) {
     return ';';
   });
