@@ -692,6 +692,7 @@ function Array_copy(ptr, num) {
 }
 Module['Array_copy'] = Array_copy;
 
+#if USE_TYPED_ARRAYS
 // Copies a list of num items on the HEAP into a
 // JavaScript typed array.
 function TypedArray_copy(ptr, num) {
@@ -703,6 +704,7 @@ function TypedArray_copy(ptr, num) {
   return arr.buffer;
 }
 Module['TypedArray_copy'] = TypedArray_copy;
+#endif
 
 function String_len(ptr) {
   var i = 0;
