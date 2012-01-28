@@ -605,7 +605,7 @@ function makeCopyI64(value) {
 function parseArbitraryInt(str, bits) {
   // We parse the string into a vector of digits, base 10. This is convenient to work on.
 
-  assert(('i' + (bits % 32)) in Runtime.INT_TYPES, 'Arbitrary-sized ints must tails that are of legal size');
+  assert(bits % 32 == 0 || ('i' + (bits % 32)) in Runtime.INT_TYPES, 'Arbitrary-sized ints must tails that are of legal size');
 
   function str2vec(s) { // index 0 is the highest value
     var ret = [];
