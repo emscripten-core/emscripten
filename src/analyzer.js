@@ -113,7 +113,10 @@ function analyzer(data, sidePass) {
   // functionality, since it would duplicate existing code from the code generation
   // component. Therefore, we implement legalization here in Emscripten.
   //
-  // Currently we just legalize completely unrealistic types into bundles of i32s.
+  // Currently we just legalize completely unrealistic types into bundles of i32s, and just
+  // the most common instructions that can be involved with such types: load, store, shifts,
+  // bitcast, trunc and zext.
+  //
   // TODO: Expand this also into legalization of i64 into i32,i32, which can then
   //       replace our i64 mode 1 implementation. Legalizing i64s is harder though
   //       as they can appear in function arguments and we would also need to implement
@@ -121,6 +124,92 @@ function analyzer(data, sidePass) {
   //       has a single LLVM instruction).
   substrate.addActor('Legalizer', {
     processItem: function(data) {
+      // Legalization
+      if (USE_TYPED_ARRAYS == 2) {
+        function isIllegalType(type) {
+          return getBits(type) > 64;
+        }
+        function getLegalVars(base, bits) {
+          var ret = new Array(Math.ceil(bits/32));
+          var i = 0;
+          while (bits > 0) {
+            ret[i] = { ident: base + '$' + i, bits: Math.min(32, bits) };
+            bits -= 32;
+            i++;
+          }
+          return ret;
+        }
+        function getLegalLiterals(text, bits) {
+          var parsed = parseArbitraryInt(text, bits);
+          var ret = new Array(Math.ceil(bits/32));
+          var i = 0;
+          while (bits > 0) {
+            ret[i] = { ident: parsed[i], bits: Math.min(32, bits) };
+            bits -= 32;
+            i++;
+          }
+          return ret;
+        }
+        data.functions.forEach(function(func) {
+          func.labels.forEach(function(label) {
+            var i = 0, bits;
+            while (i < label.lines.length) {
+              var item = label.lines[i];
+              if (item.intertype == 'assign') item = item.value;
+              switch (item.intertype) {
+                case 'store':
+                  if (isIllegalType(item.valueType)) {
+                    bits = getBits(item.valueType);
+                    assert(item.value.intertype == 'value', 'TODO: unfolding');
+                    var elements;
+                    if (isNumber(item.value.ident)) {
+                      elements = getLegalLiterals(item.value.ident, bits);
+                    } else {
+                      elements = getLegalVars(item.value.ident, bits);
+                    }
+                    label.lines.splice(i, 1);
+                    var j = 0;
+                    elements.forEach(function(element) {
+                      var tempVar = '$st$' + j;
+                      label.lines.splice(i+j*2, 0, {
+                        intertype: 'assign',
+                        ident: tempVar,
+                        value: {
+                          intertype: 'getelementptr',
+                          ident: item.pointer.ident,
+                          type: '[0 x i32]*',
+                          params: [
+                            { intertype: 'value', ident: item.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
+                            { intertype: 'value', ident: '0', type: 'i32' },
+                            { intertype: 'value', ident: j.toString(), type: 'i32' }
+                          ],
+                        },
+                        lineNum: item.lineNum + (j/100)
+                      });
+                      label.lines.splice(i+j*2+1, 0, {
+                        intertype: 'store',
+                        valueType: 'i32',
+                        value: { intertype: 'value', ident: element.ident, type: 'i32' },
+                        pointer: { intertype: 'value', ident: tempVar, type: 'i32' },
+                        ident: tempVar,
+                        pointerType: 'i32*',
+                        align: item.align,
+                        lineNum: item.lineNum + ((j+0.5)/100)
+                      });
+                      j++;
+                    });
+                    Types.needAnalysis['[0 x i32]'] = 0;
+                    i += j*2;
+                  }
+                  break;
+              }
+              i++;
+              continue;
+            }
+          });
+        });
+      }
+
       // Add function lines to func.lines, after our modifications to the label lines
       data.functions.forEach(function(func) {
         func.labels.forEach(function(label) {

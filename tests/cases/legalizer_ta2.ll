@@ -20,7 +20,7 @@ entry:
   store i104 31079605376604435891501163880, i104* %bundled1, align 1 ; unaligned
   call i32 (i8*)* @puts(i8* %buffer)
 
-  ; shifts
+; shifts
   %shifted = lshr i104 %loaded, 16
   store i104 %shifted, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
@@ -28,7 +28,7 @@ entry:
   store i104 %shifted2, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
-  ; store %loaded, make sure has not been modified
+; store %loaded, make sure has not been modified
   store i104 %loaded, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
@@ -37,7 +37,7 @@ entry:
   store i8 113, i8* %buffer ; remove initial 0
   call i32 (i8*)* @puts(i8* %buffer)
 
-  ; trunc
+; trunc
   store i104 0, i104* %bundled, align 4 ; wipe it out
   %small32 = trunc i104 %loaded to i32
   %buffer32 = bitcast i8* %buffer to i32*
@@ -51,12 +51,12 @@ entry:
   call i32 (i8*)* @puts(i8* %buffer)
 
   store i104 0, i104* %bundled, align 4 ; wipe it out
-  %small48 = trunc i104 %loaded to i48
-  %buffer48 = bitcast i8* %buffer to i48*
-  store i48 %small48, i48* %buffer48, align 4
+  %small64 = trunc i104 %loaded to i64
+  %buffer64 = bitcast i8* %buffer to i64*
+  store i64 %small64, i64* %buffer64, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
-  ; zext
+; zext
   %big = zext i32 6382179 to i104
   store i104 %big, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)

@@ -864,7 +864,7 @@ function intertyper(data, sidePass, baseLineNums) {
       var ret = {
         intertype: 'store',
         valueType: item.tokens[1].text,
-        value: parseLLVMSegment(segments[0]), // TODO: Make everything use this method, with finalizeLLVMParameter too
+        value: parseLLVMSegment(segments[0]),
         pointer: parseLLVMSegment(segments[1]),
         lineNum: item.lineNum
       };
