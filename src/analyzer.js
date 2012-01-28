@@ -205,13 +205,12 @@ function analyzer(data, sidePass) {
               } else if (item.intertype == 'assign') {
                 var value = item.value;
                 switch (value.intertype) {
-                  case 'load':
+                  case 'load': {
                     if (isIllegalType(value.valueType)) {
                       dprint('legalizer', 'Legalizing load at line ' + item.lineNum);
                       bits = getBits(value.valueType);
                       assert(value.pointer.intertype == 'value', 'TODO: unfolding');
-                      var elements;
-                      elements = getLegalVars(item.ident, bits);
+                      var elements = getLegalVars(item.ident, bits);
                       label.lines.splice(i, 1);
                       var j = 0;
                       elements.forEach(function(element) {
@@ -224,7 +223,7 @@ function analyzer(data, sidePass) {
                             ident: value.pointer.ident,
                             type: '[0 x i32]*',
                             params: [
-                              { intertype: 'value', ident: value.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
+                              { intertype: 'value', ident: value.pointer.ident, type: '[0 x i32]*' }, // technically bitcast is needed in llvm, but not for us
                               { intertype: 'value', ident: '0', type: 'i32' },
                               { intertype: 'value', ident: j.toString(), type: 'i32' }
                             ],
@@ -253,6 +252,22 @@ function analyzer(data, sidePass) {
                       i += j*2;
                       continue;
                     }
+                  }
+                  case 'mathop': {
+                    if (isIllegalType(value.valueType)) {
+                      dprint('legalizer', 'Legalizing mathop at line ' + item.lineNum);
+                      bits = getBits(value.type);
+                      var targetElements = getLegalVars(item.ident, bits);
+                      assert(value.param1.intertype == 'value', 'TODO: unfolding');
+                      var sourceElements = getLegalVars(value.param1.ident, bits);
+                      label.lines.splice(i, 1);
+                      switch (value.op) {
+                        case 'lshr': {
+                        }
+                        default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum];
+                      }
+                    }
+                  }
                 }
               }
               i++;
