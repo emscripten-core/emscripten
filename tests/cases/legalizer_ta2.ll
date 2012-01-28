@@ -68,6 +68,8 @@ entry:
   store i104 %big, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
+; TODO: extend an i64, and extend an i32
+
   ret i32 1
 }
 
