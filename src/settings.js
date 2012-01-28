@@ -218,6 +218,7 @@ var DEBUG_TAGS_SHOWING = [];
   //    relooping
   //    unparsedFunctions
   //    metadata
+  //    legalizer
 
 
 // A cached set of defines, generated from the header files. This
