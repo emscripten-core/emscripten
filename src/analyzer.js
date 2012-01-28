@@ -186,13 +186,14 @@ function analyzer(data, sidePass) {
                         },
                         lineNum: item.lineNum + (j/100)
                       });
+                      var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
                       label.lines.splice(i+j*2+1, 0, {
                         intertype: 'store',
-                        valueType: 'i32',
-                        value: { intertype: 'value', ident: element.ident, type: 'i32' },
-                        pointer: { intertype: 'value', ident: tempVar, type: 'i32' },
+                        valueType: actualSizeType,
+                        value: { intertype: 'value', ident: element.ident, type: actualSizeType },
+                        pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
                         ident: tempVar,
-                        pointerType: 'i32*',
+                        pointerType: actualSizeType + '*',
                         align: item.align,
                         lineNum: item.lineNum + ((j+0.5)/100)
                       });
