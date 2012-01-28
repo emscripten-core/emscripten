@@ -38,6 +38,13 @@ entry:
   call i32 (i8*)* @puts(i8* %buffer)
 
 ; trunc
+  %shifted4 = shl i104 %loaded, 64
+  store i104 %shifted4, i104* %bundled, align 4
+  %nonzero64 = trunc i104 %loaded to i64 ; remove initial zeros
+  %bundled64 = bitcast i104* %bundled to i64*
+  store i64 %nonzero64, i64* %bundled64, align 4
+  call i32 (i8*)* @puts(i8* %buffer)
+
   store i104 0, i104* %bundled, align 4 ; wipe it out
   %small32 = trunc i104 %loaded to i32
   %buffer32 = bitcast i8* %buffer to i32*
