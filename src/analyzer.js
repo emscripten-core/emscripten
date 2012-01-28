@@ -348,7 +348,15 @@ function analyzer(data, sidePass) {
                         var legalValue;
                         if (targetBits == 64 && I64_MODE == 1) {
                           // Generate an i64-1 [low,high]. This will be unnecessary when we legalize i64s
-                          legalValue = { intertype: 'value', ident: '[' + targetElements[0].ident + ',' + targetElements[1].ident + ']', type: 'rawJS' };
+                          legalValue = {
+                            intertype: 'value',
+                            ident: '[' + targetElements[0].ident + ',' + targetElements[1].ident + ']',
+                            type: 'rawJS',
+                            // Add the target elements as params so that they are not eliminated as unneeded (the ident is not a simple ident here)
+                            params: targetElements.map(function(element) {
+                              return { intertype: 'value', ident: element.ident, type: 'i32' };
+                            })
+                          };
                         } else if (targetBits <= 32) {
                           legalValue = { intertype: 'value', ident: targetElements[0].ident, type: 'rawJS' };
                           // truncation to smaller than 32 bits has already been done, if necessary
