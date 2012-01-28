@@ -34,7 +34,7 @@ entry:
 
   %shifted3 = shl i104 %loaded, 8
   store i104 %shifted3, i104* %bundled, align 4
-  store i8 113, i8* %buffer ; remove initial 0
+  store i8 113, i8* %buffer ; remove initial 0 ; 'q'
   call i32 (i8*)* @puts(i8* %buffer)
 
 ; trunc

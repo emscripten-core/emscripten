@@ -260,6 +260,7 @@ function analyzer(data, sidePass) {
                       bits = getBits(value.type);
                       var targetElements = getLegalVars(item.ident, bits);
                       assert(value.param1.intertype == 'value', 'TODO: unfolding');
+                      // All mathops can be parametrized by how many shifts we do, and how big the source is
                       var shifts = 0;
                       var sourceBits;
                       switch (value.op) {
@@ -269,35 +270,45 @@ function analyzer(data, sidePass) {
                           sourceBits = bits;
                           break;
                         }
+                        case 'shl': {
+                          assert(value.param2.intertype == 'value', 'TODO: unfolding');
+                          shifts = -parseInt(value.param2.ident);
+                          sourceBits = bits;
+                          break;
+                        }
                         default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum];
                       }
+                      // Do the legalization
                       assert(isNumber(shifts), 'TODO: handle nonconstant shifts');
                       var sourceElements = getLegalVars(value.param1.ident, sourceBits);
-                      var whole = Math.floor(shifts/32);
-                      var fraction = shifts % 32;
+                      var sign = shifts >= 0 ? 1 : -1;
+                      var shiftOp = shifts >= 0 ? 'shl' : 'lshr';
+                      var shiftOpReverse = shifts >= 0 ? 'lshr' : 'shl';
+                      var whole = shifts >= 0 ? Math.floor(shifts/32) : Math.ceil(shifts/32);
+                      var fraction = Math.abs(shifts % 32);
                       var toAdd = [];
                       for (var j = 0; j < targetElements.length; j++) {
                         var result = {
                           intertype: 'value',
-                          ident: (j + whole) < sourceElements.length ? sourceElements[j + whole].ident : '0',
+                          ident: (j + whole >= 0 && j + whole < sourceElements.length) ? sourceElements[j + whole].ident : '0',
                           type: 'i32',
                         };
-                        if (fraction > 0) {
+                        if (fraction != 0) {
                           var other = {
                             intertype: 'value',
-                            ident: (j + 1 + whole) < sourceElements.length ? sourceElements[j + 1 + whole].ident : '0',
+                            ident: (j + sign + whole >= 0 && j + sign + whole < sourceElements.length) ? sourceElements[j + sign + whole].ident : '0',
                             type: 'i32',
                           };
                           other = {
                             intertype: 'mathop',
-                            op: 'shl',
+                            op: shiftOp,
                             type: 'i32',
                             param1: other,
                             param2: { intertype: 'value', ident: (32 - fraction).toString(), type: 'i32' }
                           };
                           result = {
                             intertype: 'mathop',
-                            op: 'lshr',
+                            op: shiftOpReverse,
                             type: 'i32',
                             param1: result,
                             param2: { intertype: 'value', ident: fraction.toString(), type: 'i32' }
