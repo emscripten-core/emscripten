@@ -4682,6 +4682,34 @@ LibraryManager.library = {
   },
   nanf: 'nan',
 
+  sincos: function(x, sine, cosine) {
+    var sineVal = Math.sin(x),
+        cosineVal = Math.cos(x);
+    {{{ makeSetValue('sine', '0', 'sineVal', 'double') }}};
+    {{{ makeSetValue('cosine', '0', 'cosineVal', 'double') }}};
+  },
+
+  sincosf: function(x, sine, cosine) {
+    var sineVal = Math.sin(x),
+        cosineVal = Math.cos(x);
+    {{{ makeSetValue('sine', '0', 'sineVal', 'float') }}};
+    {{{ makeSetValue('cosine', '0', 'cosineVal', 'float') }}};
+  },
+
+  __div_t_struct_layout: Runtime.generateStructInfo([
+                            ['i32', 'quot'],
+                            ['i32', 'rem'],
+                          ]),
+  div__deps: ['__div_t_struct_layout'],
+  div: function(divt, numer, denom) {
+    var quot = Math.floor(numer / denom);
+    var rem = numer - quot * denom;
+    var offset = ___div_t_struct_layout.rem;
+    {{{ makeSetValue('divt', '0', 'quot', 'i32') }}};
+    {{{ makeSetValue('divt', 'offset', 'rem', 'i32') }}};
+    return divt;
+  },
+
   __fpclassifyf: function(x) {
     if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
     if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
