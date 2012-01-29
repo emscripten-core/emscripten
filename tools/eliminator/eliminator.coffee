@@ -262,8 +262,14 @@ class Eliminator
       else if type is 'var'
         for [varName, varValue] in node[1]
           if varValue? then traverse varValue, checkForMutations
+          # Mark the variable as live
           if @isSingleDef[varName]
             isLive[varName] = true
+          # Mark variables that depend on it as no longer live
+          if @dependsOn[varName]?
+            for varNameDep of @dependsOn[varName]
+              if isLive[varNameDep]
+                isLive[varNameDep] = false
         return node
       else
         checkForMutations node, type

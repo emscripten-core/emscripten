@@ -114,5 +114,13 @@ function t() {
   var $cmp3=($12) < ($13);
   if (!($cmp3)) { __label__ = 4; }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t"]
+function f2() {
+  var $arrayidx64_phi_trans_insert = $vla + ($storemerge312 << 2) | 0;
+  var $_pre = HEAPU32[$arrayidx64_phi_trans_insert >> 2];
+  var $phitmp = $storemerge312 + 1 | 0;
+  var $storemerge312 = $phitmp;
+  var $8 = $_pre;
+  c($8);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t", "f2"]
 

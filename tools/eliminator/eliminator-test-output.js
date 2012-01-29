@@ -105,4 +105,10 @@ function t() {
     __label__ = 4;
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t"]
+function f2() {
+  var $_pre = HEAPU32[($vla + ($storemerge312 << 2) | 0) >> 2];
+  var $storemerge312 = $storemerge312 + 1 | 0;
+  var $8 = $_pre;
+  c($8);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t", "f2"]
