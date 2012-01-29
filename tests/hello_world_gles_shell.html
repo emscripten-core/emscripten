@@ -27,6 +27,28 @@
 
       // The compiled code
       {{{ SCRIPT_CODE }}}
+
+      // Test code
+      function simulateKeyEvent(keyCode) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent("keydown", true, true, window,
+                           0, 0, 0, 0, keyCode, 0);
+        document.body.dispatchEvent(event);
+      }
+      function reportResult(result) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://localhost:8888/report_gl_result?' + result, true);
+        xhr.send();
+      }
+      function doTest() {
+        var firstImage = Module.canvas.toDataURL();
+        simulateKeyEvent(0x25 /* DOM_VK_LEFT */);
+        setTimeout(function() {
+          var secondImage = Module.canvas.toDataURL();
+          reportResult(firstImage != secondImage);
+        }, 0);
+      }
+      addEventListener("load", doTest, false);
     </script>
   </body>
 </html>
