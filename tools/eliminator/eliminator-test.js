@@ -122,5 +122,13 @@ function f2() {
   var $8 = $_pre;
   c($8);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t", "f2"]
+function f3($s, $tree, $k) {
+  // HEAP vars alias each other, and the loop can confuse us
+  var $0 = HEAPU32[($s + 2908 + ($k << 2) | 0) >> 2];
+  while (1) {
+    HEAP32[($s + 2908 + ($storemerge_in << 2) | 0) >> 2] = $9;
+  }
+  HEAP32[($s + 2908 + ($storemerge_in << 2) | 0) >> 2] = $0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t", "f2", "f3"]
 

@@ -252,12 +252,10 @@ class Eliminator
             traverseChild child
         else
           # Don't put anything from outside into the body of a loop.
-          savedLive = isLive
           isLive = {}
           for child in node then traverseChild child
-          for name of isLive
-            if not isLive[name] then savedLive[name] = false
-          isLive = savedLive
+          # Don't keep anything alive through a loop
+          isLive = {}
         return node
       else if type is 'var'
         for [varName, varValue] in node[1]

@@ -5652,6 +5652,7 @@ f.close()
       assert False, 'Make sure unaligned loads are not done unnecessarily (add some comments and inspect the source)'
       assert False, 'Make sure Poppler builds with llvm full opts'
       assert False, 'Check if we should use -Ox instead of -std-compile-opts'
+      assert False, 'Ensure all opts including linktime apply to bindings generator. might need to adjust visibility of bindings C funcs'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
