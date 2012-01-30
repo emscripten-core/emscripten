@@ -540,13 +540,17 @@ class Building:
         llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
     assert 0 <= optimization_level <= 3
-    safe = Settings.USE_TYPED_ARRAYS != 2 or Settings.BUILD_AS_SHARED_LIB or Settings.LINKABLE
+    safe = Settings.USE_TYPED_ARRAYS != 2
     opts = []
     if optimization_level > 0:
       if not safe:
         opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining, to avoid overly aggressive inlining
-        opts.append('-O%d' % optimization_level)
-        #opts.append('-std-compile-opts')
+        # -Ox opts do -globaldce, which removes stuff that is needed for libraries and linkables
+        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+          opts.append('-O%d' % optimization_level)
+        else:
+          opts.append('-std-compile-opts')
+        print '[unsafe: %s]' % ','.join(opts)
       else:
         allow_nonportable = not safe
         optimize_size = True
