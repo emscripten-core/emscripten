@@ -78,6 +78,20 @@ entry:
   store i104 %bigb, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
+; or, and, xor
+  %ored = or i104 %loaded, 119683656141956040435433472 ; constant
+  store i104 %ored, i104* %bundled, align 4
+  call i32 (i8*)* @puts(i8* %buffer)
+
+  %ander = trunc i128 79037149320135189491510935551 to i104
+  %anded = and i104 %loaded, %ander ; variable
+  store i104 %anded, i104* %bundled, align 4
+  call i32 (i8*)* @puts(i8* %buffer)
+
+  %xored = xor i104 %loaded, 78580178274950896355901440
+  store i104 %xored, i104* %bundled, align 4
+  call i32 (i8*)* @puts(i8* %buffer)
+
   ret i32 1
 }
 

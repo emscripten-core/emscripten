@@ -130,6 +130,9 @@ function analyzer(data, sidePass) {
           return getBits(type) > 64;
         }
         function getLegalVars(base, bits) {
+          if (isNumber(base)) {
+            return getLegalLiterals(base, bits);
+          }
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           while (bits > 0) {
@@ -144,7 +147,7 @@ function analyzer(data, sidePass) {
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           while (bits > 0) {
-            ret[i] = { ident: parsed[i], bits: Math.min(32, bits) };
+            ret[i] = { ident: parsed[i].toString(), bits: Math.min(32, bits) };
             bits -= 32;
             i++;
           }
@@ -161,11 +164,7 @@ function analyzer(data, sidePass) {
                   bits = getBits(item.valueType);
                   assert(item.value.intertype == 'value', 'TODO: unfolding');
                   var elements;
-                  if (isNumber(item.value.ident)) {
-                    elements = getLegalLiterals(item.value.ident, bits);
-                  } else {
-                    elements = getLegalVars(item.value.ident, bits);
-                  }
+                  elements = getLegalVars(item.value.ident, bits);
                   label.lines.splice(i, 1);
                   var j = 0;
                   elements.forEach(function(element) {
@@ -282,6 +281,7 @@ function analyzer(data, sidePass) {
                       // All mathops can be parametrized by how many shifts we do, and how big the source is
                       var shifts = 0;
                       var targetBits;
+                      var processor = null;
                       switch (value.op) {
                         case 'lshr': {
                           assert(value.param2.intertype == 'value', 'TODO: unfolding');
@@ -298,6 +298,20 @@ function analyzer(data, sidePass) {
                         case 'trunc': case 'zext': {
                           assert(value.param2.intertype == 'type' || value.param2.intertype == 'value', 'TODO: unfolding');
                           targetBits = getBits(value.param2.ident);
+                          break;
+                        }
+                        case 'or': case 'and': case 'xor': {
+                          targetBits = sourceBits;
+                          var otherElements = getLegalVars(value.param2.ident, sourceBits);
+                          processor = function(result, j) {
+                            return {
+                              intertype: 'mathop',
+                              op: value.op,
+                              type: 'i' + otherElements[j].bits,
+                              param1: result,
+                              param2: { intertype: 'value', ident: otherElements[j].ident, type: 'i' + otherElements[j].bits }
+                            };                            
+                          };
                           break;
                         }
                         default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum, dump(item)];
@@ -353,6 +367,9 @@ function analyzer(data, sidePass) {
                             param1: result,
                             param2: { intertype: 'value', ident: (Math.pow(2, targetElements[j].bits)-1).toString(), type: 'i32' }
                           }
+                        }
+                        if (processor) {
+                          result = processor(result, j);
                         }
                         toAdd.push({
                           intertype: 'assign',

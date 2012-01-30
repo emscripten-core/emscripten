@@ -11,3 +11,6 @@ he
 hello, w
 cba
 gfedgfed
+hellon worod
+hello, war`d
+hello, wor-d
