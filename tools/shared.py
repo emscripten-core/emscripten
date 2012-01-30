@@ -540,7 +540,6 @@ class Building:
         llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
     safe = Settings.USE_TYPED_ARRAYS != 2 or Settings.BUILD_AS_SHARED_LIB or Settings.LINKABLE
-    print 'LLVM opts, safe?', safe
     opts = []
     if optimization_level > 0:
       if not safe:
@@ -548,7 +547,6 @@ class Building:
         #opts.append('-O%d' % optimization_level)
         opts.append('-std-compile-opts')
         opts.append('-std-link-opts')
-        print 'Unsafe:', opts
       else:
         allow_nonportable = not safe
         optimize_size = True

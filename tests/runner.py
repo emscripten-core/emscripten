@@ -4283,15 +4283,12 @@ def process(filename):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      if not self.emcc_args == []: return self.skip('very slow, we only do this in default')
-
-      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has variable object
+      if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
 
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CORRECT_SIGNS = 1
 
       Building.COMPILER_TEST_OPTS += [
-        '-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
         '-I' + path_from_root('tests', 'freetype', 'include'),
         '-I' + path_from_root('tests', 'poppler', 'include'),
       ]
@@ -5466,8 +5463,9 @@ Options that are modified or new in %s include:
             # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
             assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated, 'micro opts should always be on'
-            if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
+            assert 'var $i;' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated, 'micro opts should always be on'
+            if opt_level >= 1:
+              assert 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + $storemerge4 / 2 | 0]' in generated or 'HEAP8[$vla1 + ($storemerge4 / 2 | 0)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
