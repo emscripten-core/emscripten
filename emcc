@@ -77,7 +77,16 @@ import os, sys, shutil, tempfile
 from subprocess import Popen, PIPE, STDOUT
 from tools import shared
 
-MAX_LLVM_OPT_LEVEL = 3
+# Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
+# levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
+# llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
+# level)
+LLVM_OPT_LEVEL = {
+  0: 0,
+  1: 1,
+  2: 3,
+  3: 3,
+}
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
@@ -531,27 +540,13 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
     shared.Building.link(linker_inputs,
                          in_temp(target_basename + '.bc'))
-    # TODO: LLVM link-time opts? here and/or elsewhere?
+    final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
       shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
-
-  # Optimize, if asked to
-  if llvm_opts > 0 and opt_level > 0 and not LEAVE_INPUTS_RAW:
-    if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
-    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), min(opt_level, MAX_LLVM_OPT_LEVEL))
-  else:
-    # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-    if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
-
-  # Prepare .ll for Emscripten
-  try:
-    if shared.Settings.RELOOP:
-      print >> sys.stderr, 'emcc: warning: The relooper optimization can be very slow.'
-  except:
-    pass
+      final = in_temp(target_basename + '.bc')
+    else:
+      final = input_files[0]
 
   if DEBUG:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
@@ -562,13 +557,31 @@ try:
       shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
 
+    if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
+
+  # Optimize, if asked to
+  if llvm_opts > 0 and opt_level > 0 and not LEAVE_INPUTS_RAW:
+    if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
+    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_OPT_LEVEL[opt_level])
+  else:
+    # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+    if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
+
+  if DEBUG and not LEAVE_INPUTS_RAW: save_intermediate('optbc', 'bc')
+
+  # Prepare .ll for Emscripten
+  try:
+    if shared.Settings.RELOOP:
+      print >> sys.stderr, 'emcc: warning: The relooper optimization can be very slow.'
+  except:
+    pass
+
   if not LEAVE_INPUTS_RAW:
-    final = in_temp(target_basename + '.bc')
-    if DEBUG: save_intermediate('bc', 'bc')
     final = shared.Building.llvm_dis(final, final + '.ll')
   else:
     assert len(input_files) == 1
-    final = input_files[0]
   if DEBUG: save_intermediate('ll', 'll')
 
   if AUTODEBUG:
