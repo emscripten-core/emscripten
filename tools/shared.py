@@ -547,7 +547,6 @@ class Building:
         opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining, to avoid overly aggressive inlining
         opts.append('-O%d' % optimization_level)
         #opts.append('-std-compile-opts')
-        opts.append('-std-link-opts')
       else:
         allow_nonportable = not safe
         optimize_size = True

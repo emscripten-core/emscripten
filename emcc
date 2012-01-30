@@ -561,15 +561,19 @@ try:
 
   # Optimize, if asked to
   if llvm_opts > 0 and opt_level > 0 and not LEAVE_INPUTS_RAW:
-    if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
+    if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % LLVM_OPT_LEVEL[opt_level]
     shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_OPT_LEVEL[opt_level])
+    if DEBUG: save_intermediate('opt', 'bc')
+    # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
+    if DEBUG: print >> sys.stderr, 'emcc: LLVM LTO'
+    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-disable-inlining', '-std-link-opts'])
+    if DEBUG: save_intermediate('lto', 'bc')
   else:
     # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
     if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:
       if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
-
-  if DEBUG and not LEAVE_INPUTS_RAW: save_intermediate('optbc', 'bc')
+      if DEBUG: save_intermediate('dce', 'bc')
 
   # Prepare .ll for Emscripten
   try:
