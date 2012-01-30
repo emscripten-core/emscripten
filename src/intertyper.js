@@ -647,7 +647,7 @@ function intertyper(data, sidePass, baseLineNums) {
       item.type = item.tokens[4].text; // The final type
       Types.needAnalysis[item.type] = 0;
       var to = getTokenIndexByText(item.tokens, 'to');
-      item.params = [parseLLVMSegment(item.tokens.slice(2, to))];
+      item.params = [parseLLVMSegment(item.tokens.slice(1, to))];
       item.ident = item.params[0].ident;
       item.type2 = item.tokens[1].text; // The original type
       Types.needAnalysis[item.type2] = 0;

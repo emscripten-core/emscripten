@@ -1815,7 +1815,22 @@ function processMathop(item) {
       assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
       return '((' + ident1 + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
     }
-    case 'bitcast': return ident1;
+    case 'bitcast': {
+      // Most bitcasts are no-ops for us. However, the exception is int to float and float to int
+      var inType = item.param1.type;
+      var outType = item.type;
+      if ((inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) ||
+          (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
+        assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
+        assert(inType == 'i32' || inType == 'float', 'Can only bitcast ints <-> floats with 32 bits, for now');
+        if (inType in Runtime.INT_TYPES) {
+          return '(tempDoubleI32[0] = ' + ident1 + ',tempDoubleF32[0])';
+        } else {
+          return '(tempDoubleF32[0] = ' + ident1 + ',tempDoubleI32[0])';
+        }
+      }
+      return ident1;
+    }
     default: throw 'Unknown mathcmp op: ' + item.op;
   }
 }

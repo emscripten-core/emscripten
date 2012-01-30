@@ -1032,7 +1032,10 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('mathop', processMathop);
 
   makeFuncLineActor('bitcast', function(item) {
-    return finalizeLLVMParameter(item.params[0]);
+    return processMathop({
+      op: 'bitcast', variant: null, type: item.type,
+      param1: item.params[0]
+    });
   });
 
   function makeFunctionCall(ident, params, funcData, type) {
