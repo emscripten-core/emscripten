@@ -3617,6 +3617,22 @@ def process(filename):
       '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
+    def test_direct_string_constant_usage(self):
+      src = '''
+       #include <iostream>
+		template<int i>
+		void printText( const char (&text)[ i ] )
+		{
+			std::cout << text;
+		}
+		int main()
+		{
+			printText( "some string constant" );
+			return 0;
+		}
+		'''
+      self.do_run(src, "some string constant")
+
     def test_fs_base(self):
       Settings.INCLUDE_FULL_LIBRARY = 1
       try:
