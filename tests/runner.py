@@ -18,12 +18,12 @@ import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile,
 
 # Setup
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+__rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
-
 sys.path += [path_from_root('')]
+import tools.shared
+from tools.shared import *
 
 # Sanity check for config
 
@@ -41,7 +41,9 @@ class RunnerCore(unittest.TestCase):
                            # Change this to None to get stderr reporting, for debugging purposes
 
   def setUp(self):
+    global Settings
     Settings.reset()
+    Settings = tools.shared.Settings
     self.banned_js_engines = []
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
