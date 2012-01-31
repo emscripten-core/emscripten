@@ -409,10 +409,10 @@ class Building:
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
-      Building.configure(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure_'), 'w'),
-                                                     stderr=open(os.path.join(output_dir, 'configure_err'), 'w'), env=env)
-    Building.make(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
-                                    stderr=open(os.path.join(output_dir, 'make_err'), 'w'), env=env)
+      Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
+                                                     stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
+    Building.make(make + make_args, stdout=open(os.path.join(project_dir, 'make_'), 'w'),
+                                    stderr=open(os.path.join(project_dir, 'make_err'), 'w'), env=env)
     bc_file = os.path.join(project_dir, 'bc.bc')
     Building.link(generated_libs, bc_file)
     if cache is not None:
