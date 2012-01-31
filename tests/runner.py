@@ -4431,7 +4431,7 @@ def process(filename):
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
       Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
 
-      self.do_ll_run(path_from_root('tests', 'python', 'python.ll'),
+      self.do_ll_run(path_from_root('tests', 'python', 'python.small.bc'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
