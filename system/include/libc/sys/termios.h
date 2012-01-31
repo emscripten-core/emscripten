@@ -262,6 +262,14 @@ __END_DECLS
 
 #endif /* !KERNEL */
 
+/* XXX Emscripten */
+struct winsize {
+  unsigned short ws_row;
+  unsigned short ws_col;
+  unsigned short ws_xpixel;
+  unsigned short ws_ypixel;
+};
+
 /*
  * END OF PROTECTED INCLUDE.
  */
