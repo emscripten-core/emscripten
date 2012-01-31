@@ -4321,7 +4321,7 @@ def process(filename):
       freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
-                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
+                                 [os.path.join('poppler', '.libs', self.get_shared_library_name('libpoppler.so.13')),
                                   os.path.join('goo', '.libs', 'libgoo.a'),
                                   os.path.join('fofi', '.libs', 'libfofi.a'),
                                   os.path.join('splash', '.libs', 'libsplash.a'),
