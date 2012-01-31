@@ -3822,6 +3822,11 @@ def process(filename):
       expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
+    def test_systypes(self):
+      src = open(path_from_root('tests', 'systypes', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'systypes', 'output.txt'), 'r').read()
+      self.do_run(src, expected)
+
     def test_getloadavg(self):
       src = r'''
         #include <stdio.h>
