@@ -406,7 +406,7 @@ LibraryManager.library = {
   // dirent.h
   // ==========================================================================
 
-  __dirent_struct_layout: Runtime.generateStructInfo(null, '%struct.dirent'),
+  __dirent_struct_layout: Runtime.generateStructInfo(['d_ino', 'd_name', 'd_off', 'd_reclen', 'd_type'], '%struct.dirent'),
   opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
@@ -561,7 +561,7 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  __utimbuf_struct_layout: Runtime.generateStructInfo(null, '%struct.utimbuf'),
+  __utimbuf_struct_layout: Runtime.generateStructInfo(['actime', 'modtime'], '%struct.utimbuf'),
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
@@ -649,7 +649,24 @@ LibraryManager.library = {
   // sys/stat.h
   // ==========================================================================
 
-  __stat_struct_layout: Runtime.generateStructInfo(null, '%struct.stat'),
+  __stat_struct_layout: Runtime.generateStructInfo([
+    'st_dev',
+    'st_ino',
+    'st_mode',
+    'st_nlink',
+    'st_uid',
+    'st_gid',
+    'st_rdev',
+    'st_size',
+    'st_atime',
+    'st_spare1',
+    'st_mtime',
+    'st_spare2',
+    'st_ctime',
+    'st_spare3',
+    'st_blksize',
+    'st_blocks',
+    'st_spare4'], '%struct.stat'),
   stat__deps: ['$FS', '__stat_struct_layout'],
   stat: function(path, buf, dontResolveLastLink) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -818,7 +835,18 @@ LibraryManager.library = {
   // sys/statvfs.h
   // ==========================================================================
 
-  __statvfs_struct_layout: Runtime.generateStructInfo(null, '%struct.statvfs'),
+  __statvfs_struct_layout: Runtime.generateStructInfo([
+    'f_bsize',
+    'f_frsize',
+    'f_blocks',
+    'f_bfree',
+    'f_bavail',
+    'f_files',
+    'f_ffree',
+    'f_favail',
+    'f_fsid',
+    'f_flag',
+    'f_namemax'], '%struct.statvfs'),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -852,7 +880,13 @@ LibraryManager.library = {
   // fcntl.h
   // ==========================================================================
 
-  __flock_struct_layout: Runtime.generateStructInfo(null, '%struct.flock'),
+  __flock_struct_layout: Runtime.generateStructInfo([
+    'l_type',
+    'l_whence',
+    'l_start',
+    'l_len',
+    'l_pid',
+    'l_xxx'], '%struct.flock'),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
@@ -1055,7 +1089,7 @@ LibraryManager.library = {
   // poll.h
   // ==========================================================================
 
-  __pollfd_struct_layout: Runtime.generateStructInfo(null, '%struct.pollfd'),
+  __pollfd_struct_layout: Runtime.generateStructInfo(['fd', 'events', 'revents'], '%struct.pollfd'),
   poll__deps: ['$FS', '__pollfd_struct_layout'],
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
@@ -4728,7 +4762,12 @@ LibraryManager.library = {
   // sys/utsname.h
   // ==========================================================================
 
-  __utsname_struct_layout: Runtime.generateStructInfo(null, '%struct.utsname'),
+  __utsname_struct_layout: Runtime.generateStructInfo([
+	  'sysname',
+	  'nodename',
+	  'release',
+	  'version',
+	  'machine'], '%struct.utsname'),
   uname__deps: ['__utsname_struct_layout'],
   uname: function(name) {
     // int uname(struct utsname *name);
@@ -4927,7 +4966,18 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  __tm_struct_layout: Runtime.generateStructInfo(null, '%struct.tm'),
+  __tm_struct_layout: Runtime.generateStructInfo([
+    'tm_sec',
+    'tm_min',
+    'tm_hour',
+    'tm_mday',
+    'tm_mon',
+    'tm_year',
+    'tm_wday',
+    'tm_yday',
+    'tm_isdst',
+    'tm_gmtoff',
+    'tm_zone'], '%struct.tm'),
   // Statically allocated time struct.
   __tm_current: 0,
   // Statically allocated timezone strings.
@@ -5126,7 +5176,7 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
-  __timespec_struct_layout: Runtime.generateStructInfo(null, '%struct.timespec'),
+  __timespec_struct_layout: Runtime.generateStructInfo(['tv_sec', 'tv_nsec'], '%struct.timespec'),
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
@@ -5163,7 +5213,11 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
-  __tms_struct_layout: Runtime.generateStructInfo(null, '%struct.tms'),
+  __tms_struct_layout: Runtime.generateStructInfo([
+    'tms_utime',
+    'tms_stime',
+    'tms_cutime',
+    'tms_cstime'], '%struct.tms'),
   times__deps: ['__tms_struct_layout', 'memset'],
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
@@ -5660,7 +5714,7 @@ LibraryManager.library = {
   // ==========================================================================
 
   // TODO: Implement for real.
-  __rlimit_struct_layout: Runtime.generateStructInfo(null, '%struct.rlimit'),
+  __rlimit_struct_layout: Runtime.generateStructInfo(['rlim_cur', 'rlim_max'], '%struct.rlimit'),
   getrlimit__deps: ['__rlimit_struct_layout'],
   getrlimit: function(resource, rlp) {
     // int getrlimit(int resource, struct rlimit *rlp);
@@ -5675,7 +5729,7 @@ LibraryManager.library = {
   __01getrlimit64_: 'getrlimit',
 
   // TODO: Implement for real. We just do time used, and no useful data
-  __rusage_struct_layout: Runtime.generateStructInfo(null, '%struct.rusage'),
+  __rusage_struct_layout: Runtime.generateStructInfo(['ru_utime', 'ru_stime', 'ru_maxrss'], '%struct.rusage'),
   getrusage__deps: ['__rusage_struct_layout'],
   getrusage: function(resource, rlp) {
     // %struct.timeval = type { i32, i32 }
