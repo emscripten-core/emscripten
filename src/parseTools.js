@@ -1687,7 +1687,20 @@ function processMathop(item) {
       case 'sdiv': case 'udiv': warnI64_1(); return splitI64(makeRounding(mergeI64(ident1) + '/' + mergeI64(ident2), bits, op[0] === 's'));
       case 'mul': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '*' + mergeI64(ident2)), bits);
       case 'urem': case 'srem': warnI64_1(); return splitI64(mergeI64(ident1) + '%' + mergeI64(ident2));
-      default: throw 'Unsupported i64 mode 1 op: ' + item.op;
+      case 'bitcast': {
+        // Pointers are not 64-bit, so there is really only one possible type of bitcast here, int to float or vice versa
+        assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
+        var inType = item.param1.type;
+        var outType = item.type;
+        if (inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) {
+          return makeInlineCalculation('tempDoubleI32[0]=VALUE[0],tempDoubleI32[1]=VALUE[1],tempDoubleF64[0]', ident1, 'tempI64');
+        } else if (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES) {
+          return '(tempDoubleF64[0]=' + ident1 + ',[tempDoubleI32[0],tempDoubleI32[1]])';
+        } else {
+          throw 'Invalid I64_MODE1 bitcast: ' + dump(item) + ' : ' + item.param1.type;
+        }
+      }
+      default: throw 'Unsupported i64 mode 1 op: ' + item.op + ' : ' + dump(item);
     }
   }
 
@@ -1822,7 +1835,7 @@ function processMathop(item) {
       if ((inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) ||
           (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
-        assert(inType == 'i32' || inType == 'float', 'Can only bitcast ints <-> floats with 32 bits, for now');
+        assert(inType == 'i32' || inType == 'float', 'Can only bitcast ints <-> floats with 32 bits (try I64_MODE=1)');
         if (inType in Runtime.INT_TYPES) {
           return '(tempDoubleI32[0] = ' + ident1 + ',tempDoubleF32[0])';
         } else {
