@@ -14,7 +14,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading, platform
 
 # Setup
 
@@ -69,6 +69,15 @@ class RunnerCore(unittest.TestCase):
 
   def get_dir(self):
     return self.working_dir
+
+  def get_shared_library_name(self, linux_name):
+    if platform.system() == 'Linux':
+      return linux_name
+    elif platform.system() == 'Darwin':
+      return linux_name.replace('.so', '') + '.dylib'
+    else:
+      print >> sys.stderr, 'get_shared_library_name needs to be implemented on %s' % platform.system()
+      return linux_name
 
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
@@ -3843,6 +3852,11 @@ def process(filename):
       expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
+    def test_systypes(self):
+      src = open(path_from_root('tests', 'systypes', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'systypes', 'output.txt'), 'r').read()
+      self.do_run(src, expected)
+
     def test_getloadavg(self):
       src = r'''
         #include <stdio.h>
@@ -4352,7 +4366,7 @@ def process(filename):
       shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
 
       lib = self.get_library('openjpeg',
-                             [os.path.join('bin', 'libopenjpeg.so.1.4.0'),
+                             [os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
