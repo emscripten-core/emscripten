@@ -153,6 +153,24 @@ function analyzer(data, sidePass) {
           }
           return ret;
         }
+        // Unfolds internal inline llvmfunc calls, for example x = load (bitcast y)
+        // will become temp = y \n x = load temp
+        // @return The index of the original line, after the unfolding. In the example
+        //         above, the index returned will be the new index of the line with `load',
+        //         that is, i+1.
+        function unfold(lines, i, item, slot) {
+          if (item[slot].intertype == 'value') return i;
+          // TODO: unfold multiple slots at once
+          var tempIdent = '$$emscripten$temp$' + i;
+          lines.splice(i, 0, {
+            intertype: 'assign',
+            ident: tempIdent,
+            value: item[slot],
+            lineNum: lines[i].lineNum - 0.5
+          });
+          item[slot] = { intertype: 'value', ident: tempIdent, type: item[slot].type };
+          return i+1;
+        }
         data.functions.forEach(function(func) {
           func.labels.forEach(function(label) {
             var i = 0, bits;
@@ -161,11 +179,11 @@ function analyzer(data, sidePass) {
               if (item.intertype == 'store') {
                 if (isIllegalType(item.valueType)) {
                   dprint('legalizer', 'Legalizing store at line ' + item.lineNum);
+                  i = unfold(label.lines, i, item, 'value');
+                  label.lines.splice(i, 1);
                   bits = getBits(item.valueType);
-                  assert(item.value.intertype == 'value', 'TODO: unfolding');
                   var elements;
                   elements = getLegalVars(item.value.ident, bits);
-                  label.lines.splice(i, 1);
                   var j = 0;
                   elements.forEach(function(element) {
                     var tempVar = '$st$' + i + '$' + j;
@@ -207,10 +225,11 @@ function analyzer(data, sidePass) {
                   case 'load': {
                     if (isIllegalType(value.valueType)) {
                       dprint('legalizer', 'Legalizing load at line ' + item.lineNum);
-                      bits = getBits(value.valueType);
-                      assert(value.pointer.intertype == 'value', 'TODO: unfolding');
-                      var elements = getLegalVars(item.ident, bits);
+                      i = unfold(label.lines, i, value, 'pointer');
                       label.lines.splice(i, 1);
+                      bits = getBits(value.valueType);
+//                      assert(value.pointer.intertype == 'value', 'TODO: unfolding');
+                      var elements = getLegalVars(item.ident, bits);
                       var j = 0;
                       elements.forEach(function(element) {
                         var tempVar = '$st$' + i + '$' + j;

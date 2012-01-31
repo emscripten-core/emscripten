@@ -2,6 +2,8 @@
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
 target triple = "i386-pc-linux-gnu"
 
+@globaliz = global [300 x i8] zeroinitializer
+
 define i32 @main() {
 entry:
   %buffer = alloca i8, i32 1000, align 4
@@ -91,6 +93,13 @@ entry:
   %xored = xor i104 %loaded, 78580178274950896355901440
   store i104 %xored, i104* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
+
+; unfolding
+  store i104 %loaded, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4
+  %loaded.short = load i80* bitcast ([300 x i8]* @globaliz to i80*), align 4
+  store i104 0, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4
+  store i80 %loaded.short, i80* bitcast ([300 x i8]* @globaliz to i80*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
 
   ret i32 1
 }
