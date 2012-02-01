@@ -426,6 +426,7 @@ class Building:
 
   @staticmethod
   def link(files, target):
+    try_delete(target)
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 

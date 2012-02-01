@@ -3970,7 +3970,7 @@ def process(filename):
       if self.emcc_args is None:
         if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
         self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
-        if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Some spurious warnings from libc++ internals
+        Settings.SAFE_HEAP = 0 # Some spurious warnings from libc++ internals
 
       src = '''
         #include <iostream>
@@ -4363,7 +4363,7 @@ def process(filename):
 
       # Combine libraries
 
-      combined = os.path.join(self.get_build_dir(), 'combined.bc')
+      combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
       Building.link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
