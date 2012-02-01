@@ -134,7 +134,7 @@ typedef	unsigned long ino_t; /* XXX Emscripten */
 #endif
 #endif /*__CYGWIN__*/
 
-#ifdef __MS_types__
+#if defined(__MS_types__) || defined(EMSCRIPTEN)
 typedef unsigned long vm_offset_t;
 typedef unsigned long vm_size_t;
 

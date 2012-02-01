@@ -9,10 +9,11 @@ This is a helper script for emmaken.py. See docs in that file for more info.
 
 import os, sys
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+__rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
+sys.path += [path_from_root('')]
+from tools.shared import *
 
 Building.configure(sys.argv[1:])
 

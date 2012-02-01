@@ -56,10 +56,11 @@ Example uses:
 
  * For SCons the shared.py can be imported like so:
     __file__ = str(Dir('#/project_path_to_emscripten/dummy/dummy'))
-    __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     def path_from_root(*pathelems):
       return os.path.join(__rootpath__, *pathelems)
-    exec(open(path_from_root('tools', 'shared.py'), 'r').read())
+    sys.path += [path_from_root('')]
+    from tools.shared import *
     
    For using the Emscripten compilers/linkers/etc. you can do:
     env = Environment()
@@ -99,10 +100,11 @@ import subprocess
 
 print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+__rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
+sys.path += [path_from_root('')]
+from tools.shared import *
 
 # If this is a configure-type thing, just do that
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
@@ -223,6 +225,6 @@ try:
 
   os.execvp(call, [call] + newargs)
 except Exception, e:
-  print 'Error in emmaken.py. (Is the config file ~/.emscripten set up properly?) Error:', e
+  print 'Error in emmaken.py. (Is the config file %s set up properly?) Error:' % EM_CONFIG, e
   raise
 

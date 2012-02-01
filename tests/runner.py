@@ -14,23 +14,23 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading, platform
 
 # Setup
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+__rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
-
 sys.path += [path_from_root('')]
+import tools.shared
+from tools.shared import *
 
 # Sanity check for config
 
 try:
   assert COMPILER_OPTS != None
 except:
-  raise Exception('Cannot find "COMPILER_OPTS" definition. Is ~/.emscripten set up properly? You may need to copy the template from settings.py into it.')
+  raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template from settings.py into it.' % EM_CONFIG)
 
 # Core test runner class, shared between normal tests and benchmarks
 
@@ -41,7 +41,9 @@ class RunnerCore(unittest.TestCase):
                            # Change this to None to get stderr reporting, for debugging purposes
 
   def setUp(self):
+    global Settings
     Settings.reset()
+    Settings = tools.shared.Settings
     self.banned_js_engines = []
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
@@ -67,6 +69,15 @@ class RunnerCore(unittest.TestCase):
 
   def get_dir(self):
     return self.working_dir
+
+  def get_shared_library_name(self, linux_name):
+    if platform.system() == 'Linux':
+      return linux_name
+    elif platform.system() == 'Darwin':
+      return linux_name.replace('.so', '') + '.dylib'
+    else:
+      print >> sys.stderr, 'get_shared_library_name needs to be implemented on %s' % platform.system()
+      return linux_name
 
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
@@ -280,7 +291,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         if Settings.USE_TYPED_ARRAYS:
           js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
         js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
-        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check ~/.emscripten and settings.py and the paths therein.')
+        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and settings.py and the paths therein.' % EM_CONFIG)
         for engine in js_engines:
           engine = filter(lambda arg: arg != '-n', engine) # SpiderMonkey issue 716255
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
@@ -3652,6 +3663,24 @@ def process(filename):
       '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
+    def test_direct_string_constant_usage(self):
+      if self.emcc_args is None: return self.skip('requires libcxx')
+
+      src = '''
+        #include <iostream>
+        template<int i>
+        void printText( const char (&text)[ i ] )
+        {
+           std::cout << text;
+        }
+        int main()
+        {
+          printText( "some string constant" );
+          return 0;
+        }
+      '''
+      self.do_run(src, "some string constant")
+
     def test_fs_base(self):
       Settings.INCLUDE_FULL_LIBRARY = 1
       try:
@@ -3856,6 +3885,11 @@ def process(filename):
     def test_env(self):
       src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
+      self.do_run(src, expected)
+
+    def test_systypes(self):
+      src = open(path_from_root('tests', 'systypes', 'src.c'), 'r').read()
+      expected = open(path_from_root('tests', 'systypes', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
     def test_getloadavg(self):
@@ -4319,7 +4353,7 @@ def process(filename):
       freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
-                                 [os.path.join('poppler', '.libs', 'libpoppler.so.13.0.0'),
+                                 [os.path.join('poppler', '.libs', self.get_shared_library_name('libpoppler.so.13')),
                                   os.path.join('goo', '.libs', 'libgoo.a'),
                                   os.path.join('fofi', '.libs', 'libfofi.a'),
                                   os.path.join('splash', '.libs', 'libsplash.a'),
@@ -4364,7 +4398,7 @@ def process(filename):
       shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
 
       lib = self.get_library('openjpeg',
-                             [os.path.join('bin', 'libopenjpeg.so.1.4.0'),
+                             [os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
@@ -5927,10 +5961,10 @@ elif 'sanity' in str(sys.argv):
 
   print
   print 'Running sanity checks.'
-  print 'WARNING: This will modify ~/.emscripten, and in theory can break it although it should be restored properly. A backup will be saved in ~/.emscripten_backup'
+  print 'WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG)
   print
 
-  assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) ~/.emscripten file to already exist'
+  assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
 
   shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
   def restore():
@@ -5975,7 +6009,7 @@ elif 'sanity' in str(sys.argv):
 
     def test_aaa_normal(self): # this should be the very first thing that runs. if this fails, everything else is irrelevant!
       for command in commands:
-        # Your existing ~/.emscripten should work!
+        # Your existing EM_CONFIG should work!
         restore()
         self.check_working(command)
 
@@ -5986,14 +6020,14 @@ elif 'sanity' in str(sys.argv):
 
         self.assertContained('Welcome to Emscripten!', output)
         self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
-        self.assertContained('A settings file has been copied to ~/.emscripten, at absolute path: %s' % CONFIG_FILE, output)
+        self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (EM_CONFIG, CONFIG_FILE), output)
         self.assertContained('Please edit that file and change the paths to fit your system', output)
         self.assertContained('make sure LLVM_ROOT and NODE_JS are correct', output)
         self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
         assert output.replace('\n', '').endswith('===='), 'We should have stopped: ' + output
         assert (open(CONFIG_FILE).read() == open(path_from_root('settings.py')).read()), 'Settings should be copied from settings.py'
 
-        # Second run, with bad ~/.emscripten
+        # Second run, with bad EM_CONFIG
         for settings in ['blah', 'LLVM_ROOT="blah"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
           f = open(CONFIG_FILE, 'w')
           f.write(settings)
@@ -6001,7 +6035,7 @@ elif 'sanity' in str(sys.argv):
           output = self.do(command)
 
           if 'LLVM_ROOT' not in settings:
-            self.assertContained('Error in evaluating ~/.emscripten', output)
+            self.assertContained('Error in evaluating %s' % EM_CONFIG, output)
           else:
             self.assertContained('FATAL', output) # sanity check should fail
 
@@ -6037,7 +6071,7 @@ elif 'sanity' in str(sys.argv):
       SANITY_MESSAGE = 'Emscripten: Running sanity checks'
       SANITY_FAIL_MESSAGE = 'sanity check failed to run'
 
-      # emcc should check sanity if no ~/.emscripten_sanity
+      # emcc should check sanity if no ${EM_CONFIG}_sanity
       restore()
       time.sleep(0.1)
       assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity

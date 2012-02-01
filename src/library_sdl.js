@@ -561,6 +561,8 @@ mergeInto(LibraryManager.library, {
 
   Mix_OpenAudio: function() { return -1 },
 
+  SDL_InitSubSystem: function(flags) { return 0 },
+
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
       FUNCTION_TABLE[callback](interval, param);
