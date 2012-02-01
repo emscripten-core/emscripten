@@ -4830,7 +4830,7 @@ def process(filename):
         print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
         var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
         print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
-        print('|' + JSON.stringify(Runtime.generateStructInfo(null, 'UserStruct')) + '|');
+        print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
       } else {
         print('No type info.');
       }
