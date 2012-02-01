@@ -5352,9 +5352,14 @@ TT = %s
 
   class other(RunnerCore):
     def test_emcc(self):
+      emcc_debug = os.environ.get('EMCC_DEBUG')
+
       def clear():
         for name in os.listdir(self.get_dir()):
           try_delete(name)
+        if emcc_debug:
+          for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
+            try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
       for compiler in [EMCC, EMXX]:
         shortcompiler = os.path.basename(compiler)
@@ -5396,7 +5401,7 @@ Options that are modified or new in %s include:
         self.assertNotContained('IOError', output[1]) # no python stack
         self.assertNotContained('Traceback', output[1]) # no python stack
         self.assertContained('error: invalid preprocessing directive', output[1])
-        self.assertContained('''error: use of undeclared identifier 'cheez''', output[1])
+        self.assertContained("error: use of undeclared identifier 'cheez", output[1])
         self.assertContained('2 errors generated', output[1])
         assert output[1].split('2 errors generated.')[1].replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
 
@@ -5497,9 +5502,9 @@ Options that are modified or new in %s include:
             # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
             assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated, 'micro opts should always be on'
+            assert 'var $i;' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 1:
-              assert 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + $storemerge4 / 2 | 0]' in generated or 'HEAP8[$vla1 + ($storemerge4 / 2 | 0)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
+              assert 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + $storemerge4 / 2 | 0]' in generated or 'HEAP8[$vla1 + ($storemerge4 / 2 | 0)]' in generated or 'HEAP8[$vla1 + $i_04 / 2 | 0]' in generated or 'HEAP8[$vla1 + ($i_04 / 2 | 0)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
@@ -6128,10 +6133,14 @@ elif 'sanity' in str(sys.argv):
         assert not os.path.exists(EMCC_CACHE)
         try_delete('a.out.js')
 
+        basebc_name = os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-basebc.bc')
+        dcebc_name = os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-1-dce.bc')
+
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
-            try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-bc.bc')) # we might need to check this file later
+            try_delete(basebc_name) # we might need to check this file later
+            try_delete(dcebc_name) # we might need to check this file later
             output = self.do([EMCC, path_from_root('tests', filename)])
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'dlmalloc':
@@ -6144,7 +6153,8 @@ elif 'sanity' in str(sys.argv):
             assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
             if libname == 'libcxx':
               assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 4000000, 'libc++ is big'
-              assert os.stat(os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-bc.bc')).st_size < 2000000, 'Dead code elimination must remove most of libc++'
+              assert os.stat(basebc_name).st_size > 4000000, 'libc++ is indeed big'
+              assert os.stat(dcebc_name).st_size < 2000000, 'Dead code elimination must remove most of libc++'
       finally:
         if emcc_debug:
           os.environ['EMCC_DEBUG'] = emcc_debug

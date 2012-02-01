@@ -553,7 +553,7 @@ class Building:
           opts.append('-O%d' % optimization_level)
         else:
           opts.append('-std-compile-opts')
-        print '[unsafe: %s]' % ','.join(opts)
+        #print '[unsafe: %s]' % ','.join(opts)
       else:
         allow_nonportable = not safe
         optimize_size = True

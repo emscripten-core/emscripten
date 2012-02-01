@@ -153,8 +153,10 @@ Options that are modified or new in %s include:
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
-  --llvm-opts <on>         0: No LLVM optimizations (default in -O0)
-                           1: LLVM optimizations (default in -O1 +)
+  --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
+                           1: -O1 LLVM optimizations (default in -O1)
+                           2: -O2 LLVM optimizations
+                           3: -O3 LLVM optimizations (default in -O2+)
   --closure <on>           0: No closure compiler (default in -O0, -O1)
                            1: Run closure compiler (default in -O2, -O3)
   --js-transform <cmd>     <cmd> will be called on the generated code
@@ -348,7 +350,7 @@ try:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
-  if llvm_opts is None: llvm_opts = 1 if opt_level >= 1 else 0
+  if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if closure is None: closure = 1 if opt_level >= 2 else 0
   if compress_whitespace is None:
     compress_whitespace = closure # if closure is run, compress whitespace
@@ -561,9 +563,9 @@ try:
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
 
   # Optimize, if asked to
-  if llvm_opts > 0 and opt_level > 0 and not LEAVE_INPUTS_RAW:
-    if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % LLVM_OPT_LEVEL[opt_level]
-    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_OPT_LEVEL[opt_level])
+  if llvm_opts > 0 and not LEAVE_INPUTS_RAW:
+    if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % llvm_opts
+    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
     if DEBUG: save_intermediate('opt', 'bc')
     # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
     if not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:
