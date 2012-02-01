@@ -5686,10 +5686,8 @@ f.close()
 
     def test_reminder(self):
       assert False, 'Optimize makeGet/SetValue to do 16-bit reads/writes when possible, not just 8'
-      assert False, 'Make sure unaligned loads are not done unnecessarily (add some comments and inspect the source)'
-      assert False, 'Make sure Poppler builds with llvm full opts'
-      assert False, 'Check if we should use -Ox instead of -std-compile-opts'
       assert False, 'Ensure all opts including linktime apply to bindings generator. might need to adjust visibility of bindings C funcs'
+      assert False, 'Optimize double version of fasta benchmark'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
