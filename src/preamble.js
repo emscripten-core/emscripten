@@ -642,7 +642,6 @@ Module['HEAPF32'] = HEAPF32;
 STACK_ROOT = STACKTOP = Runtime.alignMemory(STATICTOP);
 STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
-#if DOUBLE_MODE == 1
 #if USE_TYPED_ARRAYS == 2
 var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
 var tempDoubleI8  = HEAP8.subarray(tempDoublePtr);
@@ -666,7 +665,6 @@ function copyTempDouble(ptr) {
   tempDoubleI8[7] = HEAP8[ptr+7];
 }
 STACK_MAX = tempDoublePtr + 8;
-#endif
 #endif
 
 STATICTOP = alignMemoryPage(STACK_MAX);
