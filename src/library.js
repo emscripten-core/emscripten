@@ -5729,7 +5729,23 @@ LibraryManager.library = {
   __01getrlimit64_: 'getrlimit',
 
   // TODO: Implement for real. We just do time used, and no useful data
-  __rusage_struct_layout: Runtime.generateStructInfo(['ru_utime', 'ru_stime', 'ru_maxrss'], '%struct.rusage'),
+  __rusage_struct_layout: Runtime.generateStructInfo([
+    'ru_utime',
+    'ru_stime',
+    'ru_maxrss',
+    'ru_ixrss',
+    'ru_idrss',
+    'ru_isrss',
+    'ru_minflt',
+    'ru_majflt',
+    'ru_nswap',
+    'ru_inblock',
+    'ru_oublock',
+    'ru_msgsnd',
+    'ru_msgrcv',
+    'ru_nsignals',
+    'ru_nvcsw',
+    'ru_nivcsw'], '%struct.rusage'),
   getrusage__deps: ['__rusage_struct_layout'],
   getrusage: function(resource, rlp) {
     // %struct.timeval = type { i32, i32 }
