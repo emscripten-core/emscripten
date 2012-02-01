@@ -531,6 +531,14 @@ class Building:
     return filename + '.o.js'
 
   @staticmethod
+  def can_build_standalone():
+    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
+
+  @staticmethod
+  def can_use_unsafe_opts():
+    return Settings.USE_TYPED_ARRAYS == 2
+
+  @staticmethod
   def pick_llvm_opts(optimization_level):
     '''
       It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
@@ -543,28 +551,28 @@ class Building:
         llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
     assert 0 <= optimization_level <= 3
-    safe = Settings.USE_TYPED_ARRAYS != 2
+    unsafe = Building.can_use_unsafe_opts()
     opts = []
     if optimization_level > 0:
-      if not safe:
+      if unsafe:
         opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining, to avoid overly aggressive inlining
         # -Ox opts do -globaldce, which removes stuff that is needed for libraries and linkables
-        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+        if Building.can_build_standalone():
           opts.append('-O%d' % optimization_level)
         else:
           opts.append('-std-compile-opts')
         #print '[unsafe: %s]' % ','.join(opts)
       else:
-        allow_nonportable = not safe
+        allow_nonportable = False
         optimize_size = True
-        use_aa = not safe
+        use_aa = False
 
         # PassManagerBuilder::populateModulePassManager
         if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
           opts.append('-tbaa')
           opts.append('-basicaa') # makes fannkuch slow but primes fast
 
-        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+        if Building.can_build_standalone():
           opts.append('-internalize')
 
         opts.append('-globalopt')
@@ -624,7 +632,7 @@ class Building:
 
         opts.append('-strip-dead-prototypes')
 
-        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+        if Building.can_build_standalone():
           opts.append('-globaldce')
 
         if optimization_level > 1: opts.append('-constmerge')
