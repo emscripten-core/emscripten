@@ -5601,16 +5601,8 @@ f.close()
         class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
           def do_GET(s):
             assert s.path == expectedResult, 'Expected %s, got %s' % (expectedResult, s.path)
-            httpd.shutdown()
-          def handle_timeout():
-            assert False, 'Timed out while waiting for the browser test to finish'
-            httpd.shutdown()
         httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
-        httpd.timeout = 5;
-        server_thread = threading.Thread(target=httpd.serve_forever)
-        server_thread.daemon = True
-        server_thread.start()
-        server_thread.join(5.5)
+        httpd.handle_request()
 
       # Finally, do some web browser tests
       def run_browser(html_file, message, expectedResult = None):
@@ -5662,6 +5654,17 @@ f.close()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
+
+      # Make sure that OpenGL ES is not available if typed arrays are not used
+      clear()
+      output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS',
+                                           '-s', 'USE_TYPED_ARRAYS=0',
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
+                     stdout=PIPE, stderr=PIPE).communicate()
+      assert len(output[0]) == 0, output[0]
+      assert os.path.exists('something.html'), output
+      run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
