@@ -1,5 +1,6 @@
 import shutil, time, os, sys, json, tempfile, copy
 from subprocess import Popen, PIPE, STDOUT
+from tempfile import mkstemp
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
@@ -366,10 +367,36 @@ class Building:
     return env
 
   @staticmethod
+  def handle_CMake_toolchain(args):
+    CMakeToolchain = '''# the name of the target operating system
+SET(CMAKE_SYSTEM_NAME Linux)
+
+# which C and C++ compiler to use
+SET(CMAKE_C_COMPILER   $EMSCRIPTEN_ROOT/emcc)
+SET(CMAKE_CXX_COMPILER $EMSCRIPTEN_ROOT/em++)
+
+# here is the target environment located
+SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
+
+# adjust the default behaviour of the FIND_XXX() commands:
+# search headers and libraries in the target environment, search
+# programs in the host environment
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_from_root(''))
+    toolchainFile = mkstemp(suffix='.txt')[1]
+    open(toolchainFile, 'w').write(CMakeToolchain)
+    args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
+    return args
+
+  @staticmethod
   def configure(args, stdout=None, stderr=None, env=None):
     if env is None:
       env = Building.get_building_env()
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
+    if args[0].find('cmake') > -1:
+      args = Building.handle_CMake_toolchain(args)
     Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
     del env['EMMAKEN_JUST_CONFIGURE']
 
