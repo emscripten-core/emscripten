@@ -387,9 +387,9 @@ try:
           if arg.endswith('.ll') or shared.Building.is_bitcode(arg):
             input_files.append(arg)
           else:
-            print >> sys.stderr, 'emcc: %s: Not valid LLVM bitcode' % arg
+            print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
       else:
-        print >> sys.stderr, 'emcc: %s: No such file or directory' % arg
+        print >> sys.stderr, 'emcc: %s: warning: No such file or directory' % arg
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   assert len(input_files) > 0, 'emcc: no input files'
