@@ -29,14 +29,6 @@ function intertyper(data, sidePass, baseLineNums) {
 
   dprint('framework', 'Big picture: Starting intertyper, main pass=' + mainPass);
 
-  if (mainPass) {
-    if (LLVM_STYLE === null) {
-      // new = clang on 2.8, old = llvm-gcc anywhere or clang on 2.7
-      LLVM_STYLE = (data.indexOf('<label>') == -1 && data.indexOf('entry:') != -1) ? 'old' : 'new';
-      //dprint('LLVM_STYLE: ' + LLVM_STYLE);
-    }
-  }
-
   // Substrate
 
   var substrate = new Substrate('Intertyper');
@@ -347,7 +339,7 @@ function intertyper(data, sidePass, baseLineNums) {
             if (tokensLength >= 3 && token0Text == 'landingpad')
               return 'Landingpad';
           } else if (item.indent === 0) {
-            if ((tokensLength >= 1 && token0Text.substr(-1) == ':') || // LLVM 2.7 format, or llvm-gcc in 2.8
+            if ((tokensLength >= 1 && token0Text.substr(-1) == ':') ||
                 (tokensLength >= 3 && token1Text == '<label>'))
               return 'Label';
             if (tokensLength >= 4 && token0Text == 'declare')

@@ -2,8 +2,6 @@
 
 // Various namespace-like modules
 
-var LLVM_STYLE = null;
-
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',

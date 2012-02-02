@@ -87,7 +87,7 @@ function analyzer(data, sidePass) {
         } else if (item.functions.length > 0 && item.functions.slice(-1)[0].endLineNum === null) {
           // Internal line
           if (!currLabelFinished) {
-            item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem); // If this line fails, perhaps missing a label? LLVM_STYLE related?
+            item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem); // If this line fails, perhaps missing a label?
             if (subItem.intertype === 'branch') {
               currLabelFinished = true;
             }
@@ -1018,8 +1018,11 @@ function analyzer(data, sidePass) {
         function getActualLabelId(labelId) {
           var label = func.labelsDict[labelId];
           if (!label) {
-            assert(!unknownEntry, 'More than one unknown label in phi, so both cannot be an unlabelled entry, in ' + func.ident);
-            unknownEntry = labelId;
+            if (!unknownEntry) {
+              unknownEntry = labelId;
+            } else {
+              assert(labelId == unknownEntry, 'More than one unknown label in phi, so both cannot be an unlabelled entry, in ' + func.ident);
+            }
             labelId = ENTRY_IDENT;
             label = func.labelsDict[labelId];
             assert(label, 'Cannot find entry label when looking for it after seeing an unknown label in a phi');
