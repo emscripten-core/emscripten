@@ -239,7 +239,7 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 # ---------------- Utilities ---------------
 
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
-BITCODE_SUFFIXES = ('.bc', '.o', '.ll')
+BITCODE_SUFFIXES = ('.bc', '.o', '.ll', '.a', '.dylib')
 
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
