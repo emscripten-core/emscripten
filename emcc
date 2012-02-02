@@ -569,8 +569,11 @@ try:
     if DEBUG: save_intermediate('opt', 'bc')
     # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
     if shared.Building.can_use_unsafe_opts() and shared.Building.can_build_standalone():
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM LTO'
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-disable-inlining', '-std-link-opts'])
+      lto_opts = []
+      if not shared.Building.can_inline(): lto_opts.append('-disable-inlining')
+      lto_opts.append('-std-link-opts')
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM LTO:', lto_opts
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), lto_opts)
       if DEBUG: save_intermediate('lto', 'bc')
   else:
     # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)

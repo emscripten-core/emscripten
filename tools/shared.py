@@ -540,6 +540,10 @@ class Building:
     return Settings.USE_TYPED_ARRAYS == 2
 
   @staticmethod
+  def can_inline():
+    return Settings.INLINING_LIMIT == 0
+
+  @staticmethod
   def pick_llvm_opts(optimization_level):
     '''
       It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
@@ -556,7 +560,8 @@ class Building:
     opts = []
     if optimization_level > 0:
       if unsafe:
-        opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining, to avoid overly aggressive inlining
+        if not Building.can_inline():
+          opts.append('-disable-inlining')
         # -Ox opts do -globaldce, which removes stuff that is needed for libraries and linkables
         if Building.can_build_standalone():
           opts.append('-O%d' % optimization_level)
@@ -583,7 +588,7 @@ class Building:
         opts.append('-simplifycfg')
 
         opts.append('-prune-eh')
-        if not optimize_size: opts.append('-inline') # The condition here is a difference with LLVM's createStandardAliasAnalysisPasses
+        if Building.can_inline(): opts.append('-inline')
         opts.append('-functionattrs')
         if optimization_level > 2:
           opts.append('-argpromotion')

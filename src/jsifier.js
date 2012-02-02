@@ -628,7 +628,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
       }
 
-      if (func.lines.length >= CLOSURE_INLINE_PREVENTION_LINES) {
+      if (INLINING_LIMIT && func.lines.length >= INLINING_LIMIT) {
         func.JS += func.ident + '["X"]=1;';
       }
 
