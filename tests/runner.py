@@ -5798,7 +5798,7 @@ elif 'benchmark' in str(sys.argv):
       final_filename = os.path.join(dirname, 'src.js')
 
       try_delete(final_filename)
-      output = Popen([EMCC, filename, '-O3', '-s', 'USE_TYPED_ARRAYS=1', '-s', 'QUANTUM_SIZE=1',
+      output = Popen([EMCC, filename, '-O3',
                       '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + '\n'.join(output)
