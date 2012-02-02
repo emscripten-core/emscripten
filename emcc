@@ -239,7 +239,8 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 # ---------------- Utilities ---------------
 
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
-BITCODE_SUFFIXES = ('.bc', '.o', '.ll', '.a', '.dylib')
+BITCODE_SUFFIXES = ('.bc', '.o', '.a', '.dylib')
+ASSEMBLY_SUFFIXES = ('.ll',)
 
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
@@ -376,7 +377,7 @@ try:
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES): # we already removed -o <target>, so all these should be inputs
+    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + ASSEMBLY_SUFFIXES): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
       if os.path.exists(arg):
         if arg.endswith(SOURCE_SUFFIXES):
@@ -384,7 +385,7 @@ try:
           has_source_inputs = True
         else:
           # this should be bitcode, make sure it is valid
-          if arg.endswith('.ll') or shared.Building.is_bitcode(arg):
+          if arg.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg):
             input_files.append(arg)
           else:
             print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
@@ -436,7 +437,7 @@ try:
         print >> sys.stderr, 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
         sys.exit(1)
     else: # bitcode
-      if input_file.endswith(('.bc', '.o')):
+      if input_file.endswith(BITCODE_SUFFIXES):
         if DEBUG: print >> sys.stderr, 'emcc: copying bitcode file: ', input_file
         shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
       else: #.ll

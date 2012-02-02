@@ -4370,9 +4370,6 @@ def process(filename):
 
       poppler = self.get_library('poppler',
                                  [os.path.join('poppler', '.libs', self.get_shared_library_name('libpoppler.so.13')),
-                                  os.path.join('goo', '.libs', 'libgoo.a'),
-                                  os.path.join('fofi', '.libs', 'libfofi.a'),
-                                  os.path.join('splash', '.libs', 'libsplash.a'),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
                                  configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms'])
