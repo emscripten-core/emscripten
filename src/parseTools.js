@@ -1616,7 +1616,9 @@ function processMathop(item) {
       case 'shl':
       case 'ashr':
       case 'lshr': {
-        assert(isNumber(ident2));
+        if (!isNumber(ident2)) {
+          return 'Runtime.bitshift64(' + ident1 + ',"' + op + '",' + stripCorrections(ident2) + '[0]|0)';
+        }
         bits = parseInt(ident2);
         var ander = Math.pow(2, bits)-1;
         if (bits < 32) {
@@ -1892,17 +1894,28 @@ function finalizeBlockAddress(param) {
 
 function stripCorrections(param) {
   var m;
-  if (m = /^\((.*)\)$/.exec(param)) {
-    param = m[1];
-  }
-  if (m = /^\((\w+)\)&\d+$/.exec(param)) {
-    param = m[1];
-  }
-  if (m = /^\((\w+)\)\|0$/.exec(param)) {
-    param = m[1];
-  }
-  if (m = /CHECK_OVERFLOW\(([^,)]*),.*/.exec(param)) {
-    param = m[1];
+  while (true) {
+    if (m = /^\((.*)\)$/.exec(param)) {
+      param = m[1];
+      continue;
+    }
+    if (m = /^\(([$_\w]+)\)&\d+$/.exec(param)) {
+      param = m[1];
+      continue;
+    }
+    if (m = /^\(([$_\w()]+)\)\|0$/.exec(param)) {
+      param = m[1];
+      continue;
+    }
+    if (m = /^\(([$_\w()]+)\)\>>>0$/.exec(param)) {
+      param = m[1];
+      continue;
+    }
+    if (m = /CHECK_OVERFLOW\(([^,)]*),.*/.exec(param)) {
+      param = m[1];
+      continue;
+    }
+    break;
   }
   return param;
 }

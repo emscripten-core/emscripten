@@ -496,7 +496,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
              { 122, 25769803837 },
           };
 
-          int main()
+          int main(int argc, char **argv)
           {
             int64_t x1 = 0x1234def123450789ULL;
             int64_t x2 = 0x1234def123450788ULL;
@@ -533,6 +533,20 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
               printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
             }
 
+            // Nonconstant bitshifts
+            {
+              int64_t a = -1;
+              int64_t b = a >> (29 - argc + 1);
+              int64_t c = a >> (32 - argc + 1);
+              int64_t d = a >> (34 - argc + 1);
+              printf("*%Ld,%Ld,%Ld,%Ld*\n", a, b, c, d);
+              uint64_t ua = -1;
+              int64_t ub = ua >> (29 - argc + 1);
+              int64_t uc = ua >> (32 - argc + 1);
+              int64_t ud = ua >> (34 - argc + 1);
+              printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
+            }
+
             // Math mixtures with doubles
             {
               uint64_t a = 5;
@@ -563,6 +577,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
                          '*127*\n' +
                          '*55,17179869201*\n' +
                          '*122,25769803837*\n' +
+                         '*-1,-1,-1,-1*\n' +
+                         '*-1,34359738367,4294967295,1073741823*\n' +
                          '*-1,-1,-1,-1*\n' +
                          '*-1,34359738367,4294967295,1073741823*\n' +
                          '*prod:34*')

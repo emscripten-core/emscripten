@@ -118,6 +118,41 @@ var Runtime = {
   INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
   FLOAT_TYPES: set('float', 'double'),
 
+  // Mirrors processMathop's treatment of constants (which we optimize directly)
+  bitshift64: function(value, op, bits) {
+    var ander = Math.pow(2, bits)-1;
+    if (bits < 32) {
+      switch (op) {
+        case 'shl':
+          return [value[0] << bits, (value[1] << bits) | ((value[0]&(ander << (32 - bits))) >>> (32 - bits))];
+        case 'ashr':
+          return [(((value[0] >>> bits ) | ((value[1]&ander) << (32 - bits))) >> 0) >>> 0, (value[1] >> bits) >>> 0];
+        case 'lshr':
+          return [((value[0] >>> bits) | ((value[1]&ander) << (32 - bits))) >>> 0, value[1] >>> bits];
+      }
+    } else if (bits == 32) {
+      switch (op) {
+        case 'shl':
+          return [0, value[0]];
+        case 'ashr':
+          return [value[1], (value[1]|0) < 0 ? ander : 0];
+        case 'lshr':
+          return [value[1], 0];
+      }
+    } else { // bits > 32
+      switch (op) {
+        case 'shl':
+          return [0, value[0] << (bits - 32)];
+        case 'ashr':
+          return [(value[1] >> (bits - 32)) >>> 0, (value[1]|0) < 0 ? ander : 0];
+        case 'lshr':
+          return [value[1] >>>  (bits - 32) , 0];
+      }
+    }
+    abort('unknown bitshift64 op: ' + [value, op, bits]);
+  },
+
+  // Imprecise bitops utilities
   or64: function(x, y) {
     var l = (x | 0) | (y | 0);
     var h = (Math.round(x / 4294967296) | Math.round(y / 4294967296)) * 4294967296;
