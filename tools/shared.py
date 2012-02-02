@@ -701,9 +701,14 @@ class Building:
     # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
     try:
       defs = Building.llvm_nm(filename, stderr=PIPE)
-      assert len(defs.defs) + len(defs.undefs) + len(defs.commons) > 0
+      # If no symbols found, it might just be an empty bitcode file, try to dis it
+      if len(defs.defs) + len(defs.undefs) + len(defs.commons) == 0:
+        test_ll = os.path.join(EMSCRIPTEN_TEMP_DIR, 'test.ll')
+        Building.llvm_dis(filename, test_ll)
+        assert os.path.exists(test_ll)
     except:
       return False
+
     # look for magic signature
     b = open(filename, 'r').read(4)
     if b[0] == 'B' and b[1] == 'C':
