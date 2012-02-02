@@ -1103,7 +1103,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
                   if (I64_MODE == 1 && type == 'i64') type = 'i32'; // We have [i64, 0, 0, 0, i32, 0, 0, 0] in the layout at this point
-                  var ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE);
+                  var ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
                   offset += Runtime.getNativeFieldSize(type);
                   return ret;
                 }).filter(function(arg) {

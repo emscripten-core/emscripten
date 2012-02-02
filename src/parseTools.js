@@ -990,7 +990,8 @@ function indexizeFunctions(value, type) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep) {
+  sep = sep || ';';
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -1018,20 +1019,20 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
       var ret = '';
       if (isIntImplemented(type)) {
         if (bytes <= 4) {
-          ret += 'tempBigInt=' + value + ';';
+          ret += 'tempBigInt=' + value + sep;
           for (var i = 0; i < bytes; i++) {
-            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore) + ';';
-            if (i < bytes-1) ret += 'tempBigInt>>=8;';
+            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore) + sep;
+            if (i < bytes-1) ret += 'tempBigInt>>=8' + sep;
           }
         } else {
           assert(bytes == 8);
-          ret += 'tempPair=' + ensureI64_1(value) + ';';
-          ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + ';';
-          ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + ';';
+          ret += 'tempPair=' + ensureI64_1(value) + sep;
+          ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + sep;
+          ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align) + sep;
         }
       } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + ';';
-        ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align);
+        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
+        ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
       }
       return ret;
     }
@@ -1049,7 +1050,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe)
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
-    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ');
+    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join(sep);
     //return '(print("set:"+(' + value + ')+":"+(' + getHeapOffset(offset, type) + ')),' + 
     //        makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ') + ')';
   }
@@ -1107,7 +1108,8 @@ function makeSetValues(ptr, pos, value, type, num, align) {
 
 var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
 
-function makeCopyValues(dest, src, num, type, modifier, align) {
+function makeCopyValues(dest, src, num, type, modifier, align, sep) {
+  sep = sep || ';';
   function unroll(type, num, jump) {
     jump = jump || 1;
     return range(num).map(function(i) {
@@ -1115,11 +1117,11 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
         // Null is special-cased: We copy over all heaps
         return makeGetSlabs(dest, 'null', true).map(function(slab) {
           return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']';
-        }).join('; ') + (SAFE_HEAP ? '; ' + 'SAFE_HEAP_COPY_HISTORY(' + getFastValue(dest, '+', i) + ', ' +  getFastValue(src, '+', i) + ')' : '');
+        }).join(sep) + (SAFE_HEAP ? sep + 'SAFE_HEAP_COPY_HISTORY(' + getFastValue(dest, '+', i) + ', ' +  getFastValue(src, '+', i) + ')' : '');
       } else {
         return makeSetValue(dest, i*jump, makeGetValue(src, i*jump, type), type);
       }
-    }).join('; ');
+    }).join(sep);
   }
   if (USE_TYPED_ARRAYS <= 1) {
     if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
@@ -1140,9 +1142,11 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        if (num <= UNROLL_LOOP_MAX*possibleAlign) {
+        // If we can unroll the loop, do so. Also do so if we must unroll it (we do not create real loops when inlined)
+        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',') {
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
         } else {
+          assert(sep == ';');
           ret.push('for (var $$src = ' + src + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
                             '$$dest = ' + dest + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
                             '$$stop = $$src + ' + Math.floor(num/possibleAlign) + '; $$src < $$stop; $$src++, $$dest++) {\n' +
@@ -1153,7 +1157,7 @@ function makeCopyValues(dest, src, num, type, modifier, align) {
         num %= possibleAlign;
       }
     });
-    return ret.join('; ');
+    return ret.join(sep);
   }
 }
 
