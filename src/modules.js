@@ -37,12 +37,6 @@ var Debugging = {
     var metadataToParentMetadata = {};
     var metadataToFilename = {};
 
-    var structToMemberMeta = {};
-    var memberMetaToStruct = {};
-    var structMetaToStruct = {};
-    var memberMetaToMembers = {};
-    var metadataToMember = {};
-
     var form1 = new RegExp(/^  .*, !dbg !(\d+) *$/);
     var form2 = new RegExp(/^  .*, !dbg !(\d+) *; .*$/);
     var form3 = new RegExp(/^!(\d+) = metadata !{i32 (\d+), (?:i32 \d+|null), metadata !(\d+), .*}$/);
@@ -55,9 +49,6 @@ var Debugging = {
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
     var form6 = new RegExp(/^  (tail )?call void \@llvm.dbg.\w+\(metadata .*$/);
-    var formStruct = /^!(\d+) = metadata !\{i32 \d+, (metadata !\d+|null), metadata !"([^"]+)", metadata !(\d+), (?:i32 \d+|null), i64 \d+, [^,]*, [^,]*, [^,]*, [^,]*, metadata !(\d+), .*}.*$/;
-    var formStructMembers = /^!(\d+) = metadata !\{(.*)\}$/;
-    var formMember = /^!(\d+) = metadata !\{i32 \d+, metadata !\d+, metadata !"([^"]+)", metadata !\d+, (?:i32 \d+|null), i64 \d+, i64 \d+, i64 \d+, .+?, metadata !(\d+)}.*$/;
 
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
@@ -74,29 +65,6 @@ var Debugging = {
         llvmLineToMetadata[i+1] = calc[1];
         lines[i] = line.replace(/, !dbg !\d+/, '');
         continue;
-      }
-      calc = formStruct.exec(line);
-      if (calc) {
-        metadataToParentMetadata[calc[1]] = calc[4];
-        if (!(calc[3] in structToMemberMeta)) {
-          structMetaToStruct[calc[1]] = calc[3];
-          structToMemberMeta[calc[3]] = calc[5];
-          memberMetaToStruct[calc[5]] = calc[1];
-        }
-        skipLine = true;
-      }
-      calc = formStructMembers.exec(line);
-      if (calc) {
-        var children = calc[2].match(/!\d+/g) || [];
-        memberMetaToMembers[calc[1]] = children.map(function(i) {
-          return i.slice(1);
-        });
-        skipLine = true;
-      }
-      calc = formMember.exec(line);
-      if (calc) {
-        metadataToMember[calc[1]] = calc.slice(2);
-        skipLine = true;
       }
       calc = form3.exec(line);
       if (calc) {
@@ -144,35 +112,6 @@ var Debugging = {
         assert(m, 'Confused as to parent metadata for llvm #' + l + ', metadata !' + m);
       }
       this.llvmLineToSourceFile[l] = metadataToFilename[m];
-    }
-
-    // Create struct definitions.
-    // TODO: Account for bitfields.
-    function generateStructDefinition(name) {
-      if (!Types.structMetadata.hasOwnProperty(name)) {
-        var struct = [];
-        var membersMetaId = structToMemberMeta[name];
-        var memberIds = memberMetaToMembers[membersMetaId];
-        for (var i = 0; i < memberIds.length; i++) {
-          var memberId = memberIds[i];
-          if (memberId in metadataToMember) {
-            var member = metadataToMember[memberId];
-            if (member[1] in structMetaToStruct) {
-              var def = generateStructDefinition(structMetaToStruct[member[1]]);
-              var record = {};
-              record[member[0]] = def;
-              struct.push(record);
-            } else {
-              struct.push(member[0]);
-            }
-          }
-        }
-        Types.structMetadata[name] = struct;
-      }
-      return Types.structMetadata[name];
-    }
-    for (var name in structToMemberMeta) {
-      generateStructDefinition(name);
     }
 
     this.on = true;

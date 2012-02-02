@@ -105,4 +105,17 @@ function t() {
     __label__ = 4;
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t"]
+function f2() {
+  var $_pre = HEAPU32[($vla + ($storemerge312 << 2) | 0) >> 2];
+  var $storemerge312 = $storemerge312 + 1 | 0;
+  var $8 = $_pre;
+  c($8);
+}
+function f3($s, $tree, $k) {
+  var $0 = HEAPU32[($s + 2908 + ($k << 2) | 0) >> 2];
+  while (1) {
+    HEAP32[($s + 2908 + ($storemerge_in << 2) | 0) >> 2] = $9;
+  }
+  HEAP32[($s + 2908 + ($storemerge_in << 2) | 0) >> 2] = $0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t", "f2", "f3"]

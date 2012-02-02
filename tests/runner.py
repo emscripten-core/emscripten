@@ -137,7 +137,7 @@ process(sys.argv[1])
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
 
-    Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2) # pick llvm opts here, so we include changes to Settings in the test case code
+    Building.pick_llvm_opts(3) # pick llvm opts here, so we include changes to Settings in the test case code
 
     # Copy over necessary files for compiling the source
     if main_file is None:
@@ -423,6 +423,17 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             #include <stdio.h>
             int main()
             {
+              long long a = 0x2b00505c10;
+              long long b = a >> 29;
+              long long c = a >> 32;
+              long long d = a >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
+              unsigned long long ua = 0x2b00505c10;
+              unsigned long long ub = ua >> 29;
+              unsigned long long uc = ua >> 32;
+              unsigned long long ud = ua >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
+
               long long x = 0x0000def123450789ULL; // any bigger than this, and we
               long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
               printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
@@ -439,7 +450,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
               return 0;
             }
           '''
-          self.do_run(src, '*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
+          self.do_run(src, '*184688860176,344,43,10*\n*184688860176,344,43,10*\n*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
         if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: i64 mode 1 for q1')
 
@@ -508,12 +519,26 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             // global structs with i64s
             printf("*%d,%Ld*\n*%d,%Ld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
 
+            // Bitshifts
+            {
+              int64_t a = -1;
+              int64_t b = a >> 29;
+              int64_t c = a >> 32;
+              int64_t d = a >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\n", a, b, c, d);
+              uint64_t ua = -1;
+              int64_t ub = ua >> 29;
+              int64_t uc = ua >> 32;
+              int64_t ud = ua >> 34;
+              printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
+            }
+
             // Math mixtures with doubles
             {
               uint64_t a = 5;
               double b = 6.8;
               uint64_t c = a * b;
-              printf("*prod:%llu*\n*%d,%d,%d*", c, (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
+              printf("*prod:%llu*\n*%d,%d,%d*\n", c, (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
             }
 
             // Basic (rounded, for now) math. Just check compilation.
@@ -526,11 +551,21 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
             return 0;
           }
         '''
-        self.do_run(src, '*1311918518731868200\n0,0,0,1,1\n1,0,1,0,1*\n*245127260211081*\n*245127260209443*\n' +
-                         '*18446744073709552000*\n*576460752303423500*\n' +
-                         'm1: 127\n*123*\n*127*\n' +
-                         '*55,17179869201*\n*122,25769803837*\n' +
-                         '*prod:34*\n')
+        self.do_run(src, '*1311918518731868200\n' +
+                         '0,0,0,1,1\n' +
+                         '1,0,1,0,1*\n' +
+                         '*245127260211081*\n' +
+                         '*245127260209443*\n' +
+                         '*18446744073709552000*\n' +
+                         '*576460752303423500*\n' +
+                         'm1: 127\n' +
+                         '*123*\n' +
+                         '*127*\n' +
+                         '*55,17179869201*\n' +
+                         '*122,25769803837*\n' +
+                         '*-1,-1,-1,-1*\n' +
+                         '*-1,34359738367,4294967295,1073741823*\n' +
+                         '*prod:34*')
 
         Settings.CORRECT_SIGNS = 1
 
@@ -716,7 +751,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
     def test_bitfields(self):
-        Settings.SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
+        if self.emcc_args is None: Settings.SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
         src = '''
           #include <stdio.h>
           struct bitty {
@@ -4060,7 +4095,7 @@ def process(filename):
         ''', 'hello world');
         
     def test_static_variable(self):
-      Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
       src = '''
         #include <stdio.h>
 
@@ -4127,7 +4162,7 @@ def process(filename):
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
       Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
-      Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
       # Overflows happen in hash loop
       Settings.CORRECT_OVERFLOWS = 1
@@ -4158,7 +4193,7 @@ def process(filename):
         if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
         # Overflows in luaS_newlstr hash loop
-        Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
+        if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
         Settings.CORRECT_OVERFLOWS = 1
         Settings.CHECK_OVERFLOWS = 0
         Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
@@ -4217,7 +4252,7 @@ def process(filename):
       Settings.CORRECT_SIGNS_LINES = pgo_data['signs_lines']
       Settings.CORRECT_OVERFLOWS = 0
       Settings.CORRECT_ROUNDINGS = 0
-      Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
       Settings.DISABLE_EXCEPTION_CATCHING = 1
       Settings.FAST_MEMORY = 4*1024*1024
       Settings.EXPORTED_FUNCTIONS = ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
@@ -4262,7 +4297,7 @@ def process(filename):
                    force_c=True)
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
-      if Building.LLVM_OPTS: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+      if Building.LLVM_OPTS and self.emcc_args is None: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
@@ -4282,15 +4317,12 @@ def process(filename):
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
     def test_poppler(self):
-      if not self.emcc_args == []: return self.skip('very slow, we only do this in default')
-
-      Settings.SAFE_HEAP = 0 # Has variable object
+      if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
 
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CORRECT_SIGNS = 1
 
       Building.COMPILER_TEST_OPTS += [
-        '-I' + path_from_root('tests', 'libcxx', 'include'), # Avoid libstdc++ linking issue, see libcxx test
         '-I' + path_from_root('tests', 'freetype', 'include'),
         '-I' + path_from_root('tests', 'poppler', 'include'),
       ]
@@ -4331,7 +4363,7 @@ def process(filename):
 
       # Combine libraries
 
-      combined = os.path.join(self.get_build_dir(), 'combined.bc')
+      combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
       Building.link([freetype, poppler], combined)
 
       self.do_ll_run(combined,
@@ -4429,11 +4461,11 @@ def process(filename):
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
-      Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
       Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags'] # for the demo
 
-      self.do_ll_run(path_from_root('tests', 'python', 'python.ll'),
+      self.do_ll_run(path_from_root('tests', 'python', 'python.small.bc'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
@@ -4452,6 +4484,9 @@ def process(filename):
         for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
           shortname = name.replace('.ll', '')
           if '' not in shortname: continue
+          if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
+            print self.skip('case "%s" only relevant for ta2' % shortname)
+            continue
           print >> sys.stderr, "Testing case '%s'..." % shortname
           output_file = path_from_root('tests', 'cases', shortname + '.txt')
           if Settings.QUANTUM_SIZE == 1:
@@ -4556,58 +4591,6 @@ def process(filename):
 
       self.do_run(src, '''Profiling data:
 Block 0: ''', post_build=post1)
-
-      # Part 2: old JS version
-
-      Settings.PROFILE = 1
-      Settings.INVOKE_RUN = 0
-
-      src = '''
-          #include <stdio.h>
-
-          int inner1(int x) {
-            for (int i = 0; i < 20; i++)
-              x += x/3;
-            return x;
-          }
-          int inner2(int x) {
-            for (int i = 0; i < 10; i++)
-              x -= x/4;
-            return x;
-          }
-          int inner3(int x) {
-            for (int i = 0; i < 5; i++)
-              x += x/2;
-            x = inner1(x) - inner2(x);
-            for (int i = 0; i < 5; i++)
-              x -= x/2;
-            return x;
-          }
-
-          int main()
-          {
-            int total = 0;
-            for (int i = 0; i < 5000; i++)
-              total += inner1(i) - 4*inner3(i);
-            printf("*%d*\\n", total);
-            return 0;
-          }
-        '''
-
-      post = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(\'\'\'
-    startProfiling();
-    run();
-    stopProfiling();
-    printProfiling();
-    print('*ok*');
-  \'\'\')
-  src.close()
-'''
-
-      self.do_run(src, ': __Z6inner1i (5000)\n', post_build=post)
 
     ### Integration tests
 
@@ -4847,6 +4830,8 @@ Child2:9
 ''', post_build=post2)
 
     def test_typeinfo(self):
+      if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
+
       Settings.RUNTIME_TYPE_INFO = 1
       if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
 
@@ -4879,7 +4864,7 @@ def process(filename):
         print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
         var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
         print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
-        print('|' + JSON.stringify(Runtime.generateStructInfo(null, 'UserStruct')) + '|');
+        print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
       } else {
         print('No type info.');
       }
@@ -5058,6 +5043,8 @@ def process(filename):
         assert 'Assertion failed' in str(e), str(e)
 
     def test_linespecific(self):
+      if self.emcc_args: self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
+
       Settings.CHECK_SIGNS = 0
       Settings.CHECK_OVERFLOWS = 0
 
@@ -5235,8 +5222,9 @@ def process(filename):
 
       def check(output):
         # TODO: check the line #
-        assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections: ' + output
-        assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections: ' + output
+        if self.emcc_args is None or self.emcc_args == []: # LLVM full opts optimize out some corrections
+          assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections: ' + output
+          assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections: ' + output
         return output
 
       self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
@@ -5331,7 +5319,7 @@ class %s(T):
     else:
       Settings.I64_MODE = 0
 
-    Building.pick_llvm_opts(3, safe=Building.LLVM_OPTS != 2)
+    Building.pick_llvm_opts(3)
 
 TT = %s
 ''' % (fullname, fullname, fullname, compiler, str(emcc_args), llvm_opts, embetter, quantum_size, typed_arrays, fullname))
@@ -5364,9 +5352,14 @@ TT = %s
 
   class other(RunnerCore):
     def test_emcc(self):
+      emcc_debug = os.environ.get('EMCC_DEBUG')
+
       def clear():
         for name in os.listdir(self.get_dir()):
           try_delete(name)
+        if emcc_debug:
+          for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
+            try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
       for compiler in [EMCC, EMXX]:
         shortcompiler = os.path.basename(compiler)
@@ -5408,7 +5401,7 @@ Options that are modified or new in %s include:
         self.assertNotContained('IOError', output[1]) # no python stack
         self.assertNotContained('Traceback', output[1]) # no python stack
         self.assertContained('error: invalid preprocessing directive', output[1])
-        self.assertContained('''error: use of undeclared identifier 'cheez''', output[1])
+        self.assertContained("error: use of undeclared identifier 'cheez", output[1])
         self.assertContained('2 errors generated', output[1])
         assert output[1].split('2 errors generated.')[1].replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
 
@@ -5509,8 +5502,9 @@ Options that are modified or new in %s include:
             # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
             assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated, 'micro opts should always be on'
-            if opt_level >= 1: assert 'HEAP8[HEAP32[' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
+            assert 'var $i;' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
+            if opt_level >= 1:
+              assert 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + $storemerge4 / 2 | 0]' in generated or 'HEAP8[$vla1 + ($storemerge4 / 2 | 0)]' in generated or 'HEAP8[$vla1 + $i_04 / 2 | 0]' in generated or 'HEAP8[$vla1 + ($i_04 / 2 | 0)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
@@ -5689,6 +5683,11 @@ f.close()
       ]:
         output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
+
+    def test_reminder(self):
+      assert False, 'Optimize makeGet/SetValue to do 16-bit reads/writes when possible, not just 8'
+      assert False, 'Ensure all opts including linktime apply to bindings generator. might need to adjust visibility of bindings C funcs'
+      assert False, 'Optimize double version of fasta benchmark'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
@@ -5937,16 +5936,15 @@ elif 'benchmark' in str(sys.argv):
       '''
       self.do_benchmark(src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
-    def fasta(self, emcc_args=[]):
-      src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
-      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''',
-                        emcc_args=emcc_args)
+    def fasta(self, double_rep):
+      src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
+      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
-    def test_fasta(self):
-      self.fasta()
+    def test_fasta_float(self):
+      self.fasta('float')
 
-    def zzztest_fasta_t2(self):
-      self.fasta(emcc_args=['-s', 'USE_TYPED_ARRAYS=2', '-s', 'QUANTUM_SIZE=4'])
+    def zzztest_fasta_double(self):
+      self.fasta('double')
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
@@ -6132,10 +6130,14 @@ elif 'sanity' in str(sys.argv):
         assert not os.path.exists(EMCC_CACHE)
         try_delete('a.out.js')
 
+        basebc_name = os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-basebc.bc')
+        dcebc_name = os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-1-dce.bc')
+
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
-            try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-bc.bc')) # we might need to check this file later
+            try_delete(basebc_name) # we might need to check this file later
+            try_delete(dcebc_name) # we might need to check this file later
             output = self.do([EMCC, path_from_root('tests', filename)])
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'dlmalloc':
@@ -6148,7 +6150,8 @@ elif 'sanity' in str(sys.argv):
             assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
             if libname == 'libcxx':
               assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 4000000, 'libc++ is big'
-              assert os.stat(os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-bc.bc')).st_size < 2000000, 'Dead code elimination must remove most of libc++'
+              assert os.stat(basebc_name).st_size > 4000000, 'libc++ is indeed big'
+              assert os.stat(dcebc_name).st_size < 2000000, 'Dead code elimination must remove most of libc++'
       finally:
         if emcc_debug:
           os.environ['EMCC_DEBUG'] = emcc_debug

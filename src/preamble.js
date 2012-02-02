@@ -344,13 +344,6 @@ var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI
 #if I64_MODE == 1
 var tempI64, tempI64b;
 #endif
-#if DOUBLE_MODE == 1
-#if USE_TYPED_ARRAYS == 2
-var tempDoubleBuffer = new ArrayBuffer(8);
-var tempDoubleI32 = new Int32Array(tempDoubleBuffer);
-var tempDoubleF64 = new Float64Array(tempDoubleBuffer);
-#endif
-#endif
 
 function abort(text) {
   print(text + ':\n' + (new Error).stack);
@@ -369,6 +362,7 @@ function assert(condition, text) {
 // makeSetValue is done at compile-time and generates the needed
 // code then, whereas this function picks the right code at
 // run-time.
+// Note that setValue and getValue only do *aligned* writes and reads!
 
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
@@ -647,6 +641,31 @@ Module['HEAPF32'] = HEAPF32;
 
 STACK_ROOT = STACKTOP = Runtime.alignMemory(STATICTOP);
 STACK_MAX = STACK_ROOT + TOTAL_STACK;
+
+#if USE_TYPED_ARRAYS == 2
+var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
+var tempDoubleI8  = HEAP8.subarray(tempDoublePtr);
+var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
+var tempDoubleF32 = HEAPF32.subarray(tempDoublePtr >> 2);
+var tempDoubleF64 = new Float64Array(HEAP8.buffer).subarray(tempDoublePtr >> 3);
+function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
+  tempDoubleI8[0] = HEAP8[ptr];
+  tempDoubleI8[1] = HEAP8[ptr+1];
+  tempDoubleI8[2] = HEAP8[ptr+2];
+  tempDoubleI8[3] = HEAP8[ptr+3];
+}
+function copyTempDouble(ptr) {
+  tempDoubleI8[0] = HEAP8[ptr];
+  tempDoubleI8[1] = HEAP8[ptr+1];
+  tempDoubleI8[2] = HEAP8[ptr+2];
+  tempDoubleI8[3] = HEAP8[ptr+3];
+  tempDoubleI8[4] = HEAP8[ptr+4];
+  tempDoubleI8[5] = HEAP8[ptr+5];
+  tempDoubleI8[6] = HEAP8[ptr+6];
+  tempDoubleI8[7] = HEAP8[ptr+7];
+}
+STACK_MAX = tempDoublePtr + 8;
+#endif
 
 STATICTOP = alignMemoryPage(STACK_MAX);
 

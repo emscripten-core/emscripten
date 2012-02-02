@@ -71,7 +71,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
     } else {
-      libFuncsToInclude = ['memset', 'malloc', 'free'];
+      libFuncsToInclude = ['memcpy', 'memset', 'malloc', 'free'];
     }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
@@ -719,6 +719,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     });
   }
+  makeFuncLineActor('value', function(item) {
+    return item.ident;
+  });
   makeFuncLineActor('noop', function(item) {
     return ';';
   });
@@ -824,7 +827,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     labelSets.forEach(function(labelSet) {
       walkInterdata(labelSet.value, function mark(item) {
-        if (item.intertype == 'value' && item.ident in deps) {
+        if (item.intertype == 'value' && item.ident in deps && labelSet.ident != item.ident) {
           deps[labelSet.ident][item.ident] = true;
         }
       });
@@ -845,7 +848,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
       // If we got here, we have circular dependencies, and must break at least one.
-      pre = 'var ' + idents[0] + '$phi = ' + valueJSes[idents[i]] + ';' + pre;
+      pre = 'var ' + idents[0] + '$phi = ' + valueJSes[idents[0]] + ';' + pre;
       post += 'var ' + idents[0] + ' = ' + idents[0] + '$phi;';
       remove(idents[0]);
     }
@@ -1029,7 +1032,10 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('mathop', processMathop);
 
   makeFuncLineActor('bitcast', function(item) {
-    return finalizeLLVMParameter(item.params[0]);
+    return processMathop({
+      op: 'bitcast', variant: null, type: item.type,
+      param1: item.params[0]
+    });
   });
 
   function makeFunctionCall(ident, params, funcData, type) {

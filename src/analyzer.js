@@ -67,7 +67,7 @@ function analyzer(data, sidePass) {
         if (subItem.intertype == 'function') {
           item.functions.push(subItem);
           subItem.endLineNum = null;
-          subItem.lines = [];
+          subItem.lines = []; // We will fill in the function lines after the legalizer, since it can modify them
           subItem.labels = [];
 
           // no explicit 'entry' label in clang on LLVM 2.8 - most of the time, but not all the time! - so we add one if necessary
@@ -87,7 +87,6 @@ function analyzer(data, sidePass) {
         } else if (item.functions.length > 0 && item.functions.slice(-1)[0].endLineNum === null) {
           // Internal line
           if (!currLabelFinished) {
-            item.functions.slice(-1)[0].lines.push(subItem);
             item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem); // If this line fails, perhaps missing a label? LLVM_STYLE related?
             if (subItem.intertype === 'branch') {
               currLabelFinished = true;
@@ -100,7 +99,352 @@ function analyzer(data, sidePass) {
         }
       }
       delete item.items;
-      this.forwardItem(item, 'Typevestigator');
+      this.forwardItem(item, 'Legalizer');
+    }
+  });
+
+  // Legalize LLVM unrealistic types into realistic types.
+  //
+  // With full LLVM optimizations, it can generate types like i888 which do not exist in
+  // any actual hardware implementation, but are useful during optimization. LLVM then
+  // legalizes these types into real ones during code generation. Sadly, there is no LLVM
+  // IR pass to legalize them, which would have been useful and nice from a design perspective.
+  // The LLVM community is also not interested in receiving patches to implement that
+  // functionality, since it would duplicate existing code from the code generation
+  // component. Therefore, we implement legalization here in Emscripten.
+  //
+  // Currently we just legalize completely unrealistic types into bundles of i32s, and just
+  // the most common instructions that can be involved with such types: load, store, shifts,
+  // trunc and zext.
+  //
+  // TODO: Expand this also into legalization of i64 into i32,i32, which can then
+  //       replace our i64 mode 1 implementation. Legalizing i64s is harder though
+  //       as they can appear in function arguments and we would also need to implement
+  //       an unfolder (to uninline inline LLVM function calls, so that each LLVM line
+  //       has a single LLVM instruction).
+  substrate.addActor('Legalizer', {
+    processItem: function(data) {
+      // Legalization
+      if (USE_TYPED_ARRAYS == 2) {
+        function isIllegalType(type) {
+          return getBits(type) > 64;
+        }
+        function getLegalVars(base, bits) {
+          if (isNumber(base)) {
+            return getLegalLiterals(base, bits);
+          }
+          var ret = new Array(Math.ceil(bits/32));
+          var i = 0;
+          while (bits > 0) {
+            ret[i] = { ident: base + '$' + i, bits: Math.min(32, bits) };
+            bits -= 32;
+            i++;
+          }
+          return ret;
+        }
+        function getLegalLiterals(text, bits) {
+          var parsed = parseArbitraryInt(text, bits);
+          var ret = new Array(Math.ceil(bits/32));
+          var i = 0;
+          while (bits > 0) {
+            ret[i] = { ident: parsed[i].toString(), bits: Math.min(32, bits) };
+            bits -= 32;
+            i++;
+          }
+          return ret;
+        }
+        // Unfolds internal inline llvmfunc calls, for example x = load (bitcast y)
+        // will become temp = y \n x = load temp
+        // @return The index of the original line, after the unfolding. In the example
+        //         above, the index returned will be the new index of the line with `load',
+        //         that is, i+1.
+        function unfold(lines, i, item, slot) {
+          if (item[slot].intertype == 'value') return i;
+          // TODO: unfold multiple slots at once
+          var tempIdent = '$$emscripten$temp$' + i;
+          lines.splice(i, 0, {
+            intertype: 'assign',
+            ident: tempIdent,
+            value: item[slot],
+            lineNum: lines[i].lineNum - 0.5
+          });
+          item[slot] = { intertype: 'value', ident: tempIdent, type: item[slot].type };
+          return i+1;
+        }
+        data.functions.forEach(function(func) {
+          func.labels.forEach(function(label) {
+            var i = 0, bits;
+            while (i < label.lines.length) {
+              var item = label.lines[i];
+              if (item.intertype == 'store') {
+                if (isIllegalType(item.valueType)) {
+                  dprint('legalizer', 'Legalizing store at line ' + item.lineNum);
+                  i = unfold(label.lines, i, item, 'value');
+                  label.lines.splice(i, 1);
+                  bits = getBits(item.valueType);
+                  var elements;
+                  elements = getLegalVars(item.value.ident, bits);
+                  var j = 0;
+                  elements.forEach(function(element) {
+                    var tempVar = '$st$' + i + '$' + j;
+                    label.lines.splice(i+j*2, 0, {
+                      intertype: 'assign',
+                      ident: tempVar,
+                      value: {
+                        intertype: 'getelementptr',
+                        ident: item.pointer.ident,
+                        type: '[0 x i32]*',
+                        params: [
+                          { intertype: 'value', ident: item.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
+                          { intertype: 'value', ident: '0', type: 'i32' },
+                          { intertype: 'value', ident: j.toString(), type: 'i32' }
+                        ],
+                      },
+                      lineNum: item.lineNum + (j/100)
+                    });
+                    var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
+                    label.lines.splice(i+j*2+1, 0, {
+                      intertype: 'store',
+                      valueType: actualSizeType,
+                      value: { intertype: 'value', ident: element.ident, type: actualSizeType },
+                      pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
+                      ident: tempVar,
+                      pointerType: actualSizeType + '*',
+                      align: item.align,
+                      lineNum: item.lineNum + ((j+0.5)/100)
+                    });
+                    j++;
+                  });
+                  Types.needAnalysis['[0 x i32]'] = 0;
+                  i += j*2;
+                  continue;
+                }
+              } else if (item.intertype == 'assign') {
+                var value = item.value;
+                switch (value.intertype) {
+                  case 'load': {
+                    if (isIllegalType(value.valueType)) {
+                      dprint('legalizer', 'Legalizing load at line ' + item.lineNum);
+                      i = unfold(label.lines, i, value, 'pointer');
+                      label.lines.splice(i, 1);
+                      bits = getBits(value.valueType);
+//                      assert(value.pointer.intertype == 'value', 'TODO: unfolding');
+                      var elements = getLegalVars(item.ident, bits);
+                      var j = 0;
+                      elements.forEach(function(element) {
+                        var tempVar = '$st$' + i + '$' + j;
+                        label.lines.splice(i+j*2, 0, {
+                          intertype: 'assign',
+                          ident: tempVar,
+                          value: {
+                            intertype: 'getelementptr',
+                            ident: value.pointer.ident,
+                            type: '[0 x i32]*',
+                            params: [
+                              { intertype: 'value', ident: value.pointer.ident, type: '[0 x i32]*' }, // technically bitcast is needed in llvm, but not for us
+                              { intertype: 'value', ident: '0', type: 'i32' },
+                              { intertype: 'value', ident: j.toString(), type: 'i32' }
+                            ],
+                          },
+                          lineNum: item.lineNum + (j/100)
+                        });
+                        var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
+                        label.lines.splice(i+j*2+1, 0, {
+                          intertype: 'assign',
+                          ident: element.ident,
+                          value: {
+                            intertype: 'load',
+                            pointerType: actualSizeType + '*',
+                            valueType: actualSizeType,
+                            type: actualSizeType, // XXX why is this missing from intertyper?
+                            pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
+                            ident: tempVar,
+                            pointerType: actualSizeType + '*',
+                            align: value.align,
+                          },
+                          lineNum: item.lineNum + ((j+0.5)/100)
+                        });
+                        j++;
+                      });
+                      Types.needAnalysis['[0 x i32]'] = 0;
+                      i += j*2;
+                      continue;
+                    }
+                  }
+                  case 'mathop': {
+                    if (isIllegalType(value.type)) {
+                      dprint('legalizer', 'Legalizing mathop at line ' + item.lineNum);
+                      label.lines.splice(i, 1);
+                      var toAdd = [];
+                      assert(value.param1.intertype == 'value', 'TODO: unfolding');
+                      var sourceBits = getBits(value.param1.type);
+                      var sourceElements;
+                      if (sourceBits <= 64) {
+                        // The input is a legal type
+                        if (sourceBits <= 32) {
+                          sourceElements = [{ ident: value.param1.ident, bits: sourceBits }];
+                        } else if (sourceBits == 64 && I64_MODE == 1) {
+                          sourceElements = [{ ident: value.param1.ident + '[0]', bits: 32 },
+                                            { ident: value.param1.ident + '[1]', bits: 32 }];
+                          // Add the source element as a param so that it is not eliminated as unneeded (the idents are not a simple ident here)
+                          toAdd.push({
+                            intertype: 'value', ident: ';', type: 'rawJS',
+                            params: [{ intertype: 'value', ident: value.param1.ident, type: 'i32' }]
+                          });
+                        } else {
+                          throw 'Invalid legal type as source of legalization ' + sourceBits;
+                        }
+                      } else {
+                        sourceElements = getLegalVars(value.param1.ident, sourceBits);
+                      }
+                      // All mathops can be parametrized by how many shifts we do, and how big the source is
+                      var shifts = 0;
+                      var targetBits;
+                      var processor = null;
+                      switch (value.op) {
+                        case 'lshr': {
+                          assert(value.param2.intertype == 'value', 'TODO: unfolding');
+                          shifts = parseInt(value.param2.ident);
+                          targetBits = sourceBits;
+                          break;
+                        }
+                        case 'shl': {
+                          assert(value.param2.intertype == 'value', 'TODO: unfolding');
+                          shifts = -parseInt(value.param2.ident);
+                          targetBits = sourceBits;
+                          break;
+                        }
+                        case 'trunc': case 'zext': {
+                          assert(value.param2.intertype == 'type' || value.param2.intertype == 'value', 'TODO: unfolding');
+                          targetBits = getBits(value.param2.ident);
+                          break;
+                        }
+                        case 'or': case 'and': case 'xor': {
+                          targetBits = sourceBits;
+                          var otherElements = getLegalVars(value.param2.ident, sourceBits);
+                          processor = function(result, j) {
+                            return {
+                              intertype: 'mathop',
+                              op: value.op,
+                              type: 'i' + otherElements[j].bits,
+                              param1: result,
+                              param2: { intertype: 'value', ident: otherElements[j].ident, type: 'i' + otherElements[j].bits }
+                            };                            
+                          };
+                          break;
+                        }
+                        default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum, dump(item)];
+                      }
+                      // Do the legalization
+                      assert(isNumber(shifts), 'TODO: handle nonconstant shifts');
+                      var targetElements = getLegalVars(item.ident, targetBits);
+                      var sign = shifts >= 0 ? 1 : -1;
+                      var shiftOp = shifts >= 0 ? 'shl' : 'lshr';
+                      var shiftOpReverse = shifts >= 0 ? 'lshr' : 'shl';
+                      var whole = shifts >= 0 ? Math.floor(shifts/32) : Math.ceil(shifts/32);
+                      var fraction = Math.abs(shifts % 32);
+                      for (var j = 0; j < targetElements.length; j++) {
+                        var result = {
+                          intertype: 'value',
+                          ident: (j + whole >= 0 && j + whole < sourceElements.length) ? sourceElements[j + whole].ident : '0',
+                          type: 'i32',
+                        };
+                        if (fraction != 0) {
+                          var other = {
+                            intertype: 'value',
+                            ident: (j + sign + whole >= 0 && j + sign + whole < sourceElements.length) ? sourceElements[j + sign + whole].ident : '0',
+                            type: 'i32',
+                          };
+                          other = {
+                            intertype: 'mathop',
+                            op: shiftOp,
+                            type: 'i32',
+                            param1: other,
+                            param2: { intertype: 'value', ident: (32 - fraction).toString(), type: 'i32' }
+                          };
+                          result = {
+                            intertype: 'mathop',
+                            op: shiftOpReverse,
+                            type: 'i32',
+                            param1: result,
+                            param2: { intertype: 'value', ident: fraction.toString(), type: 'i32' }
+                          };
+                          result = {
+                            intertype: 'mathop',
+                            op: 'or',
+                            type: 'i32',
+                            param1: result,
+                            param2: other
+                          }
+                        }
+                        if (targetElements[j].bits < 32 && shifts < 0) {
+                          // truncate bits that fall off the end. This is not needed in most cases, can probably be optimized out
+                          result = {
+                            intertype: 'mathop',
+                            op: 'and',
+                            type: 'i32',
+                            param1: result,
+                            param2: { intertype: 'value', ident: (Math.pow(2, targetElements[j].bits)-1).toString(), type: 'i32' }
+                          }
+                        }
+                        if (processor) {
+                          result = processor(result, j);
+                        }
+                        toAdd.push({
+                          intertype: 'assign',
+                          ident: targetElements[j].ident,
+                          value: result,
+                          lineNum: item.lineNum + (j/100)
+                        });
+                      }
+                      if (targetBits <= 64) {
+                        // We are generating a normal legal type here
+                        var legalValue;
+                        if (targetBits == 64 && I64_MODE == 1) {
+                          // Generate an i64-1 [low,high]. This will be unnecessary when we legalize i64s
+                          legalValue = {
+                            intertype: 'value',
+                            ident: '[' + targetElements[0].ident + ',' + targetElements[1].ident + ']',
+                            type: 'rawJS',
+                            // Add the target elements as params so that they are not eliminated as unneeded (the ident is not a simple ident here)
+                            params: targetElements.map(function(element) {
+                              return { intertype: 'value', ident: element.ident, type: 'i32' };
+                            })
+                          };
+                        } else if (targetBits <= 32) {
+                          legalValue = { intertype: 'value', ident: targetElements[0].ident, type: 'rawJS' };
+                          // truncation to smaller than 32 bits has already been done, if necessary
+                        } else {
+                          throw 'Invalid legal type as target of legalization ' + targetBits;
+                        }
+                        toAdd.push({
+                          intertype: 'assign',
+                          ident: item.ident,
+                          value: legalValue,
+                          lineNum: item.lineNum + ((j+1)/100)
+                        });
+                      }
+                      Array.prototype.splice.apply(label.lines, [i, 0].concat(toAdd));
+                      i += toAdd.length;
+                      continue;
+                    }
+                  }
+                }
+              }
+              i++;
+              continue;
+            }
+          });
+        });
+      }
+
+      // Add function lines to func.lines, after our modifications to the label lines
+      data.functions.forEach(function(func) {
+        func.labels.forEach(function(label) {
+          func.lines = func.lines.concat(label.lines);
+        });
+      });
+      this.forwardItem(data, 'Typevestigator');
     }
   });
 
@@ -463,6 +807,12 @@ function analyzer(data, sidePass) {
       item.functions.forEach(function(func) {
         func.lines.forEach(function(line, i) {
           if (line.intertype === 'assign' && line.value.intertype === 'load') {
+            // Floats have no concept of signedness. Mark them as 'signed', which is the default, for which we do nothing
+            if (line.value.type in Runtime.FLOAT_TYPES) {
+              line.value.unsigned = false;
+              return;
+            }
+            // Booleans are always unsigned
             var data = func.variables[line.ident];
             if (data.type === 'i1') {
               line.value.unsigned = true;

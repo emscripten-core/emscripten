@@ -26,11 +26,8 @@ it runs
   python $(EMSCRIPTEN_TOOLS)/exec_llvm.py THE_FILE PARAMS
 
 An alternative solution to this problem is to compile
-the .ll into native code. This can be done as follows:
-
- * Use llc to generate x86 asm
- * Use as to generate an object file
- * Use g++ to link it to an executable
+the .ll into native code, see nativize_llvm.py. That is
+useful when this fails.
 '''
 
 import os, sys

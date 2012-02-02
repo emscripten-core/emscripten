@@ -73,6 +73,15 @@ var RuntimeGenerator = {
       quantum = '(quantum ? quantum : {{{ QUANTUM_SIZE }}})';
     }
     return target + ' = ' + Runtime.forceAlign(target, quantum);
+  },
+
+  // Given two 32-bit unsigned parts of an emulated 64-bit number, combine them into a JS number (double).
+  // Rounding is inevitable if the number is large. This is a particular problem for small negative numbers
+  // (-1 will be rounded!), so handle negatives separately and carefully
+  makeBigInt: function(low, high, unsigned) {
+    return '(' + unsigned +
+           ' ? (' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 'un', 1, 1) + '*4294967296))' +
+           ' : (' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 're', 1, 1) + '*4294967296)))';
   }
 };
 
@@ -203,14 +212,14 @@ var Runtime = {
   // ) will return
   //    { field1: 0, field2: 4 } (depending on QUANTUM_SIZE)
   //
-  // You can optionally provide a type name as a second parameter. In that
-  // case, you do not need to provide the types. If the .ll contains debugging
-  // symbols (i.e. it was compiled with the -g flag), you can leave the struct
-  // parameter entirely empty, for example:
-  //   generateStructInfo(null, '%struct.UserStructType');
-  // If the compilation was done without symbols, you will still need to provide
-  // the names, since they are not present in the .ll, for example:
-  //   generateStructInfo(['field1', 'field2'], '%struct.UserStructType');
+  // Instead of [type, name], you can also provide just [name]. In that case
+  // it will use type information present in LLVM bitcode. (It is safer to
+  // specify the type though, as it will then check the type.) You must then
+  // also specify the second parameter to generateStructInfo, which is the
+  // LLVM structure name.
+  //
+  // Note that LLVM optimizations can remove some of the debug info generated
+  // by -g.
   //
   // Note that you will need the full %struct.* name here at compile time,
   // but not at runtime. The reason is that during compilation we cannot
@@ -226,9 +235,7 @@ var Runtime = {
       offset = offset || 0;
       type = (typeof Types === 'undefined' ? Runtime.typeInfo : Types.types)[typeName];
       if (!type) return null;
-      if (!struct) struct = (typeof Types === 'undefined' ? Runtime : Types).structMetadata[typeName.replace(/.*\./, '')];
-      if (!struct) return null;
-      assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName + '. Perhaps due to inheritance, which is not supported yet?');
+      assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName);
       alignment = type.flatIndexes;
     } else {
       var type = { fields: struct.map(function(item) { return item[0] }) };
@@ -260,6 +267,7 @@ var Runtime = {
 Runtime.stackAlloc = unInline('stackAlloc', ['size']);
 Runtime.staticAlloc = unInline('staticAlloc', ['size']);
 Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum']);
+Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned']);
 
 function getRuntime() {
   var ret = 'var Runtime = {\n';

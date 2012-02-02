@@ -1,4 +1,7 @@
 
+#ifndef _SYS_STATVFS_H
+#define _SYS_STATVFS_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,5 +24,7 @@ int statvfs(char *path, struct statvfs *s);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 

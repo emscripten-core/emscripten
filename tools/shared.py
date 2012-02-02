@@ -439,10 +439,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
-      Building.configure(configure + configure_args, stdout=open(os.path.join(output_dir, 'configure_'), 'w'),
-                                                     stderr=open(os.path.join(output_dir, 'configure_err'), 'w'), env=env)
-    Building.make(make + make_args, stdout=open(os.path.join(output_dir, 'make_'), 'w'),
-                                    stderr=open(os.path.join(output_dir, 'make_err'), 'w'), env=env)
+      Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
+                                                     stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
+    Building.make(make + make_args, stdout=open(os.path.join(project_dir, 'make_'), 'w'),
+                                    stderr=open(os.path.join(project_dir, 'make_err'), 'w'), env=env)
     bc_file = os.path.join(project_dir, 'bc.bc')
     Building.link(generated_libs, bc_file)
     if cache is not None:
@@ -453,6 +453,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
 
   @staticmethod
   def link(files, target):
+    try_delete(target)
     output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
@@ -470,9 +471,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
   # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
   #            optimization passes passed to llvm opt
   @staticmethod
-  def llvm_opt(filename, opts, safe=True):
+  def llvm_opt(filename, opts):
     if type(opts) is int:
-      opts = Building.pick_llvm_opts(opts, safe)
+      opts = Building.pick_llvm_opts(opts)
     output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
     shutil.move(filename + '.opt.bc', filename)
@@ -558,7 +559,15 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
     return filename + '.o.js'
 
   @staticmethod
-  def pick_llvm_opts(optimization_level, safe=True):
+  def can_build_standalone():
+    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
+
+  @staticmethod
+  def can_use_unsafe_opts():
+    return Settings.USE_TYPED_ARRAYS == 2
+
+  @staticmethod
+  def pick_llvm_opts(optimization_level):
     '''
       It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
       (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
@@ -569,25 +578,29 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
 
         llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
+    assert 0 <= optimization_level <= 3
+    unsafe = Building.can_use_unsafe_opts()
     opts = []
     if optimization_level > 0:
-      #opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining
-      if not safe:
-        #opts.append('-O%d' % optimization_level)
-        opts.append('-std-compile-opts')
-        opts.append('-std-link-opts')
-        print 'Unsafe:', opts,
+      if unsafe:
+        opts.append('-disable-inlining') # we prefer to let closure compiler do our inlining, to avoid overly aggressive inlining
+        # -Ox opts do -globaldce, which removes stuff that is needed for libraries and linkables
+        if Building.can_build_standalone():
+          opts.append('-O%d' % optimization_level)
+        else:
+          opts.append('-std-compile-opts')
+        #print '[unsafe: %s]' % ','.join(opts)
       else:
-        allow_nonportable = not safe
+        allow_nonportable = False
         optimize_size = True
-        use_aa = not safe
+        use_aa = False
 
         # PassManagerBuilder::populateModulePassManager
         if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
           opts.append('-tbaa')
           opts.append('-basicaa') # makes fannkuch slow but primes fast
 
-        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+        if Building.can_build_standalone():
           opts.append('-internalize')
 
         opts.append('-globalopt')
@@ -647,7 +660,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
 
         opts.append('-strip-dead-prototypes')
 
-        if not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE:
+        if Building.can_build_standalone():
           opts.append('-globaldce')
 
         if optimization_level > 1: opts.append('-constmerge')
