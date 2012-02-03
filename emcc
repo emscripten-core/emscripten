@@ -78,6 +78,17 @@ import os, sys, shutil, tempfile
 from subprocess import Popen, PIPE, STDOUT
 from tools import shared
 
+# Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
+# levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
+# llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
+# level)
+LLVM_OPT_LEVEL = {
+  0: 0,
+  1: 1,
+  2: 3,
+  3: 3,
+}
+
 DEBUG = os.environ.get('EMCC_DEBUG')
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
@@ -85,9 +96,15 @@ LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll 
                                                            # specific need.
                                                            # One major limitation with this mode is that dlmalloc and libc++ cannot be
                                                            # added in. Also, LLVM optimizations will not be done, nor dead code elimination
+AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
+                                             # Note that this will disable inclusion of libraries. This is useful because including
+                                             # dlmalloc makes it hard to compare native and js builds
 
 if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
 if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
+
+stdout = PIPE if not DEBUG else None # suppress output of child processes
+stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 
 shared.check_sanity()
 
@@ -115,7 +132,7 @@ Most normal gcc/g++ options will work, for example:
 
 Options that are modified or new in %s include:
   -O0                      No optimizations (default)
-  -O1                      Simple optimizations, including safe LLVM
+  -O1                      Simple optimizations, including LLVM -O1
                            optimizations, and no runtime assertions
                            or C++ exception catching (to re-enable
                            C++ exception catching, use
@@ -124,7 +141,8 @@ Options that are modified or new in %s include:
                            compiling to JavaScript, not to intermediate
                            bitcode.
   -O2                      As -O1, plus the relooper (loop recreation),
-                           plus closure compiler advanced opts
+                           plus closure compiler advanced opts, plus
+                           LLVM -O2 optimizations
                            Warning: Compiling with this takes a long time!
   -O3                      As -O2, plus dangerous optimizations that may
                            break the generated code! If that happens, try
@@ -136,11 +154,9 @@ Options that are modified or new in %s include:
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
   --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
-                           1: Safe/portable LLVM optimizations
-                              (default in -O1 and above)
-                           2: Full, unsafe/unportable LLVM optimizations;
-                              this will almost certainly break the
-                              generated code!
+                           1: -O1 LLVM optimizations (default in -O1)
+                           2: -O2 LLVM optimizations
+                           3: -O3 LLVM optimizations (default in -O2+)
   --closure <on>           0: No closure compiler (default in -O0, -O1)
                            1: Run closure compiler (default in -O2, -O3)
   --js-transform <cmd>     <cmd> will be called on the generated code
@@ -231,8 +247,6 @@ def unsuffixed(name):
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
-LLVM_INTERNAL_OPT_LEVEL = 2
-
 # ---------------- End configs -------------
 
 if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
@@ -286,7 +300,7 @@ try:
   newargs = sys.argv[1:]
 
   opt_level = 0
-  llvm_opt_level = None
+  llvm_opts = None
   closure = None
   js_transform = None
   compress_whitespace = None
@@ -305,8 +319,7 @@ try:
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
-      llvm_opt_level = eval(newargs[i+1])
-      assert 0 <= llvm_opt_level <= 1, 'Only two levels of LLVM optimizations are supported so far, 0 (none) and 1 (safe)'
+      llvm_opts = eval(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--closure'):
@@ -337,7 +350,7 @@ try:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
-  if llvm_opt_level is None: llvm_opt_level = 1 if opt_level >= 1 else 0
+  if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if closure is None: closure = 1 if opt_level >= 2 else 0
   if compress_whitespace is None:
     compress_whitespace = closure # if closure is run, compress whitespace
@@ -374,9 +387,9 @@ try:
           if arg.endswith('.ll') or shared.Building.is_bitcode(arg):
             input_files.append(arg)
           else:
-            print >> sys.stderr, 'emcc: %s: Not valid LLVM bitcode' % arg
+            print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
       else:
-        print >> sys.stderr, 'emcc: %s: No such file or directory' % arg
+        print >> sys.stderr, 'emcc: %s: warning: No such file or directory' % arg
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   assert len(input_files) > 0, 'emcc: no input files'
@@ -435,7 +448,7 @@ try:
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in ['js', 'html']:
-    if llvm_opt_level > 0:
+    if llvm_opts > 0:
       print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
     if not specified_target:
       for input_file in input_files:
@@ -460,7 +473,7 @@ try:
 
   extra_files_to_link = []
 
-  if not LEAVE_INPUTS_RAW:
+  if not LEAVE_INPUTS_RAW and not AUTODEBUG:
     # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
     # compile a malloc implementation and stdlibc++.)
     # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
@@ -469,9 +482,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=PIPE, stderr=PIPE).communicate()
+      Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr).communicate()
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      Popen([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=PIPE, stderr=PIPE).communicate()
+      Popen([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr).communicate()
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
@@ -530,27 +543,13 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
     shared.Building.link(linker_inputs,
                          in_temp(target_basename + '.bc'))
-    # TODO: LLVM link-time opts? here and/or elsewhere?
+    final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
       shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
-
-  # Optimize, if asked to
-  if llvm_opt_level > 0 and not LEAVE_INPUTS_RAW:
-    if DEBUG: print >> sys.stderr, 'emcc: LLVM opts'
-    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), LLVM_INTERNAL_OPT_LEVEL, safe=llvm_opt_level < 2)
-  else:
-    # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-    if not LEAVE_INPUTS_RAW and not shared.Settings.BUILD_AS_SHARED_LIB and not shared.Settings.LINKABLE:
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
-
-  # Emscripten
-  try:
-    if shared.Settings.RELOOP:
-      print >> sys.stderr, 'emcc: warning: The relooper optimization can be very slow.'
-  except:
-    pass
+      final = in_temp(target_basename + '.bc')
+    else:
+      final = input_files[0]
 
   if DEBUG:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
@@ -561,15 +560,47 @@ try:
       shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
 
+    if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
+
+  # Optimize, if asked to
+  if llvm_opts > 0 and not LEAVE_INPUTS_RAW:
+    if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % llvm_opts
+    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
+    if DEBUG: save_intermediate('opt', 'bc')
+    # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
+    if shared.Building.can_use_unsafe_opts() and shared.Building.can_build_standalone():
+      lto_opts = []
+      if not shared.Building.can_inline(): lto_opts.append('-disable-inlining')
+      lto_opts.append('-std-link-opts')
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM LTO:', lto_opts
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), lto_opts)
+      if DEBUG: save_intermediate('lto', 'bc')
+  else:
+    # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+    if not LEAVE_INPUTS_RAW and shared.Building.can_build_standalone():
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
+      if DEBUG: save_intermediate('dce', 'bc')
+
+  # Prepare .ll for Emscripten
+  try:
+    if shared.Settings.RELOOP:
+      print >> sys.stderr, 'emcc: warning: The relooper optimization can be very slow.'
+  except:
+    pass
+
   if not LEAVE_INPUTS_RAW:
-    final = in_temp(target_basename + '.bc')
-    if DEBUG: save_intermediate('bc', 'bc')
     final = shared.Building.llvm_dis(final, final + '.ll')
   else:
     assert len(input_files) == 1
-    final = input_files[0]
   if DEBUG: save_intermediate('ll', 'll')
 
+  if AUTODEBUG:
+    Popen(['python', shared.AUTODEBUGGER, final, final + '.ad.ll']).communicate()[0]
+    final += '.ad.ll'
+    if DEBUG: save_intermediate('autodebug', 'll')
+
+  # Emscripten
   if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
   final = shared.Building.emscripten(final, append_ext=False)
   if DEBUG: save_intermediate('original')

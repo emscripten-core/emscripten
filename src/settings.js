@@ -73,13 +73,6 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // then load it aligned, and that load-store will make JS engines alter it if it is being
                      // stored to a typed array for security reasons. That will 'fix' the number from being a
                      // NaN or an infinite number.
-var EMULATE_UNALIGNED_ACCESSES = 0; // If set, the compiler will 'emulate' loads and stores that are not known to
-                                    // be sufficiently aligned, by working on individual bytes. This can be
-                                    // important in USE_TYPED_ARRAYS == 2, where unaligned accesses do not work,
-                                    // specifically in the case where unsafe LLVM optimizations have generated possibly
-                                    // unaligned code. (Without unsafe LLVM optimizations, there should be no
-                                    // need for this option.)
-                                    // Currently this only works for integers, not doubles and floats.
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -92,10 +85,10 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // In particular, be careful with the autodebugger! (We do turn
                              // this off automatically in that case, though.)
 var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
-var CLOSURE_INLINE_PREVENTION_LINES = 50; // Functions of this number of lines or larger will have
-                                          // code generated that tells the closure compiler not to
-                                          // inline them. This is useful to prevent the generation of
-                                          // overly large functions.
+var INLINING_LIMIT = 50; // A limit on inlining. If 0, we will inline normally in LLVM and
+                         // closure. If greater than 0, we will *not* inline in LLVM, and
+                         // we will prevent inlining of functions of this size or larger
+                         // in closure.
 var CATCH_EXIT_CODE = 0; // If set, causes exit() to throw an exception object which is caught
                          // in a try..catch block and results in the exit status being
                          // returned from run(). If zero (the default), the program is just
@@ -225,6 +218,7 @@ var DEBUG_TAGS_SHOWING = [];
   //    relooping
   //    unparsedFunctions
   //    metadata
+  //    legalizer
 
 
 // A cached set of defines, generated from the header files. This

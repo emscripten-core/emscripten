@@ -670,7 +670,7 @@ _ELIDABLE_INLINE int __sputc_r(struct _reent *_ptr, int _c, FILE *_p) {
 	__swbuf_r(_REENT, (int)(x), p) == EOF : (*(p)->_p = (x), (p)->_p++, 0))
 
 #define	L_cuserid	9		/* posix says it goes in stdio.h :( */
-#ifdef __CYGWIN__
+#if defined(__CYGWIN__) || defined(EMSCRIPTEN)
 #define L_ctermid       16
 #endif
 #endif

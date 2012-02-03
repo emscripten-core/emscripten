@@ -54,7 +54,7 @@ struct Cumulative {
       }
 
       for ( unsigned int i = 0; i <= slots; i++ ) {
-         while ( i > start->pi ) {
+         while ( i > start->pi && start->pi != 0) {
             ++start;
           }
 

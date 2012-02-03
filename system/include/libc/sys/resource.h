@@ -9,7 +9,21 @@
 struct rusage {
   struct timeval ru_utime;	/* user time used */
   struct timeval ru_stime;	/* system time used */
-  int            ru_maxrss; /* XXX Emscripten */
+  /* XXX Emscripten */
+  int            ru_maxrss;
+  int            ru_ixrss;
+  int            ru_idrss;
+  int            ru_isrss;
+  int            ru_minflt;
+  int            ru_majflt;
+  int            ru_nswap;
+  int            ru_inblock;
+  int            ru_oublock;
+  int            ru_msgsnd;
+  int            ru_msgrcv;
+  int            ru_nsignals;
+  int            ru_nvcsw;
+  int            ru_nivcsw;
 };
 
 /* XXX Emscripten */
