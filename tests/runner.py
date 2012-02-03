@@ -583,6 +583,37 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
                          '*-1,34359738367,4294967295,1073741823*\n' +
                          '*prod:34*')
 
+        src = r'''
+          #include <stdio.h>
+          #include <limits>
+
+          int main()
+          {
+              long long i,j,k;
+
+              i = 0;
+              j = -1,
+              k = 1;
+
+              printf( "*\n" );
+              printf( "%s\n", i > j ? "Ok": "Fail" );
+              printf( "%s\n", k > i ? "Ok": "Fail" );
+              printf( "%s\n", k > j ? "Ok": "Fail" );
+              printf( "%s\n", i < j ? "Fail": "Ok" );
+              printf( "%s\n", k < i ? "Fail": "Ok" );
+              printf( "%s\n", k < j ? "Fail": "Ok" );
+              printf( "%s\n", (i-j) >= k ? "Ok": "Fail" );
+              printf( "%s\n", (i-j) <= k ? "Ok": "Fail" );
+              printf( "%s\n", i > std::numeric_limits<long long>::min() ? "Ok": "Fail" );
+              printf( "%s\n", i < std::numeric_limits<long long>::max() ? "Ok": "Fail" );
+              printf( "*\n" );
+          }
+        '''
+
+        self.do_run(src, '*\nOk\nOk\nOk\nOk\nOk\nOk\nOk\nOk\nOk\nOk\n*')
+
+        # stuff that also needs sign corrections
+
         Settings.CORRECT_SIGNS = 1
 
         src = r'''

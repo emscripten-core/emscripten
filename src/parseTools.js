@@ -1661,14 +1661,22 @@ function processMathop(item) {
       case 'fptoui': case 'fptosi': return splitI64(ident1);
       case 'icmp': {
         switch (variant) {
-          case 'uge': case 'sge': return ident1 + '[1] >= ' + ident2 + '[1] && (' + ident1 + '[1] > '  + ident2 + '[1] || ' +
-                                                                                    ident1 + '[0] >= ' + ident2 + '[0])';
-          case 'ule': case 'sle': return ident1 + '[1] <= ' + ident2 + '[1] && (' + ident1 + '[1] < '  + ident2 + '[1] || ' +
-                                                                                    ident1 + '[0] <= ' + ident2 + '[0])';
-          case 'ugt': case 'sgt': return ident1 + '[1] > ' + ident2 + '[1] || (' + ident1 + '[1] == '  + ident2 + '[1] && ' +
-                                                                                   ident1 + '[0] > ' + ident2 + '[0])';
-          case 'ult': case 'slt': return ident1 + '[1] < ' + ident2 + '[1] || (' + ident1 + '[1] == '  + ident2 + '[1] && ' +
-                                                                                   ident1 + '[0] < ' + ident2 + '[0])';
+          case 'uge': return ident1 + '[1] >= ' + ident2 + '[1] && (' + ident1 + '[1] > '  + ident2 + '[1] || ' +
+                                                                        ident1 + '[0] >= ' + ident2 + '[0])';
+          case 'sge': return '(' + ident1 + '[1]|0) >= (' + ident2 + '[1]|0) && ((' + ident1 + '[1]|0) >  ('  + ident2 + '[1]|0) || ' +
+                                                                                '(' + ident1 + '[0]|0) >= ('  + ident2 + '[0]|0))';
+          case 'ule': return ident1 + '[1] <= ' + ident2 + '[1] && (' + ident1 + '[1] < '  + ident2 + '[1] || ' +
+                                                                        ident1 + '[0] <= ' + ident2 + '[0])';
+          case 'sle': return '(' + ident1 + '[1]|0) <= (' + ident2 + '[1]|0) && ((' + ident1 + '[1]|0) <  (' + ident2 + '[1]|0) || ' +
+                                                                                '(' + ident1 + '[0]|0) <= (' + ident2 + '[0]|0))';
+          case 'ugt': return ident1 + '[1] > ' + ident2 + '[1] || (' + ident1 + '[1] == ' + ident2 + '[1] && ' +
+                                                                       ident1 + '[0] > '  + ident2 + '[0])';
+          case 'sgt': return '(' + ident1 + '[1]|0) > (' + ident2 + '[1]|0) || ((' + ident1 + '[1]|0) == (' + ident2 + '[1]|0) && ' +
+                                                                               '(' + ident1 + '[0]|0) >  (' + ident2 + '[0]|0))';
+          case 'ult': return ident1 + '[1] < ' + ident2 + '[1] || (' + ident1 + '[1] == ' + ident2 + '[1] && ' +
+                                                                       ident1 + '[0] < '  + ident2 + '[0])';
+          case 'slt': return '(' + ident1 + '[1]|0) < (' + ident2 + '[1]|0) || ((' + ident1 + '[1]|0) == (' + ident2 + '[1]|0) && ' +
+                                                                               '(' + ident1 + '[0]|0) <  (' + ident2 + '[0]|0))';
           case 'ne': case 'eq': {
             // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
             // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
