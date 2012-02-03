@@ -581,7 +581,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       staticize = not constructor and ret.replace(' ', '') != 'void' and method['returns'] in classes and (not method['returns_reference'] and not method['returns_pointer'])
       # Make sure to mark our bindings wrappers in a way that they will not be inlined, eliminated as unneeded, or optimized into other signatures
       gen_c.write('''
-%s __attribute__((externally_visible, used, noinline)) %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i,
+%s __attribute__((used, noinline)) %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i,
                     ', '.join(typedargs(args)[:i + (0 if not need_self else 1)])))
       if not staticize:
         gen_c.write('\n')
