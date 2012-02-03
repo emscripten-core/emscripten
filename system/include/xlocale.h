@@ -5,6 +5,10 @@
 #include <string.h>
 #include <locale.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 long long strtoll_l(const char *start, char **end, int base, locale_t loc);
 unsigned long long strtoull_l(const char *start, char **end, int base, locale_t loc);
 double strtold_l(const char *start, char **end, locale_t loc);
@@ -34,6 +38,10 @@ int towupper_l(wint_t wc, locale_t locale);
 int towlower_l(wint_t wc, locale_t locale);
 
 size_t strftime_l(char *s, size_t maxsize, const char *format, const struct tm *timeptr, locale_t locale);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _LOCALE_H_ */
 
