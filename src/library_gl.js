@@ -513,6 +513,7 @@ var LibraryGLUT = {
   },
 
   glutCreateWindow: function(name) {
+#if USE_TYPED_ARRAYS
     try {
       var ctx = Module.canvas.getContext('experimental-webgl');
       if (!ctx) throw 'Could not create canvas :(';
@@ -523,6 +524,9 @@ var LibraryGLUT = {
     } catch (e) {
       Module.print('(canvas not available)');
     }
+#else
+    Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
+#endif
   },
 
   glutInitDisplayMode: function(mode) {},
