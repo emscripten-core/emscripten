@@ -34,11 +34,6 @@ We generate the following:
                     you to run something like closure compiler advanced opts on
                     the library+bindings, and the bindings will remain accessible.
 
-            prevent_dfe: If true, will use all the generated C functions, to prevent
-                         dead function elimination from removing them. The use is
-                         by creating an artificial "main" functions. You should then
-                         remove that function later or just ignore it.
-
           For example, JSON can be { "ignored": "class1,class2::func" }.
 
 The C bindings file is basically a tiny C wrapper around the C++ code.
@@ -70,7 +65,6 @@ basename = sys.argv[1]
 ignored = []
 type_processor = lambda t: t
 export = 1
-prevent_dfe = 1
 
 if '--' in sys.argv:
   index = sys.argv.index('--')
@@ -83,8 +77,6 @@ if '--' in sys.argv:
     type_processor = eval(json['type_processor'])
   if json.get('export'):
     export = json['export']
-  if json.get('prevent_dfe'):
-    prevent_dfe = eval(json['prevent_dfe'])
 
   print 'zz ignoring', ignored
 
@@ -366,7 +358,6 @@ for classname, clazz in parsed.classes.iteritems():
 # TODO: Bind virtual functions using dynamic binding in the C binding code
 
 funcs = {} # name -> # of copies in the original, and originalname in a copy
-c_funcs = [] # the C functions generated, including dummy params we can use to keep them alive from dfe
 
 gen_c = open(basename + '.cpp', 'w')
 gen_js = open(basename + '.js', 'w')
@@ -617,7 +608,6 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         callprefix, actualmname,
         ', '.join(justargs(args)[:i])))
         gen_c.write('\n}')
-      c_funcs.append(('argc += (int)' if has_return else '') + fullname + '_p' + str(i) + '(' + ', '.join(dummyargs(args)[:i + (0 if not need_self else 1)]) + ')')
 
     # JS
 
@@ -771,28 +761,6 @@ gen_c.write('''
 
 }
 ''')
-
-if prevent_dfe:
-  gen_c.write('''
-
-    #include <stdio.h>
-    #include <string.h>
-    int main(int argc, char **argv) {
-      if (argc >= 1 && !strcmp(argv[0], "this is a dummy |main| function, just for bindings generator dfe prevention!")) { 
-        // Actually 'use' the binding functions, so DFE will not eliminate them.
-        printf("We should never actually get here!\\n");
-
-''')
-
-  for i in range(len(c_funcs)):
-    func = c_funcs[i]
-    gen_c.write('        if (argc == %d+1) %s;\n' % (i, func))
-
-  gen_c.write('''
-      }
-      return argc;
-    }
-  ''')
 
 gen_c.close()
 gen_js.close()
