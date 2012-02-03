@@ -29,12 +29,15 @@ We generate the following:
                             change all arguments of type float& to float by
                             "type_processor": "lambda t: t if t != 'float&' else 'float'"
 
-            export: If true, will export all bindings in the .js file. This allows
+            export: If false, will not export all bindings in the .js file. The
+                    default is to export all bindings, which allows
                     you to run something like closure compiler advanced opts on
                     the library+bindings, and the bindings will remain accessible.
 
             prevent_dfe: If true, will use all the generated C functions, to prevent
-                         dead function elimination from removing them.
+                         dead function elimination from removing them. The use is
+                         by creating an artificial "main" functions. You should then
+                         remove that function later or just ignore it.
 
           For example, JSON can be { "ignored": "class1,class2::func" }.
 
@@ -66,8 +69,8 @@ basename = sys.argv[1]
 
 ignored = []
 type_processor = lambda t: t
-export = 0
-prevent_dfe = 0
+export = 1
+prevent_dfe = 1
 
 if '--' in sys.argv:
   index = sys.argv.index('--')
@@ -363,7 +366,7 @@ for classname, clazz in parsed.classes.iteritems():
 # TODO: Bind virtual functions using dynamic binding in the C binding code
 
 funcs = {} # name -> # of copies in the original, and originalname in a copy
-c_funcs = []
+c_funcs = [] # the C functions generated, including dummy params we can use to keep them alive from dfe
 
 gen_c = open(basename + '.cpp', 'w')
 gen_js = open(basename + '.js', 'w')
@@ -543,6 +546,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         #print 'POST arggggggg', classname, 'x', mname, 'x', args[i]['name'], 'x', args[i]['type']
 
     ret = ((classname + ' *') if constructor else method['returns_text'])#.replace('virtual ', '')
+    has_return = ret.replace(' ', '') != 'void'
     callprefix = 'new ' if constructor else ('self->' if not static else (classname + '::'))
 
     '' # mname used in C
@@ -558,6 +562,8 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       return map(lambda i: 'arg' + str(i), range(len(args)))
     def justtypes(args): # note: this ignores 'self'
       return map(lambda i: args[i]['type'], range(len(args)))
+    def dummyargs(args):
+      return ([] if not need_self else ['(%s*)argv[argc]' % classname]) + map(lambda i: '(%s)argv[argc]' % args[i]['type'], range(len(args)))
 
     fullname = ('emscripten_bind_' + generating_classname + '__' + mname).replace('::', '__')
     generating_classname_suffixed = generating_classname
@@ -582,8 +588,9 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       i = len(args)
       # If we are returning a *copy* of an object, we return instead to a ref of a static held here. This seems the best compromise
       staticize = not constructor and ret.replace(' ', '') != 'void' and method['returns'] in classes and (not method['returns_reference'] and not method['returns_pointer'])
+      # Make sure to mark our bindings wrappers in a way that they will not be inlined, eliminated as unneeded, or optimized into other signatures
       gen_c.write('''
-%s %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i,
+%s __attribute__((externally_visible, used, noinline)) %s_p%d(%s) {''' % (ret if not staticize else (ret + '&'), fullname, i,
                     ', '.join(typedargs(args)[:i + (0 if not need_self else 1)])))
       if not staticize:
         gen_c.write('\n')
@@ -596,7 +603,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         elif method.get('operator'):
           gen_c.write(method['operator'])
         else: # normal method
-          gen_c.write('''  %s%s%s(%s);''' % ('return ' if ret.replace(' ', '') != 'void' else '',
+          gen_c.write('''  %s%s%s(%s);''' % ('return ' if has_return else '',
                                              callprefix, actualmname, ', '.join(justargs(args)[:i])))
         gen_c.write('\n')
         gen_c.write('}')
@@ -610,7 +617,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         callprefix, actualmname,
         ', '.join(justargs(args)[:i])))
         gen_c.write('\n}')
-      c_funcs.append(fullname + '_p' + str(i))
+      c_funcs.append(('argc += (int)' if has_return else '') + fullname + '_p' + str(i) + '(' + ', '.join(dummyargs(args)[:i + (0 if not need_self else 1)]) + ')')
 
     # JS
 
@@ -768,26 +775,23 @@ gen_c.write('''
 if prevent_dfe:
   gen_c.write('''
 
-  #include <stdio.h>
+    #include <stdio.h>
+    #include <string.h>
+    int main(int argc, char **argv) {
+      if (argc >= 1 && !strcmp(argv[0], "this is a dummy |main| function, just for bindings generator dfe prevention!")) { 
+        // Actually 'use' the binding functions, so DFE will not eliminate them.
+        printf("We should never actually get here!\\n");
 
-  struct EmscriptenEnsurer
-  {
-    EmscriptenEnsurer() {
-      // Actually use the binding functions, so DFE will not eliminate them
-      // FIXME: A negative side effect of this is that they take up space in FUNCTION_TABLE
-      int sum = 0;
-      void *seen = (void*)%s;
-  ''' % c_funcs[0])
+''')
 
-  for func in c_funcs[1:]:
-    gen_c.write('''    sum += (void*)%s == seen;
-  ''' % func)
+  for i in range(len(c_funcs)):
+    func = c_funcs[i]
+    gen_c.write('        if (argc == %d+1) %s;\n' % (i, func))
 
-  gen_c.write('''    printf("(%d)\\n", sum);
+  gen_c.write('''
+      }
+      return argc;
     }
-  };
-
-  EmscriptenEnsurer emscriptenEnsurer;
   ''')
 
 gen_c.close()

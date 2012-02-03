@@ -111,28 +111,39 @@ class RunnerCore(unittest.TestCase):
   # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
   # emcc, it would not apply on the optimized/minified JS)
   def ll_to_js(self, filename, extra_emscripten_args, post_build):
+    if type(post_build) in (list, tuple):
+      post1, post2 = post_build
+    else:
+      post1 = post_build
+      post2 = None
+
+    def run_post(post):
+      if not post: return
+      exec post in locals()
+      shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
+      process(filename + '.o.js')
+
     if self.emcc_args is None:
       Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
-      if post_build is not None:
-        exec post_build in locals()
-        shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
-        process(filename + '.o.js')
+      run_post(post1)
+      run_post(post2)
     else:
       transform_args = []
-      if post_build:
+      if post1:
         transform_filename = os.path.join(self.get_dir(), 'transform.py')
         transform = open(transform_filename, 'w')
         transform.write('''
 import sys
 sys.path += ['%s']
 ''' % path_from_root(''))
-        transform.write(post_build)
+        transform.write(post1)
         transform.write('''
 process(sys.argv[1])
 ''')
         transform.close()
         transform_args = ['--js-transform', "python %s" % transform_filename]
       Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args, filename + '.o.js')
+      run_post(post2)
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
@@ -4684,6 +4695,9 @@ def process(filename):
 '''
         # XXX disable due to possible v8 bug -- self.do_run(src, '*166*\n*ok*', post_build=post)
 
+        if self.emcc_args is not None and '-O2' in self.emcc_args:
+          self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
+
         # Way 2: use CppHeaderParser
 
         Settings.RUNTIME_TYPE_INFO = 1
@@ -4740,15 +4754,22 @@ def process(filename):
 
         post2 = '''
 def process(filename):
+  src = open(filename, 'a')
+  src.write(open('bindingtest.js').read() + '\\n\\n')
+  src.close()
+'''
+
+        post3 = '''
+def process(filename):
   script_src_2 = \'\'\'
-          var sme = new Parent(42);
+          var sme = new Module.Parent(42);
           sme.mulVal(2);
           print('*')
           print(sme.getVal());
 
           print('c1');
 
-          var c1 = new Child1();
+          var c1 = new Module.Child1();
           print(c1.getVal());
           c1.mulVal(2);
           print(c1.getVal());
@@ -4759,7 +4780,7 @@ def process(filename):
 
           print('c1 v2');
 
-          c1 = new Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
+          c1 = new Module.Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
           print(c1.getVal());
           c1.mulVal(2);
           print(c1.getVal());
@@ -4768,7 +4789,7 @@ def process(filename):
 
           print('c2')
 
-          var c2 = new Child2();
+          var c2 = new Module.Child2();
           print(c2.getVal());
           c2.mulVal(2);
           print(c2.getVal());
@@ -4793,42 +4814,39 @@ def process(filename):
           } catch(e) {}
           print(succeeded);
 
-          Child2.prototype.printStatic(); // static calls go through the prototype
+          Module.Child2.prototype.printStatic(); // static calls go through the prototype
 
           // virtual function
           c2.virtualFunc();
-          Child2.prototype.runVirtualFunc(c2);
+          Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
           // extend the class from JS
-          var c3 = new Child2;
-          customizeVTable(c3, [{
-            original: Child2.prototype.virtualFunc,
+          var c3 = new Module.Child2;
+          Module.customizeVTable(c3, [{
+            original: Module.Child2.prototype.virtualFunc,
             replacement: function() {
               print('*js virtualf replacement*');
             }
           }, {
-            original: Child2.prototype.virtualFunc2,
+            original: Module.Child2.prototype.virtualFunc2,
             replacement: function() {
               print('*js virtualf2 replacement*');
             }
           }]);
           c3.virtualFunc();
-          Child2.prototype.runVirtualFunc(c3);
+          Module.Child2.prototype.runVirtualFunc(c3);
           c3.virtualFunc2();
 
           c2.virtualFunc(); // original should remain the same
-          Child2.prototype.runVirtualFunc(c2);
+          Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
           print('*ok*');
         \'\'\'
-  src = open(filename, 'r').read().replace(
-    '// {{MODULE_ADDITIONS}',
-    open('bindingtest.js').read() + '\\n\\n' + script_src_2 + '\\n\\n' + 
-      '// {{MODULE_ADDITIONS}'
-  )
-  open(filename, 'w').write(src)
+  src = open(filename, 'a')
+  src.write(script_src_2 + '\\n')
+  src.close()
 '''
 
         self.do_run(src, '''*
@@ -4871,7 +4889,7 @@ Child2:9
 *virtualf*
 *virtualf2*
 *ok*
-''', post_build=post2)
+''', post_build=[post2, post3])
 
     def test_typeinfo(self):
       if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
@@ -5730,9 +5748,6 @@ f.close()
       ]:
         output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
-
-    def test_reminder(self):
-      assert False, 'Ensure all opts including linktime apply to bindings generator. might need to adjust visibility of bindings C funcs'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do

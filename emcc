@@ -597,6 +597,7 @@ try:
   if DEBUG: save_intermediate('ll', 'll')
 
   if AUTODEBUG:
+    if DEBUG: print >> sys.stderr, 'emcc: autodebug'
     Popen(['python', shared.AUTODEBUGGER, final, final + '.ad.ll']).communicate()[0]
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
