@@ -3485,18 +3485,22 @@ LibraryManager.library = {
   strtoll: function(str, endptr, base) {
     return __parseInt(str, endptr, base, -9223372036854775200, 9223372036854775200, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
   },
+  strtoll_l: 'strtoll', // no locale support yet
   strtol__deps: ['_parseInt'],
   strtol: function(str, endptr, base) {
     return __parseInt(str, endptr, base, -2147483648, 2147483647, 32);  // LONG_MIN, LONG_MAX.
   },
+  strtol_l: 'strtol', // no locale support yet
   strtoul__deps: ['_parseInt'],
   strtoul: function(str, endptr, base) {
     return __parseInt(str, endptr, base, 0, 4294967295, 32, true);  // ULONG_MAX.
   },
+  strtoul_l: 'strtoul', // no locale support yet
   strtoull__deps: ['_parseInt'],
   strtoull: function(str, endptr, base) {
     return __parseInt(str, endptr, base, 0, 18446744073709551615, 64, true);  // ULONG_MAX; imprecise.
   },
+  strtoull_l: 'strtoull', // no locale support yet
 
   atof: function(ptr) {
     var str = Pointer_stringify(ptr);
