@@ -926,14 +926,17 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (bytes > align) {
       var ret = '(';
       if (isIntImplemented(type)) {
-        if (bytes <= 4) {
+        if (bytes == 4 && align == 2) {
+          // Special case that we can optimize
+          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '+' +
+                 '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore) + '<<16)';
+        } else if (bytes <= 4) {
+          ret = '';
           for (var i = 0; i < bytes; i++) {
-            ret += 'tempInt' + (i == 0 ? '=' : '|=((');
-            ret += makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore);
-            if (i > 0) ret += ')<<' + (8*i) + ')';
-            ret += ',';
+            ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore) + (i > 0 ? '<<' + (8*i) : '') + ')';
+            if (i < bytes-1) ret += '|';
           }
-          ret += makeSignOp('tempInt', type, unsigned ? 'un' : 're', true);
+          ret = '(' + makeSignOp(ret, type, unsigned ? 'un' : 're', true);
         } else {
           assert(bytes == 8);
           ret += 'tempBigInt=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, true, ignore, align) + ',';
@@ -1018,10 +1021,15 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     if (bytes > align) {
       var ret = '';
       if (isIntImplemented(type)) {
-        if (bytes <= 4) {
+        if (bytes == 4 && align == 2) {
+          // Special case that we can optimize
+          ret += 'tempBigInt=' + value + sep;
+          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2) + sep;
+          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2) + sep;
+        } else if (bytes <= 4) {
           ret += 'tempBigInt=' + value + sep;
           for (var i = 0; i < bytes; i++) {
-            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore) + sep;
+            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1) + sep;
             if (i < bytes-1) ret += 'tempBigInt>>=8' + sep;
           }
         } else {

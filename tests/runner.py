@@ -5732,7 +5732,6 @@ f.close()
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
     def test_reminder(self):
-      assert False, 'Optimize makeGet/SetValue to do 16-bit reads/writes when possible, not just 8'
       assert False, 'Ensure all opts including linktime apply to bindings generator. might need to adjust visibility of bindings C funcs'
 
 elif 'benchmark' in str(sys.argv):
