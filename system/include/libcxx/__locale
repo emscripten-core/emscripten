@@ -471,7 +471,20 @@ public:
     _LIBCPP_ALWAYS_INLINE
     bool is(mask __m, char_type __c) const
     {
-        return isascii(__c) ? __tab_[__c] & __m : false;
+        // XXX EMSCRIPTEN __tab is always null 
+        if( !isascii(__c) ) return false;
+        if (__m & space && !isspace(__c)) return false;
+        if (__m & print && !isprint(__c)) return false;
+        if (__m & cntrl && !iscntrl(__c)) return false;
+        if (__m & upper && !isupper(__c)) return false;
+        if (__m & lower && !islower(__c)) return false;
+        if (__m & alpha && !isalpha(__c)) return false;
+        if (__m & digit && !isdigit(__c)) return false;
+        if (__m & punct && !ispunct(__c)) return false;
+        if (__m & xdigit && !isxdigit(__c)) return false;
+        if (__m & blank && !isblank(__c)) return false;
+        return true;
+        //return isascii(__c) ? __tab_[__c] & __m : false;
     }
 
     _LIBCPP_ALWAYS_INLINE

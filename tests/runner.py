@@ -3739,6 +3739,27 @@ def process(filename):
       '''
       self.do_run(src, "some string constant")
 
+    def test_istream(self):
+      if self.emcc_args is None: return self.skip('requires libcxx')
+
+      src = '''
+        #include <string>
+        #include <sstream>
+        #include <iostream>
+        
+        int main()
+        {
+            std::string mystring("1 2 3");
+            std::istringstream is(mystring);
+            int one, two, three;
+            
+            is >> one >> two >> three;
+            
+            printf( " %i %i %i", one, two, three );
+        }
+      '''
+      self.do_run(src, "1 2 3")
+
     def test_fs_base(self):
       Settings.INCLUDE_FULL_LIBRARY = 1
       try:
