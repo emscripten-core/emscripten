@@ -168,6 +168,13 @@ function analyzer(data, sidePass) {
           item[slot] = { intertype: 'value', ident: tempIdent, type: item[slot].type };
           return i+1;
         }
+        // Assuming we will replace the item at line i, with num items, returns
+        // the right factor to multiply line numbers by so that they fit in between
+        // the removed line and the line after it
+        function getInterp(lines, i, num) {
+          var next = (i < lines.length-1) ? lines[i+1].lineNum : (lines[i].lineNum + 0.5);
+          return (next - lines[i].lineNum)/(3*num+2);
+        }
         data.functions.forEach(function(func) {
           func.labels.forEach(function(label) {
             var i = 0, bits;
@@ -176,9 +183,10 @@ function analyzer(data, sidePass) {
               if (item.intertype == 'store') {
                 if (isIllegalType(item.valueType)) {
                   dprint('legalizer', 'Legalizing store at line ' + item.lineNum);
-                  i = unfold(label.lines, i, item, 'value');
-                  label.lines.splice(i, 1);
                   bits = getBits(item.valueType);
+                  i = unfold(label.lines, i, item, 'value');
+                  var interp = getInterp(label.lines, i, Math.ceil(bits/32));
+                  label.lines.splice(i, 1);
                   var elements;
                   elements = getLegalVars(item.value.ident, bits);
                   var j = 0;
@@ -194,7 +202,7 @@ function analyzer(data, sidePass) {
                         { intertype: 'value', ident: '0', type: 'i32' },
                         { intertype: 'value', ident: j.toString(), type: 'i32' }
                       ],
-                      lineNum: item.lineNum + (j/100)
+                      lineNum: item.lineNum + (j*interp)
                     });
                     var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
                     label.lines.splice(i+j*2+1, 0, {
@@ -205,7 +213,7 @@ function analyzer(data, sidePass) {
                       ident: tempVar,
                       pointerType: actualSizeType + '*',
                       align: item.align,
-                      lineNum: item.lineNum + ((j+0.5)/100)
+                      lineNum: item.lineNum + ((j+0.5)*interp)
                     });
                     j++;
                   });
@@ -219,9 +227,10 @@ function analyzer(data, sidePass) {
                   case 'load': {
                     if (isIllegalType(value.valueType)) {
                       dprint('legalizer', 'Legalizing load at line ' + item.lineNum);
-                      i = unfold(label.lines, i, value, 'pointer');
-                      label.lines.splice(i, 1);
                       bits = getBits(value.valueType);
+                      i = unfold(label.lines, i, value, 'pointer');
+                      var interp = getInterp(label.lines, i, Math.ceil(bits/32));
+                      label.lines.splice(i, 1);
                       var elements = getLegalVars(item.assignTo, bits);
                       var j = 0;
                       elements.forEach(function(element) {
@@ -236,7 +245,7 @@ function analyzer(data, sidePass) {
                             { intertype: 'value', ident: '0', type: 'i32' },
                             { intertype: 'value', ident: j.toString(), type: 'i32' }
                           ],
-                          lineNum: item.lineNum + (j/100)
+                          lineNum: item.lineNum + (j*interp)
                         });
                         var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
                         label.lines.splice(i+j*2+1, 0, {
@@ -249,7 +258,7 @@ function analyzer(data, sidePass) {
                           ident: tempVar,
                           pointerType: actualSizeType + '*',
                           align: value.align,
-                          lineNum: item.lineNum + ((j+0.5)/100)
+                          lineNum: item.lineNum + ((j+0.5)*interp)
                         });
                         j++;
                       });
@@ -261,7 +270,6 @@ function analyzer(data, sidePass) {
                   case 'mathop': {
                     if (isIllegalType(value.type)) {
                       dprint('legalizer', 'Legalizing mathop at line ' + item.lineNum);
-                      label.lines.splice(i, 1);
                       var toAdd = [];
                       assert(value.param1.intertype == 'value', 'TODO: unfolding');
                       var sourceBits = getBits(value.param1.type);
@@ -378,7 +386,6 @@ function analyzer(data, sidePass) {
                           result = processor(result, j);
                         }
                         result.assignTo = targetElements[j].ident;
-                        result.lineNum = item.lineNum + (j/100);
                         toAdd.push(result);
                       }
                       if (targetBits <= 64) {
@@ -402,10 +409,13 @@ function analyzer(data, sidePass) {
                           throw 'Invalid legal type as target of legalization ' + targetBits;
                         }
                         legalValue.assignTo = item.assignTo;
-                        legalValue.lineNum = item.lineNum + ((j+1)/100);
                         toAdd.push(legalValue);
                       }
-                      Array.prototype.splice.apply(label.lines, [i, 0].concat(toAdd));
+                      var interp = getInterp(label.lines, i, toAdd.length);
+                      for (var k = 0; k < toAdd.length; k++) {
+                        toAdd[k].lineNum = item.lineNum + (k*interp);
+                      }
+                      Array.prototype.splice.apply(label.lines, [i, 1].concat(toAdd));
                       i += toAdd.length;
                       continue;
                     }
