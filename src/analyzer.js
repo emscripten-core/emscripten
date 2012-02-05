@@ -162,12 +162,9 @@ function analyzer(data, sidePass) {
           if (item[slot].intertype == 'value') return i;
           // TODO: unfold multiple slots at once
           var tempIdent = '$$emscripten$temp$' + i;
-          lines.splice(i, 0, {
-            intertype: 'assign',
-            ident: tempIdent,
-            value: item[slot],
-            lineNum: lines[i].lineNum - 0.5
-          });
+          item[slot].assignTo = tempIdent;
+          item[slot].lineNum = lines[i].lineNum - 0.5;
+          lines.splice(i, 0, item[slot]);
           item[slot] = { intertype: 'value', ident: tempIdent, type: item[slot].type };
           return i+1;
         }
@@ -188,18 +185,15 @@ function analyzer(data, sidePass) {
                   elements.forEach(function(element) {
                     var tempVar = '$st$' + i + '$' + j;
                     label.lines.splice(i+j*2, 0, {
-                      intertype: 'assign',
-                      ident: tempVar,
-                      value: {
-                        intertype: 'getelementptr',
-                        ident: item.pointer.ident,
-                        type: '[0 x i32]*',
-                        params: [
-                          { intertype: 'value', ident: item.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
-                          { intertype: 'value', ident: '0', type: 'i32' },
-                          { intertype: 'value', ident: j.toString(), type: 'i32' }
-                        ],
-                      },
+                      intertype: 'getelementptr',
+                      assignTo: tempVar,
+                      ident: item.pointer.ident,
+                      type: '[0 x i32]*',
+                      params: [
+                        { intertype: 'value', ident: item.pointer.ident, type: '[0 x i32]*' }, // technically a bitcase is needed in llvm, but not for us
+                        { intertype: 'value', ident: '0', type: 'i32' },
+                        { intertype: 'value', ident: j.toString(), type: 'i32' }
+                      ],
                       lineNum: item.lineNum + (j/100)
                     });
                     var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
@@ -219,8 +213,8 @@ function analyzer(data, sidePass) {
                   i += j*2;
                   continue;
                 }
-              } else if (item.intertype == 'assign') {
-                var value = item.value;
+              } else if (item.assignTo) {
+                var value = item;
                 switch (value.intertype) {
                   case 'load': {
                     if (isIllegalType(value.valueType)) {
@@ -228,40 +222,33 @@ function analyzer(data, sidePass) {
                       i = unfold(label.lines, i, value, 'pointer');
                       label.lines.splice(i, 1);
                       bits = getBits(value.valueType);
-//                      assert(value.pointer.intertype == 'value', 'TODO: unfolding');
-                      var elements = getLegalVars(item.ident, bits);
+                      var elements = getLegalVars(item.assignTo, bits);
                       var j = 0;
                       elements.forEach(function(element) {
                         var tempVar = '$st$' + i + '$' + j;
                         label.lines.splice(i+j*2, 0, {
-                          intertype: 'assign',
-                          ident: tempVar,
-                          value: {
-                            intertype: 'getelementptr',
-                            ident: value.pointer.ident,
-                            type: '[0 x i32]*',
-                            params: [
-                              { intertype: 'value', ident: value.pointer.ident, type: '[0 x i32]*' }, // technically bitcast is needed in llvm, but not for us
-                              { intertype: 'value', ident: '0', type: 'i32' },
-                              { intertype: 'value', ident: j.toString(), type: 'i32' }
-                            ],
-                          },
+                          intertype: 'getelementptr',
+                          assignTo: tempVar,
+                          ident: value.pointer.ident,
+                          type: '[0 x i32]*',
+                          params: [
+                            { intertype: 'value', ident: value.pointer.ident, type: '[0 x i32]*' }, // technically bitcast is needed in llvm, but not for us
+                            { intertype: 'value', ident: '0', type: 'i32' },
+                            { intertype: 'value', ident: j.toString(), type: 'i32' }
+                          ],
                           lineNum: item.lineNum + (j/100)
                         });
                         var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
                         label.lines.splice(i+j*2+1, 0, {
-                          intertype: 'assign',
-                          ident: element.ident,
-                          value: {
-                            intertype: 'load',
-                            pointerType: actualSizeType + '*',
-                            valueType: actualSizeType,
-                            type: actualSizeType, // XXX why is this missing from intertyper?
-                            pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
-                            ident: tempVar,
-                            pointerType: actualSizeType + '*',
-                            align: value.align,
-                          },
+                          intertype: 'load',
+                          assignTo: element.ident,
+                          pointerType: actualSizeType + '*',
+                          valueType: actualSizeType,
+                          type: actualSizeType, // XXX why is this missing from intertyper?
+                          pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
+                          ident: tempVar,
+                          pointerType: actualSizeType + '*',
+                          align: value.align,
                           lineNum: item.lineNum + ((j+0.5)/100)
                         });
                         j++;
@@ -337,7 +324,7 @@ function analyzer(data, sidePass) {
                       }
                       // Do the legalization
                       assert(isNumber(shifts), 'TODO: handle nonconstant shifts');
-                      var targetElements = getLegalVars(item.ident, targetBits);
+                      var targetElements = getLegalVars(item.assignTo, targetBits);
                       var sign = shifts >= 0 ? 1 : -1;
                       var shiftOp = shifts >= 0 ? 'shl' : 'lshr';
                       var shiftOpReverse = shifts >= 0 ? 'lshr' : 'shl';
@@ -390,12 +377,9 @@ function analyzer(data, sidePass) {
                         if (processor) {
                           result = processor(result, j);
                         }
-                        toAdd.push({
-                          intertype: 'assign',
-                          ident: targetElements[j].ident,
-                          value: result,
-                          lineNum: item.lineNum + (j/100)
-                        });
+                        result.assignTo = targetElements[j].ident;
+                        result.lineNum = item.lineNum + (j/100);
+                        toAdd.push(result);
                       }
                       if (targetBits <= 64) {
                         // We are generating a normal legal type here
@@ -417,12 +401,9 @@ function analyzer(data, sidePass) {
                         } else {
                           throw 'Invalid legal type as target of legalization ' + targetBits;
                         }
-                        toAdd.push({
-                          intertype: 'assign',
-                          ident: item.ident,
-                          value: legalValue,
-                          lineNum: item.lineNum + ((j+1)/100)
-                        });
+                        legalValue.assignTo = item.assignTo;
+                        legalValue.lineNum = item.lineNum + ((j+1)/100);
+                        toAdd.push(legalValue);
                       }
                       Array.prototype.splice.apply(label.lines, [i, 0].concat(toAdd));
                       i += toAdd.length;
@@ -639,16 +620,16 @@ function analyzer(data, sidePass) {
 
         // Normal variables
         func.lines.forEach(function(item, i) {
-          if (item.intertype === 'assign') {
-            var variable = func.variables[item.ident] = {
-              ident: item.ident,
-              type: item.value.type,
-              origin: item.value.intertype,
+          if (item.assignTo) {
+            var variable = func.variables[item.assignTo] = {
+              ident: item.assignTo,
+              type: item.type,
+              origin: item.intertype,
               lineNum: item.lineNum,
               rawLinesIndex: i
             };
             if (variable.origin === 'alloca') {
-              variable.allocatedNum = item.value.allocatedNum;
+              variable.allocatedNum = item.allocatedNum;
             }
           }
         });
@@ -657,19 +638,19 @@ function analyzer(data, sidePass) {
           // Second pass over variables - notice when types are crossed by bitcast
 
           func.lines.forEach(function(item) {
-            if (item.intertype === 'assign' && item.value.intertype === 'bitcast') {
+            if (item.assignTo && item.intertype === 'bitcast') {
               // bitcasts are unique in that they convert one pointer to another. We
               // sometimes need to know the original type of a pointer, so we save that.
               //
               // originalType is the type this variable is created from
               // derivedTypes are the types that this variable is cast into
-              func.variables[item.ident].originalType = item.value.type2;
+              func.variables[item.assignTo].originalType = item.type2;
 
-              if (!isNumber(item.value.ident)) {
-                if (!func.variables[item.value.ident].derivedTypes) {
-                  func.variables[item.value.ident].derivedTypes = [];
+              if (!isNumber(item.assignTo)) {
+                if (!func.variables[item.assignTo].derivedTypes) {
+                  func.variables[item.assignTo].derivedTypes = [];
                 }
-                func.variables[item.value.ident].derivedTypes.push(item.value.type);
+                func.variables[item.assignTo].derivedTypes.push(item.type);
               }
             }
           });
@@ -699,7 +680,7 @@ function analyzer(data, sidePass) {
             walkInterdata(line, function(item) {
               if (item.intertype == 'noop') inNoop++;
               if (!inNoop) {
-                if (item.ident in func.variables && item.intertype != 'assign') {
+                if (item.ident in func.variables) {
                   func.variables[item.ident].uses++;
 
                   if (item.intertype != 'load' && item.intertype != 'store') {
@@ -711,6 +692,8 @@ function analyzer(data, sidePass) {
               if (item.intertype == 'noop') inNoop--;
             });
           });
+
+          //if (dcheck('vars')) dprint('analyzed variables: ' + dump(func.variables));
         }
 
         // Filter out no longer used variables, collapsing more as we go
@@ -724,12 +707,14 @@ function analyzer(data, sidePass) {
             if (variable.uses == 0 && variable.origin != 'funcparam') {
               // Eliminate this variable if we can
               var sideEffects = false;
-              walkInterdata(func.lines[variable.rawLinesIndex].value, function(item) {
+              walkInterdata(func.lines[variable.rawLinesIndex], function(item) {
                 if (item.intertype in SIDE_EFFECT_CAUSERS) sideEffects = true;
               });
               if (!sideEffects) {
                 dprint('vars', 'Eliminating ' + vname);
-                func.lines[variable.rawLinesIndex].intertype = func.lines[variable.rawLinesIndex].value.intertype = 'noop';
+                func.lines[variable.rawLinesIndex].intertype = 'noop';
+                func.lines[variable.rawLinesIndex].assignTo = null;
+                // in theory we can also null out some fields here to save memory
                 delete func.variables[vname];
                 recalc = true;
               }
@@ -806,22 +791,22 @@ function analyzer(data, sidePass) {
 
       item.functions.forEach(function(func) {
         func.lines.forEach(function(line, i) {
-          if (line.intertype === 'assign' && line.value.intertype === 'load') {
+          if (line.intertype === 'load') {
             // Floats have no concept of signedness. Mark them as 'signed', which is the default, for which we do nothing
-            if (line.value.type in Runtime.FLOAT_TYPES) {
-              line.value.unsigned = false;
+            if (line.type in Runtime.FLOAT_TYPES) {
+              line.unsigned = false;
               return;
             }
             // Booleans are always unsigned
-            var data = func.variables[line.ident];
+            var data = func.variables[line.assignTo];
             if (data.type === 'i1') {
-              line.value.unsigned = true;
+              line.unsigned = true;
               return;
             }
 
             var total = data.uses;
             if (total === 0) return;
-            var obj = { ident: line.ident, found: 0, unsigned: 0, signed: 0, total: total };
+            var obj = { ident: line.assignTo, found: 0, unsigned: 0, signed: 0, total: total };
             // in loops with phis, we can also be used *before* we are defined
             var j = i-1, k = i+1;
             while(1) {
@@ -840,8 +825,8 @@ function analyzer(data, sidePass) {
             // we also leave the loop above potentially early due to this. otherwise, though, we end up scanning the
             // entire function in some cases which is very slow
             assert(obj.found >= obj.total, 'Could not Signalyze line ' + line.lineNum);
-            line.value.unsigned = obj.unsigned > 0;
-            dprint('vars', 'Signalyzer: ' + line.ident + ' has unsigned == ' + line.value.unsigned + ' (line ' + line.lineNum + ')');
+            line.unsigned = obj.unsigned > 0;
+            dprint('vars', 'Signalyzer: ' + line.assignTo + ' has unsigned == ' + line.unsigned + ' (line ' + line.lineNum + ')');
           }
         });
       });
@@ -1035,18 +1020,17 @@ function analyzer(data, sidePass) {
           // we need __lastLabel__.
           func.needsLastLabel = false;
           func.labels.forEach(function(label) {
-            var phis = [], phi;
-            label.lines.forEach(function(line) {
-              if ((phi = line.value) && phi.intertype == 'phi') {
+            var phis = [];
+            label.lines.forEach(function(phi) {
+              if (phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
                   var sourceLabelId = getActualLabelId(phi.params[i].label);
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
-                  if (lastLine.intertype == 'assign') lastLine = lastLine.value;
                   assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
                   lastLine.currLabelId = sourceLabelId;
                 }
-                phis.push(line);
+                phis.push(phi);
                 func.needsLastLabel = true;
               }
             });
@@ -1055,12 +1039,12 @@ function analyzer(data, sidePass) {
               // Multiple phis have the semantics that they all occur 'in parallel', i.e., changes to
               // a variable that is the result of a phi should *not* affect the other results. We must
               // therefore be careful!
-              phis[phis.length-1].value.postSet = '; /* post-phi: */';
+              phis[phis.length-1].postSet = '; /* post-phi: */';
               for (var i = 0; i < phis.length-1; i++) {
-                var ident = phis[i].ident;
+                var ident = phis[i].assignTo;
                 var phid = ident+'$phi'
-                phis[phis.length-1].value.postSet += ident + '=' + phid + ';';
-                phis[i].ident = phid;
+                phis[phis.length-1].postSet += ident + '=' + phid + ';';
+                phis[i].assignTo = phid;
                 func.variables[phid] = {
                   ident: phid,
                   type: func.variables[ident].type,
@@ -1078,15 +1062,13 @@ function analyzer(data, sidePass) {
 
           // First, push phis back
           func.labels.forEach(function(label) {
-            label.lines.forEach(function(line) {
-              var phi;
-              if ((phi = line.value) && phi.intertype == 'phi') {
+            label.lines.forEach(function(phi) {
+              if (phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
                   var param = phi.params[i];
                   var sourceLabelId = getActualLabelId(param.label);
                   var sourceLabel = func.labelsDict[sourceLabelId];
                   var lastLine = sourceLabel.lines.slice(-1)[0];
-                  if (lastLine.intertype == 'assign') lastLine = lastLine.value;
                   assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
                   if (!lastLine.phi) {
                     lastLine.phi = true;
@@ -1098,14 +1080,15 @@ function analyzer(data, sidePass) {
                   };
                   lastLine.dependent.params.push({
                     intertype: 'phiassign',
-                    ident: line.ident,
+                    ident: phi.assignTo,
                     value: param.value,
                     targetLabel: label.ident
                   });
                 }
                 // The assign to phi is now just a var
-                line.intertype = 'var';
-                line.value = null;
+                phi.intertype = 'var';
+                phi.ident = phi.assignTo;
+                phi.assignTo = null;
               }
             });
           });
@@ -1121,11 +1104,10 @@ function analyzer(data, sidePass) {
       data.functions.forEach(function(func) {
         var lines = func.labels[0].lines;
         for (var i = 0; i < lines.length; i++) {
-          var line = lines[i];
-          var item = line.value;
-          if (!item || item.intertype != 'alloca') break;
+          var item = lines[i];
+          if (!item.assignTo || item.intertype != 'alloca') break;
           assert(isNumber(item.allocatedNum));
-          item.allocatedSize = func.variables[line.ident].impl === VAR_EMULATED ?
+          item.allocatedSize = func.variables[item.assignTo].impl === VAR_EMULATED ?
             calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
           if (USE_TYPED_ARRAYS === 2) {
             // We need to keep the stack aligned
@@ -1134,8 +1116,8 @@ function analyzer(data, sidePass) {
         }
         var index = 0;
         for (var i = 0; i < lines.length; i++) {
-          var item = lines[i].value;
-          if (!item || item.intertype != 'alloca') break;
+          var item = lines[i];
+          if (!item.assignTo || item.intertype != 'alloca') break;
           item.allocatedIndex = index;
           index += item.allocatedSize;
           delete item.allocatedSize;
@@ -1159,8 +1141,8 @@ function analyzer(data, sidePass) {
           // Allocas
           var finishedInitial = false;
           for (var i = 0; i < lines.length; i++) {
-            var item = lines[i].value;
-            if (!item || item.intertype != 'alloca') {
+            var item = lines[i];
+            if (!item.assignTo || item.intertype != 'alloca') {
               finishedInitial = true;
               continue;
             }
@@ -1174,7 +1156,6 @@ function analyzer(data, sidePass) {
           // Varargs
           for (var i = 0; i < lines.length; i++) {
             var item = lines[i];
-            if (item.value) item = item.value;
             if (item.intertype == 'call' && isVarArgsFunctionType(item.type)) {
               func.otherStackAllocations = true;
               break;
@@ -1199,8 +1180,6 @@ function analyzer(data, sidePass) {
     }
     if (line.intertype in BRANCH_INVOKE) {
       process(line);
-    } else if (line.intertype == 'assign' && line.value.intertype == 'invoke') {
-      process(line.value);
     } else if (line.intertype == 'switch') {
       process(line);
       line.switchLabels.forEach(process);

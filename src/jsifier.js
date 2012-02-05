@@ -658,36 +658,25 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('FuncLineTriager', {
     processItem: function(item) {
       if (item.intertype == 'function') {
-        this.forwardItem(item, 'FunctionReconstructor');
+        this.forwardItem(item, 'FunctionReconstructor'); // XXX not really needed
       } else if (item.JS) {
-        if (item.parentLineNum) {
-          this.forwardItem(item, 'AssignReintegrator');
-        } else {
-          this.forwardItem(item, 'FunctionReconstructor');
-        }
+        this.forwardItem(item, 'FunctionReconstructor'); // XXX not really needed
       } else {
         this.forwardItem(item, 'Intertype:' + item.intertype);
       }
     }
   });
 
-  // assignment
-  substrate.addActor('Intertype:assign', {
-    processItem: function(item) {
-      var pair = splitItem(item, 'value', ['funcData']);
-      this.forwardItem(pair.parent, 'AssignReintegrator');
-      this.forwardItem(pair.child, 'FuncLineTriager');
-    }
-  });
-  substrate.addActor('AssignReintegrator', makeReintegrator(function(item, child) {
-    // 'var', since this is SSA - first assignment is the only assignment, and where it is defined
+  // An interitem that has |assignTo| is an assign to that item. They call this function which
+  // generates the actual assignment.
+  function makeAssign(item) {
+    var valueJS = item.JS;
     item.JS = '';
     if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
-    item.JS += (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.ident);
+    item.JS += (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.assignTo);
 
-    var type = item.value.type;
-    var value = parseNumerical(item.value.JS);
-    var impl = getVarImpl(item.funcData, item.ident);
+    var value = parseNumerical(valueJS);
+    var impl = getVarImpl(item.funcData, item.assignTo);
     switch (impl) {
       case VAR_NATIVE: {
         break;
@@ -702,12 +691,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       default: throw 'zz unknown impl: ' + impl;
     }
-    if (value)
+    if (value && value != ';') {
       item.JS += '=' + value;
-    item.JS += ';';
-
-    this.forwardItem(item, 'FunctionReconstructor');
-  }));
+    }
+    if (item.JS[item.JS.length-1] != ';') {
+      item.JS += ';';
+    }
+  }
 
   // Function lines
   function makeFuncLineActor(intertype, func) {
@@ -715,7 +705,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       processItem: function(item) {
         item.JS = func(item);
         if (!item.JS) throw "No JS generated for " + dump(item);
-        this.forwardItem(item, 'FuncLineTriager');
+        if (item.assignTo) {
+          makeAssign(item);
+          if (!item.JS) throw "No assign JS generated for " + dump(item);
+        }
+        this.forwardItem(item, 'FunctionReconstructor');
       }
     });
   }

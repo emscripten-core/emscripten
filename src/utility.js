@@ -9,17 +9,8 @@ function safeQuote(x) {
 }
 
 function dump(item) {
-  var CHUNK = 500;
-  function lineify(text) {
-    var ret = '';
-    while (text.length > 80) {
-      ret += '// ' + text.substr(0,80) + '\n';
-      text = text.substr(80);
-    }
-    return ret + '// ' + text;
-  }
   try {
-    return lineify(JSON.stringify(item).substr(0, 80*25));
+    return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch(e) {
     var ret = [];
     for (var i in item) {

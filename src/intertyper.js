@@ -295,81 +295,78 @@ function intertyper(data, sidePass, baseLineNums) {
   substrate.addActor('Triager', {
     processItem: function _triager(item) {
       function triage() {
-        if (!item.intertype) {
-          var token0Text = item.tokens[0].text;
-          var token1Text = item.tokens[1] ? item.tokens[1].text : null;
-          var tokensLength = item.tokens.length;
-          if (item.indent === 2) {
-            if (tokensLength >= 5 &&
-                (token0Text == 'store' || token1Text == 'store'))
-              return 'Store';
-            if (tokensLength >= 3 && findTokenText(item, '=') >= 0)
-              return 'Assign';
-            if (tokensLength >= 3 && token0Text == 'br')
-              return 'Branch';
-            if (tokensLength >= 2 && token0Text == 'ret')
-              return 'Return';
-            if (tokensLength >= 2 && token0Text == 'switch')
-              return 'Switch';
-            if (token0Text == 'unreachable')
-              return 'Unreachable';
-            if (tokensLength >= 3 && token0Text == 'indirectbr')
-              return 'IndirectBr';
-            if (tokensLength >= 2 && token0Text == 'resume')
-              return 'Resume';
-          } else if (item.indent === -1) {
-            if (tokensLength >= 3 &&
-                (token0Text == 'load' || token1Text == 'load'))
-              return 'Load';
-            if (tokensLength >= 3 &&
-                token0Text in MATHOPS)
-              return 'Mathops';
-            if (tokensLength >= 3 && token0Text == 'bitcast')
-              return 'Bitcast';
-            if (tokensLength >= 3 && token0Text == 'getelementptr')
-              return 'GEP';
-            if (tokensLength >= 2 && token0Text == 'alloca')
-              return 'Alloca';
-            if (tokensLength >= 3 && token0Text == 'extractvalue')
-              return 'ExtractValue';
-            if (tokensLength >= 3 && token0Text == 'insertvalue')
-              return 'InsertValue';
-            if (tokensLength >= 3 && token0Text == 'phi')
-              return 'Phi';
-            if (tokensLength >= 3 && token0Text == 'landingpad')
-              return 'Landingpad';
-          } else if (item.indent === 0) {
-            if ((tokensLength >= 1 && token0Text.substr(-1) == ':') ||
-                (tokensLength >= 3 && token1Text == '<label>'))
-              return 'Label';
-            if (tokensLength >= 4 && token0Text == 'declare')
-              return 'External';
-            if (tokensLength >= 3 && token1Text == '=')
-              return 'Global';
-            if (tokensLength >= 4 && token0Text == 'define' &&
-               item.tokens.slice(-1)[0].text == '{')
-              return 'FuncHeader';
-            if (tokensLength >= 1 && token0Text == '}')
-              return 'FuncEnd';
-          }
-          if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
-            return 'Call';
-          if (token0Text == 'target')
-            return '/dev/null';
-          if (token0Text == ';')
-            return '/dev/null';
-          if (tokensLength >= 3 && token0Text == 'invoke')
-            return 'Invoke';
-          if (tokensLength >= 3 && token0Text == 'atomicrmw' || token0Text == 'cmpxchg')
-            return 'Atomic';
-        } else {
-          // Already intertyped
-          if (item.parentSlot)
-            return 'Reintegrator';
+        assert(!item.intertype);
+        var token0Text = item.tokens[0].text;
+        var token1Text = item.tokens[1] ? item.tokens[1].text : null;
+        var tokensLength = item.tokens.length;
+        if (item.indent === 2) {
+          if (tokensLength >= 5 &&
+              (token0Text == 'store' || token1Text == 'store'))
+            return 'Store';
+          if (tokensLength >= 3 && token0Text == 'br')
+            return 'Branch';
+          if (tokensLength >= 2 && token0Text == 'ret')
+            return 'Return';
+          if (tokensLength >= 2 && token0Text == 'switch')
+            return 'Switch';
+          if (token0Text == 'unreachable')
+            return 'Unreachable';
+          if (tokensLength >= 3 && token0Text == 'indirectbr')
+            return 'IndirectBr';
+          if (tokensLength >= 2 && token0Text == 'resume')
+            return 'Resume';
+          if (tokensLength >= 3 &&
+              (token0Text == 'load' || token1Text == 'load'))
+            return 'Load';
+          if (tokensLength >= 3 &&
+              token0Text in MATHOPS)
+            return 'Mathops';
+          if (tokensLength >= 3 && token0Text == 'bitcast')
+            return 'Bitcast';
+          if (tokensLength >= 3 && token0Text == 'getelementptr')
+            return 'GEP';
+          if (tokensLength >= 2 && token0Text == 'alloca')
+            return 'Alloca';
+          if (tokensLength >= 3 && token0Text == 'extractvalue')
+            return 'ExtractValue';
+          if (tokensLength >= 3 && token0Text == 'insertvalue')
+            return 'InsertValue';
+          if (tokensLength >= 3 && token0Text == 'phi')
+            return 'Phi';
+          if (tokensLength >= 3 && token0Text == 'landingpad')
+            return 'Landingpad';
+        } else if (item.indent === 0) {
+          if ((tokensLength >= 1 && token0Text.substr(-1) == ':') ||
+              (tokensLength >= 3 && token1Text == '<label>'))
+            return 'Label';
+          if (tokensLength >= 4 && token0Text == 'declare')
+            return 'External';
+          if (tokensLength >= 3 && token1Text == '=')
+            return 'Global';
+          if (tokensLength >= 4 && token0Text == 'define' &&
+             item.tokens.slice(-1)[0].text == '{')
+            return 'FuncHeader';
+          if (tokensLength >= 1 && token0Text == '}')
+            return 'FuncEnd';
         }
+        if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
+          return 'Call';
+        if (token0Text == 'target')
+          return '/dev/null';
+        if (token0Text == ';')
+          return '/dev/null';
+        if (tokensLength >= 3 && token0Text == 'invoke')
+          return 'Invoke';
+        if (tokensLength >= 3 && token0Text == 'atomicrmw' || token0Text == 'cmpxchg')
+          return 'Atomic';
         throw 'Invalid token, cannot triage: ' + dump(item);
       }
-      this.forwardItem(item, triage(item));
+      var eq;
+      if (item.indent == 2 && (eq = findTokenText(item, '=')) >= 0) {
+        item.assignTo = toNiceIdent(combineTokens(item.tokens.slice(0, eq)).text);
+        item.tokens = item.tokens.slice(eq+1);
+      }
+      this.forwardItem(item, triage());
     }
   });
 
@@ -564,26 +561,12 @@ function intertyper(data, sidePass, baseLineNums) {
     }
   });
 
-  // assignment
-  substrate.addActor('Assign', {
+  // TODO: remove dis
+  substrate.addActor('Reintegrator', {
     processItem: function(item) {
-      var opIndex = findTokenText(item, '=');
-      var commentIndex = getTokenIndexByText(item.tokens, ';');
-      var pair = splitItem({
-        intertype: 'assign',
-        ident: toNiceIdent(combineTokens(item.tokens.slice(0, opIndex)).text),
-        lineNum: item.lineNum,
-      }, 'value');
-      this.forwardItem(pair.parent, 'Reintegrator');
-      pair.child.indent = -1;
-      pair.child.tokens = item.tokens.slice(opIndex+1);
-      this.forwardItem(pair.child, 'Triager');
+      this.forwardItem(item, '/dev/stdout');
     }
   });
-
-  substrate.addActor('Reintegrator', makeReintegrator(function(parent, child) {
-    this.forwardItem(parent, '/dev/stdout');
-  }));
 
   // 'load'
   substrate.addActor('Load', {

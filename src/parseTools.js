@@ -254,58 +254,6 @@ function splitTokenList(tokens) {
   return ret;
 }
 
-// Splits an item, with the intent of later reintegration
-function splitItem(parent, childSlot, copySlots) {
-  if (!copySlots) copySlots = [];
-  if (!parent[childSlot]) parent[childSlot] = {};
-  var child = parent[childSlot];
-  parent[childSlot] = null;
-  child.parentUid = parent.__uid__;
-  child.parentSlot = childSlot;
-  child.parentLineNum = child.lineNum = parent.lineNum;
-  copySlots.forEach(function(slot) { child[slot] = parent[slot] });
-  return {
-    parent: parent,
-    child: child
-  };
-}
-
-function makeReintegrator(afterFunc) {
-  // Reintegration - find intermediate representation-parsed items and
-  // place back in parents
-  return {
-    process: function(items) {
-      var ret = [];
-      var lineDict = {};
-      for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        if (!item.parentSlot) {
-          assert(!lineDict[item.lineNum]);
-          lineDict[item.lineNum] = i;
-        }
-      }
-      for (var i = 0; i < items.length; i++) {
-        var child = items[i];
-        if (!child) continue; // it might have been removed by a previous pass
-        var j = lineDict[child.parentLineNum];
-        if (typeof j === 'number') {
-          var parent = items[j];
-          // process the pair
-          parent[child.parentSlot] = child;
-          delete child.parentLineNum;
-          afterFunc.call(this, parent, child);
-
-          items[i] = null;
-          items[j] = null;
-          lineDict[child.parentLineNum] = null;
-        }
-      }
-      this.forwardItems(items.filter(function(item) { return !!item }), this.name_); // next time hopefully
-      return ret;
-    }
-  };
-}
-
 function parseParamTokens(params) {
   if (params.length === 0) return [];
   var ret = [];
