@@ -5545,7 +5545,6 @@ Options that are modified or new in %s include:
             assert os.path.exists('something.bc'), output[1]
             output = Popen([compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('something.js'), output[1]
-          assert ('warning: The relooper optimization can be very slow.' in output[1]) == (opt_level >= 2), 'relooper warning should appear in opt >= 2'
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
 

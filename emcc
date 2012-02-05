@@ -584,12 +584,6 @@ try:
       if DEBUG: save_intermediate('dce', 'bc')
 
   # Prepare .ll for Emscripten
-  try:
-    if shared.Settings.RELOOP:
-      print >> sys.stderr, 'emcc: warning: The relooper optimization can be very slow.'
-  except:
-    pass
-
   if not LEAVE_INPUTS_RAW:
     final = shared.Building.llvm_dis(final, final + '.ll')
   else:
