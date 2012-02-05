@@ -303,7 +303,7 @@ LibraryManager.library = {
     // optional handlers.
     init: function(input, output, error) {
       // Make sure we initialize only once.
-      if (FS.init.initialized) return;
+      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
       FS.init.initialized = true;
 
       FS.ensureRoot();

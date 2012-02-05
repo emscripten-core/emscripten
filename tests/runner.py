@@ -4321,7 +4321,6 @@ def process(filename):
 def process(filename):
   src = open(filename, 'a')
   src.write(\'\'\'
-    FS.init();
     FS.createPath('/', 'dev/shm/tmp', true, true);
     FS.currentPath = '/dev/shm/tmp';
     run();
