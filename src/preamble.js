@@ -671,7 +671,7 @@ STATICTOP = alignMemoryPage(STACK_MAX);
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
-    var callback = callbacks.pop();
+    var callback = callbacks.shift();
     var func = callback.func;
     if (typeof func === 'number') {
       func = FUNCTION_TABLE[func];
