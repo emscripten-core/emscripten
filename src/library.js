@@ -26,8 +26,7 @@ LibraryManager.library = {
   _impure_ptr: 0,
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: '__ATINIT__.push({ func: function() { FS.ignorePermissions = false } });' +
-                'if (!FS.init.initialized) FS.init();' +
+  $FS__postset: '__ATINIT__.push({ func: function() { FS.ignorePermissions = false; if (!FS.init.initialized) FS.init() } });' +
                 '__ATEXIT__.push({ func: function() { FS.quit() } });',
   $FS: {
     // The path to the current folder.
@@ -343,7 +342,7 @@ LibraryManager.library = {
       FS.createFolder('/', 'tmp', true, true);
 
       // Create the I/O devices.
-      var devFolder = FS.createFolder('/', 'dev', true, false);
+      var devFolder = FS.createFolder('/', 'dev', true, true);
       var stdin = FS.createDevice(devFolder, 'stdin', input);
       var stdout = FS.createDevice(devFolder, 'stdout', null, output);
       var stderr = FS.createDevice(devFolder, 'stderr', null, error);
@@ -386,6 +385,9 @@ LibraryManager.library = {
       _stdin = allocate([1], 'void*', ALLOC_STATIC);
       _stdout = allocate([2], 'void*', ALLOC_STATIC);
       _stderr = allocate([3], 'void*', ALLOC_STATIC);
+
+      // Other system paths
+      FS.createPath('/', 'dev/shm/tmp', true, true); // temp files
 
       // Newlib initialization
       FS.streams[_stdin] = FS.streams[1];

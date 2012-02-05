@@ -45,6 +45,10 @@ Module['run'] = run;
 
 // {{PRE_RUN_ADDITIONS}}
 
+if (Module['preRun']) {
+  Module['preRun']();
+}
+
 #if INVOKE_RUN
 #else
 Module['noInitialRun'] = true;
@@ -58,4 +62,8 @@ if (!Module['noInitialRun']) {
 }
 
 // {{POST_RUN_ADDITIONS}}
+
+if (Module['postRun']) {
+  Module['postRun']();
+}
 

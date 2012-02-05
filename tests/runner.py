@@ -3362,18 +3362,19 @@ Pass: 0.000012 0.000012''')
       Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
       post = '''
 def process(filename):
-  src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
-      FS.createLazyFile('/', 'test.file', 'test.file', true, false);
-      var test_files_input = 'hi there!';
-      var test_files_input_index = 0;
-      FS.init(function() {
-        return test_files_input.charCodeAt(test_files_input_index++) || null;
-      });
-    \'\'\'
-  )
+  src = \'\'\'
+    var Module = {
+      'preRun': function() {
+        FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
+        FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+        var test_files_input = 'hi there!';
+        var test_files_input_index = 0;
+        FS.init(function() {
+          return test_files_input.charCodeAt(test_files_input_index++) || null;
+        });
+      }
+    };
+  \'\'\' + open(filename, 'r').read()
   open(filename, 'w').write(src)
 '''
       other = open(os.path.join(self.get_dir(), 'test.file'), 'w')
@@ -4315,19 +4316,6 @@ def process(filename):
       Settings.FAST_MEMORY = 4*1024*1024
       Settings.EXPORTED_FUNCTIONS = ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
 
-      Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
-
-      post = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(\'\'\'
-    FS.createPath('/', 'dev/shm/tmp', true, true);
-    FS.currentPath = '/dev/shm/tmp';
-    run();
-  \'\'\')
-  src.close()
-'''
-
       self.do_run(r'''
                         #define SQLITE_DISABLE_LFS
                         #define LONGDOUBLE_TYPE double
@@ -4338,8 +4326,7 @@ def process(filename):
                    open(path_from_root('tests', 'sqlite', 'benchmark.txt'), 'r').read(),
                    includes=[path_from_root('tests', 'sqlite')],
                    force_c=True,
-                   js_engines=[SPIDERMONKEY_ENGINE], # V8 is slow
-                   post_build=post)#,build_ll_hook=self.do_autodebug)
+                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 is slow
 
     def test_zlib(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:
