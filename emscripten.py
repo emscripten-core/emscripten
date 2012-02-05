@@ -15,8 +15,15 @@ import os
 import subprocess
 import re
 import sys
-from tools import shared
 
+if not os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'):
+  print >> sys.stderr, '''
+==============================================================
+WARNING: You should normally never use this! Use emcc instead.
+==============================================================
+  '''
+
+from tools import shared
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):

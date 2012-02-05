@@ -547,6 +547,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
 
   @staticmethod
   def emscripten(filename, append_ext=True, extra_args=[]):
+    # Allow usage of emscripten.py without warning
+    os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
+
     # Run Emscripten
     settings = Settings.serialize()
     compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
