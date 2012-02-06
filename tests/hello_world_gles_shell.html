@@ -25,9 +25,6 @@
         canvas: document.getElementById('canvas')
       };
 
-      // The compiled code
-      {{{ SCRIPT_CODE }}}
-
       // Test code
       function simulateKeyEvent(keyCode) {
         var event = document.createEvent("KeyboardEvent");
@@ -50,6 +47,9 @@
         }, 0);
       }
       addEventListener("load", doTest, false);
+
+      // The compiled code
+      {{{ SCRIPT_CODE }}}
     </script>
   </body>
 </html>
