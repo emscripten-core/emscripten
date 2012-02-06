@@ -17,7 +17,6 @@ var ENCLOSER_ENDERS = {
   '(': ')',
   '<': '>'
 };
-var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 var ZEROINIT_UNDEF = set('zeroinitializer', 'undef');
 var NSW_NUW = set('nsw', 'nuw');
 
