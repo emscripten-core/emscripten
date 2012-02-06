@@ -6118,7 +6118,7 @@ elif 'sanity' in str(sys.argv):
       # With a working path, all is well
       restore()
       try_delete('a.out.js')
-      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], 'The relooper optimization can be very slow')
+      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], '')
       assert os.path.exists('a.out.js')
 
     def test_emcc(self):
