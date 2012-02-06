@@ -239,22 +239,6 @@ var LibraryGL = {
     Module.ctx.bindBuffer(target, GL.hashtable("buffer").get(buffer));
   },
 
-  glVertexAttrib1f: function(index, v0) {
-    Module.ctx.vertexAttrib1f(index, v0);
-  },
-
-  glVertexAttrib2f: function(index, v0, v1) {
-    Module.ctx.vertexAttrib2f(index, v0, v1);
-  },
-
-  glVertexAttrib3f: function(index, v0, v1, v2) {
-    Module.ctx.vertexAttrib3f(index, v0, v1, v2);
-  },
-
-  glVertexAttrib4f: function(index, v0, v1, v2, v3) {
-    Module.ctx.vertexAttrib4f(index, v0, v1, v2, v3);
-  },
-
   glVertexAttrib1fv: function(index, v) {
     v = new Float32Array(TypedArray_copy(v, 1*4)); // TODO: optimize
     Module.ctx.vertexAttrib1fv(index, v);
@@ -273,22 +257,6 @@ var LibraryGL = {
   glVertexAttrib4fv: function(index, v) {
     v = new Float32Array(TypedArray_copy(v, 4*4)); // TODO: optimize
     Module.ctx.vertexAttrib4fv(index, v);
-  },
-
-  glVertexAttribPointer: function(index, size, type, normalized, stride, pointer) {
-    Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, pointer);
-  },
-
-  glEnableVertexAttribArray: function(index) {
-    Module.ctx.enableVertexAttribArray(index);
-  },
-
-  glDisableVertexAttribArray: function(index) {
-    Module.ctx.disableVertexAttribArray(index);
-  },
-
-  glDrawArrays: function(mode, first, count) {
-    Module.ctx.drawArrays(mode, first, count);
   },
 
   glGetAttribLocation: function(program, name) {
@@ -382,15 +350,65 @@ var LibraryGL = {
     Module.ctx.bindAttribLocation(GL.hashtable("program").get(program), index, name);
   },
 
+  glBindFrameBuffer_deps: ['$GL'],
+  glBindFrameBuffer: function(target, framebuffer) {
+    Module.ctx.bindFrameBuffer(target, GL.hashtable("framebuffer").get(framebuffer));
+  },
+
+  glGenFramebuffers_deps: ['$GL'],
+  glGenFramebuffers: function(n, ids) {
+    for (var i = 0; i < n; ++i) {
+      var fb = GL.hashtable("framebuffer").add(Module.ctx.createFramebuffer());
+      {{{ makeSetValue('ids', 'i', 'fb', 'i32') }}};
+    }
+  },
+
+  glDeleteFramebuffers_deps: ['$GL'],
+  glDeleteFramebuffers: function(n, framebuffers) {
+    for (var i = 0; i < n; ++i) {
+      var fb = GL.hashtable("framebuffer").get({{{ makeGetValue('framebuffers', 'i', 'i32' ) }}});
+      Module.ctx.deleteFramebuffer(fb);
+    }
+  },
+
+  glFramebufferRenderbuffer_deps: ['$GL'],
+  glFramebufferRenderbuffer: function(target, attachment, renderbuffertarget, renderbuffer) {
+    Module.ctx.framebufferRenderbuffer(target, attachment, renderbuffertarget,
+                                       GL.hashtable("renderbuffer").get(renderbuffer));
+  },
+
+  glFramebufferTexture2D_deps: ['$GL'],
+  glFramebufferTexture2D: function(target, attachment, textarget, texture, level) {
+    Module.ctx.framebufferTexture2D(target, attachment, textarget,
+                                    GL.hashtable("texture").get(texture), level);
+  },
+
+  glGetFramebufferAttachmentParameteriv_deps: ['$GL'],
+  glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
+    var result = Module.ctx.getFramebufferAttachmentParameter(target, attachment, pname);
+    {{{ makeSetValue('params', '0', 'params', 'i32') }}};
+  },
+
+  glIsFramebuffer_deps: ['$GL'],
+  glIsFramebuffer: function(framebuffer) {
+    var fb = GL.hashtable("framebuffer").get(framebuffer);
+    if (typeof(fb) == 'undefined') {
+      return false;
+    }
+    return Module.ctx.isFramebuffer(fb);
+  },
+
 };
 
 
 // Simple pass-through functions
-[[0, 'shadeModel fogi fogfv getError'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear'],
- [2, 'pixelStorei'],
- [3, 'texParameteri texParameterf'],
- [4, 'viewport clearColor scissor']].forEach(function(data) {
+[[0, 'shadeModel fogi fogfv getError finish flush'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus'],
+ [2, 'pixelStorei vertexAttrib1f depthRange polygonOffset'],
+ [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask'],
+ [5, 'vertexAttrib4f'],
+ [6, 'vertexAttribPointer']].forEach(function(data) {
   var num = data[0];
   var names = data[1];
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
