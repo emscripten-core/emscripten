@@ -101,11 +101,14 @@ var Runtime = {
 
   forceAlign: function(target, quantum) {
     quantum = quantum || {{{ QUANTUM_SIZE }}};
+    if (quantum == 1) return target;
     if (isNumber(target) && isNumber(quantum)) {
       return Math.ceil(target/quantum)*quantum;
-    } else {
-      return 'Math.ceil((' + target + ')/' + quantum + ')*' + quantum;
+    } else if (isNumber(quantum) && isPowerOfTwo(quantum)) {
+      var logg = log2(quantum);
+      return '((((' +target + ')+' + (quantum-1) + ')>>' + logg + ')<<' + logg + ')';
     }
+    return 'Math.ceil((' + target + ')/' + quantum + ')*' + quantum;
   },
 
   isNumberType: function(type) {

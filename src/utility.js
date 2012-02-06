@@ -297,6 +297,10 @@ function log2(x) {
   return Math.log(x)/Math.LN2;
 }
 
+function isPowerOfTwo(x) {
+  return x > 0 && ((x & (x-1)) == 0);
+}
+
 function Benchmarker() {
   var starts = {}, times = {}, counts = {};
   this.start = function(id) {
