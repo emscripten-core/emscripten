@@ -3289,13 +3289,16 @@ at function.:blag
 
           printf("%f, %f\n", atof("1.234567"), atof("cheez"));
 
+          float a = -1;
+          sscanf("-3.03", "%f", &a);
+          printf("%.4f\n", a);
+
           return 0;
         }
         '''
-      self.do_run(src, 'en-us : 2*en-r : 99*en : 3*1.234567, 0.000000',
-                  output_nicerizer = lambda x: x.replace('\n', '*'))
+      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300')
 
-      # Part 2: doubles (issue 148)
+      # Part 2: doubles
       if Settings.USE_TYPED_ARRAYS == 2:
         for ftype in ['float', 'double']:
           src = r'''
