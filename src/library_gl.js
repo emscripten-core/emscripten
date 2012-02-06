@@ -350,12 +350,60 @@ var LibraryGL = {
     Module.ctx.bindAttribLocation(GL.hashtable("program").get(program), index, name);
   },
 
+  glBindFrameBuffer_deps: ['$GL'],
+  glBindFrameBuffer: function(target, framebuffer) {
+    Module.ctx.bindFrameBuffer(target, GL.hashtable("framebuffer").get(framebuffer));
+  },
+
+  glGenFramebuffers_deps: ['$GL'],
+  glGenFramebuffers: function(n, ids) {
+    for (var i = 0; i < n; ++i) {
+      var fb = GL.hashtable("framebuffer").add(Module.ctx.createFramebuffer());
+      {{{ makeSetValue('ids', 'i', 'fb', 'i32') }}};
+    }
+  },
+
+  glDeleteFramebuffers_deps: ['$GL'],
+  glDeleteFramebuffers: function(n, framebuffers) {
+    for (var i = 0; i < n; ++i) {
+      var fb = GL.hashtable("framebuffer").get({{{ makeGetValue('framebuffers', 'i', 'i32' ) }}});
+      Module.ctx.deleteFramebuffer(fb);
+    }
+  },
+
+  glFramebufferRenderbuffer_deps: ['$GL'],
+  glFramebufferRenderbuffer: function(target, attachment, renderbuffertarget, renderbuffer) {
+    Module.ctx.framebufferRenderbuffer(target, attachment, renderbuffertarget,
+                                       GL.hashtable("renderbuffer").get(renderbuffer));
+  },
+
+  glFramebufferTexture2D_deps: ['$GL'],
+  glFramebufferTexture2D: function(target, attachment, textarget, texture, level) {
+    Module.ctx.framebufferTexture2D(target, attachment, textarget,
+                                    GL.hashtable("texture").get(texture), level);
+  },
+
+  glGetFramebufferAttachmentParameteriv_deps: ['$GL'],
+  glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
+    var result = Module.ctx.getFramebufferAttachmentParameter(target, attachment, pname);
+    {{{ makeSetValue('params', '0', 'params', 'i32') }}};
+  },
+
+  glIsFramebuffer_deps: ['$GL'],
+  glIsFramebuffer: function(framebuffer) {
+    var fb = GL.hashtable("framebuffer").get(framebuffer);
+    if (typeof(fb) == 'undefined') {
+      return false;
+    }
+    return Module.ctx.isFramebuffer(fb);
+  },
+
 };
 
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus'],
  [2, 'pixelStorei vertexAttrib1f depthRange polygonOffset'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask'],
