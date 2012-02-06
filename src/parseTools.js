@@ -1130,7 +1130,17 @@ function getFastValue(a, op, b, type) {
   a = a.toString();
   b = b.toString();
   if (isNumber(a) && isNumber(b)) {
-    return eval(a + op + b).toString();
+    if (op == 'pow') {
+      return Math.pow(a, b).toString();
+    } else {
+      return eval(a + op + b).toString();
+    }
+  }
+  if (op == 'pow') {
+    if (a == '2' && isIntImplemented(type)) {
+      return '(1 << (' + b + '))';
+    }
+    return 'Math.pow(' + a + ', ' + b + ')';
   }
   if (op in PLUS_MUL && isNumber(a)) { // if one of them is a number, keep it last
     var c = b;
@@ -1711,27 +1721,16 @@ function processMathop(item) {
       return ident1 + ' ^ ' + ident2;
     }
     case 'shl': {
-      // Note: Increases in size may reach the 32-bit limit... where our sign can flip. But this may be expected by the code...
-      /*
-      if (bits >= 32) {
-        if (CHECK_SIGNS && !CORRECT_SIGNS) return 'shlSignCheck(' + ident1 + ', ' + ident2 + ')';
-        if (CORRECT_SIGNS) {
-          var mul = 'Math.pow(2, ' + ident2 + ')';
-          if (isNumber(ident2)) mul = eval(mul);
-          return ident1 + ' * ' + mul;
-        }
-      }
-      */
-      if (bits > 32) return ident1 + '*Math.pow(2,' + ident2 + ')'; // TODO: calculate Math.pow at runtime for consts, and below too
+      if (bits > 32) return ident1 + '*' + getFastValue(2, 'pow', ident2);
       return ident1 + ' << ' + ident2;
     }
     case 'ashr': {
-      if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
+      if (bits > 32) return integerizeBignum(ident1 + '/' + getFastValue(2, 'pow', ident2));
       if (bits === 32) return originalIdent1 + ' >> ' + ident2; // No need to reSign in this case
       return ident1 + ' >> ' + ident2;
     }
     case 'lshr': {
-      if (bits > 32) return integerizeBignum(ident1 + '/Math.pow(2,' + ident2 + ')');
+      if (bits > 32) return integerizeBignum(ident1 + '/' + getFastValue(2, 'pow', ident2));
       if (bits === 32) return originalIdent1 + ' >>> ' + ident2; // No need to unSign in this case
       return ident1 + ' >>> ' + ident2;
     }
