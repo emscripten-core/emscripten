@@ -395,7 +395,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
     if env is None:
       env = Building.get_building_env()
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
-    if args[0].find('cmake') > -1:
+    if 'cmake' in argv[0]:
       args = Building.handle_CMake_toolchain(args)
     Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
     del env['EMMAKEN_JUST_CONFIGURE']
