@@ -173,6 +173,12 @@ mergeInto(LibraryManager.library, {
     },
 
     createContext: function(useWebGL) {
+#if !USE_TYPED_ARRAYS
+      if (useWebGL) {
+	Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
+        return null;
+      }
+#endif
       try {
         var ctx = Module.canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
         if (!ctx) throw 'Could not create canvas :(';
