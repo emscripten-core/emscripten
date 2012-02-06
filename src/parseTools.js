@@ -397,7 +397,7 @@ function cleanSegment(segment) {
   return segment;
 }
 
-var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext', 'sub', 'add', 'div');
+var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast', 'inttoptr', 'ptrtoint', 'mul', 'icmp', 'zext', 'sub', 'add', 'div', 'or');
 
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)
@@ -1300,7 +1300,7 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
         // from one file to another, would be enough to fix this), or, do not pass structs by value (which in general
         // is inefficient, and worth avoiding if you can).
       }
-    case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div': case 'inttoptr': case 'ptrtoint':
+    case 'icmp': case 'mul': case 'zext': case 'add': case 'sub': case 'div': case 'inttoptr': case 'ptrtoint': case 'or':
       var temp = {
         op: item.intertype,
         variant: item.variant,
