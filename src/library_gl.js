@@ -354,11 +354,11 @@ var LibraryGL = {
 
 
 // Simple pass-through functions
-[[0, 'shadeModel fogi fogfv getError'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray'],
- [2, 'pixelStorei vertexAttrib1f'],
+[[0, 'shadeModel fogi fogfv getError finish flush'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate'],
+ [2, 'pixelStorei vertexAttrib1f depthRange polygonOffset'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer']].forEach(function(data) {
   var num = data[0];
