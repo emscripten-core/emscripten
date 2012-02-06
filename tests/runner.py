@@ -3613,7 +3613,7 @@ def process(filename):
         f_blocks: 1000000
         f_bfree: 500000
         f_bavail: 500000
-        f_files: 8
+        f_files: 10
         f_ffree: 1000000
         f_favail: 1000000
         f_fsid: 42
