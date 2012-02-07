@@ -90,6 +90,7 @@ CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 CLANG=CLANG_CPP
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 LLVM_LD=os.path.join(LLVM_ROOT, 'llvm-ld')
+LLVM_AR=os.path.join(LLVM_ROOT, 'llvm-ar')
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
 LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
@@ -726,6 +727,17 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
     return filename + '.cc.js'
 
   @staticmethod
+  def is_ar(filename):
+    try:
+      b = open(filename, 'r').read(8)
+      return b[0] == '!' and b[1] == '<' and \
+             b[2] == 'a' and b[3] == 'r' and \
+             b[4] == 'c' and b[5] == 'h' and \
+             b[6] == '>' and ord(b[7]) == 10
+    except:
+      return False
+
+  @staticmethod
   def is_bitcode(filename):
     # checks if a file contains LLVM bitcode
     # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
@@ -733,15 +745,22 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
       defs = Building.llvm_nm(filename, stderr=PIPE)
       # If no symbols found, it might just be an empty bitcode file, try to dis it
       if len(defs.defs) + len(defs.undefs) + len(defs.commons) == 0:
-        test_ll = os.path.join(EMSCRIPTEN_TEMP_DIR, 'test.ll')
-        Building.llvm_dis(filename, test_ll)
-        assert os.path.exists(test_ll)
+        # llvm-nm 3.0 has a bug when reading symbols from ar files
+        # so try to see if we're dealing with an ar file, in which
+        # case we should try to dis it.
+        if not Building.is_ar(filename):
+          test_ll = os.path.join(EMSCRIPTEN_TEMP_DIR, 'test.ll')
+          Building.llvm_dis(filename, test_ll)
+          assert os.path.exists(test_ll)
     except:
       return False
 
     # look for magic signature
     b = open(filename, 'r').read(4)
     if b[0] == 'B' and b[1] == 'C':
+      return True
+    # look for ar signature
+    elif Building.is_ar(filename):
       return True
     # on OS X, there is a 20-byte prefix
     elif ord(b[0]) == 222 and ord(b[1]) == 192 and ord(b[2]) == 23 and ord(b[3]) == 11:
