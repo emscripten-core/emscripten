@@ -9,6 +9,7 @@ var VAR_NATIVIZED = 'nativized';
 var VAR_EMULATED = 'emulated';
 
 var ENTRY_IDENT = toNiceIdent('%0');
+var ENTRY_IDENTS = set(toNiceIdent('%0'), toNiceIdent('%1'));
 
 function cleanFunc(func) {
   func.lines = func.lines.filter(function(line) { return line.intertype !== null });
@@ -1007,22 +1008,15 @@ function analyzer(data, sidePass) {
           }
         });
 
-        // The entry might not have an explicit label, and there is no consistent naming convention for it.
+        // The entry might not have an explicit label, and there is no consistent naming convention for it - it can be %0 or %1
         // So we need to handle that in a special way here.
-        var unknownEntry = null;
         function getActualLabelId(labelId) {
-          var label = func.labelsDict[labelId];
-          if (!label) {
-            if (!unknownEntry) {
-              unknownEntry = labelId;
-            } else {
-              assert(labelId == unknownEntry, 'More than one unknown label in phi, so both cannot be an unlabelled entry, in ' + func.ident);
-            }
-            labelId = ENTRY_IDENT;
-            label = func.labelsDict[labelId];
-            assert(label, 'Cannot find entry label when looking for it after seeing an unknown label in a phi');
+          if (func.labelsDict[labelId]) return labelId;
+          if (labelId in ENTRY_IDENTS) {
+            assert(func.labelsDict[ENTRY_IDENT]);
+            return ENTRY_IDENT;
           }
-          return labelId;
+          return null;
         }
 
         if (!MICRO_OPTS) {
@@ -1035,10 +1029,12 @@ function analyzer(data, sidePass) {
               if (phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
                   var sourceLabelId = getActualLabelId(phi.params[i].label);
-                  var sourceLabel = func.labelsDict[sourceLabelId];
-                  var lastLine = sourceLabel.lines.slice(-1)[0];
-                  assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
-                  lastLine.currLabelId = sourceLabelId;
+                  if (sourceLabelId) {
+                    var sourceLabel = func.labelsDict[sourceLabelId];
+                    var lastLine = sourceLabel.lines.slice(-1)[0];
+                    assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
+                    lastLine.currLabelId = sourceLabelId;
+                  }
                 }
                 phis.push(phi);
                 func.needsLastLabel = true;
@@ -1077,23 +1073,25 @@ function analyzer(data, sidePass) {
                 for (var i = 0; i < phi.params.length; i++) {
                   var param = phi.params[i];
                   var sourceLabelId = getActualLabelId(param.label);
-                  var sourceLabel = func.labelsDict[sourceLabelId];
-                  var lastLine = sourceLabel.lines.slice(-1)[0];
-                  assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
-                  if (!lastLine.phi) {
-                    lastLine.phi = true;
-                    assert(!lastLine.dependent);
-                    lastLine.dependent = {
-                      intertype: 'phiassigns',
-                      params: []
+                  if (sourceLabelId) {
+                    var sourceLabel = func.labelsDict[sourceLabelId];
+                    var lastLine = sourceLabel.lines.slice(-1)[0];
+                    assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
+                    if (!lastLine.phi) {
+                      lastLine.phi = true;
+                      assert(!lastLine.dependent);
+                      lastLine.dependent = {
+                        intertype: 'phiassigns',
+                        params: []
+                      };
                     };
-                  };
-                  lastLine.dependent.params.push({
-                    intertype: 'phiassign',
-                    ident: phi.assignTo,
-                    value: param.value,
-                    targetLabel: label.ident
-                  });
+                    lastLine.dependent.params.push({
+                      intertype: 'phiassign',
+                      ident: phi.assignTo,
+                      value: param.value,
+                      targetLabel: label.ident
+                    });
+                  }
                 }
                 // The assign to phi is now just a var
                 phi.intertype = 'var';
