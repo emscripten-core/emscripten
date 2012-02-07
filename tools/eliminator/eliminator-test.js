@@ -88,8 +88,8 @@ function py() {
   var $4 = HEAP[__PyThreadState_Current];
   var $5 = $4 + 12;
   var $7 = HEAP[$5] + 1;
-  var $8 = $4 + 12;
-  HEAP[$8] = $7;
+  var $8 = $7 + 12;
+  HEAP[$8] = 99;
 }
 function otherPy() {
   var $4 = HEAP[__PyThreadState_Current];

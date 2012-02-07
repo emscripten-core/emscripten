@@ -76,9 +76,8 @@ function strtok_part(b, j, f) {
   }
 }
 function py() {
-  var $7 = HEAP[HEAP[__PyThreadState_Current] + 12] + 1;
-  var $8 = HEAP[__PyThreadState_Current] + 12;
-  HEAP[$8] = $7;
+  var $8 = HEAP[HEAP[__PyThreadState_Current] + 12] + 1 + 12;
+  HEAP[$8] = 99;
 }
 function otherPy() {
   var $4 = HEAP[__PyThreadState_Current];

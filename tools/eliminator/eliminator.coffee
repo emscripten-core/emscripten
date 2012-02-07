@@ -27,7 +27,9 @@ isGenerated = (ident) ->
   ident in generatedFunctions
 
 # Maximum number of uses to consider a variable not worth eliminating.
-MAX_USES = 3
+# The risk with using > 1 is that a variable used by another can have
+# a chain that leads to exponential uses
+MAX_USES = 1
 
 # The UglifyJs code generator settings to use.
 GEN_OPTIONS =
