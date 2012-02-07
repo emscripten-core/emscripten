@@ -218,6 +218,10 @@ for i in range(len(lines)):
       in_func = False
       index = i+1+lines_added
       pre = '  call void @emscripten_autodebug_i32(i32 -1, i32 %d)' % index
+    elif lines[i].startswith('  ret '):
+      # This is a good place to mark entry to this function
+      index = i+1+lines_added
+      pre = '  call void @emscripten_autodebug_i32(i32 -2, i32 %d)' % index
 
     m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
     if m:
