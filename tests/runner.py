@@ -5807,7 +5807,7 @@ elif 'benchmark' in str(sys.argv):
   Building.COMPILER_TEST_OPTS = []
 
   TEST_REPS = 10
-  TOTAL_TESTS = 8
+  TOTAL_TESTS = 9
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
@@ -5939,6 +5939,49 @@ elif 'benchmark' in str(sys.argv):
         }      
       '''
       self.do_benchmark(src, [], 'final: 720.')
+
+    def test_files(self):
+      src = r'''
+        #include<stdio.h>
+        #include<stdlib.h>
+        #include<assert.h>
+        #include <unistd.h>
+
+        int main() {
+          int N = 100;
+          int M = 1000;
+          int K = 1000;
+          unsigned char *k = (unsigned char*)malloc(K+1), *k2 = (unsigned char*)malloc(K+1);
+          for (int i = 0; i < K; i++) {
+            k[i] = (i % 250) + 1;
+          }
+          k[K] = 0;
+          char buf[100];
+          for (int i = 0; i < N; i++) {
+            sprintf(buf, "/dev/shm/file-%d.dat", i);
+            FILE *f = fopen(buf, "w");
+            for (int j = 0; j < M; j++) {
+              fwrite(k, 1, (j % K) + 1, f);
+            }
+            fclose(f);
+          }
+          for (int i = 0; i < N; i++) {
+            sprintf(buf, "/dev/shm/file-%d.dat", i);
+            FILE *f = fopen(buf, "r");
+            for (int j = 0; j < M; j++) {
+              fread(k2, 1, (j % K) + 1, f);
+            }
+            fclose(f);
+            for (int j = 0; j < K; j++) {
+              assert(k[j] == k2[j]);
+            }
+            unlink(buf);
+          }
+          printf("ok");
+          return 1;
+        }      
+      '''
+      self.do_benchmark(src, [], 'ok')
 
     def test_copy(self):
       src = r'''
