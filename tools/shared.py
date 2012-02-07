@@ -367,13 +367,17 @@ class Building:
     return env
 
   @staticmethod
-  def handle_CMake_toolchain(args):
+  def handle_CMake_toolchain(args, env):
     CMakeToolchain = '''# the name of the target operating system
 SET(CMAKE_SYSTEM_NAME Linux)
 
 # which C and C++ compiler to use
 SET(CMAKE_C_COMPILER   $EMSCRIPTEN_ROOT/emcc)
 SET(CMAKE_CXX_COMPILER $EMSCRIPTEN_ROOT/em++)
+SET(CMAKE_AR           $EMSCRIPTEN_ROOT/emar)
+SET(CMAKE_RANLIB       $EMSCRIPTEN_ROOT/emranlib)
+SET(CMAKE_C_FLAGS      $CFLAGS)
+SET(CMAKE_CXX_FLAGS    $CXXFLAGS)
 
 # here is the target environment located
 SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
@@ -384,7 +388,10 @@ SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_from_root(''))
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
+      .replace('$EMSCRIPTEN_ROOT', path_from_root('')) \
+      .replace('$CFLAGS', env['CFLAGS']) \
+      .replace('$CXXFLAGS', env['CFLAGS'])
     toolchainFile = mkstemp(suffix='.txt')[1]
     open(toolchainFile, 'w').write(CMakeToolchain)
     args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
@@ -395,8 +402,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
     if env is None:
       env = Building.get_building_env()
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
-    if 'cmake' in sys.argv[0]:
-      args = Building.handle_CMake_toolchain(args)
+    if 'cmake' in args[0]:
+      args = Building.handle_CMake_toolchain(args, env)
     Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
     del env['EMMAKEN_JUST_CONFIGURE']
 
