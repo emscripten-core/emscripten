@@ -909,6 +909,11 @@ ctype<char>::do_narrow(const char_type* low, const char_type* high, char dfault,
     return low;
 }
 
+// XXX Emscripten define local table
+extern "C" const unsigned int ** __ctype_b_loc();
+extern "C" const int ** __ctype_tolower_loc();
+extern "C" const int ** __ctype_toupper_loc();
+
 const ctype<char>::mask*
 ctype<char>::classic_table()  _NOEXCEPT
 {
@@ -918,6 +923,8 @@ ctype<char>::classic_table()  _NOEXCEPT
     return __cloc()->__ctype_b;
 // This is assumed to be safe, which is a nonsense assumption because we're
 // going to end up dereferencing it later...
+#elif defined(EMSCRIPTEN)
+    return *__ctype_b_loc();
 #else
     return NULL;
 #endif
@@ -931,6 +938,8 @@ ctype<char>::__classic_lower_table() _NOEXCEPT
     return _DefaultRuneLocale.__maplower;
 #elif defined(__GLIBC__)
     return __cloc()->__ctype_tolower;
+#elif defined(EMSCRIPTEN)
+    return *__ctype_tolower_loc();
 #else
     return NULL;
 #endif
@@ -943,6 +952,8 @@ ctype<char>::__classic_upper_table() _NOEXCEPT
     return _DefaultRuneLocale.__mapupper;
 #elif defined(__GLIBC__)
     return __cloc()->__ctype_toupper;
+#elif defined(EMSCRIPTEN)
+    return *__ctype_toupper_loc();
 #else
     return NULL;
 #endif
@@ -1041,7 +1052,7 @@ ctype_byname<wchar_t>::do_is(mask m, char_type c) const
 #ifdef _LIBCPP_WCTYPE_IS_MASK
     return static_cast<bool>(iswctype_l(c, m, __l));
 #else
-	// FIXME: This is broken for things that test more than one flag.
+    // FIXME: This is broken for things that test more than one flag.
     if (m & space && !iswspace_l(c, __l)) return false;
     if (m & print && !iswprint_l(c, __l)) return false;
     if (m & cntrl && !iswcntrl_l(c, __l)) return false;
