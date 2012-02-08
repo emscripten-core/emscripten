@@ -919,6 +919,46 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         '''
         self.do_run(src, '*1 2*')
 
+    def test_multiply_defined_symbols(self):
+      a1 = "int f() { return 1; }"
+      a1_name = os.path.join(self.get_dir(), 'a1.c')
+      open(a1_name, 'w').write(a1)
+      a2 = "void x() {}"
+      a2_name = os.path.join(self.get_dir(), 'a2.c')
+      open(a2_name, 'w').write(a2)
+      b1 = "int f() { return 2; }"
+      b1_name = os.path.join(self.get_dir(), 'b1.c')
+      open(b1_name, 'w').write(b1)
+      b2 = "void y() {}"
+      b2_name = os.path.join(self.get_dir(), 'b2.c')
+      open(b2_name, 'w').write(b2)
+      main = r'''
+        #include <stdio.h>
+        int f();
+        int main() {
+          printf("result: %d\n", f());
+          return 0;
+        }
+      '''
+      main_name = os.path.join(self.get_dir(), 'main.c')
+      open(main_name, 'w').write(main)
+
+      Building.emcc(a1_name)
+      Building.emcc(a2_name)
+      Building.emcc(b1_name)
+      Building.emcc(b2_name)
+      Building.emcc(main_name)
+
+      liba_name = os.path.join(self.get_dir(), 'liba.a')
+      Building.emar('cr', liba_name, [a1_name + '.o', a2_name + '.o'])
+      libb_name = os.path.join(self.get_dir(), 'libb.a')
+      Building.emar('cr', libb_name, [b1_name + '.o', b2_name + '.o'])
+
+      all_name = os.path.join(self.get_dir(), 'all.bc')
+      Building.link([main_name + '.o', liba_name, libb_name], all_name)
+
+      self.do_ll_run(all_name, 'result: 1')
+
     def test_if(self):
         src = '''
           #include <stdio.h>

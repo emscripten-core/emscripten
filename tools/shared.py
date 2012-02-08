@@ -547,6 +547,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
+  def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
+    try_delete(output_filename)
+    Popen([EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    if 'c' in action:
+      assert os.path.exists(output_filename), 'emar could not create output file'
+
+  @staticmethod
   def emscripten(filename, append_ext=True, extra_args=[]):
     # Allow usage of emscripten.py without warning
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
