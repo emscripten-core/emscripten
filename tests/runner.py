@@ -4402,10 +4402,10 @@ def process(filename):
       freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
-                                 [os.path.join('poppler', '.libs', self.get_shared_library_name('libpoppler.so.13')),
-                                  os.path.join('utils', 'pdftoppm.o'),
-                                  os.path.join('utils', 'parseargs.o')],
-                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-splash-output'])
+                                 [os.path.join('utils', 'pdftoppm.o'),
+                                  os.path.join('utils', 'parseargs.o'),
+                                  os.path.join('poppler', '.libs', 'libpoppler.a')],
+                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
 
       # Combine libraries
 
