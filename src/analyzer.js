@@ -273,6 +273,38 @@ function analyzer(data, sidePass) {
                       i += j*2;
                       continue;
                     }
+                    break;
+                  }
+                  case 'phi': {
+                    if (isIllegalType(value.type)) {
+                      dprint('legalizer', 'Legalizing phi at line ' + item.lineNum);
+                      bits = getBits(value.type);
+                      var toAdd = [];
+                      var elements = getLegalVars(item.assignTo, bits);
+                      var j = 0;
+                      elements.forEach(function(element) {
+                        toAdd.push({
+                          intertype: 'phi',
+                          assignTo: element.ident,
+                          type: 'i' + element.bits,
+                          params: value.params.map(function(param) {
+                            return {
+                              intertype: 'phiparam',
+                              label: param.label,
+                              value: { // TODO: unfolding
+                               intertype: 'value',
+                               ident: param.value.ident + '$' + j,
+                               type: 'i' + element.bits,
+                              }
+                            };
+                          })
+                        });
+                        j++;
+                      });
+                      i += removeAndAdd(label.lines, i, toAdd);
+                      continue;
+                    }
+                    break;
                   }
                   case 'mathop': {
                     if (isIllegalType(value.type)) {
@@ -421,6 +453,7 @@ function analyzer(data, sidePass) {
                       i += removeAndAdd(label.lines, i, toAdd);
                       continue;
                     }
+                    break;
                   }
                 }
               }
