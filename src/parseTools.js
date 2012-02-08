@@ -966,13 +966,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   }
 
-  if (!align && isIntImplemented(type) && !isPowerOfTwo(getBits(type))) {
-    align = 1; // we need to split this up, as if alignment were 1, this is an unnatural type like i24
-  }
-  if (USE_TYPED_ARRAYS == 2 && align) {
+  var needSplitting = isIntImplemented(type) && !isPowerOfTwo(getBits(type)); // an unnatural type like i24
+  if (USE_TYPED_ARRAYS == 2 && (align || needSplitting)) {
     // Alignment is important here, or we need to split this up for other reasons.
     var bytes = Runtime.getNativeTypeSize(type);
-    if (bytes > align) {
+    if (bytes > align || needSplitting) {
       var ret = '';
       if (isIntImplemented(type)) {
         if (bytes == 4 && align == 2) {

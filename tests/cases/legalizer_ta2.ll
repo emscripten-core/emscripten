@@ -101,6 +101,21 @@ entry:
   store i80 %loaded.short, i80* bitcast ([300 x i8]* @globaliz to i80*), align 4
   call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
 
+; phi
+  %if = trunc i104 %ander to i1
+  %first = trunc i104 %xored to i88
+  br i1 %if, label %a17, label %a26
+
+a17:
+  %second = trunc i104 %loaded to i88
+  br label %a26
+
+a26:
+  %a27 = phi i88 [ %first, %entry ], [ %second, %a17 ]
+  store i104 0, i104* %bundled, align 4 ; wipe it out
+  store i88 %a27, i88* bitcast ([300 x i8]* @globaliz to i88*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+
   ret i32 1
 }
 
