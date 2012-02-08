@@ -4410,7 +4410,7 @@ def process(filename):
       # Combine libraries
 
       combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
-      Building.link(freetype + poppler, combined)
+      Building.link(poppler + freetype, combined)
 
       self.do_ll_run(combined,
                      map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
