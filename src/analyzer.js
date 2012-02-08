@@ -169,6 +169,15 @@ function analyzer(data, sidePass) {
           item[slot] = { intertype: 'value', ident: tempIdent, type: item[slot].type };
           return i+1;
         }
+        function removeAndAdd(lines, i, toAdd) {
+          var item = lines[i];
+          var interp = getInterp(lines, i, toAdd.length);
+          for (var k = 0; k < toAdd.length; k++) {
+            toAdd[k].lineNum = item.lineNum + (k*interp);
+          }
+          Array.prototype.splice.apply(lines, [i, 1].concat(toAdd));
+          return toAdd.length;
+        }
         // Assuming we will replace the item at line i, with num items, returns
         // the right factor to multiply line numbers by so that they fit in between
         // the removed line and the line after it
@@ -184,16 +193,15 @@ function analyzer(data, sidePass) {
               if (item.intertype == 'store') {
                 if (isIllegalType(item.valueType)) {
                   dprint('legalizer', 'Legalizing store at line ' + item.lineNum);
+                  var toAdd = [];
                   bits = getBits(item.valueType);
                   i = unfold(label.lines, i, item, 'value');
-                  var interp = getInterp(label.lines, i, Math.ceil(bits/32));
-                  label.lines.splice(i, 1);
                   var elements;
                   elements = getLegalVars(item.value.ident, bits);
                   var j = 0;
                   elements.forEach(function(element) {
                     var tempVar = '$st$' + i + '$' + j;
-                    label.lines.splice(i+j*2, 0, {
+                    toAdd.push({
                       intertype: 'getelementptr',
                       assignTo: tempVar,
                       ident: item.pointer.ident,
@@ -203,10 +211,9 @@ function analyzer(data, sidePass) {
                         { intertype: 'value', ident: '0', type: 'i32' },
                         { intertype: 'value', ident: j.toString(), type: 'i32' }
                       ],
-                      lineNum: item.lineNum + (j*interp)
                     });
                     var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
-                    label.lines.splice(i+j*2+1, 0, {
+                    toAdd.push({
                       intertype: 'store',
                       valueType: actualSizeType,
                       value: { intertype: 'value', ident: element.ident, type: actualSizeType },
@@ -214,12 +221,11 @@ function analyzer(data, sidePass) {
                       ident: tempVar,
                       pointerType: actualSizeType + '*',
                       align: item.align,
-                      lineNum: item.lineNum + ((j+0.5)*interp)
                     });
                     j++;
                   });
                   Types.needAnalysis['[0 x i32]'] = 0;
-                  i += j*2;
+                  i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
               } else if (item.assignTo) {
@@ -412,12 +418,7 @@ function analyzer(data, sidePass) {
                         legalValue.assignTo = item.assignTo;
                         toAdd.push(legalValue);
                       }
-                      var interp = getInterp(label.lines, i, toAdd.length);
-                      for (var k = 0; k < toAdd.length; k++) {
-                        toAdd[k].lineNum = item.lineNum + (k*interp);
-                      }
-                      Array.prototype.splice.apply(label.lines, [i, 1].concat(toAdd));
-                      i += toAdd.length;
+                      i += removeAndAdd(label.lines, i, toAdd);
                       continue;
                     }
                   }

@@ -21,7 +21,7 @@ function dump(item) {
         ret.push(i + ': [?]');
       }
     }
-    return lineify(ret.join(', '));
+    return ret.join(',\n');
   }
 }
 

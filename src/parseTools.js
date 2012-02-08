@@ -966,8 +966,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   }
 
+  if (!align && isIntImplemented(type) && !isPowerOfTwo(getBits(type))) {
+    align = 1; // we need to split this up, as if alignment were 1, this is an unnatural type like i24
+  }
   if (USE_TYPED_ARRAYS == 2 && align) {
-    // Alignment is important here. May need to split this up
+    // Alignment is important here, or we need to split this up for other reasons.
     var bytes = Runtime.getNativeTypeSize(type);
     if (bytes > align) {
       var ret = '';
@@ -977,14 +980,13 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
           ret += 'tempBigInt=' + value + sep;
           ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2) + sep;
           ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2);
-        } else if (bytes <= 4) {
+        } else if (bytes != 8) {
           ret += 'tempBigInt=' + value + sep;
           for (var i = 0; i < bytes; i++) {
             ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
             if (i < bytes-1) ret += sep + 'tempBigInt>>=8' + sep;
           }
-        } else {
-          assert(bytes == 8);
+        } else { // bytes == 8, specific optimization
           ret += 'tempPair=' + ensureI64_1(value) + sep;
           ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + sep;
           ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align);
