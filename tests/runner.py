@@ -4358,8 +4358,8 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                     open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read()],
-                   libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                                          os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                   libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking']),
                    includes=[path_from_root('tests', 'bullet', 'src')],
