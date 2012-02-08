@@ -444,18 +444,18 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
                                                      stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
     Building.make(make + make_args, stdout=open(os.path.join(project_dir, 'make_'), 'w'),
                                     stderr=open(os.path.join(project_dir, 'make_err'), 'w'), env=env)
-    bc_file = os.path.join(project_dir, 'bc.bc')
-    Building.link(generated_libs, bc_file)
     if cache is not None:
-      cache[cache_name] = open(bc_file, 'rb').read()
+      cache[cache_name] = {}
+      for f in generated_libs:
+        cache[cache_name][f] = open(f, 'rb').read()
     if old_dir:
       os.chdir(old_dir)
-    return bc_file
+    return generated_libs
 
   @staticmethod
   def link(files, target):
     try_delete(target)
-    output = Popen([LLVM_LINK] + files + ['-o', target], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file

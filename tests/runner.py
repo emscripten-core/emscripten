@@ -260,11 +260,13 @@ process(sys.argv[1])
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
         print >> sys.stderr,  '<load build from cache> ',
-        bc_file = os.path.join(output_dir, 'lib' + name + '.bc')
-        f = open(bc_file, 'wb')
-        f.write(self.library_cache[cache_name])
-        f.close()
-        return bc_file
+        generated_libs = []
+        for bc_file in self.library_cache[cache_name]:
+          f = open(bc_file, 'wb')
+          f.write(self.library_cache[cache_name][bc_file])
+          f.close()
+          generated_libs.append(bc_file)
+        return generated_libs
 
     print >> sys.stderr, '<building and saving into cache> ',
 
@@ -4298,7 +4300,7 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                    ['font.ttf', 'test!', '150', '120', '25'],
-                   libraries=[self.get_freetype()],
+                   libraries=self.get_freetype(),
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
                    #build_ll_hook=self.do_autodebug)
@@ -4339,7 +4341,7 @@ def process(filename):
 
       self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
+                   libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
@@ -4356,10 +4358,10 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                     open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read()],
-                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
+                   libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
                                                           os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a')],
-                                               configure_args=['--disable-demos','--disable-dependency-tracking'])],
+                                               configure_args=['--disable-demos','--disable-dependency-tracking']),
                    includes=[path_from_root('tests', 'bullet', 'src')],
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
@@ -4403,12 +4405,12 @@ def process(filename):
                                  [os.path.join('poppler', '.libs', self.get_shared_library_name('libpoppler.so.13')),
                                   os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o')],
-                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms'])
+                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-splash-output'])
 
       # Combine libraries
 
       combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
-      Building.link([freetype, poppler], combined)
+      Building.link(freetype + poppler, combined)
 
       self.do_ll_run(combined,
                      map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
@@ -4490,7 +4492,7 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
                    'Successfully generated', # The real test for valid output is in image_compare
                    '-i image.j2k -o image.raw'.split(' '),
-                   libraries=[lib],
+                   libraries=lib,
                    includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
                              path_from_root('tests', 'openjpeg', 'codec'),
                              path_from_root('tests', 'openjpeg', 'common'),
