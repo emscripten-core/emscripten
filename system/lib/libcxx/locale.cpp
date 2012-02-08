@@ -910,7 +910,7 @@ ctype<char>::do_narrow(const char_type* low, const char_type* high, char dfault,
 }
 
 // XXX Emscripten define local table
-extern "C" const unsigned int ** __ctype_b_loc();
+extern "C" const unsigned short ** __ctype_b_loc();
 extern "C" const int ** __ctype_tolower_loc();
 extern "C" const int ** __ctype_toupper_loc();
 

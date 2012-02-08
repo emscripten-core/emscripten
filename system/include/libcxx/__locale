@@ -330,8 +330,21 @@ public:
     static const mask punct  = _PUNCT;
     static const mask xdigit = _HEX;
     static const mask blank  = _BLANK;
+#elif defined( EMSCRIPTEN )
+    #define _ISbit(bit)   ((bit) < 8 ? ((1 << (bit)) << 8) : ((1 << (bit)) >> 8))
+    typedef __uint16_t mask;
+    static const mask upper  = _ISbit( 0 );
+    static const mask lower  = _ISbit( 1 );
+    static const mask alpha  = _ISbit( 2 );
+    static const mask digit  = _ISbit( 3 );
+    static const mask xdigit = _ISbit( 4 );
+    static const mask space  = _ISbit( 5 );
+    static const mask print  = _ISbit( 6 );
+    static const mask blank  = _ISbit( 8 );
+    static const mask cntrl  = _ISbit( 9 );
+    static const mask punct  = _ISbit( 10 );
 #else  // __GLIBC__ || _WIN32
-#if defined(__APPLE__) || defined(EMSCRIPTEN)
+#if defined(__APPLE__)
     typedef __uint32_t mask;
 #elif __FreeBSD__
     typedef unsigned long mask;
