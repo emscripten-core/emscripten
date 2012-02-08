@@ -3743,7 +3743,7 @@ def process(filename):
       '''
       self.do_run(src, "some string constant")
       
-    def test_istream(self):
+    def zzztest_istream(self):
       if self.emcc_args is None: return self.skip('requires libcxx')
 
       src = '''
