@@ -10,7 +10,7 @@ var LibraryGL = {
       }
       if (!(name in this._hashtables)) {
         this._hashtables[name] = {
-          table: {0:null},
+          table: {},
           counter: 0,
           add: function(obj) {
             var id = this.counter++;
@@ -18,6 +18,8 @@ var LibraryGL = {
             return id;
           },
           get: function(id) {
+          
+            if( id == 0 ) return null;
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
@@ -346,7 +348,7 @@ var LibraryGL = {
 
   glBindFramebuffer_deps: ['$GL'],
   glBindFramebuffer: function(target, framebuffer) {
-  	Module.ctx.bindFramebuffer(target, GL.hashtable("framebuffer").get(framebuffer));
+    Module.ctx.bindFramebuffer(target, GL.hashtable("framebuffer").get(framebuffer));
   },
 
   glGenFramebuffers_deps: ['$GL'],
