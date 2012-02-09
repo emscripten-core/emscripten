@@ -456,8 +456,8 @@ try:
           # Note that by assembling the .ll file, then disassembling it later, we will
           # remove annotations which is a good thing for compilation time
           if DEBUG: print >> sys.stderr, 'emcc: assembling assembly file: ', input_file
-          temp_file = in_temp(os.path.basename(input_file))
-          shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+          temp_file = in_temp(unsuffixed_basename(input_file) + '.o')
+          shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
 
   # If we were just asked to generate bitcode, stop there
