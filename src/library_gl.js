@@ -11,14 +11,13 @@ var LibraryGL = {
       if (!(name in this._hashtables)) {
         this._hashtables[name] = {
           table: {},
-          counter: 0,
+          counter: 1,
           add: function(obj) {
             var id = this.counter++;
             this.table[id] = obj;
             return id;
           },
           get: function(id) {
-          
             if( id == 0 ) return null;
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
@@ -26,6 +25,7 @@ var LibraryGL = {
             return this.table[id];
           },
           remove: function(id) {
+          	if( id == 0 ) return;
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
