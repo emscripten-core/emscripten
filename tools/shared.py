@@ -733,14 +733,19 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)'''.replace('$EMSCRIPTEN_ROOT', path_
 
     return filename + '.cc.js'
 
+  _is_ar_cache = {}
   @staticmethod
   def is_ar(filename):
     try:
+      if Building._is_ar_cache.get(filename):
+        return Building._is_ar_cache[filename]
       b = open(filename, 'r').read(8)
-      return b[0] == '!' and b[1] == '<' and \
-             b[2] == 'a' and b[3] == 'r' and \
-             b[4] == 'c' and b[5] == 'h' and \
-             b[6] == '>' and ord(b[7]) == 10
+      sigcheck = b[0] == '!' and b[1] == '<' and \
+                 b[2] == 'a' and b[3] == 'r' and \
+                 b[4] == 'c' and b[5] == 'h' and \
+                 b[6] == '>' and ord(b[7]) == 10
+      Building._is_ar_cache[filename] = sigcheck
+      return sigcheck
     except:
       return False
 
