@@ -22,6 +22,8 @@ STRING(TOLOWER ${OPENJPEG_NAMESPACE} OPENJPEG_LIBRARY_NAME)
 
 PROJECT(${OPENJPEG_NAMESPACE} C)
 
+include(CMakeDetermineSystem)
+
 # Do full dependency headers.
 INCLUDE_REGULAR_EXPRESSION("^.*$")
 
