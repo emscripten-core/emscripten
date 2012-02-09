@@ -86,6 +86,23 @@ LibraryManager.library = {
         parentPath: null,
         parentObject: null
       };
+#if FS_LOG
+      var inputPath = path;
+      function log() {
+        print('FS.analyzePath("' + inputPath + '", ' +
+                                   dontResolveLastLink + ', ' +
+                                   linksVisited + ') => {' +
+              'isRoot: ' + ret.isRoot + ', ' +
+              'exists: ' + ret.exists + ', ' +
+              'error: ' + ret.error + ', ' +
+              'name: "' + ret.name + '", ' +
+              'path: "' + ret.path + '", ' +
+              'object: ' + ret.object + ', ' +
+              'parentExists: ' + ret.parentExists + ', ' +
+              'parentPath: "' + ret.parentPath + '", ' +
+              'parentObject: ' + ret.parentObject + '}');
+      }
+#endif
       path = FS.absolutePath(path);
       if (path == '/') {
         ret.isRoot = true;
@@ -123,8 +140,12 @@ LibraryManager.library = {
               break;
             }
             var link = FS.absolutePath(current.link, traversed.join('/'));
-            return FS.analyzePath([link].concat(path).join('/'),
-                                  dontResolveLastLink, linksVisited + 1);
+            ret = FS.analyzePath([link].concat(path).join('/'),
+                                 dontResolveLastLink, linksVisited + 1);
+#if FS_LOG
+            log();
+#endif
+            return ret;
           }
           traversed.push(target);
           if (path.length == 0) {
@@ -133,8 +154,10 @@ LibraryManager.library = {
             ret.object = current;
           }
         }
-        return ret;
       }
+#if FS_LOG
+      log();
+#endif
       return ret;
     },
     // Finds the file system object at a given path. If dontResolveLastLink is
@@ -152,6 +175,13 @@ LibraryManager.library = {
     },
     // Creates a file system record: file, link, device or folder.
     createObject: function(parent, name, properties, canRead, canWrite) {
+#if FS_LOG
+      print('FS.createObject("' + parent + '", ' +
+                            '"' + name + '", ' +
+                                JSON.stringify(properties) + ', ' +
+                                canRead + ', ' +
+                                canWrite + ')');
+#endif
       if (!parent) parent = '/';
       if (typeof parent === 'string') parent = FS.findObject(parent);
 
