@@ -10,7 +10,7 @@ var LibraryGL = {
       }
       if (!(name in this._hashtables)) {
         this._hashtables[name] = {
-          table: {},
+          table: {0:null},
           counter: 0,
           add: function(obj) {
             var id = this.counter++;
@@ -49,13 +49,7 @@ var LibraryGL = {
   },
 
   glGetIntegerv: function(name_, p) {
-    switch(name_) {
-      case Module.ctx.MAX_TEXTURE_SIZE:
-        {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
-        break;
-      default:
-        throw 'Failure: Invalid glGetIntegerv value: ' + name_;
-    }
+    {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
   },
 
   glGenTextures__deps: ['$GL'],
@@ -350,9 +344,9 @@ var LibraryGL = {
     Module.ctx.bindAttribLocation(GL.hashtable("program").get(program), index, name);
   },
 
-  glBindFrameBuffer_deps: ['$GL'],
-  glBindFrameBuffer: function(target, framebuffer) {
-    Module.ctx.bindFrameBuffer(target, GL.hashtable("framebuffer").get(framebuffer));
+  glBindFramebuffer_deps: ['$GL'],
+  glBindFramebuffer: function(target, framebuffer) {
+  	Module.ctx.bindFramebuffer(target, fb );
   },
 
   glGenFramebuffers_deps: ['$GL'],
