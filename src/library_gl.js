@@ -304,6 +304,16 @@ var LibraryGL = {
       {{{ makeSetValue('length', 'i', 'log.length', 'i32') }}}
     }
   },
+  
+  glGetShaderiv_deps: ['$GL'],
+  glGetShaderiv : function(shader, pname, p) { 
+  	{{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.hashtable("shader").get(shader),pname)', 'i32') }}};
+  },
+
+  glGetProgramiv_deps: ['$GL'],
+  glGetProgramiv : function(program, pname, p) { 
+  	{{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.hashtable("program").get(program),pname)', 'i32') }}};
+  },
 
   glCreateProgram_deps: ['$GL'],
   glCreateProgram: function() {
