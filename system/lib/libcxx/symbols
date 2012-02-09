@@ -2577,7 +2577,6 @@
          T _ZSt17current_exceptionv
          T _ZSt17rethrow_exceptionSt13exception_ptr
          C _ZSt18make_exception_ptrINSt3__112future_errorEESt13exception_ptrT_
-         T _ZSt18uncaught_exceptionv
          D _ZSt7nothrow
          D _ZTCNSt3__110istrstreamE0_NS_13basic_istreamIcNS_11char_traitsIcEEEE
          D _ZTCNSt3__110ostrstreamE0_NS_13basic_ostreamIcNS_11char_traitsIcEEEE
