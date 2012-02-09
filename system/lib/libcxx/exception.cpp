@@ -86,6 +86,7 @@ std::terminate() _NOEXCEPT
 }
 #endif // LIBCXXRT
 
+#ifndef EMSCRIPTEN // This is implemented in Javascript for Emscripten
 bool std::uncaught_exception() _NOEXCEPT
 {
 #if __APPLE__
@@ -99,6 +100,7 @@ bool std::uncaught_exception() _NOEXCEPT
     ::abort();
 #endif  // __APPLE__
 }
+#endif  // EMSCRIPTEN
 
 namespace std
 {
