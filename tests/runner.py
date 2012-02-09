@@ -261,9 +261,10 @@ process(sys.argv[1])
       if cache and self.library_cache.get(cache_name):
         print >> sys.stderr,  '<load build from cache> ',
         generated_libs = []
-        for bc_file in self.library_cache[cache_name]:
+        for basename in self.library_cache[cache_name]:
+          bc_file = os.path.join(build_dir, basename)
           f = open(bc_file, 'wb')
-          f.write(self.library_cache[cache_name][bc_file])
+          f.write(self.library_cache[cache_name][basename])
           f.close()
           generated_libs.append(bc_file)
         return generated_libs
@@ -4374,7 +4375,10 @@ def process(filename):
         del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
     def get_build_dir(self):
-      return os.path.join(self.get_dir(), 'building')
+      ret = os.path.join(self.get_dir(), 'building')
+      if not os.path.exists(ret):
+        os.makedirs(ret)
+      return ret
 
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary

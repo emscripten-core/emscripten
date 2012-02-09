@@ -454,7 +454,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
     if cache is not None:
       cache[cache_name] = {}
       for f in generated_libs:
-        cache[cache_name][f] = open(f, 'rb').read()
+        basename = os.path.basename(f)
+        cache[cache_name][basename] = open(f, 'rb').read()
     if old_dir:
       os.chdir(old_dir)
     return generated_libs
