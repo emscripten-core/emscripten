@@ -1428,6 +1428,18 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         '''
         self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n')
 
+        src = r'''
+          #include <fstream>
+          #include <iostream>
+          int main() {
+            std::ofstream os("test");
+            os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
+                                         // std::basic_ostream::sentry::~sentry
+            std::cout << "success";
+          }
+        '''
+        self.do_run(src, 'success')
+
     def test_typed_exceptions(self):
         return self.skip('TODO: fix this for llvm 3.0')
 
