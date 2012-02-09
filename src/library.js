@@ -512,16 +512,24 @@ LibraryManager.library = {
     if (loc < -2 || loc >= entries) {
       {{{ makeSetValue('result', '0', '0', 'i8*') }}}
     } else {
-      var name, inode;
+      var name, inode, type;
       if (loc === -2) {
         name = '.';
         inode = 1;  // Really undefined.
+        type = 4; //DT_DIR
       } else if (loc === -1) {
         name = '..';
         inode = 1;  // Really undefined.
+        type = 4; //DT_DIR
       } else {
+        var object;
         name = stream.contents[loc];
-        inode = stream.object.contents[name].inodeNumber;
+        object = stream.object.contents[name];
+        inode = object.inodeNumber;
+        type = object.isDevice ? 2 // DT_CHR, character device.
+              : object.isFolder ? 4 // DT_DIR, directory.
+              : object.link !== undefined ? 10 // DT_LNK, symbolic link.
+              : 8; // DT_REG, regular file.
       }
       stream.position++;
       var offsets = ___dirent_struct_layout;
@@ -532,10 +540,6 @@ LibraryManager.library = {
         {{{ makeSetValue('entry + offsets.d_name', 'i', 'name.charCodeAt(i)', 'i8') }}}
       }
       {{{ makeSetValue('entry + offsets.d_name', 'i', '0', 'i8') }}}
-      var type = stream.object.isDevice ? 2 // DT_CHR, character device.
-               : stream.object.isFolder ? 4 // DT_DIR, directory.
-               : stream.object.link !== undefined ? 10 // DT_LNK, symbolic link.
-               : 8; // DT_REG, regular file.
       {{{ makeSetValue('entry', 'offsets.d_type', 'type', 'i8') }}}
       {{{ makeSetValue('result', '0', 'entry', 'i8*') }}}
     }
