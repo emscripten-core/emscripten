@@ -346,7 +346,7 @@ var LibraryGL = {
 
   glBindFramebuffer_deps: ['$GL'],
   glBindFramebuffer: function(target, framebuffer) {
-  	Module.ctx.bindFramebuffer(target, fb );
+  	Module.ctx.bindFramebuffer(target, GL.hashtable("framebuffer").get(framebuffer));
   },
 
   glGenFramebuffers_deps: ['$GL'],
