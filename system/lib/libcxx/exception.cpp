@@ -86,6 +86,7 @@ std::terminate() _NOEXCEPT
 }
 #endif // LIBCXXRT
 
+extern "C" void * llvm_eh_exception();
 bool std::uncaught_exception() _NOEXCEPT
 {
 #if __APPLE__
@@ -94,6 +95,8 @@ bool std::uncaught_exception() _NOEXCEPT
 #elif LIBCXXRT
     __cxa_eh_globals * globals = __cxa_get_globals();
     return (globals->uncaughtExceptions != 0);
+#elif defined( EMSCRIPTEN )
+    return llvm_eh_exception() != 0;
 #else  // __APPLE__
     #warning uncaught_exception not yet implemented
     ::abort();
