@@ -4392,7 +4392,7 @@ LibraryManager.library = {
   __cxa_free_exception: function(ptr) {
     return _free(ptr);
   },
-  __cxa_throw__deps: ['llvm_eh_exception'],
+  __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
     print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
@@ -4400,6 +4400,11 @@ LibraryManager.library = {
     {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
     {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}}
     {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'destructor', 'void*') }}}
+    if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
+      __ZSt18uncaught_exceptionv.uncaught_exception = 1;
+    } else {
+      __ZSt18uncaught_exceptionv.uncaught_exception++;
+    }
     throw ptr;
   },
   __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
@@ -4425,7 +4430,9 @@ LibraryManager.library = {
   _Unwind_Resume_or_Rethrow: function(ptr) {
     throw ptr;
   },
+  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv'],
   __cxa_begin_catch: function(ptr) {
+    __ZSt18uncaught_exceptionv.uncaught_exception--;
     return ptr;
   },
   __cxa_end_catch__deps: ['llvm_eh_exception', '__cxa_free_exception'],
@@ -4454,6 +4461,9 @@ LibraryManager.library = {
   __cxa_get_exception_ptr__deps: ['llvm_eh_exception'],
   __cxa_get_exception_ptr: function(ptr) {
     return ptr;
+  },
+  _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
+    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
 
   __cxa_call_unexpected: function(exception) {
