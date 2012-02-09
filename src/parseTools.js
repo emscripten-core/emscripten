@@ -533,18 +533,27 @@ function makeI64(low, high) {
   }
 }
 
+// XXX Make all i64 parts signed
+
 // Splits a number (an integer in a double, possibly > 32 bits) into an I64_MODE 1 i64 value.
-// Will suffer from rounding. margeI64 does the opposite.
-// TODO: optimize I64 calcs. For example, saving their parts as signed 32 as opposed to unsigned would help
+// Will suffer from rounding. mergeI64 does the opposite.
 function splitI64(value) {
   // We need to min here, since our input might be a double, and large values are rounded, so they can
   // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
   // HEAP32 or |0'd, etc.
-  return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
+  if (legalizedI64s) {
+    return [value + '>>>0', 'Math.min(Math.floor(' + value + '/4294967296), 4294967295)'];
+  } else {
+    return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
+  }
 }
 function mergeI64(value) {
   assert(I64_MODE == 1);
-  return makeInlineCalculation(RuntimeGenerator.makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
+  if (legalizedI64s) {
+    return RuntimeGenerator.makeBigInt(value + '$0', value + '$1');
+  } else {
+    return makeInlineCalculation(RuntimeGenerator.makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
+  }
 }
 
 // Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
@@ -649,10 +658,11 @@ function parseI64Constant(str) {
 
   if (!isNumber(str)) {
     // This is a variable. Copy it, so we do not modify the original
-    return makeCopyI64(str);
+    return legalizedI64s ? str : makeCopyI64(str);
   }
 
   var parsed = parseArbitraryInt(str, 64);
+  if (legalizedI64s) return parsed;
   return '[' + parsed[0] + ',' + parsed[1] + ']';
 }
 
@@ -1534,6 +1544,8 @@ function isSignedOp(op, variant) {
   return op in SIGNED_OP || (variant && variant[0] == 's');
 }
 
+var legalizedI64s = true; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
+
 function processMathop(item) {
   var op = item.op;
   var variant = item.variant;
@@ -1543,7 +1555,7 @@ function processMathop(item) {
     if (item['param'+i]) {
       paramTypes[i-1] = item['param'+i].type || type;
       item['ident'+i] = finalizeLLVMParameter(item['param'+i]);
-      if (!isNumber(item['ident'+i])) {
+      if (!isNumber(item['ident'+i]) && !isNiceIdent(item['ident'+i])) {
         item['ident'+i] = '(' + item['ident'+i] + ')'; // we may have nested expressions. So enforce the order of operations we want
       }
     } else {
@@ -1574,8 +1586,24 @@ function processMathop(item) {
 
   if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || ident2 == '(i64)') && I64_MODE == 1) {
     var warnI64_1 = function() {
-      warnOnce('Arithmetic on 64-bit integers in mode 1 is rounded and flaky, like mode 0, but much slower!');
+      warnOnce('Arithmetic on 64-bit integers in mode 1 is rounded and flaky, like mode 0!');
     };
+    // In ops that can be either legalized or not, we need to differentiate how we access low and high parts
+    var low1 = ident1 + (legalizedI64s ? '$0' : '[0]');
+    var high1 = ident1 + (legalizedI64s ? '$1' : '[1]');
+    var low2 = ident2 + (legalizedI64s ? '$0' : '[0]');
+    var high2 = ident2 + (legalizedI64s ? '$1' : '[1]');
+    function finish(result) {
+      // If this is in legalization mode, steal the assign and assign into two vars
+      if (legalizedI64s) {
+        assert(item.assignTo);
+        var ret = 'var ' + item.assignTo + '$0 = ' + result[0] + '; var ' + item.assignTo + '$1 = ' + result[1] + ';';
+        item.assignTo = null;
+        return ret;
+      } else {
+        return result;
+      }
+    }
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -1627,38 +1655,28 @@ function processMathop(item) {
           }
         }
       }
-      case 'uitofp': case 'sitofp': return ident1 + '[0] + ' + ident1 + '[1]*4294967296';
-      case 'fptoui': case 'fptosi': return splitI64(ident1);
+      case 'uitofp': case 'sitofp': return low1 + ' + ' + high1 + '*4294967296';
+      case 'fptoui': case 'fptosi': return finish(splitI64(ident1));
       case 'icmp': {
         switch (variant) {
-          case 'uge': return ident1 + '[1] >= ' + ident2 + '[1] && (' + ident1 + '[1] > '  + ident2 + '[1] || ' +
-                                                                        ident1 + '[0] >= ' + ident2 + '[0])';
-          case 'sge': return '(' + ident1 + '[1]|0) >= (' + ident2 + '[1]|0) && ((' + ident1 + '[1]|0) >  ('  + ident2 + '[1]|0) || ' +
-                                                                                '(' + ident1 + '[0]|0) >= ('  + ident2 + '[0]|0))';
-          case 'ule': return ident1 + '[1] <= ' + ident2 + '[1] && (' + ident1 + '[1] < '  + ident2 + '[1] || ' +
-                                                                        ident1 + '[0] <= ' + ident2 + '[0])';
-          case 'sle': return '(' + ident1 + '[1]|0) <= (' + ident2 + '[1]|0) && ((' + ident1 + '[1]|0) <  (' + ident2 + '[1]|0) || ' +
-                                                                                '(' + ident1 + '[0]|0) <= (' + ident2 + '[0]|0))';
-          case 'ugt': return ident1 + '[1] > ' + ident2 + '[1] || (' + ident1 + '[1] == ' + ident2 + '[1] && ' +
-                                                                       ident1 + '[0] > '  + ident2 + '[0])';
-          case 'sgt': return '(' + ident1 + '[1]|0) > (' + ident2 + '[1]|0) || ((' + ident1 + '[1]|0) == (' + ident2 + '[1]|0) && ' +
-                                                                               '(' + ident1 + '[0]|0) >  (' + ident2 + '[0]|0))';
-          case 'ult': return ident1 + '[1] < ' + ident2 + '[1] || (' + ident1 + '[1] == ' + ident2 + '[1] && ' +
-                                                                       ident1 + '[0] < '  + ident2 + '[0])';
-          case 'slt': return '(' + ident1 + '[1]|0) < (' + ident2 + '[1]|0) || ((' + ident1 + '[1]|0) == (' + ident2 + '[1]|0) && ' +
-                                                                               '(' + ident1 + '[0]|0) <  (' + ident2 + '[0]|0))';
-          case 'ne': case 'eq': {
-            // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
-            // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
-            assert(paramTypes[0] == paramTypes[1]);
-            ident1 = makeSignOp(ident1, paramTypes[0], 're');
-            ident2 = makeSignOp(ident2, paramTypes[1], 're');
-            if (variant === 'eq') {
-              return ident1 + '[0] == ' + ident2 + '[0] && ' + ident1 + '[1] == ' + ident2 + '[1]';
-            } else {
-              return ident1 + '[0] != ' + ident2 + '[0] || ' + ident1 + '[1] != ' + ident2 + '[1]';
-            }
-          }
+          case 'uge': return high1 + ' >= ' + high2 + ' && (' + high1 + ' > '  + high + ' || ' +
+                                                                low1 + ' >= ' + low2 + ')';
+          case 'sge': return '(' + high1 + '|0) >= (' + high2 + '|0) && ((' + high1 + '|0) >  ('  + high2 + '|0) || ' +
+                                                                        '(' + low1 + '|0) >= ('  + low2 + '|0))';
+          case 'ule': return high1 + ' <= ' + high2 + ' && (' + high1 + ' < '  + high2 + ' || ' +
+                                                                low1 + ' <= ' + low2 + ')';
+          case 'sle': return '(' + high1 + '|0) <= (' + high2 + '|0) && ((' + high1 + '|0) <  (' + high2 + '|0) || ' +
+                                                                        '(' + low1 + '|0) <= (' + low2 + '|0))';
+          case 'ugt': return high1 + ' > ' + high2 + ' || (' + high1 + ' == ' + high2 + ' && ' +
+                                                               low1 + ' > '  + low2 + ')';
+          case 'sgt': return '(' + high1 + '|0) > (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
+                                                                       '(' + low1 + '|0) >  (' + low2 + '|0))';
+          case 'ult': return high1 + ' < ' + high2 + ' || (' + high1 + ' == ' + high2 + ' && ' +
+                                                               low1 + ' < '  + low2 + ')';
+          case 'slt': return '(' + high1 + '|0) < (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
+                                                                       '(' + low1 + '|0) <  (' + low2 + '|0))';
+          case 'ne':  return low1 + ' != ' + low2 + ' || ' + high1 + ' != ' + high2 + '';
+          case 'eq':  return low1 + ' == ' + low2 + ' && ' + high1 + ' == ' + high2 + '';
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
@@ -1671,11 +1689,11 @@ function processMathop(item) {
       case 'ptrtoint': return makeI64(ident1, 0);
       case 'inttoptr': return '(' + ident1 + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
       // Dangerous, rounded operations. TODO: Fully emulate
-      case 'add': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)), bits);
-      case 'sub': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)), bits);
-      case 'sdiv': case 'udiv': warnI64_1(); return splitI64(makeRounding(mergeI64(ident1) + '/' + mergeI64(ident2), bits, op[0] === 's'));
-      case 'mul': warnI64_1(); return handleOverflow(splitI64(mergeI64(ident1) + '*' + mergeI64(ident2)), bits);
-      case 'urem': case 'srem': warnI64_1(); return splitI64(mergeI64(ident1) + '%' + mergeI64(ident2));
+      case 'add': warnI64_1(); return finish(splitI64(mergeI64(ident1) + '+' + mergeI64(ident2)));
+      case 'sub': warnI64_1(); return finish(splitI64(mergeI64(ident1) + '-' + mergeI64(ident2)));
+      case 'sdiv': case 'udiv': warnI64_1(); return finish(splitI64(makeRounding(mergeI64(ident1) + '/' + mergeI64(ident2), bits, op[0] === 's')));
+      case 'mul': warnI64_1(); return finish(splitI64(mergeI64(ident1) + '*' + mergeI64(ident2)));
+      case 'urem': case 'srem': warnI64_1(); return finish(splitI64(mergeI64(ident1) + '%' + mergeI64(ident2)));
       case 'bitcast': {
         // Pointers are not 64-bit, so there is really only one possible type of bitcast here, int to float or vice versa
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');

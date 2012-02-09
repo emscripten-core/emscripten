@@ -497,16 +497,20 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       func.JS = '\n';
 
+      var paramIdents = func.params.map(function(param) {
+          return (param.intertype == 'varargs') ? null : toNiceIdent(param.ident);
+      }).filter(function(param) { return param != null; })
+
       if (CLOSURE_ANNOTATIONS) {
         func.JS += '/**\n';
-        func.paramIdents.forEach(function(param) {
+        paramIdents.forEach(function(param) {
           func.JS += ' * @param {number} ' + param + '\n';
         });
         func.JS += ' * @return {number}\n'
         func.JS += ' */\n';
       }
 
-      func.JS += 'function ' + func.ident + '(' + func.paramIdents.join(', ') + ') {\n';
+      func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 
       if (PROFILE) {
         func.JS += '  if (PROFILING) { '
@@ -1046,11 +1050,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     var hasVarArgs = isVarArgsFunctionType(type);
     var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type) : -1;
 
-    if (I64_MODE == 1 && ident in LLVM.INTRINSICS_32) {
-      // Some LLVM intrinsics use i64 where it is not needed, and would cause much overhead
-      params.forEach(function(param) { if (param.type == 'i64') param.type = 'i32' });
-    }
-
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
       if (!hasVarArgs || useJSArgs || i < normalArgs) {
@@ -1190,6 +1189,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     print(postParts[0]);
 
     // Print out global variables and postsets TODO: batching
+    legalizedI64s = false;
     JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true), true, Functions);
     data.unparsedGlobalss = null;
 

@@ -539,9 +539,6 @@ function intertyper(data, sidePass, baseLineNums) {
         params: params,
         hasVarArgs: hasVarArgs(params),
         lineNum: item.lineNum,
-        paramIdents: params.map(function(param) {
-          return (param.intertype == 'varargs') ? null : toNiceIdent(param.ident);
-        }).filter(function(param) { return param != null; })
       }];
     }
   });
