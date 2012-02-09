@@ -239,7 +239,8 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 # ---------------- Utilities ---------------
 
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
-BITCODE_SUFFIXES = ('.bc', '.o', '.a', '.dylib', '.so', '.dll')
+BITCODE_SUFFIXES = ('.bc', '.o')
+SHAREDLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 ASSEMBLY_SUFFIXES = ('.ll',)
 
 def unsuffixed(name):
@@ -377,7 +378,7 @@ try:
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + ASSEMBLY_SUFFIXES): # we already removed -o <target>, so all these should be inputs
+    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + SHAREDLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
       if os.path.exists(arg):
         if arg.endswith(SOURCE_SUFFIXES):
@@ -425,11 +426,14 @@ try:
 
   if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'
 
+  temp_files = []
+
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
       if DEBUG: print >> sys.stderr, 'emcc: compiling source file: ', input_file
       output_file = in_temp(unsuffixed_basename(input_file) + '.o')
+      temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
       Popen([call] + args).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
@@ -439,13 +443,22 @@ try:
     else: # bitcode
       if input_file.endswith(BITCODE_SUFFIXES):
         if DEBUG: print >> sys.stderr, 'emcc: copying bitcode file: ', input_file
-        shutil.copyfile(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+        temp_file = in_temp(unsuffixed_basename(input_file) + '.o')
+        shutil.copyfile(input_file, temp_file)
+        temp_files.append(temp_file)
+      elif input_file.endswith(SHAREDLIB_SUFFIXES) or shared.Building.is_ar(input_file):
+        if DEBUG: print >> sys.stderr, 'emcc: copying library file: ', input_file
+        temp_file = in_temp(os.path.basename(input_file))
+        shutil.copyfile(input_file, temp_file)
+        temp_files.append(temp_file)
       else: #.ll
         if not LEAVE_INPUTS_RAW:
           # Note that by assembling the .ll file, then disassembling it later, we will
           # remove annotations which is a good thing for compilation time
           if DEBUG: print >> sys.stderr, 'emcc: assembling assembly file: ', input_file
-          shared.Building.llvm_as(input_file, in_temp(unsuffixed_basename(input_file) + '.o'))
+          temp_file = in_temp(unsuffixed_basename(input_file) + '.o')
+          shared.Building.llvm_as(input_file, temp_file)
+          temp_files.append(temp_file)
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in ['js', 'html']:
@@ -461,11 +474,10 @@ try:
         assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them TODO: llvm link-time opts?
-        ld_args = map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + \
-                  ['-o', specified_target]
+        ld_args = temp_files + ['-b', specified_target]
                   #[arg.split('-Wl,')[1] for arg in filter(lambda arg: arg.startswith('-Wl,'), sys.argv)]
         if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(ld_args)
-        Popen([shared.LLVM_LINK] + ld_args).communicate()
+        Popen([shared.LLVM_LD, '-disable-opt'] + ld_args).communicate()
     exit(0)
 
   ## Continue on to create JavaScript

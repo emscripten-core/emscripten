@@ -12,11 +12,11 @@ from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-newargs = [shared.LLVM_LINK] + sys.argv[3:] + ['-o='+sys.argv[2]]
+newargs = [shared.LLVM_AR] + sys.argv[1:]
 
 if DEBUG:
   print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
 
 if len(newargs) > 2:
-  os.execvp(shared.LLVM_LINK, newargs)
+  os.execvp(shared.LLVM_AR, newargs)
 

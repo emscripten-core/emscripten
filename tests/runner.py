@@ -260,11 +260,13 @@ process(sys.argv[1])
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
         print >> sys.stderr,  '<load build from cache> ',
-        bc_file = os.path.join(output_dir, 'lib' + name + '.bc')
-        f = open(bc_file, 'wb')
-        f.write(self.library_cache[cache_name])
-        f.close()
-        return bc_file
+        generated_libs = []
+        for bc_file in self.library_cache[cache_name]:
+          f = open(bc_file, 'wb')
+          f.write(self.library_cache[cache_name][bc_file])
+          f.close()
+          generated_libs.append(bc_file)
+        return generated_libs
 
     print >> sys.stderr, '<building and saving into cache> ',
 
@@ -916,6 +918,46 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           }
         '''
         self.do_run(src, '*1 2*')
+
+    def test_multiply_defined_symbols(self):
+      a1 = "int f() { return 1; }"
+      a1_name = os.path.join(self.get_dir(), 'a1.c')
+      open(a1_name, 'w').write(a1)
+      a2 = "void x() {}"
+      a2_name = os.path.join(self.get_dir(), 'a2.c')
+      open(a2_name, 'w').write(a2)
+      b1 = "int f() { return 2; }"
+      b1_name = os.path.join(self.get_dir(), 'b1.c')
+      open(b1_name, 'w').write(b1)
+      b2 = "void y() {}"
+      b2_name = os.path.join(self.get_dir(), 'b2.c')
+      open(b2_name, 'w').write(b2)
+      main = r'''
+        #include <stdio.h>
+        int f();
+        int main() {
+          printf("result: %d\n", f());
+          return 0;
+        }
+      '''
+      main_name = os.path.join(self.get_dir(), 'main.c')
+      open(main_name, 'w').write(main)
+
+      Building.emcc(a1_name)
+      Building.emcc(a2_name)
+      Building.emcc(b1_name)
+      Building.emcc(b2_name)
+      Building.emcc(main_name)
+
+      liba_name = os.path.join(self.get_dir(), 'liba.a')
+      Building.emar('cr', liba_name, [a1_name + '.o', a2_name + '.o'])
+      libb_name = os.path.join(self.get_dir(), 'libb.a')
+      Building.emar('cr', libb_name, [b1_name + '.o', b2_name + '.o'])
+
+      all_name = os.path.join(self.get_dir(), 'all.bc')
+      Building.link([main_name + '.o', liba_name, libb_name], all_name)
+
+      self.do_ll_run(all_name, 'result: 1')
 
     def test_if(self):
         src = '''
@@ -4320,7 +4362,7 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                    ['font.ttf', 'test!', '150', '120', '25'],
-                   libraries=[self.get_freetype()],
+                   libraries=self.get_freetype(),
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
                    #build_ll_hook=self.do_autodebug)
@@ -4361,7 +4403,7 @@ def process(filename):
 
       self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   libraries=[self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])],
+                   libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    includes=[path_from_root('tests', 'zlib')],
                    force_c=True)
 
@@ -4378,10 +4420,10 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                     open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read()],
-                   libraries=[self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                                          os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                   libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a')],
-                                               configure_args=['--disable-demos','--disable-dependency-tracking'])],
+                                               configure_args=['--disable-demos','--disable-dependency-tracking']),
                    includes=[path_from_root('tests', 'bullet', 'src')],
                    js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
 
@@ -4422,15 +4464,15 @@ def process(filename):
       freetype = self.get_freetype()
 
       poppler = self.get_library('poppler',
-                                 [os.path.join('poppler', '.libs', self.get_shared_library_name('libpoppler.so.13')),
-                                  os.path.join('utils', 'pdftoppm.o'),
-                                  os.path.join('utils', 'parseargs.o')],
-                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms'])
+                                 [os.path.join('utils', 'pdftoppm.o'),
+                                  os.path.join('utils', 'parseargs.o'),
+                                  os.path.join('poppler', '.libs', 'libpoppler.a')],
+                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
 
       # Combine libraries
 
       combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
-      Building.link([freetype, poppler], combined)
+      Building.link(poppler + freetype, combined)
 
       self.do_ll_run(combined,
                      map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
@@ -4464,11 +4506,11 @@ def process(filename):
       shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
 
       lib = self.get_library('openjpeg',
-                             [os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0')),
-                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
+                             [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'.split('/'))],
+                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'.split('/')),
+                              os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0'))],
                              configure=['cmake', '.'],
                              #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                              make_args=[]) # no -j 2, since parallel builds can fail
@@ -4512,7 +4554,7 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
                    'Successfully generated', # The real test for valid output is in image_compare
                    '-i image.j2k -o image.raw'.split(' '),
-                   libraries=[lib],
+                   libraries=lib,
                    includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
                              path_from_root('tests', 'openjpeg', 'codec'),
                              path_from_root('tests', 'openjpeg', 'common'),
