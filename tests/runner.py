@@ -1360,6 +1360,32 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
+    def test_uncaught_exception(self):
+        Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
+        Settings.DISABLE_EXCEPTION_CATCHING = 0
+
+        src = r'''
+          #include <stdio.h>
+          #include <exception>
+          struct X {
+            ~X() {
+              printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+            }
+          };
+          int main() {
+            printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+            try {
+              X x;
+              throw 1;
+            } catch(...) {
+              printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+            }
+            printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+            return 0;
+          }
+        '''
+        self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n')
+
     def test_typed_exceptions(self):
         return self.skip('TODO: fix this for llvm 3.0')
 
