@@ -129,9 +129,12 @@ function isIntImplemented(type) {
   return type[0] == 'i' || isPointerType(type);
 }
 
+// Note: works for iX types, not pointers (even though they are implemented as ints)
 function getBits(type) {
   if (!type || type[0] != 'i') return 0;
-  return parseInt(type.substr(1));
+  var left = type.substr(1);
+  if (!isNumber(left)) return 0;
+  return parseInt(left);
 }
 
 function isVoidType(type) {
@@ -966,7 +969,8 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   }
 
-  var needSplitting = isIntImplemented(type) && !isPowerOfTwo(getBits(type)); // an unnatural type like i24
+  var bits = getBits(type);
+  var needSplitting = bits > 0 && !isPowerOfTwo(bits); // an unnatural type like i24
   if (USE_TYPED_ARRAYS == 2 && (align || needSplitting)) {
     // Alignment is important here, or we need to split this up for other reasons.
     var bytes = Runtime.getNativeTypeSize(type);
@@ -1831,6 +1835,7 @@ function walkInterdata(item, pre, post, obj) {
   var originalObj = obj;
   if (obj && obj.replaceWith) obj = obj.replaceWith; // allow pre to replace the object we pass to all its children
   if (item.value && walkInterdata(item.value, pre, post,  obj)) return true;
+  // TODO if (item.pointer && walkInterdata(item.pointer, pre, post,  obj)) return true;
   if (item.dependent && walkInterdata(item.dependent, pre, post,  obj)) return true;
   var i;
   for (i = 1; i <= 4; i++) {
@@ -1849,6 +1854,29 @@ function walkInterdata(item, pre, post, obj) {
     }
   }
   return post && post(item, originalObj, obj);
+}
+
+// Separate from walkInterdata so that the former is as fast as possible
+// If the callback returns a value, we replace the current item with that
+// value, and do *not* walk the children.
+function walkAndModifyInterdata(item, pre) {
+  if (!item || !item.intertype) return false;
+  var ret = pre(item);
+  if (ret) return ret;
+  var repl;
+  if (item.value && (repl = walkAndModifyInterdata(item.value, pre))) item.value = repl;
+  if (item.pointer && (repl = walkAndModifyInterdata(item.pointer, pre))) item.pointer = repl;
+  if (item.dependent && (repl = walkAndModifyInterdata(item.dependent, pre))) item.dependent = repl;
+  var i;
+  for (i = 1; i <= 4; i++) {
+    if (item['param'+i] && (repl = walkAndModifyInterdata(item['param'+i], pre))) item['param'+i] = repl;
+  }
+  if (item.params) {
+    for (i = 0; i <= item.params.length; i++) {
+      if (repl = walkAndModifyInterdata(item.params[i], pre)) item.params[i] = repl;
+    }
+  }
+  // Ignore possibleVars because we can't replace them anyhow
 }
 
 function parseBlockAddress(segment) {
