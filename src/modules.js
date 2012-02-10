@@ -161,7 +161,7 @@ var PreProcessor = {
     // parameter to it will prevent nativization of the variable being cast (!)
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
-      if (/call void @llvm.lifetime.(start|end)\(i\d+ -1, i8\* %(\d+)\).*/.exec(line)) {
+      if (/call void @llvm.lifetime.(start|end)\(i\d+ -1,.*/.exec(line)) {
         lines[i] = ';';
       }
     }
