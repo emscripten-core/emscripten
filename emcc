@@ -181,7 +181,7 @@ Options that are modified or new in %s include:
                               will be run). Note that this by itself
                               will not minify the code (closure does
                               that)
-  --shell-path <path>      The path name to a skeleton HTML file used
+  --shell-file <path>      The path name to a skeleton HTML file used
                            when generating HTML output. The shell file
                            used needs to have this token inside it:
                            {{{ SCRIPT_CODE }}}
