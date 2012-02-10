@@ -21,13 +21,12 @@ public:
   ExQuux(const ExQuux& other)  { x=other.x; printf("*COPYING A QUUX\n"); }
   ~ExQuux() { printf("*DESTROYING A QUUX (%d)\n", x); }
 } ExQuuxInstance(33);
-// NOTE: Throwing pointers and polymorphic matching not supported.
-// class ExChild : public ExQuux {
-// public:
-//   ExChild(int x) : ExQuux(x) { printf("*CREATING A CHILD\n"); }
-//   ExChild(const ExChild& other) : ExQuux(x)  { x=other.x; printf("*COPYING CHILD\n"); }
-//   ~ExChild() { printf("*DESTROYING A CHILD (%d)\n", x); }
-// } ExChildInstance(44);
+class ExChild : public ExQuux {
+public:
+  ExChild(int x) : ExQuux(x) { printf("*CREATING A CHILD\n"); }
+  ExChild(const ExChild& other) : ExQuux(x)  { x=other.x; printf("*COPYING CHILD\n"); }
+  ~ExChild() { printf("*DESTROYING A CHILD (%d)\n", x); }
+} ExChildInstance(44);
 
 void magic(int which) {
   try {
@@ -41,20 +40,22 @@ void magic(int which) {
       case 2:
         printf("  throwing ExQuuxInstance\n");
         throw ExQuuxInstance;
-// NOTE: Throwing pointers and polymorphic matching not supported.
-//       case 3:
-//         printf("  throwing ExQuux ptr\n");
-//         throw &ExQuuxInstance;
-//       case 4:
-//         printf("  throwing ExChildInstance\n");
-//         throw ExChildInstance;
+      case 3:
+        printf("  throwing ExQuux ptr\n");
+        throw &ExQuuxInstance;
+      case 4:
+        printf("  throwing ExChildInstance\n");
+        throw ExChildInstance;
       case 5:
+        printf("  throwing ExChildInstance ptr\n");
+        throw &ExChildInstance;
+      case 6:
         printf("  throwing 42\n");
         throw 42;
-      case 6:
+      case 7:
         printf("  throwing NULL\n");
         throw (void*)0;
-      case 7:
+      case 8:
         printf("  not throwing\n");
     }
   } catch (ExQuux e1) {
@@ -67,18 +68,18 @@ void magic(int which) {
 
 int main() {
   printf("start\n\n\n");
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 9; i++) {
+    printf("test %d\n", i);
     try {
       magic(i);
     } catch (ExFoo e1) {
       printf("outer catch foo: %d\n", e1.x);
     } catch (ExBar& e2) {
       printf("outer catch bar-ref: %d\n", e2.x);
-// NOTE: Throwing pointers and polymorphic matching not supported.
-//     } catch (ExQuux& e3) {
-//       printf("outer catch quux-ref: %d\n", e3.x);
-//     } catch (ExQuux* e4) {
-//       printf("outer catch quux-ptr: %d\n", e4->x);
+    } catch (ExQuux& e3) {
+      printf("outer catch quux-ref: %d\n", e3.x);
+    } catch (ExQuux* e4) {
+      printf("outer catch quux-ptr: %d\n", e4->x);
     } catch (int e5) {
       printf("outer catch int: %d\n", e5);
     } catch (...) {

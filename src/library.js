@@ -4374,6 +4374,7 @@ LibraryManager.library = {
   __cxa_guard_release: function() {},
   __cxa_guard_abort: function() {},
 
+  _ZTVN10__cxxabiv119__pointer_type_infoE: [0], // is a pointer
   _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
   _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
 
@@ -4402,7 +4403,7 @@ LibraryManager.library = {
   __cxa_free_exception: function(ptr) {
     return _free(ptr);
   },
-  __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv'],
+  __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
     print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
@@ -4486,6 +4487,74 @@ LibraryManager.library = {
   __gxx_personality_v0: function() {
   },
 
+  // Finds a suitable catch clause for when an exception is thrown.
+  // In normal compilers, this functionality is handled by the C++
+  // 'personality' routine. This is passed a fairly complex structure
+  // relating to the context of the exception and makes judgements
+  // about how to handle it. Some of it is about matching a suitable
+  // catch clause, and some of it is about unwinding. We already handle
+  // unwinding using 'if' blocks around each function, so the remaining
+  // functionality boils down to picking a suitable 'catch' block.
+  // We'll do that here, instead, to keep things simpler.
+
+  __cxa_find_matching_catch__deps: ['__cxa_does_inherit'],
+  __cxa_find_matching_catch: function(thrown, throwntype, typeArray) {
+    // If throwntype is a pointer, this means a pointer has been
+    // thrown. When a pointer is thrown, actually what's thrown
+    // is a pointer to the pointer. We'll dereference it.
+    if (throwntype != 0) {
+      var throwntypeInfoAddr= {{{ makeGetValue('throwntype', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
+      var throwntypeInfo= {{{ makeGetValue('throwntypeInfoAddr', '0', '*') }}};
+      if (throwntypeInfo == 0)
+        thrown = {{{ makeGetValue('thrown', '0', '*') }}};
+    }
+    // The different catch blocks are denoted by different types.
+    // Due to inheritance, those types may not precisely match the
+    // type of the thrown object. Find one which matches, and
+    // return the type of the catch block which should be called.
+    for (var i = 0; i < typeArray.length; i++) {
+      if (___cxa_does_inherit(typeArray[i], throwntype))
+        return { 'f0':thrown, 'f1':typeArray[i]};
+    }
+    // Shouldn't happen unless we have bogus data in typeArray
+    // or encounter a type for which emscripten doesn't have suitable
+    // typeinfo defined. Best-efforts match just in case.
+    return {'f0':thrown,'f1':throwntype};
+  },
+
+  // Recursively walks up the base types of 'possibilityType'
+  // to see if any of them match 'definiteType'.
+
+  __cxa_does_inherit: function(definiteType, possibilityType) {
+    if (possibilityType == 0 || possibilityType == definiteType)
+      return true;
+    var possibility_type_infoAddr = {{{ makeGetValue('possibilityType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
+    var possibility_type_info = {{{ makeGetValue('possibility_type_infoAddr', '0', '*') }}};
+    switch (possibility_type_info) {
+    case 0: // possibility is a pointer
+      // See if definite type is a pointer
+      var definite_type_infoAddr = {{{ makeGetValue('definiteType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
+      var definite_type_info = {{{ makeGetValue('definite_type_infoAddr', '0', '*') }}};
+      if (definite_type_info == 0) {
+        // Also a pointer; compare base types of pointers
+        var defPointerBaseAddr = definiteType+{{{ Runtime.QUANTUM_SIZE*2 }}};
+        var defPointerBaseType = {{{ makeGetValue('defPointerBaseAddr', '0', '*') }}};
+        var possPointerBaseAddr = possibilityType+{{{ Runtime.QUANTUM_SIZE*2 }}};
+        var possPointerBaseType = {{{ makeGetValue('possPointerBaseAddr', '0', '*') }}};
+        return ___cxa_does_inherit(defPointerBaseType, possPointerBaseType);
+      } else
+        return false; // one pointer and one non-pointer
+    case 1: // class with no base class
+      return false;
+    case 2: // class with base class
+      var parentTypeAddr = possibilityType + {{{ Runtime.QUANTUM_SIZE*2 }}};
+      var parentType = {{{ makeGetValue('parentTypeAddr', '0', '*') }}};
+      return ___cxa_does_inherit(definiteType, parentType);
+    default:
+      return false; // some unencountered type
+    }
+  },
+
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
   // allocated variables as unique identifiers.
@@ -4503,6 +4572,8 @@ LibraryManager.library = {
   _ZTIc: [0],
   // type_info for void.
   _ZTIv: [0],
+  // type_info for void*.
+  _ZTIPv: [0],
 
   llvm_uadd_with_overflow_i32: function(x, y) {
     return {

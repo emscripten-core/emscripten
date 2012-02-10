@@ -1446,8 +1446,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, 'success')
 
     def test_typed_exceptions(self):
-        return self.skip('TODO: fix this for llvm 3.0')
-
         Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
         Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
