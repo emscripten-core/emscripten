@@ -11,19 +11,21 @@ var LibraryGL = {
       if (!(name in this._hashtables)) {
         this._hashtables[name] = {
           table: {},
-          counter: 0,
+          counter: 1,
           add: function(obj) {
             var id = this.counter++;
             this.table[id] = obj;
             return id;
           },
           get: function(id) {
+            if( id == 0 ) return null;
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
             return this.table[id];
           },
           remove: function(id) {
+          	if( id == 0 ) return;
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
@@ -49,13 +51,7 @@ var LibraryGL = {
   },
 
   glGetIntegerv: function(name_, p) {
-    switch(name_) {
-      case Module.ctx.MAX_TEXTURE_SIZE:
-        {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
-        break;
-      default:
-        throw 'Failure: Invalid glGetIntegerv value: ' + name_;
-    }
+    {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
   },
 
   glGenTextures__deps: ['$GL'],
@@ -308,6 +304,16 @@ var LibraryGL = {
       {{{ makeSetValue('length', 'i', 'log.length', 'i32') }}}
     }
   },
+  
+  glGetShaderiv_deps: ['$GL'],
+  glGetShaderiv : function(shader, pname, p) { 
+  	{{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.hashtable("shader").get(shader),pname)', 'i32') }}};
+  },
+
+  glGetProgramiv_deps: ['$GL'],
+  glGetProgramiv : function(program, pname, p) { 
+  	{{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.hashtable("program").get(program),pname)', 'i32') }}};
+  },
 
   glCreateProgram_deps: ['$GL'],
   glCreateProgram: function() {
@@ -350,9 +356,9 @@ var LibraryGL = {
     Module.ctx.bindAttribLocation(GL.hashtable("program").get(program), index, name);
   },
 
-  glBindFrameBuffer_deps: ['$GL'],
-  glBindFrameBuffer: function(target, framebuffer) {
-    Module.ctx.bindFrameBuffer(target, GL.hashtable("framebuffer").get(framebuffer));
+  glBindFramebuffer_deps: ['$GL'],
+  glBindFramebuffer: function(target, framebuffer) {
+    Module.ctx.bindFramebuffer(target, GL.hashtable("framebuffer").get(framebuffer));
   },
 
   glGenFramebuffers_deps: ['$GL'],

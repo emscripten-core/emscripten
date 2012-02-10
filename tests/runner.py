@@ -3847,6 +3847,38 @@ def process(filename):
       '''
       self.do_run(src, "1 2 3")
 
+    def test_readdir(self):
+    
+      add_pre_run = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+	'// {{PRE_RUN_ADDITIONS}}',
+	"FS.createFolder('', 'test', true, true);\\nFS.createLazyFile( 'test', 'some_file', 'http://localhost/some_file', true, false);\\nFS.createFolder('test', 'some_directory', true, true);"
+  )
+  open(filename, 'w').write(src)
+        '''
+
+      src = '''
+        #include <dirent.h>
+        #include <stdio.h>
+        
+        int main()
+        {
+            DIR * dir;
+            dirent * entity;
+        
+            dir = opendir( "test" );
+        
+            while( ( entity = readdir( dir ) ) )
+            {
+                printf( "%s is a %s\\n", entity->d_name, entity->d_type & DT_DIR ? "directory" : "file" );
+            }
+        
+            return 0;
+        }
+
+      '''
+      self.do_run(src, ". is a directory\n.. is a directory\nsome_file is a file\nsome_directory is a directory", post_build=add_pre_run)
 
     def test_fs_base(self):
       Settings.INCLUDE_FULL_LIBRARY = 1
