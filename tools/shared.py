@@ -452,10 +452,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
     Building.make(make + make_args, stdout=open(os.path.join(project_dir, 'make_'), 'w'),
                                     stderr=open(os.path.join(project_dir, 'make_err'), 'w'), env=env)
     if cache is not None:
-      cache[cache_name] = {}
+      cache[cache_name] = []
       for f in generated_libs:
         basename = os.path.basename(f)
-        cache[cache_name][basename] = open(f, 'rb').read()
+        cache[cache_name].append((basename, open(f, 'rb').read()))
     if old_dir:
       os.chdir(old_dir)
     return generated_libs
