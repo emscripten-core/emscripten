@@ -1053,29 +1053,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
       if (!hasVarArgs || useJSArgs || i < normalArgs) {
-        if (param.type == 'i64' && I64_MODE == 1) {
-          val = makeCopyI64(val); // Must copy [low, high] i64s, so they don't end up modified in the caller
-        }
         args.push(val);
         argsTypes.push(param.type);
       } else {
-        if (!(param.type == 'i64' && I64_MODE == 1)) {
-          varargs.push(val);
-          varargs = varargs.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
-          varargsTypes.push(param.type);
-          varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
-        } else {
-          // i64 mode 1. Write one i32 with type i64, and one i32 with type i32
-          varargs.push(val + '[0]');
-          varargs = varargs.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
-          ignoreFunctionIndexizing.push(varargs.length); // We will have a value there, but no type (the type is i64, but we write two i32s)
-          varargs.push(val + '[1]');
-          varargs = varargs.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
-          varargsTypes.push('i64');
-          varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
-          varargsTypes.push('i32');
-          varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize('i32')-1));
-        }
+        varargs.push(val);
+        varargs = varargs.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
+        varargsTypes.push(param.type);
+        varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
       }
     });
 
@@ -1095,7 +1079,6 @@ function JSify(data, functionsOnly, givenFunctions) {
                 varargs.map(function(arg, i) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
-                  if (I64_MODE == 1 && type == 'i64') type = 'i32'; // We have [i64, 0, 0, 0, i32, 0, 0, 0] in the layout at this point
                   var ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
                   offset += Runtime.getNativeFieldSize(type);
                   return ret;

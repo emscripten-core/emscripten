@@ -901,11 +901,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
             if (i < bytes-1) ret += '|';
           }
           ret = '(' + makeSignOp(ret, type, unsigned ? 'un' : 're', true);
-        } else {
-          assert(bytes == 8);
-          ret += 'tempBigInt=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, true, ignore, align) + ',';
-          ret += 'tempBigInt2=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, true, ignore, align) + ',';
-          ret += makeI64('tempBigInt', 'tempBigInt2');
         }
       } else {
         if (type == 'float') {
@@ -917,11 +912,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       ret += ')';
       return ret;
     }
-  }
-
-  if (type == 'i64' && I64_MODE == 1) {
-    return '[' + makeGetValue(ptr, pos, 'i32', noNeedFirst, 1, ignore) + ','
-               + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, 1, ignore) + ']';
   }
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
@@ -992,16 +982,12 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
           ret += 'tempBigInt=' + value + sep;
           ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2) + sep;
           ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2);
-        } else if (bytes != 8) {
+        } else {
           ret += 'tempBigInt=' + value + sep;
           for (var i = 0; i < bytes; i++) {
             ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
             if (i < bytes-1) ret += sep + 'tempBigInt>>=8' + sep;
           }
-        } else { // bytes == 8, specific optimization
-          ret += 'tempPair=' + ensureI64_1(value) + sep;
-          ret += makeSetValue(ptr, pos, 'tempPair[0]', 'i32', noNeedFirst, ignore, align) + sep;
-          ret += makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempPair[1]', 'i32', noNeedFirst, ignore, align);
         }
       } else {
         ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
@@ -1009,11 +995,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
       }
       return ret;
     }
-  }
-
-  if (type == 'i64' && I64_MODE == 1) {
-    return '(' + makeSetValue(ptr, pos, value + '[0]', 'i32', noNeedFirst, ignore) + ','
-               + makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), value + '[1]', 'i32', noNeedFirst, ignore) + ')';
   }
 
   value = indexizeFunctions(value, type);

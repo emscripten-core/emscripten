@@ -164,11 +164,10 @@ function analyzer(data, sidePass) {
           Array.prototype.splice.apply(lines, [i, 1].concat(toAdd));
           return toAdd.length;
         }
-        data.functions.forEach(function(func) {
-          // Legalize function parameters
+        function legalizeFunctionParameters(params) {
           var i = 0;
-          while (i < func.params.length) {
-            var param = func.params[i];
+          while (i < params.length) {
+            var param = params[i];
             if (param.intertype == 'value' && isIllegalType(param.type)) {
               var toAdd = getLegalVars(param.ident, getBits(param.type)).map(function(element) {
                 return {
@@ -178,12 +177,16 @@ function analyzer(data, sidePass) {
                   byval: 0
                 };
               });
-              Array.prototype.splice.apply(func.params, [i, 1].concat(toAdd));
+              Array.prototype.splice.apply(params, [i, 1].concat(toAdd));
               i += toAdd.length;
               continue;
             }
             i++;
           }
+        }
+        data.functions.forEach(function(func) {
+          // Legalize function params
+          legalizeFunctionParameters(func.params);
           // Legalize lines in labels
           var tempId = 0;
           func.labels.forEach(function(label) {
@@ -266,25 +269,31 @@ function analyzer(data, sidePass) {
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
-                // call, ret: Return value is in an unlegalized array literal. Not fully optimal.
+                // call, return: Return value is in an unlegalized array literal. Not fully optimal.
                 case 'call': {
                   bits = getBits(value.type);
                   var elements = getLegalVars(item.assignTo, bits);
                   var j = 0;
-                  var toAdd = [value].concat(elements.map(function(element) {
-                    return {
-                      intertype: 'value',
-                      assignTo: element.ident,
-                      type: 'i' + bits,
-                      ident: value.assignTo + '[' + j + ']',
-                      // Add the assignTo as a value so it is not eliminated as unneeded (the ident is not a simple ident here)
-                      value: { intertype: 'value', ident: value.assignTo, type: value.type }
-                    };
-                  }));
+                  var toAdd = [value];
+                  // legalize parameters
+                  legalizeFunctionParameters(value.params);
+                  if (value.assignTo) {
+                    // legalize return value
+                    toAdd = toAdd.concat(elements.map(function(element) {
+                      return {
+                        intertype: 'value',
+                        assignTo: element.ident,
+                        type: 'i' + bits,
+                        ident: value.assignTo + '[' + j + ']',
+                        // Add the assignTo as a value so it is not eliminated as unneeded (the ident is not a simple ident here)
+                        value: { intertype: 'value', ident: value.assignTo, type: value.type }
+                      };
+                    }));
+                  }
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
-                case 'ret': {
+                case 'return': {
                   bits = getBits(item.type);
                   var elements = getLegalVars(item.value.ident, bits);
                   item.value.ident = '[' + elements.map(function(element) { return element.ident }).join(',') + ']';
