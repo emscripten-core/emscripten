@@ -729,11 +729,14 @@ Module['Array_copy'] = Array_copy;
 #if USE_TYPED_ARRAYS
 // Copies a list of num items on the HEAP into a
 // JavaScript typed array.
-function TypedArray_copy(ptr, num) {
+function TypedArray_copy(ptr, num, offset /*optional*/) {
   // TODO: optimize this!
-  var arr = new Uint8Array(num);
-  for (var i = 0; i < num; ++i) {
-    arr[i] = {{{ makeGetValue('ptr', 'i', 'i8') }}};
+  if (offset === undefined) {
+    offset = 0;
+  }
+  var arr = new Uint8Array(num - offset);
+  for (var i = offset; i < num; ++i) {
+    arr[i - offset] = {{{ makeGetValue('ptr', 'i', 'i8') }}};
   }
   return arr.buffer;
 }

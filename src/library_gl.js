@@ -235,6 +235,11 @@ var LibraryGL = {
     Module.ctx.bufferData(target, floatArray, usage);
   },
 
+  glBufferSubData: function(target, offset, size, data) {
+    var floatArray = new Float32Array(TypedArray_copy(data, size, offset));
+    Module.ctx.bufferSubData(target, offset, floatArray);
+  },
+
   glGenRenderbuffers__deps: ['$GL'],
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
