@@ -284,9 +284,7 @@ function analyzer(data, sidePass) {
                         intertype: 'value',
                         assignTo: element.ident,
                         type: 'i' + bits,
-                        ident: value.assignTo + '[' + j + ']',
-                        // Add the assignTo as a value so it is not eliminated as unneeded (the ident is not a simple ident here)
-                        value: { intertype: 'value', ident: value.assignTo, type: value.type }
+                        ident: value.assignTo + '[' + j + ']'
                       };
                     }));
                   }
@@ -297,10 +295,6 @@ function analyzer(data, sidePass) {
                   bits = getBits(item.type);
                   var elements = getLegalVars(item.value.ident, bits);
                   item.value.ident = '[' + elements.map(function(element) { return element.ident }).join(',') + ']';
-                  // Add the ident as a value so it is not eliminated as unneeded (the ident is not a simple ident here)
-                  item.params = elements.map(function(element) {
-                    return { intertype: 'value', ident: element.ident, type: 'i' + element.bits };
-                  });
                   i++;
                   continue;
                 }
