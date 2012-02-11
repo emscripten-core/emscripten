@@ -428,6 +428,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, output, force_c=True)
 
     def test_i64(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
+
         for i64_mode in [0,1]:
           if i64_mode == 0 and Settings.USE_TYPED_ARRAYS != 0: continue # Typed arrays truncate i64
           if i64_mode == 1 and Settings.QUANTUM_SIZE == 1: continue # TODO: i64 mode 1 for q1
@@ -3269,6 +3271,7 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_parseInt(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
       if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
       Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s, but we do still get doubling
                             # FIXME: The output here is wrong, due to double rounding of i64s!
@@ -3277,7 +3280,7 @@ at function.:blag
       self.do_run(src, expected)
 
     def test_printf(self):
-      if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
       Settings.I64_MODE = 1
       self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()

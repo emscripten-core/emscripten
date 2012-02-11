@@ -3481,10 +3481,16 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE);
     }
 
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
     if (bits == 64) {
       ret = [{{{ splitI64('ret') }}}];
     }
+#else
+#if I64_MODE == 1
+    if (bits == 64) {
+      ret = {{{ splitI64('ret') }}};
+    }
+#endif
 #endif
 
     return ret;
