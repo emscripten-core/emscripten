@@ -1525,7 +1525,7 @@ function isSignedOp(op, variant) {
   return op in SIGNED_OP || (variant && variant[0] == 's');
 }
 
-var legalizedI64s = true; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
+var legalizedI64s = USE_TYPED_ARRAYS == 2; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
 
 function processMathop(item) {
   var op = item.op;
