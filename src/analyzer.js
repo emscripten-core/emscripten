@@ -273,18 +273,18 @@ function analyzer(data, sidePass) {
                 case 'call': {
                   bits = getBits(value.type);
                   var elements = getLegalVars(item.assignTo, bits);
-                  var j = 0;
                   var toAdd = [value];
                   // legalize parameters
                   legalizeFunctionParameters(value.params);
                   if (value.assignTo) {
                     // legalize return value
+                    var j = 0;
                     toAdd = toAdd.concat(elements.map(function(element) {
                       return {
                         intertype: 'value',
                         assignTo: element.ident,
                         type: 'i' + bits,
-                        ident: value.assignTo + '[' + j + ']'
+                        ident: value.assignTo + '[' + (j++) + ']'
                       };
                     }));
                   }
