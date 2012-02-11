@@ -377,7 +377,17 @@ function analyzer(data, sidePass) {
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
-                case 'bitcast': case 'inttoptr': case 'ptrtoint': {
+                case 'bitcast': {
+                  var inType = item.type2;
+                  var outType = item.type;
+                  if ((inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) ||
+                      (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
+                    i++;
+                    continue; // special case, handled in processMathop
+                  }
+                  // fall through
+                }
+                case 'inttoptr': case 'ptrtoint': {
                   value = {
                     op: item.intertype,
                     param1: item.params[0]
