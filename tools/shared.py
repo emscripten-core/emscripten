@@ -333,7 +333,6 @@ class Settings:
           Settings.CORRECT_SIGNS = 0
           Settings.CORRECT_OVERFLOWS = 0
           Settings.CORRECT_ROUNDINGS = 0
-          Settings.I64_MODE = 0
           Settings.DOUBLE_MODE = 0
           if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
