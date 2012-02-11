@@ -235,6 +235,39 @@ var LibraryGL = {
     Module.ctx.bufferData(target, floatArray, usage);
   },
 
+  glGenRenderbuffers__deps: ['$GL'],
+  glGenRenderbuffers: function(n, renderbuffers) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.hashtable("renderbuffer").add(Module.ctx.createRenderbuffer());
+      {{{ makeSetValue('renderbuffers', 'i', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteRenderbuffers: function(n, renderbuffers) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('renderbuffers', 'i', 'i32') }}};
+      Module.ctx.deleteRenderbuffer(GL.hashtable("renderbuffer").get(id));
+      GL.hashtable("renderbuffer").remove(id);
+    }
+  },
+
+  glBindRenderbuffer: function(target, renderbuffer) {
+    Module.ctx.bindRenderbuffer(target, GL.hashtable("renderbuffer").get(renderbuffer));
+  },
+
+  glGetRenderbufferParameteriv: function(target, pname, params) {
+    {{{ makeSetValue('params', '0', 'Module.ctx.getRenderbufferParameter(target, pname)', 'i32') }}};
+  },
+
+  glIsRenderbuffer_deps: ['$GL'],
+  glIsRenderbuffer: function(renderbuffer) {
+    var fb = GL.hashtable("renderbuffer").get(renderbuffer);
+    if (typeof(fb) == 'undefined') {
+      return false;
+    }
+    return Module.ctx.isRenderbuffer(fb);
+  },
+
   glBindAttribLocation_deps: ['$GL'],
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
@@ -538,7 +571,7 @@ var LibraryGL = {
  [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus activeTexture'],
  [2, 'pixelStorei vertexAttrib1f depthRange polygonOffset blendFunc'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer']].forEach(function(data) {
   var num = data[0];
