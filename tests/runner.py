@@ -5556,6 +5556,9 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
+    def test_reminder(self):
+      assert 0, 'find appearances of i64 in src/, most are now unneeded'
+
     def test_emcc(self):
       emcc_debug = os.environ.get('EMCC_DEBUG')
 
