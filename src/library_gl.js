@@ -24,6 +24,14 @@ var LibraryGL = {
 #endif
             return this.table[id];
           },
+          id: function(obj) {
+            for (var i = 1; i < this.counter; ++i) {
+              if (obj == this.table[i]) {
+                return i;
+              }
+            }
+            return null;
+          },
           remove: function(id) {
             if( id == 0 ) return;
 #if ASSERTIONS
@@ -51,7 +59,125 @@ var LibraryGL = {
   },
 
   glGetIntegerv: function(name_, p) {
-    {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
+    var result = Module.ctx.getParameter(name_);
+    switch (typeof(result)) {
+      case "number":
+        {{{ makeSetValue('p', '0', 'result', 'i32') }}};
+        break;
+      case "boolean":
+        {{{ makeSetValue('p', '0', 'result ? 1 : 0', 'i32') }}};
+        break;
+      case "string":
+        throw 'Native code calling glGetIntegerv(' + name_ + ') on a name which returns a string!';
+      case "object":
+        if (result === null) {
+          {{{ makeSetValue('p', '0', '0', 'i32') }}};
+        } else if (result instanceof Float32Array ||
+                   result instanceof Uint32Array ||
+                   result instanceof Int32Array ||
+                   result instanceof Array) {
+          for (var i = 0; i < result.length; ++i) {
+            {{{ makeSetValue('p', 'i', 'result[i]', 'i32') }}};
+          }
+        } else if (result instanceof WebGLBuffer) {
+          {{{ makeSetValue('p', '0', 'GL.hashtable("buffer").id(result)', 'i32') }}};
+        } else if (result instanceof WebGLProgram) {
+          {{{ makeSetValue('p', '0', 'GL.hashtable("program").id(result)', 'i32') }}};
+        } else if (result instanceof WebGLFramebuffer) {
+          {{{ makeSetValue('p', '0', 'GL.hashtable("framebuffer").id(result)', 'i32') }}};
+        } else if (result instanceof WebGLRenderbuffer) {
+          {{{ makeSetValue('p', '0', 'gl.hashtable("renderbuffer").id(result)', 'i32') }}};
+        } else if (result instanceof WebGLTexture) {
+          {{{ makeSetValue('p', '0', 'gl.hashtable("texture").id(result)', 'i32') }}};
+        } else {
+          throw 'Unknown object returned from WebGL getParameter';
+        }
+        break;
+      case "undefined":
+        throw 'Native code calling glGetIntegerv(' + name_ + ') and it returns undefined';
+      default:
+        throw 'Why did we hit the default case?';
+    }
+  },
+
+  glGetFloatv: function(name_, p) {
+    var result = Module.ctx.getParameter(name_);
+    switch (typeof(result)) {
+      case "number":
+        {{{ makeSetValue('p', '0', 'result', 'float') }}};
+        break;
+      case "boolean":
+        {{{ makeSetValue('p', '0', 'result ? 1.0 : 0.0', 'float') }}};
+        break;
+      case "string":
+          {{{ makeSetValue('p', '0', '0', 'float') }}};
+      case "object":
+        if (result === null) {
+          throw 'Native code calling glGetFloatv(' + name_ + ') and it returns null';
+        } else if (result instanceof Float32Array ||
+                   result instanceof Uint32Array ||
+                   result instanceof Int32Array ||
+                   result instanceof Array) {
+          for (var i = 0; i < result.length; ++i) {
+            {{{ makeSetValue('p', 'i', 'result[i]', 'float') }}};
+          }
+        } else if (result instanceof WebGLBuffer) {
+          {{{ makeSetValue('p', '0', 'GL.hashtable("buffer").id(result)', 'float') }}};
+        } else if (result instanceof WebGLProgram) {
+          {{{ makeSetValue('p', '0', 'GL.hashtable("program").id(result)', 'float') }}};
+        } else if (result instanceof WebGLFramebuffer) {
+          {{{ makeSetValue('p', '0', 'GL.hashtable("framebuffer").id(result)', 'float') }}};
+        } else if (result instanceof WebGLRenderbuffer) {
+          {{{ makeSetValue('p', '0', 'gl.hashtable("renderbuffer").id(result)', 'float') }}};
+        } else if (result instanceof WebGLTexture) {
+          {{{ makeSetValue('p', '0', 'gl.hashtable("texture").id(result)', 'float') }}};
+        } else {
+          throw 'Unknown object returned from WebGL getParameter';
+        }
+        break;
+      case "undefined":
+        throw 'Native code calling glGetFloatv(' + name_ + ') and it returns undefined';
+      default:
+        throw 'Why did we hit the default case?';
+    }
+  },
+
+  glGetBooleanv: function(name_, p) {
+    var result = Module.ctx.getParameter(name_);
+    switch (typeof(result)) {
+      case "number":
+        {{{ makeSetValue('p', '0', 'result != 0', 'i8') }}};
+        break;
+      case "boolean":
+        {{{ makeSetValue('p', '0', 'result != 0', 'i8') }}};
+        break;
+      case "string":
+        throw 'Native code calling glGetBooleanv(' + name_ + ') on a name which returns a string!';
+      case "object":
+        if (result === null) {
+          {{{ makeSetValue('p', '0', '0', 'i8') }}};
+        } else if (result instanceof Float32Array ||
+                   result instanceof Uint32Array ||
+                   result instanceof Int32Array ||
+                   result instanceof Array) {
+          for (var i = 0; i < result.length; ++i) {
+            {{{ makeSetValue('p', 'i', 'result[i] != 0', 'i8') }}};
+          }
+        } else if (result instanceof WebGLBuffer ||
+                   result instanceof WebGLProgram ||
+                   result instanceof WebGLFramebuffer ||
+                   result instanceof WebGLRenderbuffer ||
+                   result instanceof WebGLTexture) {
+          {{{ makeSetValue('p', '0', '1', 'i8') }}}; // non-zero ID is always 1!
+        } else {
+          throw 'Unknown object returned from WebGL getParameter';
+        }
+        break;
+      case "undefined":
+          throw 'Unknown object returned from WebGL getParameter';
+      default:
+        throw 'Why did we hit the default case?';
+    }
   },
 
   glGenTextures__deps: ['$GL'],
