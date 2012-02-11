@@ -4653,17 +4653,31 @@ def process(filename):
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
+    def test_lifetime(self):
+      if self.emcc_args is None: return self.skip('test relies on emcc opts')
+
+      try:
+        os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
+
+        self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
+        if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
+          assert 'a18' not in open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read(), 'lifetime stuff and their vars must be culled'
+        else:
+          assert 'a18' in open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read(), "without opts, it's there"
+
+      finally:
+        del os.environ['EMCC_LEAVE_INPUTS_RAW']
+
     # Test cases in separate files. Note that these files may contain invalid .ll!
     # They are only valid enough for us to read for test purposes, not for llvm-as
     # to process.
     def test_cases(self):
+      if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
+
       try:
-        self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
-
         os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-
+        self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.CHECK_OVERFLOWS = 0
-        if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
         for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
           shortname = name.replace('.ll', '')

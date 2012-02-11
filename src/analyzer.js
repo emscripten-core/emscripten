@@ -820,33 +820,7 @@ function analyzer(data, sidePass) {
           //if (dcheck('vars')) dprint('analyzed variables: ' + dump(func.variables));
         }
 
-        // Filter out no longer used variables, collapsing more as we go
-        while (true) {
-          analyzeVariableUses();
-
-          var recalc = false;
-
-          keys(func.variables).forEach(function(vname) {
-            var variable = func.variables[vname];
-            if (variable.uses == 0 && variable.origin != 'funcparam') {
-              // Eliminate this variable if we can
-              var sideEffects = false;
-              walkInterdata(func.lines[variable.rawLinesIndex], function(item) {
-                if (item.intertype in SIDE_EFFECT_CAUSERS) sideEffects = true;
-              });
-              if (!sideEffects) {
-                dprint('vars', 'Eliminating ' + vname);
-                func.lines[variable.rawLinesIndex].intertype = 'noop';
-                func.lines[variable.rawLinesIndex].assignTo = null;
-                // in theory we can also null out some fields here to save memory
-                delete func.variables[vname];
-                recalc = true;
-              }
-            }
-          });
-
-          if (!recalc) break;
-        }
+        analyzeVariableUses();
 
         // Decision time
 
