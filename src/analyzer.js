@@ -431,7 +431,7 @@ function analyzer(data, sidePass) {
                           type: 'i' + otherElementsA[j].bits,
                           param1: value.param1,
                           param2: { intertype: 'value', ident: otherElementsA[j].ident, type: 'i' + otherElementsA[j].bits },
-                          param2: { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
+                          param3: { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
                         };
                       };
                       break;
