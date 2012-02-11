@@ -27,6 +27,6 @@ entry:
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
   %5 = call i32 @PyLong_FromVoidPtr(i8* null) nounwind ; [#uses=0]
   %13 = call i32 @PyLong_FromVoidPtr(i8* inttoptr (i64 1 to i8*)) nounwind ; [#uses=0]
-  %0 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %1 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   ret i32 0
 }
