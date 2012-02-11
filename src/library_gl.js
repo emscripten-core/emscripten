@@ -240,6 +240,15 @@ var LibraryGL = {
     Module.ctx.bufferSubData(target, offset, floatArray);
   },
 
+  glIsBuffer_deps: ['$GL'],
+  glIsBuffer: function(buffer) {
+    var fb = GL.hashtable("buffer").get(buffer);
+    if (typeof(fb) == 'undefined') {
+      return false;
+    }
+    return Module.ctx.isBuffer(fb);
+  },
+
   glGenRenderbuffers__deps: ['$GL'],
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
