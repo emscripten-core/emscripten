@@ -270,7 +270,7 @@ function analyzer(data, sidePass) {
                   continue;
                 }
                 // call, return: Return value is in an unlegalized array literal. Not fully optimal.
-                case 'call': {
+                case 'call': case 'invoke': {
                   bits = getBits(value.type);
                   var elements = getLegalVars(item.assignTo, bits);
                   var toAdd = [value];
