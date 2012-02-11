@@ -387,13 +387,6 @@ function analyzer(data, sidePass) {
                 case 'mathop': {
                   var toAdd = [];
                   var sourceBits = getBits(value.param1.type);
-                  var sourceElements;
-                  if (sourceBits <= 32) {
-                    // The input is a legal type
-                    sourceElements = [{ ident: value.param1.ident, bits: sourceBits }];
-                  } else {
-                    sourceElements = getLegalVars(value.param1.ident, sourceBits);
-                  }
                   // All mathops can be parametrized by how many shifts we do, and how big the source is
                   var shifts = 0;
                   var targetBits = sourceBits;
@@ -428,6 +421,7 @@ function analyzer(data, sidePass) {
                       break;
                     }
                     case 'select': {
+                      sourceBits = targetBits = getBits(value.param2.type);
                       var otherElementsA = getLegalVars(value.param2.ident, sourceBits);
                       var otherElementsB = getLegalVars(value.param3.ident, sourceBits);
                       processor = function(result, j) {
@@ -464,7 +458,23 @@ function analyzer(data, sidePass) {
                     default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum, dump(item)];
                   }
                   // Do the legalization
-                  assert(isNumber(shifts), 'TODO: handle nonconstant shifts');
+                  var sourceElements;
+                  if (sourceBits <= 32) {
+                    // The input is a legal type
+                    sourceElements = [{ ident: value.param1.ident, bits: sourceBits }];
+                  } else {
+                    sourceElements = getLegalVars(value.param1.ident, sourceBits);
+                  }
+                  if (!isNumber(shifts)) {
+                    // We can't statically legalize this, do the operation at runtime TODO: optimize
+                    assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
+                    value.intertype = 'value';
+                    value.ident = 'Runtime.bitshift64(' + sourceElements[0].ident + ', ' +
+                                                          sourceElements[1].ident + ',"' + value.op + '",' + value.param2.ident + '$0);' +
+                                  'var ' + value.assignTo + '$0 = ' + value.assignTo + '[0], ' + value.assignTo + '$1 = ' + value.assignTo + '[1];';
+                    i++;
+                    continue;
+                  }
                   var targetElements = getLegalVars(item.assignTo, targetBits);
                   var sign = shifts >= 0 ? 1 : -1;
                   var shiftOp = shifts >= 0 ? 'shl' : 'lshr';

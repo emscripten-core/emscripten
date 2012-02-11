@@ -123,34 +123,34 @@ var Runtime = {
   FLOAT_TYPES: set('float', 'double'),
 
   // Mirrors processMathop's treatment of constants (which we optimize directly)
-  bitshift64: function(value, op, bits) {
+  bitshift64: function(low, high, op, bits) {
     var ander = Math.pow(2, bits)-1;
     if (bits < 32) {
       switch (op) {
         case 'shl':
-          return [value[0] << bits, (value[1] << bits) | ((value[0]&(ander << (32 - bits))) >>> (32 - bits))];
+          return [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
         case 'ashr':
-          return [(((value[0] >>> bits ) | ((value[1]&ander) << (32 - bits))) >> 0) >>> 0, (value[1] >> bits) >>> 0];
+          return [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
         case 'lshr':
-          return [((value[0] >>> bits) | ((value[1]&ander) << (32 - bits))) >>> 0, value[1] >>> bits];
+          return [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
       }
     } else if (bits == 32) {
       switch (op) {
         case 'shl':
-          return [0, value[0]];
+          return [0, low];
         case 'ashr':
-          return [value[1], (value[1]|0) < 0 ? ander : 0];
+          return [high, (high|0) < 0 ? ander : 0];
         case 'lshr':
-          return [value[1], 0];
+          return [high, 0];
       }
     } else { // bits > 32
       switch (op) {
         case 'shl':
-          return [0, value[0] << (bits - 32)];
+          return [0, low << (bits - 32)];
         case 'ashr':
-          return [(value[1] >> (bits - 32)) >>> 0, (value[1]|0) < 0 ? ander : 0];
+          return [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
         case 'lshr':
-          return [value[1] >>>  (bits - 32) , 0];
+          return [high >>>  (bits - 32) , 0];
       }
     }
     abort('unknown bitshift64 op: ' + [value, op, bits]);

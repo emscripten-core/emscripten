@@ -1600,7 +1600,7 @@ function processMathop(item) {
       case 'ashr':
       case 'lshr': {
         if (!isNumber(ident2)) {
-          return 'Runtime.bitshift64(' + ident1 + ',"' + op + '",' + stripCorrections(ident2) + '[0]|0)';
+          return 'Runtime.bitshift64(' + ident1 + '[0], ' + ident1 + '[1],"' + op + '",' + stripCorrections(ident2) + '[0]|0)';
         }
         bits = parseInt(ident2);
         var ander = Math.pow(2, bits)-1;
