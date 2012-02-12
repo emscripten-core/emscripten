@@ -3296,7 +3296,7 @@ LibraryManager.library = {
   },
 
   atexit: function(func, arg) {
-    __ATEXIT__.push({ func: func, arg: arg });
+    __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
 
