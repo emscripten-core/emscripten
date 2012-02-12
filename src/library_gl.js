@@ -531,6 +531,27 @@ var LibraryGL = {
     return GL.hashtable("shader").add(shader);
   },
 
+  glDeleteShader: function(shader) {
+    Module.ctx.deleteShader(GL.hashtable("shader").get(shader));
+  },
+
+  glDetachShader: function(program, shader) {
+    Module.ctx.detachShader(GL.hashtable("program").get(program),
+                            GL.hashtable("shader").get(shader));
+  },
+
+  glGetAttachedShaders: function(program, maxCount, count, shaders) {
+    var result = Module.ctx.getAttachedShaders(GL.hashtable("program").get(program));
+    var len = result.length;
+    if (len > maxCount) {
+      len = maxCount;
+    }
+    {{{ makeSetValue('count', '0', 'len', 'i32') }}};
+    for (var i = 0; i < len; ++i) {
+      {{{ makeSetValue('shaders', 'i', 'GL.hashtable("shader").get(result[i])', 'i32') }}};
+    }
+  },
+
   glShaderSource_deps: ['$GL'],
   glShaderSource: function(shader, count, string, length) {
     var source = "";
@@ -554,6 +575,15 @@ var LibraryGL = {
     Module.ctx.shaderSource(GL.hashtable("shader").get(shader), source);
   },
 
+  glGetShaderSource: function(shader, bufsize, length, source) {
+    var result = Module.ctx.getShaderSource(GL.hashtable("shader").get(shader));
+    result.slice(0, bufsize - 1);
+    writeStringToMemory(result, source);
+    if (length) {
+      {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
+    }
+  },
+
   glCompileShader_deps: ['$GL'],
   glCompileShader: function(shader) {
     Module.ctx.compileShader(GL.hashtable("shader").get(shader));
@@ -565,18 +595,27 @@ var LibraryGL = {
     log.slice(0, maxLength - 1);
     writeStringToMemory(log, infoLog);
     if (length) {
-      {{{ makeSetValue('length', 'i', 'log.length', 'i32') }}}
+      {{{ makeSetValue('length', '0', 'log.length', 'i32') }}}
     }
   },
-  
+
   glGetShaderiv_deps: ['$GL'],
-  glGetShaderiv : function(shader, pname, p) { 
-    {{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.hashtable("shader").get(shader),pname)', 'i32') }}};
+  glGetShaderiv : function(shader, pname, p) {
+    {{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.hashtable("shader").get(shader), pname)', 'i32') }}};
   },
 
   glGetProgramiv_deps: ['$GL'],
-  glGetProgramiv : function(program, pname, p) { 
-    {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.hashtable("program").get(program),pname)', 'i32') }}};
+  glGetProgramiv : function(program, pname, p) {
+    {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.hashtable("program").get(program), pname)', 'i32') }}};
+  },
+
+  glIsShader_deps: ['$GL'],
+  glIsShader: function(shader) {
+    var fb = GL.hashtable("shader").get(shader);
+    if (typeof(fb) == 'undefined') {
+      return false;
+    }
+    return Module.ctx.isShader(fb);
   },
 
   glCreateProgram_deps: ['$GL'],
@@ -584,10 +623,21 @@ var LibraryGL = {
     return GL.hashtable("program").add(Module.ctx.createProgram());
   },
 
+  glDeleteProgram: function(program) {
+    Module.ctx.deleteProgram(GL.hashtable("program").get(program));
+  },
+
   glAttachShader_deps: ['$GL'],
   glAttachShader: function(program, shader) {
     Module.ctx.attachShader(GL.hashtable("program").get(program),
                             GL.hashtable("shader").get(shader));
+  },
+
+  glGetShaderPrecisionFormat: function(shaderType, precisionType, range, precision) {
+    var result = Module.ctx.getShaderPrecisionFormat(shaderType, precisionType);
+    {{{ makeSetValue('range', '0', 'result.rangeMin', 'i32') }}};
+    {{{ makeSetValue('range', '1', 'result.rangeMax', 'i32') }}};
+    {{{ makeSetValue('precision', '0', 'result.precision', 'i32') }}};
   },
 
   glLinkProgram_deps: ['$GL'],
@@ -605,13 +655,27 @@ var LibraryGL = {
     log = log.substr(0, maxLength - 1);
     writeStringToMemory(log, infoLog);
     if (length) {
-      {{{ makeSetValue('length', 'i', 'log.length', 'i32') }}}
+      {{{ makeSetValue('length', '0', 'log.length', 'i32') }}}
     }
   },
 
   glUseProgram_deps: ['$Gl'],
   glUseProgram: function(program) {
     Module.ctx.useProgram(GL.hashtable("program").get(program));
+  },
+
+  glValidateProgram_deps: ['$Gl'],
+  glValidateProgram: function(program) {
+    Module.ctx.validateProgram(GL.hashtable("program").get(program));
+  },
+
+  glIsProgram_deps: ['$GL'],
+  glIsProgram: function(program) {
+    var fb = GL.hashtable("program").get(program);
+    if (typeof(fb) == 'undefined') {
+      return false;
+    }
+    return Module.ctx.isProgram(fb);
   },
 
   glBindAttribLocation_deps: ['$GL'],

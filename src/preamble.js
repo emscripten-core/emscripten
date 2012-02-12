@@ -765,11 +765,14 @@ Module['String_copy'] = String_copy;
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.
 // For LLVM-originating strings, see parser.js:parseLLVMString function
-function intArrayFromString(stringy, dontAddNull) {
+function intArrayFromString(stringy, dontAddNull, length /* optional */) {
   var ret = [];
   var t;
   var i = 0;
-  while (i < stringy.length) {
+  if (length === undefined) {
+    length = stringy.length;
+  }
+  while (i < length) {
     var chr = stringy.charCodeAt(i);
     if (chr > 0xFF) {
 #if ASSERTIONS
