@@ -5723,12 +5723,12 @@ Options that are modified or new in %s include:
         for params, test, text in [
           (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
           (['-O1', '-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' not in generated, 'inlining'),
-          (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
-          (['-s', 'USE_TYPED_ARRAYS=1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          (['-s', 'USE_TYPED_ARRAYS=0', '-s', 'I64_MODE=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['-s', 'USE_TYPED_ARRAYS=1', '-s', 'I64_MODE=0'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
           ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
           (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported'),
-          (['--typed-arrays', '0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
-          (['--typed-arrays', '1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          (['--typed-arrays', '0', '-s', 'I64_MODE=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['--typed-arrays', '1', '-s', 'I64_MODE=0'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
           (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
@@ -5865,7 +5865,7 @@ f.close()
       clear()
       output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
-                                           '-s', 'USE_TYPED_ARRAYS=0',
+                                           '-s', 'USE_TYPED_ARRAYS=0', '-s', 'I64_MODE=0',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
