@@ -3851,15 +3851,14 @@ def process(filename):
       self.do_run(src, "1 2 3")
 
     def test_readdir(self):
-    
       add_pre_run = '''
 def process(filename):
   src = open(filename, 'r').read().replace(
-	'// {{PRE_RUN_ADDITIONS}}',
-	"FS.createFolder('', 'test', true, true);\\nFS.createLazyFile( 'test', 'some_file', 'http://localhost/some_file', true, false);\\nFS.createFolder('test', 'some_directory', true, true);"
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createFolder('', 'test', true, true);\\nFS.createLazyFile( 'test', 'some_file', 'http://localhost/some_file', true, false);\\nFS.createFolder('test', 'some_directory', true, true);"
   )
   open(filename, 'w').write(src)
-        '''
+'''
 
       src = '''
         #include <dirent.h>
