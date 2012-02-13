@@ -4239,10 +4239,18 @@ LibraryManager.library = {
   isdigit: function(chr) {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
   },
+  isdigit_l__deps: ['isdigit'],
+  isdigit_l: function(chr, loc) {
+    return _isdigit(chr);
+  },
   isxdigit: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
+  },
+  isxdigit_l__deps: ['isxdigit'],
+  isxdigit_l: function(chr, loc) {
+    return _isxdigit(chr);
   },
   isalnum: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||

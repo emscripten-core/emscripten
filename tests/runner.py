@@ -1698,6 +1698,16 @@ m_divisor is 1091269979
         '''
         self.do_run(src, '*51,87,78,550,100,78,550*')
 
+    def test_isdigit_l(self):
+        src = '''
+          #include <iostream>
+          int main() {
+            using namespace std;
+            use_facet<num_put<char> >(cout.getloc()).put(cout, cout, '0', 3.14159265);
+          }
+        '''
+        self.do_run(src, '3.14159')
+
     def test_polymorph(self):
         src = '''
           #include <stdio.h>
