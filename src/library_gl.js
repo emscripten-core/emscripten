@@ -199,6 +199,8 @@ var LibraryGL = {
   glCompressedTexImage2D: function(target, level, internalformat, width, height, border, imageSize, data) {
     if (data) {
       data = new Uint8Array(Array_copy(data, imageSize));
+    } else {
+      data = null;
     }
     Module.ctx.compressedTexImage2D(target, level, internalformat, width, height, border, data);
   },
@@ -206,6 +208,8 @@ var LibraryGL = {
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
     if (data) {
       data = new Uint8Array(Array_copy(data, imageSize));
+    } else {
+      data = null;
     }
     Module.ctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, data);
   },
@@ -243,6 +247,8 @@ var LibraryGL = {
         default:
           throw 'Invalid type (' + type + ') passed to glTexImage2D';
       }
+    } else {
+      pixels = null;
     }
     Module.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
   },
@@ -280,6 +286,8 @@ var LibraryGL = {
         default:
           throw 'Invalid type (' + type + ') passed to glTexSubImage2D';
       }
+    } else {
+      pixels = null;
     }
     Module.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
