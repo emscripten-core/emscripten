@@ -4383,7 +4383,7 @@ LibraryManager.library = {
     ptrTV -= {{{ Runtime.QUANTUM_SIZE }}};
     var TI = {{{ makeGetValue('ptrTV', '0', '*') }}};
     do {
-      if (TI == attemptedTI) return 1;
+      if (TI == attemptedTI) return ptr;
       // Go to parent class
       var type_infoAddr = {{{ makeGetValue('TI', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
       var type_info = {{{ makeGetValue('type_infoAddr', '0', '*') }}};

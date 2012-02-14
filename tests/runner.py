@@ -1549,6 +1549,25 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
 
     def test_dynamic_cast(self):
+        src = r'''
+          #include <stdio.h>
+
+          struct Support {
+            virtual void f() {
+              printf("f()\n");
+            }
+          };
+
+          struct Derived : Support {
+          };
+
+          int main() {
+            Support * p = new Derived;
+            dynamic_cast<Derived*>(p)->f();
+          }
+        '''
+        self.do_run(src, 'f()\n')
+
         src = '''
           #include <stdio.h>
 
