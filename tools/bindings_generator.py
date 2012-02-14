@@ -180,8 +180,8 @@ for classname, clazz in classes.iteritems():
         method['name'] = 'op_comp'
         method['operator'] = '  return arg0 == arg1;' if len(method['parameters'][0]) == 2 else '  return *self == arg0;'
       else:
-        print 'zz unknown operator:', method['name']
-        1/0.
+        print 'zz unknown operator:', method['name'], ', ignoring'
+        method['ignore'] = True
 
     # Fill in some missing stuff
     method['returns_text'] = method['returns_text'].replace('&', '').replace('*', '')
