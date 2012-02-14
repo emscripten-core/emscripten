@@ -6096,7 +6096,7 @@ elif 'benchmark' in str(sys.argv):
       '''
       self.do_benchmark(src, [], 'final: 720.')
 
-    def test_files(self):
+    def zzztest_files(self):
       src = r'''
         #include<stdio.h>
         #include<stdlib.h>
