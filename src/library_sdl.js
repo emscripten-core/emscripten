@@ -90,6 +90,7 @@ mergeInto(LibraryManager.library, {
     fonts: [null],
 
     keyboardState: null,
+    startTime: null,
     mouseX: 0,
     mouseY: 0,
 
@@ -98,6 +99,7 @@ mergeInto(LibraryManager.library, {
       40:  1105, // down arrow
       37:  1104, // left arrow
       39:  1103, // right arrow
+
       17:  305, // control (right, or left)
       18:  308, // alt
       109: 45, // minus
@@ -369,7 +371,13 @@ mergeInto(LibraryManager.library, {
     return 0; // success
   },
 
-  SDL_WasInit: function() { return 0 }, // TODO
+  SDL_WasInit__deps: ['SDL_Init'],
+  SDL_WasInit: function() {
+    if (SDL.startTime === null) {
+      _SDL_Init();
+    }
+    return 1;
+  },
 
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
