@@ -1640,7 +1640,7 @@ function processMathop(item) {
       case 'fptoui': case 'fptosi': return finish(splitI64(ident1));
       case 'icmp': {
         switch (variant) {
-          case 'uge': return high1 + ' >= ' + high2 + ' && (' + high1 + ' > '  + high + ' || ' +
+          case 'uge': return high1 + ' >= ' + high2 + ' && (' + high1 + ' > '  + high2 + ' || ' +
                                                                 low1 + ' >= ' + low2 + ')';
           case 'sge': return '(' + high1 + '|0) >= (' + high2 + '|0) && ((' + high1 + '|0) >  ('  + high2 + '|0) || ' +
                                                                         '(' + low1 + '|0) >= ('  + low2 + '|0))';
