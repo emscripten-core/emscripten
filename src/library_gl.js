@@ -47,11 +47,11 @@ var LibraryGL = {
 
   glGetString: function(name_) {
     switch(name_) {
-      case Module.ctx.VENDOR:
-      case Module.ctx.RENDERER:
-      case Module.ctx.VERSION:
+      case 0x1F00 /* GL_VENDOR */:
+      case 0x1F01 /* GL_RENDERER */:
+      case 0x1F02 /* GL_VERSION */:
         return allocate(intArrayFromString(Module.ctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
-      case 0x1F03: // Extensions
+      case 0x1F03 /* GL_EXTENSIONS */:
         return allocate(intArrayFromString(Module.ctx.getSupportedExtensions().join(' ')), 'i8', ALLOC_NORMAL);
       default:
         throw 'Failure: Invalid glGetString value: ' + name_;
