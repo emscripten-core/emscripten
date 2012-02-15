@@ -19,7 +19,7 @@ entry:
   %temp.buffer = bitcast i8* %buffer to [0 x i8]*
   %buffer1 = getelementptr [0 x i8]* %temp.buffer, i32 0, i32 1
   %bundled1 = bitcast i8* %buffer1 to i104*
-  store i104 31079605376604435891501163880, i104* %bundled1, align 1 ; unaligned
+  store i104 -20251329998275065988055750122136, i104* %bundled1, align 1 ; unaligned
   call i32 (i8*)* @puts(i8* %buffer)
 
 ; shifts
