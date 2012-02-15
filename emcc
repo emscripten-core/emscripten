@@ -460,6 +460,8 @@ try:
           shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
 
+  if not LEAVE_INPUTS_RAW: assert len(temp_files) == len(input_files)
+
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in ['js', 'html']:
     if llvm_opts > 0:
@@ -534,8 +536,8 @@ try:
                                                ('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
       need = []
       has = []
-      for input_file in input_files:
-        symbols = shared.Building.llvm_nm(in_temp(unsuffixed_basename(input_file) + '.o'))
+      for temp_file in temp_files:
+        symbols = shared.Building.llvm_nm(temp_file)
         for library_symbol in library_symbols:
           if library_symbol in symbols.undefs:
             need.append(library_symbol)
@@ -559,7 +561,7 @@ try:
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
-      shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), in_temp(target_basename + '.bc'))
+      shutil.move(temp_files[0], in_temp(target_basename + '.bc'))
       final = in_temp(target_basename + '.bc')
     else:
       final = input_files[0]
