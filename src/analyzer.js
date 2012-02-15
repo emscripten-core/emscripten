@@ -1223,8 +1223,7 @@ function analyzer(data, sidePass) {
         var lines = func.labels[0].lines;
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i];
-          if (!item.assignTo || item.intertype != 'alloca') break;
-          assert(isNumber(item.allocatedNum));
+          if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) break;
           item.allocatedSize = func.variables[item.assignTo].impl === VAR_EMULATED ?
             calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
           if (USE_TYPED_ARRAYS === 2) {
@@ -1235,7 +1234,7 @@ function analyzer(data, sidePass) {
         var index = 0;
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i];
-          if (!item.assignTo || item.intertype != 'alloca') break;
+          if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) break;
           item.allocatedIndex = index;
           index += item.allocatedSize;
           delete item.allocatedSize;
@@ -1260,7 +1259,7 @@ function analyzer(data, sidePass) {
           var finishedInitial = false;
           for (var i = 0; i < lines.length; i++) {
             var item = lines[i];
-            if (!item.assignTo || item.intertype != 'alloca') {
+            if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) {
               finishedInitial = true;
               continue;
             }
