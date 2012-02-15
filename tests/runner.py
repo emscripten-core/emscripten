@@ -2439,6 +2439,27 @@ def process(filename):
 
         self.do_run(src, '*1*', force_c=True)
 
+    def test_atexit(self):
+      # Confirms they are called in reverse order
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        
+        static void cleanA() {
+          printf("A");
+        }
+        static void cleanB() {
+          printf("B");
+        }
+        
+        int main() {
+          atexit(cleanA);
+          atexit(cleanB);
+          return 0;
+        }
+        '''
+      self.do_run(src, 'BA')
+
     def test_time(self):
       # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
