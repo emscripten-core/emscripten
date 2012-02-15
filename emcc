@@ -243,6 +243,9 @@ BITCODE_SUFFIXES = ('.bc', '.o')
 SHAREDLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 ASSEMBLY_SUFFIXES = ('.ll',)
 
+def suffix(name):
+  return name.split('.')[:-1]
+
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
 
@@ -552,9 +555,11 @@ try:
         if fix:
           fix()
 
-  # First, combine the bitcode files if there are several
-  if len(input_files) + len(extra_files_to_link) > 1:
-    linker_inputs = map(lambda input_file: in_temp(unsuffixed_basename(input_file) + '.o'), input_files) + extra_files_to_link
+  # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
+  suff = suffix(temp_files[0])
+  if len(input_files) + len(extra_files_to_link) > 1 or \
+     (not (suff in BITCODE_SUFFIXES or suff in SHAREDLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
+    linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
     shared.Building.link(linker_inputs,
                          in_temp(target_basename + '.bc'))

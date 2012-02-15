@@ -5671,6 +5671,16 @@ Options that are modified or new in %s include:
           assert os.path.exists(target + '.js'), 'Expected %s to exist since args are %s : %s' % (target + '.js', str(args), '\n'.join(output))
           self.assertContained('hello, world!', run_js(target + '.js'))
 
+        # handle singleton archives
+        clear()
+        Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+        assert os.path.exists('a.a')
+        shutil.copyfile('a.a', '/home/alon/a.a')
+        output = Popen([compiler, 'a.a']).communicate()
+        assert os.path.exists('a.out.js'), output
+        self.assertContained('hello, world!', run_js('a.out.js'))
+
         # emcc src.ll ==> generates .js
         clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
