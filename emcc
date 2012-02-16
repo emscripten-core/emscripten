@@ -556,9 +556,8 @@ try:
           fix()
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
-  suff = suffix(temp_files[0])
   if len(input_files) + len(extra_files_to_link) > 1 or \
-     (not (suff in BITCODE_SUFFIXES or suff in SHAREDLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
+     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in SHAREDLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
     shared.Building.link(linker_inputs,
