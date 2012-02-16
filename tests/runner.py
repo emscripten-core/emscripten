@@ -653,6 +653,31 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
         self.do_run(src, '*1*\n*0*\n*0*\n')
 
+    def test_i64_b(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+        src = r'''
+          #include <stdio.h>
+          #include <sys/time.h>
+
+          typedef long long int64;
+
+          #define PRMJ_USEC_PER_SEC       1000000L
+
+          int main(int argc, char * argv[]) {
+              int64 sec = 1329409675 + argc;
+              int64 usec = 2329509675;
+              int64 mul = int64(sec) * PRMJ_USEC_PER_SEC;
+              int64 add = mul + int64(usec);
+              int add_low = add;
+              int add_high = add >> 32;
+              printf("*%lld,%lld,%u,%u*\n", mul, add, add_low, add_high);
+              return 0;
+          }
+        '''
+
+        self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n')
+
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
 

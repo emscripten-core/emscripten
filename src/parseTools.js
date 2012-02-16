@@ -542,7 +542,7 @@ function splitI64(value) {
   // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
   // HEAP32 or |0'd, etc.
   if (legalizedI64s) {
-    return [value + '>>>0', 'Math.min(Math.floor(' + value + '/4294967296), 4294967295)'];
+    return [value + '>>>0', 'Math.min(Math.floor((' + value + ')/4294967296), 4294967295)'];
   } else {
     return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
   }
