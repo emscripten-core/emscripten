@@ -1598,6 +1598,31 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         '''
         self.do_run(src, 'a1: 0\na2: 0\na3: 1\nb1: 0\nb2: 1\nb3: 1\nc1: 1\nc2: 1\nc3: 1\n')
 
+    def test_dynamic_cast_function_call(self):
+        src = '''
+          #include <stdio.h>
+          #include <new>
+
+          class Foo {
+          public:
+                  virtual void gargle() { printf("FooGargle\\n"); };
+          };
+
+          class Bar : public Foo {
+          public:
+                  virtual void gargle() { printf("BarGargle\\n"); };
+          };
+
+          int main(void) {
+                  Foo* base = new (std::nothrow) Bar();
+                  Bar* derived = dynamic_cast<Bar*>(base);
+                  if (derived != NULL)
+                          derived->gargle();
+                  return 0;
+          }
+        '''
+        self.do_run(src, 'BarGargle\n')
+
     def test_funcptr(self):
         src = '''
           #include <stdio.h>
