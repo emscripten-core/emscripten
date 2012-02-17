@@ -901,7 +901,11 @@ function hoistMultiples(ast) {
       for (var i = 0; i < statements.length-1; i++) {
         var modifiedI = false;
         var pre = statements[i];
-        if (pre[0] != 'if') continue;
+        //Look for switches, which are inside a do{} block prefixed by a label
+        if (pre[0] == 'label' && pre[2][0] == 'do' && pre[2][2][0] == 'block'&& pre[2][2][1][0][0] == 'switch') {
+            pre = pre[2][2][1][0];
+        }
+        if (pre[0] != 'switch' && pre[0] != 'if') continue;
         var post = statements[i+1];
         // Look into some block types. shell() will then recreate the shell that we looked into
         var postInner = post;
