@@ -95,24 +95,38 @@ all_h.write(text)
 all_h.close()
 
 parsed = CppHeaderParser.CppHeader(all_h_name)
-for classname, clazz in parsed.classes.iteritems():
-  print 'zz see', classname
+print 'zz dir: ', parsed.__dict__.keys()
+for classname, clazz in parsed.classes.items() + parsed.structs.items():
+  print 'zz see', classname, clazz, type(clazz)
   classes[classname] = clazz
-  clazz['methods'] = clazz['methods']['public'] # CppHeaderParser doesn't have 'public' etc. in structs. so equalize to that
+  if type(clazz['methods']) == dict:
+    clazz['saved_methods'] = clazz['methods']
+    clazz['methods'] = clazz['methods']['public'] # CppHeaderParser doesn't have 'public' etc. in structs. so equalize to that
 
   if '::' in classname:
     assert classname.count('::') == 1
     parents[classname.split('::')[1]] = classname.split('::')[0]
 
-  for sname, struct in clazz._public_structs.iteritems():
-    parents[sname] = classname
-    classes[classname + '::' + sname] = struct
-    struct['name'] = sname # Missing in CppHeaderParser
-    print 'zz seen struct %s in %s' % (sname, classname)
+  if hasattr(clazz, '_public_structs'): # This is a class
+    for sname, struct in clazz._public_structs.iteritems():
+      parents[sname] = classname
+      classes[classname + '::' + sname] = struct
+      struct['name'] = sname # Missing in CppHeaderParser
+      print 'zz seen struct %s in %s' % (sname, classname)
 
+  if 'fields' in clazz: # This is a struct
+    print 'zz add properties!'
+    clazz['properties'] = { 'public': clazz['fields'] }
+    clazz['name'] = classname
+    clazz['inherits'] = []
 print 'zz parents: ', parents
 
-for classname, clazz in classes.iteritems():
+def check_has_constructor(clazz):
+  for method in clazz['methods']:
+    if method['constructor'] and not method['destructor']: return True
+  return False
+
+for classname, clazz in parsed.classes.items() + parsed.structs.items():
   # Various precalculations
   print 'zz precalc', classname
   for method in clazz['methods'][:]:
@@ -157,7 +171,7 @@ for classname, clazz in classes.iteritems():
         print 'zz subsubsub ', classname, method['name'], method['parameters'][0]
         method['name'] = 'op_sub'
         if len(method['parameters'][0]) == 0:
-          method['operator'] = '  return -*self; // %d' % len(method['parameters'][0])
+          method['operator'] = '  static %s ret; ret = -*self; return ret;' % method['returns']
         else:
           method['operator'] = '  return *self -= arg0; // %d : %s' % (len(method['parameters'][0]), method['parameters'][0][0]['name'])
       elif 'imul' in method['name']:
@@ -237,21 +251,31 @@ for classname, clazz in classes.iteritems():
         }]],
       })
 
-    # Add destroyer
-    if not clazz.get('abstract'):
-      clazz['methods'].append({
-        'destroyer': True,
-        'name': '__destroy__',
-        'constructor': False,
-        'destructor': False,
-        'static': False,
-        'returns': 'void',
-        'returns_text': 'void',
-        'returns_reference': False,
-        'returns_pointer': False,
-        'pure_virtual': False,
-        'parameters': [[]],
-      })
+  print 'zz is effectively abstract?', clazz['name'], classname, '0'
+  if 'saved_methods' in clazz and not check_has_constructor(clazz):
+    print 'zz is effectively abstract?', clazz['name'], '1'
+    # Having a private constructor and no public constructor means you are, in effect, abstract
+    for private_method in clazz['saved_methods']['private']:
+      print 'zz is effectively abstract?', clazz['name'], '2'
+      if private_method['constructor']:
+        print 'zz is effectively abstract?', clazz['name'], '3'
+        clazz['effectively_abstract'] = True
+
+  # Add destroyer
+  if not clazz.get('abstract') and not clazz.get('effectively_abstract'):
+    clazz['methods'].append({
+      'destroyer': True,
+      'name': '__destroy__',
+      'constructor': False,
+      'destructor': False,
+      'static': False,
+      'returns': 'void',
+      'returns_text': 'void',
+      'returns_reference': False,
+      'returns_pointer': False,
+      'pure_virtual': False,
+      'parameters': [[]],
+    })
 
   clazz['methods'] = filter(lambda method: not method.get('ignore'), clazz['methods'])
 
@@ -277,7 +301,7 @@ def copy_args(args):
     ret.append(copiedarg)
   return ret
 
-for classname, clazz in parsed.classes.iteritems():
+for classname, clazz in parsed.classes.items() + parsed.structs.items():
   clazz['final_methods'] = {}
 
   def explore(subclass, template_name=None, template_value=None):
@@ -286,10 +310,16 @@ for classname, clazz in parsed.classes.iteritems():
       print classname, 'exploring', subclass['name'], '::', method['name']
 
       if method['constructor']:
-        if clazz != subclass: continue # Subclasses cannot directly use their parent's constructors
-      if method['destructor']: continue # Nothing to do there
+        if clazz != subclass:
+          print "zz Subclasses cannot directly use their parent's constructors"
+          continue
+      if method['destructor']:
+        print 'zz Nothing to do there'
+        continue
 
-      if method.get('operator') and subclass is not clazz: continue # Do not use parent class operators. Cast to that class if you need those operators (castObject)
+      if method.get('operator') and subclass is not clazz:
+        print 'zz Do not use parent class operators. Cast to that class if you need those operators (castObject)'
+        continue
 
       if method['name'] not in clazz['final_methods']:
         copied = clazz['final_methods'][method['name']] = {}
@@ -485,6 +515,7 @@ def generate_wrapping_code(classname):
 # %(classname)s.prototype['fields'] = Runtime.generateStructInfo(null, '%(classname)s'); - consider adding this
 
 def generate_class(generating_classname, classname, clazz): # TODO: deprecate generating?
+  print 'zz generating:', generating_classname, classname
   generating_classname_head = generating_classname.split('::')[-1]
   classname_head = classname.split('::')[-1]
 
@@ -498,6 +529,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       gen_js.write('''Module['%s'] = %s;
 ''' % (generating_classname_head, generating_classname_head))
 
+  print 'zz methods: ', clazz['final_methods'].keys()
   for method in clazz['final_methods'].itervalues():
     mname = method['name']
     if classname_head + '::' + mname in ignored:
@@ -509,7 +541,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     destructor = method['destructor']
     static = method['static']
 
-    #print 'zz generating %s::%s. gets %s and returns %s' % (generating_classname, method['name'], str([arg['type'] for arg in method['parameters']]), method['returns_text'])
+    print 'zz generating %s::%s' % (generating_classname, method['name'])
 
     if destructor: continue
     if constructor and inherited: continue
@@ -644,7 +676,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
-          calls += 'return wrapPointer(%s, %s);' % (return_value, method['returns'].split('::')[-1])
+          calls += 'return wrapPointer(%s, Module.%s);' % (return_value, method['returns'].split('::')[-1])
         else:
           # Normal return
           calls += ('return ' if ret != 'void' else '') + return_value + ';'
@@ -686,7 +718,7 @@ Module['%s'] = %s;
 
 # Main loop
 
-for classname, clazz in classes.iteritems():
+for classname, clazz in parsed.classes.items() + parsed.structs.items():
   if any([name in ignored for name in classname.split('::')]):
     print 'zz ignoring', classname
     continue
@@ -727,18 +759,17 @@ for classname, clazz in classes.iteritems():
         print 'zz ignoring pure virtual class', classname, 'due to', method['name']
         return True
 
-  clazz['abstract'] = check_pure_virtual(clazz, [])
+  clazz['abstract'] = check_pure_virtual(clazz, []) or clazz.get('effectively_abstract')
+
   print 'zz', classname, 'is abstract?', clazz['abstract']
   #if check_pure_virtual(clazz, []):
   #  continue
 
   # Add a constructor if none exist
-  has_constructor = False
-  for method in clazz['methods']:
-    has_constructor = has_constructor or (method['constructor'] and not method['destructor'])
-  
+  has_constructor = check_has_constructor(clazz)
+
   print 'zz', classname, 'has constructor?', has_constructor
-  
+
   if not has_constructor:
     if not clazz['abstract']:
       print 'zz no constructor for', classname, 'and not abstract, so ignoring'
