@@ -576,12 +576,28 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (block.entries.length == 1) {
               ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + block.entries[0] + ' */' : '') + '\n';
             } // otherwise, should have been set before!
-            ret += indent + 'while(1) switch(__label__) {\n';
+            if (func.setjmpTable) {
+              var setjmpTable = {};
+              ret += indent + 'var setjmpTable = {';
+              func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
+                ret += getLabelId(triple[0])+ ': ' + 'function(value) { __label__ = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
+              });
+              ret += 'dummy: 0';
+              ret += '};\n';
+            }
+            ret += indent + 'while(1) ';
+            if (func.setjmpTable) {
+              ret += 'try { ';
+            }
+            ret += 'switch(__label__) {\n';
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n');
             ret += '\n' + indent + '  default: assert(0, "bad label: " + __label__);\n' + indent + '}';
+            if (func.setjmpTable) {
+              ret += ' } catch(e) { if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
+            }
           } else {
             ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);
           }

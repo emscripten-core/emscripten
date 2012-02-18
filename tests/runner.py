@@ -1344,6 +1344,41 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         '''
         self.do_run(src, 'Assertion failed: 1 == false')
 
+    def test_longjmp(self):
+        src = r'''
+          #include <stdio.h>
+          #include <setjmp.h>
+           
+          static jmp_buf buf;
+           
+          void second(void) {
+              printf("second\n");         // prints
+              longjmp(buf,1);             // jumps back to where setjmp was called - making setjmp now return 1
+          }
+           
+          void first(void) {
+              second();
+              printf("first\n");          // does not print
+          }
+           
+          int main() {
+              int x = 0;
+              if ( ! setjmp(buf) ) {
+                  x++;
+                  first();                // when executed, setjmp returns 0
+              } else {                    // when longjmp jumps back, setjmp returns 1
+                  printf("main: %d\n", x);       // prints
+              }
+           
+              return 0;
+          }
+        '''
+        # gcc -O0 and -O2 differ in what they do with the saved state of local vars - and we match that
+        if self.emcc_args is None or ('-O1' not in self.emcc_args and '-O2' not in self.emcc_args):
+          self.do_run(src, 'second\nmain: 1\n')
+        else:
+          self.do_run(src, 'second\nmain: 0\n')
+
     def test_exceptions(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
 
