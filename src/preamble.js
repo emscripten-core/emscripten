@@ -357,13 +357,71 @@ function assert(condition, text) {
   }
 }
 
+var globalScope = this;
+
+// C calling interface. A convenient way to call C functions (in C files, or
+// defined with extern "C").
+//
+// Note: LLVM optimizations can inline and remove functions, after which you will not be
+//       able to call them. Adding
+//
+//         __attribute__((used))
+//
+//       to the function definition will prevent that.
+//
+// Note: Closure optimizations will minify function names, making
+//       functions no longer callable. If you run closure (on by default
+//       in -O2 and above), you should export the functions you will call
+//       by calling emcc with something like
+//
+//         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
+//
+// @param ident      The name of the C function
+// @param returnType The return type of the function, one of the JS types 'number' or 'string', or 'pointer' for any type of C pointer.
+// @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType.
+// @param args       An array of the arguments to the function, as native JS values (except for 'pointer', which is a 'number').
+//                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
+// @return           The return value, as a native JS value (except for 'pointer', which is a 'number').
+function ccall(ident, returnType, argTypes, args) {
+  function toC(value, type) {
+    if (type == 'string') {
+      var ret = STACKTOP;
+      Runtime.stackAlloc(value.length+1);
+      writeStringToMemory(value, ret);
+      return ret;
+    }
+    return value;
+  }
+  function fromC(value, type) {
+    if (type == 'string') {
+      return Pointer_stringify(value);
+    }
+    return value;
+  }
+  try {
+    var func = eval('_' + ident);
+  } catch(e) {
+    try {
+      func = globalScope['Module']['_' + ident]; // closure exported function
+    } catch(e) {}
+  }
+  assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
+  var i = 0;
+  var cArgs = args ? args.map(function(arg) {
+    return toC(arg, argTypes[i++]);
+  }) : [];
+  return fromC(func.apply(null, cArgs), returnType);
+}
+Module["ccall"] = ccall;
+
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
 // makeSetValue is done at compile-time and generates the needed
 // code then, whereas this function picks the right code at
 // run-time.
 // Note that setValue and getValue only do *aligned* writes and reads!
-
+// Note that ccall uses JS types as for defining types, while setValue and
+// getValue need LLVM types ('i8', 'i32') - this is a lower-level operation
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
   if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
@@ -398,7 +456,6 @@ function setValue(ptr, value, type, noSafe) {
 Module['setValue'] = setValue;
 
 // Parallel to setValue.
-
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
   if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit

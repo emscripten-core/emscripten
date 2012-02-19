@@ -4894,6 +4894,69 @@ Block 0: ''', post_build=post1)
 
     ### Integration tests
 
+    def test_ccall(self):
+      if self.emcc_args is not None and '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
+
+      src = r'''
+        #include <stdio.h>
+
+        // Optimizations might wipe out our functions without this
+        #define KEEPALIVE __attribute__((used))
+
+        extern "C" {
+          int KEEPALIVE get_int() { return 5; }
+          float KEEPALIVE get_float() { return 3.14; }
+          char * KEEPALIVE get_string() { return "hello world"; }
+          void KEEPALIVE print_int(int x) { printf("%d\n", x); }
+          void KEEPALIVE print_float(float x) { printf("%.2f\n", x); }
+          void KEEPALIVE print_string(char *x) { printf("%s\n", x); }
+          int KEEPALIVE multi(int x, float y, int z, char *str) { puts(str); return (x+y)*z; }
+          int * KEEPALIVE pointer(int *in) { printf("%d\n", *in); static int ret = 21; return &ret; }
+        }
+
+        int main(int argc, char **argv) {
+          // keep them alive
+          if (argc == 10) return get_int();
+          if (argc == 11) return get_float();
+          if (argc == 12) return get_string()[0];
+          if (argc == 13) print_int(argv[0][0]);
+          if (argc == 14) print_float(argv[0][0]);
+          if (argc == 15) print_string(argv[0]);
+          if (argc == 16) pointer((int*)argv[0]);
+          if (argc % 17 == 12) return multi(argc, float(argc)/2, argc+1, argv[0]);
+          return 0;
+        }
+      '''
+
+      post = '''
+def process(filename):
+  src = \'\'\'
+    var Module = {
+      'postRun': function() {
+        print('*');
+        var ret;
+        ret = ccall('get_int', 'number'); print([typeof ret, ret]);
+        ret = ccall('get_float', 'number'); print([typeof ret, ret.toFixed(2)]);
+        ret = ccall('get_string', 'string'); print([typeof ret, ret]);
+        ret = ccall('print_int', null, ['number'], [12]); print(typeof ret);
+        ret = ccall('print_float', null, ['number'], [14.56]); print(typeof ret);
+        ret = ccall('print_string', null, ['string'], ["cheez"]); print(typeof ret);
+        ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); print([typeof ret, ret]);
+        var p = ccall('malloc', 'pointer', ['number'], [4]);
+        setValue(p, 650, 'i32');
+        ret = ccall('pointer', 'pointer', ['pointer'], [p]); print([typeof ret, getValue(ret, 'i32')]);
+        print('*');
+      }
+    };
+  \'\'\' + open(filename, 'r').read()
+  open(filename, 'w').write(src)
+'''
+
+      Settings.EXPORTED_FUNCTIONS = ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
+
+      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\n', post_build=post)
+
     def test_scriptaclass(self):
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
