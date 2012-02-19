@@ -5294,12 +5294,10 @@ LibraryManager.library = {
     // Save the label
     return '(' + makeSetValue(env, '0', '__label__', 'i32') + ', 0)';
   },
-  _setjmp: 'setjmp',
 
   longjmp: function(env, value) {
     throw { longjmp: true, label: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
   },
-  _longjmp: 'longjmp',
 
   // ==========================================================================
   // signal.h
