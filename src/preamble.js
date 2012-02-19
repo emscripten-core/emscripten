@@ -376,7 +376,7 @@ var globalScope = this;
 //
 //         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
 //
-// @param ident      The name of the C function
+// @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
 // @param returnType The return type of the function, one of the JS types 'number' or 'string', or 'pointer' for any type of C pointer.
 // @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType.
 // @param args       An array of the arguments to the function, as native JS values (except for 'pointer', which is a 'number').
