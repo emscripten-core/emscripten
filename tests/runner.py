@@ -5559,16 +5559,21 @@ def process(filename):
     def test_exit_status(self):
       Settings.CATCH_EXIT_CODE = 1
 
-      src = '''
+      src = r'''
         #include <stdio.h>
         #include <stdlib.h>
+        static void cleanup() {
+          printf("cleanup\n");
+        }
+
         int main()
         {
-          printf("hello, world!\\n");
+          atexit(cleanup); // this atexit should still be called
+          printf("hello, world!\n");
           exit(118); // Unusual exit status to make sure it's working!
         }
       '''
-      self.do_run(src, 'hello, world!\nExit Status: 118')
+      self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
 
 
   # Generate tests for everything
