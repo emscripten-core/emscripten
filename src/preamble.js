@@ -803,6 +803,7 @@ function writeStringToMemory(string, buffer, dontAddNull) {
     {{{ makeSetValue('buffer', 'i', '0', 'i8') }}}
   }
 }
+Module['writeStringToMemory'] = writeStringToMemory;
 
 var STRING_TABLE = [];
 
