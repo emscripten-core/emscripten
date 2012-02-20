@@ -226,6 +226,65 @@ function hoisting() {
   $if_then72$$if_end73$126 : do {
     if (__label__ == 40) {} else if (__label__ == 41) {}
   } while (0);
+  pause(10);
+  while(check()) {
+    if ($i < $N) {
+      __label__ = 2;
+    } else {
+      __label__ = 3;
+    }
+    if (__label__ == 2) {
+      callOther();
+      break;
+    } else if (__label__ == 3) {
+      somethingElse();
+    }
+    if ($i1 < $N) {
+      __label__ = 2;
+    } else {
+      __label__ = 3;
+    }
+    if (__label__ == 2) {
+      callOther();
+      continue;
+    } else if (__label__ == 3) {
+      somethingElse();
+    }
+    if ($i2 < $N) {
+      __label__ = 2;
+    } else {
+      __label__ = 3;
+    }
+    if (__label__ == 2) {
+      callOther();
+    } else if (__label__ == 3) {
+      somethingElse();
+      break;
+    }
+    if ($i3 < $N) {
+      __label__ = 2;
+    } else {
+      __label__ = 3;
+    }
+    if (__label__ == 2) {
+      callOther();
+    } else if (__label__ == 3) {
+      somethingElse();
+      continue;
+    }
+    if ($i4 < $N) {
+      __label__ = 2;
+    } else {
+      __label__ = 3;
+    }
+    if (__label__ == 2) {
+      callOther();
+      break;
+    } else if (__label__ == 3) {
+      somethingElse();
+      continue;
+    }
+  }
 }
 function innerShouldAlsoBeHoisted() {
   function hoisting() {
@@ -358,4 +417,9 @@ function moreLabels() {
   var $_lcssa;
   cheez();
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels"]
+function notComps() {
+  if (!(HEAP32[$incdec_ptr71_i + 8 >> 2] == 0)) {
+    shoo();
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps"]

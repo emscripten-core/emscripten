@@ -11,11 +11,8 @@ var VAR_EMULATED = 'emulated';
 var ENTRY_IDENT = toNiceIdent('%0');
 var ENTRY_IDENTS = set(toNiceIdent('%0'), toNiceIdent('%1'));
 
-function cleanFunc(func) {
-  func.lines = func.lines.filter(function(line) { return line.intertype !== null });
-  func.labels.forEach(function(label) {
-    label.lines = label.lines.filter(function(line) { return line.intertype !== null });
-  });
+function recomputeLines(func) {
+  func.lines = func.labels.map(function(label) { return label.lines }).reduce(concatenator, []);
 }
 
 // Handy sets
@@ -71,6 +68,7 @@ function analyzer(data, sidePass) {
           subItem.endLineNum = null;
           subItem.lines = []; // We will fill in the function lines after the legalizer, since it can modify them
           subItem.labels = [];
+          subItem.forceEmulated = false;
 
           // no explicit 'entry' label in clang on LLVM 2.8 - most of the time, but not all the time! - so we add one if necessary
           if (item.items[i+1].intertype !== 'label') {
@@ -142,7 +140,7 @@ function analyzer(data, sidePass) {
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           while (bits > 0) {
-            ret[i] = { ident: parsed[i].toString(), bits: Math.min(32, bits) };
+            ret[i] = { ident: (parsed[i]|0).toString(), bits: Math.min(32, bits) }; // resign all values
             bits -= 32;
             i++;
           }
@@ -1111,10 +1109,9 @@ function analyzer(data, sidePass) {
         });
         func.labelIds[toNiceIdent('%0')] = -1; // entry is always -1
 
-        func.hasIndirectBr = false;
         func.lines.forEach(function(line) {
           if (line.intertype == 'indirectbr') {
-            func.hasIndirectBr = true;
+            func.forceEmulated = true;
           }
         });
 
@@ -1127,6 +1124,52 @@ function analyzer(data, sidePass) {
             return ENTRY_IDENT;
           }
           return null;
+        }
+
+        // Basic longjmp support, see library.js setjmp/longjmp
+        var setjmp = toNiceIdent('@setjmp');
+        func.setjmpTable = null;
+        for (var i = 0; i < func.labels.length; i++) {
+          var label = func.labels[i];
+          for (var j = 0; j < label.lines.length; j++) {
+            var line = label.lines[j];
+            if (line.intertype == 'call' && line.ident == setjmp) {
+              // Add a new label
+              var oldIdent = label.ident;
+              var newIdent = oldIdent + '$$' + i;
+              if (!func.setjmpTable) func.setjmpTable = [];
+              func.setjmpTable.push([oldIdent, newIdent, line.assignTo]);
+              func.labels.splice(i+1, 0, {
+                intertype: 'label',
+                ident: newIdent,
+                lineNum: label.lineNum + 0.5,
+                lines: label.lines.slice(j+1)
+              });
+              label.lines = label.lines.slice(0, j+1);
+              label.lines.push({
+                intertype: 'branch',
+                label: toNiceIdent(newIdent),
+                lineNum: line.lineNum + 0.01, // XXX legalizing might confuse this
+              });
+              // Correct phis
+              func.labels.forEach(function(label) {
+                label.lines.forEach(function(phi) {
+                  if (phi.intertype == 'phi') {
+                    for (var i = 0; i < phi.params.length; i++) {
+                      var sourceLabelId = getActualLabelId(phi.params[i].label);
+                      if (sourceLabelId == oldIdent) {
+                        phi.params[i].label = newIdent;
+                      }
+                    }
+                  }
+                });
+              });
+            }
+          }
+        }
+        if (func.setjmpTable) {
+          func.forceEmulated = true;
+          recomputeLines(func);
         }
 
         if (!MICRO_OPTS) {
@@ -1744,7 +1787,7 @@ function analyzer(data, sidePass) {
       // TODO: each of these can be run in parallel
       item.functions.forEach(function(func) {
         dprint('relooping', "// relooping function: " + func.ident);
-        func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict, func.hasIndirectBr);
+        func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict, func.forceEmulated);
       });
 
       return finish();

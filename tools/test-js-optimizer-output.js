@@ -68,9 +68,7 @@ function loopy() {
     something();
   } while (0);
   next();
-  {
-    something();
-  }
+  something();
 }
 function ignoreLoopy() {
   b$for_cond$4 : while (1) {
@@ -141,12 +139,11 @@ function hoisting() {
   }
   pause(7);
   while (1) {
-    if ($i < $N) {
-      somethingElse();
-    } else {
+    if ($i >= $N) {
       __label__ = 3;
       break;
     }
+    somethingElse();
     if ($i < $N) {
       somethingElse();
     }
@@ -166,15 +163,43 @@ function hoisting() {
       }
       __label__ = 39;
       break;
-    } else {
-      __label__ = 38;
     }
+    __label__ = 38;
   } while (0);
   if (__label__ == 38) {
     var $79 = $_pr6;
   }
   pause(9);
   var $cmp70 = ($call69 | 0) != 0;
+  pause(10);
+  while (check()) {
+    if ($i < $N) {
+      callOther();
+      break;
+    }
+    somethingElse();
+    if ($i1 < $N) {
+      callOther();
+      continue;
+    }
+    somethingElse();
+    if ($i2 >= $N) {
+      somethingElse();
+      break;
+    }
+    callOther();
+    if ($i3 >= $N) {
+      somethingElse();
+      continue;
+    }
+    callOther();
+    if ($i4 < $N) {
+      callOther();
+      break;
+    }
+    somethingElse();
+    continue;
+  }
 }
 function innerShouldAlsoBeHoisted() {
   function hoisting() {
@@ -208,9 +233,7 @@ function sleep() {
 }
 function demangle($cmp) {
   do {
-    if ($cmp) {
-      __label__ = 3;
-    } else {
+    if (!$cmp) {
       if (something()) {
         __label__ = 3;
         break;
@@ -218,6 +241,7 @@ function demangle($cmp) {
       more();
       break;
     }
+    __label__ = 3;
   } while (0);
   if (__label__ == 3) {
     final();
@@ -259,25 +283,21 @@ function moreLabels() {
     }
     if ($cmp1) {
       break;
-    } else {
-      inc();
     }
+    inc();
   }
   pause(999);
   $while_body$$while_end$31 : do {
     if ($cmp3) {
       var $6 = $5;
-      {
-        while (1) {
-          var $6;
-          $iter = $6 + 3;
-          if (FHEAP[$iter + 1] < $pct_addr) {
-            var $6 = $iter;
-          } else {
-            var $_lcssa = $iter;
-            break $while_body$$while_end$31;
-          }
+      while (1) {
+        var $6;
+        $iter = $6 + 3;
+        if (FHEAP[$iter + 1] >= $pct_addr) {
+          var $_lcssa = $iter;
+          break $while_body$$while_end$31;
         }
+        var $6 = $iter;
       }
     } else {
       var $_lcssa = $5;
@@ -286,4 +306,9 @@ function moreLabels() {
   var $_lcssa;
   cheez();
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels"]
+function notComps() {
+  if (HEAP32[$incdec_ptr71_i + 8 >> 2] != 0) {
+    shoo();
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps"]

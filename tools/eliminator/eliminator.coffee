@@ -49,9 +49,6 @@ NODES_WITHOUT_SIDE_EFFECTS =
 # Nodes which may break control flow. Moving a variable beyond them may have
 # side effects.
 CONTROL_FLOW_NODES =
-  return: true
-  break: true
-  continue: true
   new: true
   throw: true
   call: true

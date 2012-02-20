@@ -5278,19 +5278,26 @@ LibraryManager.library = {
 
   // ==========================================================================
   // setjmp.h
+  //
+  // Basic support for setjmp/longjmp: enough to run the wikipedia example and
+  // hopefully handle most normal behavior. We do not support cases where
+  // longjmp behavior is undefined (for example, if the setjmp function returns
+  // before longjmp is called).
+  //
+  // Note that we need to emulate functions that use setjmp, and also to create
+  // a new label we can return to. Emulation make such functions slower, this
+  // can be alleviated by making a new function containing just the setjmp
+  // related functionality so the slowdown is more limited.
   // ==========================================================================
 
-  setjmp: function(env) {
-    // XXX print('WARNING: setjmp() not really implemented, will fail if longjmp() is actually called');
-    return 0;
+  setjmp__inline: function(env) {
+    // Save the label
+    return '(' + makeSetValue(env, '0', '__label__', 'i32') + ', 0)';
   },
-  _setjmp: 'setjmp',
 
-  longjmp: function(env, val) {
-    // not really working...
-    assert(0);
+  longjmp: function(env, value) {
+    throw { longjmp: true, label: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
   },
-  _longjmp: 'longjmp',
 
   // ==========================================================================
   // signal.h

@@ -678,6 +678,72 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
         self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n')
 
+    def test_i64_cmp(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+        src = r'''
+          #include <stdio.h>
+
+          typedef long long int64;
+
+          bool compare(int64 val) {
+            return val == -12;
+          }
+
+          bool compare2(int64 val) {
+            return val < -12;
+          }
+
+          int main(int argc, char * argv[]) {
+              printf("*%d,%d,%d,%d,%d,%d*\n", argc, compare(argc-1-12), compare(1000+argc), compare2(argc-1-10), compare2(argc-1-14), compare2(argc+1000));
+              return 0;
+          }
+        '''
+
+        self.do_run(src, '*1,1,0,0,1,0*\n')
+
+    def test_i64_double(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+        src = r'''
+          #include <stdio.h>
+
+          typedef long long int64;
+          #define JSDOUBLE_HI32_SIGNBIT   0x80000000
+
+          bool JSDOUBLE_IS_NEGZERO(double d)
+          {
+            union {
+              struct {
+                unsigned int lo, hi;
+              } s;
+              double d;
+            } x;
+            if (d != 0)
+              return false;
+            x.d = d;
+            return (x.s.hi & JSDOUBLE_HI32_SIGNBIT) != 0;
+          }
+
+          bool JSINT64_IS_NEGZERO(int64 l)
+          {
+            union {
+              int64 i;
+              double d;
+            } x;
+            if (l != 0)
+              return false;
+            x.i = l;
+            return x.d == -0;
+          }
+
+          int main(int argc, char * argv[]) {
+            printf("*%d,%d,%d,%d*\n", JSDOUBLE_IS_NEGZERO(0), JSDOUBLE_IS_NEGZERO(-0), JSDOUBLE_IS_NEGZERO(-1), JSDOUBLE_IS_NEGZERO(+1));
+            printf("*%d,%d,%d,%d*\n", JSINT64_IS_NEGZERO(0), JSINT64_IS_NEGZERO(-0), JSINT64_IS_NEGZERO(-1), JSINT64_IS_NEGZERO(+1));
+            return 0;
+          }
+        '''
+        self.do_run(src, '*0,0,0,0*\n*1,1,0,0*\n') # same as gcc
+
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
 
@@ -1343,6 +1409,41 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
           }
         '''
         self.do_run(src, 'Assertion failed: 1 == false')
+
+    def test_longjmp(self):
+        src = r'''
+          #include <stdio.h>
+          #include <setjmp.h>
+           
+          static jmp_buf buf;
+           
+          void second(void) {
+              printf("second\n");         // prints
+              longjmp(buf,1);             // jumps back to where setjmp was called - making setjmp now return 1
+          }
+           
+          void first(void) {
+              second();
+              printf("first\n");          // does not print
+          }
+           
+          int main() {
+              int x = 0;
+              if ( ! setjmp(buf) ) {
+                  x++;
+                  first();                // when executed, setjmp returns 0
+              } else {                    // when longjmp jumps back, setjmp returns 1
+                  printf("main: %d\n", x);       // prints
+              }
+           
+              return 0;
+          }
+        '''
+        # gcc -O0 and -O2 differ in what they do with the saved state of local vars - and we match that
+        if self.emcc_args is None or ('-O1' not in self.emcc_args and '-O2' not in self.emcc_args):
+          self.do_run(src, 'second\nmain: 1\n')
+        else:
+          self.do_run(src, 'second\nmain: 0\n')
 
     def test_exceptions(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
@@ -4859,6 +4960,69 @@ Block 0: ''', post_build=post1)
 
     ### Integration tests
 
+    def test_ccall(self):
+      if self.emcc_args is not None and '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
+
+      src = r'''
+        #include <stdio.h>
+
+        // Optimizations might wipe out our functions without this
+        #define KEEPALIVE __attribute__((used))
+
+        extern "C" {
+          int KEEPALIVE get_int() { return 5; }
+          float KEEPALIVE get_float() { return 3.14; }
+          char * KEEPALIVE get_string() { return "hello world"; }
+          void KEEPALIVE print_int(int x) { printf("%d\n", x); }
+          void KEEPALIVE print_float(float x) { printf("%.2f\n", x); }
+          void KEEPALIVE print_string(char *x) { printf("%s\n", x); }
+          int KEEPALIVE multi(int x, float y, int z, char *str) { puts(str); return (x+y)*z; }
+          int * KEEPALIVE pointer(int *in) { printf("%d\n", *in); static int ret = 21; return &ret; }
+        }
+
+        int main(int argc, char **argv) {
+          // keep them alive
+          if (argc == 10) return get_int();
+          if (argc == 11) return get_float();
+          if (argc == 12) return get_string()[0];
+          if (argc == 13) print_int(argv[0][0]);
+          if (argc == 14) print_float(argv[0][0]);
+          if (argc == 15) print_string(argv[0]);
+          if (argc == 16) pointer((int*)argv[0]);
+          if (argc % 17 == 12) return multi(argc, float(argc)/2, argc+1, argv[0]);
+          return 0;
+        }
+      '''
+
+      post = '''
+def process(filename):
+  src = \'\'\'
+    var Module = {
+      'postRun': function() {
+        print('*');
+        var ret;
+        ret = ccall('get_int', 'number'); print([typeof ret, ret]);
+        ret = ccall('get_float', 'number'); print([typeof ret, ret.toFixed(2)]);
+        ret = ccall('get_string', 'string'); print([typeof ret, ret]);
+        ret = ccall('print_int', null, ['number'], [12]); print(typeof ret);
+        ret = ccall('print_float', null, ['number'], [14.56]); print(typeof ret);
+        ret = ccall('print_string', null, ['string'], ["cheez"]); print(typeof ret);
+        ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); print([typeof ret, ret]);
+        var p = ccall('malloc', 'pointer', ['number'], [4]);
+        setValue(p, 650, 'i32');
+        ret = ccall('pointer', 'pointer', ['pointer'], [p]); print([typeof ret, getValue(ret, 'i32')]);
+        print('*');
+      }
+    };
+  \'\'\' + open(filename, 'r').read()
+  open(filename, 'w').write(src)
+'''
+
+      Settings.EXPORTED_FUNCTIONS = ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
+
+      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\n', post_build=post)
+
     def test_scriptaclass(self):
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -5524,16 +5688,21 @@ def process(filename):
     def test_exit_status(self):
       Settings.CATCH_EXIT_CODE = 1
 
-      src = '''
+      src = r'''
         #include <stdio.h>
         #include <stdlib.h>
+        static void cleanup() {
+          printf("cleanup\n");
+        }
+
         int main()
         {
-          printf("hello, world!\\n");
+          atexit(cleanup); // this atexit should still be called
+          printf("hello, world!\n");
           exit(118); // Unusual exit status to make sure it's working!
         }
       '''
-      self.do_run(src, 'hello, world!\nExit Status: 118')
+      self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
 
 
   # Generate tests for everything
@@ -5992,6 +6161,7 @@ elif 'benchmark' in str(sys.argv):
     pass
   finally:
     os.chdir(d)
+  fingerprint.append('llvm: ' + LLVM_ROOT)
   print 'Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint)
 
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)

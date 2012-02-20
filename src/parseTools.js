@@ -1699,9 +1699,17 @@ function processMathop(item) {
         var inType = item.param1.type;
         var outType = item.type;
         if (inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) {
-          return makeInlineCalculation('tempDoubleI32[0]=VALUE[0],tempDoubleI32[1]=VALUE[1],tempDoubleF64[0]', ident1, 'tempI64');
+          if (legalizedI64s) {
+            return '(tempDoubleI32[0]=' + ident1 + '$0, tempDoubleI32[1]=' + ident1 + '$1, tempDoubleF64[0])';
+          } else {
+            return makeInlineCalculation('tempDoubleI32[0]=VALUE[0],tempDoubleI32[1]=VALUE[1],tempDoubleF64[0]', ident1, 'tempI64');
+          }
         } else if (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES) {
-          return '(tempDoubleF64[0]=' + ident1 + ',[tempDoubleI32[0],tempDoubleI32[1]])';
+          if (legalizedI64s) {
+            return 'tempDoubleF64[0]=' + ident1 + '; ' + finish(['tempDoubleI32[0]','tempDoubleI32[1]']);
+          } else {
+            return '(tempDoubleF64[0]=' + ident1 + ',[tempDoubleI32[0],tempDoubleI32[1]])';
+          }
         } else {
           throw 'Invalid I64_MODE1 bitcast: ' + dump(item) + ' : ' + item.param1.type;
         }
