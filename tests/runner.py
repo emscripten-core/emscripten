@@ -4488,6 +4488,8 @@ def process(filename):
       #    print opt, "FAIL"
 
     def test_lua(self):
+      if self.emcc_args is None and Building.LLVM_OPTS: return self.skip('llvm 3.1 and safe llvm opts break lua')
+
       try:
         os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
 
