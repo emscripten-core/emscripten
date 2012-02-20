@@ -580,7 +580,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               var setjmpTable = {};
               ret += indent + 'var setjmpTable = {';
               func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
-                ret += getLabelId(triple[0])+ ': ' + 'function(value) { __label__ = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
+                ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { __label__ = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
               });
               ret += 'dummy: 0';
               ret += '};\n';
