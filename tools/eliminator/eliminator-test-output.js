@@ -117,4 +117,13 @@ function f3($s, $tree, $k) {
   }
   HEAP32[($s + 2908 + ($storemerge_in << 2) | 0) >> 2] = $0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t", "f2", "f3"]
+function llvm3_1() {
+  while (check()) {
+    if ($curri_01 % $zj_0 == 0) {
+      break;
+    }
+    var $j_0 = $aj_0 + 1;
+    run($j_0 / 2);
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1"]
