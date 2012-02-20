@@ -140,7 +140,7 @@ function analyzer(data, sidePass) {
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           while (bits > 0) {
-            ret[i] = { ident: parsed[i].toString(), bits: Math.min(32, bits) };
+            ret[i] = { ident: (parsed[i]|0).toString(), bits: Math.min(32, bits) }; // resign all values
             bits -= 32;
             i++;
           }
