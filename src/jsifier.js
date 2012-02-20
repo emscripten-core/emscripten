@@ -988,9 +988,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('landingpad', function(item) {
-    // Just a stub
-    return '{ f0: ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') +
-	 	   ', f1:' + makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') + ' }';
+    var catchTypeArray = item.catchables.map(finalizeLLVMParameter).join(',');
+    return '___cxa_find_matching_catch('+ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') +',' + makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') + ',[' + catchTypeArray +'])';
   });
   makeFuncLineActor('load', function(item) {
     var value = finalizeLLVMParameter(item.pointer);

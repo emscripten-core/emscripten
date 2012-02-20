@@ -728,11 +728,22 @@ function intertyper(data, sidePass, baseLineNums) {
       this.forwardItem(item, 'Reintegrator');
     }
   });
-  // 'landingpad' - just a stub implementation
+  // 'landingpad'
   substrate.addActor('Landingpad', {
     processItem: function(item) {
       item.intertype = 'landingpad';
       item.type = item.tokens[1].text;
+      item.catchables = [];
+      var catchIdx = findTokenText(item, "catch");
+      if (catchIdx != -1) {
+        do {
+          var nextCatchIdx = findTokenTextAfter(item, "catch", catchIdx+1);
+          if (nextCatchIdx == -1)
+            nextCatchIdx = item.tokens.length;
+          item.catchables.push(parseLLVMSegment(item.tokens.slice(catchIdx+2, nextCatchIdx)));
+          catchIdx = nextCatchIdx;
+        } while (catchIdx != item.tokens.length);
+      }
       Types.needAnalysis[item.type] = 0;
       this.forwardItem(item, 'Reintegrator');
     }
