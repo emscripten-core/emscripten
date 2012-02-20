@@ -227,7 +227,11 @@ function getTokenIndexByText(tokens, text) {
 }
 
 function findTokenText(item, text) {
-  for (var i = 0; i < item.tokens.length; i++) {
+  return findTokenTextAfter(item, text, 0);
+}
+
+function findTokenTextAfter(item, text, startAt) {
+  for (var i = startAt; i < item.tokens.length; i++) {
     if (item.tokens[i].text == text) return i;
   }
   return -1;
