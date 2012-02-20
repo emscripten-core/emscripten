@@ -6095,6 +6095,7 @@ elif 'benchmark' in str(sys.argv):
     pass
   finally:
     os.chdir(d)
+  fingerprint.append('llvm: ' + LLVM_ROOT)
   print 'Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint)
 
   sys.argv = filter(lambda x: x != 'benchmark', sys.argv)
