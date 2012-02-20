@@ -702,6 +702,48 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
 
         self.do_run(src, '*1,1,0,0,1,0*\n')
 
+    def test_i64_double(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+        src = r'''
+          #include <stdio.h>
+
+          typedef long long int64;
+          #define JSDOUBLE_HI32_SIGNBIT   0x80000000
+
+          bool JSDOUBLE_IS_NEGZERO(double d)
+          {
+            union {
+              struct {
+                unsigned int lo, hi;
+              } s;
+              double d;
+            } x;
+            if (d != 0)
+              return false;
+            x.d = d;
+            return (x.s.hi & JSDOUBLE_HI32_SIGNBIT) != 0;
+          }
+
+          bool JSINT64_IS_NEGZERO(int64 l)
+          {
+            union {
+              int64 i;
+              double d;
+            } x;
+            if (l != 0)
+              return false;
+            x.i = l;
+            return x.d == -0;
+          }
+
+          int main(int argc, char * argv[]) {
+            printf("*%d,%d,%d,%d*\n", JSDOUBLE_IS_NEGZERO(0), JSDOUBLE_IS_NEGZERO(-0), JSDOUBLE_IS_NEGZERO(-1), JSDOUBLE_IS_NEGZERO(+1));
+            printf("*%d,%d,%d,%d*\n", JSINT64_IS_NEGZERO(0), JSINT64_IS_NEGZERO(-0), JSINT64_IS_NEGZERO(-1), JSINT64_IS_NEGZERO(+1));
+            return 0;
+          }
+        '''
+        self.do_run(src, '*0,0,0,0*\n*1,1,0,0*\n') # same as gcc
+
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
 

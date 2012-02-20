@@ -1046,10 +1046,14 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('mathop', processMathop);
 
   makeFuncLineActor('bitcast', function(item) {
-    return processMathop({
+    var temp = {
       op: 'bitcast', variant: null, type: item.type,
+      assignTo: item.assignTo,
       param1: item.params[0]
-    });
+    };
+    var ret = processMathop(temp);
+    if (!temp.assignTo) item.assignTo = null; // If the assign was stolen, propagate that
+    return ret;
   });
 
   function makeFunctionCall(ident, params, funcData, type) {
