@@ -239,7 +239,7 @@ function emptyNode() {
 // Dump the AST. Useful for debugging. For example,
 //  node tools/js-optimizer.js ABSOLUTE_PATH_TO_FILE dumpAst
 function dumpAst(ast) {
-  printErr(JSON.stringify(ast));
+  printErr(JSON.stringify(ast, null, '  '));
 }
 
 function dumpSrc(ast) {
@@ -801,18 +801,24 @@ function vacuum(ast) {
     if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
     return false;
   }
-  function simplifyList(node, i) {
+  function simplifyList(node, si) {
     var changed = false;
-    var pre = node[i].length;
-    node[i] = node[i].filter(function(node) { return !isEmpty(node) });
-    if (node[i].length < pre) changed = true;
-    // Also, seek blocks with single items we can simplify
-    node[i] = node[i].map(function(subNode) {
-      if (subNode[0] == 'block' && typeof subNode[1] == 'object' && subNode[1].length == 1 && subNode[1][0][0] == 'if') {
-        return subNode[1][0];
+    // Merge block items into this list, thus removing unneeded |{ .. }|'s
+    var statements = node[si];
+    var i = 0;
+    while (i < statements.length) {
+      var subNode = statements[i];
+      if (subNode[0] == 'block') {
+        statements.splice.apply(statements, [i, 1].concat(subNode[1] || []));
+        changed = true;
+      } else {
+        i++;
       }
-      return subNode;
-    });
+    }
+    // Remove empty items
+    var pre = node[si].length;
+    node[si] = node[si].filter(function(node) { return !isEmpty(node) });
+    if (node[si].length < pre) changed = true;
     if (changed) {
       return node;
     }
@@ -1002,6 +1008,35 @@ function hoistMultiples(ast) {
   });
 
   vacuum(ast);
+
+  // Afterpass: Reduce
+  //    if (..) { .. break|continue } else { .. }
+  // to
+  //    if (..) { .. break|continue } ..
+  traverseGenerated(ast, function(container, type) {
+    var statements = getStatements(container);
+    if (!statements) return;
+    for (var i = 0; i < statements.length; i++) {
+      var node = statements[i];
+      if (node[0] == 'if' && node[2][0] == 'block' && node[3] && node[3][0] == 'block') {
+        var stat1 = node[2][1], stat2 = node[3][1];
+        // If break|continue in the latter and not the former, reverse them
+        if (!(stat1[stat1.length-1][0] in LOOP_FLOW) && (stat2[stat2.length-1][0] in LOOP_FLOW)) {
+          var temp = node[3];
+          node[3] = node[2];
+          node[2] = temp;
+          node[1] = ['unary-prefix', '!', node[1]];
+          simplifyNotComps(node[1]); // bake the ! into the expression
+          stat1 = node[2][1];
+          stat2 = node[3][1];
+        }
+        if (stat1[stat1.length-1][0] in LOOP_FLOW) {
+          statements.splice.apply(statements, [i+1, 0].concat(stat2));
+          node[3] = null;
+        }
+      }
+    }
+  });
 }
 
 // Simplifies loops
