@@ -666,7 +666,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 #endif
 #else
   // Make sure that our HEAP is implemented as a flat array.
-  HEAP = new Array(TOTAL_MEMORY);
+  HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
   for (var i = 0; i < FAST_MEMORY; i++) {
     HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
   }
