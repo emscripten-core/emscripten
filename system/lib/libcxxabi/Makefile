@@ -1,27 +1,28 @@
 OBJECTS = \
-  cxa_vector.bc \
-  private_typeinfo.bc \
-  cxa_virtual.bc \
-  temporary.bc \
-  cxa_guard.bc \
-  cxa_unexpected.bc \
-  cxa_exception.bc \
-  cxa_aux_runtime.bc \
-  exception.bc \
-  stdexcept.bc \
-  abort_message.bc \
-  cxa_personality.bc \
-  cxa_new_delete.bc \
-  cxa_handlers.bc \
-  cxa_exception_storage.bc \
-  typeinfo.bc \
-  cxa_demangle.bc
+  src/private_typeinfo.bc \
+  $(NULL)
+  #src/cxa_vector.bc \
+  #src/cxa_virtual.bc \
+  #src/temporary.bc \
+  #src/cxa_guard.bc \
+  #src/cxa_unexpected.bc \
+  #src/cxa_exception.bc \
+  #src/cxa_aux_runtime.bc \
+  #src/exception.bc \
+  #src/stdexcept.bc \
+  #src/abort_message.bc \
+  #src/cxa_personality.bc \
+  #src/cxa_new_delete.bc \
+  #src/cxa_handlers.bc \
+  #src/cxa_exception_storage.bc \
+  #src/typeinfo.bc \
+  #src/cxa_demangle.bc
 
-all: libcxx.bc
+all: libcxxabi.bc
 
 %.bc: %.cpp
-	$(CXX) $< -o $@
+	$(CXX) -I./include $< -o $@
 
-libcxx.bc: $(OBJECTS)
+libcxxabi.bc: $(OBJECTS)
 	$(CXX) $(OBJECTS) -o libcxxabi.bc
 

@@ -533,10 +533,24 @@ try:
     libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
 
+    # libcxxabi - just for dynamic_cast for now
+    def create_libcxxabi():
+      if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
+      shared.Building.build_library('libcxxabi', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxxabi.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxxabi'))
+      return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxxabi', 'libcxxabi.bc')
+    def fix_libcxxabi():
+      assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
+      print >> sys.stderr, 'emcc: warning: using libcxxabi, this may need CORRECT_* options'
+      #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
+    libcxxabi_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols')).readlines())
+    libcxxabi_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxxabi_symbols)
+    libcxxabi_symbols = set(libcxxabi_symbols)
+
     force = False # If we have libcxx, we must force inclusion of dlmalloc, since libcxx uses new internally. Note: this is kind of hacky
 
-    for name, create, fix, library_symbols in [('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols),
-                                               ('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
+    for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
+                                               ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
+                                               ('dlmalloc',  create_dlmalloc,  fix_dlmalloc,  dlmalloc_symbols)]:
       need = []
       has = []
       for temp_file in temp_files:

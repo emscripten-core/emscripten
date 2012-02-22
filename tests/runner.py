@@ -1674,6 +1674,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
 
     def test_dynamic_cast(self):
+        if self.emcc_args is None: return self.skip('need libcxxabi')
+
         src = r'''
           #include <stdio.h>
 
