@@ -676,7 +676,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
-          calls += 'return wrapPointer(%s, Module.%s);' % (return_value, method['returns'].split('::')[-1])
+          calls += '''return wrapPointer(%s, Module['%s']);''' % (return_value, method['returns'].split('::')[-1])
         else:
           # Normal return
           calls += ('return ' if ret != 'void' else '') + return_value + ';'
