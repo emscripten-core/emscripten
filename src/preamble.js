@@ -377,11 +377,11 @@ var globalScope = this;
 //         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
 //
 // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
-// @param returnType The return type of the function, one of the JS types 'number' or 'string', or 'pointer' for any type of C pointer.
+// @param returnType The return type of the function, one of the JS types 'number' or 'string' (use 'number' for any C pointer).
 // @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType.
-// @param args       An array of the arguments to the function, as native JS values (except for 'pointer', which is a 'number').
+// @param args       An array of the arguments to the function, as native JS values (as in returnType)
 //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
-// @return           The return value, as a native JS value (except for 'pointer', which is a 'number').
+// @return           The return value, as a native JS value (as in returnType)
 function ccall(ident, returnType, argTypes, args) {
   function toC(value, type) {
     if (type == 'string') {
@@ -417,7 +417,7 @@ Module["ccall"] = ccall;
 // Returns a native JS wrapper for a C function. This is similar to ccall, but
 // returns a function you can call repeatedly in a normal way. For example:
 //
-//   var my_function = cwrap('my_c_function', 'int', ['int', 'int']);
+//   var my_function = cwrap('my_c_function', 'number', ['number', 'number']);
 //   alert(my_function(5, 22));
 //   alert(my_function(99, 12));
 //
