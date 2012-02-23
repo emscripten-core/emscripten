@@ -22,6 +22,9 @@ function preprocess(text) {
   var showStack = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
+    if (line[line.length-1] == '\r') {
+      line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
+    }
     if (!line[0] || line[0] != '#') {
       if (showStack.indexOf(false) == -1) {
         ret += line + '\n';
