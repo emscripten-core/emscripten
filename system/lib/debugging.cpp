@@ -18,5 +18,7 @@ void __assert_func(const char *file, int line, const char *assertt, const char *
   abort();
 }
 
+//struct _reent *_impure_ptr;
+
 }
 
