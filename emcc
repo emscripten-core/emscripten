@@ -241,7 +241,9 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
 BITCODE_SUFFIXES = ('.bc', '.o')
 SHAREDLIB_SUFFIXES = ('.dylib', '.so', '.dll')
+STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
+LIB_PREFIXES = ('', 'lib')
 
 def suffix(name):
   return name.split('.')[:-1]
@@ -376,8 +378,12 @@ try:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
+  # Find input files
+
   input_files = []
   has_source_inputs = False
+  lib_dirs = []
+  libs = []
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
@@ -395,7 +401,30 @@ try:
             print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
       else:
         print >> sys.stderr, 'emcc: %s: warning: No such file or directory' % arg
+    elif arg.startswith('-L'):
+      lib_dirs.append(arg[2:])
+      newargs[i] = ''
+    elif arg.startswith('-l'):
+      libs.append(arg[2:])
+      newargs[i] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
+
+  # Find library files
+  for lib in libs:
+    if DEBUG: print >> sys.stderr, 'emcc: looking for library "%s"' % lib
+    found = False
+    for prefix in LIB_PREFIXES:
+      for suffix in STATICLIB_SUFFIXES + SHAREDLIB_SUFFIXES:
+        name = prefix + lib + suffix
+        for lib_dir in lib_dirs:
+          path = os.path.join(lib_dir, name)
+          if os.path.exists(path):
+            if DEBUG: print >> sys.stderr, 'emcc: found library "%s" at %s' % (lib, path)
+            input_files.append(path)
+            found = True
+            break
+        if found: break
+      if found: break
 
   assert len(input_files) > 0, 'emcc: no input files'
 
