@@ -5014,6 +5014,11 @@ def process(filename):
         setValue(p, 650, 'i32');
         ret = ccall('pointer', 'pointer', ['pointer'], [p]); print([typeof ret, getValue(ret, 'i32')]);
         print('*');
+        // part 2: cwrap
+        var multi = cwrap('multi', 'number', ['number', 'number', 'number', 'string']);
+        print(multi(2, 1.4, 3, 'atr'));
+        print(multi(8, 5.4, 4, 'bret'));
+        print('*');
       }
     };
   \'\'\' + open(filename, 'r').read()
@@ -5022,7 +5027,7 @@ def process(filename):
 
       Settings.EXPORTED_FUNCTIONS = ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
 
-      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\n', post_build=post)
+      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\n', post_build=post)
 
     def test_scriptaclass(self):
         header_filename = os.path.join(self.get_dir(), 'header.h')

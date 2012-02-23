@@ -414,6 +414,20 @@ function ccall(ident, returnType, argTypes, args) {
 }
 Module["ccall"] = ccall;
 
+// Returns a native JS wrapper for a C function. This is similar to ccall, but
+// returns a function you can call repeatedly in a normal way. For example:
+//
+//   var my_function = cwrap('my_c_function', 'int', ['int', 'int']);
+//   alert(my_function(5, 22));
+//   alert(my_function(99, 12));
+//
+function cwrap(ident, returnType, argTypes) {
+  // TODO: optimize this, eval the whole function once instead of going through ccall each time
+  return function() {
+    return ccall(ident, returnType, argTypes, Array.prototype.slice.call(arguments));
+  }
+}
+
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
 // makeSetValue is done at compile-time and generates the needed
