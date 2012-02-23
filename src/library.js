@@ -4487,6 +4487,16 @@ LibraryManager.library = {
   __gxx_personality_v0: function() {
   },
 
+  __cxa_is_number_type: function(type) {
+    var isNumber = false;
+    try { if (type == __ZTIi) isNumber = true } catch(e){}
+    try { if (type == __ZTIl) isNumber = true } catch(e){}
+    try { if (type == __ZTIx) isNumber = true } catch(e){}
+    try { if (type == __ZTIf) isNumber = true } catch(e){}
+    try { if (type == __ZTId) isNumber = true } catch(e){}
+    return isNumber;
+  },
+
   // Finds a suitable catch clause for when an exception is thrown.
   // In normal compilers, this functionality is handled by the C++
   // 'personality' routine. This is passed a fairly complex structure
@@ -4497,18 +4507,12 @@ LibraryManager.library = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__cxa_does_inherit'],
+  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type'],
   __cxa_find_matching_catch: function(thrown, throwntype, typeArray) {
     // If throwntype is a pointer, this means a pointer has been
     // thrown. When a pointer is thrown, actually what's thrown
     // is a pointer to the pointer. We'll dereference it.
-    var isNumber = false; // Numbers are a simpler case, no need to deref
-    try { if (throwntype == __ZTIi) isNumber = true } catch(e){}
-    try { if (throwntype == __ZTIl) isNumber = true } catch(e){}
-    try { if (throwntype == __ZTIx) isNumber = true } catch(e){}
-    try { if (throwntype == __ZTIf) isNumber = true } catch(e){}
-    try { if (throwntype == __ZTId) isNumber = true } catch(e){}
-    if (throwntype != 0 && !isNumber) {
+    if (throwntype != 0 && !___cxa_is_number_type(throwntype)) {
       var throwntypeInfoAddr= {{{ makeGetValue('throwntype', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
       var throwntypeInfo= {{{ makeGetValue('throwntypeInfoAddr', '0', '*') }}};
       if (throwntypeInfo == 0)
@@ -4530,13 +4534,18 @@ LibraryManager.library = {
 
   // Recursively walks up the base types of 'possibilityType'
   // to see if any of them match 'definiteType'.
-
+  __cxa_does_inherit__deps: ['__cxa_is_number_type'],
   __cxa_does_inherit: function(definiteType, possibilityType, possibility) {
     if (possibility == 0) return false;
     if (possibilityType == 0 || possibilityType == definiteType)
       return true;
-    var possibility_type_infoAddr = {{{ makeGetValue('possibilityType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-    var possibility_type_info = {{{ makeGetValue('possibility_type_infoAddr', '0', '*') }}};
+    var possibility_type_info;
+    if (___cxa_is_number_type(possibilityType)) {
+      possibility_type_info = possibilityType;
+    } else {
+      var possibility_type_infoAddr = {{{ makeGetValue('possibilityType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
+      possibility_type_info = {{{ makeGetValue('possibility_type_infoAddr', '0', '*') }}};
+    }
     switch (possibility_type_info) {
     case 0: // possibility is a pointer
       // See if definite type is a pointer
