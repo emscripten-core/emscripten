@@ -6168,6 +6168,62 @@ f.close()
       Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
       self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_emcc_multidynamic_link(self):
+      # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
+      # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
+
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        extern void printey();
+        extern void printother();
+        int main() {
+          printf("*");
+          printey();
+          printf("\n");
+          printother();
+          printf("\n");
+          printf("*");
+          return 0;
+        }
+      ''')
+
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      except:
+        pass
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib");
+        }
+      ''')
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), 'w').write('''
+        #include <stdio.h>
+        extern void printey();
+        void printother() {
+          printf("|");
+          printey();
+          printf("|");
+        }
+      ''')
+
+      # This lets us link the same dynamic lib twice. We will need to link it in manually at the end.
+      compiler = [EMCC, '--ignore-dynamic-linking']
+
+      # Build libfile normally into an .so
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so')]).communicate()
+      # Build libother and dynamically link it to libfile - but add --ignore-dynamic-linking
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
+      # Build the main file, linking in both the libs
+      Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother', '-c']).communicate()
+
+      # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.o'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother']).communicate()
+
+      self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()

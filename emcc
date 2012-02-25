@@ -100,7 +100,7 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the auto
                                              # Note that this will disable inclusion of libraries. This is useful because including
                                              # dlmalloc makes it hard to compare native and js builds
 
-if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
+if DEBUG: print >> sys.stderr, '\nemcc invocation: ', ' '.join(sys.argv)
 if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
 
 stdout = PIPE if not DEBUG else None # suppress output of child processes
@@ -186,6 +186,14 @@ Options that are modified or new in %s include:
                            to access the file in the current directory
                            with the same basename as given here (that is,
                            just the filename, without a path to it).
+  --ignore-dynamic-linking Normally emcc will treat dynamic linking like
+                           static linking, by linking in the code from
+                           the dynamic library. This fails if the same
+                           dynamic library is linked more than once.
+                           With this option, dynamic linking is ignored,
+                           which allows the build system to proceed without
+                           errors. However, you will need to manually
+                           link to the shared libraries later on yourself.
   --shell-file <path>      The path name to a skeleton HTML file used
                            when generating HTML output. The shell file
                            used needs to have this token inside it:
@@ -245,7 +253,7 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
 BITCODE_SUFFIXES = ('.bc', '.o')
-SHAREDLIB_SUFFIXES = ('.dylib', '.so', '.dll')
+DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
@@ -317,6 +325,7 @@ try:
   js_transform = None
   compress_whitespace = None
   embed_files = []
+  ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
 
   def check_bad_eq(arg):
@@ -361,6 +370,9 @@ try:
       f.close()
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '--ignore-dynamic-linking':
+      ignore_dynamic_linking = True
+      newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
       shell_path = newargs[i+1]
@@ -398,7 +410,7 @@ try:
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + SHAREDLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
       if os.path.exists(arg):
         if arg.endswith(SOURCE_SUFFIXES):
@@ -425,8 +437,8 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: looking for library "%s"' % lib
     found = False
     for prefix in LIB_PREFIXES:
-      for suffix in STATICLIB_SUFFIXES + SHAREDLIB_SUFFIXES:
-        name = prefix + lib + suffix
+      for suff in STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES:
+        name = prefix + lib + suff
         for lib_dir in lib_dirs:
           path = os.path.join(lib_dir, name)
           if os.path.exists(path):
@@ -436,6 +448,9 @@ try:
             break
         if found: break
       if found: break
+
+  if ignore_dynamic_linking:
+    input_files = filter(lambda input_file: not input_file.endswith(DYNAMICLIB_SUFFIXES), input_files)
 
   assert len(input_files) > 0, 'emcc: no input files'
 
@@ -489,7 +504,7 @@ try:
         temp_file = in_temp(unsuffixed_basename(input_file) + '.o')
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      elif input_file.endswith(SHAREDLIB_SUFFIXES) or shared.Building.is_ar(input_file):
+      elif input_file.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
         if DEBUG: print >> sys.stderr, 'emcc: copying library file: ', input_file
         temp_file = in_temp(os.path.basename(input_file))
         shutil.copyfile(input_file, temp_file)
@@ -611,7 +626,7 @@ try:
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
-     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in SHAREDLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
+     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
     shared.Building.link(linker_inputs,
