@@ -1568,10 +1568,10 @@ function processMathop(item) {
   var originalIdents = idents.slice(0);
   if (isUnsignedOp(op, variant)) {
     idents[0] = makeSignOp(idents[0], paramTypes[0], 'un');
-    idents[1] = makeSignOp(idents[1], paramTypes[0], 'un');
+    idents[1] = makeSignOp(idents[1], paramTypes[1], 'un');
   } else if (isSignedOp(op, variant)) {
     idents[0] = makeSignOp(idents[0], paramTypes[0], 're');
-    idents[1] = makeSignOp(idents[1], paramTypes[0], 're');
+    idents[1] = makeSignOp(idents[1], paramTypes[1], 're');
   }
   var bits = null;
   if (item.type[0] === 'i') {
