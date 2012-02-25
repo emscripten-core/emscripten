@@ -279,8 +279,6 @@ process(sys.argv[1])
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
-Cache.erase() # Wipe the cache, so that we always test populating it in the tests, benchmarks, etc.
-
 if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
   # Tests
 
