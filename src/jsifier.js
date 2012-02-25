@@ -1049,7 +1049,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var temp = {
       op: 'bitcast', variant: null, type: item.type,
       assignTo: item.assignTo,
-      param1: item.params[0]
+      params: [item.params[0]] // XXX
     };
     var ret = processMathop(temp);
     if (!temp.assignTo) item.assignTo = null; // If the assign was stolen, propagate that

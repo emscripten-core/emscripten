@@ -800,38 +800,39 @@ function intertyper(data, sidePass, baseLineNums) {
       }
       if (item.tokens[1].text == 'exact') item.tokens.splice(1, 1); // TODO: Implement trap values
       var segments = splitTokenList(item.tokens.slice(1));
+      item.params = [];
       for (var i = 1; i <= 4; i++) {
         if (segments[i-1]) {
           if (i > 1 && segments[i-1].length == 1 && segments[0].length > 1 && !isType(segments[i-1][0].text)) {
             segments[i-1].unshift(segments[0][0]); // Add the type from the first segment, they are all alike
           }
-          item['param'+i] = parseLLVMSegment(segments[i-1]);
+          item.params[i-1] = parseLLVMSegment(segments[i-1]);
         }
       }
       if (item.op === 'select') {
-        assert(item.param2.type === item.param3.type);
-        item.type = item.param2.type;
+        assert(item.params[1].type === item.params[2].type);
+        item.type = item.params[1].type;
       } else if (item.op === 'inttoptr' || item.op === 'ptrtoint') {
-        item.type = item.param2.type;
+        item.type = item.params[1].type;
       } else {
-        item.type = item.param1.type;
+        item.type = item.params[0].type;
       }
       if (item.op != 'ptrtoint') {
-        for (var i = 1; i <= 4; i++) {
-          if (item['param'+i]) item['param'+i].type = item.type; // All params have the same type, normally
+        for (var i = 0; i < 4; i++) {
+          if (item.params[i]) item.params[i].type = item.type; // All params have the same type, normally
         }
       }
       if (item.op in LLVM.EXTENDS) {
-        item.type = item.param2.ident;
-        item.param1.type = item.param2.type;
+        item.type = item.params[1].ident;
+        item.params[0].type = item.params[1].type;
         // TODO: also remove 2nd param?
       }
       if (I64_MODE == 1) {
         // Some specific corrections, since 'i64' is special
         if (item.op in LLVM.SHIFTS) {
-          item.param2.type = 'i32';
+          item.params[1].type = 'i32';
         } else if (item.op == 'select') {
-          item.param1.type = 'i1';
+          item.params[0].type = 'i1';
         }
       }
       Types.needAnalysis[item.type] = 0;

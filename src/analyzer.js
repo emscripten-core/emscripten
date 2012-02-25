@@ -388,13 +388,13 @@ function analyzer(data, sidePass) {
                 case 'inttoptr': case 'ptrtoint': {
                   value = {
                     op: item.intertype,
-                    param1: item.params[0]
+                    params: [item.params[0]] // XXX
                   };
                   // fall through
                 }
                 case 'mathop': {
                   var toAdd = [];
-                  var sourceBits = getBits(value.param1.type);
+                  var sourceBits = getBits(value.params[0].type);
                   // All mathops can be parametrized by how many shifts we do, and how big the source is
                   var shifts = 0;
                   var targetBits = sourceBits;
@@ -406,11 +406,11 @@ function analyzer(data, sidePass) {
                       // fall through
                     }
                     case 'lshr': {
-                      shifts = parseInt(value.param2.ident);
+                      shifts = parseInt(value.params[1].ident);
                       break;
                     }
                     case 'shl': {
-                      shifts = -parseInt(value.param2.ident);
+                      shifts = -parseInt(value.params[1].ident);
                       break;
                     }
                     case 'sext': {
@@ -418,7 +418,7 @@ function analyzer(data, sidePass) {
                       // fall through
                     }
                     case 'trunc': case 'zext': case 'ptrtoint': {
-                      targetBits = getBits(value.param2.ident);
+                      targetBits = getBits(value.params[1].ident);
                       break;
                     }
                     case 'inttoptr': {
@@ -429,31 +429,35 @@ function analyzer(data, sidePass) {
                       break;
                     }
                     case 'select': {
-                      sourceBits = targetBits = getBits(value.param2.type);
-                      var otherElementsA = getLegalVars(value.param2.ident, sourceBits);
-                      var otherElementsB = getLegalVars(value.param3.ident, sourceBits);
+                      sourceBits = targetBits = getBits(value.params[1].type);
+                      var otherElementsA = getLegalVars(value.params[1].ident, sourceBits);
+                      var otherElementsB = getLegalVars(value.params[2].ident, sourceBits);
                       processor = function(result, j) {
                         return {
                           intertype: 'mathop',
                           op: 'select',
                           type: 'i' + otherElementsA[j].bits,
-                          param1: value.param1,
-                          param2: { intertype: 'value', ident: otherElementsA[j].ident, type: 'i' + otherElementsA[j].bits },
-                          param3: { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
+                          params: [
+                            value.params[0],
+                            { intertype: 'value', ident: otherElementsA[j].ident, type: 'i' + otherElementsA[j].bits },
+                            { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
+                          ]
                         };
                       };
                       break;
                     }
                     case 'or': case 'and': case 'xor': {
-                      var otherElements = getLegalVars(value.param2.ident, sourceBits);
+                      var otherElements = getLegalVars(value.params[1].ident, sourceBits);
                       processor = function(result, j) {
                         return {
                           intertype: 'mathop',
                           op: value.op,
                           type: 'i' + otherElements[j].bits,
-                          param1: result,
-                          param2: { intertype: 'value', ident: otherElements[j].ident, type: 'i' + otherElements[j].bits }
-                        };                            
+                          params: [
+                            result,
+                            { intertype: 'value', ident: otherElements[j].ident, type: 'i' + otherElements[j].bits }
+                          ]
+                        };
                       };
                       break;
                     }
@@ -469,16 +473,16 @@ function analyzer(data, sidePass) {
                   var sourceElements;
                   if (sourceBits <= 32) {
                     // The input is a legal type
-                    sourceElements = [{ ident: value.param1.ident, bits: sourceBits }];
+                    sourceElements = [{ ident: value.params[0].ident, bits: sourceBits }];
                   } else {
-                    sourceElements = getLegalVars(value.param1.ident, sourceBits);
+                    sourceElements = getLegalVars(value.params[0].ident, sourceBits);
                   }
                   if (!isNumber(shifts)) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
                     value.intertype = 'value';
                     value.ident = 'Runtime.bitshift64(' + sourceElements[0].ident + ', ' +
-                                                          sourceElements[1].ident + ',"' + value.op + '",' + value.param2.ident + '$0);' +
+                                                          sourceElements[1].ident + ',"' + value.op + '",' + value.params[1].ident + '$0);' +
                                   'var ' + value.assignTo + '$0 = ' + value.assignTo + '[0], ' + value.assignTo + '$1 = ' + value.assignTo + '[1];';
                     i++;
                     continue;
@@ -497,37 +501,43 @@ function analyzer(data, sidePass) {
                     var result = {
                       intertype: 'value',
                       ident: (j + whole >= 0 && j + whole < sourceElements.length) ? sourceElements[j + whole].ident : (signed ? signedFill : '0'),
-                      param1: (signed && j + whole > sourceElements.length) ? signedKeepAlive : null,
+                      params: [(signed && j + whole > sourceElements.length) ? signedKeepAlive : null],
                       type: 'i32',
                     };
                     if (fraction != 0) {
                       var other = {
                         intertype: 'value',
                         ident: (j + sign + whole >= 0 && j + sign + whole < sourceElements.length) ? sourceElements[j + sign + whole].ident : (signed ? signedFill : '0'),
-                        param1: (signed && j + sign + whole > sourceElements.length) ? signedKeepAlive : null,
+                        params: [(signed && j + sign + whole > sourceElements.length) ? signedKeepAlive : null],
                         type: 'i32',
                       };
                       other = {
                         intertype: 'mathop',
                         op: shiftOp,
                         type: 'i32',
-                        param1: other,
-                        param2: { intertype: 'value', ident: (32 - fraction).toString(), type: 'i32' }
+                        params: [
+                          other,
+                          { intertype: 'value', ident: (32 - fraction).toString(), type: 'i32' }
+                        ]
                       };
                       result = {
                         intertype: 'mathop',
                         // shifting in 1s from the top is a special case
                         op: (signed && shifts >= 0 && j + sign + whole >= sourceElements.length) ? 'ashr' : shiftOpReverse,
                         type: 'i32',
-                        param1: result,
-                        param2: { intertype: 'value', ident: fraction.toString(), type: 'i32' }
+                        params: [
+                          result,
+                          { intertype: 'value', ident: fraction.toString(), type: 'i32' }
+                        ]
                       };
                       result = {
                         intertype: 'mathop',
                         op: 'or',
                         type: 'i32',
-                        param1: result,
-                        param2: other
+                        params: [
+                          result,
+                          other
+                        ]
                       }
                     }
                     if (targetElements[j].bits < 32 && shifts < 0) {
@@ -536,8 +546,10 @@ function analyzer(data, sidePass) {
                         intertype: 'mathop',
                         op: 'and',
                         type: 'i32',
-                        param1: result,
-                        param2: { intertype: 'value', ident: (Math.pow(2, targetElements[j].bits)-1).toString(), type: 'i32' }
+                        params: [
+                          result,
+                          { intertype: 'value', ident: (Math.pow(2, targetElements[j].bits)-1).toString(), type: 'i32' }
+                        ]
                       }
                     }
                     if (processor) {
