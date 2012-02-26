@@ -182,6 +182,13 @@ function analyzer(data, sidePass) {
             i++;
           }
         }
+        function fixUnfolded(item) {
+          // Unfolded items may need some correction to work properly in the global scope
+          if (item.intertype in MATHOPS) {
+            item.op = item.intertype;
+            item.intertype = 'mathop';
+          }
+        }
         data.functions.forEach(function(func) {
           // Legalize function params
           legalizeFunctionParameters(func.params);
@@ -221,6 +228,7 @@ function analyzer(data, sidePass) {
                   var tempIdent = '$$emscripten$temp$' + (tempId++);
                   subItem.assignTo = tempIdent;
                   unfolded.unshift(subItem);
+                  fixUnfolded(subItem);
                   return { intertype: 'value', ident: tempIdent, type: subItem.type };
                 }
               });
@@ -385,10 +393,12 @@ function analyzer(data, sidePass) {
                   }
                   // fall through
                 }
-                case 'inttoptr': case 'ptrtoint': {
+                case 'inttoptr': case 'ptrtoint': case 'zext': case 'sext': case 'trunc': case 'ashr': case 'lshr': case 'shl': case 'or': case 'and': case 'xor': {
                   value = {
                     op: item.intertype,
-                    params: [item.params[0]] // XXX
+                    variant: item.variant,
+                    type: item.type,
+                    params: item.params
                   };
                   // fall through
                 }
@@ -418,7 +428,7 @@ function analyzer(data, sidePass) {
                       // fall through
                     }
                     case 'trunc': case 'zext': case 'ptrtoint': {
-                      targetBits = getBits(value.params[1].ident);
+                      targetBits = getBits(value.params[1] ? value.params[1].ident : value.type);
                       break;
                     }
                     case 'inttoptr': {
