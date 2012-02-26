@@ -149,7 +149,8 @@ Options that are modified or new in %s include:
                            -O2 and then adding dangerous optimizations one
                            by one.
   -s OPTION=VALUE          JavaScript code generation option passed
-                           into the emscripten compiler
+                           into the emscripten compiler. For the
+                           available options, see src/settings.js
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
