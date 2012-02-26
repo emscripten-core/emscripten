@@ -4013,9 +4013,9 @@ def process(filename):
             printf( "%i %i %i", one, two, three );
         }
       '''
-      #for linkable in [0]:
-      #  Settings.LINKABLE = linkable # regression check for issue #273
-      self.do_run(src, "1 2 3")
+      for linkable in [0, 1]:
+        Settings.LINKABLE = linkable # regression check for issue #273
+        self.do_run(src, "1 2 3")
 
     def test_readdir(self):
       add_pre_run = '''
