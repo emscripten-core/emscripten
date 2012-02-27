@@ -428,49 +428,38 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
     def test_i64(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
 
-        for i64_mode in [0,1]:
-          if i64_mode == 0 and Settings.USE_TYPED_ARRAYS != 0: continue # Typed arrays truncate i64
-          if i64_mode == 1 and Settings.QUANTUM_SIZE == 1: continue # TODO: i64 mode 1 for q1
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
+            long long a = 0x2b00505c10;
+            long long b = a >> 29;
+            long long c = a >> 32;
+            long long d = a >> 34;
+            printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
+            unsigned long long ua = 0x2b00505c10;
+            unsigned long long ub = ua >> 29;
+            unsigned long long uc = ua >> 32;
+            unsigned long long ud = ua >> 34;
+            printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
 
-          Settings.I64_MODE = i64_mode
-          src = '''
-            #include <stdio.h>
-            int main()
-            {
-              long long a = 0x2b00505c10;
-              long long b = a >> 29;
-              long long c = a >> 32;
-              long long d = a >> 34;
-              printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
-              unsigned long long ua = 0x2b00505c10;
-              unsigned long long ub = ua >> 29;
-              unsigned long long uc = ua >> 32;
-              unsigned long long ud = ua >> 34;
-              printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
+            long long x = 0x0000def123450789ULL; // any bigger than this, and we
+            long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
+            printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
 
-              long long x = 0x0000def123450789ULL; // any bigger than this, and we
-              long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-              printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
-
-              printf("*");
-              long long z = 13;
-              int n = 0;
-              while (z > 1) {
-                printf("%.2f,", (float)z); // these must be integers!
-                z = z >> 1;
-                n++;
-              }
-              printf("*%d*\\n", n);
-              return 0;
+            printf("*");
+            long long z = 13;
+            int n = 0;
+            while (z > 1) {
+              printf("%.2f,", (float)z); // these must be integers!
+              z = z >> 1;
+              n++;
             }
-          '''
-          self.do_run(src, '*184688860176,344,43,10*\n*184688860176,344,43,10*\n*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
-
-        if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: i64 mode 1 for q1')
-
-        # Stuff that only works in i64_mode = 1
-
-        Settings.I64_MODE = 1
+            printf("*%d*\\n", n);
+            return 0;
+          }
+        '''
+        self.do_run(src, '*184688860176,344,43,10*\n*184688860176,344,43,10*\n*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
         src = r'''
           #include <time.h>
@@ -2254,9 +2243,6 @@ def process(filename):
         self.do_run(src, '*96,97,98,101,101*')
 
     def test_indirectbr(self):
-        if Settings.USE_TYPED_ARRAYS == 2:
-          Settings.I64_MODE = 1 # Unsafe optimizations use 64-bit load/store on two i32s
-
         src = '''
           #include <stdio.h>
           int main(void) {
@@ -3438,15 +3424,12 @@ at function.:blag
     def test_parseInt(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
       if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
-      Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s, but we do still get doubling
-                            # FIXME: The output here is wrong, due to double rounding of i64s!
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
     def test_printf(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
-      Settings.I64_MODE = 1
       self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
@@ -5610,7 +5593,7 @@ def process(filename):
         }
       '''
 
-      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+      if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
         Settings.CORRECT_ROUNDINGS = 0
         self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
         self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
@@ -5623,7 +5606,7 @@ def process(filename):
       self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*') # Correct
       Settings.CORRECT_SIGNS = 0
 
-      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+      if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
         Settings.CORRECT_ROUNDINGS = 2
         Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
         self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
@@ -5631,7 +5614,7 @@ def process(filename):
         self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-5**5*') # No such luck here
 
       # And reverse the check with = 2
-      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+      if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
         Settings.CORRECT_ROUNDINGS = 3
         Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
         self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
@@ -5760,11 +5743,6 @@ class %s(T):
     Settings.CATCH_EXIT_CODE = 0
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
-    if Settings.USE_TYPED_ARRAYS == 2:
-      Settings.I64_MODE = 1
-      Settings.SAFE_HEAP = 1 # only checks for alignment problems, which is very important with unsafe opts
-    else:
-      Settings.I64_MODE = 0
 
     Building.pick_llvm_opts(3)
 
@@ -5798,9 +5776,6 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
-    def test_reminder(self):
-      assert 0, 'find appearances of i64 in src/, most are now unneeded'
-
     def test_emcc(self):
       emcc_debug = os.environ.get('EMCC_DEBUG')
 
@@ -5973,12 +5948,12 @@ Options that are modified or new in %s include:
         for params, test, text in [
           (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
           (['-O1', '-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' not in generated, 'inlining'),
-          (['-s', 'USE_TYPED_ARRAYS=0', '-s', 'I64_MODE=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
-          (['-s', 'USE_TYPED_ARRAYS=1', '-s', 'I64_MODE=0'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['-s', 'USE_TYPED_ARRAYS=1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
           ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
           (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported'),
-          (['--typed-arrays', '0', '-s', 'I64_MODE=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
-          (['--typed-arrays', '1', '-s', 'I64_MODE=0'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          (['--typed-arrays', '0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['--typed-arrays', '1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
           (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
@@ -6115,7 +6090,7 @@ f.close()
       clear()
       output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
-                                           '-s', 'USE_TYPED_ARRAYS=0', '-s', 'I64_MODE=0',
+                                           '-s', 'USE_TYPED_ARRAYS=0',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]

@@ -70,17 +70,6 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
     }
   }
 }
-#if USE_TYPED_ARRAYS == 2
-var warned64 = false;
-function warn64() {
-  if (!warned64) {
-    __ATEXIT__.push({ func: function() {
-      print('Warning: using a 64-bit type with USE_TYPED_ARRAYS == 2. Depending on I64_MODE this may be problematic.');
-    } });
-    warned64 = true;
-  }
-}
-#endif
 
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if SAFE_HEAP_LOG
@@ -106,7 +95,7 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if DOUBLE_MODE == 1
     case 'double': assert(dest % 4 == 0); break;
 #else
-    case 'double': assert(dest % 4 == 0); warn64(); break;
+    case 'double': assert(dest % 4 == 0); break;
 #endif
   }
 #endif
@@ -131,7 +120,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 #if DOUBLE_MODE == 1
     case 'double': assert(dest % 4 == 0); break;
 #else
-    case 'double': assert(dest % 4 == 0); warn64(); break;
+    case 'double': assert(dest % 4 == 0); break;
 #endif
   }
 #endif
@@ -341,7 +330,7 @@ var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
 // for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
 var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
 #endif
 
@@ -549,7 +538,7 @@ function allocate(slab, types, allocator) {
     assert(type, 'Must know what type to store in allocate!');
 #endif
 
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
     if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
 #endif
 

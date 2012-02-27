@@ -138,7 +138,6 @@ EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
-assert(!(USE_TYPED_ARRAYS !== 2 && I64_MODE === 1), 'i64 mode 1 is only supported with typed arrays mode 2');
 
 // Output some info and warnings based on settings
 
@@ -149,7 +148,7 @@ if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || IN
   print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
 }
 
-if (DOUBLE_MODE || I64_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
+if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
   print('// Note: Some Emscripten settings may limit the speed of the generated code.');
 }
 

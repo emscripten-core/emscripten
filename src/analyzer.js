@@ -877,7 +877,7 @@ function analyzer(data, sidePass) {
             variable.impl = VAR_EMULATED;
           } else if (variable.origin == 'funcparam') {
             variable.impl = VAR_EMULATED;
-          } else if (variable.type == 'i64*' && I64_MODE == 1) {
+          } else if (variable.type == 'i64*' && USE_TYPED_ARRAYS == 2) {
             variable.impl = VAR_EMULATED;
           } else if (MICRO_OPTS && variable.pointingLevels === 0) {
             // A simple int value, can be implemented as a native variable

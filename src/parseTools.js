@@ -345,7 +345,7 @@ function finalizeParam(param) {
   } else if (param.intertype === 'jsvalue') {
     return param.ident;
   } else {
-    if (param.type == 'i64' && I64_MODE == 1) {
+    if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
       return parseI64Constant(param.ident);
     }
     var ret = toNiceIdent(param.ident);
@@ -532,7 +532,7 @@ function makeInlineCalculation(expression, value, tempVar) {
 // Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
 function makeI64(low, high) {
   high = high || '0';
-  if (I64_MODE == 1) {
+  if (USE_TYPED_ARRAYS == 2) {
     return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
   } else {
     if (high) return RuntimeGenerator.makeBigInt(low, high);
@@ -542,7 +542,7 @@ function makeI64(low, high) {
 
 // XXX Make all i64 parts signed
 
-// Splits a number (an integer in a double, possibly > 32 bits) into an I64_MODE 1 i64 value.
+// Splits a number (an integer in a double, possibly > 32 bits) into an USE_TYPED_ARRAYS == 2 i64 value.
 // Will suffer from rounding. mergeI64 does the opposite.
 function splitI64(value) {
   // We need to min here, since our input might be a double, and large values are rounded, so they can
@@ -555,7 +555,7 @@ function splitI64(value) {
   }
 }
 function mergeI64(value) {
-  assert(I64_MODE == 1);
+  assert(USE_TYPED_ARRAYS == 2);
   if (legalizedI64s) {
     return RuntimeGenerator.makeBigInt(value + '$0', value + '$1');
   } else {
@@ -566,12 +566,12 @@ function mergeI64(value) {
 // Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
 // mode, this is a no-op
 function ensureI64_1(value) {
-  if (I64_MODE == 1) return value;
+  if (USE_TYPED_ARRAYS == 2) return value;
   return splitI64(value, 1);
 }
 
 function makeCopyI64(value) {
-  assert(I64_MODE == 1);
+  assert(USE_TYPED_ARRAYS == 2);
   return value + '.slice(0)';
 }
 
@@ -679,7 +679,7 @@ function parseArbitraryInt(str, bits) {
 }
 
 function parseI64Constant(str) {
-  assert(I64_MODE == 1);
+  assert(USE_TYPED_ARRAYS == 2);
 
   if (!isNumber(str)) {
     // This is a variable. Copy it, so we do not modify the original
@@ -696,7 +696,7 @@ function parseNumerical(value, type) {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     value = IEEEUnHex(value);
-  } else if (type == 'i64' && I64_MODE == 1) {
+  } else if (type == 'i64' && USE_TYPED_ARRAYS == 2) {
     value = parseI64Constant(value);
   } else if (value == 'null') {
     // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
@@ -761,7 +761,7 @@ function calcAllocatedSize(type) {
 function generateStructTypes(type) {
   if (isArray(type)) return type; // already in the form of [type, type,...]
   if (Runtime.isNumberType(type) || isPointerType(type)) {
-    if (I64_MODE == 1 && type == 'i64') {
+    if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
       return ['i64', 0, 0, 0, 'i32', 0, 0, 0];
     }
     return [type].concat(zeros(Runtime.getNativeFieldSize(type)));
@@ -778,7 +778,7 @@ function generateStructTypes(type) {
       var type = typeData.fields[i];
       if (!SAFE_HEAP && isPointerType(type)) type = '*'; // do not include unneeded type names without safe heap
       if (Runtime.isNumberType(type) || isPointerType(type)) {
-        if (I64_MODE == 1 && type == 'i64') {
+        if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
           ret[index++] = 'i64';
           ret[index++] = 0;
           ret[index++] = 0;
@@ -1345,7 +1345,7 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
 
 function getGetElementPtrIndexes(item) {
   var type = item.params[0].type;
-  if (I64_MODE == 1) {
+  if (USE_TYPED_ARRAYS == 2) {
     // GEP indexes are marked as i64s, but they are just numbers to us
     item.params.forEach(function(param) { param.type = 'i32' });
   }
@@ -1445,7 +1445,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     if (ret in Variables.globals && Variables.globals[ret].isString) {
       ret = "STRING_TABLE." + ret;
     }
-    if (param.type == 'i64' && I64_MODE == 1) {
+    if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
       ret = parseI64Constant(ret);
     }
     ret = parseNumerical(ret);
@@ -1466,7 +1466,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
 }
 
 function makeSignOp(value, type, op, force, ignore) {
-  if (I64_MODE == 1 && type == 'i64') {
+  if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
     return value; // these are always assumed to be two 32-bit unsigneds.
   }
 
@@ -1583,7 +1583,7 @@ function processMathop(item) {
     return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigIntI');
   }
 
-  if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || idents[1] == '(i64)') && I64_MODE == 1) {
+  if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || idents[1] == '(i64)') && USE_TYPED_ARRAYS == 2) {
     var warnI64_1 = function() {
       warnOnce('Arithmetic on 64-bit integers in mode 1 is rounded and flaky, like mode 0!');
     };
@@ -1711,7 +1711,7 @@ function processMathop(item) {
             return '(tempDoubleF64[0]=' + idents[0] + ',[tempDoubleI32[0],tempDoubleI32[1]])';
           }
         } else {
-          throw 'Invalid I64_MODE1 bitcast: ' + dump(item) + ' : ' + item.params[0].type;
+          throw 'Invalid USE_TYPED_ARRAYS == 2 bitcast: ' + dump(item) + ' : ' + item.params[0].type;
         }
       }
       default: throw 'Unsupported i64 mode 1 op: ' + item.op + ' : ' + dump(item);
@@ -1838,7 +1838,6 @@ function processMathop(item) {
       if ((inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) ||
           (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
-        assert(inType == 'i32' || inType == 'float', 'Can only bitcast ints <-> floats with 32 bits (try I64_MODE=1)');
         if (inType in Runtime.INT_TYPES) {
           return '(tempDoubleI32[0] = ' + idents[0] + ',tempDoubleF32[0])';
         } else {

@@ -827,7 +827,7 @@ function intertyper(data, sidePass, baseLineNums) {
         item.params[0].type = item.params[1].type;
         // TODO: also remove 2nd param?
       }
-      if (I64_MODE == 1) {
+      if (USE_TYPED_ARRAYS == 2) {
         // Some specific corrections, since 'i64' is special
         if (item.op in LLVM.SHIFTS) {
           item.params[1].type = 'i32';

@@ -2298,7 +2298,7 @@ LibraryManager.library = {
       var ret;
       if (type === 'double') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
@@ -2433,7 +2433,7 @@ LibraryManager.library = {
           var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
           // Flatten i64-1 [low, high] into a (slightly rounded) double
           if (argSize == 8) {
             currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == 'u'.charCodeAt(0));
@@ -3485,12 +3485,6 @@ LibraryManager.library = {
     if (bits == 64) {
       ret = [{{{ splitI64('ret') }}}];
     }
-#else
-#if I64_MODE == 1
-    if (bits == 64) {
-      ret = {{{ splitI64('ret') }}};
-    }
-#endif
 #endif
 
     return ret;

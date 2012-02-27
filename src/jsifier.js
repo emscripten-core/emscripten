@@ -167,7 +167,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       // Add current value(s)
       var currValue = flatten(values[i]);
-      if (I64_MODE == 1 && typeData.fields[i] == 'i64') {
+      if (USE_TYPED_ARRAYS == 2 && typeData.fields[i] == 'i64') {
         // 'flatten' out the 64-bit value into two 32-bit halves
         ret[index++] = currValue>>>0;
         ret[index++] = 0;
