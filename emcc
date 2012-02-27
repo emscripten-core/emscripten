@@ -722,7 +722,7 @@ try:
     src = open(final).read()
     final += '.pp.js'
     open(final, 'w').write((pre_js or '') + src + (post_js or ''))
-    if DEBUG: save_intermediate('pre/post')
+    if DEBUG: save_intermediate('pre-post')
 
   # Apply a source code transformation, if requested
   if js_transform:
