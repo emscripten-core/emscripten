@@ -16,3 +16,5 @@ hello, war`d
 hello, wor-d
 hello, wor
 hello, worl
+hello, world
+hello, w

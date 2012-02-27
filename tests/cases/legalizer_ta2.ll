@@ -116,6 +116,19 @@ a26:
   store i88 %a27, i88* bitcast ([300 x i8]* @globaliz to i88*), align 4
   call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
 
+; select
+
+  %chosen = select i1 %if, i104 %loaded, i104 -1
+  store i104 %chosen, i104* %bundled, align 4
+  call i32 (i8*)* @puts(i8* %buffer)
+
+  store i104 0, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4 ; wipe it out
+  %s64a = trunc i104 %loaded to i64
+  %s64b = trunc i104 %ander to i64
+  %s64 = select i1 %if, i64 %s64a, i64 -1
+  store i64 %s64, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+
   ret i32 1
 }
 
