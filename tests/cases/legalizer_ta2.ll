@@ -116,6 +116,24 @@ a26:
   store i88 %a27, i88* bitcast ([300 x i8]* @globaliz to i88*), align 4
   call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
 
+  store i104 %ored, i104* %bundled, align 4
+  %iff = zext i1 %if to i64
+  switch i64 %iff, label %a50 [
+    i64 1, label %a30
+    i64 0, label %a40
+  ]
+
+a50:
+  store i104 %xored, i104* %bundled, align 4
+  br label %a40
+
+a30:
+  store i104 %anded, i104* %bundled, align 4
+  br label %a40
+
+a40:
+  call i32 (i8*)* @puts(i8* %buffer)
+
 ; select
 
   %chosen = select i1 %if, i104 %loaded, i104 -1

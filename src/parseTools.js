@@ -140,6 +140,11 @@ function getBits(type) {
   return parseInt(left);
 }
 
+function isIllegalType(type) {
+  var bits = getBits(type);
+  return bits > 0 && (bits >= 64 || !isPowerOfTwo(bits));
+}
+
 function isVoidType(type) {
   return type == 'void';
 }
@@ -1463,6 +1468,15 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   assert(param.type || (typeof param === 'string' && param.substr(0, 6) === 'CHECK_'), 'Missing type for param!');
   if (!noIndexizeFunctions) ret = indexizeFunctions(ret, param.type);
   return ret;
+}
+
+function makeComparison(a, b, type) {
+  if (!isIllegalType(type)) {
+    return a + ' == ' + b;
+  } else {
+    assert(type == 'i64');
+    return a + '$0 == ' + b + '$0 && ' + a + '$1 == ' + b + '$1';
+  }
 }
 
 function makeSignOp(value, type, op, force, ignore) {

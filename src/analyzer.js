@@ -120,10 +120,6 @@ function analyzer(data, sidePass) {
     processItem: function(data) {
       // Legalization
       if (USE_TYPED_ARRAYS == 2) {
-        function isIllegalType(type) {
-          var bits = getBits(type);
-          return bits > 0 && (bits >= 64 || !isPowerOfTwo(bits));
-        }
         function getLegalVars(base, bits) {
           assert(!isNumber(base));
           var ret = new Array(Math.ceil(bits/32));
@@ -230,6 +226,19 @@ function analyzer(data, sidePass) {
                   unfolded.unshift(subItem);
                   fixUnfolded(subItem);
                   return { intertype: 'value', ident: tempIdent, type: subItem.type };
+                } else if (subItem.intertype == 'switch' && isIllegalType(subItem.type)) {
+                  subItem.switchLabels.forEach(function(switchLabel) {
+                    if (switchLabel.value[0] != '$') {
+                      var tempIdent = '$$emscripten$temp$' + (tempId++);
+                      unfolded.unshift({
+                        assignTo: tempIdent,
+                        intertype: 'value',
+                        ident: switchLabel.value,
+                        type: subItem.type
+                      });
+                      switchLabel.value = tempIdent;
+                    }
+                  });
                 }
               });
               if (unfolded.length > 0) {
@@ -382,6 +391,10 @@ function analyzer(data, sidePass) {
                   });
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
+                }
+                case 'switch': {
+                  i++;
+                  continue; // special case, handled in makeComparison
                 }
                 case 'bitcast': {
                   var inType = item.type2;
@@ -570,8 +583,11 @@ function analyzer(data, sidePass) {
                   }
                   if (targetBits <= 32) {
                     // We are generating a normal legal type here
-                    legalValue = { intertype: 'value', ident: targetElements[0].ident, type: 'rawJS' };
-                    // truncation to smaller than 32 bits has already been done, if necessary
+                    legalValue = {
+                      intertype: 'value',
+                      ident: targetElements[0].ident + (targetBits < 32 ? '&' + (Math.pow(2, targetBits)-1) : ''),
+                      type: 'rawJS'
+                    };
                     legalValue.assignTo = item.assignTo;
                     toAdd.push(legalValue);
                   }

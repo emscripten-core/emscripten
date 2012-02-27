@@ -924,7 +924,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else {
         first = false;
       }
-      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return item.ident + ' == ' + value }).join(' || ') + ') {\n';
+      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return makeComparison(item.ident, value, item.type) }).join(' || ') + ') {\n';
       ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
     }
