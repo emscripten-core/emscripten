@@ -6199,6 +6199,25 @@ f.close()
 
       self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_emcc_js_link(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from main\\n");
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
+        var MESSAGE = 'hello from js';
+        if (typeof Module != 'undefined') throw 'This code should run before anything else!';
+      ''')
+      open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
+        print(MESSAGE);
+      ''')
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
+      self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()

@@ -174,6 +174,10 @@ Options that are modified or new in %s include:
                            list of arguments, for example, <cmd> of
                            "python processor.py" will cause a python
                            script to be run.
+  --pre-js <file>          A file whose contents are added before the
+                           generated code
+  --post-js <file>         A file whose contents are added after the
+                           generated code
   --compress <on>          0: Do not compress the generated JavaScript's
                               whitespace (default if closure compiler
                               will not be run)
@@ -324,6 +328,8 @@ try:
   llvm_opts = None
   closure = None
   js_transform = None
+  pre_js = None
+  post_js = None
   compress_whitespace = None
   embed_files = []
   ignore_dynamic_linking = False
@@ -353,6 +359,16 @@ try:
     elif newargs[i].startswith('--js-transform'):
       check_bad_eq(newargs[i])
       js_transform = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--pre-js'):
+      check_bad_eq(newargs[i])
+      pre_js = open(newargs[i+1]).read()
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--post-js'):
+      check_bad_eq(newargs[i])
+      post_js = open(newargs[i+1]).read()
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--compress'):
@@ -699,6 +715,14 @@ try:
     final += '.ef.js'
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('embedded_files')
+
+  # Apply pre and postjs files
+  if pre_js or post_js:
+    if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
+    src = open(final).read()
+    final += '.pp.js'
+    open(final, 'w').write((pre_js or '') + src + (post_js or ''))
+    if DEBUG: save_intermediate('pre/post')
 
   # Apply a source code transformation, if requested
   if js_transform:
