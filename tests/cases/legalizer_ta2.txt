@@ -16,6 +16,7 @@ hello, war`d
 hello, wor-d
 hello, wor
 hello, worl
+9
 hello, war`d
 hello, world
 hello, w

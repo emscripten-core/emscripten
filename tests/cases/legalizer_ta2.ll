@@ -116,6 +116,18 @@ a26:
   store i88 %a27, i88* bitcast ([300 x i8]* @globaliz to i88*), align 4
   call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
 
+; phi with constants
+  br i1 %if, label %a17b, label %a26b
+
+a17b:
+  br label %a26b
+
+a26b:
+  %a27b = phi i64 [ 55, %a26 ], [ 57, %a17b ]
+  store i104 0, i104* %bundled, align 4 ; wipe it out
+  store i64 %a27b, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+
   store i104 %ored, i104* %bundled, align 4
   %iff = zext i1 %if to i64
   switch i64 %iff, label %a50 [
