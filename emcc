@@ -99,8 +99,11 @@ LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll 
 AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
                                              # Note that this will disable inclusion of libraries. This is useful because including
                                              # dlmalloc makes it hard to compare native and js builds
+EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we treat as if they were passed to us on the commandline
 
-if DEBUG: print >> sys.stderr, '\nemcc invocation: ', ' '.join(sys.argv)
+if DEBUG: print >> sys.stderr, '\nemcc invocation: ', ' '.join(sys.argv), (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '')
+if EMCC_CFLAGS: sys.argv.append(EMCC_CFLAGS)
+
 if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
 
 stdout = PIPE if not DEBUG else None # suppress output of child processes
@@ -222,6 +225,9 @@ JavaScript in the final linking stage of building.
 The input file(s) can be either source code files that
 Clang can handle (C or C++), LLVM bitcode in binary form,
 or LLVM assembly files in human-readable form.
+
+emcc is affected by several environment variables. For details, view
+the source of emcc (search for 'os.environ').
 
 ''' % (this, this, this)
   exit(0)
