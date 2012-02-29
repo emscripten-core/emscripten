@@ -969,7 +969,16 @@ function JSify(data, functionsOnly, givenFunctions) {
             + 'if (typeof e != "number") throw e; '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
-            + 'return null } })(); if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
+            + 'return null } })();';
+    if (item.assignTo) {
+      ret = 'var ' + item.assignTo + ' = ' + ret;
+      if (isIllegalType(item.type)) {
+        assert(item.type == 'i64', 'Can only handle i64 invoke among illegal invokes');
+        ret += 'var ' + item.assignTo + '$0 = ' + item.assignTo + '[0], ' + item.assignTo + '$1 = ' + item.assignTo + '[1];';
+      }
+      item.assignTo = null;
+    }
+    ret += 'if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + getPhiSetsForLabel(phiSets, item.unwindLabel)  + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });

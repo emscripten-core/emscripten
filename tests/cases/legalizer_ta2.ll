@@ -4,6 +4,10 @@ target triple = "i386-pc-linux-gnu"
 
 @globaliz = global [300 x i8] zeroinitializer
 
+define i64 @retter() {
+  ret i64 7017280452245743464
+}
+
 define i32 @main() {
 entry:
   %buffer = alloca i8, i32 1000, align 4
@@ -146,6 +150,16 @@ a30:
 a40:
   call i32 (i8*)* @puts(i8* %buffer)
 
+; invoke return value
+
+  %inv64 = invoke i64 @retter()
+            to label %a100 unwind label %a111
+
+a100:
+  store i104 0, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4 ; wipe it out
+  store i64 %inv64, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+
 ; select
 
   %chosen = select i1 %if, i104 %loaded, i104 -1
@@ -158,9 +172,17 @@ a40:
   %s64 = select i1 %if, i64 %s64a, i64 -1
   store i64 %s64, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
   call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+  br label %done
 
+a111:
+  %aaaa79 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+          cleanup
+  br label %done
+
+done:
   ret i32 1
 }
 
 declare i32 @puts(i8*)
+declare i32 @__gxx_personality_v0(...)
 

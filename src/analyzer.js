@@ -290,7 +290,7 @@ function analyzer(data, sidePass) {
                   continue;
                 }
                 // call, return: Return value is in an unlegalized array literal. Not fully optimal.
-                case 'call': case 'invoke': {
+                case 'call': {
                   bits = getBits(value.type);
                   var elements = getLegalVars(item.assignTo, bits);
                   var toAdd = [value];
@@ -315,6 +315,11 @@ function analyzer(data, sidePass) {
                   bits = getBits(item.type);
                   var elements = getLegalVars(item.value.ident, bits);
                   item.value.ident = '[' + elements.map(function(element) { return element.ident }).join(',') + ']';
+                  i++;
+                  continue;
+                }
+                case 'invoke': {
+                  // We can't add lines after this, since invoke already modifies control flow. So we handle this in invoke
                   i++;
                   continue;
                 }
