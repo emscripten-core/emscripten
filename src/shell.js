@@ -9,13 +9,9 @@ var ENVIRONMENT_IS_WEB = typeof window === 'object';
 var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
-if (!ENVIRONMENT_IS_NODE) {
-  // Node needs these in the global scope, everywhere else, cleaner to not pollute the global scope
-  eval('var print, printErr, read, load, arguments_;');
-}
-
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
+  // Note that we pollute the global namespace here, otherwise we break in node
   print = function(x) {
     process['stdout'].write(x + '\n');
   };
@@ -34,12 +30,16 @@ if (ENVIRONMENT_IS_NODE) {
     return ret;
   };
 
+  load = function(f) {
+    globalEval(read(f));
+  };
+
   arguments_ = process['argv'].slice(2);
 
 } else if (ENVIRONMENT_IS_SHELL) {
   // Polyfill over SpiderMonkey/V8 differences
   if (!this['read']) {
-    read = function(f) { snarf(f) };
+    this['read'] = function(f) { snarf(f) };
   }
 
   if (!this['arguments']) {
@@ -49,11 +49,11 @@ if (ENVIRONMENT_IS_NODE) {
   }
 
 } else if (ENVIRONMENT_IS_WEB) {
-  print = printErr = function(x) {
+  this['print'] = printErr = function(x) {
     console.log(x);
   };
 
-  read = function(url) {
+  this['read'] = function(url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
     xhr.send(null);
@@ -66,7 +66,7 @@ if (ENVIRONMENT_IS_NODE) {
 } else if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
 
-  load = importScripts;
+  this['load'] = importScripts;
 
 } else {
   throw 'Unknown runtime environment. Where are we?';
@@ -77,17 +77,17 @@ function globalEval(x) {
 }
 
 if (typeof load == 'undefined' && typeof read != 'undefined') {
-  load = function(f) {
+  this['load'] = function(f) {
     globalEval(read(f));
   };
 }
 
 if (typeof printErr === 'undefined') {
-  printErr = function(){};
+  this['printErr'] = function(){};
 }
 
 if (typeof print === 'undefined') {
-  print = printErr;
+  this['print'] = printErr;
 }
 // *** Environment setup code ***
 
