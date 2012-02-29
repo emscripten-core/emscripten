@@ -17,6 +17,11 @@ var ENVIRONMENT_IS_WEB = typeof window === 'object';
 var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
+if (!ENVIRONMENT_IS_NODE) {
+  // Node needs these in the global scope, everywhere else, cleaner to not pollute the global scope
+  eval('var print, printErr, read, load, arguments_;');
+}
+
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   print = function(x) {
