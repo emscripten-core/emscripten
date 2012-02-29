@@ -1114,7 +1114,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
     var oldDest = dest, oldSrc = src;
     dest = '$$dest';
     src = '$$src';
-    return 'for ($$src = ' + oldSrc + ', $$dest = ' + oldDest + ', $$stop = $$src + ' + num + '; $$src < $$stop; $$src++, $$dest++) {\n' +
+    return 'for (var $$src = ' + oldSrc + ', $$dest = ' + oldDest + ', $$stop = $$src + ' + num + '; $$src < $$stop; $$src++, $$dest++) {\n' +
             unroll(type, 1) + ' }';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
