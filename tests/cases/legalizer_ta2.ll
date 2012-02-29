@@ -4,7 +4,10 @@ target triple = "i386-pc-linux-gnu"
 
 @globaliz = global [300 x i8] zeroinitializer
 
-define i64 @retter() {
+define i64 @retter(i64 %x) {
+  store i104 0, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4 ; wipe it out
+  store i64 %x, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
   ret i64 7017280452245743464
 }
 
@@ -152,7 +155,7 @@ a40:
 
 ; invoke return value
 
-  %inv64 = invoke i64 @retter()
+  %inv64 = invoke i64 @retter(i64 8174723217654970232)
             to label %a100 unwind label %a111
 
 a100:

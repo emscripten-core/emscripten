@@ -319,7 +319,8 @@ function analyzer(data, sidePass) {
                   continue;
                 }
                 case 'invoke': {
-                  // We can't add lines after this, since invoke already modifies control flow. So we handle this in invoke
+                  legalizeFunctionParameters(value.params);
+                  // We can't add lines after this, since invoke already modifies control flow. So we handle the return in invoke
                   i++;
                   continue;
                 }

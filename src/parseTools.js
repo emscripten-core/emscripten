@@ -324,7 +324,7 @@ function parseParamTokens(params) {
       ret.push({
         intertype: 'value',
         type: segment[0].text,
-        ident: toNiceIdent(parseNumerical(segment[1].text))
+        ident: toNiceIdent(parseNumerical(segment[1].text, segment[0].text))
       });
       Types.needAnalysis[removeAllPointing(ret[ret.length-1].type)] = 0;
     }
@@ -701,8 +701,8 @@ function parseNumerical(value, type) {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     value = IEEEUnHex(value);
-  } else if (type == 'i64' && USE_TYPED_ARRAYS == 2) {
-    value = parseI64Constant(value);
+  } else if (USE_TYPED_ARRAYS == 2 && isIllegalType(type)) {
+    return value; // do not parseFloat etc., that can lead to loss of precision
   } else if (value == 'null') {
     // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
     value = '0';
@@ -1453,7 +1453,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
       ret = parseI64Constant(ret);
     }
-    ret = parseNumerical(ret);
+    ret = parseNumerical(ret, param.type);
   } else if (param.intertype == 'structvalue') {
     ret = makeLLVMStruct(param.params.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) }));
   } else if (param.intertype === 'blockaddress') {
