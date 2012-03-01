@@ -581,16 +581,10 @@ function optimizeShiftsInternal(ast, conservative) {
           var name = node[2][1];
           var data = vars[name];
           var parent = stack[stack.length-3];
-          var parentIndex;
-          if (parent[0] == 'defun') {
-            parentIndex = 3;
-          } else if (parent[0] == 'block') {
-            parentIndex = 1;
-          } else {
-            throw 'Invalid parent for assign-shift: ' + dump(parent);
-          }
-          var i = parent[parentIndex].indexOf(stack[stack.length-2]);
-          parent[parentIndex].splice(i+1, 0, ['stat', ['assign', true, ['name', name + '$s' + data.primaryShift], ['binary', '>>', ['name', name, true], ['num', data.primaryShift]]]]);
+          var statements = getStatements(parent);
+          assert(statements, 'Invalid parent for assign-shift: ' + dump(parent));
+          var i = statements.indexOf(stack[stack.length-2]);
+          statements.splice(i+1, 0, ['stat', ['assign', true, ['name', name + '$s' + data.primaryShift], ['binary', '>>', ['name', name, true], ['num', data.primaryShift]]]]);
         } else if (node[0] == 'var') {
           var args = node[1];
           for (var i = 0; i < args.length; i++) {
