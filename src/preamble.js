@@ -583,7 +583,7 @@ var FUNCTION_TABLE; // XXX: In theory the indexes here can be equal to pointers 
 
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
-  return Math.ceil(x/PAGE_SIZE)*PAGE_SIZE;
+  return ((x+4095)>>12)<<12;
 }
 
 var HEAP;
