@@ -771,7 +771,9 @@ try:
     if DEBUG: save_intermediate('eliminator')
 
     # js optimizer pre-pass
-    js_optimizer_queue += ['simplifyExpressionsPre', 'optimizeShiftsAggressive']
+    js_optimizer_queue += ['simplifyExpressionsPre']
+    if shared.Settings.RELOOP:
+      js_optimizer_queue += ['optimizeShiftsAggressive'] # aggressive shifts optimization requires loops, it breaks on switches
     flush_js_optimizer_queue()
     final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
     if DEBUG: save_intermediate('eliminator')
