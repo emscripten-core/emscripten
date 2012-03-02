@@ -574,7 +574,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (block.type == 'emulated') {
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
-              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + block.entries[0] + ' */' : '') + '\n';
+              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
               var setjmpTable = {};
@@ -591,7 +591,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             }
             ret += 'switch(__label__) {\n';
             ret += block.labels.map(function(label) {
-              return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n'
+              return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n');
             ret += '\n' + indent + '  default: assert(0, "bad label: " + __label__);\n' + indent + '}';
@@ -770,11 +770,14 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   makeFuncLineActor('deleted', function(item) { return ';' });
 
-  function getLabelId(label) {
+  function getOriginalLabelId(label) {
     var funcData = Framework.currItem.funcData;
-    var labelIds = funcData.labelIds;
-    if (labelIds[label] !== undefined) return labelIds[label];
-    return labelIds[label] = funcData.labelIdCounter++;
+    var labelIdsInverse = funcData.labelIdsInverse;
+    return labelIdsInverse[label];
+  }
+
+  function getLabelId(label) {
+    return label;
   }
 
   function makeBranch(label, lastLabel, labelIsVariable) {
@@ -788,7 +791,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var trueLabel = parts[1] || '';
       var oldLabel = parts[2] || '';
       var labelSetting = oldLabel ? '__label__ = ' + getLabelId(oldLabel) + ';' +
-                         (SHOW_LABELS ? ' /* to: ' + cleanLabel(oldLabel) + ' */' : '') : ''; // TODO: optimize away the setting
+                         (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(oldLabel)) + ' */' : '') : ''; // TODO: optimize away the setting
       if (label[1] == 'R') {
         if (label[2] == 'N') { // BRNOL: break, no label setting
           labelSetting = '';
@@ -808,7 +811,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     } else {
       if (!labelIsVariable) label = getLabelId(label);
-      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(label) + ' */' : '') + ' break;';
+      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + ' break;';
     }
   }
 

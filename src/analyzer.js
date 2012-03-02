@@ -1151,18 +1151,61 @@ function analyzer(data, sidePass) {
     }
   });
 
+  function operateOnLabels(line, func) {
+    function process(item, id) {
+      ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
+        if (item[id]) {
+          func(item, id);
+        }
+      });
+    }
+    if (line.intertype in BRANCH_INVOKE) {
+      process(line);
+    } else if (line.intertype == 'switch') {
+      process(line);
+      line.switchLabels.forEach(process);
+    }
+  }
+
   // Label analyzer
   substrate.addActor('LabelAnalyzer', {
     processItem: function(item) {
       item.functions.forEach(function(func) {
         func.labelsDict = {};
         func.labelIds = {};
-        func.labelIdCounter = 0;
+        func.labelIdsInverse = {};
+        func.labelIds[toNiceIdent('%0')] = 0;
+        func.labelIdsInverse[0] = toNiceIdent('%0');
+        func.labelIdCounter = 1;
+        func.labels.forEach(function(label) {
+          func.labelIds[label.ident] = func.labelIdCounter++;
+          func.labelIdsInverse[func.labelIdCounter-1] = label.ident;
+        });
+
+        // Minify label ids to numeric ids.
+        func.labels.forEach(function(label) {
+          label.ident = func.labelIds[label.ident];
+          label.lines.forEach(function(line) {
+            operateOnLabels(line, function(item, id) {
+              item[id] = func.labelIds[item[id]].toString(); // strings, because we will append as we process
+            });
+          });
+        });
+
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
-          func.labelIds[label.ident] = func.labelIdCounter++;
         });
-        func.labelIds[toNiceIdent('%0')] = -1; // entry is always -1
+
+        // Correct phis
+        func.labels.forEach(function(label) {
+          label.lines.forEach(function(phi) {
+            if (phi.intertype == 'phi') {
+              for (var i = 0; i < phi.params.length; i++) {
+                phi.params[i].label = func.labelIds[phi.params[i].label];
+              }
+            }
+          });
+        });
 
         func.lines.forEach(function(line) {
           if (line.intertype == 'indirectbr') {
@@ -1191,7 +1234,7 @@ function analyzer(data, sidePass) {
             if (line.intertype == 'call' && line.ident == setjmp) {
               // Add a new label
               var oldIdent = label.ident;
-              var newIdent = oldIdent + '$$' + i;
+              var newIdent = func.labelIdCounter++;
               if (!func.setjmpTable) func.setjmpTable = [];
               func.setjmpTable.push([oldIdent, newIdent, line.assignTo]);
               func.labels.splice(i+1, 0, {
@@ -1384,22 +1427,6 @@ function analyzer(data, sidePass) {
       this.forwardItem(data, 'Relooper');
     }
   });
-
-  function operateOnLabels(line, func) {
-    function process(item, id) {
-      ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
-        if (item[id]) {
-          func(item, id);
-        }
-      });
-    }
-    if (line.intertype in BRANCH_INVOKE) {
-      process(line);
-    } else if (line.intertype == 'switch') {
-      process(line);
-      line.switchLabels.forEach(process);
-    }
-  }
 
   //! @param toLabelId If false, just a dry run - useful to search for labels
   function replaceLabels(line, labelIds, toLabelId) {
