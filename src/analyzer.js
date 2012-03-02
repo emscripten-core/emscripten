@@ -1542,7 +1542,7 @@ function analyzer(data, sidePass) {
       var idCounter = 0;
       function makeBlockId(entries) {
         idCounter++;
-        return entries.join('$') + '$' + idCounter;
+        return '$_$' + idCounter;
       }
 
       // There are X main kinds of blocks:
