@@ -1518,7 +1518,7 @@ function analyzer(data, sidePass) {
           label.allOutLabels = [];
         });
 
-        // First, find allInLabels
+        // First, find allInLabels. TODO: use typed arrays here to optimize this for memory and speed
         var more = true, nextModified, modified = set(getLabelIds(labels));
         while (more) {
           more = false;
