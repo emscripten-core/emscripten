@@ -9,6 +9,6 @@ outputFilename = sys.argv[2];
 inputFiledata = open(inputFilename).read()
 outputFile = open(outputFilename, "w")
 
-outputFile.write(re.sub('type\[type.length - 1\] == "\*"', 'type.charAt(type.length - 1) == "*"', inputFiledata))
+outputFile.write(re.sub('type\[type.length - 1\] ===? "\*"', 'type.charAt(type.length - 1) == "*"', inputFiledata))
 
 outputFile.close()
