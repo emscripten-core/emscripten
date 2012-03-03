@@ -216,7 +216,7 @@ be generated:
   <name>.js                JavaScript (default)
   <name>.html              HTML with embedded JavaScript
   <name>.bc                LLVM bitcode
-  <name>.o                 LLVM bitcode
+  <name>.o                 LLVM bitcode (same as .bc)
 
 The -c option (which tells gcc not to run the linker) will
 cause LLVM bitcode to be generated, as %s only generates
