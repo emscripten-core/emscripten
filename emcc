@@ -99,8 +99,11 @@ LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll 
 AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
                                              # Note that this will disable inclusion of libraries. This is useful because including
                                              # dlmalloc makes it hard to compare native and js builds
+EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we treat as if they were passed to us on the commandline
 
-if DEBUG: print >> sys.stderr, 'emcc: ', ' '.join(sys.argv)
+if DEBUG: print >> sys.stderr, '\nemcc invocation: ', ' '.join(sys.argv), (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '')
+if EMCC_CFLAGS: sys.argv.append(EMCC_CFLAGS)
+
 if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
 
 stdout = PIPE if not DEBUG else None # suppress output of child processes
@@ -149,7 +152,8 @@ Options that are modified or new in %s include:
                            -O2 and then adding dangerous optimizations one
                            by one.
   -s OPTION=VALUE          JavaScript code generation option passed
-                           into the emscripten compiler
+                           into the emscripten compiler. For the
+                           available options, see src/settings.js
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
@@ -173,6 +177,10 @@ Options that are modified or new in %s include:
                            list of arguments, for example, <cmd> of
                            "python processor.py" will cause a python
                            script to be run.
+  --pre-js <file>          A file whose contents are added before the
+                           generated code
+  --post-js <file>         A file whose contents are added after the
+                           generated code
   --compress <on>          0: Do not compress the generated JavaScript's
                               whitespace (default if closure compiler
                               will not be run)
@@ -181,6 +189,19 @@ Options that are modified or new in %s include:
                               will be run). Note that this by itself
                               will not minify the code (closure does
                               that)
+  --embed-file <filename>  A file to embed inside the generated
+                           JavaScript. The compiled code will be able
+                           to access the file in the current directory
+                           with the same basename as given here (that is,
+                           just the filename, without a path to it).
+  --ignore-dynamic-linking Normally emcc will treat dynamic linking like
+                           static linking, by linking in the code from
+                           the dynamic library. This fails if the same
+                           dynamic library is linked more than once.
+                           With this option, dynamic linking is ignored,
+                           which allows the build system to proceed without
+                           errors. However, you will need to manually
+                           link to the shared libraries later on yourself.
   --shell-file <path>      The path name to a skeleton HTML file used
                            when generating HTML output. The shell file
                            used needs to have this token inside it:
@@ -204,6 +225,9 @@ JavaScript in the final linking stage of building.
 The input file(s) can be either source code files that
 Clang can handle (C or C++), LLVM bitcode in binary form,
 or LLVM assembly files in human-readable form.
+
+emcc is affected by several environment variables. For details, view
+the source of emcc (search for 'os.environ').
 
 ''' % (this, this, this)
   exit(0)
@@ -240,8 +264,10 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 
 SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
 BITCODE_SUFFIXES = ('.bc', '.o')
-SHAREDLIB_SUFFIXES = ('.dylib', '.so', '.dll')
+DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
+STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
+LIB_PREFIXES = ('', 'lib')
 
 def suffix(name):
   return name.split('.')[:-1]
@@ -308,7 +334,11 @@ try:
   llvm_opts = None
   closure = None
   js_transform = None
+  pre_js = None
+  post_js = None
   compress_whitespace = None
+  embed_files = []
+  ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
 
   def check_bad_eq(arg):
@@ -337,9 +367,24 @@ try:
       js_transform = newargs[i+1]
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i].startswith('--pre-js'):
+      check_bad_eq(newargs[i])
+      pre_js = open(newargs[i+1]).read()
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--post-js'):
+      check_bad_eq(newargs[i])
+      post_js = open(newargs[i+1]).read()
+      newargs[i] = ''
+      newargs[i+1] = ''
     elif newargs[i].startswith('--compress'):
       check_bad_eq(newargs[i])
       compress_whitespace = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--embed-file'):
+      check_bad_eq(newargs[i])
+      embed_files.append(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
@@ -348,6 +393,9 @@ try:
       f.close()
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '--ignore-dynamic-linking':
+      ignore_dynamic_linking = True
+      newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
       shell_path = newargs[i+1]
@@ -376,12 +424,16 @@ try:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
+  # Find input files
+
   input_files = []
   has_source_inputs = False
+  lib_dirs = []
+  libs = []
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
-    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + SHAREDLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
       if os.path.exists(arg):
         if arg.endswith(SOURCE_SUFFIXES):
@@ -395,7 +447,33 @@ try:
             print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
       else:
         print >> sys.stderr, 'emcc: %s: warning: No such file or directory' % arg
+    elif arg.startswith('-L'):
+      lib_dirs.append(arg[2:])
+      newargs[i] = ''
+    elif arg.startswith('-l'):
+      libs.append(arg[2:])
+      newargs[i] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
+
+  # Find library files
+  for lib in libs:
+    if DEBUG: print >> sys.stderr, 'emcc: looking for library "%s"' % lib
+    found = False
+    for prefix in LIB_PREFIXES:
+      for suff in STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES:
+        name = prefix + lib + suff
+        for lib_dir in lib_dirs:
+          path = os.path.join(lib_dir, name)
+          if os.path.exists(path):
+            if DEBUG: print >> sys.stderr, 'emcc: found library "%s" at %s' % (lib, path)
+            input_files.append(path)
+            found = True
+            break
+        if found: break
+      if found: break
+
+  if ignore_dynamic_linking:
+    input_files = filter(lambda input_file: not input_file.endswith(DYNAMICLIB_SUFFIXES), input_files)
 
   assert len(input_files) > 0, 'emcc: no input files'
 
@@ -449,7 +527,7 @@ try:
         temp_file = in_temp(unsuffixed_basename(input_file) + '.o')
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      elif input_file.endswith(SHAREDLIB_SUFFIXES) or shared.Building.is_ar(input_file):
+      elif input_file.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
         if DEBUG: print >> sys.stderr, 'emcc: copying library file: ', input_file
         temp_file = in_temp(os.path.basename(input_file))
         shutil.copyfile(input_file, temp_file)
@@ -533,10 +611,24 @@ try:
     libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
 
+    # libcxxabi - just for dynamic_cast for now
+    def create_libcxxabi():
+      if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
+      shared.Building.build_library('libcxxabi', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxxabi.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxxabi'))
+      return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxxabi', 'libcxxabi.bc')
+    def fix_libcxxabi():
+      assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
+      print >> sys.stderr, 'emcc: warning: using libcxxabi, this may need CORRECT_* options'
+      #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
+    libcxxabi_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols')).readlines())
+    libcxxabi_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxxabi_symbols)
+    libcxxabi_symbols = set(libcxxabi_symbols)
+
     force = False # If we have libcxx, we must force inclusion of dlmalloc, since libcxx uses new internally. Note: this is kind of hacky
 
-    for name, create, fix, library_symbols in [('libcxx',   create_libcxx,   fix_libcxx,   libcxx_symbols),
-                                               ('dlmalloc', create_dlmalloc, fix_dlmalloc, dlmalloc_symbols)]:
+    for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
+                                               ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
+                                               ('dlmalloc',  create_dlmalloc,  fix_dlmalloc,  dlmalloc_symbols)]:
       need = []
       has = []
       for temp_file in temp_files:
@@ -557,7 +649,7 @@ try:
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
-     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in SHAREDLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
+     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
     shared.Building.link(linker_inputs,
@@ -619,6 +711,25 @@ try:
   final = shared.Building.emscripten(final, append_ext=False)
   if DEBUG: save_intermediate('original')
 
+  # Embed files
+  if len(embed_files) > 0:
+    if DEBUG: print >> sys.stderr, 'emcc: embedding files'
+    src = open(final).read().replace(
+      '// {{PRE_RUN_ADDITIONS}}',
+      '\n'.join(map(lambda embed_file: "FS.createDataFile('/', '%s', %s, true, false);" % (os.path.basename(embed_file), str(map(ord, open(embed_file, 'rb').read()))), embed_files))
+    )
+    final += '.ef.js'
+    open(final, 'w').write(src)
+    if DEBUG: save_intermediate('embedded_files')
+
+  # Apply pre and postjs files
+  if pre_js or post_js:
+    if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
+    src = open(final).read()
+    final += '.pp.js'
+    open(final, 'w').write((pre_js or '') + src + (post_js or ''))
+    if DEBUG: save_intermediate('pre-post')
+
   # Apply a source code transformation, if requested
   if js_transform:
     shutil.copyfile(final, final + '.tr.js')
@@ -660,7 +771,9 @@ try:
     if DEBUG: save_intermediate('eliminator')
 
     # js optimizer pre-pass
-    js_optimizer_queue += ['simplifyExpressionsPre', 'optimizeShiftsAggressive']
+    js_optimizer_queue += ['simplifyExpressionsPre']
+    if shared.Settings.RELOOP:
+      js_optimizer_queue += ['optimizeShiftsAggressive'] # aggressive shifts optimization requires loops, it breaks on switches
     flush_js_optimizer_queue()
     final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
     if DEBUG: save_intermediate('eliminator')

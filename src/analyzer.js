@@ -120,10 +120,6 @@ function analyzer(data, sidePass) {
     processItem: function(data) {
       // Legalization
       if (USE_TYPED_ARRAYS == 2) {
-        function isIllegalType(type) {
-          var bits = getBits(type);
-          return bits > 0 && (bits >= 64 || !isPowerOfTwo(bits));
-        }
         function getLegalVars(base, bits) {
           assert(!isNumber(base));
           var ret = new Array(Math.ceil(bits/32));
@@ -140,7 +136,7 @@ function analyzer(data, sidePass) {
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           while (bits > 0) {
-            ret[i] = { ident: parsed[i].toString(), bits: Math.min(32, bits) };
+            ret[i] = { ident: (parsed[i]|0).toString(), bits: Math.min(32, bits) }; // resign all values
             bits -= 32;
             i++;
           }
@@ -182,6 +178,13 @@ function analyzer(data, sidePass) {
             i++;
           }
         }
+        function fixUnfolded(item) {
+          // Unfolded items may need some correction to work properly in the global scope
+          if (item.intertype in MATHOPS) {
+            item.op = item.intertype;
+            item.intertype = 'mathop';
+          }
+        }
         data.functions.forEach(function(func) {
           // Legalize function params
           legalizeFunctionParameters(func.params);
@@ -218,10 +221,29 @@ function analyzer(data, sidePass) {
                 // accessible through ident$x, and not constants we need to parse then and there)
                 if (subItem != item && (!(subItem.intertype in UNUNFOLDABLE) ||
                                        (subItem.intertype == 'value' && isNumber(subItem.ident) && isIllegalType(subItem.type)))) {
-                  var tempIdent = '$$emscripten$temp$' + (tempId++);
-                  subItem.assignTo = tempIdent;
-                  unfolded.unshift(subItem);
-                  return { intertype: 'value', ident: tempIdent, type: subItem.type };
+                  if (item.intertype == 'phi') {
+                    assert(subItem.intertype == 'value', 'We can only unfold illegal constants in phis');
+                    // we must handle this in the phi itself, if we unfold normally it will not be pushed back with the phi
+                  } else {
+                    var tempIdent = '$$emscripten$temp$' + (tempId++);
+                    subItem.assignTo = tempIdent;
+                    unfolded.unshift(subItem);
+                    fixUnfolded(subItem);
+                    return { intertype: 'value', ident: tempIdent, type: subItem.type };
+                  }
+                } else if (subItem.intertype == 'switch' && isIllegalType(subItem.type)) {
+                  subItem.switchLabels.forEach(function(switchLabel) {
+                    if (switchLabel.value[0] != '$') {
+                      var tempIdent = '$$emscripten$temp$' + (tempId++);
+                      unfolded.unshift({
+                        assignTo: tempIdent,
+                        intertype: 'value',
+                        ident: switchLabel.value,
+                        type: subItem.type
+                      });
+                      switchLabel.value = tempIdent;
+                    }
+                  });
                 }
               });
               if (unfolded.length > 0) {
@@ -268,7 +290,7 @@ function analyzer(data, sidePass) {
                   continue;
                 }
                 // call, return: Return value is in an unlegalized array literal. Not fully optimal.
-                case 'call': case 'invoke': {
+                case 'call': {
                   bits = getBits(value.type);
                   var elements = getLegalVars(item.assignTo, bits);
                   var toAdd = [value];
@@ -293,6 +315,12 @@ function analyzer(data, sidePass) {
                   bits = getBits(item.type);
                   var elements = getLegalVars(item.value.ident, bits);
                   item.value.ident = '[' + elements.map(function(element) { return element.ident }).join(',') + ']';
+                  i++;
+                  continue;
+                }
+                case 'invoke': {
+                  legalizeFunctionParameters(value.params);
+                  // We can't add lines after this, since invoke already modifies control flow. So we handle the return in invoke
                   i++;
                   continue;
                 }
@@ -353,6 +381,12 @@ function analyzer(data, sidePass) {
                   var toAdd = [];
                   var elements = getLegalVars(item.assignTo, bits);
                   var j = 0;
+                  var literalValues = {}; // special handling of literals - we cannot unfold them normally
+                  value.params.map(function(param) {
+                    if (isNumber(param.value.ident)) {
+                      literalValues[param.value.ident] = getLegalLiterals(param.value.ident, bits);
+                    }
+                  });
                   elements.forEach(function(element) {
                     toAdd.push({
                       intertype: 'phi',
@@ -364,7 +398,7 @@ function analyzer(data, sidePass) {
                           label: param.label,
                           value: {
                            intertype: 'value',
-                           ident: param.value.ident + '$' + j,
+                           ident: (param.value.ident in literalValues) ? literalValues[param.value.ident][j].ident : (param.value.ident + '$' + j),
                            type: 'i' + element.bits,
                           }
                         };
@@ -374,6 +408,10 @@ function analyzer(data, sidePass) {
                   });
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
+                }
+                case 'switch': {
+                  i++;
+                  continue; // special case, handled in makeComparison
                 }
                 case 'bitcast': {
                   var inType = item.type2;
@@ -385,16 +423,18 @@ function analyzer(data, sidePass) {
                   }
                   // fall through
                 }
-                case 'inttoptr': case 'ptrtoint': {
+                case 'inttoptr': case 'ptrtoint': case 'zext': case 'sext': case 'trunc': case 'ashr': case 'lshr': case 'shl': case 'or': case 'and': case 'xor': {
                   value = {
                     op: item.intertype,
-                    param1: item.params[0]
+                    variant: item.variant,
+                    type: item.type,
+                    params: item.params
                   };
                   // fall through
                 }
                 case 'mathop': {
                   var toAdd = [];
-                  var sourceBits = getBits(value.param1.type);
+                  var sourceBits = getBits(value.params[0].type);
                   // All mathops can be parametrized by how many shifts we do, and how big the source is
                   var shifts = 0;
                   var targetBits = sourceBits;
@@ -406,11 +446,11 @@ function analyzer(data, sidePass) {
                       // fall through
                     }
                     case 'lshr': {
-                      shifts = parseInt(value.param2.ident);
+                      shifts = parseInt(value.params[1].ident);
                       break;
                     }
                     case 'shl': {
-                      shifts = -parseInt(value.param2.ident);
+                      shifts = -parseInt(value.params[1].ident);
                       break;
                     }
                     case 'sext': {
@@ -418,7 +458,7 @@ function analyzer(data, sidePass) {
                       // fall through
                     }
                     case 'trunc': case 'zext': case 'ptrtoint': {
-                      targetBits = getBits(value.param2.ident);
+                      targetBits = getBits(value.params[1] ? value.params[1].ident : value.type);
                       break;
                     }
                     case 'inttoptr': {
@@ -429,31 +469,35 @@ function analyzer(data, sidePass) {
                       break;
                     }
                     case 'select': {
-                      sourceBits = targetBits = getBits(value.param2.type);
-                      var otherElementsA = getLegalVars(value.param2.ident, sourceBits);
-                      var otherElementsB = getLegalVars(value.param3.ident, sourceBits);
+                      sourceBits = targetBits = getBits(value.params[1].type);
+                      var otherElementsA = getLegalVars(value.params[1].ident, sourceBits);
+                      var otherElementsB = getLegalVars(value.params[2].ident, sourceBits);
                       processor = function(result, j) {
                         return {
                           intertype: 'mathop',
                           op: 'select',
                           type: 'i' + otherElementsA[j].bits,
-                          param1: value.param1,
-                          param2: { intertype: 'value', ident: otherElementsA[j].ident, type: 'i' + otherElementsA[j].bits },
-                          param3: { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
+                          params: [
+                            value.params[0],
+                            { intertype: 'value', ident: otherElementsA[j].ident, type: 'i' + otherElementsA[j].bits },
+                            { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
+                          ]
                         };
                       };
                       break;
                     }
                     case 'or': case 'and': case 'xor': {
-                      var otherElements = getLegalVars(value.param2.ident, sourceBits);
+                      var otherElements = getLegalVars(value.params[1].ident, sourceBits);
                       processor = function(result, j) {
                         return {
                           intertype: 'mathop',
                           op: value.op,
                           type: 'i' + otherElements[j].bits,
-                          param1: result,
-                          param2: { intertype: 'value', ident: otherElements[j].ident, type: 'i' + otherElements[j].bits }
-                        };                            
+                          params: [
+                            result,
+                            { intertype: 'value', ident: otherElements[j].ident, type: 'i' + otherElements[j].bits }
+                          ]
+                        };
                       };
                       break;
                     }
@@ -469,16 +513,16 @@ function analyzer(data, sidePass) {
                   var sourceElements;
                   if (sourceBits <= 32) {
                     // The input is a legal type
-                    sourceElements = [{ ident: value.param1.ident, bits: sourceBits }];
+                    sourceElements = [{ ident: value.params[0].ident, bits: sourceBits }];
                   } else {
-                    sourceElements = getLegalVars(value.param1.ident, sourceBits);
+                    sourceElements = getLegalVars(value.params[0].ident, sourceBits);
                   }
                   if (!isNumber(shifts)) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
                     value.intertype = 'value';
                     value.ident = 'Runtime.bitshift64(' + sourceElements[0].ident + ', ' +
-                                                          sourceElements[1].ident + ',"' + value.op + '",' + value.param2.ident + '$0);' +
+                                                          sourceElements[1].ident + ',"' + value.op + '",' + value.params[1].ident + '$0);' +
                                   'var ' + value.assignTo + '$0 = ' + value.assignTo + '[0], ' + value.assignTo + '$1 = ' + value.assignTo + '[1];';
                     i++;
                     continue;
@@ -497,37 +541,43 @@ function analyzer(data, sidePass) {
                     var result = {
                       intertype: 'value',
                       ident: (j + whole >= 0 && j + whole < sourceElements.length) ? sourceElements[j + whole].ident : (signed ? signedFill : '0'),
-                      param1: (signed && j + whole > sourceElements.length) ? signedKeepAlive : null,
+                      params: [(signed && j + whole > sourceElements.length) ? signedKeepAlive : null],
                       type: 'i32',
                     };
                     if (fraction != 0) {
                       var other = {
                         intertype: 'value',
                         ident: (j + sign + whole >= 0 && j + sign + whole < sourceElements.length) ? sourceElements[j + sign + whole].ident : (signed ? signedFill : '0'),
-                        param1: (signed && j + sign + whole > sourceElements.length) ? signedKeepAlive : null,
+                        params: [(signed && j + sign + whole > sourceElements.length) ? signedKeepAlive : null],
                         type: 'i32',
                       };
                       other = {
                         intertype: 'mathop',
                         op: shiftOp,
                         type: 'i32',
-                        param1: other,
-                        param2: { intertype: 'value', ident: (32 - fraction).toString(), type: 'i32' }
+                        params: [
+                          other,
+                          { intertype: 'value', ident: (32 - fraction).toString(), type: 'i32' }
+                        ]
                       };
                       result = {
                         intertype: 'mathop',
                         // shifting in 1s from the top is a special case
                         op: (signed && shifts >= 0 && j + sign + whole >= sourceElements.length) ? 'ashr' : shiftOpReverse,
                         type: 'i32',
-                        param1: result,
-                        param2: { intertype: 'value', ident: fraction.toString(), type: 'i32' }
+                        params: [
+                          result,
+                          { intertype: 'value', ident: fraction.toString(), type: 'i32' }
+                        ]
                       };
                       result = {
                         intertype: 'mathop',
                         op: 'or',
                         type: 'i32',
-                        param1: result,
-                        param2: other
+                        params: [
+                          result,
+                          other
+                        ]
                       }
                     }
                     if (targetElements[j].bits < 32 && shifts < 0) {
@@ -536,8 +586,10 @@ function analyzer(data, sidePass) {
                         intertype: 'mathop',
                         op: 'and',
                         type: 'i32',
-                        param1: result,
-                        param2: { intertype: 'value', ident: (Math.pow(2, targetElements[j].bits)-1).toString(), type: 'i32' }
+                        params: [
+                          result,
+                          { intertype: 'value', ident: (Math.pow(2, targetElements[j].bits)-1).toString(), type: 'i32' }
+                        ]
                       }
                     }
                     if (processor) {
@@ -548,8 +600,11 @@ function analyzer(data, sidePass) {
                   }
                   if (targetBits <= 32) {
                     // We are generating a normal legal type here
-                    legalValue = { intertype: 'value', ident: targetElements[0].ident, type: 'rawJS' };
-                    // truncation to smaller than 32 bits has already been done, if necessary
+                    legalValue = {
+                      intertype: 'value',
+                      ident: targetElements[0].ident + (targetBits < 32 ? '&' + (Math.pow(2, targetBits)-1) : ''),
+                      type: 'rawJS'
+                    };
                     legalValue.assignTo = item.assignTo;
                     toAdd.push(legalValue);
                   }
@@ -855,7 +910,7 @@ function analyzer(data, sidePass) {
             variable.impl = VAR_EMULATED;
           } else if (variable.origin == 'funcparam') {
             variable.impl = VAR_EMULATED;
-          } else if (variable.type == 'i64*' && I64_MODE == 1) {
+          } else if (variable.type == 'i64*' && USE_TYPED_ARRAYS == 2) {
             variable.impl = VAR_EMULATED;
           } else if (MICRO_OPTS && variable.pointingLevels === 0) {
             // A simple int value, can be implemented as a native variable
@@ -1096,18 +1151,61 @@ function analyzer(data, sidePass) {
     }
   });
 
+  function operateOnLabels(line, func) {
+    function process(item, id) {
+      ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
+        if (item[id]) {
+          func(item, id);
+        }
+      });
+    }
+    if (line.intertype in BRANCH_INVOKE) {
+      process(line);
+    } else if (line.intertype == 'switch') {
+      process(line);
+      line.switchLabels.forEach(process);
+    }
+  }
+
   // Label analyzer
   substrate.addActor('LabelAnalyzer', {
     processItem: function(item) {
       item.functions.forEach(function(func) {
         func.labelsDict = {};
         func.labelIds = {};
-        func.labelIdCounter = 0;
+        func.labelIdsInverse = {};
+        func.labelIds[toNiceIdent('%0')] = 0;
+        func.labelIdsInverse[0] = toNiceIdent('%0');
+        func.labelIdCounter = 1;
+        func.labels.forEach(function(label) {
+          func.labelIds[label.ident] = func.labelIdCounter++;
+          func.labelIdsInverse[func.labelIdCounter-1] = label.ident;
+        });
+
+        // Minify label ids to numeric ids.
+        func.labels.forEach(function(label) {
+          label.ident = func.labelIds[label.ident];
+          label.lines.forEach(function(line) {
+            operateOnLabels(line, function(item, id) {
+              item[id] = func.labelIds[item[id]].toString(); // strings, because we will append as we process
+            });
+          });
+        });
+
         func.labels.forEach(function(label) {
           func.labelsDict[label.ident] = label;
-          func.labelIds[label.ident] = func.labelIdCounter++;
         });
-        func.labelIds[toNiceIdent('%0')] = -1; // entry is always -1
+
+        // Correct phis
+        func.labels.forEach(function(label) {
+          label.lines.forEach(function(phi) {
+            if (phi.intertype == 'phi') {
+              for (var i = 0; i < phi.params.length; i++) {
+                phi.params[i].label = func.labelIds[phi.params[i].label];
+              }
+            }
+          });
+        });
 
         func.lines.forEach(function(line) {
           if (line.intertype == 'indirectbr') {
@@ -1136,7 +1234,7 @@ function analyzer(data, sidePass) {
             if (line.intertype == 'call' && line.ident == setjmp) {
               // Add a new label
               var oldIdent = label.ident;
-              var newIdent = oldIdent + '$$' + i;
+              var newIdent = func.labelIdCounter++;
               if (!func.setjmpTable) func.setjmpTable = [];
               func.setjmpTable.push([oldIdent, newIdent, line.assignTo]);
               func.labels.splice(i+1, 0, {
@@ -1330,22 +1428,6 @@ function analyzer(data, sidePass) {
     }
   });
 
-  function operateOnLabels(line, func) {
-    function process(item, id) {
-      ['label', 'labelTrue', 'labelFalse', 'toLabel', 'unwindLabel', 'defaultLabel'].forEach(function(id) {
-        if (item[id]) {
-          func(item, id);
-        }
-      });
-    }
-    if (line.intertype in BRANCH_INVOKE) {
-      process(line);
-    } else if (line.intertype == 'switch') {
-      process(line);
-      line.switchLabels.forEach(process);
-    }
-  }
-
   //! @param toLabelId If false, just a dry run - useful to search for labels
   function replaceLabels(line, labelIds, toLabelId) {
     var ret = [];
@@ -1436,7 +1518,7 @@ function analyzer(data, sidePass) {
           label.allOutLabels = [];
         });
 
-        // First, find allInLabels
+        // First, find allInLabels. TODO: use typed arrays here to optimize this for memory and speed
         var more = true, nextModified, modified = set(getLabelIds(labels));
         while (more) {
           more = false;
@@ -1487,7 +1569,7 @@ function analyzer(data, sidePass) {
       var idCounter = 0;
       function makeBlockId(entries) {
         idCounter++;
-        return entries.join('$') + '$' + idCounter;
+        return '$_$' + idCounter;
       }
 
       // There are X main kinds of blocks:

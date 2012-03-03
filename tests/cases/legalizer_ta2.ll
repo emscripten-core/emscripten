@@ -4,6 +4,13 @@ target triple = "i386-pc-linux-gnu"
 
 @globaliz = global [300 x i8] zeroinitializer
 
+define i64 @retter(i64 %x) {
+  store i104 0, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4 ; wipe it out
+  store i64 %x, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+  ret i64 7017280452245743464
+}
+
 define i32 @main() {
 entry:
   %buffer = alloca i8, i32 1000, align 4
@@ -116,8 +123,69 @@ a26:
   store i88 %a27, i88* bitcast ([300 x i8]* @globaliz to i88*), align 4
   call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
 
+; phi with constants
+  br i1 %if, label %a17b, label %a26b
+
+a17b:
+  br label %a26b
+
+a26b:
+  %a27b = phi i64 [ 55, %a26 ], [ 57, %a17b ]
+  store i104 0, i104* %bundled, align 4 ; wipe it out
+  store i64 %a27b, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+
+  store i104 %ored, i104* %bundled, align 4
+  %iff = zext i1 %if to i64
+  switch i64 %iff, label %a50 [
+    i64 1, label %a30
+    i64 0, label %a40
+  ]
+
+a50:
+  store i104 %xored, i104* %bundled, align 4
+  br label %a40
+
+a30:
+  store i104 %anded, i104* %bundled, align 4
+  br label %a40
+
+a40:
+  call i32 (i8*)* @puts(i8* %buffer)
+
+; invoke return value
+
+  %inv64 = invoke i64 @retter(i64 8174723217654970232)
+            to label %a100 unwind label %a111
+
+a100:
+  store i104 0, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4 ; wipe it out
+  store i64 %inv64, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+
+; select
+
+  %chosen = select i1 %if, i104 %loaded, i104 -1
+  store i104 %chosen, i104* %bundled, align 4
+  call i32 (i8*)* @puts(i8* %buffer)
+
+  store i104 0, i104* bitcast ([300 x i8]* @globaliz to i104*), align 4 ; wipe it out
+  %s64a = trunc i104 %loaded to i64
+  %s64b = trunc i104 %ander to i64
+  %s64 = select i1 %if, i64 %s64a, i64 -1
+  store i64 %s64, i64* bitcast ([300 x i8]* @globaliz to i64*), align 4
+  call i32 (i8*)* @puts(i8* bitcast ([300 x i8]* @globaliz to i8*))
+  br label %done
+
+a111:
+  %aaaa79 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+          cleanup
+  br label %done
+
+done:
   ret i32 1
 }
 
 declare i32 @puts(i8*)
+declare i32 @__gxx_personality_v0(...)
 

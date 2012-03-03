@@ -1,9 +1,12 @@
 *CREATING A FOO
 *CREATING A BAR
 *CREATING A QUUX
+*CREATING A QUUX
+*CREATING A CHILD
 start
 
 
+test 0
   throwing ExFooInstance
 *COPYING A FOO
 *COPYING A FOO
@@ -12,6 +15,7 @@ outer catch foo: 11
 *DESTROYING A FOO (11)
 
 
+test 1
   throwing ExBarInstance
 *COPYING A BAR
 *COPYING A BAR
@@ -21,6 +25,7 @@ outer catch bar-ref: 22
 *DESTROYING A BAR (22)
 
 
+test 2
   throwing ExQuuxInstance
 *COPYING A QUUX
 *COPYING A QUUX
@@ -29,22 +34,44 @@ inner catch quux: 33
 *DESTROYING A QUUX (33)
 
 
+test 3
+  throwing ExQuux ptr
+outer catch quux-ptr: 33
 
 
+test 4
+  throwing ExChildInstance
+*CREATING A QUUX
+*COPYING CHILD
+*COPYING A QUUX
+inner catch quux: 44
+*DESTROYING A QUUX (44)
+*DESTROYING A CHILD (44)
+*DESTROYING A QUUX (44)
 
 
+test 5
+  throwing ExChildInstance ptr
+outer catch quux-ptr: 44
+
+
+test 6
   throwing 42
 outer catch int: 42
 
 
+test 7
   throwing NULL
 outer catch-all
 
 
+test 8
   not throwing
 
 
 end
+*DESTROYING A CHILD (44)
+*DESTROYING A QUUX (44)
 *DESTROYING A QUUX (33)
 *DESTROYING A BAR (22)
 *DESTROYING A FOO (11)

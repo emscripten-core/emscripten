@@ -70,17 +70,6 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
     }
   }
 }
-#if USE_TYPED_ARRAYS == 2
-var warned64 = false;
-function warn64() {
-  if (!warned64) {
-    __ATEXIT__.push({ func: function() {
-      print('Warning: using a 64-bit type with USE_TYPED_ARRAYS == 2. Depending on I64_MODE this may be problematic.');
-    } });
-    warned64 = true;
-  }
-}
-#endif
 
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if SAFE_HEAP_LOG
@@ -106,7 +95,7 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if DOUBLE_MODE == 1
     case 'double': assert(dest % 4 == 0); break;
 #else
-    case 'double': assert(dest % 4 == 0); warn64(); break;
+    case 'double': assert(dest % 4 == 0); break;
 #endif
   }
 #endif
@@ -131,7 +120,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 #if DOUBLE_MODE == 1
     case 'double': assert(dest % 4 == 0); break;
 #else
-    case 'double': assert(dest % 4 == 0); warn64(); break;
+    case 'double': assert(dest % 4 == 0); break;
 #endif
   }
 #endif
@@ -341,7 +330,7 @@ var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
 // for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
 var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
 #endif
 
@@ -377,11 +366,11 @@ var globalScope = this;
 //         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
 //
 // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
-// @param returnType The return type of the function, one of the JS types 'number' or 'string', or 'pointer' for any type of C pointer.
+// @param returnType The return type of the function, one of the JS types 'number' or 'string' (use 'number' for any C pointer).
 // @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType.
-// @param args       An array of the arguments to the function, as native JS values (except for 'pointer', which is a 'number').
+// @param args       An array of the arguments to the function, as native JS values (as in returnType)
 //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
-// @return           The return value, as a native JS value (except for 'pointer', which is a 'number').
+// @return           The return value, as a native JS value (as in returnType)
 function ccall(ident, returnType, argTypes, args) {
   function toC(value, type) {
     if (type == 'string') {
@@ -413,6 +402,20 @@ function ccall(ident, returnType, argTypes, args) {
   return fromC(func.apply(null, cArgs), returnType);
 }
 Module["ccall"] = ccall;
+
+// Returns a native JS wrapper for a C function. This is similar to ccall, but
+// returns a function you can call repeatedly in a normal way. For example:
+//
+//   var my_function = cwrap('my_c_function', 'number', ['number', 'number']);
+//   alert(my_function(5, 22));
+//   alert(my_function(99, 12));
+//
+function cwrap(ident, returnType, argTypes) {
+  // TODO: optimize this, eval the whole function once instead of going through ccall each time
+  return function() {
+    return ccall(ident, returnType, argTypes, Array.prototype.slice.call(arguments));
+  }
+}
 
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
@@ -535,7 +538,7 @@ function allocate(slab, types, allocator) {
     assert(type, 'Must know what type to store in allocate!');
 #endif
 
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
     if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
 #endif
 
@@ -580,7 +583,7 @@ var FUNCTION_TABLE; // XXX: In theory the indexes here can be equal to pointers 
 
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
-  return Math.ceil(x/PAGE_SIZE)*PAGE_SIZE;
+  return ((x+4095)>>12)<<12;
 }
 
 var HEAP;
@@ -666,7 +669,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 #endif
 #else
   // Make sure that our HEAP is implemented as a flat array.
-  HEAP = new Array(TOTAL_MEMORY);
+  HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
   for (var i = 0; i < FAST_MEMORY; i++) {
     HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
   }

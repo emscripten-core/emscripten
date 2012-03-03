@@ -167,7 +167,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       // Add current value(s)
       var currValue = flatten(values[i]);
-      if (I64_MODE == 1 && typeData.fields[i] == 'i64') {
+      if (USE_TYPED_ARRAYS == 2 && typeData.fields[i] == 'i64') {
         // 'flatten' out the 64-bit value into two 32-bit halves
         ret[index++] = currValue>>>0;
         ret[index++] = 0;
@@ -574,13 +574,13 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (block.type == 'emulated') {
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
-              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + block.entries[0] + ' */' : '') + '\n';
+              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
               var setjmpTable = {};
               ret += indent + 'var setjmpTable = {';
               func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
-                ret += getLabelId(triple[0])+ ': ' + 'function(value) { __label__ = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
+                ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { __label__ = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
               });
               ret += 'dummy: 0';
               ret += '};\n';
@@ -591,7 +591,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             }
             ret += 'switch(__label__) {\n';
             ret += block.labels.map(function(label) {
-              return indent + '  case ' + getLabelId(label.ident) + ': // ' + label.ident + '\n'
+              return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n');
             ret += '\n' + indent + '  default: assert(0, "bad label: " + __label__);\n' + indent + '}';
@@ -770,11 +770,14 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   makeFuncLineActor('deleted', function(item) { return ';' });
 
-  function getLabelId(label) {
+  function getOriginalLabelId(label) {
     var funcData = Framework.currItem.funcData;
-    var labelIds = funcData.labelIds;
-    if (labelIds[label] !== undefined) return labelIds[label];
-    return labelIds[label] = funcData.labelIdCounter++;
+    var labelIdsInverse = funcData.labelIdsInverse;
+    return labelIdsInverse[label];
+  }
+
+  function getLabelId(label) {
+    return label;
   }
 
   function makeBranch(label, lastLabel, labelIsVariable) {
@@ -788,7 +791,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var trueLabel = parts[1] || '';
       var oldLabel = parts[2] || '';
       var labelSetting = oldLabel ? '__label__ = ' + getLabelId(oldLabel) + ';' +
-                         (SHOW_LABELS ? ' /* to: ' + cleanLabel(oldLabel) + ' */' : '') : ''; // TODO: optimize away the setting
+                         (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(oldLabel)) + ' */' : '') : ''; // TODO: optimize away the setting
       if (label[1] == 'R') {
         if (label[2] == 'N') { // BRNOL: break, no label setting
           labelSetting = '';
@@ -808,7 +811,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     } else {
       if (!labelIsVariable) label = getLabelId(label);
-      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + cleanLabel(label) + ' */' : '') + ' break;';
+      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + ' break;';
     }
   }
 
@@ -924,7 +927,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else {
         first = false;
       }
-      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return item.ident + ' == ' + value }).join(' || ') + ') {\n';
+      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return makeComparison(item.ident, value, item.type) }).join(' || ') + ') {\n';
       ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
     }
@@ -969,7 +972,16 @@ function JSify(data, functionsOnly, givenFunctions) {
             + 'if (typeof e != "number") throw e; '
             + 'if (ABORT) throw e; __THREW__ = true; '
             + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
-            + 'return null } })(); if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
+            + 'return null } })();';
+    if (item.assignTo) {
+      ret = 'var ' + item.assignTo + ' = ' + ret;
+      if (isIllegalType(item.type)) {
+        assert(item.type == 'i64', 'Can only handle i64 invoke among illegal invokes');
+        ret += 'var ' + item.assignTo + '$0 = ' + item.assignTo + '[0], ' + item.assignTo + '$1 = ' + item.assignTo + '[1];';
+      }
+      item.assignTo = null;
+    }
+    ret += 'if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + getPhiSetsForLabel(phiSets, item.unwindLabel)  + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
@@ -979,6 +991,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var param2 = finalizeLLVMParameter(item.params[1]);
     switch (item.op) {
       case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type) + ',tempValue)';
+      case 'sub': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue-' + param2, type) + ',tempValue)';
       case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type) + ',tempValue)';
       case 'cmpxchg': {
         var param3 = finalizeLLVMParameter(item.params[2]);
@@ -988,9 +1001,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('landingpad', function(item) {
-    // Just a stub
-    return '{ f0: ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') +
-	 	   ', f1:' + makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') + ' }';
+    var catchTypeArray = item.catchables.map(finalizeLLVMParameter).join(',');
+    return '___cxa_find_matching_catch('+ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') +',' + makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') + ',[' + catchTypeArray +'])';
   });
   makeFuncLineActor('load', function(item) {
     var value = finalizeLLVMParameter(item.pointer);
@@ -1046,10 +1058,14 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('mathop', processMathop);
 
   makeFuncLineActor('bitcast', function(item) {
-    return processMathop({
+    var temp = {
       op: 'bitcast', variant: null, type: item.type,
-      param1: item.params[0]
-    });
+      assignTo: item.assignTo,
+      params: [item.params[0]] // XXX
+    };
+    var ret = processMathop(temp);
+    if (!temp.assignTo) item.assignTo = null; // If the assign was stolen, propagate that
+    return ret;
   });
 
   function makeFunctionCall(ident, params, funcData, type) {

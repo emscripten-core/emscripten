@@ -19,6 +19,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
+  // Note that we pollute the global namespace here, otherwise we break in node
   print = function(x) {
     process['stdout'].write(x + '\n');
   };
@@ -37,12 +38,16 @@ if (ENVIRONMENT_IS_NODE) {
     return ret;
   };
 
+  load = function(f) {
+    globalEval(read(f));
+  };
+
   arguments_ = process['argv'].slice(2);
 
 } else if (ENVIRONMENT_IS_SHELL) {
   // Polyfill over SpiderMonkey/V8 differences
   if (!this['read']) {
-    read = function(f) { snarf(f) };
+    this['read'] = function(f) { snarf(f) };
   }
 
   if (!this['arguments']) {
@@ -52,11 +57,11 @@ if (ENVIRONMENT_IS_NODE) {
   }
 
 } else if (ENVIRONMENT_IS_WEB) {
-  print = printErr = function(x) {
+  this['print'] = printErr = function(x) {
     console.log(x);
   };
 
-  read = function(url) {
+  this['read'] = function(url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
     xhr.send(null);
@@ -69,7 +74,7 @@ if (ENVIRONMENT_IS_NODE) {
 } else if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
 
-  load = importScripts;
+  this['load'] = importScripts;
 
 } else {
   throw 'Unknown runtime environment. Where are we?';
@@ -80,17 +85,17 @@ function globalEval(x) {
 }
 
 if (typeof load == 'undefined' && typeof read != 'undefined') {
-  load = function(f) {
+  this['load'] = function(f) {
     globalEval(read(f));
   };
 }
 
 if (typeof printErr === 'undefined') {
-  printErr = function(){};
+  this['printErr'] = function(){};
 }
 
 if (typeof print === 'undefined') {
-  print = printErr;
+  this['print'] = printErr;
 }
 // *** Environment setup code ***
 
@@ -138,7 +143,6 @@ EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
-assert(!(USE_TYPED_ARRAYS !== 2 && I64_MODE === 1), 'i64 mode 1 is only supported with typed arrays mode 2');
 
 // Output some info and warnings based on settings
 
@@ -149,7 +153,7 @@ if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || IN
   print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
 }
 
-if (DOUBLE_MODE || I64_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
+if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
   print('// Note: Some Emscripten settings may limit the speed of the generated code.');
 }
 

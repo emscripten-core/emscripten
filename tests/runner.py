@@ -279,8 +279,6 @@ process(sys.argv[1])
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
-Cache.erase() # Wipe the cache, so that we always test populating it in the tests, benchmarks, etc.
-
 if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
   # Tests
 
@@ -430,49 +428,38 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
     def test_i64(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
 
-        for i64_mode in [0,1]:
-          if i64_mode == 0 and Settings.USE_TYPED_ARRAYS != 0: continue # Typed arrays truncate i64
-          if i64_mode == 1 and Settings.QUANTUM_SIZE == 1: continue # TODO: i64 mode 1 for q1
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
+            long long a = 0x2b00505c10;
+            long long b = a >> 29;
+            long long c = a >> 32;
+            long long d = a >> 34;
+            printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
+            unsigned long long ua = 0x2b00505c10;
+            unsigned long long ub = ua >> 29;
+            unsigned long long uc = ua >> 32;
+            unsigned long long ud = ua >> 34;
+            printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
 
-          Settings.I64_MODE = i64_mode
-          src = '''
-            #include <stdio.h>
-            int main()
-            {
-              long long a = 0x2b00505c10;
-              long long b = a >> 29;
-              long long c = a >> 32;
-              long long d = a >> 34;
-              printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
-              unsigned long long ua = 0x2b00505c10;
-              unsigned long long ub = ua >> 29;
-              unsigned long long uc = ua >> 32;
-              unsigned long long ud = ua >> 34;
-              printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
+            long long x = 0x0000def123450789ULL; // any bigger than this, and we
+            long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
+            printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
 
-              long long x = 0x0000def123450789ULL; // any bigger than this, and we
-              long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-              printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
-
-              printf("*");
-              long long z = 13;
-              int n = 0;
-              while (z > 1) {
-                printf("%.2f,", (float)z); // these must be integers!
-                z = z >> 1;
-                n++;
-              }
-              printf("*%d*\\n", n);
-              return 0;
+            printf("*");
+            long long z = 13;
+            int n = 0;
+            while (z > 1) {
+              printf("%.2f,", (float)z); // these must be integers!
+              z = z >> 1;
+              n++;
             }
-          '''
-          self.do_run(src, '*184688860176,344,43,10*\n*184688860176,344,43,10*\n*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
-
-        if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: i64 mode 1 for q1')
-
-        # Stuff that only works in i64_mode = 1
-
-        Settings.I64_MODE = 1
+            printf("*%d*\\n", n);
+            return 0;
+          }
+        '''
+        self.do_run(src, '*184688860176,344,43,10*\n*184688860176,344,43,10*\n*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
 
         src = r'''
           #include <time.h>
@@ -677,6 +664,72 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         '''
 
         self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n')
+
+    def test_i64_cmp(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+        src = r'''
+          #include <stdio.h>
+
+          typedef long long int64;
+
+          bool compare(int64 val) {
+            return val == -12;
+          }
+
+          bool compare2(int64 val) {
+            return val < -12;
+          }
+
+          int main(int argc, char * argv[]) {
+              printf("*%d,%d,%d,%d,%d,%d*\n", argc, compare(argc-1-12), compare(1000+argc), compare2(argc-1-10), compare2(argc-1-14), compare2(argc+1000));
+              return 0;
+          }
+        '''
+
+        self.do_run(src, '*1,1,0,0,1,0*\n')
+
+    def test_i64_double(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+        src = r'''
+          #include <stdio.h>
+
+          typedef long long int64;
+          #define JSDOUBLE_HI32_SIGNBIT   0x80000000
+
+          bool JSDOUBLE_IS_NEGZERO(double d)
+          {
+            union {
+              struct {
+                unsigned int lo, hi;
+              } s;
+              double d;
+            } x;
+            if (d != 0)
+              return false;
+            x.d = d;
+            return (x.s.hi & JSDOUBLE_HI32_SIGNBIT) != 0;
+          }
+
+          bool JSINT64_IS_NEGZERO(int64 l)
+          {
+            union {
+              int64 i;
+              double d;
+            } x;
+            if (l != 0)
+              return false;
+            x.i = l;
+            return x.d == -0;
+          }
+
+          int main(int argc, char * argv[]) {
+            printf("*%d,%d,%d,%d*\n", JSDOUBLE_IS_NEGZERO(0), JSDOUBLE_IS_NEGZERO(-0), JSDOUBLE_IS_NEGZERO(-1), JSDOUBLE_IS_NEGZERO(+1));
+            printf("*%d,%d,%d,%d*\n", JSINT64_IS_NEGZERO(0), JSINT64_IS_NEGZERO(-0), JSINT64_IS_NEGZERO(-1), JSINT64_IS_NEGZERO(+1));
+            return 0;
+          }
+        '''
+        self.do_run(src, '*0,0,0,0*\n*1,1,0,0*\n') # same as gcc
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
@@ -1506,8 +1559,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, 'success')
 
     def test_typed_exceptions(self):
-        return self.skip('TODO: fix this for llvm 3.0')
-
+        Settings.DISABLE_EXCEPTION_CATCHING = 0
         Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
         Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
@@ -1609,6 +1661,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
         self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
 
     def test_dynamic_cast(self):
+        if self.emcc_args is None: return self.skip('need libcxxabi')
+
         src = r'''
           #include <stdio.h>
 
@@ -2189,9 +2243,6 @@ def process(filename):
         self.do_run(src, '*96,97,98,101,101*')
 
     def test_indirectbr(self):
-        if Settings.USE_TYPED_ARRAYS == 2:
-          Settings.I64_MODE = 1 # Unsafe optimizations use 64-bit load/store on two i32s
-
         src = '''
           #include <stdio.h>
           int main(void) {
@@ -3373,15 +3424,12 @@ at function.:blag
     def test_parseInt(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
       if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
-      Settings.I64_MODE = 1 # Necessary to prevent i64s being truncated into i32s, but we do still get doubling
-                            # FIXME: The output here is wrong, due to double rounding of i64s!
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
     def test_printf(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
-      Settings.I64_MODE = 1
       self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
       src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
       expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
@@ -3948,7 +3996,9 @@ def process(filename):
             printf( "%i %i %i", one, two, three );
         }
       '''
-      self.do_run(src, "1 2 3")
+      for linkable in [0, 1]:
+        Settings.LINKABLE = linkable # regression check for issue #273
+        self.do_run(src, "1 2 3")
 
     def test_readdir(self):
       add_pre_run = '''
@@ -4949,6 +4999,11 @@ def process(filename):
         setValue(p, 650, 'i32');
         ret = ccall('pointer', 'pointer', ['pointer'], [p]); print([typeof ret, getValue(ret, 'i32')]);
         print('*');
+        // part 2: cwrap
+        var multi = cwrap('multi', 'number', ['number', 'number', 'number', 'string']);
+        print(multi(2, 1.4, 3, 'atr'));
+        print(multi(8, 5.4, 4, 'bret'));
+        print('*');
       }
     };
   \'\'\' + open(filename, 'r').read()
@@ -4957,7 +5012,7 @@ def process(filename):
 
       Settings.EXPORTED_FUNCTIONS = ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
 
-      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\n', post_build=post)
+      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\n', post_build=post)
 
     def test_scriptaclass(self):
         header_filename = os.path.join(self.get_dir(), 'header.h')
@@ -5540,7 +5595,7 @@ def process(filename):
         }
       '''
 
-      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+      if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
         Settings.CORRECT_ROUNDINGS = 0
         self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
         self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
@@ -5553,7 +5608,7 @@ def process(filename):
       self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*') # Correct
       Settings.CORRECT_SIGNS = 0
 
-      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+      if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
         Settings.CORRECT_ROUNDINGS = 2
         Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
         self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
@@ -5561,7 +5616,7 @@ def process(filename):
         self.do_run(src.replace('TYPE', 'unsigned int'), '*-3**2**-5**5*') # No such luck here
 
       # And reverse the check with = 2
-      if Settings.I64_MODE == 0: # the errors here are very specific to non-i64 mode 1
+      if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
         Settings.CORRECT_ROUNDINGS = 3
         Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
         self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
@@ -5690,11 +5745,6 @@ class %s(T):
     Settings.CATCH_EXIT_CODE = 0
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
-    if Settings.USE_TYPED_ARRAYS == 2:
-      Settings.I64_MODE = 1
-      Settings.SAFE_HEAP = 1 # only checks for alignment problems, which is very important with unsafe opts
-    else:
-      Settings.I64_MODE = 0
 
     Building.pick_llvm_opts(3)
 
@@ -5728,9 +5778,6 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
-    def test_reminder(self):
-      assert 0, 'find appearances of i64 in src/, most are now unneeded'
-
     def test_emcc(self):
       emcc_debug = os.environ.get('EMCC_DEBUG')
 
@@ -5806,7 +5853,6 @@ Options that are modified or new in %s include:
         Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         Popen([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.a')
-        shutil.copyfile('a.a', '/home/alon/a.a')
         output = Popen([compiler, 'a.a']).communicate()
         assert os.path.exists('a.out.js'), output
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -5903,12 +5949,12 @@ Options that are modified or new in %s include:
         for params, test, text in [
           (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
           (['-O1', '-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' not in generated, 'inlining'),
-          (['-s', 'USE_TYPED_ARRAYS=0', '-s', 'I64_MODE=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
-          (['-s', 'USE_TYPED_ARRAYS=1', '-s', 'I64_MODE=0'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['-s', 'USE_TYPED_ARRAYS=1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
           ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
           (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported'),
-          (['--typed-arrays', '0', '-s', 'I64_MODE=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
-          (['--typed-arrays', '1', '-s', 'I64_MODE=0'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
+          (['--typed-arrays', '0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
+          (['--typed-arrays', '1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
           (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
@@ -6045,12 +6091,133 @@ f.close()
       clear()
       output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
-                                           '-s', 'USE_TYPED_ARRAYS=0', '-s', 'I64_MODE=0',
+                                           '-s', 'USE_TYPED_ARRAYS=0',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
+
+    def test_emcc_l_link(self):
+      # Linking with -lLIBNAME and -L/DIRNAME should work
+
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        extern void printey();
+        int main() {
+          printey();
+          return 0;
+        }
+      ''')
+
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      except:
+        pass
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib\\n");
+        }
+      ''')
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-c'], stdout=PIPE, stderr=STDOUT).communicate()
+      shutil.move(os.path.join(self.get_dir(), 'libfile.o'), os.path.join(self.get_dir(), 'libdir', 'libfile.so'))
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile'], stdout=PIPE, stderr=STDOUT).communicate()
+      self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_emcc_embed_file(self):
+      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        int main() {
+          FILE *f = fopen("somefile.txt", "r");
+          char buf[100];
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("|%s|\n", buf);
+          return 0;
+        }
+      ''')
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
+      self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_emcc_multidynamic_link(self):
+      # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
+      # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
+
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        extern void printey();
+        extern void printother();
+        int main() {
+          printf("*");
+          printey();
+          printf("\n");
+          printother();
+          printf("\n");
+          printf("*");
+          return 0;
+        }
+      ''')
+
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      except:
+        pass
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib");
+        }
+      ''')
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), 'w').write('''
+        #include <stdio.h>
+        extern void printey();
+        void printother() {
+          printf("|");
+          printey();
+          printf("|");
+        }
+      ''')
+
+      # This lets us link the same dynamic lib twice. We will need to link it in manually at the end.
+      compiler = [EMCC, '--ignore-dynamic-linking']
+
+      # Build libfile normally into an .so
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so')]).communicate()
+      # Build libother and dynamically link it to libfile - but add --ignore-dynamic-linking
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
+      # Build the main file, linking in both the libs
+      Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother', '-c']).communicate()
+
+      # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.o'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother']).communicate()
+
+      self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_emcc_js_link(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from main\\n");
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
+        var MESSAGE = 'hello from js';
+        if (typeof Module != 'undefined') throw 'This code should run before anything else!';
+      ''')
+      open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
+        print(MESSAGE);
+      ''')
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
+      self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()

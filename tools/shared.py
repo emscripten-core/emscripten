@@ -607,11 +607,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
       if unsafe:
         if not Building.can_inline():
           opts.append('-disable-inlining')
-        # -Ox opts do -globaldce, which removes stuff that is needed for libraries and linkables
-        if Building.can_build_standalone():
-          opts.append('-O%d' % optimization_level)
-        else:
-          opts.append('-std-compile-opts')
+        if not Building.can_build_standalone():
+          # -O1 does not have -gobaldce, which removes stuff that is needed for libraries and linkables
+          optimization_level = min(1, optimization_level)
+        opts.append('-O%d' % optimization_level)
         #print '[unsafe: %s]' % ','.join(opts)
       else:
         allow_nonportable = False

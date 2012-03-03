@@ -2298,7 +2298,7 @@ LibraryManager.library = {
       var ret;
       if (type === 'double') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
@@ -2433,7 +2433,7 @@ LibraryManager.library = {
           var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
-#if I64_MODE == 1
+#if USE_TYPED_ARRAYS == 2
           // Flatten i64-1 [low, high] into a (slightly rounded) double
           if (argSize == 8) {
             currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == 'u'.charCodeAt(0));
@@ -3485,12 +3485,6 @@ LibraryManager.library = {
     if (bits == 64) {
       ret = [{{{ splitI64('ret') }}}];
     }
-#else
-#if I64_MODE == 1
-    if (bits == 64) {
-      ret = {{{ splitI64('ret') }}};
-    }
-#endif
 #endif
 
     return ret;
@@ -4374,26 +4368,9 @@ LibraryManager.library = {
   __cxa_guard_release: function() {},
   __cxa_guard_abort: function() {},
 
+  _ZTVN10__cxxabiv119__pointer_type_infoE: [0], // is a pointer
   _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
   _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
-
-  __dynamic_cast: function(ptr, knownTI, attemptedTI, idunno) {
-    var ptrTV = {{{ makeGetValue('ptr', '0', '*') }}};
-    var count = {{{ makeGetValue('ptrTV', '0', '*') }}};
-    ptrTV -= {{{ Runtime.QUANTUM_SIZE }}};
-    var TI = {{{ makeGetValue('ptrTV', '0', '*') }}};
-    do {
-      if (TI == attemptedTI) return ptr;
-      // Go to parent class
-      var type_infoAddr = {{{ makeGetValue('TI', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var type_info = {{{ makeGetValue('type_infoAddr', '0', '*') }}};
-      if (type_info == 1) return 0; // no parent class
-      var TIAddr = TI + {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var TI = {{{ makeGetValue('TIAddr', '0', '*') }}};
-    } while (1);
-
-    return 0;
-  },
 
   // Exceptions
   __cxa_allocate_exception: function(size) {
@@ -4402,8 +4379,20 @@ LibraryManager.library = {
   __cxa_free_exception: function(ptr) {
     return _free(ptr);
   },
-  __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv'],
+  __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
   __cxa_throw: function(ptr, type, destructor) {
+    if (!___cxa_throw.initialized) {
+      try {
+        {{{ makeSetValue('__ZTVN10__cxxabiv119__pointer_type_infoE', '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
+      } catch(e){}
+      try {
+        {{{ makeSetValue('__ZTVN10__cxxabiv117__class_type_infoE', '0', '1', 'i32') }}}; // Workaround for libcxxabi integration bug
+      } catch(e){}
+      try {
+        {{{ makeSetValue('__ZTVN10__cxxabiv120__si_class_type_infoE', '0', '2', 'i32') }}}; // Workaround for libcxxabi integration bug
+      } catch(e){}
+      ___cxa_throw.initialized = true;
+    }
 #if EXCEPTION_DEBUG
     print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
 #endif
@@ -4436,9 +4425,6 @@ LibraryManager.library = {
   },
   llvm_eh_typeid_for: function(type) {
     return type;
-  },
-  _Unwind_Resume_or_Rethrow: function(ptr) {
-    throw ptr;
   },
   __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv'],
   __cxa_begin_catch: function(ptr) {
@@ -4481,9 +4467,102 @@ LibraryManager.library = {
     throw exception;
   },
 
+  _Unwind_Resume_or_Rethrow: function(ptr) {
+    throw ptr;
+  },
+  _Unwind_RaiseException__deps: ['llvm_eh_exception', '__cxa_find_matching_catch'],
+  _Unwind_RaiseException: function(ptr) {
+    throw ptr;
+  },
+  _Unwind_DeleteException: function(ptr) {},
+
   terminate: '__cxa_call_unexpected',
 
   __gxx_personality_v0: function() {
+  },
+
+  __cxa_is_number_type: function(type) {
+    var isNumber = false;
+    try { if (type == __ZTIi) isNumber = true } catch(e){}
+    try { if (type == __ZTIl) isNumber = true } catch(e){}
+    try { if (type == __ZTIx) isNumber = true } catch(e){}
+    try { if (type == __ZTIf) isNumber = true } catch(e){}
+    try { if (type == __ZTId) isNumber = true } catch(e){}
+    return isNumber;
+  },
+
+  // Finds a suitable catch clause for when an exception is thrown.
+  // In normal compilers, this functionality is handled by the C++
+  // 'personality' routine. This is passed a fairly complex structure
+  // relating to the context of the exception and makes judgements
+  // about how to handle it. Some of it is about matching a suitable
+  // catch clause, and some of it is about unwinding. We already handle
+  // unwinding using 'if' blocks around each function, so the remaining
+  // functionality boils down to picking a suitable 'catch' block.
+  // We'll do that here, instead, to keep things simpler.
+
+  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type'],
+  __cxa_find_matching_catch: function(thrown, throwntype, typeArray) {
+    // If throwntype is a pointer, this means a pointer has been
+    // thrown. When a pointer is thrown, actually what's thrown
+    // is a pointer to the pointer. We'll dereference it.
+    if (throwntype != 0 && !___cxa_is_number_type(throwntype)) {
+      var throwntypeInfoAddr= {{{ makeGetValue('throwntype', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
+      var throwntypeInfo= {{{ makeGetValue('throwntypeInfoAddr', '0', '*') }}};
+      if (throwntypeInfo == 0)
+        thrown = {{{ makeGetValue('thrown', '0', '*') }}};
+    }
+    // The different catch blocks are denoted by different types.
+    // Due to inheritance, those types may not precisely match the
+    // type of the thrown object. Find one which matches, and
+    // return the type of the catch block which should be called.
+    for (var i = 0; i < typeArray.length; i++) {
+      if (___cxa_does_inherit(typeArray[i], throwntype, thrown))
+        return { 'f0':thrown, 'f1':typeArray[i]};
+    }
+    // Shouldn't happen unless we have bogus data in typeArray
+    // or encounter a type for which emscripten doesn't have suitable
+    // typeinfo defined. Best-efforts match just in case.
+    return {'f0':thrown,'f1':throwntype};
+  },
+
+  // Recursively walks up the base types of 'possibilityType'
+  // to see if any of them match 'definiteType'.
+  __cxa_does_inherit__deps: ['__cxa_is_number_type'],
+  __cxa_does_inherit: function(definiteType, possibilityType, possibility) {
+    if (possibility == 0) return false;
+    if (possibilityType == 0 || possibilityType == definiteType)
+      return true;
+    var possibility_type_info;
+    if (___cxa_is_number_type(possibilityType)) {
+      possibility_type_info = possibilityType;
+    } else {
+      var possibility_type_infoAddr = {{{ makeGetValue('possibilityType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
+      possibility_type_info = {{{ makeGetValue('possibility_type_infoAddr', '0', '*') }}};
+    }
+    switch (possibility_type_info) {
+    case 0: // possibility is a pointer
+      // See if definite type is a pointer
+      var definite_type_infoAddr = {{{ makeGetValue('definiteType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
+      var definite_type_info = {{{ makeGetValue('definite_type_infoAddr', '0', '*') }}};
+      if (definite_type_info == 0) {
+        // Also a pointer; compare base types of pointers
+        var defPointerBaseAddr = definiteType+{{{ Runtime.QUANTUM_SIZE*2 }}};
+        var defPointerBaseType = {{{ makeGetValue('defPointerBaseAddr', '0', '*') }}};
+        var possPointerBaseAddr = possibilityType+{{{ Runtime.QUANTUM_SIZE*2 }}};
+        var possPointerBaseType = {{{ makeGetValue('possPointerBaseAddr', '0', '*') }}};
+        return ___cxa_does_inherit(defPointerBaseType, possPointerBaseType, possibility);
+      } else
+        return false; // one pointer and one non-pointer
+    case 1: // class with no base class
+      return false;
+    case 2: // class with base class
+      var parentTypeAddr = possibilityType + {{{ Runtime.QUANTUM_SIZE*2 }}};
+      var parentType = {{{ makeGetValue('parentTypeAddr', '0', '*') }}};
+      return ___cxa_does_inherit(definiteType, parentType, possibility);
+    default:
+      return false; // some unencountered type
+    }
   },
 
   // RTTI hacks for exception handling, defining type_infos for common types.
@@ -4503,6 +4582,8 @@ LibraryManager.library = {
   _ZTIc: [0],
   // type_info for void.
   _ZTIv: [0],
+  // type_info for void*.
+  _ZTIPv: [0],
 
   llvm_uadd_with_overflow_i32: function(x, y) {
     return {
@@ -5833,6 +5914,26 @@ LibraryManager.library = {
     {{{ makeSetValue('stackaddr', '0', 'STACK_ROOT', 'i8*') }}}
     {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}}
     return 0;
+  },
+
+  pthread_once: function(ptr, func) {
+    if (!_pthread_once.seen) _pthread_once.seen = {};
+    if (ptr in _pthread_once.seen) return;
+    FUNCTION_TABLE[func]();
+    _pthread_once.seen[ptr] = 1;
+  },
+
+  pthread_key_create: function(key, destructor) {
+    if (!_pthread_key_create.keys) _pthread_key_create.keys = {};
+    _pthread_key_create.keys[key] = null;
+  },
+
+  pthread_getspecific: function(key) {
+    return _pthread_key_create.keys[key];
+  },
+
+  pthread_setspecific: function(key, value) {
+    _pthread_key_create.keys[key] = value;
   },
 
   // ==========================================================================
