@@ -37,7 +37,9 @@ function run(args) {
   var ret = null;
   if (Module['_main']) {
     ret = Module.callMain(args);
-    exitRuntime();
+    if (!Module['noExitRuntime']) {
+      exitRuntime();
+    }
   }
   return ret;
 }
