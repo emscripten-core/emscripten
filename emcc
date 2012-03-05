@@ -711,7 +711,7 @@ try:
 
   if AUTODEBUG:
     if DEBUG: print >> sys.stderr, 'emcc: autodebug'
-    execute(['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])[0]
+    execute(['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
 
