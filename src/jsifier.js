@@ -229,7 +229,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
       return JSON.stringify(parseLLVMString(value.text)) +
-             ' /* ' + value.text.substr(0, 20).replace(/\*/g, '_') + ' */'; // make string safe for inclusion in comment
+             ' /* ' + value.text.substr(0, 20).replace(/[*<>]/g, '_') + ' */'; // make string safe for inclusion in comment
     } else {
       return alignStruct(handleSegments(value.contents), type);
     }
