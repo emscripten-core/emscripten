@@ -219,8 +219,8 @@ LibraryManager.library = {
     // Creates a file record from existing data.
     createDataFile: function(parent, name, data, canRead, canWrite) {
       if (typeof data === 'string') {
-        var dataArray = [];
-        for (var i = 0; i < data.length; i++) dataArray.push(data.charCodeAt(i));
+        var dataArray = new Array(data.length);
+        for (var i = 0, len = data.length; i < len; ++i) dataArray[i] = data.charCodeAt(i);
         data = dataArray;
       }
       var properties = {isDevice: false, contents: data};
