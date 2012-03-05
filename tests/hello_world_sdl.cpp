@@ -20,7 +20,8 @@ int main() {
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
   SDL_Flip(screen); 
 
-  printf("you should see a colored cube.");
+  printf("you should see a colored cube.\n");
+  printf("and here is some text that should be HTML-friendly: amp: |&| double-quote: |\"| quote: |'| less-than, greater-than, html-like tags: |<cheez></cheez>|\nanother line.\n");
 
   SDL_Quit();
 

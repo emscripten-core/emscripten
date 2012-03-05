@@ -19,7 +19,10 @@
         print: (function() {
           var element = document.getElementById('output');
           return function(text) {
-            element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+            text = text.replace(/</g, "&lt;");
+            text = text.replace(/>/g, "&gt;");
+            text = text.replace('\n', '<br>', 'g');
+            element.innerHTML += text + '<br>';
           };
         })(),
         canvas: document.getElementById('canvas')
