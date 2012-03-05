@@ -74,9 +74,18 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
-import os, sys, shutil, tempfile
-from subprocess import Popen, PIPE, STDOUT
+import os, sys, shutil, tempfile, subprocess
+from subprocess import PIPE, STDOUT
 from tools import shared
+
+def execute(cmd, *args, **kw):
+  try:
+    return subprocess.Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+  except:
+    if not isinstance(cmd, str):
+      cmd = ' '.join(cmd)
+    print >> sys.stderr, 'Invoking Process failed: <<< ' + cmd + ' >>>'
+    raise
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -517,7 +526,7 @@ try:
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
-      Popen([call] + args).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+      execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
         print >> sys.stderr, 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
         sys.exit(1)
@@ -560,7 +569,7 @@ try:
         ld_args = temp_files + ['-b', specified_target]
                   #[arg.split('-Wl,')[1] for arg in filter(lambda arg: arg.startswith('-Wl,'), sys.argv)]
         if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(ld_args)
-        Popen([shared.LLVM_LD, '-disable-opt'] + ld_args).communicate()
+        execute([shared.LLVM_LD, '-disable-opt'] + ld_args)
     exit(0)
 
   ## Continue on to create JavaScript
@@ -578,9 +587,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      Popen([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr).communicate()
+      execute([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      Popen([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr).communicate()
+      execute([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
@@ -702,7 +711,7 @@ try:
 
   if AUTODEBUG:
     if DEBUG: print >> sys.stderr, 'emcc: autodebug'
-    Popen(['python', shared.AUTODEBUGGER, final, final + '.ad.ll']).communicate()[0]
+    execute(['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
 
@@ -735,7 +744,7 @@ try:
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
     if DEBUG: print >> sys.stderr, 'emcc: applying transform: %s' % js_transform
-    Popen(js_transform.split(' ') + [os.path.abspath(final)]).communicate()
+    execute(js_transform.split(' ') + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
