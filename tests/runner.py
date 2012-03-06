@@ -2298,18 +2298,20 @@ def process(filename):
               case 'b':
               case 'c':
                   return p-1;
-              case 'd':
+              case 0xfffffff1:
                   return p+1;
             }
             return p;
           }
 
           int main( int argc, const char *argv[] ) {
-            printf("*%d,%d,%d,%d,%d*\\n", switcher('a'), switcher('b'), switcher('c'), switcher('d'), switcher('e'));
+            unsigned int x = 0xfffffff1;
+            x >>= 0; // force it to be unsigned for purpose of checking our switch comparison in signed/unsigned
+            printf("*%d,%d,%d,%d,%d,%d*\\n", switcher('a'), switcher('b'), switcher('c'), switcher(x), switcher(-15), switcher('e'));
             return 0;
           }
           '''
-        self.do_run(src, '*96,97,98,101,101*')
+        self.do_run(src, '*96,97,98,-14,-14,101*')
 
     def test_indirectbr(self):
         src = '''
