@@ -559,12 +559,12 @@ function splitI64(value) {
     return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
   }
 }
-function mergeI64(value) {
+function mergeI64(value, unsigned) {
   assert(USE_TYPED_ARRAYS == 2);
   if (legalizedI64s) {
-    return RuntimeGenerator.makeBigInt(value + '$0', value + '$1');
+    return RuntimeGenerator.makeBigInt(value + '$0', value + '$1', unsigned);
   } else {
-    return makeInlineCalculation(RuntimeGenerator.makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
+    return makeInlineCalculation(RuntimeGenerator.makeBigInt('VALUE[0]', 'VALUE[1]', unsigned), value, 'tempI64');
   }
 }
 
@@ -1704,9 +1704,9 @@ function processMathop(item) {
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1])));
       case 'sub': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1])));
-      case 'sdiv': case 'udiv': warnI64_1(); return finish(splitI64(makeRounding(mergeI64(idents[0]) + '/' + mergeI64(idents[1]), bits, op[0] === 's')));
-      case 'mul': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '*' + mergeI64(idents[1])));
-      case 'urem': case 'srem': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '%' + mergeI64(idents[1])));
+      case 'sdiv': case 'udiv': warnI64_1(); return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's')));
+      case 'mul': warnI64_1(); return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u')));
+      case 'urem': case 'srem': warnI64_1(); return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u')));
       case 'bitcast': {
         // Pointers are not 64-bit, so there is really only one possible type of bitcast here, int to float or vice versa
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');

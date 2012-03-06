@@ -776,6 +776,30 @@ m_divisor is 1091269979
         '''
         self.do_run(src, '*0,0,0,0*\n*1,1,0,0*\n') # same as gcc
 
+    def test_i64_umul(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+        src = r'''
+          #include <inttypes.h>
+          #include <stdio.h>
+
+          typedef uint32_t UINT32;
+          typedef uint64_t UINT64;
+
+          int main() {
+          volatile UINT32 testu32a = 2375724032U;
+          UINT32 bigu32 = 0xffffffffU;
+          volatile UINT64 testu64a = 14746250828952703000U;
+
+          while ((UINT64)testu32a * (UINT64)bigu32 < testu64a) {
+	          printf("testu64a is %llu\n", testu64a);
+	          testu64a /= 2;
+          }
+
+          return 0;
+          }
+        '''
+        self.do_run(src, 'testu64a is 14746250828952703000\n')
+
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
 
