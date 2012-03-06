@@ -10,7 +10,7 @@ NODE_JS = 'node'
 SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n']
 V8_ENGINE = os.path.expanduser('~/Dev/v8/d8')
 
-CLOSURE_COMPILER = os.path.expanduser('~/Dev/closure-compiler/compiler.jar') # optional (needed for the benchmarks)
+CLOSURE_COMPILER = EMSCRIPTEN_ROOT + '/closure-compiler/compiler.jar'
 
 TEMP_DIR = '/tmp'
 
