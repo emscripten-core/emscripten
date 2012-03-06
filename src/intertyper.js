@@ -334,6 +334,8 @@ function intertyper(data, sidePass, baseLineNums) {
             return 'Phi';
           if (tokensLength >= 3 && token0Text == 'landingpad')
             return 'Landingpad';
+          if (token0Text == 'fence')
+            return '/dev/null';
         } else if (item.indent === 0) {
           if ((tokensLength >= 1 && token0Text.substr(-1) == ':') ||
               (tokensLength >= 3 && token1Text == '<label>'))
