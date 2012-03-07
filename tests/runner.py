@@ -2287,6 +2287,8 @@ def process(filename):
         self.do_run(src, '*nameA,nameB*')
 
     def test_llvmswitch(self):
+        Settings.CORRECT_SIGNS = 1
+
         src = '''
           #include <stdio.h>
           #include <string.h>
