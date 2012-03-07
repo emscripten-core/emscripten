@@ -13,10 +13,10 @@ if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
   print = function(x) {
-    process['stdout'].write(x + '\n');
+    process['stdout'].write(x);
   };
   printErr = function(x) {
-    process['stderr'].write(x + '\n');
+    process['stderr'].write(x);
   };
 
   var nodeFS = require('fs');

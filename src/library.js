@@ -313,7 +313,10 @@ LibraryManager.library = {
       if (!input) input = function() {
         if (!input.cache || !input.cache.length) {
           var result;
-          if (typeof window != 'undefined' &&
+          if (ENVIRONMENT_IS_NODE) {
+            result = require("fs").readSync(0, 1024)[0];
+            result = result.substring (0, result.length-1);
+          } else if (typeof window != 'undefined' &&
               typeof window.prompt == 'function') {
             // Browser.
             result = window.prompt('Input: ');
@@ -327,11 +330,10 @@ LibraryManager.library = {
         return input.cache.shift();
       };
       if (!output) output = function(val) {
+        output.buffer.push(String.fromCharCode(val));
         if (val === null || val === '\n'.charCodeAt(0)) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
-        } else {
-          output.buffer.push(String.fromCharCode(val));
         }
       };
       if (!output.printer) output.printer = print;
