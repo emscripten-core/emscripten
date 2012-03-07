@@ -315,7 +315,6 @@ LibraryManager.library = {
           var result;
           if (ENVIRONMENT_IS_NODE) {
             result = require("fs").readSync(0, 1024)[0];
-            result = result.substring (0, result.length-1);
           } else if (typeof window != 'undefined' &&
               typeof window.prompt == 'function') {
             // Browser.
