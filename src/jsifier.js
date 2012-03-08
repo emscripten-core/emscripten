@@ -921,13 +921,16 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var ret = '';
     var first = true;
+    var signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
     for (var targetLabel in targetLabels) {
       if (!first) {
         ret += 'else ';
       } else {
         first = false;
       }
-      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return makeComparison(item.ident, value, item.type) }).join(' || ') + ') {\n';
+      ret += 'if (' + targetLabels[targetLabel].map(function(value) {
+        return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
+      }).join(' || ') + ') {\n';
       ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
     }
