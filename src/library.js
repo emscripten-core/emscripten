@@ -329,7 +329,8 @@ LibraryManager.library = {
         return input.cache.shift();
       };
       if (!output) output = function(val) {
-        output.buffer.push(String.fromCharCode(val));
+        if (val !== null)
+          output.buffer.push(String.fromCharCode(val));
         if (val === null || val === '\n'.charCodeAt(0)) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
