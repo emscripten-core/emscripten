@@ -139,6 +139,11 @@ except:
     print 'ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG
     raise
 
+try:
+  CLOSURE_COMPILER
+except:
+  CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+
 # Additional compiler options
 
 try:
