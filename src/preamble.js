@@ -594,7 +594,7 @@ var FHEAP;
 #endif
 #endif
 #if USE_TYPED_ARRAYS == 2
-var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
+var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
 #endif
 
 var STACK_ROOT, STACKTOP, STACK_MAX;
@@ -631,6 +631,7 @@ function enlargeMemory() {
   HEAPU16 = new Uint16Array(buffer);
   HEAPU32 = new Uint32Array(buffer);
   HEAPF32 = new Float32Array(buffer);
+  HEAPF64 = new Float64Array(buffer);
   HEAP8.set(oldHEAP8);
 #endif
 }
@@ -662,6 +663,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
   HEAPU16 = new Uint16Array(buffer);
   HEAPU32 = new Uint32Array(buffer);
   HEAPF32 = new Float32Array(buffer);
+  HEAPF64 = new Float64Array(buffer);
 
   // Endianness check (note: assumes compiler arch was little-endian)
   HEAP32[0] = 255;
@@ -697,6 +699,7 @@ Module['HEAPU8'] = HEAPU8;
 Module['HEAPU16'] = HEAPU16;
 Module['HEAPU32'] = HEAPU32;
 Module['HEAPF32'] = HEAPF32;
+Module['HEAPF64'] = HEAPF64;
 #endif
 
 STACK_ROOT = STACKTOP = Runtime.alignMemory(STATICTOP);
@@ -707,7 +710,7 @@ var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
 var tempDoubleI8  = HEAP8.subarray(tempDoublePtr);
 var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
 var tempDoubleF32 = HEAPF32.subarray(tempDoublePtr >> 2);
-var tempDoubleF64 = new Float64Array(HEAP8.buffer).subarray(tempDoublePtr >> 3);
+var tempDoubleF64 = HEAPF64.subarray(tempDoublePtr >> 3);
 function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
   tempDoubleI8[0] = HEAP8[ptr];
   tempDoubleI8[1] = HEAP8[ptr+1];
