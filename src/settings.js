@@ -148,8 +148,8 @@ var PGO = 0; // Profile-guided optimization.
 
 var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
 
-var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
-                                    // be accessible outside of the generated code.
+var EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']; // Functions that are explicitly exported, so they are guaranteed to
+                                                        // be accessible outside of the generated code even after running closure compiler.
 
 var IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
                             // This is useful if your project code includes a function, and you want to replace
