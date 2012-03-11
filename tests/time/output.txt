@@ -12,11 +12,11 @@ yday: 358
 dst: 0
 off: 0
 zone: GMT
-timegm <-> gmtime: 0
+timegm <-> gmtime: 1
 old year: 102
 new year: 70
 old year again: 102
-localtime timezone: 0
+localtime timezone: 1
 localtime daylight: 1
 localtime tzname: 1
 localtime <-> mktime: 1
