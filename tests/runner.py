@@ -4436,7 +4436,7 @@ def process(filename):
       '''
 
       # FIXME: should not have so many newlines in output here
-      self.do_run(src, 'hello world\n\n77.\n')
+      self.do_run(src, 'hello world\n77.\n')
 
     def test_stdvec(self):
       src = '''
