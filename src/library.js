@@ -315,33 +315,46 @@ LibraryManager.library = {
       error = error || Module['stderr'];
 
       // Default handlers.
-      if (!input) input = function() {
-        if (!input.cache || !input.cache.length) {
-          var result;
-          if (typeof window != 'undefined' &&
-              typeof window.prompt == 'function') {
-            // Browser.
-            result = window.prompt('Input: ');
-          } else if (typeof readline == 'function') {
-            // Command line.
-            result = readline();
+      var stdinOverridden = true, stdoutOverridden = true, stderrOverridden = true;
+      if (!input) {
+        stdinOverridden = false;
+        input = function() {
+          if (!input.cache || !input.cache.length) {
+            var result;
+            if (typeof window != 'undefined' &&
+                typeof window.prompt == 'function') {
+              // Browser.
+              result = window.prompt('Input: ');
+            } else if (typeof readline == 'function') {
+              // Command line.
+              result = readline();
+            }
+            if (!result) result = '';
+            input.cache = intArrayFromString(result + '\n', true);
           }
-          if (!result) result = '';
-          input.cache = intArrayFromString(result + '\n', true);
-        }
-        return input.cache.shift();
-      };
-      if (!output) output = function(val) {
+          return input.cache.shift();
+        };
+      }
+      function simpleOutput(val) {
         if (val === null || val === '\n'.charCodeAt(0)) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
         } else {
           output.buffer.push(String.fromCharCode(val));
         }
-      };
+      }
+      if (!output) {
+        stdoutOverridden = false;
+        output = simpleOutput;
+      }
       if (!output.printer) output.printer = print;
       if (!output.buffer) output.buffer = [];
-      if (!error) error = output;
+      if (!error) {
+        stderrOverridden = false;
+        error = simpleOutput;
+      }
+      if (!error.printer) error.printer = print;
+      if (!error.buffer) error.buffer = [];
 
       // Create the temporary folder.
       FS.createFolder('/', 'tmp', true, true);
@@ -361,6 +374,7 @@ LibraryManager.library = {
         isRead: true,
         isWrite: false,
         isAppend: false,
+        isTerminal: !stdinOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -372,6 +386,7 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
+        isTerminal: !stdoutOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -383,6 +398,7 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
+        isTerminal: !stderrOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -1391,9 +1407,13 @@ LibraryManager.library = {
   isatty: function(fildes) {
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
-    // For now it's easier to pretend we have no terminals.
-    ___setErrNo(FS.streams[fildes] ? ERRNO_CODES.ENOTTY : ERRNO_CODES.EBADF);
-    return -1;
+    if (!FS.streams[fildes]) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return 0;
+    }
+    if (FS.streams[fildes].isTerminal) return 1;
+    ___setErrNo(ERRNO_CODES.ENOTTY);
+    return 0;
   },
   lchown__deps: ['chown'],
   lchown: function(path, owner, group) {

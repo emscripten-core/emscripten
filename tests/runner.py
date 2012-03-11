@@ -3711,16 +3711,18 @@ def process(filename):
 '''
       src = r'''
         #include <stdio.h>
+        #include <unistd.h>
 
         int main () {
           char c;
+          fprintf(stderr, "isatty? %d,%d,%d\n", isatty(fileno(stdin)), isatty(fileno(stdout)), isatty(fileno(stderr)));
           while ((c = fgetc(stdin)) != EOF) {
             putc(c+5, stdout);
           }
           return 0;
         }
         '''
-      self.do_run(src, 'got: 35\ngot: 45\ngot: 25\ngot: 15\n', post_build=post)
+      self.do_run(src, 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n', post_build=post)
 
     def test_folders(self):
       add_pre_run = '''
