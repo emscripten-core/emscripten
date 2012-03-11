@@ -489,7 +489,10 @@ try:
   if ignore_dynamic_linking:
     input_files = filter(lambda input_file: not input_file.endswith(DYNAMICLIB_SUFFIXES), input_files)
 
-  assert len(input_files) > 0, 'emcc: no input files'
+  if len(input_files) == 0:
+    print >> sys.stderr, 'emcc: no input files'
+    print >> sys.stderr, 'note that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + STATICLIB_SUFFIXES + ASSEMBLY_SUFFIXES)
+    exit(0)
 
   newargs += CC_ADDITIONAL_ARGS
 
