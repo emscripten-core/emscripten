@@ -3698,6 +3698,8 @@ def process(filename):
     def test_files_m(self):
       # Test for Module.stdin etc.
 
+      Settings.CORRECT_SIGNS = 1
+
       post = '''
 def process(filename):
   src = \'\'\'
