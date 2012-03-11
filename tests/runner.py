@@ -3695,6 +3695,33 @@ def process(filename):
       self.do_run(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n',
                    post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
+    def test_files_m(self):
+      # Test for Module.stdin etc.
+
+      post = '''
+def process(filename):
+  src = \'\'\'
+    var data = [10, 20, 40, 30];
+    var Module = {
+      stdin: function() { return data.pop() || null },
+      stdout: function(x) { print('got: ' + x) }
+    };
+  \'\'\' + open(filename, 'r').read()
+  open(filename, 'w').write(src)
+'''
+      src = r'''
+        #include <stdio.h>
+
+        int main () {
+          char c;
+          while ((c = fgetc(stdin)) != EOF) {
+            putc(c+5, stdout);
+          }
+          return 0;
+        }
+        '''
+      self.do_run(src, 'got: 35\ngot: 45\ngot: 25\ngot: 15\n', post_build=post)
+
     def test_folders(self):
       add_pre_run = '''
 def process(filename):

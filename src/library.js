@@ -309,6 +309,11 @@ LibraryManager.library = {
 
       FS.ensureRoot();
 
+      // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
+      input = input || Module['stdin'];
+      output = output || Module['stdout'];
+      error = error || Module['stderr'];
+
       // Default handlers.
       if (!input) input = function() {
         if (!input.cache || !input.cache.length) {
