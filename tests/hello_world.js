@@ -39,9 +39,9 @@ if (ENVIRONMENT_IS_NODE) {
     this['read'] = function(f) { snarf(f) };
   }
 
-  if (!this['arguments']) {
+  if (typeof scriptArgs != 'undefined') {
     arguments_ = scriptArgs;
-  } else {
+  } else if (typeof arguments != 'undefined') {
     arguments_ = arguments;
   }
 
