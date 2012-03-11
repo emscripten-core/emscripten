@@ -2736,7 +2736,9 @@ LibraryManager.library = {
     var flush = function(filedes) {
       // Right now we write all data directly, except for output devices.
       if (filedes in FS.streams && FS.streams[filedes].object.output) {
-        FS.streams[filedes].object.output(null);
+        if (!FS.streams[filedes].isTerminal) { // don't flush terminals, it would cause a \n to also appear
+          FS.streams[filedes].object.output(null);
+        }
       }
     };
     try {
