@@ -25,7 +25,7 @@ var LibraryGL = {
             return this.table[id];
           },
           remove: function(id) {
-          	if( id == 0 ) return;
+            if( id == 0 ) return;
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
@@ -307,12 +307,12 @@ var LibraryGL = {
   
   glGetShaderiv_deps: ['$GL'],
   glGetShaderiv : function(shader, pname, p) { 
-  	{{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.hashtable("shader").get(shader),pname)', 'i32') }}};
+    {{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.hashtable("shader").get(shader),pname)', 'i32') }}};
   },
 
   glGetProgramiv_deps: ['$GL'],
   glGetProgramiv : function(program, pname, p) { 
-  	{{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.hashtable("program").get(program),pname)', 'i32') }}};
+    {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.hashtable("program").get(program),pname)', 'i32') }}};
   },
 
   glCreateProgram_deps: ['$GL'],
@@ -409,10 +409,10 @@ var LibraryGL = {
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus'],
- [2, 'pixelStorei vertexAttrib1f depthRange polygonOffset'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus activeTexture'],
+ [2, 'pixelStorei vertexAttrib1f depthRange polygonOffset blendFunc'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer']].forEach(function(data) {
   var num = data[0];
@@ -434,19 +434,26 @@ var LibraryGLUT = {
     initTime: null,
     idleFunc: null,
     keyboardFunc: null,
+    keyboardUpFunc: null,
+    specialFunc: null,
+    specialUpFunc: null,
     reshapeFunc: null,
+    passiveMotionFunc: null,
+    mouseFunc: null,
     lastX: 0,
     lastY: 0,
 
     onMousemove: function(event) {
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
+      if (GLUT.passiveMotionFunc) {
+        FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
+        }
     },
 
-    onKeydown: function(event) {
-      if (GLUT.keyboardFunc) {
+    getSpecialKey: function(keycode) {
         var key = null;
-        switch (event['keyCode']) {
+        switch (keycode) {
           case 0x70 /*DOM_VK_F1*/: key = 1 /* GLUT_KEY_F1 */; break;
           case 0x71 /*DOM_VK_F2*/: key = 2 /* GLUT_KEY_F2 */; break;
           case 0x72 /*DOM_VK_F3*/: key = 3 /* GLUT_KEY_F3 */; break;
@@ -468,11 +475,49 @@ var LibraryGLUT = {
           case 0x24 /*DOM_VK_HOME*/: key = 106 /* GLUT_KEY_HOME */; break;
           case 0x23 /*DOM_VK_END*/: key = 107 /* GLUT_KEY_END */; break;
           case 0x2d /*DOM_VK_INSERT*/: key = 108 /* GLUT_KEY_INSERT */; break;
-          default: return;
         };
+        return key;
+    },
+
+    onKeydown: function(event) {
+      if (GLUT.specialFunc || GLUT.keyboardFunc) {
+        var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          FUNCTION_TABLE[GLUT.keyboardFunc](key, GLUT.lastX, GLUT.lastY);
+          if( GLUT.specialFunc ) FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
         }
+        else if( GLUT.keyboardFunc ) {
+          FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        }
+      }
+    },
+    
+    onKeyup: function(event) {
+      if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
+        var key = GLUT.getSpecialKey(event['keyCode']);
+        if (key !== null) {
+          if(GLUT.specialFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
+        }
+        else if(GLUT.keyboardUpFunc) {
+          FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        }
+      }
+    },
+    
+    onMouseButtonDown: function(event){
+      GLUT.lastX = event['clientX'];
+      GLUT.lastY = event['clientY'];
+        
+      if(GLUT.mouseFunc){
+        FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
+      }
+    },
+      
+    onMouseButtonUp: function(event){
+      GLUT.lastX = event['clientX'];
+      GLUT.lastY = event['clientY'];
+
+      if(GLUT.mouseFunc) {
+        FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
       }
     },
   },
@@ -482,7 +527,10 @@ var LibraryGLUT = {
     // Ignore arguments
     GLUT.initTime = Date.now();
     window.addEventListener("keydown", GLUT.onKeydown, true);
+    window.addEventListener("keyup", GLUT.onKeyup, true);
     window.addEventListener("mousemove", GLUT.onMousemove, true);
+    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
+    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
   },
 
   glutInitWindowSize: function(width, height) {
@@ -527,13 +575,33 @@ var LibraryGLUT = {
   glutIdleFunc: function(func) {
     GLUT.idleFunc = func;
   },
+  
+  glutKeyboardFunc: function(func) {
+    GLUT.keyboardFunc = func;
+  },
+  
+  glutKeyboardUpFunc: function(func) {
+    GLUT.keyboardUpFunc = func;
+  },
 
   glutSpecialFunc: function(func) {
-    GLUT.keyboardFunc = func;
+    GLUT.specialFunc = func;
+  },
+
+  glutSpecialUpFunc: function(func) {
+    GLUT.specialUpFunc = func;
   },
 
   glutReshapeFunc: function(func) {
     GLUT.reshapeFunc = func;
+  },
+  
+  glutPassiveMotionFunc: function(func) {
+    GLUT.passiveMotionFunc = func;
+  },
+  
+  glutMouseFunc: function(func) {
+    GLUT.mouseFunc = func;
   },
 
   glutCreateWindow: function(name) {
