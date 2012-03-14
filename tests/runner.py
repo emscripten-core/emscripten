@@ -5358,6 +5358,48 @@ Child2:9
 *ok*
 ''', post_build=[post2, post3])
 
+    def test_scriptaclass_2(self):
+        header_filename = os.path.join(self.get_dir(), 'header.h')
+        header = '''
+          #include <stdio.h>
+          #include <string.h>
+
+          class StringUser {
+            char *s;
+            int i;
+          public:
+            StringUser(char *string, int integer) : s(strdup(string)), i(integer) {}
+            void Print(int anotherInteger, char *anotherString) {
+              printf("|%s|%d|%s|%d|\\n", s, i, anotherString, anotherInteger);
+            }
+            void CallOther(StringUser *fr) { fr->Print(i, s); }
+          };
+        '''
+        open(header_filename, 'w').write(header)
+
+        basename = os.path.join(self.get_dir(), 'bindingtest')
+        output = Popen([BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+        #print output
+        assert 'Traceback' not in output, 'Failure in binding generation: ' + output
+
+        src = '''
+          #include "header.h"
+
+          #include "bindingtest.cpp"
+        '''
+
+        post = '''
+def process(filename):
+  src = open(filename, 'a')
+  src.write(open('bindingtest.js').read() + '\\n\\n')
+  src.write(\'\'\'
+          var user = new Module.StringUser("hello", 43);
+          user.Print(41, "world");
+            \'\'\')
+  src.close()
+'''
+        self.do_run(src, '|hello|43|world|41|', post_build=post)
+
     def test_typeinfo(self):
       if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
 
