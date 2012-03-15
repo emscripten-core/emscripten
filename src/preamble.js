@@ -880,9 +880,15 @@ var STRING_TABLE = [];
 var runDependencies = 0;
 function addRunDependency() {
   runDependencies++;
+  if (Module['monitorRunDependencies']) {
+    Module['monitorRunDependencies'](runDependencies);
+  }
 }
 function removeRunDependency() {
   runDependencies--;
+  if (Module['monitorRunDependencies']) {
+    Module['monitorRunDependencies'](runDependencies);
+  }
   if (runDependencies == 0) run();
 }
 
