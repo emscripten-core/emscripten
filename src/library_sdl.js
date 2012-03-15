@@ -479,7 +479,12 @@ mergeInto(LibraryManager.library, {
   IMG_Load: function(filename) {
     filename = Pointer_stringify(filename);
     var format = filename.split('.').slice(-1)[0];
-    var data = readBinary(filename);
+    var file = FS.analyzePath(filename);
+    if (!file || !file.object) {
+      console.log('Cannot find file: ' + filename);
+      return 0;
+    }
+    var data = file.object.contents;
     var raw = Browser.decodeImage(data, format);
     var surf = SDL.makeSurface(raw.width, raw.height, 0);
     // XXX Extremely inefficient!

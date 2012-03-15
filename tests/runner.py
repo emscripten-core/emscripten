@@ -6279,7 +6279,18 @@ f.close()
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
     def test_emcc_sdl_image(self):
-      pass # load an image file, say jpg, get pixel data
+      # load an image file, get pixel data
+
+      return self.skip('decoding is async, we need sync...')
+
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
+      shutil.copyfile(path_from_root('tests', 'sdl_image.c'), os.path.join(self.get_dir(), 'sdl_image.c'))
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+    def test_emcc_compression(self):
+      pass # test compression of both the compiled code itself in a side file, and of data files
 
     def test_emcc_worker(self):
       # Test running in a web worker
