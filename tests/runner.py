@@ -5922,16 +5922,15 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
-    def test_emcc(self):
+    def clear(self):
+      for name in os.listdir(self.get_dir()):
+        try_delete(name)
       emcc_debug = os.environ.get('EMCC_DEBUG')
+      if emcc_debug:
+        for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
+          try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
-      def clear():
-        for name in os.listdir(self.get_dir()):
-          try_delete(name)
-        if emcc_debug:
-          for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
-            try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
-
+    def test_emcc(self):
       for compiler in [EMCC, EMXX]:
         shortcompiler = os.path.basename(compiler)
         suffix = '.c' if compiler == EMCC else '.cpp'
@@ -5957,14 +5956,14 @@ Options that are modified or new in %s include:
 ''' % (shortcompiler, shortcompiler), output[0], output[1])
 
         # emcc src.cpp ==> writes a.out.js
-        clear()
+        self.clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # properly report source code errors, and stop there
-        clear()
+        self.clear()
         assert not os.path.exists('a.out.js')
         output = Popen([compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
@@ -5980,7 +5979,7 @@ Options that are modified or new in %s include:
         #      regression check: -o js should create "js", with bitcode content
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
-          clear()
+          self.clear()
           Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           syms = Building.llvm_nm(target)
           assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
@@ -5993,7 +5992,7 @@ Options that are modified or new in %s include:
           self.assertContained('hello, world!', run_js(target + '.js'))
 
         # handle singleton archives
-        clear()
+        self.clear()
         Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         Popen([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.a')
@@ -6002,7 +6001,7 @@ Options that are modified or new in %s include:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # emcc src.ll ==> generates .js
-        clear()
+        self.clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -6014,7 +6013,7 @@ Options that are modified or new in %s include:
           os.chdir('a_dir')
           os.mkdir('b_dir')
           for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
-            clear()
+            self.clear()
             output = Popen([compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
             assert os.path.exists(path), path + ' does not exist; ' + '\n'.join(output)
             self.assertContained('hello, world!', run_js(path))
@@ -6028,7 +6027,7 @@ Options that are modified or new in %s include:
         # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
@@ -6054,7 +6053,7 @@ Options that are modified or new in %s include:
           (['-O1', '-o', 'something.bc'], 0, [], 0, 0), # -Ox is ignored and warned about
         ]:
           #print params, opt_level, bc_params, closure
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
@@ -6102,7 +6101,7 @@ Options that are modified or new in %s include:
           (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -6111,7 +6110,7 @@ Options that are modified or new in %s include:
 
         # Compiling two source files into a final JS.
         for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
@@ -6119,7 +6118,7 @@ Options that are modified or new in %s include:
           self.assertContained('side got: hello from main, over', run_js(target))
 
           # Compiling two files with -c will generate separate .bc files
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           if '-o' in args:
@@ -6155,7 +6154,7 @@ Options that are modified or new in %s include:
           self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
 
         # --js-transform <transform>
-        clear()
+        self.clear()
         trans = os.path.join(self.get_dir(), 't.py')
         trans_file = open(trans, 'w')
         trans_file.write('''
@@ -6172,35 +6171,32 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
-      # For browser tests which report their success
+    def run_browser(self, html_file, message, expectedResult = None):
       def run_test_server(expectedResult):
         class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
           def do_GET(s):
             assert s.path == expectedResult, 'Expected %s, got %s' % (expectedResult, s.path)
         httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
         httpd.handle_request()
-
-      # Finally, do some web browser tests
-      def run_browser(html_file, message, expectedResult = None):
-        webbrowser.open_new(os.path.abspath(html_file))
-        print 'A web browser window should have opened a page containing the results of a part of this test.'
-        print 'You need to manually look at the page to see that it works ok: ' + message
+      webbrowser.open_new(os.path.abspath(html_file))
+      print 'A web browser window should have opened a page containing the results of a part of this test.'
+      print 'You need to manually look at the page to see that it works ok: ' + message
+      if expectedResult is not None:
+        run_test_server(expectedResult)
+      else:
         print '(sleeping for a bit to keep the directory alive for the web browser..)'
-        if expectedResult is not None:
-          run_test_server(expectedResult)
-        else:
-          time.sleep(5)
+        time.sleep(5)
         print '(moving on..)'
 
+    def test_emcc_html(self):
       # test HTML generation.
-      clear()
       output = Popen([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
+      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
 
-      # And test running in a web worker
-      clear()
+    def test_emcc_worker(self):
+      # Test running in a web worker
       output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('worker.js'), output
@@ -6219,20 +6215,19 @@ f.close()
         </html>
       ''')
       html_file.close()
-      run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
+      self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
+    def test_emcc_gl(self):
       # test the OpenGL ES implementation
-      clear()
       output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
+      self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
       # Make sure that OpenGL ES is not available if typed arrays are not used
-      clear()
       output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '-s', 'USE_TYPED_ARRAYS=0',
@@ -6240,7 +6235,7 @@ f.close()
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
+      self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_emcc_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
