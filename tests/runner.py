@@ -6210,9 +6210,19 @@ f.close()
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
 
+    def with_report_result(self, code):
+      return code.replace('REPORT_RESULT();', '''
+          char output[1000];
+          sprintf(output, 
+                  "xhr = new XMLHttpRequest();"
+                  "xhr.open('GET', 'http://localhost:8888/report_result?%d');"
+                  "xhr.send();", result);
+          emscripten_run_script(output);
+''')
+
     def test_emcc_preload_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
@@ -6224,16 +6234,11 @@ f.close()
           fclose(f);
           printf("|%s|\n", buf);
 
-          int ok = !strcmp("load me right before", buf);
-          char output[1000];
-          sprintf(output, 
-                  "xhr = new XMLHttpRequest();"
-                  "xhr.open('GET', 'http://localhost:8888/report_result?%d');"
-                  "xhr.send();", ok);
-          emscripten_run_script(output);
+          int result = !strcmp("load me right before", buf);
+          REPORT_RESULT();
           return 0;
         }
-      ''')
+      '''))
 
       Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
