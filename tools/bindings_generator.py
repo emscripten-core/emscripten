@@ -52,6 +52,10 @@ Notes:
 
       https://github.com/kripken/box2d.js
 
+ * Functions implemented inline in classes may not be actually
+    compiled into bitcode, unless they are actually used. That may
+    confuse the bindings generator.
+
  * C strings (char *) passed to functions are treated in a special way.
     If you pass in a pointer, it is assumed to be a pointer and left as
     is. Otherwise it must be a JS string, and we convert it to a C
@@ -675,7 +679,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       clean = clean_type(arg['type'])
       if clean in classes:
         justargs_fixed[i] += '.ptr'
-      elif arg['type'].replace(' ', '') == 'char*':
+      elif arg['type'].replace(' ', '').endswith('char*'):
         justargs_fixed[i] = 'ensureString(' + justargs_fixed[i] + ')'
         has_string_convs = True
 
