@@ -14,7 +14,8 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading, platform
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing
+
 
 # Setup
 
@@ -6171,19 +6172,36 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
-    def run_browser(self, html_file, message, expectedResult = None):
-      def run_test_server(expectedResult):
-        class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-          def do_GET(s):
-            assert s.path == expectedResult, 'Expected %s, got %s' % (expectedResult, s.path)
-        httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
-        httpd.handle_request()
-      webbrowser.open_new(os.path.abspath(html_file))
-      print 'A web browser window should have opened a page containing the results of a part of this test.'
-      print 'You need to manually look at the page to see that it works ok: ' + message
+    def run_browser(self, html_file, message, expectedResult=None):
       if expectedResult is not None:
-        run_test_server(expectedResult)
+        try:
+          try:
+            def server_func(q):
+              class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+                def do_GET(s):
+                  q.put(s.path)
+              httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+              httpd.serve_forever() # test runner will kill us
+            queue = multiprocessing.Queue()
+            server = multiprocessing.Process(target=server_func, args=(queue,))
+            server.start()
+            webbrowser.open_new(os.path.abspath(html_file))
+            output = '[no http server activity]'
+            start = time.time()
+            while time.time() - start < 5:
+              if not queue.empty():
+                output = queue.get()
+                break
+              time.sleep(0.1)
+            self.assertIdentical(expectedResult, output)
+          except Exception, e:
+            print e
+        finally:
+          server.terminate()
       else:
+        webbrowser.open_new(os.path.abspath(html_file))
+        print 'A web browser window should have opened a page containing the results of a part of this test.'
+        print 'You need to manually look at the page to see that it works ok: ' + message
         print '(sleeping for a bit to keep the directory alive for the web browser..)'
         time.sleep(5)
         print '(moving on..)'
@@ -6194,6 +6212,34 @@ f.close()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
+
+    def zzztest_emcc_preload_file(self):
+      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          FILE *f = fopen("somefile.txt", "r");
+          char buf[100];
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("|%s|\n", buf);
+
+          int ok = !strcmp("load me right before", buf);
+          char output[1000];
+          sprintf(output, 
+                  "xhr = new XMLHttpRequest();"
+                  "xhr.open('GET', 'http://localhost:8888/report_result?%d');"
+                  "xhr.send();", ok);
+          emscripten_run_script(output);
+          return 0;
+        }
+      ''')
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     def test_emcc_worker(self):
       # Test running in a web worker
@@ -6227,6 +6273,7 @@ f.close()
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
+    def test_emcc_gl_fail(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
       output = Popen([EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
