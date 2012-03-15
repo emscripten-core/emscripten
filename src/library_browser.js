@@ -33,7 +33,7 @@ mergeInto(LibraryManager.library, {
       }
       var image = new Image();
       image.src = 'data:image/' + format + ';base64,' + encodeBase64(pixels);
-      assert(image.complete, 'Image could not be decoded'); // page reload might fix it, decoding is async...
+      assert(image.complete, 'Image could not be decoded'); // page reload might fix it, decoding is async... need .onload handler...
       var canvas = document.createElement('canvas');
       canvas.width = image.width;
       canvas.height = image.height;
