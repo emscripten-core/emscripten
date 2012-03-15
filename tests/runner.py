@@ -6175,27 +6175,24 @@ f.close()
     def run_browser(self, html_file, message, expectedResult=None):
       if expectedResult is not None:
         try:
-          try:
-            def server_func(q):
-              class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-                def do_GET(s):
-                  q.put(s.path)
-              httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
-              httpd.serve_forever() # test runner will kill us
-            queue = multiprocessing.Queue()
-            server = multiprocessing.Process(target=server_func, args=(queue,))
-            server.start()
-            webbrowser.open_new(os.path.abspath(html_file))
-            output = '[no http server activity]'
-            start = time.time()
-            while time.time() - start < 5:
-              if not queue.empty():
-                output = queue.get()
-                break
-              time.sleep(0.1)
-            self.assertIdentical(expectedResult, output)
-          except Exception, e:
-            print e
+          def server_func(q):
+            class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+              def do_GET(s):
+                q.put(s.path)
+            httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+            httpd.serve_forever() # test runner will kill us
+          queue = multiprocessing.Queue()
+          server = multiprocessing.Process(target=server_func, args=(queue,))
+          server.start()
+          webbrowser.open_new(os.path.abspath(html_file))
+          output = '[no http server activity]'
+          start = time.time()
+          while time.time() - start < 5:
+            if not queue.empty():
+              output = queue.get()
+              break
+            time.sleep(0.1)
+          self.assertIdentical(expectedResult, output)
         finally:
           server.terminate()
       else:
@@ -6213,7 +6210,7 @@ f.close()
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
 
-    def zzztest_emcc_preload_file(self):
+    def test_emcc_preload_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
         #include <stdio.h>

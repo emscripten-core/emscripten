@@ -198,11 +198,16 @@ Options that are modified or new in %s include:
                               will be run). Note that this by itself
                               will not minify the code (closure does
                               that)
-  --embed-file <filename>  A file to embed inside the generated
+  --embed-file <file>      A file to embed inside the generated
                            JavaScript. The compiled code will be able
                            to access the file in the current directory
                            with the same basename as given here (that is,
                            just the filename, without a path to it).
+  --preload-file <name>    A file to preload before running the
+                           compiled code asynchronously. Otherwise
+                           similar to --embed-file, except that this
+                           option is only relevant when generating
+                           HTML (it uses asynchronous binary XHRs).
   --ignore-dynamic-linking Normally emcc will treat dynamic linking like
                            static linking, by linking in the code from
                            the dynamic library. This fails if the same
@@ -347,6 +352,7 @@ try:
   post_js = None
   compress_whitespace = None
   embed_files = []
+  preload_files = []
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
 
@@ -394,6 +400,11 @@ try:
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       embed_files.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--preload-file'):
+      check_bad_eq(newargs[i])
+      preload_files.append(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
@@ -728,16 +739,35 @@ try:
   final = shared.Building.emscripten(final, append_ext=False)
   if DEBUG: save_intermediate('original')
 
-  # Embed files
-  if len(embed_files) > 0:
-    if DEBUG: print >> sys.stderr, 'emcc: embedding files'
-    src = open(final).read().replace(
-      '// {{PRE_RUN_ADDITIONS}}',
-      '\n'.join(map(lambda embed_file: "FS.createDataFile('/', '%s', %s, true, false);" % (os.path.basename(embed_file), str(map(ord, open(embed_file, 'rb').read()))), embed_files))
-    )
-    final += '.ef.js'
+  # Embed and preload files
+  if len(embed_files) + len(preload_files) > 0:
+    if DEBUG: print >> sys.stderr, 'emcc: setting up files'
+    code = ''
+    for filename in embed_files:
+      code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
+    counter = 0
+    for filename in preload_files:
+      name = 'filePreload%d' % counter
+      counter += 1
+      code += '''
+    var %(name)s = new XMLHttpRequest();
+    %(name)s.open("GET", "%(filename)s", true);
+    %(name)s.responseType = 'arraybuffer';
+    addRunDependency();
+    %(name)s.onload = function (oEvent) {
+      var arrayBuffer = %(name)s.response; // Note: not X.responseText
+      assert(arrayBuffer, 'Loading file %(filename)s failed.');
+      var byteArray = new Uint8Array(arrayBuffer);
+      FS.createDataFile('/', '%(filename)s', byteArray, true, true);
+      removeRunDependency();
+    };
+    %(name)s.send(null);
+''' % { 'name': name, 'filename': filename }
+
+    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
+    final += '.files.js'
     open(final, 'w').write(src)
-    if DEBUG: save_intermediate('embedded_files')
+    if DEBUG: save_intermediate('files')
 
   # Apply pre and postjs files
   if pre_js or post_js:

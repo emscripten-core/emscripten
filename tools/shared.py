@@ -226,7 +226,7 @@ def check_engine(engine):
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
 
-def timeout_run(proc, timeout, note):
+def timeout_run(proc, timeout, note='unnamed process'):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:

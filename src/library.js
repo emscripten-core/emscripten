@@ -255,23 +255,7 @@ LibraryManager.library = {
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
-        // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', obj.url, false);
-
-        // Some hints to the browser that we want binary data.
-        if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
-        if (xhr.overrideMimeType) {
-          xhr.overrideMimeType('text/plain; charset=x-user-defined');
-        }
-
-        xhr.send(null);
-        if (xhr.status != 200 && xhr.status != 0) success = false;
-        if (xhr.response !== undefined) {
-          obj.contents = new Uint8Array(xhr.response || []);
-        } else {
-          obj.contents = intArrayFromString(xhr.responseText || '', true);
-        }
+        assert('Cannot do synchronous binary XHRs in modern browsers. Use --embed-file or --preload-file in emcc');
       } else if (typeof read !== 'undefined') {
         // Command-line.
         try {
