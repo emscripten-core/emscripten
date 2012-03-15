@@ -6243,6 +6243,44 @@ f.close()
       Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
+    def test_emcc_multifile(self):
+      # a few files inside a directory
+      if not os.path.exists(os.path.join(self.get_dir(), 'subdirr')):
+        os.makedirs(os.path.join(self.get_dir(), 'subdirr'));
+      open(os.path.join(self.get_dir(), 'subdirr', 'data1.txt'), 'w').write('''1214141516171819''')
+      open(os.path.join(self.get_dir(), 'subdirr', 'data2.txt'), 'w').write('''3.14159265358979''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          char buf[17];
+
+          FILE *f = fopen("subdirr/data1.txt", "r");
+          fread(buf, 1, 16, f);
+          buf[16] = 0;
+          fclose(f);
+          printf("|%s|\n", buf);
+          int result = !strcmp("1214141516171819", buf);
+
+          FILE *f2 = fopen("subdirr/data2.txt", "r");
+          fread(buf, 1, 16, f2);
+          buf[16] = 0;
+          fclose(f2);
+          printf("|%s|\n", buf);
+          result = result && !strcmp("3.14159265358979", buf);
+
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/data2.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
+
+    def test_emcc_sdl_image(self):
+      pass # load an image file, say jpg, get pixel data
+
     def test_emcc_worker(self):
       # Test running in a web worker
       output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()

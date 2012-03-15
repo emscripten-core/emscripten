@@ -743,26 +743,38 @@ try:
   if len(embed_files) + len(preload_files) > 0:
     if DEBUG: print >> sys.stderr, 'emcc: setting up files'
     code = ''
+
+    partial_dirs = []
+    for filename in embed_files + preload_files:
+      dirname = os.path.dirname(filename)
+      parts = dirname.split(os.path.sep)
+      if dirname != '' and dirname != os.path.sep:
+        for i in range(len(parts)):
+          partial = os.path.sep.join(parts[:i])
+          if partial not in partial_dirs:
+            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i-1]), parts[-1])
+            partial_dirs.append(partial)
+
     for filename in embed_files:
       code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
     counter = 0
     for filename in preload_files:
-      name = 'filePreload%d' % counter
+      varname = 'filePreload%d' % counter
       counter += 1
       code += '''
-    var %(name)s = new XMLHttpRequest();
-    %(name)s.open("GET", "%(filename)s", true);
-    %(name)s.responseType = 'arraybuffer';
+    var %(varname)s = new XMLHttpRequest();
+    %(varname)s.open("GET", "%(filename)s", true);
+    %(varname)s.responseType = 'arraybuffer';
     addRunDependency();
-    %(name)s.onload = function (oEvent) {
-      var arrayBuffer = %(name)s.response; // Note: not X.responseText
+    %(varname)s.onload = function() {
+      var arrayBuffer = %(varname)s.response; // Note: not X.responseText
       assert(arrayBuffer, 'Loading file %(filename)s failed.');
       var byteArray = new Uint8Array(arrayBuffer);
-      FS.createDataFile('/', '%(filename)s', byteArray, true, true);
+      FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
       removeRunDependency();
     };
-    %(name)s.send(null);
-''' % { 'name': name, 'filename': filename }
+    %(varname)s.send(null);
+''' % { 'varname': varname, 'filename': filename, 'dirname': os.path.dirname(filename), 'basename': os.path.basename(filename) }
 
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
     final += '.files.js'
