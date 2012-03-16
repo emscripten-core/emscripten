@@ -6220,6 +6220,28 @@ f.close()
           emscripten_run_script(output);
 ''')
 
+    def test_emcc_compression(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+        int main() {
+          printf("hello compressed world\n");
+          int result = 1;
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html',
+             '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                            path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                            'LZMA.decompress')]).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'page.js')), 'must be side js'
+      assert os.path.exists(os.path.join(self.get_dir(), 'page.js.compress')), 'must be side compressed js'
+      assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size > os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be smaller'
+      shutil.move(os.path.join(self.get_dir(), 'page.js'), 'page.js.renamedsoitcannotbefound');
+      self.run_browser('page.html', '', '/report_result?1')
+
     def test_emcc_preload_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
@@ -6290,9 +6312,6 @@ f.close()
 
       Popen([EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?600')
-
-    def test_emcc_compression(self):
-      pass # test compression of both the compiled code itself in a side file, and of data files
 
     def test_emcc_worker(self):
       # Test running in a web worker
