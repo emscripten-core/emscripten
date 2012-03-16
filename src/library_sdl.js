@@ -76,7 +76,7 @@
 //  * SDL_Quit does nothing.
 
 mergeInto(LibraryManager.library, {
-  $SDL__deps: ['$Browser'],
+  //$SDL__deps: ['$Browser'],
   $SDL: {
     defaults: {
       width: 320,
