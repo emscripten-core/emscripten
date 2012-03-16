@@ -6305,6 +6305,35 @@ f.close()
       Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
+    def test_emcc_compressed_file(self):
+      open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('''compress this please''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          char buf[21];
+          FILE *f = fopen("datafile.txt", "r");
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("file says: |%s|\n", buf);
+          int result = !strcmp("compress this please", buf);
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt',
+             '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                            path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                            'LZMA.decompress')]).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt')), 'must be data file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt.compress')), 'must be data file in compressed form'
+      assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size != os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be different'
+      shutil.move(os.path.join(self.get_dir(), 'datafile.txt'), 'datafile.txt.renamedsoitcannotbefound');
+      self.run_browser('page.html', '', '/report_result?1')
+
     def test_emcc_sdl_image(self):
       # load an image file, get pixel data
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
