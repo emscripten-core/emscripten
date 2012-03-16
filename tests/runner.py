@@ -6275,7 +6275,12 @@ f.close()
         }
       '''))
 
+      # by individual files
       Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/data2.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
+
+      # by directory
+      Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
     def test_emcc_sdl_image(self):

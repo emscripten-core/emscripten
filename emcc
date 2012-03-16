@@ -203,6 +203,8 @@ Options that are modified or new in %s include:
                            to access the file in the current directory
                            with the same basename as given here (that is,
                            just the filename, without a path to it).
+                           If a directory is passed here, its entire
+                           contents will be embedded.
   --preload-file <name>    A file to preload before running the
                            compiled code asynchronously. Otherwise
                            similar to --embed-file, except that this
@@ -214,6 +216,8 @@ Options that are modified or new in %s include:
                            to load (IMG_Load), but they will not be
                            available as normal data files (if you need
                            the alternative, change the suffix).
+                           If a directory is passed here, its entire
+                           contents will be preloaded.
   --ignore-dynamic-linking Normally emcc will treat dynamic linking like
                            static linking, by linking in the code from
                            the dynamic library. This fails if the same
@@ -752,6 +756,26 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: setting up files'
     code = ''
 
+    # Sanity checks
+    for filename in embed_files:
+      assert filename not in preload_files, 'Cannot both embed and preload file %s' % filename
+
+    # Expand directories
+    def add(filename, dirname, names):
+      for name in names:
+        combined = os.path.join(dirname, name)
+        if filename in embed_files:
+          embed_files.append(combined)
+        else:
+          preload_files.append(combined)
+    for filename in embed_files + preload_files:
+      if os.path.isdir(filename):
+        os.path.walk(filename, add, filename)
+        for source in [embed_files, preload_files]:
+          if filename in source:
+            source.remove(filename)
+
+    # Set up folders
     partial_dirs = []
     for filename in embed_files + preload_files:
       dirname = os.path.dirname(filename)
@@ -763,11 +787,13 @@ try:
             code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i-1]), parts[-1])
             partial_dirs.append(partial)
 
+    # Embed
     for filename in embed_files:
       if filename.endswith(IMAGE_SUFFIXES):
         print >> sys.stderr, 'emcc: warning: embedding file %s, but not making sure it decodes synchronously. consider using --preload-file' % filename
       code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
 
+    # Preload
     counter = 0
     for filename in preload_files:
       varname = 'filePreload%d' % counter
