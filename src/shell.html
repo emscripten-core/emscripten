@@ -8,6 +8,8 @@
     <hr>
     <div id='output'></div>
     <hr>
+    <center><div id='status'></div></center>
+    <hr>
     <script type='text/javascript'>
       // connect to canvas
       var Module = {
@@ -21,10 +23,15 @@
             element.innerHTML += text + '<br>';
           };
         })(),
-        canvas: document.getElementById('canvas')
+        canvas: document.getElementById('canvas'),
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          document.getElementById('status').innerHTML = left ? 'Downloading files: ' + (this.totalDependencies-left) + '/' + this.totalDependencies :
+                                                               'All downloads complete.';
+        }
       };
 
-      // The compiled code
       {{{ SCRIPT_CODE }}}
     </script>
   </body>
