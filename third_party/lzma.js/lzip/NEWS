@@ -1,0 +1,22 @@
+Changes in version 1.12:
+
+The option "-F, --recompress", which forces recompression of files whose
+name already has the ".lz" or ".tlz" suffix, has been added.
+
+For large values of "--match-length", compression ratio has been
+slightly increased and compression time has been reduced by up to 6%.
+
+Compression time of option "-0" has been reduced by 2%.
+
+Print only one status line for each multimember file when only one "-v"
+is specified.
+
+Print up to 6 bytes of trailing garbage when "-vvvv" is specified.
+
+Do not show the message "and `--stdout' was not specified" for file
+types that can't be read (directories, etc).
+
+If "--verbose" is not specified, lziprecover now only shows errors and
+warnings.
+
+Options "--bits", "--position" and "--size" has been added to unzcrash.

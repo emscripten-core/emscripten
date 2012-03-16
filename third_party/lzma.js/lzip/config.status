@@ -1,0 +1,8 @@
+#! /bin/sh
+# This file was generated automatically by configure. Do not edit.
+# Run this file to recreate the current configuration.
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+exec /bin/sh ./configure  --no-create
