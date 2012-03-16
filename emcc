@@ -190,10 +190,10 @@ Options that are modified or new in %s include:
                            generated code
   --post-js <file>         A file whose contents are added after the
                            generated code
-  --compress <on>          0: Do not compress the generated JavaScript's
+  --minify <on>            0: Do not minify the generated JavaScript's
                               whitespace (default if closure compiler
                               will not be run)
-                           1: Compress the generated JavaScript's
+                           1: Minify the generated JavaScript's
                               whitespace (default if closure compiler
                               will be run). Note that this by itself
                               will not minify the code (closure does
@@ -362,7 +362,7 @@ try:
   js_transform = None
   pre_js = None
   post_js = None
-  compress_whitespace = None
+  minify_whitespace = None
   embed_files = []
   preload_files = []
   ignore_dynamic_linking = False
@@ -404,9 +404,9 @@ try:
       post_js = open(newargs[i+1]).read()
       newargs[i] = ''
       newargs[i+1] = ''
-    elif newargs[i].startswith('--compress'):
+    elif newargs[i].startswith('--minify'):
       check_bad_eq(newargs[i])
-      compress_whitespace = int(newargs[i+1])
+      minify_whitespace = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--embed-file'):
@@ -437,8 +437,8 @@ try:
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if closure is None: closure = 1 if opt_level >= 2 else 0
-  if compress_whitespace is None:
-    compress_whitespace = closure # if closure is run, compress whitespace
+  if minify_whitespace is None:
+    minify_whitespace = closure # if closure is run, minify whitespace
 
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
@@ -905,7 +905,7 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     js_optimizer_queue += ['simplifyExpressionsPost']
 
-  if compress_whitespace:
+  if minify_whitespace:
     js_optimizer_queue += ['compress']
 
   flush_js_optimizer_queue()
