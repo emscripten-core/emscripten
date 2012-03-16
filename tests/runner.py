@@ -6280,14 +6280,11 @@ f.close()
 
     def test_emcc_sdl_image(self):
       # load an image file, get pixel data
-
-      return self.skip('decoding is async, we need sync...')
-
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
-      shutil.copyfile(path_from_root('tests', 'sdl_image.c'), os.path.join(self.get_dir(), 'sdl_image.c'))
+      open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
       Popen([EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?600')
 
     def test_emcc_compression(self):
       pass # test compression of both the compiled code itself in a side file, and of data files

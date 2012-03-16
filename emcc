@@ -208,6 +208,12 @@ Options that are modified or new in %s include:
                            similar to --embed-file, except that this
                            option is only relevant when generating
                            HTML (it uses asynchronous binary XHRs).
+                           Note that files with typical image suffixes
+                           (png, jpg, bmp) will be preloaded as images.
+                           Their pixel data will be available for SDL_image
+                           to load (IMG_Load), but they will not be
+                           available as normal data files (if you need
+                           the alternative, change the suffix).
   --ignore-dynamic-linking Normally emcc will treat dynamic linking like
                            static linking, by linking in the code from
                            the dynamic library. This fails if the same
@@ -282,6 +288,8 @@ DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
+
+IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 
 def suffix(name):
   return name.split('.')[:-1]
@@ -756,25 +764,47 @@ try:
             partial_dirs.append(partial)
 
     for filename in embed_files:
+      if filename.endswith(IMAGE_SUFFIXES):
+        print >> sys.stderr, 'emcc: warning: embedding file %s, but not making sure it decodes synchronously. consider using --preload-file' % filename
       code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
+
     counter = 0
     for filename in preload_files:
       varname = 'filePreload%d' % counter
       counter += 1
-      code += '''
-    var %(varname)s = new XMLHttpRequest();
-    %(varname)s.open("GET", "%(filename)s", true);
-    %(varname)s.responseType = 'arraybuffer';
-    addRunDependency();
-    %(varname)s.onload = function() {
-      var arrayBuffer = %(varname)s.response; // Note: not X.responseText
-      assert(arrayBuffer, 'Loading file %(filename)s failed.');
-      var byteArray = new Uint8Array(arrayBuffer);
-      FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
-      removeRunDependency();
-    };
-    %(varname)s.send(null);
-''' % { 'varname': varname, 'filename': filename, 'dirname': os.path.dirname(filename), 'basename': os.path.basename(filename) }
+      image = filename.endswith(IMAGE_SUFFIXES)
+      if not image:
+        code += '''
+      var %(varname)s = new XMLHttpRequest();
+      %(varname)s.open('GET', '%(filename)s', true);
+      %(varname)s.responseType = 'arraybuffer';
+      %(varname)s.onload = function() {
+        var arrayBuffer = %(varname)s.response; // Note: not X.responseText
+        assert(arrayBuffer, 'Loading file %(filename)s failed.');
+        var byteArray = new Uint8Array(arrayBuffer);
+        FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
+        removeRunDependency();
+      };
+      addRunDependency();
+      %(varname)s.send(null);
+  ''' % { 'varname': varname, 'filename': filename, 'dirname': os.path.dirname(filename), 'basename': os.path.basename(filename) }
+      else:
+        print >> sys.stderr, 'emcc: warning: preloading file %s as image because of suffix. it will not be available to load as a normal file' % filename
+        code += '''
+      var %(varname)s = new Image();
+      %(varname)s.src = '%(filename)s';
+      %(varname)s.onload = function() {
+        assert(%(varname)s.complete, 'Image could not be decoded');
+        var canvas = document.createElement('canvas');
+        canvas.width = %(varname)s.width;
+        canvas.height = %(varname)s.height;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(%(varname)s, 0, 0);
+        preloadedImages['%(filename)s'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        removeRunDependency();
+      };
+      addRunDependency();
+  ''' % { 'varname': varname, 'filename': filename }
 
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
     final += '.files.js'
