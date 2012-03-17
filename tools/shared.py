@@ -357,11 +357,11 @@ class Building:
   @staticmethod
   def get_building_env():
     env = os.environ.copy()
-    env['CC'] = EMCC
-    env['CXX'] = EMXX
-    env['AR'] = EMAR
-    env['RANLIB'] = EMRANLIB
-    env['LIBTOOL'] = EMLIBTOOL
+    env['CC'] = 'python %r' % EMCC
+    env['CXX'] = 'python %r' % EMXX
+    env['AR'] = 'python %r' % EMAR
+    env['RANLIB'] = 'python %r' % EMRANLIB
+    env['LIBTOOL'] = 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
@@ -409,17 +409,17 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
     if 'cmake' in args[0]:
       args = Building.handle_CMake_toolchain(args, env)
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
+    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
     del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None):
     if env is None:
       env = Building.get_building_env()
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
+    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers).
@@ -555,13 +555,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen([EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen([EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(['python', EMAR, action, output_filename] + filenames, stdout=stderr, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 
