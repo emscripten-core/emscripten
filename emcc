@@ -401,8 +401,7 @@ try:
   pre_js = None
   post_js = None
   minify_whitespace = None
-  embed_files = []
-  preload_files = []
+  data_files = []
   compression = None
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
@@ -450,12 +449,12 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
-      embed_files.append(newargs[i+1])
+      data_files.append({ 'name': newargs[i+1], 'mode': 'embed' })
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--preload-file'):
       check_bad_eq(newargs[i])
-      preload_files.append(newargs[i+1])
+      data_files.append({ 'name': newargs[i+1], 'mode': 'preload' })
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--compression'):
@@ -805,40 +804,31 @@ try:
   if DEBUG: save_intermediate('original')
 
   # Embed and preload files
-  if len(embed_files) + len(preload_files) > 0:
+  if len(data_files) > 0:
     if DEBUG: print >> sys.stderr, 'emcc: setting up files'
     code = ''
 
-    # Sanity checks
-    for filename in embed_files:
-      assert filename not in preload_files, 'Cannot both embed and preload file %s' % filename
-
     # Expand directories into individual files
-    def add(filename, dirname, names):
+    def add(filename, dirname, names, mode):
       for name in names:
         combined = os.path.join(dirname, name)
-        if filename in embed_files:
-          embed_files.append(combined)
-        else:
-          preload_files.append(combined)
-    for filename in embed_files + preload_files:
-      if os.path.isdir(filename):
-        os.path.walk(filename, add, filename)
-        for source in [embed_files, preload_files]:
-          if filename in source:
-            source.remove(filename)
+        data_files.append({ 'name': newargs[i+1], 'mode': mode })
+
+    for file_ in data_files:
+      if os.path.isdir(file_['name']):
+        os.path.walk(file_['name'], add, file_['name'], )
+    data_files = filter(lambda file_: not os.path.isdir(file_['name']), data_files)
 
     if Compression.on:
       # Compress each file
-      for filename in embed_files + preload_files:
-        Compression.compress(filename)
-      embed_files = map(lambda filename: Compression.compressed_name(filename), embed_files)
-      preload_files = map(lambda filename: Compression.compressed_name(filename), preload_files)
+      for file_ in data_files:
+        Compression.compress(file_['name'])
+        file_['name'] = Compression.compressed_name(file_['name'])
 
     # Set up folders
     partial_dirs = []
-    for filename in embed_files + preload_files:
-      dirname = os.path.dirname(filename)
+    for file_ in data_files:
+      dirname = os.path.dirname(file_['name'])
       parts = dirname.split(os.path.sep)
       if dirname != '' and dirname != os.path.sep:
         for i in range(len(parts)):
@@ -847,58 +837,60 @@ try:
             code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i-1]), parts[-1])
             partial_dirs.append(partial)
 
-    # Embed
-    for filename in embed_files:
-      if filename.endswith(IMAGE_SUFFIXES):
-        print >> sys.stderr, 'emcc: warning: embedding file %s, but not making sure it decodes synchronously. consider using --preload-file' % filename
-      code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
-
-    # Preload
     counter = 0
-    for filename in preload_files:
-      varname = 'filePreload%d' % counter
-      counter += 1
-      image = filename.endswith(IMAGE_SUFFIXES)
-      if not image:
-        code += '''
-      var %(varname)s = new XMLHttpRequest();
-      %(varname)s.open('GET', '%(filename)s', true);
-      %(varname)s.responseType = 'arraybuffer';
-      %(varname)s.onload = function() {
-        var arrayBuffer = %(varname)s.response; // Note: not X.responseText
-        assert(arrayBuffer, 'Loading file %(filename)s failed.');
-        var byteArray = new Uint8Array(arrayBuffer);
-        %(decompress)s;
-        FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
-        removeRunDependency();
-      };
-      addRunDependency();
-      %(varname)s.send(null);
-  ''' % {
-          'varname': varname,
-          'filename': filename,
-          'dirname': os.path.dirname(filename),
-          'basename': os.path.basename(filename) if not Compression.on else os.path.basename(filename)[:-len(Compression.compressed_name(''))],
-          'decompress': '' if not Compression.on else 'byteArray = Module["decompress"](byteArray)'
-        }
+    for file_ in data_files:
+      filename = file_['name']
+      if file_['mode'] == 'embed':
+        # Embed
+        if filename.endswith(IMAGE_SUFFIXES):
+          print >> sys.stderr, 'emcc: warning: embedding file %s, but not making sure it decodes synchronously. consider using --preload-file' % filename
+        code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
+      elif file_['mode'] == 'preload':
+        # Preload
+        varname = 'filePreload%d' % counter
+        counter += 1
+        image = filename.endswith(IMAGE_SUFFIXES)
+        if not image:
+          code += '''
+        var %(varname)s = new XMLHttpRequest();
+        %(varname)s.open('GET', '%(filename)s', true);
+        %(varname)s.responseType = 'arraybuffer';
+        %(varname)s.onload = function() {
+          var arrayBuffer = %(varname)s.response; // Note: not X.responseText
+          assert(arrayBuffer, 'Loading file %(filename)s failed.');
+          var byteArray = new Uint8Array(arrayBuffer);
+          %(decompress)s;
+          FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
+          removeRunDependency();
+        };
+        addRunDependency();
+        %(varname)s.send(null);
+''' % {
+            'varname': varname,
+            'filename': filename,
+            'dirname': os.path.dirname(filename),
+            'basename': os.path.basename(filename) if not Compression.on else os.path.basename(filename)[:-len(Compression.compressed_name(''))],
+            'decompress': '' if not Compression.on else 'byteArray = Module["decompress"](byteArray)'
+          }
+        else:
+          print >> sys.stderr, 'emcc: warning: preloading file %s as image because of suffix. it will not be available to load as a normal file' % filename
+          code += '''
+        var %(varname)s = new Image();
+        %(varname)s.src = '%(filename)s';
+        %(varname)s.onload = function() {
+          assert(%(varname)s.complete, 'Image could not be decoded');
+          var canvas = document.createElement('canvas');
+          canvas.width = %(varname)s.width;
+          canvas.height = %(varname)s.height;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(%(varname)s, 0, 0);
+          preloadedImages['%(filename)s'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          removeRunDependency();
+        };
+        addRunDependency();
+''' % { 'varname': varname, 'filename': filename }
       else:
-        print >> sys.stderr, 'emcc: warning: preloading file %s as image because of suffix. it will not be available to load as a normal file' % filename
-        code += '''
-      var %(varname)s = new Image();
-      %(varname)s.src = '%(filename)s';
-      %(varname)s.onload = function() {
-        assert(%(varname)s.complete, 'Image could not be decoded');
-        var canvas = document.createElement('canvas');
-        canvas.width = %(varname)s.width;
-        canvas.height = %(varname)s.height;
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(%(varname)s, 0, 0);
-        preloadedImages['%(filename)s'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        removeRunDependency();
-      };
-      addRunDependency();
-  ''' % { 'varname': varname, 'filename': filename }
-
+        assert 0
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
     final += '.files.js'
     open(final, 'w').write(src)
