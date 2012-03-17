@@ -160,18 +160,23 @@ Options that are modified or new in %s include:
                            break the generated code! If that happens, try
                            -O2 and then adding dangerous optimizations one
                            by one.
+
   -s OPTION=VALUE          JavaScript code generation option passed
                            into the emscripten compiler. For the
                            available options, see src/settings.js
+
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
+
   --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
                            1: -O1 LLVM optimizations (default in -O1)
                            2: -O2 LLVM optimizations
                            3: -O3 LLVM optimizations (default in -O2+)
+
   --closure <on>           0: No closure compiler (default in -O0, -O1)
                            1: Run closure compiler (default in -O2, -O3)
+
   --js-transform <cmd>     <cmd> will be called on the generated code
                            before it is optimized. This lets you modify
                            the JavaScript, for example adding some code
@@ -186,23 +191,59 @@ Options that are modified or new in %s include:
                            list of arguments, for example, <cmd> of
                            "python processor.py" will cause a python
                            script to be run.
+
   --pre-js <file>          A file whose contents are added before the
                            generated code
+
   --post-js <file>         A file whose contents are added after the
                            generated code
-  --compress <on>          0: Do not compress the generated JavaScript's
-                              whitespace (default if closure compiler
-                              will not be run)
-                           1: Compress the generated JavaScript's
-                              whitespace (default if closure compiler
-                              will be run). Note that this by itself
-                              will not minify the code (closure does
-                              that)
-  --embed-file <filename>  A file to embed inside the generated
+
+  --embed-file <file>      A file to embed inside the generated
                            JavaScript. The compiled code will be able
                            to access the file in the current directory
                            with the same basename as given here (that is,
                            just the filename, without a path to it).
+                           If a directory is passed here, its entire
+                           contents will be embedded.
+
+  --preload-file <name>    A file to preload before running the
+                           compiled code asynchronously. Otherwise
+                           similar to --embed-file, except that this
+                           option is only relevant when generating
+                           HTML (it uses asynchronous binary XHRs).
+                           Note that files with typical image suffixes
+                           (png, jpg, bmp) will be preloaded as images.
+                           Their pixel data will be available for SDL_image
+                           to load (IMG_Load), but they will not be
+                           available as normal data files (if you need
+                           the alternative, change the suffix).
+                           If a directory is passed here, its entire
+                           contents will be preloaded.
+
+  --compression <codec>    Compress both the compiled code and embedded/
+                           preloaded files. <codec> should be a triple,
+
+                              <native_encoder>,<js_decoder>,<js_name>
+
+                           where native_encoder is a native executable
+                           that compresses stdin to stdout (the simplest
+                           possible interface), js_decoder is a
+                           JavaScript file that implements a decoder,
+                           and js_name is the name of the function to
+                           call in the decoder file (which should
+                           receive an array/typed array and return
+                           an array/typed array.
+                           Compression only works when generating HTML.
+
+  --minify <on>            0: Do not minify the generated JavaScript's
+                              whitespace (default if closure compiler
+                              will not be run)
+                           1: Minify the generated JavaScript's
+                              whitespace (default if closure compiler
+                              will be run). Note that this by itself
+                              will not minify the code (closure does
+                              that)
+
   --ignore-dynamic-linking Normally emcc will treat dynamic linking like
                            static linking, by linking in the code from
                            the dynamic library. This fails if the same
@@ -211,6 +252,7 @@ Options that are modified or new in %s include:
                            which allows the build system to proceed without
                            errors. However, you will need to manually
                            link to the shared libraries later on yourself.
+
   --shell-file <path>      The path name to a skeleton HTML file used
                            when generating HTML output. The shell file
                            used needs to have this token inside it:
@@ -243,7 +285,7 @@ the source of emcc (search for 'os.environ').
 
 # If this is a configure-type thing, do not compile to JavaScript, instead use clang
 # to compile to a native binary (using our headers, so things make sense later)
-CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
+CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = shared.CLANG
@@ -277,6 +319,8 @@ DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
+
+IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 
 def suffix(name):
   return name.split('.')[:-1]
@@ -332,6 +376,17 @@ else:
 def in_temp(name):
   return os.path.join(temp_dir, name)
 
+class Compression:
+  on = False
+
+  @staticmethod
+  def compressed_name(filename):
+    return filename + '.compress'
+
+  @staticmethod
+  def compress(filename):
+    execute(Compression.encoder, stdin=open(filename, 'rb'), stdout=open(Compression.compressed_name(filename), 'wb'))
+
 try:
   call = CXX if use_cxx else CC
 
@@ -345,8 +400,10 @@ try:
   js_transform = None
   pre_js = None
   post_js = None
-  compress_whitespace = None
+  minify_whitespace = None
   embed_files = []
+  preload_files = []
+  compression = None
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
 
@@ -386,14 +443,31 @@ try:
       post_js = open(newargs[i+1]).read()
       newargs[i] = ''
       newargs[i+1] = ''
-    elif newargs[i].startswith('--compress'):
+    elif newargs[i].startswith('--minify'):
       check_bad_eq(newargs[i])
-      compress_whitespace = int(newargs[i+1])
+      minify_whitespace = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       embed_files.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--preload-file'):
+      check_bad_eq(newargs[i])
+      preload_files.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--compression'):
+      check_bad_eq(newargs[i])
+      parts = newargs[i+1].split(',')
+      assert len(parts) == 3, '--compression requires specifying    native_encoder,js_decoder,js_name  - see emcc --help. got: %s' % newargs[i+1]
+      Compression.encoder = parts[0]
+      Compression.decoder = parts[1]
+      Compression.js_name = parts[2]
+      assert os.path.exists(Compression.encoder), 'native encoder %s does not exist' % Compression.encoder
+      assert os.path.exists(Compression.decoder), 'js decoder %s does not exist' % Compression.decoder
+      Compression.on = True
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
@@ -414,8 +488,8 @@ try:
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if closure is None: closure = 1 if opt_level >= 2 else 0
-  if compress_whitespace is None:
-    compress_whitespace = closure # if closure is run, compress whitespace
+  if minify_whitespace is None:
+    minify_whitespace = closure # if closure is run, minify whitespace
 
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
@@ -511,6 +585,8 @@ try:
     final_suffix = target.split('.')[-1]
   else:
     final_suffix = ''
+
+  assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
@@ -728,16 +804,105 @@ try:
   final = shared.Building.emscripten(final, append_ext=False)
   if DEBUG: save_intermediate('original')
 
-  # Embed files
-  if len(embed_files) > 0:
-    if DEBUG: print >> sys.stderr, 'emcc: embedding files'
-    src = open(final).read().replace(
-      '// {{PRE_RUN_ADDITIONS}}',
-      '\n'.join(map(lambda embed_file: "FS.createDataFile('/', '%s', %s, true, false);" % (os.path.basename(embed_file), str(map(ord, open(embed_file, 'rb').read()))), embed_files))
-    )
-    final += '.ef.js'
+  # Embed and preload files
+  if len(embed_files) + len(preload_files) > 0:
+    if DEBUG: print >> sys.stderr, 'emcc: setting up files'
+    code = ''
+
+    # Sanity checks
+    for filename in embed_files:
+      assert filename not in preload_files, 'Cannot both embed and preload file %s' % filename
+
+    # Expand directories into individual files
+    def add(filename, dirname, names):
+      for name in names:
+        combined = os.path.join(dirname, name)
+        if filename in embed_files:
+          embed_files.append(combined)
+        else:
+          preload_files.append(combined)
+    for filename in embed_files + preload_files:
+      if os.path.isdir(filename):
+        os.path.walk(filename, add, filename)
+        for source in [embed_files, preload_files]:
+          if filename in source:
+            source.remove(filename)
+
+    if Compression.on:
+      # Compress each file
+      for filename in embed_files + preload_files:
+        Compression.compress(filename)
+      embed_files = map(lambda filename: Compression.compressed_name(filename), embed_files)
+      preload_files = map(lambda filename: Compression.compressed_name(filename), preload_files)
+
+    # Set up folders
+    partial_dirs = []
+    for filename in embed_files + preload_files:
+      dirname = os.path.dirname(filename)
+      parts = dirname.split(os.path.sep)
+      if dirname != '' and dirname != os.path.sep:
+        for i in range(len(parts)):
+          partial = os.path.sep.join(parts[:i])
+          if partial not in partial_dirs:
+            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i-1]), parts[-1])
+            partial_dirs.append(partial)
+
+    # Embed
+    for filename in embed_files:
+      if filename.endswith(IMAGE_SUFFIXES):
+        print >> sys.stderr, 'emcc: warning: embedding file %s, but not making sure it decodes synchronously. consider using --preload-file' % filename
+      code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
+
+    # Preload
+    counter = 0
+    for filename in preload_files:
+      varname = 'filePreload%d' % counter
+      counter += 1
+      image = filename.endswith(IMAGE_SUFFIXES)
+      if not image:
+        code += '''
+      var %(varname)s = new XMLHttpRequest();
+      %(varname)s.open('GET', '%(filename)s', true);
+      %(varname)s.responseType = 'arraybuffer';
+      %(varname)s.onload = function() {
+        var arrayBuffer = %(varname)s.response; // Note: not X.responseText
+        assert(arrayBuffer, 'Loading file %(filename)s failed.');
+        var byteArray = new Uint8Array(arrayBuffer);
+        %(decompress)s;
+        FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
+        removeRunDependency();
+      };
+      addRunDependency();
+      %(varname)s.send(null);
+  ''' % {
+          'varname': varname,
+          'filename': filename,
+          'dirname': os.path.dirname(filename),
+          'basename': os.path.basename(filename) if not Compression.on else os.path.basename(filename)[:-len(Compression.compressed_name(''))],
+          'decompress': '' if not Compression.on else 'byteArray = Module["decompress"](byteArray)'
+        }
+      else:
+        print >> sys.stderr, 'emcc: warning: preloading file %s as image because of suffix. it will not be available to load as a normal file' % filename
+        code += '''
+      var %(varname)s = new Image();
+      %(varname)s.src = '%(filename)s';
+      %(varname)s.onload = function() {
+        assert(%(varname)s.complete, 'Image could not be decoded');
+        var canvas = document.createElement('canvas');
+        canvas.width = %(varname)s.width;
+        canvas.height = %(varname)s.height;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(%(varname)s, 0, 0);
+        preloadedImages['%(filename)s'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        removeRunDependency();
+      };
+      addRunDependency();
+  ''' % { 'varname': varname, 'filename': filename }
+
+    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
+    final += '.files.js'
     open(final, 'w').write(src)
-    if DEBUG: save_intermediate('embedded_files')
+    if DEBUG: save_intermediate('files')
 
   # Apply pre and postjs files
   if pre_js or post_js:
@@ -807,7 +972,7 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     js_optimizer_queue += ['simplifyExpressionsPost']
 
-  if compress_whitespace:
+  if minify_whitespace:
     js_optimizer_queue += ['compress']
 
   flush_js_optimizer_queue()
@@ -817,7 +982,37 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: generating HTML'
     shell = open(shell_path).read()
     html = open(target, 'w')
-    html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
+    if not Compression.on:
+      html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
+    else:
+      # Add the decompressor in the html, and code to
+      #   1. download the compressed file
+      #   2. decompress to a typed array
+      #   3. convert to a string of source code
+      #   4. insert a script element with that source code (more effective than eval)
+      js_target = unsuffixed(target) + '.js'
+      shutil.move(final, js_target)
+      Compression.compress(js_target)
+      decoding = open(Compression.decoder).read()
+      decoding += 'Module["decompress"] = function(data) { return %s(data) };\n' % Compression.js_name
+      decoding += '''
+        var compiledCodeXHR = new XMLHttpRequest();
+        compiledCodeXHR.open('GET', '%s', true);
+        compiledCodeXHR.responseType = 'arraybuffer';
+        compiledCodeXHR.onload = function() {
+          var arrayBuffer = compiledCodeXHR.response;
+          if (!arrayBuffer) throw('Loading compressed code failed.');
+          var byteArray = new Uint8Array(arrayBuffer);
+          var decompressed = %s(byteArray);
+          var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
+          var scriptTag = document.createElement('script');
+          scriptTag.setAttribute('type', 'text/javascript');
+          scriptTag.innerHTML = source;
+          document.body.appendChild(scriptTag);
+        };
+        compiledCodeXHR.send(null);
+''' % (Compression.compressed_name(js_target), Compression.js_name)
+      html.write(shell.replace('{{{ SCRIPT_CODE }}}', decoding))
     html.close()
   else:
     # copy final JS to output

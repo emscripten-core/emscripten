@@ -31,11 +31,14 @@ mergeInto(LibraryManager.library, {
         }
         return ret;
       }
-      var img = new Image();
+      var image = new Image();
+      image.src = 'data:image/' + format + ';base64,' + encodeBase64(pixels);
+      assert(image.complete, 'Image could not be decoded'); // page reload might fix it, decoding is async... need .onload handler...
       var canvas = document.createElement('canvas');
-      img.src = 'data:image/' + format + ';base64,' + encodeBase64(pixels);
+      canvas.width = image.width;
+      canvas.height = image.height;
       var ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(image, 0, 0);
       var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       return imageData;
     },

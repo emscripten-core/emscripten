@@ -76,7 +76,7 @@
 //  * SDL_Quit does nothing.
 
 mergeInto(LibraryManager.library, {
-  $SDL__deps: ['$Browser'],
+  //$SDL__deps: ['$Browser'],
   $SDL: {
     defaults: {
       width: 320,
@@ -478,9 +478,8 @@ mergeInto(LibraryManager.library, {
 
   IMG_Load: function(filename) {
     filename = Pointer_stringify(filename);
-    var format = filename.split('.').slice(-1)[0];
-    var data = readBinary(filename);
-    var raw = Browser.decodeImage(data, format);
+    var raw = preloadedImages[filename];
+    assert(raw, 'Cannot find preloaded image ' + filename);
     var surf = SDL.makeSurface(raw.width, raw.height, 0);
     // XXX Extremely inefficient!
     for (var i = 0; i < raw.width*raw.height*4; i++) {

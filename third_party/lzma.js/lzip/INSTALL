@@ -1,0 +1,56 @@
+Requirements
+------------
+You will need a C++ compiler.
+I use gcc 4.3.5 and 3.3.6, but the code should compile with any
+standards compliant compiler.
+Gcc is available at http://gcc.gnu.org.
+
+
+Procedure
+---------
+1. Unpack the archive if you have not done so already:
+
+	lzip -cd lzip[version].tar.lz | tar -xf -
+or
+	gzip -cd lzip[version].tar.gz | tar -xf -
+
+This creates the directory ./lzip[version] containing the source from
+the main archive.
+
+2. Change to lzip directory and run configure.
+   (Try `configure --help' for usage instructions).
+
+	cd lzip[version]
+	./configure
+
+3. Run make.
+
+	make
+
+4. Optionally, type `make check' to run the tests that come with lzip.
+
+5. Type `make install' to install the programs and any data files and
+   documentation.
+
+
+Another way
+-----------
+You can also compile lzip into a separate directory. To do this, you
+must use a version of `make' that supports the `VPATH' variable, such
+as GNU `make'. `cd' to the directory where you want the object files
+and executables to go and run the `configure' script. `configure'
+automatically checks for the source code in `.', in `..' and in the
+directory that `configure' is in.
+
+`configure' recognizes the option `--srcdir=DIR' to control where to
+look for the sources. Usually `configure' can determine that directory
+automatically.
+
+After running `configure', you can run `make' and `make install' as
+explained above.
+
+
+Copyright (C) 2008, 2009, 2010, 2011 Antonio Diaz Diaz.
+
+This file is free documentation: you have unlimited permission to copy,
+distribute and modify it.

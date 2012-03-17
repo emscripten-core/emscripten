@@ -53,10 +53,10 @@ if (Module['preRun']) {
 
 #if INVOKE_RUN
 #else
-Module['noInitialRun'] = true;
+addRunDependency();
 #endif
 
-if (!Module['noInitialRun']) {
+if (runDependencies == 0) {
   var ret = run();
 #if CATCH_EXIT_CODE
   print('Exit Status: ' + ret);

@@ -14,7 +14,8 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, BaseHTTPServer, threading, platform
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing
+
 
 # Setup
 
@@ -5363,6 +5364,48 @@ Child2:9
 *ok*
 ''', post_build=[post2, post3])
 
+    def test_scriptaclass_2(self):
+        header_filename = os.path.join(self.get_dir(), 'header.h')
+        header = '''
+          #include <stdio.h>
+          #include <string.h>
+
+          class StringUser {
+            char *s;
+            int i;
+          public:
+            StringUser(char *string, int integer) : s(strdup(string)), i(integer) {}
+            void Print(int anotherInteger, char *anotherString) {
+              printf("|%s|%d|%s|%d|\\n", s, i, anotherString, anotherInteger);
+            }
+            void CallOther(StringUser *fr) { fr->Print(i, s); }
+          };
+        '''
+        open(header_filename, 'w').write(header)
+
+        basename = os.path.join(self.get_dir(), 'bindingtest')
+        output = Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+        #print output
+        assert 'Traceback' not in output, 'Failure in binding generation: ' + output
+
+        src = '''
+          #include "header.h"
+
+          #include "bindingtest.cpp"
+        '''
+
+        post = '''
+def process(filename):
+  src = open(filename, 'a')
+  src.write(open('bindingtest.js').read() + '\\n\\n')
+  src.write(\'\'\'
+          var user = new Module.StringUser("hello", 43);
+          user.Print(41, "world");
+            \'\'\')
+  src.close()
+'''
+        self.do_run(src, '|hello|43|world|41|', post_build=post)
+
     def test_typeinfo(self):
       if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
 
@@ -5885,16 +5928,15 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
-    def test_emcc(self):
+    def clear(self):
+      for name in os.listdir(self.get_dir()):
+        try_delete(name)
       emcc_debug = os.environ.get('EMCC_DEBUG')
+      if emcc_debug:
+        for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
+          try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
-      def clear():
-        for name in os.listdir(self.get_dir()):
-          try_delete(name)
-        if emcc_debug:
-          for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
-            try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
-
+    def test_emcc(self):
       for compiler in [EMCC, EMXX]:
         shortcompiler = os.path.basename(compiler)
         suffix = '.c' if compiler == EMCC else '.cpp'
@@ -5920,14 +5962,14 @@ Options that are modified or new in %s include:
 ''' % (shortcompiler, shortcompiler), output[0], output[1])
 
         # emcc src.cpp ==> writes a.out.js
-        clear()
+        self.clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # properly report source code errors, and stop there
-        clear()
+        self.clear()
         assert not os.path.exists('a.out.js')
         output = Popen([compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
@@ -5943,7 +5985,7 @@ Options that are modified or new in %s include:
         #      regression check: -o js should create "js", with bitcode content
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
-          clear()
+          self.clear()
           Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           syms = Building.llvm_nm(target)
           assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
@@ -5956,7 +5998,7 @@ Options that are modified or new in %s include:
           self.assertContained('hello, world!', run_js(target + '.js'))
 
         # handle singleton archives
-        clear()
+        self.clear()
         Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         Popen(['python', LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.a')
@@ -5965,7 +6007,7 @@ Options that are modified or new in %s include:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # emcc src.ll ==> generates .js
-        clear()
+        self.clear()
         output = Popen([compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -5977,7 +6019,7 @@ Options that are modified or new in %s include:
           os.chdir('a_dir')
           os.mkdir('b_dir')
           for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
-            clear()
+            self.clear()
             output = Popen([compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
             assert os.path.exists(path), path + ' does not exist; ' + '\n'.join(output)
             self.assertContained('hello, world!', run_js(path))
@@ -5991,7 +6033,7 @@ Options that are modified or new in %s include:
         # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
@@ -6017,7 +6059,7 @@ Options that are modified or new in %s include:
           (['-O1', '-o', 'something.bc'], 0, [], 0, 0), # -Ox is ignored and warned about
         ]:
           #print params, opt_level, bc_params, closure
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
@@ -6065,7 +6107,7 @@ Options that are modified or new in %s include:
           (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -6074,7 +6116,7 @@ Options that are modified or new in %s include:
 
         # Compiling two source files into a final JS.
         for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
@@ -6082,7 +6124,7 @@ Options that are modified or new in %s include:
           self.assertContained('side got: hello from main, over', run_js(target))
 
           # Compiling two files with -c will generate separate .bc files
-          clear()
+          self.clear()
           output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           if '-o' in args:
@@ -6118,7 +6160,7 @@ Options that are modified or new in %s include:
           self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
 
         # --js-transform <transform>
-        clear()
+        self.clear()
         trans = os.path.join(self.get_dir(), 't.py')
         trans_file = open(trans, 'w')
         trans_file.write('''
@@ -6135,35 +6177,178 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
-      # For browser tests which report their success
-      def run_test_server(expectedResult):
-        class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-          def do_GET(s):
-            assert s.path == expectedResult, 'Expected %s, got %s' % (expectedResult, s.path)
-        httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
-        httpd.handle_request()
-
-      # Finally, do some web browser tests
-      def run_browser(html_file, message, expectedResult = None):
+    def run_browser(self, html_file, message, expectedResult=None):
+      if expectedResult is not None:
+        try:
+          def server_func(q):
+            class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+              def do_GET(s):
+                q.put(s.path)
+            httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+            httpd.serve_forever() # test runner will kill us
+          queue = multiprocessing.Queue()
+          server = multiprocessing.Process(target=server_func, args=(queue,))
+          server.start()
+          webbrowser.open_new(os.path.abspath(html_file))
+          output = '[no http server activity]'
+          start = time.time()
+          while time.time() - start < 5:
+            if not queue.empty():
+              output = queue.get()
+              break
+            time.sleep(0.1)
+          self.assertIdentical(expectedResult, output)
+        finally:
+          server.terminate()
+      else:
         webbrowser.open_new(os.path.abspath(html_file))
         print 'A web browser window should have opened a page containing the results of a part of this test.'
         print 'You need to manually look at the page to see that it works ok: ' + message
         print '(sleeping for a bit to keep the directory alive for the web browser..)'
-        if expectedResult is not None:
-          run_test_server(expectedResult)
-        else:
-          time.sleep(5)
+        time.sleep(5)
         print '(moving on..)'
 
+    def test_emcc_html(self):
       # test HTML generation.
-      clear()
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
+      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
 
-      # And test running in a web worker
-      clear()
+    def with_report_result(self, code):
+      return code.replace('REPORT_RESULT();', '''
+          char output[1000];
+          sprintf(output, 
+                  "xhr = new XMLHttpRequest();"
+                  "xhr.open('GET', 'http://localhost:8888/report_result?%d');"
+                  "xhr.send();", result);
+          emscripten_run_script(output);
+''')
+
+    def test_emcc_compression(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+        int main() {
+          printf("hello compressed world\n");
+          int result = 1;
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html',
+             '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                            path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                            'LZMA.decompress')]).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'page.js')), 'must be side js'
+      assert os.path.exists(os.path.join(self.get_dir(), 'page.js.compress')), 'must be side compressed js'
+      assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size > os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be smaller'
+      shutil.move(os.path.join(self.get_dir(), 'page.js'), 'page.js.renamedsoitcannotbefound');
+      self.run_browser('page.html', '', '/report_result?1')
+
+    def test_emcc_preload_file(self):
+      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          FILE *f = fopen("somefile.txt", "r");
+          char buf[100];
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("|%s|\n", buf);
+
+          int result = !strcmp("load me right before", buf);
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+    def test_emcc_multifile(self):
+      # a few files inside a directory
+      if not os.path.exists(os.path.join(self.get_dir(), 'subdirr')):
+        os.makedirs(os.path.join(self.get_dir(), 'subdirr'));
+      open(os.path.join(self.get_dir(), 'subdirr', 'data1.txt'), 'w').write('''1214141516171819''')
+      open(os.path.join(self.get_dir(), 'subdirr', 'data2.txt'), 'w').write('''3.14159265358979''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          char buf[17];
+
+          FILE *f = fopen("subdirr/data1.txt", "r");
+          fread(buf, 1, 16, f);
+          buf[16] = 0;
+          fclose(f);
+          printf("|%s|\n", buf);
+          int result = !strcmp("1214141516171819", buf);
+
+          FILE *f2 = fopen("subdirr/data2.txt", "r");
+          fread(buf, 1, 16, f2);
+          buf[16] = 0;
+          fclose(f2);
+          printf("|%s|\n", buf);
+          result = result && !strcmp("3.14159265358979", buf);
+
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+
+      # by individual files
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/data2.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
+
+      # by directory
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
+
+    def test_emcc_compressed_file(self):
+      open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('''compress this please''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          char buf[21];
+          FILE *f = fopen("datafile.txt", "r");
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("file says: |%s|\n", buf);
+          int result = !strcmp("compress this please", buf);
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt',
+             '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                            path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                            'LZMA.decompress')]).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt')), 'must be data file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt.compress')), 'must be data file in compressed form'
+      assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size != os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be different'
+      shutil.move(os.path.join(self.get_dir(), 'datafile.txt'), 'datafile.txt.renamedsoitcannotbefound');
+      self.run_browser('page.html', '', '/report_result?1')
+
+    def test_emcc_sdl_image(self):
+      # load an image file, get pixel data
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
+      open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?600')
+
+    def test_emcc_worker(self):
+      # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('worker.js'), output
@@ -6182,20 +6367,20 @@ f.close()
         </html>
       ''')
       html_file.close()
-      run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
+      self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
+    def test_emcc_gl(self):
       # test the OpenGL ES implementation
-      clear()
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
+      self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
+    def test_emcc_gl_fail(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
-      clear()
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '-s', 'USE_TYPED_ARRAYS=0',
@@ -6203,7 +6388,7 @@ f.close()
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
+      self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_emcc_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work

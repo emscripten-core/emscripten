@@ -1,0 +1,201 @@
+2011-04-30  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.12 released.
+	* main.cc: Added new option `-F, --recompress'.
+	* encoder.h (update_prices): Update high length symbol prices
+	  independently of the value of `pos_state'. This gives better
+	  compression for large values of `--match-length' without being
+	  slower.
+	* encoder.h encoder.cc: Optimize pair price calculations. This
+	  reduces compression time for large values of `--match-length'
+	  by up to 6%.
+	* Compression time of option `-0' has been reduced by 2%.
+	* main.cc (decompress): Print only one status line for each
+	  multimember file when only one `-v' is specified.
+	* main.cc (decompress): Print up to 6 bytes of trailing garbage
+	  when `-vvvv' is specified.
+	* main.cc (open_instream): Do not show the message
+	  " and `--stdout' was not specified" for directories, etc.
+	* lziprecover.cc: If `-v' is not specified show errors only.
+	* testsuite/unzcrash.cc: Use Arg_parser.
+	* testsuite/unzcrash.cc: Added new options `-b', `-p' and `-s'.
+
+2010-09-16  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.11 released.
+	* Added new option `-0' which produces a compression speed and
+	  ratio comparable to those of `gzip -9'.
+	* fast_encoder.h fast_encoder.cc: New files.
+	* main.cc: Match length limit set by options -1 to -8 has been
+	  reduced to extend range of use towards gzip. Lower numbers now
+	  compress less but faster. (-1 now takes 43% less time for only
+	  20% larger compressed size).
+	* encoder.cc: Compression of option -9 has been slightly increased.
+	* lziprecover.cc: Added new option `--merge' which tries to
+	  produce a correct file merging the good parts of two or more
+	  damaged copies.
+	* lziprecover.cc: Added new option `--repair' for repairing a
+	  1-byte error in single-member files.
+	* decoder.cc (decode_member): Detect file errors earlier to
+	  improve efficiency of lziprecover's new repair capability.
+	  This change also prevents (harmless) access to uninitialized
+	  memory when decompressing a corrupt file.
+	* lziprecover.cc: Added new option `--force'.
+	* lziprecover.cc: Added new option `--output'.
+	* lziprecover.cc: Added new option `--split' to select the until
+	  now only operation of splitting multimember files.
+	* lziprecover.cc: If no operation is specified, warn the user
+	  and do nothing.
+	* main.cc: Fixed warning about fchown's return value being ignored.
+	* decoder.cc: `-tvvvv' now also shows compression ratio.
+	* main.cc: Set stdin/stdout in binary mode on MSVC and OS2.
+	* New examples have been added to the manual.
+	* testsuite: `test1' renamed to `test.txt'. Added new tests.
+	* Matchfinder types HC4 (4 bytes hash-chain) and HT4 (4 bytes
+	  hash-table) have been tested and found no better than the
+	  current BT4.
+
+2010-04-05  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.10 released.
+	* decoder.h: Input_buffer integrated in Range_decoder.
+	* main.cc: File specified with option `-o' is now created with
+	  mode 0666 if umask allows it, deleted if interrupted by user.
+	* main.cc: New constant `o_binary'.
+	* main.cc: Dictionary size for options -2, -3, -4 and -8 has
+	  been changed to improve linearity of compressed sizes.
+	* lzip.h: Fixed warnings produced by over-optimization (-O3).
+	* Makefile.in: Added quotes to directory names.
+
+2010-01-17  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.9 released.
+	* main.cc (main): Return at least 1 if closing stdout fails.
+	* Makefile.in: Added `--name' option to help2man invocation.
+	* testsuite/check.sh: Use `test1' instead of `COPYING' for testing.
+
+2009-09-02  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.8 released.
+	* Compression time has been reduced by 4%.
+	* Lzdiff and lzgrep have been moved to the new package zutils.
+	* Fixed warnings on sistems where uint32_t != unsigned int.
+
+2009-06-25  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.7 released.
+	* decoder.h (copy_block): Fixed memcpy overlap introduced in 1.6.
+
+2009-06-22  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.6 released.
+	* Decompression time has been reduced by 17%.
+	* Added decompression support for Sync Flush marker.
+	* Added support for .tbz extension to lzdiff and lzgrep.
+	* Added man pages for lzdiff, lzgrep and lziprecover.
+	* encoder.cc (Matchfinder): Reduce memory use to 9x if input file
+	  is smaller than dictionary size limit.
+	* decoder.cc: Added extra flush calls to improve partial
+	  decompression of corrupt files.
+	* `--test' no more needs `/dev/null'.
+	* Removed some `bashisms' from lzdiff and lzgrep.
+	* Dictionary size for options `-1' to `-4' has been changed.
+	* main.cc (signal_handler): Declared as `extern "C"'.
+	* Makefile.in: Extra files are now installed by default.
+	* testsuite/check.sh: Test lziprecover.
+	* Added `export LC_ALL=C' to all scripts.
+
+2009-04-12  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.5 released.
+	* lzip.h: Coded dictionary size implemented in File_header.
+	* Fixed some includes that prevented compilation with GCC 4.4.
+	* `member_size' and `volume_size' are now accurate limits.
+	* Compression speed has been improved.
+	* Implemented bt4 type matchfinder.
+	* Added chapter `Algorithm' to the manual.
+	* Lzdiff and lzgrep now accept `-h' for `--help' and
+	  `-V' for `--version'.
+	* Makefile.in: Man page is now installed by default.
+	* testsuite/check.sh: Verify that files are open in binary mode.
+
+2009-01-24  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.4 released.
+	* Implemented compression of version 1 files.
+	* Added new option `--member-size'.
+	* Added new option `--volume-size'.
+	* Added new option `--output'.
+	* main.cc: Read from non regular files if `--stdout' is specified.
+	* Added `lziprecover', a member recoverer program.
+	* testsuite/unzcrash.cc: Test all 1-byte errors.
+
+2008-12-21  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.3 released.
+	* This version automatically chooses the smallest possible
+	  dictionary size for each file during compression, saving
+	  memory during decompression.
+	* Implemented decompression of version 1 files.
+	* testsuite/check.sh: Replaced `diff -q' with `cmp'.
+
+2008-12-10  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.2 released.
+	* encoder.cc: A 1-byte read outside allocated memory has been fixed.
+	* lzip.h: Dictionary size limit has been reduced to 512MiB because
+	  setting it to 1GiB causes overflow of a 32 bit integer.
+	* Added `lzdiff', a diff/cmp wrapper for gzip, bzip2, lzip and
+	  non-compressed files.
+	* Added `lzgrep', a grep wrapper for gzip, bzip2, lzip and
+	  non-compressed files.
+	* `make install-info' should now work on Debian and OS X.
+
+2008-11-17  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.1 released.
+	* Changed short name of option `--dictionary-size' to `-s'.
+	* Changed short name of option `--match-length' to `-m'.
+	* Changed LONG_LONG_MAX to LLONG_MAX.
+
+2008-10-14  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 1.0 released.
+	* `-tvv' shows file version and dictionary size.
+
+2008-09-30  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 0.5 released.
+	* Decompression is now 1% faster.
+
+2008-09-23  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 0.4 released.
+	* Code cleanup for global variable `verbosity'.
+	* Regained the compression ratio of 0.2 with 5% faster speed.
+	* Fixed compilation on sistems where size_t != unsigned int.
+
+2008-09-15  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 0.3 released.
+	* encoder.cc: Compression is now 15% faster, 1% worse.
+	* main.cc (main): Make `-t' option override `-c'.
+	* main.cc (decompress): Show `done' instead of `ok' when not testing.
+	* encoder.h: Use trials[] to return the list of pairs.
+
+2008-09-09  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 0.2 released.
+	* encoder.cc: Small improvements in compression speed.
+	* Small documentation changes.
+
+2008-08-20  Antonio Diaz Diaz  <ant_diaz@teleline.es>
+
+	* Version 0.1 released.
+
+
+Copyright (C) 2008, 2009, 2010, 2011 Antonio Diaz Diaz.
+
+This file is a collection of facts, and thus it is not copyrightable,
+but just in case, you have unlimited permission to copy, distribute and
+modify it.

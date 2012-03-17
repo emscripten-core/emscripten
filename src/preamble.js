@@ -873,5 +873,28 @@ var STRING_TABLE = [];
 {{{ unSign }}}
 {{{ reSign }}}
 
+// A counter of dependencies for calling run(). If we need to
+// do asynchronous work before running, increment this and
+// decrement it. Incrementing must happen in Module.preRun
+// or PRE_RUN_ADDITIONS (used by emcc to add file preloading).
+var runDependencies = 0;
+function addRunDependency() {
+  runDependencies++;
+  if (Module['monitorRunDependencies']) {
+    Module['monitorRunDependencies'](runDependencies);
+  }
+}
+function removeRunDependency() {
+  runDependencies--;
+  if (Module['monitorRunDependencies']) {
+    Module['monitorRunDependencies'](runDependencies);
+  }
+  if (runDependencies == 0) run();
+}
+
+// Preloading
+
+var preloadedImages = {}; // maps url to image data
+
 // === Body ===
 
