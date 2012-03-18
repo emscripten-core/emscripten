@@ -381,6 +381,10 @@ class Compression:
   def compress(filename):
     execute(Compression.encoder, stdin=open(filename, 'rb'), stdout=open(Compression.compressed_name(filename), 'wb'))
 
+  @staticmethod
+  def worth_it(original, compressed):
+    return compressed < original - 1500 # save at least one TCP packet or so
+
 try:
   call = CXX if use_cxx else CC
 
@@ -813,12 +817,18 @@ try:
         os.path.walk(file_['name'], add, file_['name'], )
     data_files = filter(lambda file_: not os.path.isdir(file_['name']), data_files)
 
+    for file_ in data_files:
+      file_['net_name'] = file_['name']
+      file_['compressed'] = False
+
     if Compression.on:
-      # Compress each file
-      # TODO: if compressed size is not significantly smaller, do not compress!
+      # Compress each file, if it is worth it
       for file_ in data_files:
         Compression.compress(file_['name'])
-        file_['name'] = Compression.compressed_name(file_['name'])
+        if Compression.worth_it(os.stat(file_['name']).st_size,
+                                os.stat(Compression.compressed_name(file_['name'])).st_size):
+          file_['net_name'] = Compression.compressed_name(file_['name'])
+          file_['compressed'] = True
 
     # Set up folders
     partial_dirs = []
@@ -845,7 +855,7 @@ try:
         image = filename.endswith(IMAGE_SUFFIXES)
         code += '''
         var %(varname)s = new XMLHttpRequest();
-        %(varname)s.open('GET', '%(filename)s', true);
+        %(varname)s.open('GET', '%(netname)s', true);
         %(varname)s.responseType = 'arraybuffer';
         %(varname)s.onload = function() {
           var arrayBuffer = %(varname)s.response; // Note: not X.responseText
@@ -860,9 +870,10 @@ try:
 ''' % {
             'varname': varname,
             'filename': filename,
+            'netname': file_['net_name'],
             'dirname': os.path.dirname(filename),
-            'basename': os.path.basename(filename) if not Compression.on else os.path.basename(filename)[:-len(Compression.compressed_name(''))],
-            'decompress': '' if not Compression.on else 'byteArray = Module["decompress"](byteArray);',
+            'basename': os.path.basename(filename),
+            'decompress': '' if not file_['compressed'] else 'byteArray = Module["decompress"](byteArray);',
             'finish': 'removeRunDependency();' if not image else '''var bb = new MozBlobBuilder();
           bb.append(byteArray.buffer);
           var b = bb.getBlob();

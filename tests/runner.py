@@ -6342,7 +6342,7 @@ f.close()
       Popen([EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?600')
 
-    def zzztest_emcc_sdl_image_compressed(self):
+    def test_emcc_sdl_image_compressed(self):
       # load an image file, get pixel data
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
       open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
