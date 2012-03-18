@@ -6306,7 +6306,7 @@ f.close()
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
     def test_emcc_compressed_file(self):
-      open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('''compress this please''')
+      open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('compress this please' + (2000*'.'))
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
         #include <string.h>
