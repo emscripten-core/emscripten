@@ -9,7 +9,7 @@ This script acts as a frontend replacement for the ld linker. See emcc.
 We could use the compiler code for this, but here we want to be careful to use all the linker flags we have been passed, sending them to ld.
 '''
 
-import os, sys
+import os, subprocess, sys
 from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -56,5 +56,5 @@ if target:
   newargs.append('-o=' + actual_target)
 
 if DEBUG: print >> sys.stderr, "emld running:", call, ' '.join(newargs)
-os.execvp(call, [call] + newargs)
+subprocess.call([call] + newargs)
 

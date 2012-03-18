@@ -20,11 +20,13 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   var nodeFS = require('fs');
+  var nodePath = require('path');
 
   read = function(filename) {
+    filename = nodePath['normalize'](filename);
     var ret = nodeFS['readFileSync'](filename).toString();
-    if (!ret && filename[0] != '/') {
-      filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
+    if (!ret && filename != nodePath['resolve'](filename)) {
+      filename = path.join(__dirname, '..', 'src', filename);
       ret = nodeFS['readFileSync'](filename).toString();
     }
     return ret;

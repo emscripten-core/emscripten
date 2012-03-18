@@ -85,4 +85,4 @@ with open('ccproxy.log', 'a') as f:
 
 print "Running:", call, newargs
 
-os.execvp(call, [call] + newargs)
+subprocess.call([call] + newargs)
