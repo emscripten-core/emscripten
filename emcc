@@ -211,12 +211,6 @@ Options that are modified or new in %s include:
                            similar to --embed-file, except that this
                            option is only relevant when generating
                            HTML (it uses asynchronous binary XHRs).
-                           Note that files with typical image suffixes
-                           (png, jpg, bmp) will be preloaded as images.
-                           Their pixel data will be available for SDL_image
-                           to load (IMG_Load), but they will not be
-                           available as normal data files (if you need
-                           the alternative, change the suffix).
                            If a directory is passed here, its entire
                            contents will be preloaded.
 
@@ -821,6 +815,7 @@ try:
 
     if Compression.on:
       # Compress each file
+      # TODO: if compressed size is not significantly smaller, do not compress!
       for file_ in data_files:
         Compression.compress(file_['name'])
         file_['name'] = Compression.compressed_name(file_['name'])
@@ -842,16 +837,13 @@ try:
       filename = file_['name']
       if file_['mode'] == 'embed':
         # Embed
-        if filename.endswith(IMAGE_SUFFIXES):
-          print >> sys.stderr, 'emcc: warning: embedding file %s, but not making sure it decodes synchronously. consider using --preload-file' % filename
         code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
       elif file_['mode'] == 'preload':
         # Preload
         varname = 'filePreload%d' % counter
         counter += 1
         image = filename.endswith(IMAGE_SUFFIXES)
-        if not image:
-          code += '''
+        code += '''
         var %(varname)s = new XMLHttpRequest();
         %(varname)s.open('GET', '%(filename)s', true);
         %(varname)s.responseType = 'arraybuffer';
@@ -859,9 +851,9 @@ try:
           var arrayBuffer = %(varname)s.response; // Note: not X.responseText
           assert(arrayBuffer, 'Loading file %(filename)s failed.');
           var byteArray = new Uint8Array(arrayBuffer);
-          %(decompress)s;
+          %(decompress)s
           FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
-          removeRunDependency();
+          %(finish)s
         };
         addRunDependency();
         %(varname)s.send(null);
@@ -870,25 +862,26 @@ try:
             'filename': filename,
             'dirname': os.path.dirname(filename),
             'basename': os.path.basename(filename) if not Compression.on else os.path.basename(filename)[:-len(Compression.compressed_name(''))],
-            'decompress': '' if not Compression.on else 'byteArray = Module["decompress"](byteArray)'
-          }
-        else:
-          print >> sys.stderr, 'emcc: warning: preloading file %s as image because of suffix. it will not be available to load as a normal file' % filename
-          code += '''
-        var %(varname)s = new Image();
-        %(varname)s.src = '%(filename)s';
-        %(varname)s.onload = function() {
-          assert(%(varname)s.complete, 'Image could not be decoded');
-          var canvas = document.createElement('canvas');
-          canvas.width = %(varname)s.width;
-          canvas.height = %(varname)s.height;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(%(varname)s, 0, 0);
-          preloadedImages['%(filename)s'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          removeRunDependency();
-        };
-        addRunDependency();
-''' % { 'varname': varname, 'filename': filename }
+            'decompress': '' if not Compression.on else 'byteArray = Module["decompress"](byteArray);',
+            'finish': 'removeRunDependency();' if not image else '''var bb = new MozBlobBuilder();
+          bb.append(byteArray.buffer);
+          var b = bb.getBlob();
+          var url = window.URL.createObjectURL(b);
+          var img = new Image();
+          img.src = url;
+          img.onload = function() {
+            assert(img.complete, 'Image %(filename)s could not be decoded');
+            var canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            preloadedImages['%(filename)s'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            window.URL.revokeObjectURL(url);
+            removeRunDependency();
+          };
+''' % { 'filename': filename }
+      }
       else:
         assert 0
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)

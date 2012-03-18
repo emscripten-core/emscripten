@@ -6342,6 +6342,17 @@ f.close()
       Popen([EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?600')
 
+    def zzztest_emcc_sdl_image_compressed(self):
+      # load an image file, get pixel data
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
+      open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
+
+      Popen([EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html',
+             '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                            path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                            'LZMA.decompress')]).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?600')
+
     def test_emcc_worker(self):
       # Test running in a web worker
       output = Popen([EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
