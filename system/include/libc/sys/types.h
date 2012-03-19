@@ -24,7 +24,7 @@
 
 #include <machine/_types.h>
 
-#if defined(__rtems__) || defined(__XMK__)
+#if defined(__rtems__) || defined(__XMK__) || defined(EMSCRIPTEN)
 /*
  *  The following section is RTEMS specific and is needed to more
  *  closely match the types defined in the BSD sys/types.h.
