@@ -256,12 +256,12 @@ LibraryManager.library = {
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
         assert('Cannot do synchronous binary XHRs in modern browsers. Use --embed-file or --preload-file in emcc');
-      } else if (Module.read) {
+      } else if (Module['read']) {
         // Command-line.
         try {
           // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
           //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(Module.read(obj.url), true);
+          obj.contents = intArrayFromString(Module['read'](obj.url), true);
         } catch (e) {
           success = false;
         }
