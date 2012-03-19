@@ -355,8 +355,11 @@ for i in range(len(sys.argv)-1):
     break
 
 if header: # header or such
-  if DEBUG: print >> sys.stderr, 'Just copy.'
-  shutil.copy(sys.argv[-1], sys.argv[-2])
+  if len(sys.argv) >= 3: # if there is a source and a target, then copy, otherwise do nothing
+    if DEBUG: print >> sys.stderr, 'Just copy.'
+    shutil.copy(sys.argv[-1], sys.argv[-2])
+  else:
+    if DEBUG: print >> sys.stderr, 'No-op.'
   exit(0)
 
 if TEMP_DIR:
