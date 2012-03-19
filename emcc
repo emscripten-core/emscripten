@@ -286,7 +286,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
   if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
   cmd = [compiler] + shared.EMSDK_OPTS + sys.argv[1:]
-  if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', compiler, cmd
+  if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
   exit(os.execvp(compiler, cmd))
 
 if os.environ.get('EMMAKEN_COMPILER'):
