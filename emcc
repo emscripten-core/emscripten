@@ -864,9 +864,10 @@ try:
           var arrayBuffer = %(varname)s.response; // Note: not X.responseText
           assert(arrayBuffer, 'Loading file %(filename)s failed.');
           var byteArray = new Uint8Array(arrayBuffer);
-          %(decompress)s
+          %(decompress_start)s
           FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
           %(finish)s
+          %(decompress_end)s
         };
         addRunDependency();
         %(varname)s.send(null);
@@ -876,13 +877,13 @@ try:
             'netname': file_['net_name'],
             'dirname': os.path.dirname(filename),
             'basename': os.path.basename(filename),
-            'decompress': '' if not file_['compressed'] else 'byteArray = Module["decompress"](byteArray);',
+            'decompress_start': '' if not file_['compressed'] else 'Module["decompress"](byteArray, function(decompressed) { byteArray = new Uint8Array(decompressed);',
+            'decompress_end': '' if not file_['compressed'] else '});',
             'finish': 'removeRunDependency();' if not image else '''var bb = new MozBlobBuilder();
           bb.append(byteArray.buffer);
           var b = bb.getBlob();
           var url = window.URL.createObjectURL(b);
           var img = new Image();
-          img.src = url;
           img.onload = function() {
             assert(img.complete, 'Image %(filename)s could not be decoded');
             var canvas = document.createElement('canvas');
@@ -894,6 +895,10 @@ try:
             window.URL.revokeObjectURL(url);
             removeRunDependency();
           };
+          img.onerror = function(event) {
+            console.log('Image %(filename)s could not be decoded: ' + JSON.stringify(event));
+          };
+          img.src = url;
 ''' % { 'filename': filename }
       }
       else:
@@ -984,17 +989,28 @@ try:
     if not Compression.on:
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
-      # Add the decompressor in the html, and code to
+      # Compress the main code
+      js_target = unsuffixed(target) + '.js'
+      shutil.move(final, js_target)
+      Compression.compress(js_target)
+
+      # Run the decompressor in a worker, and add code to
       #   1. download the compressed file
       #   2. decompress to a typed array
       #   3. convert to a string of source code
       #   4. insert a script element with that source code (more effective than eval)
-      js_target = unsuffixed(target) + '.js'
-      shutil.move(final, js_target)
-      Compression.compress(js_target)
-      decoding = open(Compression.decoder).read()
-      decoding += 'Module["decompress"] = function(data) { return %s(data) };\n' % Compression.js_name
-      decoding += '''
+      decoding = '''
+        var decompressWorker = new Worker('decompress.js');
+        var decompressCallbacks = [];
+        Module["decompress"] = function(data, callback) {
+          var id = decompressCallbacks.length;
+          decompressCallbacks.push(callback);
+          decompressWorker.postMessage({ data: data, id: id });
+        };
+        decompressWorker.onmessage = function(event) {
+          decompressCallbacks[event.data.id](event.data.data);
+          decompressCallbacks[event.data.id] = null;
+        };
         var compiledCodeXHR = new XMLHttpRequest();
         compiledCodeXHR.open('GET', '%s', true);
         compiledCodeXHR.responseType = 'arraybuffer';
@@ -1002,16 +1018,28 @@ try:
           var arrayBuffer = compiledCodeXHR.response;
           if (!arrayBuffer) throw('Loading compressed code failed.');
           var byteArray = new Uint8Array(arrayBuffer);
-          var decompressed = %s(byteArray);
-          var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
-          var scriptTag = document.createElement('script');
-          scriptTag.setAttribute('type', 'text/javascript');
-          scriptTag.innerHTML = source;
-          document.body.appendChild(scriptTag);
+          Module.decompress(byteArray, function(decompressed) {
+            var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
+            var scriptTag = document.createElement('script');
+            scriptTag.setAttribute('type', 'text/javascript');
+            scriptTag.innerHTML = source;
+            document.body.appendChild(scriptTag);
+          });
         };
         compiledCodeXHR.send(null);
-''' % (Compression.compressed_name(js_target), Compression.js_name)
+''' % Compression.compressed_name(js_target)
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', decoding))
+
+      # Add decompressor with web worker glue code
+      decompressor = open('decompress.js', 'w')
+      decompressor.write(open(Compression.decoder).read())
+      decompressor.write('''
+        onmessage = function(event) {
+          postMessage({ data: %s(event.data.data), id: event.data.id });
+        };
+''' % Compression.js_name)
+      decompressor.close()
+
     html.close()
   else:
     # copy final JS to output
