@@ -4784,7 +4784,7 @@ def process(filename):
   src = open(filename, 'a')
   src.write(
     \'\'\'
-      FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
+      FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false);
       run();
       Module.print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
     \'\'\'
