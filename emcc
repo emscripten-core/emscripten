@@ -832,6 +832,9 @@ try:
                                 os.stat(Compression.compressed_name(file_['name'])).st_size):
           file_['net_name'] = Compression.compressed_name(file_['name'])
           file_['compressed'] = True
+        else:
+          if DEBUG: print >> sys.stderr, 'emcc: not compressing %s since not worth it' % file_['name']
+          os.remove(Compression.compressed_name(file_['name']))
 
     # Set up folders
     partial_dirs = []

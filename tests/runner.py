@@ -6357,6 +6357,7 @@ f.close()
                                               path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
                                               'LZMA.decompress')]).communicate()
         assert ('.compress' in open('page.js').read()) == worth_compressing, 'do not compress image if not worth it'
+        assert os.path.exists(basename + '.compress') == worth_compressing, 'remove .compress if not compressing'
         if worth_compressing:
           shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
         self.run_browser('page.html', '', '/report_result?' + str(width))
