@@ -280,7 +280,7 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Quit: function() {
-    print('SDL_Quit called (and ignored)');
+    Module.print('SDL_Quit called (and ignored)');
   },
 
   SDL_LockSurface: function(surf) {
@@ -369,7 +369,7 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Delay: function(delay) {
-    print('SDL_Delay called! - potential infinite loop');
+    Module.print('SDL_Delay called! - potential infinite loop');
   },
 
   SDL_WM_SetCaption: function(title, icon) {

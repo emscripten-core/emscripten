@@ -59,7 +59,7 @@ addRunDependency();
 if (runDependencies == 0) {
   var ret = run();
 #if CATCH_EXIT_CODE
-  print('Exit Status: ' + ret);
+  Module.print('Exit Status: ' + ret);
 #endif
 }
 

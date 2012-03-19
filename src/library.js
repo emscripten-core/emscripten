@@ -256,12 +256,12 @@ LibraryManager.library = {
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
         assert('Cannot do synchronous binary XHRs in modern browsers. Use --embed-file or --preload-file in emcc');
-      } else if (typeof read !== 'undefined') {
+      } else if (Module.read) {
         // Command-line.
         try {
           // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
           //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(read(obj.url), true);
+          obj.contents = intArrayFromString(Module.read(obj.url), true);
         } catch (e) {
           success = false;
         }
@@ -331,13 +331,13 @@ LibraryManager.library = {
         stdoutOverridden = false;
         output = simpleOutput;
       }
-      if (!output.printer) output.printer = print;
+      if (!output.printer) output.printer = Module['print'];
       if (!output.buffer) output.buffer = [];
       if (!error) {
         stderrOverridden = false;
         error = simpleOutput;
       }
-      if (!error.printer) error.printer = print;
+      if (!error.printer) error.printer = Module['print'];
       if (!error.buffer) error.buffer = [];
 
       // Create the temporary folder.
@@ -4405,7 +4405,7 @@ LibraryManager.library = {
       ___cxa_throw.initialized = true;
     }
 #if EXCEPTION_DEBUG
-    print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
+    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
 #endif
     {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
     {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}}
@@ -4959,7 +4959,7 @@ LibraryManager.library = {
       var lib_module = eval(lib_data)(FUNCTION_TABLE.length);
     } catch (e) {
 #if ASSERTIONS
-      print('Error in loading dynamic library: ' + e);
+      Module.printErr('Error in loading dynamic library: ' + e);
 #endif
       DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
       return 0;
@@ -5996,12 +5996,12 @@ LibraryManager.library = {
     invalid: 0,
     dump: function() {
       if (Profiling.invalid) {
-        print('Invalid # of calls to Profiling begin and end!');
+        Module.printErr('Invalid # of calls to Profiling begin and end!');
         return;
       }
-      print('Profiling data:')
+      Module.printErr('Profiling data:')
       for (var i = 0; i < Profiling.max_; i++) {
-        print('Block ' + i + ': ' + Profiling.times[i]);
+        Module.printErr('Block ' + i + ': ' + Profiling.times[i]);
       }
     }
   },

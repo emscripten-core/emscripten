@@ -2187,7 +2187,7 @@ m_divisor is 1091269979
 
           int main() {
             // EMSCRIPTEN_COMMENT("hello from the source");
-            emscripten_run_script("print('hello world' + '!')");
+            emscripten_run_script("Module.print('hello world' + '!')");
             printf("*%d*\n", emscripten_run_script_int("5*20"));
             return 0;
           }
@@ -3707,7 +3707,7 @@ def process(filename):
     var data = [10, 20, 40, 30];
     var Module = {
       stdin: function() { return data.pop() || null },
-      stdout: function(x) { print('got: ' + x) }
+      stdout: function(x) { Module.print('got: ' + x) }
     };
   \'\'\' + open(filename, 'r').read()
   open(filename, 'w').write(src)
@@ -4031,8 +4031,8 @@ def process(filename):
   ).replace(
     '// {{POST_RUN_ADDITIONS}}',
     \'\'\'
-      print('first changed: ' + (TEST_F1.timestamp == 1200000000000));
-      print('second changed: ' + (TEST_F2.timestamp == 1200000000000));
+      Module.print('first changed: ' + (TEST_F1.timestamp == 1200000000000));
+      Module.print('second changed: ' + (TEST_F2.timestamp == 1200000000000));
     \'\'\'
   )
   open(filename, 'w').write(src)
@@ -4786,7 +4786,7 @@ def process(filename):
     \'\'\'
       FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false);
       run();
-      print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
+      Module.print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
     \'\'\'
   )
   src.close()
@@ -4831,7 +4831,7 @@ def process(filename):
     ))
   ).replace(
     '// {{POST_RUN_ADDITIONS}}',
-    "print('Data: ' + JSON.stringify(FS.root.contents['image.raw'].contents));"
+    "Module.print('Data: ' + JSON.stringify(FS.root.contents['image.raw'].contents));"
   )
   open(filename, 'w').write(src)
 '''
@@ -5089,24 +5089,24 @@ def process(filename):
   src = \'\'\'
     var Module = {
       'postRun': function() {
-        print('*');
+        Module.print('*');
         var ret;
-        ret = ccall('get_int', 'number'); print([typeof ret, ret]);
-        ret = ccall('get_float', 'number'); print([typeof ret, ret.toFixed(2)]);
-        ret = ccall('get_string', 'string'); print([typeof ret, ret]);
-        ret = ccall('print_int', null, ['number'], [12]); print(typeof ret);
-        ret = ccall('print_float', null, ['number'], [14.56]); print(typeof ret);
-        ret = ccall('print_string', null, ['string'], ["cheez"]); print(typeof ret);
-        ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); print([typeof ret, ret]);
+        ret = ccall('get_int', 'number'); Module.print([typeof ret, ret]);
+        ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
+        ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
+        ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
+        ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
+        ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
+        ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
         var p = ccall('malloc', 'pointer', ['number'], [4]);
         setValue(p, 650, 'i32');
-        ret = ccall('pointer', 'pointer', ['pointer'], [p]); print([typeof ret, getValue(ret, 'i32')]);
-        print('*');
+        ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
+        Module.print('*');
         // part 2: cwrap
         var multi = cwrap('multi', 'number', ['number', 'number', 'number', 'string']);
-        print(multi(2, 1.4, 3, 'atr'));
-        print(multi(8, 5.4, 4, 'bret'));
-        print('*');
+        Module.print(multi(2, 1.4, 3, 'atr'));
+        Module.print(multi(8, 5.4, 4, 'bret'));
+        Module.print('*');
       }
     };
   \'\'\' + open(filename, 'r').read()
@@ -5146,9 +5146,9 @@ def process(filename):
         script_src = '''
           var sme = Module._.ScriptMe.__new__(83);          // malloc(sizeof(ScriptMe)), ScriptMe::ScriptMe(sme, 83) / new ScriptMe(83) (at addr sme)
           Module._.ScriptMe.mulVal(sme, 2);                 // ScriptMe::mulVal(sme, 2)       sme.mulVal(2)
-          print('*' + Module._.ScriptMe.getVal(sme) + '*'); 
+          Module.print('*' + Module._.ScriptMe.getVal(sme) + '*'); 
           _free(sme);
-          print('*ok*');
+          Module.print('*ok*');
         '''
         post = '''
 def process(filename):
@@ -5232,55 +5232,55 @@ def process(filename):
   script_src_2 = \'\'\'
           var sme = new Module.Parent(42);
           sme.mulVal(2);
-          print('*')
-          print(sme.getVal());
+          Module.print('*')
+          Module.print(sme.getVal());
 
-          print('c1');
+          Module.print('c1');
 
           var c1 = new Module.Child1();
-          print(c1.getVal());
+          Module.print(c1.getVal());
           c1.mulVal(2);
-          print(c1.getVal());
-          print(c1.getValSqr());
-          print(c1.getValSqr(3));
-          print(c1.getValTimes()); // default argument should be 1
-          print(c1.getValTimes(2));
+          Module.print(c1.getVal());
+          Module.print(c1.getValSqr());
+          Module.print(c1.getValSqr(3));
+          Module.print(c1.getValTimes()); // default argument should be 1
+          Module.print(c1.getValTimes(2));
 
-          print('c1 v2');
+          Module.print('c1 v2');
 
           c1 = new Module.Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
-          print(c1.getVal());
+          Module.print(c1.getVal());
           c1.mulVal(2);
-          print(c1.getVal());
-          print(c1.getValSqr());
-          print(c1.getValSqr(3));
+          Module.print(c1.getVal());
+          Module.print(c1.getValSqr());
+          Module.print(c1.getValSqr(3));
 
-          print('c2')
+          Module.print('c2')
 
           var c2 = new Module.Child2();
-          print(c2.getVal());
+          Module.print(c2.getVal());
           c2.mulVal(2);
-          print(c2.getVal());
-          print(c2.getValCube());
+          Module.print(c2.getVal());
+          Module.print(c2.getValCube());
           var succeeded;
           try {
             succeeded = 0;
-            print(c2.doSomethingSecret()); // should fail since private
+            Module.print(c2.doSomethingSecret()); // should fail since private
             succeeded = 1;
           } catch(e) {}
-          print(succeeded);
+          Module.print(succeeded);
           try {
             succeeded = 0;
-            print(c2.getValSqr()); // function from the other class
+            Module.print(c2.getValSqr()); // function from the other class
             succeeded = 1;
           } catch(e) {}
-          print(succeeded);
+          Module.print(succeeded);
           try {
             succeeded = 0;
             c2.getValCube(); // sanity
             succeeded = 1;
           } catch(e) {}
-          print(succeeded);
+          Module.print(succeeded);
 
           Module.Child2.prototype.printStatic(); // static calls go through the prototype
 
@@ -5294,12 +5294,12 @@ def process(filename):
           Module.customizeVTable(c3, [{
             original: Module.Child2.prototype.virtualFunc,
             replacement: function() {
-              print('*js virtualf replacement*');
+              Module.print('*js virtualf replacement*');
             }
           }, {
             original: Module.Child2.prototype.virtualFunc2,
             replacement: function() {
-              print('*js virtualf2 replacement*');
+              Module.print('*js virtualf2 replacement*');
             }
           }]);
           c3.virtualFunc();
@@ -5310,7 +5310,7 @@ def process(filename):
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
-          print('*ok*');
+          Module.print('*ok*');
         \'\'\'
   src = open(filename, 'a')
   src.write(script_src_2 + '\\n')
@@ -5433,12 +5433,12 @@ def process(filename):
     '// {{POST_RUN_ADDITIONS}}',
     \'\'\'
       if (Runtime.typeInfo) {
-        print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
+        Module.print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
         var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
-        print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
-        print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
+        Module.print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
+        Module.print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
       } else {
-        print('No type info.');
+        Module.print('No type info.');
       }
     \'\'\'
   )
@@ -6519,7 +6519,7 @@ f.close()
         if (typeof Module != 'undefined') throw 'This code should run before anything else!';
       ''')
       open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
-        print(MESSAGE);
+        Module.print(MESSAGE);
       ''')
 
       Popen([EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()

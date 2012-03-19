@@ -14,7 +14,7 @@ var HEAP_WATCHED = [];
 var HEAP_HISTORY = [];
 function SAFE_HEAP_CLEAR(dest) {
 #if SAFE_HEAP_LOG
-  print('SAFE_HEAP clear: ' + dest);
+  Module.print('SAFE_HEAP clear: ' + dest);
 #endif
   HEAP_HISTORY[dest] = [];
 }
@@ -22,7 +22,7 @@ var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 
 function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
-  //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
+  //if (dest === A_NUMBER) Module.print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
 
 #if USE_TYPED_ARRAYS
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
@@ -59,12 +59,12 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 //    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
 //    if (history[0].type !== type) {
     if (history !== type && !ignore) {
-      print('Load-store consistency assumption failure! ' + dest);
-      print('\n');
-      print(JSON.stringify(history));
-      print('\n');
-      print('LOAD: ' + type + ', ' + new Error().stack);
-      print('\n');
+      Module.print('Load-store consistency assumption failure! ' + dest);
+      Module.print('\n');
+      Module.print(JSON.stringify(history));
+      Module.print('\n');
+      Module.print('LOAD: ' + type + ', ' + new Error().stack);
+      Module.print('\n');
       SAFE_HEAP_ERRORS++;
       assert(SAFE_HEAP_ERRORS <= ACCEPTABLE_SAFE_HEAP_ERRORS, 'Load-store consistency assumption failure!');
     }
@@ -73,7 +73,7 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if SAFE_HEAP_LOG
-  print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
+  Module.print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
 #endif
 
   if (!ignore && !value && value !== 0 && value !== false && !isNaN(value)) { // false can be the result of a mathop comparator; NaN can be the result of a math function
@@ -81,7 +81,7 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   }
   SAFE_HEAP_ACCESS(dest, type, true, ignore);
   if (dest in HEAP_WATCHED) {
-    print((new Error()).stack);
+    Module.print((new Error()).stack);
     throw "Bad store!" + dest;
   }
 
@@ -107,7 +107,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
   SAFE_HEAP_ACCESS(dest, type, ignore);
 
 #if SAFE_HEAP_LOG
-    print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
+    Module.print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
 #endif
 
 #if USE_TYPED_ARRAYS == 2
@@ -132,7 +132,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 
 function SAFE_HEAP_COPY_HISTORY(dest, src) {
 #if SAFE_HEAP_LOG
-  print('SAFE_HEAP copy: ' + [dest, src]);
+  Module.print('SAFE_HEAP copy: ' + [dest, src]);
 #endif
   HEAP_HISTORY[dest] = HEAP_HISTORY[src];
   SAFE_HEAP_ACCESS(dest, HEAP_HISTORY[dest] || null, true, false);
@@ -160,7 +160,7 @@ var CorrectionsMonitor = {
       sig = (new Error().stack).toString().split('\n')[2].split(':').slice(-1)[0]; // Spidermonkey-specific FIXME
     sig = type + '|' + sig;
     if (!this.sigs[sig]) {
-      //print('Correction: ' + sig);
+      //Module.print('Correction: ' + sig);
       this.sigs[sig] = [0, 0]; // fail, succeed
     }
     this.sigs[sig][succeed ? 1 : 0]++;
@@ -181,7 +181,7 @@ var CorrectionsMonitor = {
     items.sort(function(x, y) { return y.total - x.total; });
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
+      Module.print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
     }
 #endif
   }
@@ -253,7 +253,7 @@ Module['stopProfiling'] = stopProfiling;
 
 function printProfiling() {
   function dumpData(name_, node, indent) {
-    print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
+    Module.print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
     var children = [];
     for (var child in node.children) {
       children.push(node.children[child]);
@@ -265,57 +265,6 @@ function printProfiling() {
   dumpData('root', PROFILING_ROOT, ' ');
 }
 Module['printProfiling'] = printProfiling;
-
-function printXULProfiling() {
-  function dumpData(name_, node, indent) {
-    var children = [];
-    for (var child in node.children) {
-      children.push(node.children[child]);
-      children[children.length-1].name_ = child;
-    }
-    print('<treeitem' + (children.length > 0 ? ' container="true"' : '') + '>');
-    print('  <treerow>');
-    print('    <treecell label="' + name_ + '"/>');
-    print('    <treecell label="' + node.time + '"/>');
-    print('    <treecell label="' + node.calls + '"/>');
-    print('  </treerow>');
-
-    if (children.length > 0) {
-      print('  <treechildren>');
-      children.sort(function(x, y) { return y.time - x.time });
-      children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
-      print('  </treechildren>');
-    }
-
-    print('</treeitem>');
-  }
-
-  print('<?xml version="1.0"?>');
-  print('<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>  ');
-  print('<?xml-stylesheet href="file://C:/main.css" type="text/css"?>        ');
-  print('<window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">  ');
-  print('<tree id="myTree" flex="1" hidecolumnpicker="false" seltype="single" class="tree"');
-  print('      rows="5">');
-  print('  <treecols id="myTree2-treeCols">');
-  print('    <treecol id="myTree2-treeCol0" primary="true" flex="2" label="Name"');
-  print('             persist="width" ordinal="1"/>');
-  print('    <splitter class="tree-splitter" ordinal="2"/>');
-  print('    <treecol id="myTree2-treeCol1" flex="1" label="Milliseconds"');
-  print('             persist="width" ordinal="3"/>');
-  print('    <treecol id="myTree2-treeCol2" flex="1" label="Calls"');
-  print('             persist="width" ordinal="4"/>');
-  print('  </treecols>');
-  print('  <treechildren>');
-
-  dumpData('root', PROFILING_ROOT, ' ');
-
-  print('  </treechildren>');
-  print('</tree>');
-  print('</window>');
-
-  // This requires    dom.allow_XUL_XBL_for_file
-}
-Module['printXULProfiling'] = printXULProfiling;
 #endif
 
 //========================================
@@ -335,7 +284,7 @@ var tempI64, tempI64b;
 #endif
 
 function abort(text) {
-  print(text + ':\n' + (new Error).stack);
+  Module.print(text + ':\n' + (new Error).stack);
   ABORT = true;
   throw "Assertion: " + text;
 }
@@ -603,7 +552,7 @@ var STATICTOP;
 function enlargeMemory() {
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
-  printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
   assert(STATICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
