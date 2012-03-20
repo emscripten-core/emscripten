@@ -41,8 +41,9 @@ if (ENVIRONMENT_IS_NODE) {
     globalEval(read(f));
   };
 
-  Module['arguments'] = process['argv'].slice(2);
-
+  if (!Module['arguments']) {
+    Module['arguments'] = process['argv'].slice(2);
+  }
 } else if (ENVIRONMENT_IS_SHELL) {
   Module['print'] = print;
   Module['printErr'] = printErr;
@@ -54,12 +55,13 @@ if (ENVIRONMENT_IS_NODE) {
     Module['read'] = function(f) { snarf(f) };
   }
 
-  if (typeof scriptArgs != 'undefined') {
-    Module['arguments'] = scriptArgs;
-  } else if (typeof arguments != 'undefined') {
-    Module['arguments'] = arguments;
+  if (!Module['arguments']) {
+    if (typeof scriptArgs != 'undefined') {
+      Module['arguments'] = scriptArgs;
+    } else if (typeof arguments != 'undefined') {
+      Module['arguments'] = arguments;
+    }
   }
-
 } else if (ENVIRONMENT_IS_WEB) {
   if (!Module['print']) {
     Module['print'] = function(x) {
@@ -80,8 +82,10 @@ if (ENVIRONMENT_IS_NODE) {
     return xhr.responseText;
   };
 
-  if (typeof arguments != 'undefined') {
-    Module['arguments'] = arguments;
+  if (!Module['arguments']) {
+    if (typeof arguments != 'undefined') {
+      Module['arguments'] = arguments;
+    }
   }
 } else if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
