@@ -564,7 +564,7 @@ mergeInto(LibraryManager.library, {
 
   // SDL Mixer
 
-  Mix_OpenAudio: function() { return -1 },
+  Mix_OpenAudio: function() { return 0 },
 
   Mix_HookMusicFinished: function(func) {
     SDL.hookMusicFinished = func; // TODO: use this
@@ -574,9 +574,19 @@ mergeInto(LibraryManager.library, {
     return 0; // TODO
   },
 
+  // SDL TTF
+
+  TTF_Init: function() { return 0 },
+
   // Misc
 
   SDL_InitSubSystem: function(flags) { return 0 },
+
+  SDL_EnableUNICODE: function(on) {
+    var ret = SDL.unicode || 0;
+    SDL.unicode = on;
+    return ret;
+  },
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
