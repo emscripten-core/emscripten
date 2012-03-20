@@ -4,9 +4,9 @@
 See emcc.py. This script forwards to there, noting that we want C++ and not C by default
 '''
 
-import os, sys
+import os, subprocess, sys
 from tools import shared
 
 os.environ['EMMAKEN_CXX'] = '1'
-exit(os.execvp(shared.EMCC, [shared.EMCC] + sys.argv[1:]))
+exit(subprocess.call(['python', shared.EMCC] + sys.argv[1:]))
 

@@ -24,11 +24,14 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   var nodeFS = require('fs');
+  var nodePath = require('path');
 
   read = function(filename) {
+    filename = nodePath['normalize'](filename);
     var ret = nodeFS['readFileSync'](filename).toString();
-    if (!ret && filename[0] != '/') {
-      filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
+    // The path is absolute if the normalized version is the same as the resolved.
+    if (!ret && filename != nodePath['resolve'](filename)) {
+      filename = path.join(__dirname, '..', 'src', filename);
       ret = nodeFS['readFileSync'](filename).toString();
     }
     return ret;
@@ -97,12 +100,15 @@ if (typeof print === 'undefined') {
 
 // Fix read for our location
 read = function(filename) {
-  if (filename[0] != '/') filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
+  // The path is absolute if the normalized version is the same as the resolved.
+  filename = path.normalize(filename);
+  if (filename != path.resolve(filename)) filename = path.join(__dirname, '..', 'src', filename);
   return fs.readFileSync(filename).toString();
 }
 
 var uglify = require('../tools/eliminator/node_modules/uglify-js');
 var fs = require('fs');
+var path = require('path');
 
 // Load some modules
 

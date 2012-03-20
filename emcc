@@ -291,7 +291,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     compiler = shared.to_cc(compiler)
   cmd = [compiler] + shared.EMSDK_OPTS + ['-DEMSCRIPTEN'] + sys.argv[1:]
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
-  exit(os.execvp(compiler, cmd))
+  exit(subprocess.call(cmd))
 
 if os.environ.get('EMMAKEN_COMPILER'):
   CXX = os.environ['EMMAKEN_COMPILER']
@@ -675,9 +675,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      execute([shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
+      execute(['python', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      execute([shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
+      execute(['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
