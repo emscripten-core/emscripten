@@ -810,14 +810,14 @@ try:
     code = ''
 
     # Expand directories into individual files
-    def add(filename, dirname, names, mode):
+    def add(mode, dirname, names):
       for name in names:
         combined = os.path.join(dirname, name)
-        data_files.append({ 'name': newargs[i+1], 'mode': mode })
+        data_files.append({ 'name': os.path.join(dirname, name), 'mode': mode })
 
     for file_ in data_files:
       if os.path.isdir(file_['name']):
-        os.path.walk(file_['name'], add, file_['name'], )
+        os.path.walk(file_['name'], add, file_['mode'])
     data_files = filter(lambda file_: not os.path.isdir(file_['name']), data_files)
 
     for file_ in data_files:
