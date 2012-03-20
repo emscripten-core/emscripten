@@ -6005,7 +6005,7 @@ Options that are modified or new in %s include:
         # handle singleton archives
         self.clear()
         Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
-        Popen(['python', LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.a')
         output = Popen([compiler, 'a.a']).communicate()
         assert os.path.exists('a.out.js'), output
