@@ -566,6 +566,16 @@ mergeInto(LibraryManager.library, {
 
   Mix_OpenAudio: function() { return -1 },
 
+  Mix_HookMusicFinished: function(func) {
+    SDL.hookMusicFinished = func; // TODO: use this
+  },
+
+  Mix_VolumeMusic: function(func) {
+    return 0; // TODO
+  },
+
+  // Misc
+
   SDL_InitSubSystem: function(flags) { return 0 },
 
   SDL_AddTimer: function(interval, callback, param) {
