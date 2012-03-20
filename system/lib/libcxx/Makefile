@@ -1,5 +1,4 @@
 OBJECTS = \
-  locale.bc \
   algorithm.bc \
   condition_variable.bc \
   future.bc \
@@ -20,6 +19,7 @@ OBJECTS = \
   chrono.bc \
   exception.bc \
   ios.bc \
+  locale.bc \
   regex.bc \
   strstream.bc \
   typeinfo.bc
