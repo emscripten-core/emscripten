@@ -8,6 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Emscripten note:
+// __except has been renamed to __exceptXXX in this header to avoid compilation
+// errors on windows using clang version 3.0 (tags/RELEASE_30/final).  This can
+// be reverted once emscripten upgrades to clang 3.1:
+// http://comments.gmane.org/gmane.comp.compilers.clang.scm/41578
+
 #ifndef _LIBCPP_IOS
 #define _LIBCPP_IOS
 
@@ -317,7 +323,7 @@ public:
     _LIBCPP_INLINE_VISIBILITY bool bad() const;
 
     _LIBCPP_INLINE_VISIBILITY iostate exceptions() const;
-    _LIBCPP_INLINE_VISIBILITY void exceptions(iostate __except);
+    _LIBCPP_INLINE_VISIBILITY void exceptions(iostate __exceptXXX);
 
     void __set_badbit_and_consider_rethrow();
     void __set_failbit_and_consider_rethrow();
@@ -553,9 +559,9 @@ ios_base::exceptions() const
 
 inline _LIBCPP_INLINE_VISIBILITY
 void
-ios_base::exceptions(iostate __except)
+ios_base::exceptions(iostate __exceptXXX)
 {
-    __exceptions_ = __except;
+    __exceptions_ = __exceptXXX;
     clear(__rdstate_);
 }
 
@@ -584,7 +590,7 @@ public:
     _LIBCPP_ALWAYS_INLINE bool bad() const  {return ios_base::bad();}
 
     _LIBCPP_ALWAYS_INLINE iostate exceptions() const {return ios_base::exceptions();}
-    _LIBCPP_ALWAYS_INLINE void exceptions(iostate __except) {ios_base::exceptions(__except);}
+    _LIBCPP_ALWAYS_INLINE void exceptions(iostate __exceptXXX) {ios_base::exceptions(__exceptXXX);}
 
     // 27.5.4.1 Constructor/destructor:
     _LIBCPP_INLINE_VISIBILITY
