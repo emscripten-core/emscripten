@@ -5066,7 +5066,7 @@ Block 0: ''', post_build=post1)
           void KEEPALIVE print_int(int x) { printf("%d\n", x); }
           void KEEPALIVE print_float(float x) { printf("%.2f\n", x); }
           void KEEPALIVE print_string(char *x) { printf("%s\n", x); }
-          int KEEPALIVE multi(int x, float y, int z, char *str) { puts(str); return (x+y)*z; }
+          int KEEPALIVE multi(int x, float y, int z, char *str) { if (x) puts(str); return (x+y)*z; }
           int * KEEPALIVE pointer(int *in) { printf("%d\n", *in); static int ret = 21; return &ret; }
         }
 
@@ -5107,6 +5107,11 @@ def process(filename):
         Module.print(multi(2, 1.4, 3, 'atr'));
         Module.print(multi(8, 5.4, 4, 'bret'));
         Module.print('*');
+        // part 3: avoid stack explosion
+        for (var i = 0; i < TOTAL_STACK/60; i++) {
+          ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
+        }
+        Module.print('stack is ok.');
       }
     };
   \'\'\' + open(filename, 'r').read()
@@ -5115,7 +5120,7 @@ def process(filename):
 
       Settings.EXPORTED_FUNCTIONS = ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
 
-      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\n', post_build=post)
+      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
 
     def test_scriptaclass(self):
         header_filename = os.path.join(self.get_dir(), 'header.h')

@@ -321,10 +321,11 @@ var globalScope = this;
 //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
 // @return           The return value, as a native JS value (as in returnType)
 function ccall(ident, returnType, argTypes, args) {
+  var stack = 0;
   function toC(value, type) {
     if (type == 'string') {
-      var ret = STACKTOP;
-      Runtime.stackAlloc(value.length+1);
+      if (!stack) stack = Runtime.stackSave();
+      var ret = Runtime.stackAlloc(value.length+1);
       writeStringToMemory(value, ret);
       return ret;
     }
@@ -348,7 +349,9 @@ function ccall(ident, returnType, argTypes, args) {
   var cArgs = args ? args.map(function(arg) {
     return toC(arg, argTypes[i++]);
   }) : [];
-  return fromC(func.apply(null, cArgs), returnType);
+  var ret = fromC(func.apply(null, cArgs), returnType);
+  if (stack) Runtime.stackRestore(stack);
+  return ret;
 }
 Module["ccall"] = ccall;
 
