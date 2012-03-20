@@ -369,10 +369,12 @@ class ExpressionOptimizer
 # function, then writes the optimized result to stdout.
 main = ->
   # Get the parse tree.
-  src = ''
-  size = fs.fstatSync(process.stdin.fd).size
-  if size > 0
-    src = fs.readSync(process.stdin.fd, size)[0]
+  src = fs.readFileSync('/dev/stdin').toString()
+  # The following seems to work on windows, but fails on linux..
+  #src = ''
+  #size = fs.fstatSync(process.stdin.fd).size
+  #if size > 0
+  #  src = fs.readSync(process.stdin.fd, size)[0]
 
   throw 'Cannot identify generated functions' if GENERATED_FUNCTIONS_MARKER in src
   generatedFunctionsLine = src.split('\n').filter (line) ->
