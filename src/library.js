@@ -408,6 +408,13 @@ LibraryManager.library = {
       // Flush any partially-printed lines in stdout and stderr. Careful, they may have been closed
       if (FS.streams[2] && FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output('\n'.charCodeAt(0));
       if (FS.streams[3] && FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output('\n'.charCodeAt(0));
+    },
+
+    // Standardizes a path. Useful for making comparisons of pathnames work in a consistent manner.
+    // For example, ./file and file are really the same, so this function will remove ./
+    standardizePath: function(path) {
+      if (path.substr(0, 2) == './') path = path.substr(2);
+      return path;
     }
   },
 

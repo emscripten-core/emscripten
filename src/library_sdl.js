@@ -76,7 +76,7 @@
 //  * SDL_Quit does nothing.
 
 mergeInto(LibraryManager.library, {
-  //$SDL__deps: ['$Browser'],
+  $SDL__deps: ['$FS'],
   $SDL: {
     defaults: {
       width: 320,
@@ -87,6 +87,7 @@ mergeInto(LibraryManager.library, {
     surfaces: {},
     events: [],
     musics: [null],
+    fonts: [null],
 
     keyCodes: {
       38:  273, // up arrow
@@ -168,7 +169,8 @@ mergeInto(LibraryManager.library, {
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
-        alpha: 255
+        alpha: 255,
+        flags: flags
       };
       return surf;
     },
@@ -394,6 +396,14 @@ mergeInto(LibraryManager.library, {
     return SDL.makeSurface(width, height, flags);
   },
 
+  SDL_DisplayFormatAlpha: function(surf) {
+    var oldData = SDL.surfaces[surf];
+    var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags);
+    var newData = SDL.surfaces[surf];
+    _memcpy(newData.buffer, oldData.buffer, oldData.height*oldData.width*4);
+    return ret;
+  },
+
   SDL_FreeSurface: function(surf) {
     SDL.freeSurface(surf);
   },
@@ -478,7 +488,7 @@ mergeInto(LibraryManager.library, {
   // SDL_Image
 
   IMG_Load: function(filename) {
-    filename = Pointer_stringify(filename);
+    filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedImages[filename];
     assert(raw, 'Cannot find preloaded image ' + filename);
     var surf = SDL.makeSurface(raw.width, raw.height, 0);
@@ -576,7 +586,7 @@ mergeInto(LibraryManager.library, {
   },
 
   Mix_LoadMUS: function(filename) {
-    filename = Pointer_stringify(filename);
+    filename = FS.standardizePath(Pointer_stringify(filename));
     var id = SDL.musics.length;
     SDL.musics.push({
       audio: new Audio(filename)
@@ -619,6 +629,15 @@ mergeInto(LibraryManager.library, {
   // SDL TTF
 
   TTF_Init: function() { return 0 },
+
+  TTF_OpenFont: function(filename, size) {
+    filename = FS.standardizePath(Pointer_stringify(filename));
+    var id = SDL.fonts.length;
+    SDL.fonts.push({
+      name: filename
+    });
+    return id;
+  },
 
   // Misc
 
