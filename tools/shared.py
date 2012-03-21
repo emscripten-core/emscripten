@@ -741,9 +741,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
       args += os.environ.get('EMCC_CLOSURE_ARGS').split(' ')
-    cc_output = Popen(args, stdout=PIPE, stderr=STDOUT).communicate()[0]
-    if 'ERROR' in cc_output or not os.path.exists(filename + '.cc.js'):
-      raise Exception('closure compiler error: ' + cc_output)
+    process = Popen(args, stdout=PIPE, stderr=STDOUT)
+    cc_output = process.communicate()[0]
+    if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
+      raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
 
     return filename + '.cc.js'
 
