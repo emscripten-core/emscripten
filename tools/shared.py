@@ -357,11 +357,11 @@ class Building:
   @staticmethod
   def get_building_env():
     env = os.environ.copy()
-    env['CC'] = 'python %r' % EMCC
-    env['CXX'] = 'python %r' % EMXX
-    env['AR'] = 'python %r' % EMAR
-    env['RANLIB'] = 'python %r' % EMRANLIB
-    env['LIBTOOL'] = 'python %r' % EMLIBTOOL
+    env['CC'] = '%s' % EMCC
+    env['CXX'] = '%s' % EMXX
+    env['AR'] = '%s' % EMAR
+    env['RANLIB'] = '%s' % EMRANLIB
+    env['LIBTOOL'] = '%s' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
