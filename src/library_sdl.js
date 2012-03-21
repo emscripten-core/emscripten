@@ -163,7 +163,7 @@ mergeInto(LibraryManager.library, {
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
       var canvas;
       if (customCanvas) {
-        canvas = new document.createElement('canvas');
+        canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
       } else {
@@ -633,6 +633,8 @@ mergeInto(LibraryManager.library, {
     audio.pause(); // TODO: actually rewind to the beginning
     return 0;
   },
+
+  Mix_FadeInMusicPos: 'Mix_PlayMusic', // XXX ignore fading in effect
 
   // SDL TTF
 
