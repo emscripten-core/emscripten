@@ -2,7 +2,7 @@ List:
 USER=root
 PATH=/
 PWD=/
-HOME=/
+HOME=/home/emscripten
 LANG=en_US.UTF-8
 _=./this.program
 

@@ -3564,7 +3564,7 @@ LibraryManager.library = {
       ENV['USER'] = 'root';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
-      ENV['HOME'] = '/';
+      ENV['HOME'] = '/home/emscripten';
       ENV['LANG'] = 'en_US.UTF-8';
       ENV['_'] = './this.program';
       // Allocate memory.
