@@ -816,8 +816,9 @@ try:
     # Expand directories into individual files
     def add(mode, dirname, names):
       for name in names:
-        combined = os.path.join(dirname, name)
-        data_files.append({ 'name': os.path.join(dirname, name), 'mode': mode })
+        fullname = os.path.join(dirname, name)
+        if not os.path.isdir(fullname):
+          data_files.append({ 'name': fullname, 'mode': mode })
 
     for file_ in data_files:
       if os.path.isdir(file_['name']):
@@ -844,12 +845,12 @@ try:
     partial_dirs = []
     for file_ in data_files:
       dirname = os.path.dirname(file_['name'])
-      parts = dirname.split(os.path.sep)
       if dirname != '' and dirname != os.path.sep:
+        parts = dirname.split(os.path.sep)
         for i in range(len(parts)):
-          partial = os.path.sep.join(parts[:i])
+          partial = os.path.sep.join(parts[:i+1])
           if partial not in partial_dirs:
-            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i-1]), parts[-1])
+            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[-1])
             partial_dirs.append(partial)
 
     counter = 0

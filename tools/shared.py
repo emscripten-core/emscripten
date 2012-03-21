@@ -190,7 +190,10 @@ def try_delete(filename):
   try:
     os.unlink(filename)
   except:
-    pass
+    try:
+      shutil.rmtree(filename)
+    except:
+      pass
 
 class TempFiles:
   def __init__(self):
