@@ -734,11 +734,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
 
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-    cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
-                       '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                       '--formatting', 'PRETTY_PRINT',
-                       #'--variable_map_output_file', filename + '.vars',
-                       '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    args = ['java', '-jar', CLOSURE_COMPILER,
+            '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+            '--formatting', 'PRETTY_PRINT',
+            #'--variable_map_output_file', filename + '.vars',
+            '--js', filename, '--js_output_file', filename + '.cc.js']
+    if os.environ.get('EMCC_CLOSURE_ARGS'):
+      args += os.environ.get('EMCC_CLOSURE_ARGS').split(' ')
+    cc_output = Popen(args, stdout=PIPE, stderr=STDOUT).communicate()[0]
     if 'ERROR' in cc_output or not os.path.exists(filename + '.cc.js'):
       raise Exception('closure compiler error: ' + cc_output)
 
