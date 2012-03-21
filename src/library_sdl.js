@@ -86,6 +86,7 @@ mergeInto(LibraryManager.library, {
 
     surfaces: {},
     events: [],
+    musics: [null],
 
     keyCodes: {
       38:  273, // up arrow
@@ -572,6 +573,47 @@ mergeInto(LibraryManager.library, {
 
   Mix_VolumeMusic: function(func) {
     return 0; // TODO
+  },
+
+  Mix_LoadMUS: function(filename) {
+    filename = Pointer_stringify(filename);
+    var id = SDL.musics.length;
+    SDL.musics.push({
+      audio: new Audio(filename)
+    });
+    return id;
+  },
+
+  Mix_FreeMusic: function(id) {
+    SDL.musics[id].audio.pause();
+    SDL.musics[id] = null;
+    return 0;
+  },
+
+  Mix_PlayMusic: function(id, loops) {
+    if (loops == 0) return;
+    var audio = SDL.musics[id].audio;
+    audio.loop = loop != 1; // TODO: handle N loops for finite N
+    audio.play();
+    return 0;
+  },
+
+  Mix_PauseMusic: function(id) {
+    var audio = SDL.musics[id].audio;
+    audio.pause();
+    return 0;
+  },
+
+  Mix_ResumeMusic: function(id) {
+    var audio = SDL.musics[id].audio;
+    audio.play();
+    return 0;
+  },
+
+  Mix_HaltMusic: function(id) {
+    var audio = SDL.musics[id].audio;
+    audio.pause(); // TODO: actually rewind to the beginning
+    return 0;
   },
 
   // SDL TTF
