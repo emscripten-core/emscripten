@@ -850,7 +850,7 @@ try:
         for i in range(len(parts)):
           partial = os.path.sep.join(parts[:i+1])
           if partial not in partial_dirs:
-            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[-1])
+            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
     counter = 0
