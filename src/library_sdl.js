@@ -643,6 +643,8 @@ mergeInto(LibraryManager.library, {
 
   SDL_InitSubSystem: function(flags) { return 0 },
 
+  SDL_NumJoysticks: function() { return 0 },
+
   SDL_EnableUNICODE: function(on) {
     var ret = SDL.unicode || 0;
     SDL.unicode = on;
