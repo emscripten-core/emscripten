@@ -134,7 +134,8 @@ mergeInto(LibraryManager.library, {
       ])
     },
 
-    makeSurface: function(width, height, flags) {
+    makeSurface: function(width, height, flags, customCanvas) {
+      flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
       var buffer = _malloc(width*height*4);
       var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
@@ -160,12 +161,19 @@ mergeInto(LibraryManager.library, {
 
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
-
+      var canvas;
+      if (customCanvas) {
+        canvas = new document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+      } else {
+        canvas = Module['canvas'];
+      }
       SDL.surfaces[surf] = {
         width: width,
         height: height,
-        canvas: Module['canvas'],
-        ctx: SDL.createContext(useWebGL),
+        canvas: canvas,
+        ctx: SDL.createContext(canvas, useWebGL),
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
@@ -175,7 +183,7 @@ mergeInto(LibraryManager.library, {
       return surf;
     },
 
-    createContext: function(useWebGL) {
+    createContext: function(canvas, useWebGL) {
 #if !USE_TYPED_ARRAYS
       if (useWebGL) {
 	Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
@@ -183,12 +191,12 @@ mergeInto(LibraryManager.library, {
       }
 #endif
       try {
-        var ctx = Module.canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
+        var ctx = canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
         if (!ctx) throw 'Could not create canvas :(';
         if (useWebGL) {
           // Set the background of the WebGL canvas to black, because SDL gives us a
           // window which has a black background by default.
-          Module.canvas.style.backgroundColor = "black";
+          canvas.style.backgroundColor = "black";
         }
         return Module.ctx = ctx;
       } catch (e) {
@@ -634,10 +642,19 @@ mergeInto(LibraryManager.library, {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var id = SDL.fonts.length;
     SDL.fonts.push({
-      name: filename
+      name: filename // but we don't actually do anything with it..
     });
     return id;
   },
+
+  TTF_RenderText_Solid: function(font, text, color) {
+    // XXX the font and color are ignored
+    text = Pointer_stringify(text);
+    var surf = SDL.makeSurface(20*text.length, 15, 0, true); // bogus numbers..
+    var surfData = SDL.surfaces[surf];
+    surfData.ctx.fillText(text, 0, 0);
+  },
+  TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
 
   // Misc
 
