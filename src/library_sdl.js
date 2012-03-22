@@ -136,6 +136,15 @@ mergeInto(LibraryManager.library, {
       ])
     },
 
+    loadRect: function(rect) {
+      return {
+        x: {{{ makeGetValue('rect + SDL.structs.Rect.x', '0', 'i32') }}},
+        y: {{{ makeGetValue('rect + SDL.structs.Rect.y', '0', 'i32') }}},
+        w: {{{ makeGetValue('rect + SDL.structs.Rect.w', '0', 'i32') }}},
+        h: {{{ makeGetValue('rect + SDL.structs.Rect.h', '0', 'i32') }}}
+      };
+    },
+
     makeSurface: function(width, height, flags, usePageCanvas) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
@@ -439,34 +448,43 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
-    assert(!srcrect && !dstrect); // TODO
     var srcData = SDL.surfaces[src];
     var dstData = SDL.surfaces[dst];
-    assert(!!srcData.locked == !!dstData.locked); // we support the case of both locked or both not locked
+    assert(!srcData.locked && !dstData.locked); // SDL does not allow blitting on locked surfaces
     if (srcData.locked) {
       // Just support blitting everything
+      assert(!srcrect && !dstrect);
       assert(srcData.width === dstData.width && srcData.height === dstData.height);
       {{{ makeCopyValues('dstData.buffer', 'srcData.buffer', 'srcData.width*srcData.height*4', 'i8', null, 1) }}}
     } else {
-      dstData.ctx.drawImage(srcData.canvas, 0, 0, srcData.width, srcData.height, 0, 0, dstData.width, dstData.height);
+      var sr, dr;
+      if (srcrect) {
+        sr = SDL.loadRect(srcrect);
+      } else {
+        sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
+      }
+      if (dstrect) {
+        dr = SDL.loadRect(dstrect);
+      } else {
+        dr = { x: 0, y: 0, w: -1, h: -1 };
+      }
+      dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, sr.w, sr.h);
     }
     return 0;
   },
 
   SDL_FillRect: function(surf, rect, color) {
+    console.log('WARNING: SDL_FillRect not optimized yet');
     var surfData = SDL.surfaces[surf];
     var c1 = color & 0xff;
     var c2 = (color >> 8) & 0xff;
     var c3 = (color >> 16) & 0xff;
-    var rx = {{{ makeGetValue('rect + SDL.structs.Rect.x', '0', 'i16') }}};
-    var ry = {{{ makeGetValue('rect + SDL.structs.Rect.y', '0', 'i16') }}};
-    var rw = {{{ makeGetValue('rect + SDL.structs.Rect.w', '0', 'i16') }}};
-    var rh = {{{ makeGetValue('rect + SDL.structs.Rect.h', '0', 'i16') }}};
+    var r = SDL.loadRect(rect);
     var data = surfData.image.data;
     var width = surfData.width;
-    for (var y = ry; y < ry + rh; y++) {
+    for (var y = r.y; y < r.y + r.h; y++) {
       var base = y*width*4;
-      for (var x = rx; x < rx + rw; x++) {
+      for (var x = r.x; x < r.x + r.w; x++) {
         var start = x*4 + base;
         data[start]   = c1;
         data[start+1] = c2;
