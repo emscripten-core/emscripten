@@ -89,7 +89,9 @@ mergeInto(LibraryManager.library, {
     musics: [null],
     fonts: [null],
 
-    keyCodes: {
+    keyboardState: null,
+
+    keyCodes: { // DOM code ==> SDL code
       38:  273, // up arrow
       40:  274, // down arrow
       37:  276, // left arrow
@@ -217,6 +219,7 @@ mergeInto(LibraryManager.library, {
         case 'keydown': case 'keyup':
           //print('zz receive Event: ' + event.keyCode);
           SDL.events.push(event);
+          {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
       }
       //event.preventDefault();
       return false;
@@ -260,6 +263,8 @@ mergeInto(LibraryManager.library, {
     ['keydown', 'keyup', 'keypress'].forEach(function(event) {
       addEventListener(event, SDL.receiveEvent, true);
     });
+    SDL.keyboardState = _malloc(0x10000);
+    _memset(SDL.keyboardState, 0, 0x10000);
     return 0; // success
   },
 
@@ -390,6 +395,10 @@ mergeInto(LibraryManager.library, {
 
   SDL_EnableKeyRepeat: function(delay, interval) {
     // TODO
+  },
+
+  SDL_GetKeyboardState: function() {
+    return SDL.keyboardState;
   },
 
   SDL_ShowCursor: function(toggle) {
