@@ -104,7 +104,7 @@ mergeInto(LibraryManager.library, {
 
     structs: {
       Rect: Runtime.generateStructInfo([
-        ['i16', 'x'], ['i16', 'y'], ['i16', 'w'], ['i16', 'h'], 
+        ['i32', 'x'], ['i32', 'y'], ['i32', 'w'], ['i32', 'h'], 
       ]),
       PixelFormat: Runtime.generateStructInfo([
         ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
