@@ -699,6 +699,7 @@ mergeInto(LibraryManager.library, {
     var surf = SDL.makeSurface(20*text.length, 15, 0); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.fillText(text, 0, 0);
+    return surf;
   },
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
 
