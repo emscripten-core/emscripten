@@ -400,7 +400,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ print("[library call:' + ident + ']"); ');
+            snippet = snippet.replace('{', '{ Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments) + "]"); ');
           }
         }
 
