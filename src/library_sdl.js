@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
     defaults: {
       width: 320,
       height: 200,
-      copyScreenOnLock: false
+      copyOnLock: true
     },
 
     surfaces: {},
@@ -136,10 +136,10 @@ mergeInto(LibraryManager.library, {
       ])
     },
 
-    makeSurface: function(width, height, flags, customCanvas) {
+    makeSurface: function(width, height, flags, usePageCanvas) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
-      var buffer = _malloc(width*height*4);
+      var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
       var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
@@ -164,7 +164,7 @@ mergeInto(LibraryManager.library, {
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
       var canvas;
-      if (customCanvas) {
+      if (!usePageCanvas) {
         canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
@@ -180,7 +180,8 @@ mergeInto(LibraryManager.library, {
         buffer: buffer,
         pixelFormat: pixelFormat,
         alpha: 255,
-        flags: flags
+        flags: flags,
+        locked: 0
       };
       return surf;
     },
@@ -211,7 +212,7 @@ mergeInto(LibraryManager.library, {
       _free(SDL.surfaces[surf].buffer);
       _free(SDL.surfaces[surf].pixelFormat);
       _free(surf);
-      delete SDL.surfaces[surf];
+      SDL.surfaces[surf] = null;
     },
 
     receiveEvent: function(event) {
@@ -292,15 +293,20 @@ mergeInto(LibraryManager.library, {
   SDL_SetVideoMode: function(width, height, depth, flags) {
     Module['canvas'].width = width;
     Module['canvas'].height = height;
-    return SDL.screen = SDL.makeSurface(width, height, flags);
+    return SDL.screen = SDL.makeSurface(width, height, flags, true);
   },
 
   SDL_Quit: function() {
     Module.print('SDL_Quit called (and ignored)');
   },
 
+  // Copy data from the canvas backing to a C++-accessible storage
   SDL_LockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
+
+    surfData.locked++;
+    if (surfData.locked > 1) return;
+
     if (!surfData.image) {
       surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = surfData.image.data;
@@ -309,9 +315,10 @@ mergeInto(LibraryManager.library, {
         data[i*4+3] = 255; // opacity, as canvases blend alpha
       }
     }
-    if (SDL.defaults.copyScreenOnLock) {
+    if (SDL.defaults.copyOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       var num2 = surfData.image.data.length;
+      // TODO: use typed array Set()
       for (var i = 0; i < num2; i++) {
         {{{ makeSetValue('surfData.buffer', 'i', 'surfData.image.data[i]', 'i8') }}};
       }
@@ -323,8 +330,13 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
   },
 
+  // Copy data from the C++-accessible storage to the canvas backing
   SDL_UnlockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
+
+    surfData.locked--;
+    if (surfData.locked > 0) return;
+
     // Copy pixel data to image
     var num = surfData.image.data.length;
     if (!surfData.colors) {
@@ -377,7 +389,8 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Flip: function(surf) {
-    // We actually do this in Unlock...
+    // We actually do this in Unlock, since the screen surface has as its canvas
+    // backing the page canvas element
   },
 
   SDL_UpdateRect: function(surf, x, y, w, h) {
@@ -661,7 +674,7 @@ mergeInto(LibraryManager.library, {
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
     text = Pointer_stringify(text);
-    var surf = SDL.makeSurface(20*text.length, 15, 0, true); // bogus numbers..
+    var surf = SDL.makeSurface(20*text.length, 15, 0); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.fillText(text, 0, 0);
   },
