@@ -407,7 +407,7 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Delay: function(delay) {
-    Module.print('SDL_Delay called! - potential infinite loop');
+    throw 'SDL_Delay called! Potential infinite loop, quitting.';
   },
 
   SDL_WM_SetCaption: function(title, icon) {
