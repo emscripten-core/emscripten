@@ -34,6 +34,10 @@ function run(args) {
 
   initRuntime();
 
+  if (Module['preRun']) {
+    Module['preRun']();
+  }
+
   var ret = null;
   if (Module['_main']) {
     ret = Module.callMain(args);
@@ -41,15 +45,16 @@ function run(args) {
       exitRuntime();
     }
   }
+
+  if (Module['postRun']) {
+    Module['postRun']();
+  }
+
   return ret;
 }
 Module['run'] = run;
 
 // {{PRE_RUN_ADDITIONS}}
-
-if (Module['preRun']) {
-  Module['preRun']();
-}
 
 #if INVOKE_RUN
 #else
@@ -64,8 +69,4 @@ if (runDependencies == 0) {
 }
 
 // {{POST_RUN_ADDITIONS}}
-
-if (Module['postRun']) {
-  Module['postRun']();
-}
 
