@@ -442,8 +442,14 @@ mergeInto(LibraryManager.library, {
     assert(!srcrect && !dstrect); // TODO
     var srcData = SDL.surfaces[src];
     var dstData = SDL.surfaces[dst];
-    assert(srcData.width === dstData.width && srcData.height === dstData.height);
-    {{{ makeCopyValues('dstData.buffer', 'srcData.buffer', 'srcData.width*srcData.height*4', 'i8', null, 1) }}}
+    assert(!!srcData.locked == !!dstData.locked); // we support the case of both locked or both not locked
+    if (srcData.locked) {
+      // Just support blitting everything
+      assert(srcData.width === dstData.width && srcData.height === dstData.height);
+      {{{ makeCopyValues('dstData.buffer', 'srcData.buffer', 'srcData.width*srcData.height*4', 'i8', null, 1) }}}
+    } else {
+      dstData.ctx.drawImage(srcData.canvas, 0, 0, srcData.width, srcData.height, 0, 0, dstData.width, dstData.height);
+    }
     return 0;
   },
 
@@ -522,10 +528,8 @@ mergeInto(LibraryManager.library, {
     var raw = preloadedImages[filename];
     assert(raw, 'Cannot find preloaded image ' + filename);
     var surf = SDL.makeSurface(raw.width, raw.height, 0);
-    // XXX Extremely inefficient!
-    for (var i = 0; i < raw.width*raw.height*4; i++) {
-      {{{ makeSetValue('SDL.surfaces[surf].buffer', 'i', 'raw.data[i]', 'i8') }}}
-    }
+    var surfData = SDL.surfaces[surf];
+    surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
     return surf;
   },
 

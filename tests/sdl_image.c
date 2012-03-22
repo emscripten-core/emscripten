@@ -7,8 +7,6 @@ int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_SWSURFACE);
 
-  if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
-
   SDL_Surface *image = IMG_Load("screenshot.jpg");
   if (!image)
   {
@@ -18,7 +16,6 @@ int main() {
   SDL_BlitSurface (image, NULL, screen, NULL);
   SDL_FreeSurface (image);
 
-  if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
   SDL_Flip(screen); 
 
   printf("you should see an image.\n");

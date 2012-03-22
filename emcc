@@ -899,7 +899,7 @@ try:
             canvas.height = img.height;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
-            preloadedImages['%(filename)s'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            preloadedImages['%(filename)s'] = canvas;
             window.URL.revokeObjectURL(url);
             removeRunDependency();
           };
