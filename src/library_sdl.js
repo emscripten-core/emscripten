@@ -190,7 +190,9 @@ mergeInto(LibraryManager.library, {
         pixelFormat: pixelFormat,
         alpha: 255,
         flags: flags,
-        locked: 0
+        locked: 0,
+        usePageCanvas: usePageCanvas,
+        filename: null
       };
       return surf;
     },
@@ -547,6 +549,7 @@ mergeInto(LibraryManager.library, {
     assert(raw, 'Cannot find preloaded image ' + filename);
     var surf = SDL.makeSurface(raw.width, raw.height, 0);
     var surfData = SDL.surfaces[surf];
+    surfData.filename = filename;
     surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
     return surf;
   },
