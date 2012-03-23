@@ -6356,14 +6356,14 @@ f.close()
       self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_compressed(self):
-      for image, worth_compressing, width, height in [(path_from_root('tests', 'screenshot2.png'), True, 300, 225),
-                                                      (path_from_root('tests', 'screenshot.jpg'), False, 600, 450)]:
+      for image, worth_compressing, width in [(path_from_root('tests', 'screenshot2.png'), True, 300),
+                                              (path_from_root('tests', 'screenshot.jpg'), False, 600)]:
         self.clear()
         print image, worth_compressing
 
         basename = os.path.basename(image)
         shutil.copyfile(image, os.path.join(self.get_dir(), basename))
-        open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()).replace('screenshot.jpg', basename).replace('600', str(width)).replace('450', str(height)))
+        open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()).replace('screenshot.jpg', basename))
 
         Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename, '-o', 'page.html',
                '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
