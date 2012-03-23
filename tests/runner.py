@@ -6213,7 +6213,7 @@ f.close()
         time.sleep(5)
         print '(moving on..)'
 
-    def test_emcc_html(self):
+    def test_html(self):
       # test HTML generation.
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
@@ -6230,7 +6230,7 @@ f.close()
           emscripten_run_script(output);
 ''')
 
-    def test_emcc_compression(self):
+    def test_compression(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
         #include <emscripten.h>
@@ -6252,7 +6252,7 @@ f.close()
       shutil.move(os.path.join(self.get_dir(), 'page.js'), 'page.js.renamedsoitcannotbefound');
       self.run_browser('page.html', '', '/report_result?1')
 
-    def test_emcc_preload_file(self):
+    def test_preload_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
@@ -6275,7 +6275,7 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
-    def test_emcc_multifile(self):
+    def test_multifile(self):
       # a few files inside a directory
       self.clear()
       os.makedirs(os.path.join(self.get_dir(), 'subdirr'));
@@ -6318,7 +6318,7 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
-    def test_emcc_compressed_file(self):
+    def test_compressed_file(self):
       open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('compress this please' + (2000*'.'))
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
@@ -6347,7 +6347,7 @@ f.close()
       shutil.move(os.path.join(self.get_dir(), 'datafile.txt'), 'datafile.txt.renamedsoitcannotbefound');
       self.run_browser('page.html', '', '/report_result?1')
 
-    def test_emcc_sdl_image(self):
+    def test_sdl_image(self):
       # load an image file, get pixel data
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
       open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
@@ -6355,7 +6355,7 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
-    def test_emcc_sdl_image_compressed(self):
+    def test_sdl_image_compressed(self):
       for image, worth_compressing, width, height in [(path_from_root('tests', 'screenshot2.png'), True, 300, 225),
                                                       (path_from_root('tests', 'screenshot.jpg'), False, 600, 450)]:
         self.clear()
@@ -6375,7 +6375,7 @@ f.close()
           shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
         self.run_browser('page.html', '', '/report_result?' + str(width))
 
-    def test_emcc_worker(self):
+    def test_worker(self):
       # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
@@ -6397,7 +6397,7 @@ f.close()
       html_file.close()
       self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
-    def test_emcc_gl(self):
+    def test_gl(self):
       # test the OpenGL ES implementation
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
@@ -6407,7 +6407,7 @@ f.close()
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
-    def test_emcc_gl_fail(self):
+    def test_gl_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
@@ -6418,7 +6418,7 @@ f.close()
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
-    def test_emcc_l_link(self):
+    def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
@@ -6446,7 +6446,7 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile'], stdout=PIPE, stderr=STDOUT).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-    def test_emcc_embed_file(self):
+    def test_embed_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
         #include <stdio.h>
@@ -6464,7 +6464,7 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
       self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-    def test_emcc_multidynamic_link(self):
+    def test_multidynamic_link(self):
       # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
       # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
 
@@ -6520,7 +6520,7 @@ f.close()
 
       self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-    def test_emcc_js_link(self):
+    def test_js_link(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>
         int main() {
