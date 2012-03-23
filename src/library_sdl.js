@@ -92,10 +92,10 @@ mergeInto(LibraryManager.library, {
     keyboardState: null,
 
     keyCodes: { // DOM code ==> SDL code
-      38:  273, // up arrow
-      40:  274, // down arrow
-      37:  276, // left arrow
-      39:  275, // right arrow
+      38:  1073741906, // up arrow
+      40:  1073741905, // down arrow
+      37:  1073741904, // left arrow
+      39:  1073741903, // right arrow
       17:  305, // control (right, or left)
       18:  308, // alt
       109: 45, // minus
@@ -113,16 +113,19 @@ mergeInto(LibraryManager.library, {
         ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'] // Docs say i8, ./include/SDL_video.h says i32...
       ]),
       KeyboardEvent: Runtime.generateStructInfo([
-        ['i8', 'type'],
-        ['i8', 'which'],
+        ['i32', 'type'],
+        ['i32', 'windowID'],
         ['i8', 'state'],
+        ['i8', 'repeat'],
+        ['i8', 'padding2'],
+        ['i8', 'padding3'],
         ['i32', 'keysym']
       ]),
       keysym: Runtime.generateStructInfo([
-        ['i8', 'scancode'],
+        ['i32', 'scancode'],
         ['i32', 'sym'],
-        ['i32', 'mod'],
-        ['i16', 'unicode']
+        ['i16', 'mod'],
+        ['i32', 'unicode']
       ]),
       AudioSpec: Runtime.generateStructInfo([
         ['i32', 'freq'],
@@ -235,7 +238,6 @@ mergeInto(LibraryManager.library, {
     receiveEvent: function(event) {
       switch(event.type) {
         case 'keydown': case 'keyup':
-          //print('zz receive Event: ' + event.keyCode);
           SDL.events.push(event);
           {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
       }
@@ -257,10 +259,10 @@ mergeInto(LibraryManager.library, {
           if (key >= 65 && key <= 90) {
             key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
           }
-          //print('zz passing over Event: ' + key);
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 2 : 3', 'i8') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 0x300 : 0x301', 'i32') }}}
+          //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
 
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'key', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}

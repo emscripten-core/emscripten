@@ -6381,6 +6381,34 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_font.c'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?80')
 
+    def test_sdl_key(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.postRun = function() {
+          function doOne() {
+            _one();
+            setTimeout(doOne, 1000/60);
+          }
+          setTimeout(doOne, 1000/60);
+        }
+
+        function simulateKeyEvent(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keydown", true, true, window,
+                             0, 0, 0, 0,
+                             c, c);
+          dispatchEvent(event);
+          var event2 = document.createEvent("KeyboardEvent");
+          event2.initKeyEvent("keyup", true, true, window,
+                             0, 0, 0, 0,
+                             c, c);
+          dispatchEvent(event2);
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      self.run_browser('page.html', '', '/report_result?30030')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
