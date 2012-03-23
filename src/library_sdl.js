@@ -145,7 +145,7 @@ mergeInto(LibraryManager.library, {
       };
     },
 
-    makeSurface: function(width, height, flags, usePageCanvas) {
+    makeSurface: function(width, height, flags, usePageCanvas, source) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
       var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
@@ -192,7 +192,7 @@ mergeInto(LibraryManager.library, {
         flags: flags,
         locked: 0,
         usePageCanvas: usePageCanvas,
-        filename: null
+        source: source
       };
       return surf;
     },
@@ -266,6 +266,18 @@ mergeInto(LibraryManager.library, {
       default:
         throw 'Unhandled SDL event: ' + event.type;
       }
+    },
+
+    // Debugging
+
+    debugSurface: function(surfData) {
+      console.log('dumping surface ' + [surfData.surf, surfData.source]);
+      var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+      var data = image.data;
+      var num = Math.min(2, surfData.width, surfData.height);
+      for (var i = 0; i < num; i++) {
+        console.log('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
+      }
     }
   },
 
@@ -304,7 +316,7 @@ mergeInto(LibraryManager.library, {
   SDL_SetVideoMode: function(width, height, depth, flags) {
     Module['canvas'].width = width;
     Module['canvas'].height = height;
-    return SDL.screen = SDL.makeSurface(width, height, flags, true);
+    return SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
   },
 
   SDL_Quit: function() {
@@ -425,6 +437,13 @@ mergeInto(LibraryManager.library, {
     return SDL.keyboardState;
   },
 
+  SDL_GetMouseState: function(x, y) {
+    // TODO:
+    if (x) {{{ makeSetValue('x', '0', '0', 'i32') }}};
+    if (y) {{{ makeSetValue('y', '0', '0', 'i32') }}};
+    return 0;
+  },
+
   SDL_ShowCursor: function(toggle) {
     // TODO
   },
@@ -434,14 +453,15 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
-    return SDL.makeSurface(width, height, flags);
+    return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface');
   },
 
   SDL_DisplayFormatAlpha: function(surf) {
     var oldData = SDL.surfaces[surf];
-    var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags);
-    var newData = SDL.surfaces[surf];
-    _memcpy(newData.buffer, oldData.buffer, oldData.height*oldData.width*4);
+    var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
+    var newData = SDL.surfaces[ret];
+    //newData.ctx.putImageData(oldData.ctx.getImageData(0, 0, oldData.width, oldData.height), 0, 0);
+    newData.ctx.drawImage(oldData.canvas, 0, 0);
     return ret;
   },
 
@@ -452,26 +472,18 @@ mergeInto(LibraryManager.library, {
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
     var srcData = SDL.surfaces[src];
     var dstData = SDL.surfaces[dst];
-    assert(!srcData.locked && !dstData.locked); // SDL does not allow blitting on locked surfaces
-    if (srcData.locked) {
-      // Just support blitting everything
-      assert(!srcrect && !dstrect);
-      assert(srcData.width === dstData.width && srcData.height === dstData.height);
-      {{{ makeCopyValues('dstData.buffer', 'srcData.buffer', 'srcData.width*srcData.height*4', 'i8', null, 1) }}}
+    var sr, dr;
+    if (srcrect) {
+      sr = SDL.loadRect(srcrect);
     } else {
-      var sr, dr;
-      if (srcrect) {
-        sr = SDL.loadRect(srcrect);
-      } else {
-        sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
-      }
-      if (dstrect) {
-        dr = SDL.loadRect(dstrect);
-      } else {
-        dr = { x: 0, y: 0, w: -1, h: -1 };
-      }
-      dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, sr.w, sr.h);
+      sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
     }
+    if (dstrect) {
+      dr = SDL.loadRect(dstrect);
+    } else {
+      dr = { x: 0, y: 0, w: -1, h: -1 };
+    }
+    dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, sr.w, sr.h);
     return 0;
   },
 
@@ -547,9 +559,8 @@ mergeInto(LibraryManager.library, {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedImages[filename];
     assert(raw, 'Cannot find preloaded image ' + filename);
-    var surf = SDL.makeSurface(raw.width, raw.height, 0);
+    var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
     var surfData = SDL.surfaces[surf];
-    surfData.filename = filename;
     surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
     return surf;
   },
@@ -699,7 +710,7 @@ mergeInto(LibraryManager.library, {
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
     text = Pointer_stringify(text);
-    var surf = SDL.makeSurface(20*text.length, 15, 0); // bogus numbers..
+    var surf = SDL.makeSurface(20*text.length, 15, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.fillText(text, 0, 0);
     return surf;
@@ -726,6 +737,6 @@ mergeInto(LibraryManager.library, {
   SDL_RemoveTimer: function(id) {
     window.clearTimeout(id);
     return true;
-  },
+  }
 });
 
