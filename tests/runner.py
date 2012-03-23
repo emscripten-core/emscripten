@@ -6375,6 +6375,12 @@ f.close()
           shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
         self.run_browser('page.html', '', '/report_result?' + str(width))
 
+    def test_sdl_font(self):
+      open(os.path.join(self.get_dir(), 'sdl_font.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_font.c')).read()))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_font.c'), '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?80')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()

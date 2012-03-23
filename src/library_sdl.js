@@ -145,6 +145,12 @@ mergeInto(LibraryManager.library, {
       };
     },
 
+    // Load SDL color into a CSS-style color specification
+    loadColorToCSS: function(color) {
+      var rgba = {{{ makeGetValue('color', '0', 'i32') }}};
+      return 'rgb(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ')';
+    },
+
     makeSurface: function(width, height, flags, usePageCanvas, source) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
@@ -274,7 +280,7 @@ mergeInto(LibraryManager.library, {
       console.log('dumping surface ' + [surfData.surf, surfData.source]);
       var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = image.data;
-      var num = Math.min(2, surfData.width, surfData.height);
+      var num = Math.min(surfData.width, surfData.height);
       for (var i = 0; i < num; i++) {
         console.log('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
@@ -332,10 +338,12 @@ mergeInto(LibraryManager.library, {
 
     if (!surfData.image) {
       surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-      var data = surfData.image.data;
-      var num = data.length;
-      for (var i = 0; i < num/4; i++) {
-        data[i*4+3] = 255; // opacity, as canvases blend alpha
+      if (surf == SDL.screen) {
+        var data = surfData.image.data;
+        var num = data.length;
+        for (var i = 0; i < num/4; i++) {
+          data[i*4+3] = 255; // opacity, as canvases blend alpha
+        }
       }
     }
     if (SDL.defaults.copyOnLock) {
@@ -370,11 +378,12 @@ mergeInto(LibraryManager.library, {
       var src = buffer >> 2;
       var dst = 0;
       while (dst < num) {
+        // TODO: access underlying data buffer and write in 32-bit chunks or more
         var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
         data[dst]   = val & 0xff;
         data[dst+1] = (val >> 8) & 0xff;
         data[dst+2] = (val >> 16) & 0xff;
-        data[dst+3] = 0xff;
+        data[dst+3] = (val >> 24) & 0xff;
         src++;
         dst += 4;
       }
@@ -702,7 +711,8 @@ mergeInto(LibraryManager.library, {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var id = SDL.fonts.length;
     SDL.fonts.push({
-      name: filename // but we don't actually do anything with it..
+      name: filename, // but we don't actually do anything with it..
+      size: size
     });
     return id;
   },
@@ -710,8 +720,21 @@ mergeInto(LibraryManager.library, {
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
     text = Pointer_stringify(text);
-    var surf = SDL.makeSurface(20*text.length, 15, 0, false, 'text:' + text); // bogus numbers..
+    var fontData = SDL.fonts[font];
+    var h = fontData.size;
+    var color = SDL.loadColorToCSS(color);
+    var fontString = h + 'px sans-serif';
+    // TODO: use temp context, not screen's, to avoid affecting its performance?
+    var tempCtx = SDL.surfaces[SDL.screen].ctx;
+    tempCtx.save();
+    tempCtx.font = fontString;
+    var w = tempCtx.measureText(text).width;
+    tempCtx.restore();
+    var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
+    surfData.ctx.fillStyle = color;
+    surfData.ctx.font = fontString;
+    surfData.ctx.textBaseline = 'top';
     surfData.ctx.fillText(text, 0, 0);
     return surf;
   },
