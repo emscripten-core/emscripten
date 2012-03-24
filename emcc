@@ -853,7 +853,8 @@ try:
             code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
-    code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));'
+    code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));\n'
+    code += 'var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.WebKitURL) : console.log("warning: cannot create object URLs");\n'
 
     counter = 0
     for file_ in data_files:
@@ -892,7 +893,7 @@ try:
             'finish': 'removeRunDependency();' if not image else '''var bb = new BlobBuilder();
           bb.append(byteArray.buffer);
           var b = bb.getBlob();
-          var url = window.URL.createObjectURL(b);
+          var url = URLObject.createObjectURL(b);
           var img = new Image();
           img.onload = function() {
             assert(img.complete, 'Image %(filename)s could not be decoded');
@@ -902,7 +903,7 @@ try:
             var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
             preloadedImages['%(filename)s'] = canvas;
-            window.URL.revokeObjectURL(url);
+            URLObject.revokeObjectURL(url);
             removeRunDependency();
           };
           img.onerror = function(event) {
