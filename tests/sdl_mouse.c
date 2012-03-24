@@ -46,10 +46,10 @@ int main() {
   SDL_Rect rect = { 0, 0, 600, 450 };
   SDL_FillRect(screen, &rect, 0x2244ff00);
 
-  emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // move from 0,0 to 10,20
-  emscripten_run_script("simulateMouseEvent(10, 20, 1)"); // click
-  emscripten_run_script("simulateMouseEvent(30, 77, 0)"); // move some more
-  emscripten_run_script("simulateMouseEvent(30, 77, 2)"); // trigger the end
+  emscripten_run_script("simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
+  emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click
+  emscripten_run_script("simulateMouseEvent(30, 77, -1)"); // move some more
+  emscripten_run_script("simulateMouseEvent(30, 77, 1)"); // trigger the end
 
   emscripten_set_main_loop(one, 0);
 

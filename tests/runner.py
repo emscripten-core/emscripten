@@ -6413,7 +6413,7 @@ f.close()
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         function simulateMouseEvent(x, y, button) {
           var event = document.createEvent("MouseEvents");
-          if (button) {
+          if (button >= 0) {
             var event1 = document.createEvent("MouseEvents");
             event1.initMouseEvent('mousedown', true, true, window,
                        1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
