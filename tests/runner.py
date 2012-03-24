@@ -6375,11 +6375,11 @@ f.close()
           shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
         self.run_browser('page.html', '', '/report_result?' + str(width))
 
-    def test_sdl_font(self):
-      open(os.path.join(self.get_dir(), 'sdl_font.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_font.c')).read()))
+    def test_sdl_canvas(self):
+      open(os.path.join(self.get_dir(), 'sdl_canvas.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas.c')).read()))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_font.c'), '-o', 'page.html']).communicate()
-      self.run_browser('page.html', '', '/report_result?80')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?3900')
 
     def test_sdl_key(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''

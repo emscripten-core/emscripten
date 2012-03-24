@@ -15,13 +15,6 @@ int main() {
   SDL_Color color = { 0xff, 0x99, 0x00, 0x77 };
 
   SDL_Surface *text = TTF_RenderText_Solid(font, "hello orange world", color);
-  SDL_LockSurface(text);
-  int sum = 0;
-  for (int i = 0; i < text->h; i++) {
-    sum += *((char*)text->pixels + i*text->w*4 + i*4 + 0);
-  }
-  printf("Sum: %d\n", sum);
-  SDL_UnlockSurface(text);
 
   SDL_Color color2 = { 0xbb, 0, 0xff, 0 };
   SDL_Surface *text2 = TTF_RenderText_Solid(font, "a second line, purple", color2);
@@ -32,9 +25,20 @@ int main() {
   dest.y = 100;
   SDL_BlitSurface (text2, NULL, screen, &dest);
 
+  // fill stuff
+  SDL_Rect rect = { 200, 200, 175, 125 };
+  SDL_FillRect(screen, &rect, 0x2222ff00);
+
   SDL_Flip(screen); 
 
-  printf("you should see two lines of text in different colors.\n");
+  SDL_LockSurface(screen);
+  int sum = 0;
+  for (int i = 0; i < screen->h; i++) {
+    sum += *((char*)screen->pixels + i*screen->w*4 + i*4 + 0);
+  }
+  printf("Sum: %d\n", sum);
+
+  printf("you should see two lines of text in different colors and a blue rectangle\n");
 
   SDL_Quit();
 

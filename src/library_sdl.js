@@ -154,6 +154,10 @@ mergeInto(LibraryManager.library, {
       return 'rgb(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ')';
     },
 
+    translateColorToCSS: function(rgba) {
+      return 'rgb(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ')';
+    },
+
     makeSurface: function(width, height, flags, usePageCanvas, source) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
@@ -503,21 +507,10 @@ mergeInto(LibraryManager.library, {
   SDL_FillRect: function(surf, rect, color) {
     console.log('WARNING: SDL_FillRect not optimized yet');
     var surfData = SDL.surfaces[surf];
-    var c1 = color & 0xff;
-    var c2 = (color >> 8) & 0xff;
-    var c3 = (color >> 16) & 0xff;
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
     var r = SDL.loadRect(rect);
-    var data = surfData.image.data;
-    var width = surfData.width;
-    for (var y = r.y; y < r.y + r.h; y++) {
-      var base = y*width*4;
-      for (var x = r.x; x < r.x + r.w; x++) {
-        var start = x*4 + base;
-        data[start]   = c1;
-        data[start+1] = c2;
-        data[start+2] = c3;
-      }
-    }
+    surfData.ctx.fillStyle = SDL.translateColorToCSS(color);
+    surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
