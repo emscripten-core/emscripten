@@ -548,7 +548,7 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_FreeSurface: function(surf) {
-    SDL.freeSurface(surf);
+    if (surf) SDL.freeSurface(surf);
   },
 
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
@@ -766,6 +766,8 @@ mergeInto(LibraryManager.library, {
 
   Mix_FadeInMusicPos: 'Mix_PlayMusic', // XXX ignore fading in effect
 
+  Mix_FadeOutMusic: function(id) {}, // TODO
+
   // SDL TTF
 
   TTF_Init: function() { return 0 },
@@ -865,6 +867,11 @@ mergeInto(LibraryManager.library, {
   SDL_InitSubSystem: function(flags) { return 0 },
 
   SDL_NumJoysticks: function() { return 0 },
+
+  SDL_RWFromFile__deps: ['fopen'],
+  SDL_RWFromFile: function(filename, mode) {
+    return _fopen(filename, mode);
+  },
 
   SDL_EnableUNICODE: function(on) {
     var ret = SDL.unicode || 0;
