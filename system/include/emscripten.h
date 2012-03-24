@@ -19,6 +19,15 @@ extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);
 
 /*
+ * Set a C function as the main event loop. The JS environment
+ * will call that function at a specified number of frames per
+ * second. Setting 0 as the fps will use the default browser
+ * frame rate.
+ */
+extern void emscripten_set_main_loop(void (*func)(), int fps);
+extern void emscripten_cancel_main_loop();
+
+/*
  * This macro-looking function will cause Emscripten to
  * generate a comment in the generated code.
  * XXX This is deprecated for now, because it requires us to

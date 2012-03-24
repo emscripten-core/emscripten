@@ -6409,6 +6409,38 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?30030')
 
+    def test_sdl_mouse(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        function simulateMouseEvent(x, y, button) {
+          var event = document.createEvent("MouseEvents");
+          if (button) {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mousedown', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            dispatchEvent(event1);
+            var event2 = document.createEvent("MouseEvents");
+            event2.initMouseEvent('mouseup', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            dispatchEvent(event2);
+          } else {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mouseover', true, true, window,
+                       0, x, y, x, y,
+                       0, 0, 0, 0,
+                       0, null);
+            dispatchEvent(event1);
+          }
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      self.run_browser('page.html', '', '/report_result?740')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()

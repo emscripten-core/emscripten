@@ -3,9 +3,27 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
+  emscripten_set_main_loop: function(func, fps) {
+    fps = fps || 60; // TODO: use requestAnimationFrame
+    _emscripten_set_main_loop.cancel = false;
+    var jsFunc = FUNCTION_TABLE[func];
+    function doOne() {
+      if (_emscripten_set_main_loop.cancel) return;
+      jsFunc();
+      setTimeout(doOne, 1000/fps); // doing this each time means that on exception, we stop
+    }
+    setTimeout(doOne, 1000/fps);
+  },
+
+  emscripten_cancel_main_loop: function(func) {
+    _emscripten_set_main_loop.cancel = true;
+  },
+
   $Browser: {
     // Given binary data for an image, in a format like PNG or JPG, we convert it
     // to flat pixel data. We do so using the browser's native code.
+    // This is deprecated, it is preferred to load binary files, createObjectURL, etc.,
+    // see the sdl_* tests.
     decodeImage: function(pixels, format) {
       function encodeBase64(data) {
         var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

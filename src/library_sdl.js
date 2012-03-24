@@ -90,6 +90,8 @@ mergeInto(LibraryManager.library, {
     fonts: [null],
 
     keyboardState: null,
+    mouseX: 0,
+    mouseY: 0,
 
     keyCodes: { // DOM code ==> SDL code
       38:  1106, // up arrow
@@ -126,6 +128,28 @@ mergeInto(LibraryManager.library, {
         ['i32', 'sym'],
         ['i16', 'mod'],
         ['i32', 'unicode']
+      ]),
+      MouseMotionEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'windowID'],
+        ['i8', 'state'],
+        ['i8', 'padding1'],
+        ['i8', 'padding2'],
+        ['i8', 'padding3'],
+        ['i32', 'x'],
+        ['i32', 'y'],
+        ['i32', 'xrel'],
+        ['i32', 'yrel']
+      ]),
+      MouseButtonEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'windowID'],
+        ['i8', 'button'],
+        ['i8', 'state'],
+        ['i8', 'padding1'],
+        ['i8', 'padding2'],
+        ['i32', 'x'],
+        ['i32', 'y']
       ]),
       AudioSpec: Runtime.generateStructInfo([
         ['i32', 'freq'],
@@ -245,7 +269,7 @@ mergeInto(LibraryManager.library, {
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'keydown': case 'keyup':
+        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mouseover':
           SDL.events.push(event);
           break;
       }
@@ -261,7 +285,7 @@ mergeInto(LibraryManager.library, {
       }
 
       switch(event.type) {
-        case 'keydown': case 'keyup':
+        case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           var key = SDL.keyCodes[event.keyCode] || event.keyCode;
           if (key >= 65 && key <= 90) {
@@ -280,7 +304,28 @@ mergeInto(LibraryManager.library, {
           {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
 
           break;
-        case 'keypress': break // TODO
+        }
+        case 'mousedown': case 'mouseup': {
+          var down = event.type === 'mousedown';
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'down ? 0x401 : 0x402', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button', 'i8') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'event.clientX', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'event.clientY', 'i32') }}};
+          break;
+        }
+        case 'mouseover': {
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', '0x400', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.button', 'event.button', 'i8') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'event.clientX', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'event.clientY', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'event.clientX - SDL.mouseX', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'event.clientY - SDL.mouseY', 'i32') }}};
+          SDL.mouseX = event.clientX;
+          SDL.mouseY = event.clientY;
+          break;
+        }
       default:
         throw 'Unhandled SDL event: ' + event.type;
       }
@@ -314,7 +359,7 @@ mergeInto(LibraryManager.library, {
   SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
-    ['keydown', 'keyup', 'keypress'].forEach(function(event) {
+    ['keydown', 'keyup', 'mousedown', 'mouseup', 'mouseover'].forEach(function(event) {
       addEventListener(event, SDL.receiveEvent, true);
     });
     SDL.keyboardState = _malloc(0x10000);
@@ -471,9 +516,8 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_GetMouseState: function(x, y) {
-    // TODO:
-    if (x) {{{ makeSetValue('x', '0', '0', 'i32') }}};
-    if (y) {{{ makeSetValue('y', '0', '0', 'i32') }}};
+    if (x) {{{ makeSetValue('x', '0', 'SDL.mouseX', 'i32') }}};
+    if (y) {{{ makeSetValue('y', '0', 'SDL.mouseY', 'i32') }}};
     return 0;
   },
 
