@@ -853,6 +853,8 @@ try:
             code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
+    code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));'
+
     counter = 0
     for file_ in data_files:
       filename = file_['name']
@@ -887,7 +889,7 @@ try:
             'basename': os.path.basename(filename),
             'decompress_start': '' if not file_['compressed'] else 'Module["decompress"](byteArray, function(decompressed) { byteArray = new Uint8Array(decompressed);',
             'decompress_end': '' if not file_['compressed'] else '});',
-            'finish': 'removeRunDependency();' if not image else '''var bb = new MozBlobBuilder();
+            'finish': 'removeRunDependency();' if not image else '''var bb = new BlobBuilder();
           bb.append(byteArray.buffer);
           var b = bb.getBlob();
           var url = window.URL.createObjectURL(b);
