@@ -92,10 +92,10 @@ mergeInto(LibraryManager.library, {
     keyboardState: null,
 
     keyCodes: { // DOM code ==> SDL code
-      38:  1073741906, // up arrow
-      40:  1073741905, // down arrow
-      37:  1073741904, // left arrow
-      39:  1073741903, // right arrow
+      38:  1106, // up arrow
+      40:  1105, // down arrow
+      37:  1104, // left arrow
+      39:  1103, // right arrow
       17:  305, // control (right, or left)
       18:  308, // alt
       109: 45, // minus
@@ -239,7 +239,7 @@ mergeInto(LibraryManager.library, {
       switch(event.type) {
         case 'keydown': case 'keyup':
           SDL.events.push(event);
-          {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
+          break;
       }
       //event.preventDefault();
       return false;
@@ -268,6 +268,8 @@ mergeInto(LibraryManager.library, {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
+
+          {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
 
           break;
         case 'keypress': break // TODO
