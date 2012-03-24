@@ -158,6 +158,10 @@ mergeInto(LibraryManager.library, {
       return 'rgb(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ')';
     },
 
+    translateRGBAToCSS: function(r, g, b, a) {
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    },
+
     makeSurface: function(width, height, flags, usePageCanvas, source) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
@@ -520,8 +524,10 @@ mergeInto(LibraryManager.library, {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     var r = SDL.loadRect(rect);
+    surfData.ctx.save();
     surfData.ctx.fillStyle = SDL.translateColorToCSS(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
+    surfData.ctx.restore();
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
@@ -735,10 +741,12 @@ mergeInto(LibraryManager.library, {
     var fontString = h + 'px sans-serif';
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
+    surfData.ctx.save();
     surfData.ctx.fillStyle = color;
     surfData.ctx.font = fontString;
     surfData.ctx.textBaseline = 'top';
     surfData.ctx.fillText(text, 0, 0);
+    surfData.ctx.restore();
     return surf;
   },
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
@@ -752,6 +760,56 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('h', '0', 'fontData.size', 'i32') }}};
     }
     return 0;
+  },
+
+  TTF_FontAscent: function(font) {
+    var fontData = SDL.fonts[font];
+    return Math.floor(fontData.size*0.98); // XXX
+  },
+
+  TTF_FontDescent: function(font) {
+    var fontData = SDL.fonts[font];
+    return Math.floor(fontData.size*0.02); // XXX
+  },
+
+  // SDL gfx
+
+  boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    // XXX save and restore ctx state here and similar places?
+    surfData.ctx.save();
+    surfData.ctx.strokeStyle = surfData.ctx.fillStyle = SDL.translateRGBAToCSS(r, g, b, a);
+    surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
+    surfData.ctx.restore();
+  },
+
+  rectangleRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    // XXX save and restore ctx state here and similar places?
+    surfData.ctx.save();
+    surfData.ctx.strokeStyle = SDL.translateRGBAToCSS(r, g, b, a);
+    surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
+    surfData.ctx.restore();
+  },
+
+  lineRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    surfData.ctx.save();
+    surfData.ctx.strokeStyle = SDL.translateRGBAToCSS(r, g, b, a);
+    surfData.ctx.beginPath();
+    surfData.ctx.moveTo(x1, y1);
+    surfData.ctx.lineTo(x2, y2);
+    surfData.ctx.stroke();
+    surfData.ctx.restore();
+  },
+
+  pixelRGBA__deps: ['boxRGBA'],
+  pixelRGBA: function(surf, x1, y1, r, g, b, a) {
+    // This cannot be fast, to render many pixels this way!
+    _boxRGBA(surf, x1, y1, x1, y1, r, g, b, a);
   },
 
   // Misc
