@@ -854,7 +854,7 @@ try:
             partial_dirs.append(partial)
 
     code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));\n'
-    code += 'var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.WebKitURL) : console.log("warning: cannot create object URLs");\n'
+    code += 'var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");\n'
 
     counter = 0
     for file_ in data_files:
