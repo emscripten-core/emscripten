@@ -269,7 +269,7 @@ mergeInto(LibraryManager.library, {
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mouseover':
+        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mousemove':
           SDL.events.push(event);
           break;
       }
@@ -305,25 +305,27 @@ mergeInto(LibraryManager.library, {
 
           break;
         }
-        case 'mousedown': case 'mouseup': {
-          var down = event.type === 'mousedown';
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'down ? 0x401 : 0x402', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button', 'i8') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'event.clientX', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'event.clientY', 'i32') }}};
-          break;
-        }
-        case 'mouseover': {
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', '0x400', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.button', 'event.button', 'i8') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'event.clientX', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'event.clientY', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'event.clientX - SDL.mouseX', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'event.clientY - SDL.mouseY', 'i32') }}};
-          SDL.mouseX = event.clientX;
-          SDL.mouseY = event.clientY;
+        case 'mousedown': case 'mouseup': case 'mousemove': {
+          var x = event.pageX - Module['canvas'].offsetLeft;
+          var y = event.pageY - Module['canvas'].offsetTop;
+          if (event.type != 'mousemove') {
+            var down = event.type === 'mousedown';
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'down ? 0x401 : 0x402', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'x', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'y', 'i32') }}};
+          } else {
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', '0x400', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.button', 'event.button', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'x - SDL.mouseX', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'y - SDL.mouseY', 'i32') }}};
+          }
+          SDL.mouseX = x;
+          SDL.mouseY = y;
           break;
         }
       default:
@@ -359,7 +361,7 @@ mergeInto(LibraryManager.library, {
   SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
-    ['keydown', 'keyup', 'mousedown', 'mouseup', 'mouseover'].forEach(function(event) {
+    ['keydown', 'keyup'].forEach(function(event) {
       addEventListener(event, SDL.receiveEvent, true);
     });
     SDL.keyboardState = _malloc(0x10000);
@@ -389,6 +391,9 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
+    ['mousedown', 'mouseup', 'mousemove'].forEach(function(event) {
+      Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
+    });
     Module['canvas'].width = width;
     Module['canvas'].height = height;
     return SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');

@@ -6416,23 +6416,23 @@ f.close()
           if (button) {
             var event1 = document.createEvent("MouseEvents");
             event1.initMouseEvent('mousedown', true, true, window,
-                       1, x, y, x, y,
+                       1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
                        0, 0, 0, 0,
                        button, null);
-            dispatchEvent(event1);
+            Module['canvas'].dispatchEvent(event1);
             var event2 = document.createEvent("MouseEvents");
             event2.initMouseEvent('mouseup', true, true, window,
-                       1, x, y, x, y,
+                       1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
                        0, 0, 0, 0,
                        button, null);
-            dispatchEvent(event2);
+            Module['canvas'].dispatchEvent(event2);
           } else {
             var event1 = document.createEvent("MouseEvents");
-            event1.initMouseEvent('mouseover', true, true, window,
-                       0, x, y, x, y,
+            event1.initMouseEvent('mousemove', true, true, window,
+                       0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
                        0, 0, 0, 0,
                        0, null);
-            dispatchEvent(event1);
+            Module['canvas'].dispatchEvent(event1);
           }
         }
       ''')
