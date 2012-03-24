@@ -777,9 +777,9 @@ mergeInto(LibraryManager.library, {
   boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    // XXX save and restore ctx state here and similar places?
+    // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
     surfData.ctx.save();
-    surfData.ctx.strokeStyle = surfData.ctx.fillStyle = SDL.translateRGBAToCSS(r, g, b, a);
+    surfData.ctx.fillStyle = SDL.translateRGBAToCSS(r, g, b, a);
     surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
     surfData.ctx.restore();
   },
@@ -787,10 +787,9 @@ mergeInto(LibraryManager.library, {
   rectangleRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    // XXX save and restore ctx state here and similar places?
     surfData.ctx.save();
     surfData.ctx.strokeStyle = SDL.translateRGBAToCSS(r, g, b, a);
-    surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
+    surfData.ctx.strokeRect(x1, y1, x2-x1, y2-y1);
     surfData.ctx.restore();
   },
 
