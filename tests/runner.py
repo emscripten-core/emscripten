@@ -6379,7 +6379,7 @@ f.close()
       open(os.path.join(self.get_dir(), 'sdl_canvas.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas.c')).read()))
 
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html']).communicate()
-      self.run_browser('page.html', '', '/report_result?3900')
+      self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_key(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''

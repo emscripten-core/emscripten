@@ -42,7 +42,7 @@ int main() {
 
   SDL_Quit();
 
-  int result = sum;
+  int result = sum > 3000 && sum < 5000; // varies a little on different browsers, font differences?
   REPORT_RESULT();
 
   return 0;

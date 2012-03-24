@@ -282,6 +282,18 @@ mergeInto(LibraryManager.library, {
       }
     },
 
+    estimateTextWidth: function(fontData, text) {
+      var h = fontData.size;
+      var fontString = h + 'px sans-serif';
+      // TODO: use temp context, not screen's, to avoid affecting its performance?
+      var tempCtx = SDL.surfaces[SDL.screen].ctx;
+      tempCtx.save();
+      tempCtx.font = fontString;
+      var ret = tempCtx.measureText(text).width;
+      tempCtx.restore();
+      return ret;
+    },
+
     // Debugging
 
     debugSurface: function(surfData) {
@@ -438,7 +450,7 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Delay: function(delay) {
-    throw 'SDL_Delay called! Potential infinite loop, quitting.';
+    throw 'SDL_Delay called! Potential infinite loop, quitting. ' + new Error().stack;
   },
 
   SDL_WM_SetCaption: function(title, icon) {
@@ -505,7 +517,6 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_FillRect: function(surf, rect, color) {
-    console.log('WARNING: SDL_FillRect not optimized yet');
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     var r = SDL.loadRect(rect);
@@ -718,15 +729,10 @@ mergeInto(LibraryManager.library, {
     // XXX the font and color are ignored
     text = Pointer_stringify(text);
     var fontData = SDL.fonts[font];
+    var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
     var color = SDL.loadColorToCSS(color);
     var fontString = h + 'px sans-serif';
-    // TODO: use temp context, not screen's, to avoid affecting its performance?
-    var tempCtx = SDL.surfaces[SDL.screen].ctx;
-    tempCtx.save();
-    tempCtx.font = fontString;
-    var w = tempCtx.measureText(text).width;
-    tempCtx.restore();
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.fillStyle = color;
@@ -736,6 +742,17 @@ mergeInto(LibraryManager.library, {
     return surf;
   },
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
+
+  TTF_SizeText: function(font, text, w, h) {
+    var fontData = SDL.fonts[font];
+    if (w) {
+      {{{ makeSetValue('w', '0', 'SDL.estimateTextWidth(fontData, Pointer_stringify(text))', 'i32') }}};
+    }
+    if (h) {
+      {{{ makeSetValue('h', '0', 'fontData.size', 'i32') }}};
+    }
+    return 0;
+  },
 
   // Misc
 
