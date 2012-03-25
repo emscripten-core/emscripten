@@ -174,6 +174,12 @@ Options that are modified or new in %s include:
                            2: -O2 LLVM optimizations
                            3: -O3 LLVM optimizations (default in -O2+)
 
+  --llvm-lto <level>       0: No LLVM LTO (default in -O0)
+                           1: LLVM LTO (default in -O1+)
+                           Note: If LLVM optimizations are not run
+                           (see --llvm-opts), setting this to 1 has no
+                           effect.
+
   --closure <on>           0: No closure compiler (default in -O0, -O1)
                            1: Run closure compiler (default in -O2, -O3)
 
@@ -401,6 +407,7 @@ try:
 
   opt_level = 0
   llvm_opts = None
+  llvm_lto = None
   closure = None
   js_transform = None
   pre_js = None
@@ -425,6 +432,11 @@ try:
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
       llvm_opts = eval(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--llvm-lto'):
+      check_bad_eq(newargs[i])
+      llvm_lto = eval(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--closure'):
@@ -491,6 +503,7 @@ try:
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
+  if llvm_lto is None: llvm_lto = llvm_opts > 0
   if closure is None: closure = 1 if opt_level >= 2 else 0
   if minify_whitespace is None:
     minify_whitespace = closure # if closure is run, minify whitespace
@@ -776,7 +789,7 @@ try:
     shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
     if DEBUG: save_intermediate('opt', 'bc')
     # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
-    if shared.Building.can_use_unsafe_opts() and shared.Building.can_build_standalone():
+    if llvm_lto and shared.Building.can_use_unsafe_opts() and shared.Building.can_build_standalone():
       lto_opts = []
       if not shared.Building.can_inline(): lto_opts.append('-disable-inlining')
       lto_opts.append('-std-link-opts')
