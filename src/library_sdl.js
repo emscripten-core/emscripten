@@ -737,14 +737,14 @@ mergeInto(LibraryManager.library, {
   },
 
   Mix_FreeChunk: function(audio) {
-    SDL.audios[id].audio.pause();
-    SDL.audios[id] = null;
+    //SDL.audios[id].audio.pause();
+    //SDL.audios[id] = null;
     return 0;
   },
 
   Mix_PlayChannel: function(channel, audio, loops) {
-    var audio = SDL.audios[id].audio;
-    audio.play();
+    //var audio = SDL.audios[id].audio;
+    //audio.play();
     return 0; // XXX should return channel
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
