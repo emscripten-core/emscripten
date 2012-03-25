@@ -86,7 +86,7 @@ mergeInto(LibraryManager.library, {
 
     surfaces: {},
     events: [],
-    musics: [null],
+    audios: [null],
     fonts: [null],
 
     keyboardState: null,
@@ -723,43 +723,65 @@ mergeInto(LibraryManager.library, {
     return 0; // TODO
   },
 
+  Mix_LoadWAV_RW: function(filename, freesrc) {
+    filename = FS.standardizePath(Pointer_stringify(filename));
+    var id = SDL.audios.length;
+    SDL.audios.push({
+      audio: new Audio(filename)
+    });
+    return id;
+  },
+
+  Mix_FreeChunk: function(audio) {
+    SDL.audios[id].audio.pause();
+    SDL.audios[id] = null;
+    return 0;
+  },
+
+  Mix_PlayChannel: function(channel, audio, loops) {
+    var audio = SDL.audios[id].audio;
+    audio.play();
+    return 0; // XXX should return channel
+  },
+  Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
+
   Mix_LoadMUS: function(filename) {
     filename = FS.standardizePath(Pointer_stringify(filename));
-    var id = SDL.musics.length;
-    SDL.musics.push({
+    var id = SDL.audios.length;
+    SDL.audios.push({
       audio: new Audio(filename)
     });
     return id;
   },
 
   Mix_FreeMusic: function(id) {
-    SDL.musics[id].audio.pause();
-    SDL.musics[id] = null;
+    SDL.audios[id].audio.pause();
+    SDL.audios[id] = null;
     return 0;
   },
 
   Mix_PlayMusic: function(id, loops) {
     if (loops == 0) return;
-    var audio = SDL.musics[id].audio;
+    var audio = SDL.audios[id].audio;
     audio.loop = loop != 1; // TODO: handle N loops for finite N
     audio.play();
     return 0;
   },
 
   Mix_PauseMusic: function(id) {
-    var audio = SDL.musics[id].audio;
+    var audio = SDL.audios[id].audio;
     audio.pause();
     return 0;
   },
 
   Mix_ResumeMusic: function(id) {
-    var audio = SDL.musics[id].audio;
+    var audio = SDL.audios[id].audio;
     audio.play();
     return 0;
   },
 
   Mix_HaltMusic: function(id) {
-    var audio = SDL.musics[id].audio;
+    var audio = SDL.audios[id].audio;
     audio.pause(); // TODO: actually rewind to the beginning
     return 0;
   },
@@ -801,6 +823,7 @@ mergeInto(LibraryManager.library, {
     return surf;
   },
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
+  TTF_RenderText_Shaded: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
 
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
@@ -868,9 +891,8 @@ mergeInto(LibraryManager.library, {
 
   SDL_NumJoysticks: function() { return 0 },
 
-  SDL_RWFromFile__deps: ['fopen'],
   SDL_RWFromFile: function(filename, mode) {
-    return _fopen(filename, mode);
+    return filename; // XXX We just forward the filename
   },
 
   SDL_EnableUNICODE: function(on) {
