@@ -540,7 +540,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       });
 
-      if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
+      if (LABEL_DEBUG) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
@@ -558,7 +558,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (!label) return '';
           var ret = '';
           if (LABEL_DEBUG) {
-            ret += indent + "print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+            ret += indent + "Module.print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
           }
           if (EXECUTION_TIMEOUT > 0) {
             ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
@@ -951,7 +951,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           +  '}\n';
     }
     if (LABEL_DEBUG) {
-      ret += "print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
+      ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     }
     ret += 'return';
@@ -961,7 +961,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
-    return (EXCEPTION_DEBUG ? 'print("Resuming exception");' : '') + 
+    return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
     	'throw ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') + ';';
   });
   makeFuncLineActor('invoke', function(item) {
@@ -974,7 +974,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             + '} catch(e) { '
             + 'if (typeof e != "number") throw e; '
             + 'if (ABORT) throw e; __THREW__ = true; '
-            + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
+            + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
             + 'return null } })();';
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
