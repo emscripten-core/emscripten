@@ -44,7 +44,7 @@ int main() {
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
   SDL_Rect rect = { 0, 0, 600, 450 };
-  SDL_FillRect(screen, &rect, 0x2244ff00);
+  SDL_FillRect(screen, &rect, 0x2244ffff);
 
   emscripten_run_script("simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
   emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click

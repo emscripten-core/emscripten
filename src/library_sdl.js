@@ -175,15 +175,15 @@ mergeInto(LibraryManager.library, {
     // Load SDL color into a CSS-style color specification
     loadColorToCSS: function(color) {
       var rgba = {{{ makeGetValue('color', '0', 'i32') }}};
-      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (1-((rgba >> 24)&255)/255) + ')';
+      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (((rgba >> 24)&255)/255) + ')';
     },
 
     translateColorToCSS: function(rgba) {
-      return 'rgba(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ',' + (1-(rgba&255)/255) + ')';
+      return 'rgba(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba&255)/255) + ')';
     },
 
     translateRGBAToCSS: function(r, g, b, a) {
-      return 'rgba(' + r + ',' + g + ',' + b + ',' + (1-a/255) + ')';
+      return 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
     },
 
     makeSurface: function(width, height, flags, usePageCanvas, source) {
