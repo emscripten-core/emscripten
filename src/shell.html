@@ -4,26 +4,23 @@
   <body>
     <center>
       <canvas id='canvas' width='256' height='256'></canvas>
+      <hr>
+      <textarea id="output" style="font-family: monospace; width: 80%" rows="8" readonly></textarea>
+      <hr>
+      <div id='status'></div>
     </center>
-    <hr>
-    <div id='output'></div>
-    <hr>
-    <center><div id='status'></div></center>
     <hr>
     <script type='text/javascript'>
       // connect to canvas
       var Module = {
         print: (function() {
           var element = document.getElementById('output');
-          var printBuffer = [];
           return function(text) {
             text = text.replace(/&/g, "&amp;");
             text = text.replace(/</g, "&lt;");
             text = text.replace(/>/g, "&gt;");
             text = text.replace('\n', '<br>', 'g');
-            if (printBuffer.length > 10) printBuffer.shift();
-            printBuffer.push(text);
-            element.innerHTML = printBuffer.join('<br>');
+            element.value += text + "\n";
           };
         })(),
         canvas: document.getElementById('canvas'),
