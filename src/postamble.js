@@ -32,11 +32,11 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  initRuntime();
-
   if (Module['preRun']) {
     Module['preRun']();
   }
+
+  initRuntime();
 
   var ret = null;
   if (Module['_main']) {
