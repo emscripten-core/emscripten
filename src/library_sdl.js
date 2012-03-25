@@ -348,7 +348,7 @@ mergeInto(LibraryManager.library, {
     // Debugging
 
     debugSurface: function(surfData) {
-      console.log('dumping surface ' + [surfData.surf, surfData.source]);
+      console.log('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
       var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = image.data;
       var num = Math.min(surfData.width, surfData.height);
@@ -806,7 +806,7 @@ mergeInto(LibraryManager.library, {
 
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
-    text = Pointer_stringify(text);
+    text = Pointer_stringify(text) || ' '; // if given an empty string, still return a valid surface
     var fontData = SDL.fonts[font];
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
