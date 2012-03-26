@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy
+import shutil, time, os, sys, json, tempfile, copy, shlex
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -743,7 +743,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
-      args += os.environ.get('EMCC_CLOSURE_ARGS').split(' ')
+      args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
     process = Popen(args, stdout=PIPE, stderr=STDOUT)
     cc_output = process.communicate()[0]
     if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):

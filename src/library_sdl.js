@@ -173,17 +173,21 @@ mergeInto(LibraryManager.library, {
     },
 
     // Load SDL color into a CSS-style color specification
-    loadColorToCSS: function(color) {
+    loadColorToCSSRGB: function(color) {
       var rgba = {{{ makeGetValue('color', '0', 'i32') }}};
-      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (1-((rgba >> 24)&255)/255) + ')';
+      return 'rgb(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ')';
+    },
+    loadColorToCSSRGBA: function(color) {
+      var rgba = {{{ makeGetValue('color', '0', 'i32') }}};
+      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (((rgba >> 24)&255)/255) + ')';
     },
 
-    translateColorToCSS: function(rgba) {
-      return 'rgba(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ',' + (1-(rgba&255)/255) + ')';
+    translateColorToCSSRGBA: function(rgba) {
+      return 'rgba(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba&255)/255) + ')';
     },
 
-    translateRGBAToCSS: function(r, g, b, a) {
-      return 'rgba(' + r + ',' + g + ',' + b + ',' + (1-a/255) + ')';
+    translateRGBAToCSSRGBA: function(r, g, b, a) {
+      return 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
     },
 
     makeSurface: function(width, height, flags, usePageCanvas, source) {
@@ -574,14 +578,14 @@ mergeInto(LibraryManager.library, {
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     var r = SDL.loadRect(rect);
     surfData.ctx.save();
-    surfData.ctx.fillStyle = SDL.translateColorToCSS(color);
+    surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return _SDL_Blit(src, srcrect, dst, dstrect);
+    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
   },
 
   SDL_SetAlpha: function(surf, flag, alpha) {
@@ -733,14 +737,14 @@ mergeInto(LibraryManager.library, {
   },
 
   Mix_FreeChunk: function(id) {
-    SDL.audios[id].audio.pause();
-    SDL.audios[id] = null;
+    //SDL.audios[id].audio.pause();
+    //SDL.audios[id] = null;
     return 0;
   },
 
   Mix_PlayChannel: function(channel, id, loops) {
-    var audio = SDL.audios[id].audio;
-    audio.play();
+    //var audio = SDL.audios[id].audio;
+    //audio.play();
     return 0; // XXX should return channel
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
@@ -810,7 +814,7 @@ mergeInto(LibraryManager.library, {
     var fontData = SDL.fonts[font];
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
-    var color = SDL.loadColorToCSS(color);
+    var color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
     var fontString = h + 'px sans-serif';
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
@@ -853,7 +857,7 @@ mergeInto(LibraryManager.library, {
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
     surfData.ctx.save();
-    surfData.ctx.fillStyle = SDL.translateRGBAToCSS(r, g, b, a);
+    surfData.ctx.fillStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
     surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
     surfData.ctx.restore();
   },
@@ -862,7 +866,7 @@ mergeInto(LibraryManager.library, {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     surfData.ctx.save();
-    surfData.ctx.strokeStyle = SDL.translateRGBAToCSS(r, g, b, a);
+    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
     surfData.ctx.strokeRect(x1, y1, x2-x1, y2-y1);
     surfData.ctx.restore();
   },
@@ -871,7 +875,7 @@ mergeInto(LibraryManager.library, {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     surfData.ctx.save();
-    surfData.ctx.strokeStyle = SDL.translateRGBAToCSS(r, g, b, a);
+    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
     surfData.ctx.beginPath();
     surfData.ctx.moveTo(x1, y1);
     surfData.ctx.lineTo(x2, y2);

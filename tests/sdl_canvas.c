@@ -12,11 +12,11 @@ int main() {
   TTF_Font *font = TTF_OpenFont("myfont.ttf", 40);
   printf("Font: %p\n", font);
 
-  SDL_Color color = { 0xff, 0x99, 0x00, 0xb0 };
+  SDL_Color color = { 0xff, 0x99, 0x00, 0xff };
 
-  SDL_Surface *text = TTF_RenderText_Solid(font, "hello faint orange world", color);
+  SDL_Surface *text = TTF_RenderText_Solid(font, "hello orange world", color);
 
-  SDL_Color color2 = { 0xbb, 0, 0xff, 0 };
+  SDL_Color color2 = { 0xbb, 0, 0xff, 0xff };
   SDL_Surface *text2 = TTF_RenderText_Solid(font, "a second line, purple", color2);
 
   // render
@@ -27,7 +27,7 @@ int main() {
 
   // fill stuff
   SDL_Rect rect = { 200, 200, 175, 125 };
-  SDL_FillRect(screen, &rect, 0x2222ff00);
+  SDL_FillRect(screen, &rect, 0x2222ffff);
 
   SDL_Flip(screen); 
 
