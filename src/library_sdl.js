@@ -271,6 +271,7 @@ mergeInto(LibraryManager.library, {
       switch(event.type) {
         case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mousemove':
           SDL.events.push(event);
+          event.preventDefault();
           break;
       }
       //event.preventDefault();
