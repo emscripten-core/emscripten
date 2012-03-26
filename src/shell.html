@@ -5,7 +5,7 @@
     <center>
       <canvas id='canvas' width='256' height='256'></canvas>
       <hr>
-      <textarea id="output" style="font-family: monospace; width: 80%" rows="8" readonly></textarea>
+      <textarea id="output" style="font-family: monospace; width: 80%" rows="8"></textarea>
       <hr>
       <div id='status'>Downloading...</div>
     </center>
@@ -23,6 +23,7 @@
             //text = text.replace(/>/g, "&gt;");
             //text = text.replace('\n', '<br>', 'g');
             element.value += text + "\n";
+            element.scrollTop = 99999; // focus on bottom
           };
         })(),
         canvas: document.getElementById('canvas'),
