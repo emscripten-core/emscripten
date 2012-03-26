@@ -736,13 +736,13 @@ mergeInto(LibraryManager.library, {
     return id;
   },
 
-  Mix_FreeChunk: function(audio) {
+  Mix_FreeChunk: function(id) {
     //SDL.audios[id].audio.pause();
     //SDL.audios[id] = null;
     return 0;
   },
 
-  Mix_PlayChannel: function(channel, audio, loops) {
+  Mix_PlayChannel: function(channel, id, loops) {
     //var audio = SDL.audios[id].audio;
     //audio.play();
     return 0; // XXX should return channel
