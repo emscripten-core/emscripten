@@ -340,7 +340,7 @@ mergeInto(LibraryManager.library, {
       var tempCtx = SDL.surfaces[SDL.screen].ctx;
       tempCtx.save();
       tempCtx.font = fontString;
-      var ret = tempCtx.measureText(text).width;
+      var ret = tempCtx.measureText(text).width | 0;
       tempCtx.restore();
       return ret;
     },
