@@ -238,6 +238,10 @@ Options that are modified or new in %s include:
                            receive an array/typed array and return
                            an array/typed array.
                            Compression only works when generating HTML.
+                           When compression is on, all filed specified
+                           to be preloaded are compressed in one big
+                           archive, which is given the same name as the
+                           output HTML but with suffix .data.compress
 
   --minify <on>            0: Do not minify the generated JavaScript's
                               whitespace (default if closure compiler
