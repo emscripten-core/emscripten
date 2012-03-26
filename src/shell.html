@@ -17,10 +17,11 @@
           var element = document.getElementById('output');
           element.value = ''; // clear browser cache
           return function(text) {
-            text = text.replace(/&/g, "&amp;");
-            text = text.replace(/</g, "&lt;");
-            text = text.replace(/>/g, "&gt;");
-            text = text.replace('\n', '<br>', 'g');
+            // These replacements are necessary if you render to raw HTML
+            //text = text.replace(/&/g, "&amp;");
+            //text = text.replace(/</g, "&lt;");
+            //text = text.replace(/>/g, "&gt;");
+            //text = text.replace('\n', '<br>', 'g');
             element.value += text + "\n";
           };
         })(),
