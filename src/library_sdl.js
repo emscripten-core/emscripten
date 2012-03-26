@@ -585,7 +585,7 @@ mergeInto(LibraryManager.library, {
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return _SDL_Blit(src, srcrect, dst, dstrect);
+    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
   },
 
   SDL_SetAlpha: function(surf, flag, alpha) {
