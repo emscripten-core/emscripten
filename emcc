@@ -826,6 +826,9 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: setting up files'
     code = ''
 
+    code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));\n'
+    code += 'var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");\n'
+
     # Expand directories into individual files
     def add(mode, dirname, names):
       for name in names:
@@ -840,19 +843,8 @@ try:
 
     for file_ in data_files:
       file_['net_name'] = file_['name']
-      file_['compressed'] = False
 
-    if Compression.on:
-      # Compress each file, if it is worth it
-      for file_ in data_files:
-        Compression.compress(file_['name'])
-        if Compression.worth_it(os.stat(file_['name']).st_size,
-                                os.stat(Compression.compressed_name(file_['name'])).st_size):
-          file_['net_name'] = Compression.compressed_name(file_['name'])
-          file_['compressed'] = True
-        else:
-          if DEBUG: print >> sys.stderr, 'emcc: not compressing %s since not worth it' % file_['name']
-          os.remove(Compression.compressed_name(file_['name']))
+    data_target = unsuffixed(target) + '.data'
 
     # Set up folders
     partial_dirs = []
@@ -866,8 +858,30 @@ try:
             code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
-    code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));\n'
-    code += 'var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");\n'
+    if Compression.on:
+      # Compress all datafiles into one archive
+      data = open(data_target, 'wb')
+      start = 0
+      for file_ in data_files:
+        file_['compression_start'] = start
+        curr = open(file_['name']).read()
+        file_['compression_end'] = start + len(curr)
+        start += len(curr)
+        data.write(curr)
+      data.close()
+      Compression.compress(data_target)
+
+      # Decompression requests have a similar API to XHRs
+      code += '''
+        function DecompressionRequest() {}
+        DecompressionRequest.prototype = {
+          requests: {},
+          open: function(mode, name) {
+            this.requests[name] = this;
+          },
+          send: function() {}
+        };
+      '''
 
     counter = 0
     for file_ in data_files:
@@ -881,28 +895,25 @@ try:
         counter += 1
         image = filename.endswith(IMAGE_SUFFIXES)
         code += '''
-        var %(varname)s = new XMLHttpRequest();
+        var %(varname)s = new %(request)s();
         %(varname)s.open('GET', '%(netname)s', true);
         %(varname)s.responseType = 'arraybuffer';
         %(varname)s.onload = function() {
-          var arrayBuffer = %(varname)s.response; // Note: not X.responseText
+          var arrayBuffer = %(varname)s.response;
           assert(arrayBuffer, 'Loading file %(filename)s failed.');
-          var byteArray = new Uint8Array(arrayBuffer);
-          %(decompress_start)s
+          var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
           FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
           %(finish)s
-          %(decompress_end)s
         };
         addRunDependency();
         %(varname)s.send(null);
 ''' % {
+            'request': 'XMLHttpRequest' if not Compression.on else 'DecompressionRequest',
             'varname': varname,
             'filename': filename,
             'netname': file_['net_name'],
             'dirname': os.path.dirname(filename),
             'basename': os.path.basename(filename),
-            'decompress_start': '' if not file_['compressed'] else 'Module["decompress"](byteArray, function(decompressed) { byteArray = new Uint8Array(decompressed);',
-            'decompress_end': '' if not file_['compressed'] else '});',
             'finish': 'removeRunDependency();' if not image else '''var bb = new BlobBuilder();
           bb.append(byteArray.buffer);
           var b = bb.getBlob();
@@ -927,6 +938,36 @@ try:
       }
       else:
         assert 0
+
+    if Compression.on:
+      use_decompressed = ''
+      for file_ in data_files:
+        if file_['mode'] == 'preload':
+          use_decompressed += '''
+            curr = DecompressionRequest.prototype.requests['%s'];
+            curr.response = byteArray.subarray(%d,%d);
+            curr.onload();
+          ''' % (file_['name'], file_['compression_start'], file_['compression_end'])
+
+      code += '''
+        var dataFile = new XMLHttpRequest();
+        dataFile.open('GET', '%s', true);
+        dataFile.responseType = 'arraybuffer';
+        dataFile.onload = function() {
+          var arrayBuffer = dataFile.response;
+          assert(arrayBuffer, 'Loading data file failed.');
+          var byteArray = new Uint8Array(arrayBuffer);
+          Module["decompress"](byteArray, function(decompressed) {
+            byteArray = new Uint8Array(decompressed);
+            var curr;
+            %s
+            removeRunDependency();
+          });
+        };
+        addRunDependency();
+        dataFile.send(null);
+      ''' % (Compression.compressed_name(data_target), use_decompressed)
+
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
     final += '.files.js'
     open(final, 'w').write(src)

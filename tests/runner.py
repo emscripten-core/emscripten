@@ -6320,6 +6320,7 @@ f.close()
 
     def test_compressed_file(self):
       open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('compress this please' + (2000*'.'))
+      open(os.path.join(self.get_dir(), 'datafile2.txt'), 'w').write('moar' + (100*'!'))
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
         #include <string.h>
@@ -6332,17 +6333,23 @@ f.close()
           fclose(f);
           printf("file says: |%s|\n", buf);
           int result = !strcmp("compress this please", buf);
+          FILE *f2 = fopen("datafile2.txt", "r");
+          fread(buf, 1, 5, f2);
+          buf[5] = 0;
+          fclose(f2);
+          result = result && !strcmp("moar!", buf);
+          printf("file 2 says: |%s|\n", buf);
           REPORT_RESULT();
           return 0;
         }
       '''))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt',
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt', '--preload-file', 'datafile2.txt',
              '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                             path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
                                             'LZMA.decompress')]).communicate()
       assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt')), 'must be data file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt.compress')), 'must be data file in compressed form'
+      assert os.path.exists(os.path.join(self.get_dir(), 'page.data.compress')), 'must be data file in compressed form'
       assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size != os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be different'
       shutil.move(os.path.join(self.get_dir(), 'datafile.txt'), 'datafile.txt.renamedsoitcannotbefound');
       self.run_browser('page.html', '', '/report_result?1')
@@ -6356,10 +6363,10 @@ f.close()
       self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_compressed(self):
-      for image, worth_compressing, width in [(path_from_root('tests', 'screenshot2.png'), True, 300),
-                                              (path_from_root('tests', 'screenshot.jpg'), False, 600)]:
+      for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
+                           (path_from_root('tests', 'screenshot.jpg'), 600)]:
         self.clear()
-        print image, worth_compressing
+        print image
 
         basename = os.path.basename(image)
         shutil.copyfile(image, os.path.join(self.get_dir(), basename))
@@ -6369,10 +6376,7 @@ f.close()
                '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                               path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
                                               'LZMA.decompress')]).communicate()
-        assert ('.compress' in open('page.js').read()) == worth_compressing, 'do not compress image if not worth it'
-        assert os.path.exists(basename + '.compress') == worth_compressing, 'remove .compress if not compressing'
-        if worth_compressing:
-          shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
+        shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
         self.run_browser('page.html', '', '/report_result?' + str(width))
 
     def test_sdl_canvas(self):
