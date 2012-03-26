@@ -275,6 +275,11 @@ mergeInto(LibraryManager.library, {
       switch(event.type) {
         case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mousemove':
           SDL.events.push(event);
+          if ((event.keyCode >= 37 && event.keyCode <= 40) || // arrow keys
+              event.keyCode == 32 || // space
+              event.keyCode == 33 || event.keyCode == 34) { // page up/down
+            event.preventDefault();
+          }
           break;
       }
       //event.preventDefault();
