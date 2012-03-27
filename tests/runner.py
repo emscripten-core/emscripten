@@ -6445,6 +6445,13 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
+    def test_sdl_audio(self):
+      shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+      open(os.path.join(self.get_dir(), 'sdl_audio.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio.c')).read()))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()

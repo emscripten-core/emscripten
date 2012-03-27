@@ -717,12 +717,11 @@ mergeInto(LibraryManager.library, {
   SDL_CondWait: function() {},
   SDL_DestroyCond: function() {},
 
-//SDL_CreateYUVOverlay
-//SDL_CreateThread, SDL_WaitThread etc
-
   // SDL Mixer
 
-  Mix_OpenAudio: function() { return 0 },
+  Mix_OpenAudio: function(frequency, format, channels, chunksize) {
+    return 0;
+  },
 
   Mix_HookMusicFinished: function(func) {
     SDL.hookMusicFinished = func; // TODO: use this
@@ -734,22 +733,23 @@ mergeInto(LibraryManager.library, {
 
   Mix_LoadWAV_RW: function(filename, freesrc) {
     filename = FS.standardizePath(Pointer_stringify(filename));
+    var raw = preloadedAudios[filename];
+    assert(raw, 'Cannot find preloaded audio ' + filename);
     var id = SDL.audios.length;
     SDL.audios.push({
-      audio: new Audio(filename)
+      audio: raw
     });
     return id;
   },
 
   Mix_FreeChunk: function(id) {
-    //SDL.audios[id].audio.pause();
-    //SDL.audios[id] = null;
-    return 0;
+    SDL.audios[id].audio.pause();
+    SDL.audios[id] = null;
   },
 
   Mix_PlayChannel: function(channel, id, loops) {
-    //var audio = SDL.audios[id].audio;
-    //audio.play();
+    var audio = SDL.audios[id].audio;
+    audio.play();
     return 0; // XXX should return channel
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing

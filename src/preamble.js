@@ -844,9 +844,5 @@ function removeRunDependency() {
   if (runDependencies == 0) run();
 }
 
-// Preloading
-
-var preloadedImages = {}; // maps url to image data
-
 // === Body ===
 

@@ -329,6 +329,7 @@ ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
 
 IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
+AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
 
 def suffix(name):
   return name.split('.')[:-1]
@@ -833,6 +834,9 @@ try:
     code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));\n'
     code += 'var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");\n'
 
+    code += 'var preloadedImages = {}; // maps url to image data\n'
+    code += 'var preloadedAudios = {}; // maps url to audio data\n'
+
     # Expand directories into individual files
     def add(mode, dirname, names):
       for name in names:
@@ -898,6 +902,49 @@ try:
         varname = 'filePreload%d' % counter
         counter += 1
         image = filename.endswith(IMAGE_SUFFIXES)
+        audio = filename.endswith(AUDIO_SUFFIXES)
+
+        if image:
+          finish =  '''
+            var bb = new BlobBuilder();
+            bb.append(byteArray.buffer);
+            var b = bb.getBlob();
+            var url = URLObject.createObjectURL(b);
+            var img = new Image();
+            img.onload = function() {
+              assert(img.complete, 'Image %(filename)s could not be decoded');
+              var canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              var ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              preloadedImages['%(filename)s'] = canvas;
+              URLObject.revokeObjectURL(url);
+              removeRunDependency();
+            };
+            img.onerror = function(event) {
+              console.log('Image %(filename)s could not be decoded');
+            };
+            img.src = url;
+''' % { 'filename': filename }
+        elif audio:
+          finish =  '''
+            var b = new Blob([byteArray.buffer], { type: 'audio/ogg' });
+            var url = URLObject.createObjectURL(b); // XXX we never revoke this!
+            var audio = new Audio();
+            audio.oncanplaythrough = function() {
+              audio.oncanplaythrough = null;
+              preloadedAudios['%(filename)s'] = audio;
+              removeRunDependency();
+            };
+            audio.onerror = function(event) {
+              console.log('Audio %(filename)s could not be decoded');
+            };
+            audio.src = url;
+''' % { 'filename': filename }
+        else:
+          finish = 'removeRunDependency();\n'
+
         code += '''
         var %(varname)s = new %(request)s();
         %(varname)s.open('GET', '%(netname)s', true);
@@ -918,27 +965,7 @@ try:
             'netname': file_['net_name'],
             'dirname': os.path.dirname(filename),
             'basename': os.path.basename(filename),
-            'finish': 'removeRunDependency();' if not image else '''var bb = new BlobBuilder();
-          bb.append(byteArray.buffer);
-          var b = bb.getBlob();
-          var url = URLObject.createObjectURL(b);
-          var img = new Image();
-          img.onload = function() {
-            assert(img.complete, 'Image %(filename)s could not be decoded');
-            var canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            preloadedImages['%(filename)s'] = canvas;
-            URLObject.revokeObjectURL(url);
-            removeRunDependency();
-          };
-          img.onerror = function(event) {
-            console.log('Image %(filename)s could not be decoded: ' + JSON.stringify(event));
-          };
-          img.src = url;
-''' % { 'filename': filename }
+            'finish': finish
       }
       else:
         assert 0
