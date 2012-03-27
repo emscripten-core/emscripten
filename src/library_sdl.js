@@ -751,6 +751,7 @@ mergeInto(LibraryManager.library, {
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
     var audio = SDL.audios[id].audio;
+    if (audio.currentTime) audio.currentTime = 0;
     audio.play();
     return 1; // XXX should return channel
   },
