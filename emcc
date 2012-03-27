@@ -832,8 +832,18 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: setting up files'
     code = ''
 
-    code += 'var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));\n'
-    code += 'var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");\n'
+    code += '''
+      var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
+      var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
+      var hasBlobConstructor;
+      try {
+        new Blob();
+        hasBlobConstructor = true;
+      } catch(e) {
+        hasBlobConstructor = false;
+        console.log("warning: no blob constructor, cannot create blobs with mimetypes");
+      }
+'''
 
     code += 'var preloadedImages = {}; // maps url to image data\n'
     code += 'var preloadedAudios = {}; // maps url to audio data\n'
@@ -929,19 +939,25 @@ try:
             img.src = url;
 ''' % { 'filename': filename }
         elif audio:
+          # Need actual blob constructor here, to set the mimetype or else audios fail to decode
           finish =  '''
-            var b = new Blob([byteArray.buffer], { type: '%(mimetype)s' });
-            var url = URLObject.createObjectURL(b); // XXX we never revoke this!
-            var audio = new Audio();
-            audio.oncanplaythrough = function() {
-              audio.oncanplaythrough = null;
-              preloadedAudios['%(filename)s'] = audio;
+            if (hasBlobConstructor) {
+              var b = new Blob([byteArray.buffer], { type: '%(mimetype)s' });
+              var url = URLObject.createObjectURL(b); // XXX we never revoke this!
+              var audio = new Audio();
+              audio['oncanplaythrough'] = function() { // XXX string for closure
+                audio['oncanplaythrough'] = null;
+                preloadedAudios['%(filename)s'] = audio;
+                removeRunDependency();
+              };
+              audio.onerror = function(event) {
+                console.log('Audio %(filename)s could not be decoded');
+              };
+              audio.src = url;
+            } else {
+              preloadedAudios['%(filename)s'] = new Audio(); // empty shim
               removeRunDependency();
-            };
-            audio.onerror = function(event) {
-              console.log('Audio %(filename)s could not be decoded');
-            };
-            audio.src = url;
+            }
 ''' % { 'filename': filename, 'mimetype': AUDIO_MIMETYPES[suffix(filename)] }
         else:
           finish = 'removeRunDependency();\n'
