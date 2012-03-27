@@ -751,7 +751,7 @@ mergeInto(LibraryManager.library, {
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
     var audio = SDL.audios[id].audio;
-    if (audio.currentTime) audio.src = audio.src; // This hack prevents lags on replaying
+    if (audio.currentTime) audio.src = audio.src; // This hack prevents lags on replaying // TODO: parallel sounds through //cloneNode(true).play()
     audio.play();
     return 1; // XXX should return channel
   },
