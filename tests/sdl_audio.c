@@ -4,11 +4,20 @@
 #include <assert.h>
 #include <emscripten.h>
 
-Mix_Chunk *sound;
+Mix_Chunk *sound, *sound2;
+
+void play2();
 
 void play() {
   int channel = Mix_PlayChannel(-1, sound, 1);
   assert(channel >= 0);
+
+  emscripten_run_script("setTimeout(_play2, 1000)");
+}
+
+void play2() {
+  int channel2 = Mix_PlayChannel(-1, sound2, 1);
+  assert(channel2 >= 0);
 }
 
 int main() {
@@ -19,8 +28,11 @@ int main() {
 
   sound = Mix_LoadWAV("sound.ogg");
   assert(sound);
+  sound2 = Mix_LoadWAV("sound2.wav");
+  assert(sound);
 
   play();
+  if (ret == 12121) play2(); // keep it alive
 
   emscripten_run_script("element = document.createElement('input');"
                         "element.setAttribute('type', 'button');"
@@ -28,7 +40,7 @@ int main() {
                         "element.setAttribute('onclick', '_play()');"
                         "document.body.appendChild(element);");
 
-  printf("you should hear a victory sound. press the button to replay!\n");
+  printf("you should hear two sounds. press the button to replay!\n");
 
   int result = 1;
   REPORT_RESULT();

@@ -737,6 +737,7 @@ mergeInto(LibraryManager.library, {
     assert(raw, 'Cannot find preloaded audio ' + filename);
     var id = SDL.audios.length;
     SDL.audios.push({
+      source: filename,
       audio: raw
     });
     return id;
@@ -748,26 +749,15 @@ mergeInto(LibraryManager.library, {
   },
 
   Mix_PlayChannel: function(channel, id, loops) {
+    // TODO: handle loops
     var audio = SDL.audios[id].audio;
     audio.play();
-    return 0; // XXX should return channel
+    return 1; // XXX should return channel
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
 
-  Mix_LoadMUS: function(filename) {
-    filename = FS.standardizePath(Pointer_stringify(filename));
-    var id = SDL.audios.length;
-    SDL.audios.push({
-      audio: new Audio(filename)
-    });
-    return id;
-  },
-
-  Mix_FreeMusic: function(id) {
-    SDL.audios[id].audio.pause();
-    SDL.audios[id] = null;
-    return 0;
-  },
+  Mix_LoadMUS: 'Mix_LoadWAV_RW',
+  Mix_FreeMusic: 'Mix_FreeChunk',
 
   Mix_PlayMusic: function(id, loops) {
     if (loops == 0) return;

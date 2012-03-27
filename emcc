@@ -330,9 +330,10 @@ LIB_PREFIXES = ('', 'lib')
 
 IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
+AUDIO_MIMETYPES = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }
 
 def suffix(name):
-  return name.split('.')[:-1]
+  return name.split('.')[-1]
 
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
@@ -929,7 +930,7 @@ try:
 ''' % { 'filename': filename }
         elif audio:
           finish =  '''
-            var b = new Blob([byteArray.buffer], { type: 'audio/ogg' });
+            var b = new Blob([byteArray.buffer], { type: '%(mimetype)s' });
             var url = URLObject.createObjectURL(b); // XXX we never revoke this!
             var audio = new Audio();
             audio.oncanplaythrough = function() {
@@ -941,7 +942,7 @@ try:
               console.log('Audio %(filename)s could not be decoded');
             };
             audio.src = url;
-''' % { 'filename': filename }
+''' % { 'filename': filename, 'mimetype': AUDIO_MIMETYPES[suffix(filename)] }
         else:
           finish = 'removeRunDependency();\n'
 
