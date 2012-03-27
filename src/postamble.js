@@ -32,6 +32,10 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
+  if (Module['setStatus']) {
+    Module['setStatus'](''); // clear the status from "Downloading.." etc.
+  }
+
   if (Module['preRun']) {
     Module['preRun']();
   }

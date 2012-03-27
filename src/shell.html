@@ -27,11 +27,13 @@
           };
         })(),
         canvas: document.getElementById('canvas'),
+        setStatus: function(text) {
+          document.getElementById('status').innerHTML = text;
+        },
         totalDependencies: 0,
         monitorRunDependencies: function(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          document.getElementById('status').innerHTML = left ? 'Downloading files: ' + (this.totalDependencies-left) + '/' + this.totalDependencies :
-                                                               'All downloads complete.';
+          Module.setStatus(left ? 'Downloading: ' + (this.totalDependencies-left) + '/' + this.totalDependencies : 'All downloads complete.');
         }
       };
 

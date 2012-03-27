@@ -1071,14 +1071,25 @@ try:
       decoding = '''
         var decompressWorker = new Worker('decompress.js');
         var decompressCallbacks = [];
+        var decompressions = 0;
         Module["decompress"] = function(data, callback) {
           var id = decompressCallbacks.length;
           decompressCallbacks.push(callback);
           decompressWorker.postMessage({ data: data, id: id });
+          if (Module['setStatus']) {
+            decompressions++;
+            Module['setStatus']('Decompressing...');
+          }
         };
         decompressWorker.onmessage = function(event) {
           decompressCallbacks[event.data.id](event.data.data);
           decompressCallbacks[event.data.id] = null;
+          if (Module['setStatus']) {
+            decompressions--;
+            if (decompressions == 0) {
+              Module['setStatus']('');
+            }
+          }
         };
         var compiledCodeXHR = new XMLHttpRequest();
         compiledCodeXHR.open('GET', '%s', true);
