@@ -970,6 +970,7 @@ try:
         };
         addRunDependency();
         dataFile.send(null);
+        if (Module['setStatus']) Module['setStatus']('Downloading...');
       ''' % (Compression.compressed_name(data_target), use_decompressed)
 
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
