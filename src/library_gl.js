@@ -111,7 +111,7 @@ var LibraryGL = {
     Module.ctx.bufferData(target, floatArray, usage);
   },
 
-  glBindAttribLocation_deps: ['$GL'],
+  glGetUniformLocation_deps: ['$GL'],
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
     return GL.hashtable("uniform").add(
