@@ -29,7 +29,7 @@ var LibraryGL = {
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
-            //TODO delete this.table[id];
+            delete this.table[id];
           },
           lookup: function(v) {
             for (var i = 1; i < this.counter; i++)
