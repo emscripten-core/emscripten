@@ -698,7 +698,9 @@ var LibraryGLUT = {
       FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
                                        Module['canvas'].height);
     }
-    FUNCTION_TABLE[GLUT.glutPostRedisplay]();
+    // TODO The following line doesn't work, don't know why.
+    //FUNCTION_TABLE[GLUT.glutPostRedisplay]();
+    throw "Entering GLUT mainloop";
   },
 
 };
