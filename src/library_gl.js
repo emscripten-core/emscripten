@@ -271,7 +271,7 @@ var LibraryGL = {
   glShaderSource: function(shader, count, string, length) {
     var source = "";
     for (var i = 0; i < count; ++i) {
-      var frag = string[i];
+      var frag;
       if (length) {
         var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
         if (len < 0) {
@@ -281,9 +281,6 @@ var LibraryGL = {
         }
       } else {
         frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
-      }
-      if (source.length) {
-        source += "\n";
       }
       source += frag;
     }
