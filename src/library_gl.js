@@ -444,13 +444,26 @@ var LibraryGLUT = {
     lastX: 0,
     lastY: 0,
     buttons: 0,
+    modifiers: 0,
+
+    saveModifiers: function(event) {
+      GLUT.modifiers = 0;
+      if (event['shiftKey'])
+	GLUT.modifiers += 1; /* GLUT_ACTIVE_SHIFT */
+      if (event['ctrlKey'])
+	GLUT.modifiers += 2; /* GLUT_ACTIVE_CTRL */
+      if (event['altKey'])
+	GLUT.modifiers += 4; /* GLUT_ACTIVE_ALT */
+    },
 
     onMousemove: function(event) {
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
       if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
       } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.motionFunc](GLUT.lastX, GLUT.lastY);
       }
     },
@@ -485,6 +498,7 @@ var LibraryGLUT = {
 
     onKeydown: function(event) {
       if (GLUT.specialFunc || GLUT.keyboardFunc) {
+        GLUT.saveModifiers(event);
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if( GLUT.specialFunc ) FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
@@ -497,6 +511,7 @@ var LibraryGLUT = {
     
     onKeyup: function(event) {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
+        GLUT.saveModifiers(event);
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if(GLUT.specialUpFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
@@ -513,6 +528,7 @@ var LibraryGLUT = {
       GLUT.buttons |= (1 << event['button']);
         
       if(GLUT.mouseFunc){
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
       }
     },
@@ -523,10 +539,13 @@ var LibraryGLUT = {
       GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
       }
     },
   },
+
+  glutGetModifiers: function() { return GLUT.modifiers; },
 
   glutInit__deps: ['$GLUT'],
   glutInit: function(argcp, argv) {
