@@ -448,7 +448,7 @@ var LibraryGLUT = {
       GLUT.lastY = event['clientY'];
       if (GLUT.passiveMotionFunc) {
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
-        }
+      }
     },
 
     getSpecialKey: function(keycode) {
@@ -495,7 +495,7 @@ var LibraryGLUT = {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if(GLUT.specialFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
+          if(GLUT.specialUpFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
         }
         else if(GLUT.keyboardUpFunc) {
           FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
@@ -599,7 +599,7 @@ var LibraryGLUT = {
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
-  
+
   glutMouseFunc: function(func) {
     GLUT.mouseFunc = func;
   },
