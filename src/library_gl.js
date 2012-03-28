@@ -646,31 +646,29 @@ var LibraryGLUT = {
   glutInitDisplayMode: function(mode) {},
   glutSwapBuffers: function() {},
 
-  getRAF: function() {
-    var RAF = window['setTimeout'];
-    if (window['requestAnimationFrame']) {
-      RAF = window['requestAnimationFrame'];
-    } else if (window['mozRequestAnimationFrame']) {
-      RAF = window['mozRequestAnimationFrame'];
-    } else if (window['webkitRequestAnimationFrame']) {
-      RAF = window['webkitRequestAnimationFrame'];
-    } else if (window['msRequestAnimationFrame']) {
-      RAF = window['msRequestAnimationFrame'];
-    }
-    return RAF;
-  },
-
   glutPostRedisplay: function() {
-    if (GLUT.displayFunc)
-      GLUT.getRAF().apply(window, [FUNCTION_TABLE[GLUT.displayFunc]]);
+    if (GLUT.displayFunc) {
+      var RAF = window['setTimeout'];
+      if (window['requestAnimationFrame']) {
+        RAF = window['requestAnimationFrame'];
+      } else if (window['mozRequestAnimationFrame']) {
+        RAF = window['mozRequestAnimationFrame'];
+      } else if (window['webkitRequestAnimationFrame']) {
+        RAF = window['webkitRequestAnimationFrame'];
+      } else if (window['msRequestAnimationFrame']) {
+        RAF = window['msRequestAnimationFrame'];
+      }
+      RAF.apply(window, [FUNCTION_TABLE[GLUT.displayFunc]]);
+    }
   },
 
+  glutMainLoop__deps: ['$GLUT'],
   glutMainLoop: function() {
     if (GLUT.reshapeFunc) {
       FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
                                        Module['canvas'].height);
     }
-    GLUT.glutPostRedisplay();
+    FUNCTION_TABLE[GLUT.glutPostRedisplay]();
   },
 
 };
