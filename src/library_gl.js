@@ -73,6 +73,8 @@ var LibraryGL = {
   glTexImage2D: function(target, level, internalformat, width, height, border, format, type, pixels) {
     if (pixels) {
       pixels = new Uint8Array(Array_copy(pixels, pixels + width*height*4)); // TODO: optimize
+    } else {
+      pixels = new Uint8Array (width*height*4);
     }
     Module.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
   },
