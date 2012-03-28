@@ -267,6 +267,11 @@ var LibraryGL = {
     return GL.hashtable("shader").add(shader);
   },
 
+  glDeleteShader_deps: ['$GL'],
+  glDeleteShader: function(shader) {
+    return GL.hashtable("shader").remove(shader);
+  },
+
   glShaderSource_deps: ['$GL'],
   glShaderSource: function(shader, count, string, length) {
     var source = "";
@@ -315,6 +320,11 @@ var LibraryGL = {
   glCreateProgram_deps: ['$GL'],
   glCreateProgram: function() {
     return GL.hashtable("program").add(Module.ctx.createProgram());
+  },
+
+  glDeleteProgram_deps: ['$GL'],
+  glDeleteProgram: function(program) {
+    return GL.hashtable("program").remove(program);
   },
 
   glAttachShader_deps: ['$GL'],
