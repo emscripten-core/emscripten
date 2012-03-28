@@ -1872,75 +1872,81 @@ m_divisor is 1091269979
       '''
       self.do_run(src, 'z:1*', force_c=True)
 
-      if self.emcc_args is not None: # too slow in other modes
-        # We should not blow up the stack with numerous allocas
+    def test_alloca_stack(self):
+      if self.emcc_args is None: return # too slow in other modes
 
-        src = '''
-          #include <stdio.h>
-          #include <stdlib.h>
+      # We should not blow up the stack with numerous allocas
+      src = '''
+        #include <stdio.h>
+        #include <stdlib.h>
 
-          func(int i) {
-            char *pc = (char *)alloca(100);
-            *pc = i;
-            (*pc)++;
-            return (*pc) % 10;
+        func(int i) {
+          char *pc = (char *)alloca(100);
+          *pc = i;
+          (*pc)++;
+          return (*pc) % 10;
+        }
+        int main() {
+          int total = 0;
+          for (int i = 0; i < 1024*1024; i++)
+            total += func(i);
+          printf("ok:%d*\\n", total);
+          return 0;
+        }
+      '''
+      self.do_run(src, 'ok:-32768*', force_c=True)
+
+    def test_stack_byval(self):
+      if self.emcc_args is None: return # too slow in other modes
+
+      # We should also not blow up the stack with byval arguments
+      src = r'''
+        #include<stdio.h>
+        struct vec {
+          int x, y, z;
+          vec(int x_, int y_, int z_) : x(x_), y(y_), z(z_) {}
+          static vec add(vec a, vec b) {
+            return vec(a.x+b.x, a.y+b.y, a.z+b.z);
           }
-          int main() {
-            int total = 0;
-            for (int i = 0; i < 1024*1024; i++)
-              total += func(i);
-            printf("ok:%d*\\n", total);
-            return 0;
-          }
-        '''
-        self.do_run(src, 'ok:-32768*', force_c=True)
-
-        # We should also not blow up the stack with byval arguments
-        src = r'''
-          #include<stdio.h>
-          struct vec {
-            int x, y, z;
-            vec(int x_, int y_, int z_) : x(x_), y(y_), z(z_) {}
-            static vec add(vec a, vec b) {
-              return vec(a.x+b.x, a.y+b.y, a.z+b.z);
+        };
+        int main() {
+          int total = 0;
+          for (int i = 0; i < 1000; i++) {
+            for (int j = 0; j < 1000; j++) {
+              vec c(i+i%10, j*2, i%255);
+              vec d(j*2, j%255, i%120);
+              vec f = vec::add(c, d);
+              total += (f.x + f.y + f.z) % 100;
+              total %= 10240;
             }
-          };
-          int main() {
-            int total = 0;
-            for (int i = 0; i < 1000; i++) {
-              for (int j = 0; j < 1000; j++) {
-                vec c(i+i%10, j*2, i%255);
-                vec d(j*2, j%255, i%120);
-                vec f = vec::add(c, d);
-                total += (f.x + f.y + f.z) % 100;
-                total %= 10240;
-              }
-            }
-            printf("sum:%d*\n", total);
-            return 1;
           }
-        '''
-        self.do_run(src, 'sum:9780*')
+          printf("sum:%d*\n", total);
+          return 1;
+        }
+      '''
+      self.do_run(src, 'sum:9780*')
 
-        # We should not blow up the stack with numerous varargs
+    def test_stack_varargs(self):
+      if self.emcc_args is None: return # too slow in other modes
 
-        src = r'''
-          #include <stdio.h>
-          #include <stdlib.h>
+      # We should not blow up the stack with numerous varargs
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
 
-          void func(int i) {
-            printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-          }
-          int main() {
-            for (int i = 0; i < 1024; i++)
-              func(i);
-            printf("ok!\n");
-            return 0;
-          }
-        '''
-        Settings.TOTAL_STACK = 1024
-        self.do_run(src, 'ok!')
+        void func(int i) {
+          printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+                   i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+        }
+        int main() {
+          for (int i = 0; i < 1024; i++)
+            func(i);
+          printf("ok!\n");
+          return 0;
+        }
+      '''
+      Settings.TOTAL_STACK = 1024
+      self.do_run(src, 'ok!')
 
     def test_array2(self):
         src = '''
