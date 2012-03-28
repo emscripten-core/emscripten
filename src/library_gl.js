@@ -64,7 +64,7 @@ var LibraryGL = {
 
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = {{{ makeGetValue('textures', 'i', 'i32') }}};
+      var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       Module.ctx.deleteTexture(GL.hashtable("texture").get(id));
       GL.hashtable("texture").remove(id);
     }
@@ -98,7 +98,7 @@ var LibraryGL = {
 
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = {{{ makeGetValue('buffers', 'i', 'i32') }}};
+      var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       Module.ctx.deleteBuffer(GL.hashtable("buffer").get(id));
       GL.hashtable("buffer").remove(id);
     }
@@ -273,14 +273,14 @@ var LibraryGL = {
     for (var i = 0; i < count; ++i) {
       var frag = string[i];
       if (length) {
-        var len = {{{ makeGetValue('length', 'i', 'i32') }}};
+        var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
         if (len < 0) {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
         } else {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}}, len);
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len);
         }
       } else {
-        frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
+        frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
       }
       if (source.length) {
         source += "\n";
