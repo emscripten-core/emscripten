@@ -438,16 +438,20 @@ var LibraryGLUT = {
     specialFunc: null,
     specialUpFunc: null,
     reshapeFunc: null,
+    motionFunc: null,
     passiveMotionFunc: null,
     mouseFunc: null,
     lastX: 0,
     lastY: 0,
+    buttons: 0,
 
     onMousemove: function(event) {
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
-      if (GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
+      } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
+        FUNCTION_TABLE[GLUT.motionFunc](GLUT.lastX, GLUT.lastY);
       }
     },
 
@@ -506,6 +510,7 @@ var LibraryGLUT = {
     onMouseButtonDown: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
+      GLUT.buttons |= (1 << event['button']);
         
       if(GLUT.mouseFunc){
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
@@ -515,6 +520,7 @@ var LibraryGLUT = {
     onMouseButtonUp: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
+      GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
@@ -596,6 +602,10 @@ var LibraryGLUT = {
     GLUT.reshapeFunc = func;
   },
   
+  glutMotionFunc: function(func) {
+    GLUT.motionFunc = func;
+  },
+
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
