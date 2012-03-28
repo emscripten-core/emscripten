@@ -6674,6 +6674,30 @@ f.close()
         output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
+    def test_llvm_nativizer(self):
+      # avoid impure_ptr problems etc.
+      shutil.copyfile(path_from_root('tests', 'files.cpp'), os.path.join(self.get_dir(), 'files.cpp'))
+      open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
+      open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
+      open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
+      Popen(['python', path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')]).communicate(input)[0]
+      output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
+      self.assertIdentical('''size: 37
+data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
+input:inter-active
+texto
+$
+5 : 10,30,20,11,88
+other=ay file...
+seeked= file.
+seeked=e...
+seeked=,,.
+fscanfed: 10 - hello
+''', output[0])
+      self.assertIdentical('texte\n', output[1])
+
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.

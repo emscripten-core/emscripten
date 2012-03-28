@@ -142,6 +142,7 @@ typedef _fpos64_t fpos64_t;
 
 #define	TMP_MAX		26
 
+#if 0 /* XXX Emscripten: do not use impure stuff for std*, it makes comparing to native builds harder */
 #ifndef _REENT_ONLY
 #define	stdin	(_REENT->_stdin)
 #define	stdout	(_REENT->_stdout)
@@ -151,6 +152,14 @@ typedef _fpos64_t fpos64_t;
 #define	stdout	(_impure_ptr->_stdout)
 #define	stderr	(_impure_ptr->_stderr)
 #endif /* _REENT_ONLY */
+#else
+extern FILE *stdin;
+extern FILE *stdout;
+extern FILE *stderr;
+#define stdin stdin
+#define stdout stdout
+#define stderr stderr
+#endif
 
 #define _stdin_r(x)	((x)->_stdin)
 #define _stdout_r(x)	((x)->_stdout)
