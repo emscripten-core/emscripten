@@ -728,7 +728,7 @@ mergeInto(LibraryManager.library, {
   },
 
   Mix_HookMusicFinished: function(func) {
-    SDL.hookMusicFinished = func; // TODO: use this
+    SDL.hookMusicFinished = func;
   },
 
   Mix_VolumeMusic: function(func) {
@@ -765,8 +765,7 @@ mergeInto(LibraryManager.library, {
   Mix_FreeMusic: 'Mix_FreeChunk',
 
   Mix_PlayMusic: function(id, loops) {
-    loops = Math.min(1, loops);
-    if (loops == 0) return;
+    loops = Math.max(loops, 1);
     var audio = SDL.audios[id].audio;
     audio.loop = loops != 1; // TODO: handle N loops for finite N
     audio.play();
@@ -788,9 +787,13 @@ mergeInto(LibraryManager.library, {
 
   Mix_HaltMusic: function() {
     var audio = SDL.music;
+    if (!audio) return 0;
     audio.src = audio.src; // rewind
     audio.pause();
     SDL.music = null;
+    if (SDL.hookMusicFinished) {
+      FUNCTION_TABLE[SDL.hookMusicFinished]();
+    }
     return 0;
   },
 
