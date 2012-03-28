@@ -432,7 +432,7 @@ var LibraryGL = {
 var LibraryGLUT = {
   $GLUT: {
     initTime: null,
-    idleFunc: null,
+    displayFunc: null,
     keyboardFunc: null,
     keyboardUpFunc: null,
     specialFunc: null,
@@ -554,32 +554,16 @@ var LibraryGLUT = {
     }
   },
 
-  glutDisplayFunc: function(func) {
-    var RAF = window['setTimeout'];
-    if (window['requestAnimationFrame']) {
-      RAF = window['requestAnimationFrame'];
-    } else if (window['mozRequestAnimationFrame']) {
-      RAF = window['mozRequestAnimationFrame'];
-    } else if (window['webkitRequestAnimationFrame']) {
-      RAF = window['webkitRequestAnimationFrame'];
-    } else if (window['msRequestAnimationFrame']) {
-      RAF = window['msRequestAnimationFrame'];
-    }
-    RAF.apply(window, [function() {
-      if (GLUT.reshapeFunc) {
-        FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
-                                         Module['canvas'].height);
-      }
-      if (GLUT.idleFunc) {
-        FUNCTION_TABLE[GLUT.idleFunc]();
-      }
-      FUNCTION_TABLE[func]();
-      _glutDisplayFunc(func);
-    }]);
+  glutIdleFunc: function(func) {
+    window.setTimeout(FUNCTION_TABLE[func], 0);
   },
 
-  glutIdleFunc: function(func) {
-    GLUT.idleFunc = func;
+  glutTimerFunc: function(msec, func, value) {
+    window.setTimeout(function() { FUNCTION_TABLE[func](value); }, msec);
+  },
+
+  glutDisplayFunc: function(func) {
+    GLUT.displayFunc = func;
   },
   
   glutKeyboardFunc: function(func) {
@@ -632,9 +616,35 @@ var LibraryGLUT = {
   },
 
   glutInitDisplayMode: function(mode) {},
-  glutMainLoop: function() {},
   glutSwapBuffers: function() {},
-  glutPostRedisplay: function() {},
+
+  getRAF: function() {
+    var RAF = window['setTimeout'];
+    if (window['requestAnimationFrame']) {
+      RAF = window['requestAnimationFrame'];
+    } else if (window['mozRequestAnimationFrame']) {
+      RAF = window['mozRequestAnimationFrame'];
+    } else if (window['webkitRequestAnimationFrame']) {
+      RAF = window['webkitRequestAnimationFrame'];
+    } else if (window['msRequestAnimationFrame']) {
+      RAF = window['msRequestAnimationFrame'];
+    }
+    return RAF;
+  },
+
+  glutPostRedisplay: function() {
+    if (GLUT.displayFunc)
+      GLUT.getRAF().apply(window, [FUNCTION_TABLE[GLUT.displayFunc]]);
+  },
+
+  glutMainLoop: function() {
+    if (GLUT.reshapeFunc) {
+      FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
+                                       Module['canvas'].height);
+    }
+    GLUT.glutPostRedisplay();
+  },
+
 };
 
 mergeInto(LibraryManager.library, LibraryGL);
