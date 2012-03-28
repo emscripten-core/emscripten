@@ -467,9 +467,9 @@ mergeInto(LibraryManager.library, {
       while (dst < num) {
         // TODO: access underlying data buffer and write in 32-bit chunks or more
         var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-        data[dst+2] = val & 0xff;
+        data[dst  ] = val & 0xff;
         data[dst+1] = (val >> 8) & 0xff;
-        data[dst  ] = (val >> 16) & 0xff;
+        data[dst+2] = (val >> 16) & 0xff;
         data[dst+3] = isScreen ? 0xff : ((val >> 24) & 0xff);
         src++;
         dst += 4;
