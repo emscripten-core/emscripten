@@ -409,6 +409,9 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Quit: function() {
+    for (var i = 0; i < SDL.audios; i++) {
+      SDL.audios[i].pause();
+    }
     Module.print('SDL_Quit called (and ignored)');
   },
 
@@ -762,10 +765,12 @@ mergeInto(LibraryManager.library, {
   Mix_FreeMusic: 'Mix_FreeChunk',
 
   Mix_PlayMusic: function(id, loops) {
+    loops = Math.min(1, loops);
     if (loops == 0) return;
     var audio = SDL.audios[id].audio;
-    audio.loop = loop != 1; // TODO: handle N loops for finite N
+    audio.loop = loops != 1; // TODO: handle N loops for finite N
     audio.play();
+    SDL.music = audio;
     return 0;
   },
 
@@ -781,15 +786,17 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  Mix_HaltMusic: function(id) {
-    var audio = SDL.audios[id].audio;
-    audio.pause(); // TODO: actually rewind to the beginning
+  Mix_HaltMusic: function() {
+    var audio = SDL.music;
+    audio.src = audio.src; // rewind
+    audio.pause();
+    SDL.music = null;
     return 0;
   },
 
   Mix_FadeInMusicPos: 'Mix_PlayMusic', // XXX ignore fading in effect
 
-  Mix_FadeOutMusic: function(id) {}, // TODO
+  Mix_FadeOutMusic: 'Mix_HaltMusic', // XXX ignore fading out effect
 
   // SDL TTF
 
