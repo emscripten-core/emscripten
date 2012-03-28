@@ -522,6 +522,11 @@ var LibraryGLUT = {
         return key;
     },
 
+    getASCIIKey: function(keycode) {
+	// TODO apply modifiers, etc
+        return keycode;
+    },
+
     onKeydown: function(event) {
       if (GLUT.specialFunc || GLUT.keyboardFunc) {
         GLUT.saveModifiers(event);
@@ -529,8 +534,12 @@ var LibraryGLUT = {
         if (key !== null) {
           if( GLUT.specialFunc ) FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
         }
-        else if( GLUT.keyboardFunc ) {
-          FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        else
+	{
+          key = GLUT.getASCIIKey(event['keyCode']);
+	  if( key !== null && GLUT.keyboardFunc ) {
+            FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+	  }
         }
       }
     },
@@ -542,8 +551,12 @@ var LibraryGLUT = {
         if (key !== null) {
           if(GLUT.specialUpFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
         }
-        else if(GLUT.keyboardUpFunc) {
-          FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        else
+	{
+          key = GLUT.getASCIIKey(event['keyCode']);
+	  if( key !== null && GLUT.keyboardUpFunc ) {
+            FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+	  }
         }
       }
     },
