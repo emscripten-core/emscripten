@@ -136,6 +136,9 @@ var CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected
 var CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that:
                            // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
                            // we will do slow but correct C rounding operations.
+var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
+                // a new project and want to see a list of file system operations happening
+                // so that you can create a virtual file system with all of the required files.
 
 var PGO = 0; // Profile-guided optimization.
              // When run with the CHECK_* options, will not fail on errors. Instead, will
