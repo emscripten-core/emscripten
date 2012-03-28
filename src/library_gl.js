@@ -29,8 +29,14 @@ var LibraryGL = {
 #if ASSERTIONS
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
-            delete this.table[id];
-          }
+            //TODO delete this.table[id];
+          },
+          lookup: function(v) {
+            for (var i = 1; i < this.counter; i++)
+              if (this.table[i] == v)
+                return i;
+	    return 0;
+          },
         };
       }
       return this._hashtables[name];
@@ -50,8 +56,19 @@ var LibraryGL = {
     }
   },
 
+  glGenIntegerv__deps: ['$GL'],
   glGetIntegerv: function(name_, p) {
-    {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
+    var v = Module.ctx.getParameter(name_);
+    if (name_ == Module.ctx.CURRENT_PROGRAM)
+      v = GL.hashtable("program").lookup(v);
+    else if (name_ == Module.ctx.VIEWPORT) {
+      {{{ makeSetValue('p', '0',  'v[0]', 'i32') }}};
+      {{{ makeSetValue('p', '4',  'v[1]', 'i32') }}};
+      {{{ makeSetValue('p', '8',  'v[2]', 'i32') }}};
+      {{{ makeSetValue('p', '12', 'v[3]', 'i32') }}};
+    }
+    // TODO complete
+    {{{ makeSetValue('p', '0', 'v', 'i32') }}};
   },
 
   glGenTextures__deps: ['$GL'],
