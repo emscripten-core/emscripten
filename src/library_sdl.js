@@ -84,6 +84,8 @@ mergeInto(LibraryManager.library, {
       copyOnLock: true
     },
 
+    version: null,
+
     surfaces: {},
     events: [],
     audios: [null],
@@ -160,6 +162,11 @@ mergeInto(LibraryManager.library, {
         ['i32', 'size'],
         ['void*', 'callback'],
         ['void*', 'userdata']
+      ]),
+      version: Runtime.generateStructInfo([
+        ['i8', 'major'],
+        ['i8', 'minor'],
+        ['i8', 'patch']
       ])
     },
 
@@ -376,6 +383,16 @@ mergeInto(LibraryManager.library, {
     SDL.keyboardState = _malloc(0x10000);
     _memset(SDL.keyboardState, 0, 0x10000);
     return 0; // success
+  },
+
+  SDL_Linked_Version: function() {
+    if (SDL.version === null) {
+      SDL.version = _malloc(SDL.structs.version.__size__);
+      {{{ makeSetValue('SDL.version + SDL.structs.version.major', '0', '1', 'i8') }}}
+      {{{ makeSetValue('SDL.version + SDL.structs.version.minor', '0', '3', 'i8') }}}
+      {{{ makeSetValue('SDL.version + SDL.structs.version.patch', '0', '0', 'i8') }}}
+    }
+    return SDL.version;
   },
 
   SDL_WasInit: function() { return 0 }, // TODO
