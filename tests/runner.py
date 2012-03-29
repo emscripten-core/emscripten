@@ -6326,11 +6326,11 @@ f.close()
       # by individual files
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/moar/data2.txt', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
-
       os.remove('page.html')
 
-      # by directory
+      # by directory, and remove files to make sure
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr', '-o', 'page.html']).communicate()
+      shutil.rmtree(os.path.join(self.get_dir(), 'subdirr'))
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
     def test_compressed_file(self):

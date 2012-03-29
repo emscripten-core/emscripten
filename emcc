@@ -832,7 +832,8 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: setting up files'
     code = ''
 
-    code += '''
+    if final_suffix == 'html':
+      code += '''
       var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
       var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
       var hasBlobConstructor;
@@ -845,8 +846,8 @@ try:
       }
 '''
 
-    code += 'var preloadedImages = {}; // maps url to image data\n'
-    code += 'var preloadedAudios = {}; // maps url to audio data\n'
+      code += 'var preloadedImages = {}; // maps url to image data\n'
+      code += 'var preloadedAudios = {}; // maps url to audio data\n'
 
     # Expand directories into individual files
     def add(mode, dirname, names):
@@ -877,23 +878,24 @@ try:
             code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
-    if Compression.on:
-      # Compress all datafiles into one archive
+    if final_suffix == 'html':
+      # Bundle all datafiles into one archive. Avoids doing lots of simultaneous XHRs which has overhead.
       data = open(data_target, 'wb')
       start = 0
       for file_ in data_files:
-        file_['compression_start'] = start
+        file_['data_start'] = start
         curr = open(file_['name']).read()
-        file_['compression_end'] = start + len(curr)
+        file_['data_end'] = start + len(curr)
         start += len(curr)
         data.write(curr)
       data.close()
-      Compression.compress(data_target)
+      if Compression.on:
+        Compression.compress(data_target)
 
-      # Decompression requests have a similar API to XHRs
+      # Data requests - for getting a block of data out of the big archive - have a similar API to XHRs
       code += '''
-        function DecompressionRequest() {}
-        DecompressionRequest.prototype = {
+        function DataRequest() {}
+        DataRequest.prototype = {
           requests: {},
           open: function(mode, name) {
             this.requests[name] = this;
@@ -910,6 +912,8 @@ try:
         code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
       elif file_['mode'] == 'preload':
         # Preload
+        assert final_suffix == 'html', 'Can only preload files when generating HTML'
+
         varname = 'filePreload%d' % counter
         counter += 1
         image = filename.endswith(IMAGE_SUFFIXES)
@@ -976,7 +980,7 @@ try:
         addRunDependency();
         %(varname)s.send(null);
 ''' % {
-            'request': 'XMLHttpRequest' if not Compression.on else 'DecompressionRequest',
+            'request': 'DataRequest', # In the past we also supported XHRs here
             'varname': varname,
             'filename': filename,
             'netname': file_['net_name'],
@@ -987,15 +991,25 @@ try:
       else:
         assert 0
 
-    if Compression.on:
-      use_decompressed = ''
+    if final_suffix == 'html':
+      # Get the big archive and split it up
+      use_data = ''
       for file_ in data_files:
         if file_['mode'] == 'preload':
-          use_decompressed += '''
-            curr = DecompressionRequest.prototype.requests['%s'];
+          use_data += '''
+            curr = DataRequest.prototype.requests['%s'];
             curr.response = byteArray.subarray(%d,%d);
             curr.onload();
-          ''' % (file_['name'], file_['compression_start'], file_['compression_end'])
+          ''' % (file_['name'], file_['data_start'], file_['data_end'])
+      use_data += '          removeRunDependency();\n'
+
+      if Compression.on:
+        use_data = '''
+          Module["decompress"](byteArray, function(decompressed) {
+            byteArray = new Uint8Array(decompressed);
+            %s
+          });
+  ''' % use_data
 
       code += '''
         var dataFile = new XMLHttpRequest();
@@ -1005,17 +1019,13 @@ try:
           var arrayBuffer = dataFile.response;
           assert(arrayBuffer, 'Loading data file failed.');
           var byteArray = new Uint8Array(arrayBuffer);
-          Module["decompress"](byteArray, function(decompressed) {
-            byteArray = new Uint8Array(decompressed);
-            var curr;
-            %s
-            removeRunDependency();
-          });
+          var curr;
+          %s
         };
         addRunDependency();
         dataFile.send(null);
         if (Module['setStatus']) Module['setStatus']('Downloading...');
-      ''' % (Compression.compressed_name(data_target), use_decompressed)
+      ''' % (Compression.compressed_name(data_target) if Compression.on else data_target, use_data)
 
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
     final += '.files.js'
