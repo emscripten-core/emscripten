@@ -4604,16 +4604,20 @@ LibraryManager.library = {
   _ZTIPv: [0],
 
   llvm_uadd_with_overflow_i32: function(x, y) {
+    x = x>>>0;
+    y = y>>>0;
     return {
-      f0: x+y,
-      f1: 0 // We never overflow... for now
+      f0: (x+y)>>>0,
+      f1: x+y > 4294967295
     };
   },
 
   llvm_umul_with_overflow_i32: function(x, y) {
+    x = x>>>0;
+    y = y>>>0;
     return {
-      f0: x*y,
-      f1: 0 // We never overflow... for now
+      f0: (x*y)>>>0,
+      f1: x*y > 4294967295
     };
   },
 
