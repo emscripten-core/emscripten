@@ -415,6 +415,14 @@ LibraryManager.library = {
     standardizePath: function(path) {
       if (path.substr(0, 2) == './') path = path.substr(2);
       return path;
+    },
+
+    deleteFile: function(path) {
+      var path = FS.analyzePath(path);
+      if (!path.parentExists || !path.exists) {
+        throw 'Invalid path ' + path;
+      }
+      delete path.parentObject.contents[path.name];
     }
   },
 
