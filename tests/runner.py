@@ -6683,6 +6683,12 @@ f.close()
         output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
+    def test_m_mm(self):
+      open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''/* */''')
+      for opt in ['M', 'MM']:
+        output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo.c'), '-' + opt], stdout=PIPE).communicate()[0]
+        assert 'foo.o: ' in output, '-%s failed to produce the right output: %s' % (opt, output)
+
     def test_llvm_nativizer(self):
       # avoid impure_ptr problems etc.
       shutil.copyfile(path_from_root('tests', 'files.cpp'), os.path.join(self.get_dir(), 'files.cpp'))

@@ -359,6 +359,11 @@ for i in range(1, len(sys.argv)):
     if arg.endswith('.h') and sys.argv[i-1] != '-include':
       header = True
 
+if '-M' in sys.argv or '-MM' in sys.argv:
+  cmd = [CC] + sys.argv[1:]
+  if DEBUG: print >> sys.stderr, 'emcc, just dependencies: ', ' '.join(cmd)
+  exit(subprocess.call(cmd))
+
 # Check if a target is specified
 target = None
 for i in range(len(sys.argv)-1):
