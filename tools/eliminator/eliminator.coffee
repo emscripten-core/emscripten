@@ -370,7 +370,7 @@ class ExpressionOptimizer
 # function, then writes the optimized result to stdout.
 main = ->
   # Get the parse tree.
-  if os.platform() != 'windows'
+  if os.platform().substr(0, 3) != 'win'
     src = fs.readFileSync('/dev/stdin').toString()
   else
     # The following seems to work on windows, but fails on linux..
