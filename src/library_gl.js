@@ -1,6 +1,11 @@
 //"use strict";
 
-// XXX FIXME Hardcoded '4' in many places, here and in library_SDL, for RGBA
+// FIXME:
+//  * glGetUniformLocation should return -1 when the value is not valid, not null
+//  * glUniform1fi should be glUniform1iv
+//  * glGetAttribLocation lacks return value (and should be -1 when not valid)
+//  * single-underscore deps need double underscore (and, just auto-add them all)
+//  * glGetProgramInfoLog and *shader* should be essentially identical
 
 var LibraryGL = {
   $GL: {
