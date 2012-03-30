@@ -35,7 +35,13 @@ var LibraryGL = {
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
             delete this.table[id];
-          }
+          },
+          lookup: function(v) {
+            for (var i = 1; i < this.counter; i++)
+              if (this.table[i] == v)
+                return i;
+	    return 0;
+          },
         };
       }
       return this._hashtables[name];
@@ -55,8 +61,19 @@ var LibraryGL = {
     }
   },
 
+  glGenIntegerv__deps: ['$GL'],
   glGetIntegerv: function(name_, p) {
-    {{{ makeSetValue('p', '0', 'Module.ctx.getParameter(name_)', 'i32') }}};
+    var v = Module.ctx.getParameter(name_);
+    if (name_ == Module.ctx.CURRENT_PROGRAM)
+      v = GL.hashtable("program").lookup(v);
+    else if (name_ == Module.ctx.VIEWPORT) {
+      {{{ makeSetValue('p', '0',  'v[0]', 'i32') }}};
+      {{{ makeSetValue('p', '4',  'v[1]', 'i32') }}};
+      {{{ makeSetValue('p', '8',  'v[2]', 'i32') }}};
+      {{{ makeSetValue('p', '12', 'v[3]', 'i32') }}};
+    }
+    // TODO complete
+    {{{ makeSetValue('p', '0', 'v', 'i32') }}};
   },
 
   glGenTextures__deps: ['$GL'],
@@ -69,7 +86,7 @@ var LibraryGL = {
 
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = {{{ makeGetValue('textures', 'i', 'i32') }}};
+      var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       Module.ctx.deleteTexture(GL.hashtable("texture").get(id));
       GL.hashtable("texture").remove(id);
     }
@@ -78,6 +95,8 @@ var LibraryGL = {
   glTexImage2D: function(target, level, internalformat, width, height, border, format, type, pixels) {
     if (pixels) {
       pixels = new Uint8Array(Array_copy(pixels, pixels + width*height*4)); // TODO: optimize
+    } else {
+      pixels = new Uint8Array (width*height*4);
     }
     Module.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
   },
@@ -103,7 +122,7 @@ var LibraryGL = {
 
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = {{{ makeGetValue('buffers', 'i', 'i32') }}};
+      var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       Module.ctx.deleteBuffer(GL.hashtable("buffer").get(id));
       GL.hashtable("buffer").remove(id);
     }
@@ -114,7 +133,7 @@ var LibraryGL = {
     Module.ctx.bufferData(target, floatArray, usage);
   },
 
-  glBindAttribLocation_deps: ['$GL'],
+  glGetUniformLocation_deps: ['$GL'],
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
     return GL.hashtable("uniform").add(
@@ -272,23 +291,25 @@ var LibraryGL = {
     return GL.hashtable("shader").add(shader);
   },
 
+  glDeleteShader_deps: ['$GL'],
+  glDeleteShader: function(shader) {
+    return GL.hashtable("shader").remove(shader);
+  },
+
   glShaderSource_deps: ['$GL'],
   glShaderSource: function(shader, count, string, length) {
     var source = "";
     for (var i = 0; i < count; ++i) {
-      var frag = string[i];
+      var frag;
       if (length) {
-        var len = {{{ makeGetValue('length', 'i', 'i32') }}};
+        var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
         if (len < 0) {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
         } else {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}}, len);
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len);
         }
       } else {
-        frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
-      }
-      if (source.length) {
-        source += "\n";
+        frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
       }
       source += frag;
     }
@@ -323,6 +344,11 @@ var LibraryGL = {
   glCreateProgram_deps: ['$GL'],
   glCreateProgram: function() {
     return GL.hashtable("program").add(Module.ctx.createProgram());
+  },
+
+  glDeleteProgram_deps: ['$GL'],
+  glDeleteProgram: function(program) {
+    return GL.hashtable("program").remove(program);
   },
 
   glAttachShader_deps: ['$GL'],
@@ -437,23 +463,40 @@ var LibraryGL = {
 var LibraryGLUT = {
   $GLUT: {
     initTime: null,
-    idleFunc: null,
+    displayFunc: null,
     keyboardFunc: null,
     keyboardUpFunc: null,
     specialFunc: null,
     specialUpFunc: null,
     reshapeFunc: null,
+    motionFunc: null,
     passiveMotionFunc: null,
     mouseFunc: null,
     lastX: 0,
     lastY: 0,
+    buttons: 0,
+    modifiers: 0,
+
+    saveModifiers: function(event) {
+      GLUT.modifiers = 0;
+      if (event['shiftKey'])
+	GLUT.modifiers += 1; /* GLUT_ACTIVE_SHIFT */
+      if (event['ctrlKey'])
+	GLUT.modifiers += 2; /* GLUT_ACTIVE_CTRL */
+      if (event['altKey'])
+	GLUT.modifiers += 4; /* GLUT_ACTIVE_ALT */
+    },
 
     onMousemove: function(event) {
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
-      if (GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
-        }
+      } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
+        GLUT.saveModifiers(event);
+        FUNCTION_TABLE[GLUT.motionFunc](GLUT.lastX, GLUT.lastY);
+      }
     },
 
     getSpecialKey: function(keycode) {
@@ -484,26 +527,41 @@ var LibraryGLUT = {
         return key;
     },
 
+    getASCIIKey: function(keycode) {
+	// TODO apply modifiers, etc
+        return keycode;
+    },
+
     onKeydown: function(event) {
       if (GLUT.specialFunc || GLUT.keyboardFunc) {
+        GLUT.saveModifiers(event);
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if( GLUT.specialFunc ) FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
         }
-        else if( GLUT.keyboardFunc ) {
-          FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        else
+	{
+          key = GLUT.getASCIIKey(event['keyCode']);
+	  if( key !== null && GLUT.keyboardFunc ) {
+            FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+	  }
         }
       }
     },
     
     onKeyup: function(event) {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
+        GLUT.saveModifiers(event);
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if(GLUT.specialFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
+          if(GLUT.specialUpFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
         }
-        else if(GLUT.keyboardUpFunc) {
-          FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        else
+	{
+          key = GLUT.getASCIIKey(event['keyCode']);
+	  if( key !== null && GLUT.keyboardUpFunc ) {
+            FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+	  }
         }
       }
     },
@@ -511,8 +569,10 @@ var LibraryGLUT = {
     onMouseButtonDown: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
+      GLUT.buttons |= (1 << event['button']);
         
       if(GLUT.mouseFunc){
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
       }
     },
@@ -520,12 +580,16 @@ var LibraryGLUT = {
     onMouseButtonUp: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
+      GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
       }
     },
   },
+
+  glutGetModifiers: function() { return GLUT.modifiers; },
 
   glutInit__deps: ['$GLUT'],
   glutInit: function(argcp, argv) {
@@ -553,32 +617,16 @@ var LibraryGLUT = {
     }
   },
 
-  glutDisplayFunc: function(func) {
-    var RAF = window['setTimeout'];
-    if (window['requestAnimationFrame']) {
-      RAF = window['requestAnimationFrame'];
-    } else if (window['mozRequestAnimationFrame']) {
-      RAF = window['mozRequestAnimationFrame'];
-    } else if (window['webkitRequestAnimationFrame']) {
-      RAF = window['webkitRequestAnimationFrame'];
-    } else if (window['msRequestAnimationFrame']) {
-      RAF = window['msRequestAnimationFrame'];
-    }
-    RAF.apply(window, [function() {
-      if (GLUT.reshapeFunc) {
-        FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
-                                         Module['canvas'].height);
-      }
-      if (GLUT.idleFunc) {
-        FUNCTION_TABLE[GLUT.idleFunc]();
-      }
-      FUNCTION_TABLE[func]();
-      _glutDisplayFunc(func);
-    }]);
+  glutIdleFunc: function(func) {
+    window.setTimeout(FUNCTION_TABLE[func], 0);
   },
 
-  glutIdleFunc: function(func) {
-    GLUT.idleFunc = func;
+  glutTimerFunc: function(msec, func, value) {
+    window.setTimeout(function() { FUNCTION_TABLE[func](value); }, msec);
+  },
+
+  glutDisplayFunc: function(func) {
+    GLUT.displayFunc = func;
   },
   
   glutKeyboardFunc: function(func) {
@@ -601,10 +649,14 @@ var LibraryGLUT = {
     GLUT.reshapeFunc = func;
   },
   
+  glutMotionFunc: function(func) {
+    GLUT.motionFunc = func;
+  },
+
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
-  
+
   glutMouseFunc: function(func) {
     GLUT.mouseFunc = func;
   },
@@ -627,9 +679,34 @@ var LibraryGLUT = {
   },
 
   glutInitDisplayMode: function(mode) {},
-  glutMainLoop: function() {},
   glutSwapBuffers: function() {},
-  glutPostRedisplay: function() {},
+
+  glutPostRedisplay: function() {
+    if (GLUT.displayFunc) {
+      var RAF = window['setTimeout'];
+      if (window['requestAnimationFrame']) {
+        RAF = window['requestAnimationFrame'];
+      } else if (window['mozRequestAnimationFrame']) {
+        RAF = window['mozRequestAnimationFrame'];
+      } else if (window['webkitRequestAnimationFrame']) {
+        RAF = window['webkitRequestAnimationFrame'];
+      } else if (window['msRequestAnimationFrame']) {
+        RAF = window['msRequestAnimationFrame'];
+      }
+      RAF.apply(window, [FUNCTION_TABLE[GLUT.displayFunc]]);
+    }
+  },
+
+  glutMainLoop__deps: ['$GLUT'],
+  glutMainLoop: function() {
+    if (GLUT.reshapeFunc) {
+      FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
+                                       Module['canvas'].height);
+    }
+    _glutPostRedisplay();
+    throw "Entering GLUT mainloop";
+  },
+
 };
 
 mergeInto(LibraryManager.library, LibraryGL);
