@@ -184,6 +184,8 @@ else:
 if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
   SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
 
+WINDOWS = 'win' in sys.platform
+
 # Temp file utilities
 
 def try_delete(filename):
@@ -360,11 +362,11 @@ class Building:
   @staticmethod
   def get_building_env():
     env = os.environ.copy()
-    env['CC'] = '%s' % EMCC
-    env['CXX'] = '%s' % EMXX
-    env['AR'] = '%s' % EMAR
-    env['RANLIB'] = '%s' % EMRANLIB
-    env['LIBTOOL'] = '%s' % EMLIBTOOL
+    env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
+    env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
+    env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
+    env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
+    env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
@@ -376,14 +378,14 @@ class Building:
 
   @staticmethod
   def handle_CMake_toolchain(args, env):
-    CMakeToolchain = '''# the name of the target operating system
+    CMakeToolchain = ('''# the name of the target operating system
 SET(CMAKE_SYSTEM_NAME Linux)
 
 # which C and C++ compiler to use
-SET(CMAKE_C_COMPILER   $EMSCRIPTEN_ROOT/emcc)
-SET(CMAKE_CXX_COMPILER $EMSCRIPTEN_ROOT/em++)
-SET(CMAKE_AR           $EMSCRIPTEN_ROOT/emar)
-SET(CMAKE_RANLIB       $EMSCRIPTEN_ROOT/emranlib)
+SET(CMAKE_C_COMPILER   %(winfix)s$EMSCRIPTEN_ROOT/emcc)
+SET(CMAKE_CXX_COMPILER %(winfix)s$EMSCRIPTEN_ROOT/em++)
+SET(CMAKE_AR           %(winfix)s$EMSCRIPTEN_ROOT/emar)
+SET(CMAKE_RANLIB       %(winfix)s$EMSCRIPTEN_ROOT/emranlib)
 SET(CMAKE_C_FLAGS      $CFLAGS)
 SET(CMAKE_CXX_FLAGS    $CXXFLAGS)
 
@@ -396,7 +398,7 @@ SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS else 'python ' }) \
       .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
       .replace('$CFLAGS', env['CFLAGS']) \
       .replace('$CXXFLAGS', env['CFLAGS'])
