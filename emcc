@@ -498,12 +498,6 @@ try:
       Compression.on = True
       newargs[i] = ''
       newargs[i+1] = ''
-    elif newargs[i] == '-MF': # clang cannot handle this, so we fake it
-      f = open(newargs[i+1], 'w')
-      f.write('\n')
-      f.close()
-      newargs[i] = ''
-      newargs[i+1] = ''
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
       newargs[i] = ''
