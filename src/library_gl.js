@@ -6,6 +6,7 @@
 //  * glGetAttribLocation lacks return value (and should be -1 when not valid)
 //  * single-underscore deps need double underscore (and, just auto-add them all)
 //  * glGetProgramInfoLog and *shader* should be essentially identical
+//  * glGetIntegerv set to bool etc needs fixing
 
 var LibraryGL = {
   $GL: {
