@@ -23,7 +23,7 @@ Running the main part of the test suite. Don't forget to run the other parts!
 
   sanity - tests for first run, etc., modifies ~/.emscripten
   benchmark - run before and after each set of changes before pushing to master, verify no regressions
-  browser - TODO
+  browser - runs pages in a web browser
 '''
   time.sleep(2)
 
@@ -290,12 +290,20 @@ process(sys.argv[1])
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
                                   copy_project=True)
 
+  def clear(self):
+    for name in os.listdir(self.get_dir()):
+      try_delete(name)
+    emcc_debug = os.environ.get('EMCC_DEBUG')
+    if emcc_debug:
+      for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
+        try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
+
 
 ###################################################################################################
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
-if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv):
+if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'browser' not in str(sys.argv):
   # Tests
 
   print "Running Emscripten tests..."
@@ -5988,14 +5996,6 @@ TT = %s
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
   class other(RunnerCore):
-    def clear(self):
-      for name in os.listdir(self.get_dir()):
-        try_delete(name)
-      emcc_debug = os.environ.get('EMCC_DEBUG')
-      if emcc_debug:
-        for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
-          try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
-
     def test_emcc(self):
       for compiler in [EMCC, EMXX]:
         shortcompiler = os.path.basename(compiler)
@@ -6237,6 +6237,212 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+    def test_l_link(self):
+      # Linking with -lLIBNAME and -L/DIRNAME should work
+
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        extern void printey();
+        int main() {
+          printey();
+          return 0;
+        }
+      ''')
+
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      except:
+        pass
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib\\n");
+        }
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-c'], stdout=PIPE, stderr=STDOUT).communicate()
+      shutil.move(os.path.join(self.get_dir(), 'libfile.o'), os.path.join(self.get_dir(), 'libdir', 'libfile.so'))
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile'], stdout=PIPE, stderr=STDOUT).communicate()
+      self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_embed_file(self):
+      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        int main() {
+          FILE *f = fopen("somefile.txt", "r");
+          char buf[100];
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("|%s|\n", buf);
+          return 0;
+        }
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
+      self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_multidynamic_link(self):
+      # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
+      # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
+
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        extern void printey();
+        extern void printother();
+        int main() {
+          printf("*");
+          printey();
+          printf("\n");
+          printother();
+          printf("\n");
+          printf("*");
+          return 0;
+        }
+      ''')
+
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      except:
+        pass
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib");
+        }
+      ''')
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), 'w').write('''
+        #include <stdio.h>
+        extern void printey();
+        void printother() {
+          printf("|");
+          printey();
+          printf("|");
+        }
+      ''')
+
+      # This lets us link the same dynamic lib twice. We will need to link it in manually at the end.
+      compiler = ['python', EMCC, '--ignore-dynamic-linking']
+
+      # Build libfile normally into an .so
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so')]).communicate()
+      # Build libother and dynamically link it to libfile - but add --ignore-dynamic-linking
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
+      # Build the main file, linking in both the libs
+      Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother', '-c']).communicate()
+
+      # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.o'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother']).communicate()
+
+      self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_js_link(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from main\\n");
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
+        var MESSAGE = 'hello from js';
+        if (typeof Module != 'undefined') throw 'This code should run before anything else!';
+      ''')
+      open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
+        Module.print(MESSAGE);
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
+      self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_prepost(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from main\\n");
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        var Module = {
+          preRun: function() { Module.print('pre-run') },
+          postRun: function() { Module.print('post-run') }
+        };
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+      self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+      # never run, so no preRun or postRun
+      src = open(os.path.join(self.get_dir(), 'a.out.js')).read().replace('// {{PRE_RUN_ADDITIONS}}', 'addRunDependency()')
+      open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
+      self.assertNotContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_eliminator(self):
+      input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
+      expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
+      output = Popen([NODE_JS, COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+      self.assertIdentical(expected, output)
+
+    def test_fix_closure(self):
+      input = path_from_root('tests', 'test-fix-closure.js')
+      expected = path_from_root('tests', 'test-fix-closure.out.js')
+      Popen(['python', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
+      output = open('out.js').read()
+      assert '0,zzz_Q_39fa,0' in output
+      assert 'function(a,c)' not in output # should be uninlined, so it gets a name
+      assert run_js(input) == run_js('out.js')
+
+    def test_js_optimizer(self):
+      for input, expected, passes in [
+        (path_from_root('tools', 'test-js-optimizer.js'), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
+         ['hoistMultiples', 'loopOptimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost']),
+        (path_from_root('tools', 'test-js-optimizer-t2c.js'), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
+         ['simplifyExpressionsPre', 'optimizeShiftsConservative']),
+        (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
+         ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
+      ]:
+        output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
+        self.assertIdentical(expected, output.replace('\n\n', '\n'))
+
+    def test_m_mm(self):
+      open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
+      for opt in ['M', 'MM']:
+        output, err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo.c'), '-' + opt], stdout=PIPE, stderr=PIPE).communicate()
+        assert 'foo.o: ' in output, '-%s failed to produce the right output: %s' % (opt, output)
+        assert 'error' not in err, 'Unexpected stderr: ' + err
+
+    def test_llvm_nativizer(self):
+      # avoid impure_ptr problems etc.
+      shutil.copyfile(path_from_root('tests', 'files.cpp'), os.path.join(self.get_dir(), 'files.cpp'))
+      open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
+      open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
+      open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
+      Popen(['python', path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')]).communicate(input)[0]
+      output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
+      self.assertIdentical('''size: 37
+data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
+input:inter-active
+texto
+$
+5 : 10,30,20,11,88
+other=ay file...
+seeked= file.
+seeked=e...
+seeked=,,.
+fscanfed: 10 - hello
+''', output[0])
+      self.assertIdentical('texte\n', output[1])
+
+elif 'browser' in str(sys.argv):
+  # Browser tests.
+
+  class browser(RunnerCore):
     def run_browser(self, html_file, message, expectedResult=None):
       if expectedResult is not None:
         try:
@@ -6551,208 +6757,6 @@ f.close()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
-
-    def test_l_link(self):
-      # Linking with -lLIBNAME and -L/DIRNAME should work
-
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
-        extern void printey();
-        int main() {
-          printey();
-          return 0;
-        }
-      ''')
-
-      try:
-        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
-      except:
-        pass
-
-      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
-        #include <stdio.h>
-        void printey() {
-          printf("hello from lib\\n");
-        }
-      ''')
-
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-c'], stdout=PIPE, stderr=STDOUT).communicate()
-      shutil.move(os.path.join(self.get_dir(), 'libfile.o'), os.path.join(self.get_dir(), 'libdir', 'libfile.so'))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile'], stdout=PIPE, stderr=STDOUT).communicate()
-      self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-    def test_embed_file(self):
-      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
-        #include <stdio.h>
-        int main() {
-          FILE *f = fopen("somefile.txt", "r");
-          char buf[100];
-          fread(buf, 1, 20, f);
-          buf[20] = 0;
-          fclose(f);
-          printf("|%s|\n", buf);
-          return 0;
-        }
-      ''')
-
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
-      self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-    def test_multidynamic_link(self):
-      # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
-      # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
-
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
-        #include <stdio.h>
-        extern void printey();
-        extern void printother();
-        int main() {
-          printf("*");
-          printey();
-          printf("\n");
-          printother();
-          printf("\n");
-          printf("*");
-          return 0;
-        }
-      ''')
-
-      try:
-        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
-      except:
-        pass
-
-      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
-        #include <stdio.h>
-        void printey() {
-          printf("hello from lib");
-        }
-      ''')
-
-      open(os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), 'w').write('''
-        #include <stdio.h>
-        extern void printey();
-        void printother() {
-          printf("|");
-          printey();
-          printf("|");
-        }
-      ''')
-
-      # This lets us link the same dynamic lib twice. We will need to link it in manually at the end.
-      compiler = ['python', EMCC, '--ignore-dynamic-linking']
-
-      # Build libfile normally into an .so
-      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so')]).communicate()
-      # Build libother and dynamically link it to libfile - but add --ignore-dynamic-linking
-      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
-      # Build the main file, linking in both the libs
-      Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother', '-c']).communicate()
-
-      # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.o'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother']).communicate()
-
-      self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-    def test_js_link(self):
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
-        #include <stdio.h>
-        int main() {
-          printf("hello from main\\n");
-          return 0;
-        }
-      ''')
-      open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
-        var MESSAGE = 'hello from js';
-        if (typeof Module != 'undefined') throw 'This code should run before anything else!';
-      ''')
-      open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
-        Module.print(MESSAGE);
-      ''')
-
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
-      self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-    def test_prepost(self):
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
-        #include <stdio.h>
-        int main() {
-          printf("hello from main\\n");
-          return 0;
-        }
-      ''')
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        var Module = {
-          preRun: function() { Module.print('pre-run') },
-          postRun: function() { Module.print('post-run') }
-        };
-      ''')
-
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
-      self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-      # never run, so no preRun or postRun
-      src = open(os.path.join(self.get_dir(), 'a.out.js')).read().replace('// {{PRE_RUN_ADDITIONS}}', 'addRunDependency()')
-      open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
-      self.assertNotContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-    def test_eliminator(self):
-      input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
-      expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
-      output = Popen([NODE_JS, COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
-      self.assertIdentical(expected, output)
-
-    def test_fix_closure(self):
-      input = path_from_root('tests', 'test-fix-closure.js')
-      expected = path_from_root('tests', 'test-fix-closure.out.js')
-      Popen(['python', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
-      output = open('out.js').read()
-      assert '0,zzz_Q_39fa,0' in output
-      assert 'function(a,c)' not in output # should be uninlined, so it gets a name
-      assert run_js(input) == run_js('out.js')
-
-    def test_js_optimizer(self):
-      for input, expected, passes in [
-        (path_from_root('tools', 'test-js-optimizer.js'), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
-         ['hoistMultiples', 'loopOptimizer', 'unGlobalize', 'removeAssignsToUndefined', 'simplifyExpressionsPre', 'simplifyExpressionsPost']),
-        (path_from_root('tools', 'test-js-optimizer-t2c.js'), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
-         ['simplifyExpressionsPre', 'optimizeShiftsConservative']),
-        (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
-         ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
-      ]:
-        output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
-        self.assertIdentical(expected, output.replace('\n\n', '\n'))
-
-    def test_m_mm(self):
-      open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
-      for opt in ['M', 'MM']:
-        output, err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo.c'), '-' + opt], stdout=PIPE, stderr=PIPE).communicate()
-        assert 'foo.o: ' in output, '-%s failed to produce the right output: %s' % (opt, output)
-        assert 'error' not in err, 'Unexpected stderr: ' + err
-
-    def test_llvm_nativizer(self):
-      # avoid impure_ptr problems etc.
-      shutil.copyfile(path_from_root('tests', 'files.cpp'), os.path.join(self.get_dir(), 'files.cpp'))
-      open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
-      open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
-      open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
-      Popen(['python', path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')]).communicate(input)[0]
-      output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
-      self.assertIdentical('''size: 37
-data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
-input:inter-active
-texto
-$
-5 : 10,30,20,11,88
-other=ay file...
-seeked= file.
-seeked=e...
-seeked=,,.
-fscanfed: 10 - hello
-''', output[0])
-      self.assertIdentical('texte\n', output[1])
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
