@@ -268,6 +268,12 @@ process(sys.argv[1])
 
   library_cache = {}
 
+  def get_build_dir(self):
+    ret = os.path.join(self.get_dir(), 'building')
+    if not os.path.exists(ret):
+      os.makedirs(ret)
+    return ret
+
   def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
@@ -4704,12 +4710,6 @@ def process(filename):
       finally:
         del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
-    def get_build_dir(self):
-      ret = os.path.join(self.get_dir(), 'building')
-      if not os.path.exists(ret):
-        os.makedirs(ret)
-      return ret
-
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
@@ -6737,7 +6737,7 @@ elif 'browser' in str(sys.argv):
       html_file.close()
       self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
-    def test_gl(self):
+    def test_glgears(self):
       # test the OpenGL ES implementation
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
@@ -6747,7 +6747,7 @@ elif 'browser' in str(sys.argv):
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
-    def test_gl_bad(self):
+    def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
@@ -6757,6 +6757,16 @@ elif 'browser' in str(sys.argv):
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
+
+    def zzztest_glbook(self):
+      print self.get_library('glbook', os.path.join('objs', '.libs', 'libfreetype.a'), configure=None)
+      return
+
+      open(os.path.join(self.get_dir(), 'sdl_audio.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio.c')).read()))
+
+      # use closure to check for a possible bug with closure minifying away newer Audio() attributes
+      Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
