@@ -4754,6 +4754,12 @@ def process(filename):
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
 
+      print '[issue 324 case 3]'
+      self.do_run('',
+                   open(path_from_root('tests', 'freetype', 'ref_4.txt'), 'r').read(),
+                   ['font.ttf', 'ea', '40', '32', '0'],
+                   no_build=True)
+
     def test_sqlite(self):
       # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
       if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
