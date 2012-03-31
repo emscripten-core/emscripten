@@ -17,6 +17,16 @@ from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing
 
 
+if len(sys.argv) == 1:
+  print '''
+Running the main part of the test suite. Don't forget to run the other parts!
+
+  sanity - tests for first run, etc., modifies ~/.emscripten
+  benchmark - run before and after each set of changes before pushing to master, verify no regressions
+  browser - TODO
+'''
+  time.sleep(2)
+
 # Setup
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
