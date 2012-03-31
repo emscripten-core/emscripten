@@ -86,7 +86,7 @@ function bits() {
   z($f << 2);
   z($f * 100 << 2);
   z($f % 2 | 255);
-  z($f / 55 & 255);
+  z(($f | 0) / 55 & 255);
   z($f - 22 ^ 1);
   z($f + 15 << 2);
 }
@@ -312,6 +312,6 @@ function notComps() {
   }
 }
 function tricky() {
-  var $conv642 = $conv6374 - (($132 << 16 >> 16) / 2 & -1) & 65535;
+  var $conv642 = $conv6374 - (($132 << 16 >> 16 | 0) / 2 & -1) & 65535;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps", "tricky"]

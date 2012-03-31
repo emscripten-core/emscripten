@@ -388,7 +388,7 @@ function simplifyExpressionsPre(ast) {
 
   function simplifyBitops(ast) {
     var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
-    var SAFE_BINARY_OPS = set('+', '-', '*', '/', '%');
+    var SAFE_BINARY_OPS = set('+', '-', '*', '%'); // division is unsafe as it creates non-ints in JS
     var ZERO = ['num', 0];
     var rerun = true;
     while (rerun) {

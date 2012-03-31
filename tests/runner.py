@@ -4724,6 +4724,10 @@ def process(filename):
   )
   open(filename, 'w').write(src)
 '''
+
+      # Not needed for js, but useful for debugging
+      shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), os.path.join(self.get_dir(), 'font.ttf')) 
+
       # Main
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
@@ -4733,11 +4737,19 @@ def process(filename):
                    post_build=post)
                    #build_ll_hook=self.do_autodebug)
 
-      # Second testcase, github issue 324
+      # github issue 324
       print '[issue 324]'
       self.do_run(open(path_from_root('tests', 'freetype', 'main_2.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref_2.txt'), 'r').read(),
                    ['font.ttf', 'w', '32', '32', '25'],
+                   libraries=self.get_freetype(),
+                   includes=[path_from_root('tests', 'freetype', 'include')],
+                   post_build=post)
+
+      print '[issue 324 case 2]'
+      self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c'), 'r').read(),
+                   open(path_from_root('tests', 'freetype', 'ref_3.txt'), 'r').read(),
+                   ['font.ttf', 'W', '32', '32', '0'],
                    libraries=self.get_freetype(),
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
