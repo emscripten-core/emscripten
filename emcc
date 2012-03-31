@@ -361,7 +361,7 @@ for i in range(1, len(sys.argv)):
 
 if '-M' in sys.argv or '-MM' in sys.argv:
   # Just output dependencies, do not compile. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
-  cmd = [CC] + sys.argv[1:]
+  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
   if DEBUG: print >> sys.stderr, 'emcc, just dependencies: ', ' '.join(cmd)
   exit(subprocess.call(cmd))
 

@@ -6724,10 +6724,11 @@ f.close()
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
     def test_m_mm(self):
-      open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''/* */''')
+      open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
       for opt in ['M', 'MM']:
-        output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo.c'), '-' + opt], stdout=PIPE).communicate()[0]
+        output, err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo.c'), '-' + opt], stdout=PIPE, stderr=PIPE).communicate()
         assert 'foo.o: ' in output, '-%s failed to produce the right output: %s' % (opt, output)
+        assert 'error' not in err, 'Unexpected stderr: ' + err
 
     def test_llvm_nativizer(self):
       # avoid impure_ptr problems etc.
