@@ -1,0 +1,32 @@
+OpenGL ES 2.0 Programming Guide - Example code for Linux/X11 environment
+
+Adaptation code for Linux/X11 environment for the examples of the book
+OpenGL ES 2.0 Programming Guide written by Jarkko Vatjus-Anttila. All
+original example code has remained unmodified. Adaptation changes are
+in esUtil.c|h files, which encapsulates all X11 specific internals from
+the application layer.
+
+Prerequisites for building the source is a valid GCC toolchain (4.5.2
+4.6.1 are tested) and properly setup X11 & GLESv2 & EGL environment.
+Mesa project offers such setup, and version 7.11 has been tested with
+software rendering. Also native GLESv2 renderer has been tested using
+NVidia Tegra2 setup. More details about the tested environments are
+below:
+
+The code has been tested with three configurations
+- ATI Radeon HD 3200 graphics with Mesa 7.11-0ubuntu3, Ubuntu 11.10
+- NVidia Quadro FX 2800M/PCI/SSE2 with Mesa 7.11-0ubuntu3, Ubuntu 11.10
+- NVidia Tegra 2, native EGL/GLESv2 drivers, Ubuntu 10.10
+
+Native GLESv2 on Tegra2 renders all the test cases correctly. However,
+Mesa 7.11 has problems with the Chapter 13 particle test, which at least
+with the mentioned test setups create only a black screen.
+
+Compiling the examples should be as easy as running "make" in the root
+linux directory.
+
+31st Oct 2011 - Jarkko Vatjus-Anttila <jvatjusanttila@gmail.com>
+
+Website: http://code.google.com/p/opengles-book-samples/
+License: MIT
+
