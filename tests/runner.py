@@ -6491,6 +6491,53 @@ elif 'browser' in str(sys.argv):
           emscripten_run_script(output);
 ''')
 
+    def reftest(self, expected):
+      basename = os.path.basename(expected)
+      shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
+      open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
+        Module.postRun = function() {
+          var img = new Image();
+          img.onload = function() {
+            assert(img.width == Module.canvas.width);
+            assert(img.height == Module.canvas.height);
+
+            var canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            var expected = ctx.getImageData(0, 0, img.width, img.height).data;
+
+            var actualUrl = Module.canvas.toDataURL();
+            var actualImage = new Image();
+            actualImage.onload = function() {
+              var actualCanvas = document.createElement('canvas');
+              actualCanvas.width = actualImage.width;
+              actualCanvas.height = actualImage.height;
+              var actualCtx = actualCanvas.getContext('2d');
+              actualCtx.drawImage(actualImage, 0, 0);
+              var actual = actualCtx.getImageData(0, 0, actualImage.width, actualImage.height).data;
+
+              var total = 0;
+              for (var x = 0; x < img.width; x++) {
+                for (var y = 0; y < img.height; y++) {
+                  total += Math.abs(expected[y*img.width*4 + x*4 + 0] - actual[y*img.width*4 + x*4 + 0]);
+                  total += Math.abs(expected[y*img.width*4 + x*4 + 1] - actual[y*img.width*4 + x*4 + 1]);
+                  total += Math.abs(expected[y*img.width*4 + x*4 + 2] - actual[y*img.width*4 + x*4 + 2]);
+                }
+              }
+              var wrong = Math.ceil(total / (img.width*img.height*3));
+
+              xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
+              xhr.send();
+            };
+            actualImage.src = actualUrl;
+          }
+          img.src = '%s';
+        };
+''' % basename)
+
     def test_compression(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
@@ -6758,12 +6805,13 @@ elif 'browser' in str(sys.argv):
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
-    def zzztest_glbook(self):
+    def test_glbook(self):
       programs = self.get_library('glbook', [os.path.join('Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc')], configure=None)
-      print programs
       for program in programs:
-        Popen(['python', EMCC, program, '-o', 'program.html']).communicate()
-      self.run_browser('program.html', '', '/report_result?1')
+        print program
+        self.reftest(path_from_root('tests', 'glbook', os.path.basename(program).replace('.bc', '.png')))
+        Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js']).communicate()
+        self.run_browser('program.html', '', '/report_result?0')
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
