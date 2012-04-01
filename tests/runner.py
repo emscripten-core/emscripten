@@ -839,15 +839,14 @@ m_divisor is 1091269979
           #include <stdio.h>
 
           int main() {
-            /*uint64_t x = 0, y = 0;
+            uint64_t x = 0, y = 0;
             for (int i = 0; i < 64; i++) {
               x += 1ULL << i;
               y += x;
               x /= 3;
               y *= 5;
-              printf("unsigned %d: %llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n", i, x, y, x+y, x-y, x*y, y ? x/y : 0, x ? y/x : 0, y ? x%y : 0, x ? y%x : 0);
-return 0;
-            }*/
+              printf("unsigned %d: %llu,%llu,%llu,%llu,%llu\n", i, x, y, x+y, x-y, x*y);//, y ? x/y : 0, x ? y/x : 0, y ? x%y : 0, x ? y%x : 0);
+            }
             int64_t x2 = 0, y2 = 0;
             for (int i = 0; i < 64; i++) {
               x2 += 1LL << i;

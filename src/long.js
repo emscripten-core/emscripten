@@ -840,8 +840,13 @@ return {
     this.result[0] = ret.low_;
     this.result[1] = ret.high_;
   },
-  stringify: function(l, h) {
-    return new goog.math.Long(l, h).toString();
+  stringify: function(l, h, unsigned) {
+    var ret = new goog.math.Long(l, h).toString();
+    if (unsigned && ret[0] == '-') {
+      // unsign, approximately..
+      ret = Math.pow(2, 64) + parseFloat(ret);
+    }
+    return ret;
   }
 };
 })();
