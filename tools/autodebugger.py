@@ -16,12 +16,15 @@ MEMCPY = False
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
+@.emscripten.autodebug.str.64 = private constant [13 x i8] c"AD:%d,%d,%d\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
 entry:
-  %0 = sitofp i64 %value to double ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
+  %0 = trunc i64 %value to i32
+  %1 = lshr i64 %value, 32
+  %2 = trunc i64 %1 to i32
+  %3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]* @.emscripten.autodebug.str.64, i32 0, i32 0), i32 %line, i32 %0, i32 %2) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
