@@ -38,6 +38,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
     var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
     print(pre);
+    if (PRECISE_I64_MATH) print(read('long.js'));
 
     Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
   }

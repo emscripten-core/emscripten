@@ -2487,9 +2487,13 @@ LibraryManager.library = {
           var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
+          var argText = null;
 #if USE_TYPED_ARRAYS == 2
           // Flatten i64-1 [low, high] into a (slightly rounded) double
           if (argSize == 8) {
+#if PRECISE_I64_MATH == 1
+            argText = i64Math.stringify(currArg[0], currArg[1]);
+#endif
             currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == 'u'.charCodeAt(0));
           }
 #endif
@@ -2500,8 +2504,10 @@ LibraryManager.library = {
           }
           // Format the number.
           var currAbsArg = Math.abs(currArg);
-          var argText;
           var prefix = '';
+#if PRECISE_I64_MATH == 1
+          if (argText !== null) {} else
+#endif
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
             argText = reSign(currArg, 8 * argSize, 1).toString(10);
           } else if (next == 'u'.charCodeAt(0)) {

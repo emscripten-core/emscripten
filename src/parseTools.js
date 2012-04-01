@@ -1618,6 +1618,9 @@ function processMathop(item) {
         return result;
       }
     }
+    function i64PreciseOp(type) {
+      return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + '),i64Math.result[0])', 'i64Math.result[1]']);
+    }
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -1703,11 +1706,46 @@ function processMathop(item) {
       case 'ptrtoint': return makeI64(idents[0], 0);
       case 'inttoptr': return '(' + idents[0] + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
       // Dangerous, rounded operations. TODO: Fully emulate
-      case 'add': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1])));
-      case 'sub': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1])));
-      case 'sdiv': case 'udiv': warnI64_1(); return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's')));
-      case 'mul': warnI64_1(); return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u')));
-      case 'urem': case 'srem': warnI64_1(); return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u')));
+      case 'add': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('add');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1])));
+        }
+      }
+      case 'sub': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('subtract');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1])));
+        }
+      }
+      case 'sdiv': case 'udiv': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('divide');
+        } else {
+          warnI64_1();
+          return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's')));
+        }
+      }
+      case 'mul': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('multiply');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u')));
+        }
+      }
+      case 'urem': case 'srem': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('modulo');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u')));
+        }
+      }
       case 'bitcast': {
         // Pointers are not 64-bit, so there is really only one possible type of bitcast here, int to float or vice versa
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');

@@ -830,6 +830,37 @@ m_divisor is 1091269979
         '''
         self.do_run(src, 'testu64a is 14746250828952703000\n')
 
+    def test_i64_precise(self):
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+        Settings.PRECISE_I64_MATH = 1
+
+        src = r'''
+          #include <inttypes.h>
+          #include <stdio.h>
+
+          int main() {
+            /*uint64_t x = 0, y = 0;
+            for (int i = 0; i < 64; i++) {
+              x += 1ULL << i;
+              y += x;
+              x /= 3;
+              y *= 5;
+              printf("unsigned %d: %llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n", i, x, y, x+y, x-y, x*y, y ? x/y : 0, x ? y/x : 0, y ? x%y : 0, x ? y%x : 0);
+return 0;
+            }*/
+            int64_t x2 = 0, y2 = 0;
+            for (int i = 0; i < 64; i++) {
+              x2 += 1LL << i;
+              y2 += x2;
+              x2 /= 3 * (i % 7 ? -1 : 1);
+              y2 *= 5 * (i % 2 ? -1 : 1);
+              printf("signed %d: %lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld\n", i, x2, y2, x2+y2, x2-y2, x2*y2, y2 ? x2/y2 : 0, x2 ? y2/x2 : 0, y2 ? x2%y2 : 0, x2 ? y2%x2 : 0);
+            }
+            return 0;
+          }
+        '''
+        self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
+
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
 
@@ -5963,6 +5994,7 @@ class %s(T):
     Settings.CATCH_EXIT_CODE = 0
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
+    Settings.PRECISE_I64_MATH = 0
 
     Building.pick_llvm_opts(3)
 

@@ -1,3 +1,5 @@
+//======= begin closure i64 code =======
+
 // Copyright 2009 The Closure Library Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +21,8 @@
  *
  */
 
-goog.provide('goog.math.Long');
-
+var i64Math = (function() { // Emscripten wrapper
+var goog = { math: {} };
 
 
 /**
@@ -799,3 +801,50 @@ goog.math.Long.prototype.shiftRightUnsigned = function(numBits) {
     }
   }
 };
+
+// End Emscripten wrapper
+return {
+  result: [0, 0], // return result stored here
+  add: function(xl, xh, yl, yh) {
+    var x = new goog.math.Long(xl, xh);
+    var y = new goog.math.Long(yl, yh);
+    var ret = x.add(y);
+    this.result[0] = ret.low_;
+    this.result[1] = ret.high_;
+  },
+  subtract: function(xl, xh, yl, yh) {
+    var x = new goog.math.Long(xl, xh);
+    var y = new goog.math.Long(yl, yh);
+    var ret = x.subtract(y);
+    this.result[0] = ret.low_;
+    this.result[1] = ret.high_;
+  },
+  multiply: function(xl, xh, yl, yh) {
+    var x = new goog.math.Long(xl, xh);
+    var y = new goog.math.Long(yl, yh);
+    var ret = x.multiply(y);
+    this.result[0] = ret.low_;
+    this.result[1] = ret.high_;
+  },
+  divide: function(xl, xh, yl, yh) {
+    var x = new goog.math.Long(xl, xh);
+    var y = new goog.math.Long(yl, yh);
+    var ret = x.div(y);
+    this.result[0] = ret.low_;
+    this.result[1] = ret.high_;
+  },
+  modulo: function(xl, xh, yl, yh) {
+    var x = new goog.math.Long(xl, xh);
+    var y = new goog.math.Long(yl, yh);
+    var ret = x.modulo(y);
+    this.result[0] = ret.low_;
+    this.result[1] = ret.high_;
+  },
+  stringify: function(l, h) {
+    return new goog.math.Long(l, h).toString();
+  }
+};
+})();
+
+//======= end closure i64 code =======
+
