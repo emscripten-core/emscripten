@@ -810,6 +810,7 @@ var navigator = { appName: 'Modern Browser' }; // polyfill a little
 
 // Copyright (c) 2005  Tom Wu
 // All Rights Reserved.
+// http://www-cs-students.stanford.edu/~tjw/jsbn/
 
 /*
  * Copyright (c) 2003-2005  Tom Wu
