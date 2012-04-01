@@ -7,6 +7,9 @@
 //  * single-underscore deps need double underscore (and, just auto-add them all)
 //  * glGetProgramInfoLog and *shader* should be essentially identical
 //  * glGetIntegerv set to bool etc needs fixing
+//  * glVertexAttribPointer - the last param can be an offset or in gles, a raw pointer to clientside data. need some way to
+//                            warn about that since it silently fails in WebGL (it's a huge offset into the last bound buffer, zeros)
+
 
 var LibraryGL = {
   $GL: {
