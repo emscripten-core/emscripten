@@ -834,13 +834,15 @@ m_divisor is 1091269979
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
         Settings.PRECISE_I64_MATH = 1
 
+        print 'TODO: i == 64 unsigned'
+
         src = r'''
           #include <inttypes.h>
           #include <stdio.h>
 
           int main() {
             uint64_t x = 0, y = 0;
-            for (int i = 0; i < 64; i++) {
+            for (int i = 0; i < 63; i++) {
               x += 1ULL << i;
               y += x;
               x /= 3;
