@@ -969,6 +969,46 @@ var LibraryGLUT = {
   glutPostRedisplay: function() {},
 };
 
+var LibraryXlib = {
+  XOpenDisplay: function() {
+    return 1; // We support 1 display, the canvas
+  },
+
+  XCreateWindow: function(display, parent, x, y, width, height, border_width, depth, class_, visual, valuemask, attributes) {
+    // All we can do is set the width and height
+    Module['canvas'].width = width;
+    Module['canvas'].height = height;
+    return 2;
+  },
+
+  XChangeWindowAttributes: function(){},
+  XSetWMHints: function(){},
+  XMapWindow: function(){},
+  XStoreName: function(){},
+  XInternAtom: function(display, name_, hmm) { return 0 },
+  XSendEvent: function(){},
+  XPending: function(display) { return 0 },
+};
+
+var LibraryEGL = {
+  eglGetDisplay: function(x_display) { return 3 },
+  eglInitialize: function(display, majorVersion, minorVersion) { return 1 },
+  eglGetConfigs: function(display, hmm1, hmm2, numConfigs) { return 1 },
+  eglChooseConfig: function(display, attribList, config, hmm, numConfigs) { return 1 },
+  eglCreateWindowSurface: function(display, config, hWnd, hmm) { return 4 },
+
+  eglCreateContext__deps: ['glutCreateWindow', '$GL'],
+  eglCreateContext: function(display, config, hmm, contextAttribs) {
+    _glutCreateWindow();
+    return 1;
+  },
+
+  eglMakeCurrent: function(display, surface, surface, context) { return 1 },
+  eglSwapBuffers: function() {},
+};
+
 mergeInto(LibraryManager.library, LibraryGL);
 mergeInto(LibraryManager.library, LibraryGLUT);
+mergeInto(LibraryManager.library, LibraryXlib);
+mergeInto(LibraryManager.library, LibraryEGL);
 

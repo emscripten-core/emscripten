@@ -6759,14 +6759,11 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def zzztest_glbook(self):
-      print self.get_library('glbook', os.path.join('objs', '.libs', 'libfreetype.a'), configure=None)
-      return
-
-      open(os.path.join(self.get_dir(), 'sdl_audio.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio.c')).read()))
-
-      # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-      Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
-      self.run_browser('page.html', '', '/report_result?1')
+      programs = self.get_library('glbook', [os.path.join('Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc')], configure=None)
+      print programs
+      for program in programs:
+        Popen(['python', EMCC, program, '-o', 'program.html']).communicate()
+      self.run_browser('program.html', '', '/report_result?1')
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
