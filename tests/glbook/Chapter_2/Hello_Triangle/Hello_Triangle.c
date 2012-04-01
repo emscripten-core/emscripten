@@ -157,7 +157,13 @@ void Draw ( ESContext *esContext )
    GLfloat vVertices[] = {  0.0f,  0.5f, 0.0f, 
                            -0.5f, -0.5f, 0.0f,
                             0.5f, -0.5f, 0.0f };
-      
+
+   // No clientside arrays, so do this in a webgl-friendly manner
+   GLuint vertexPosObject;
+   glGenBuffers(1, &vertexPosObject);
+   glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
+   glBufferData(GL_ARRAY_BUFFER, 9*4, vVertices, GL_STATIC_DRAW);
+   
    // Set the viewport
    glViewport ( 0, 0, esContext->width, esContext->height );
    
@@ -168,8 +174,9 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex data
-   glVertexAttribPointer ( 0, 3, GL_FLOAT, GL_FALSE, 0, vVertices );
-   glEnableVertexAttribArray ( 0 );
+   glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
+   glVertexAttribPointer(0 /* ? */, 3, GL_FLOAT, 0, 0, 0);
+   glEnableVertexAttribArray(0);
 
    glDrawArrays ( GL_TRIANGLES, 0, 3 );
 }
