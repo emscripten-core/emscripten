@@ -52,7 +52,7 @@ var LibraryGL = {
             for (var i = 1; i < this.counter; i++)
               if (this.table[i] == v)
                 return i;
-	    return 0;
+            return 0;
           },
         };
       }
@@ -800,22 +800,22 @@ var LibraryGLUT = {
     saveModifiers: function(event) {
       GLUT.modifiers = 0;
       if (event['shiftKey'])
-	GLUT.modifiers += 1; /* GLUT_ACTIVE_SHIFT */
+        GLUT.modifiers += 1; /* GLUT_ACTIVE_SHIFT */
       if (event['ctrlKey'])
-	GLUT.modifiers += 2; /* GLUT_ACTIVE_CTRL */
+        GLUT.modifiers += 2; /* GLUT_ACTIVE_CTRL */
       if (event['altKey'])
-	GLUT.modifiers += 4; /* GLUT_ACTIVE_ALT */
+        GLUT.modifiers += 4; /* GLUT_ACTIVE_ALT */
     },
 
     onMousemove: function(event) {
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
       if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
-	event.preventDefault ();
+        event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
       } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
-	event.preventDefault ();
+        event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.motionFunc](GLUT.lastX, GLUT.lastY);
       }
@@ -850,8 +850,8 @@ var LibraryGLUT = {
     },
 
     getASCIIKey: function(keycode) {
-	// TODO apply modifiers, etc
-        return keycode;
+      // TODO apply modifiers, etc
+      return keycode;
     },
 
     onKeydown: function(event) {
@@ -859,64 +859,64 @@ var LibraryGLUT = {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if( GLUT.specialFunc ) {
-	    event.preventDefault ();
+            event.preventDefault();
             GLUT.saveModifiers(event);
-	    FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
-	  }
+            FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
+          }
         }
         else
-	{
+        {
           key = GLUT.getASCIIKey(event['keyCode']);
-	  if( key !== null && GLUT.keyboardFunc ) {
-	    event.preventDefault ();
+          if( key !== null && GLUT.keyboardFunc ) {
+            event.preventDefault();
             GLUT.saveModifiers(event);
             FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
-	  }
+          }
         }
       }
     },
-    
+
     onKeyup: function(event) {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if(GLUT.specialUpFunc) {
-	    event.preventDefault ();
+            event.preventDefault ();
             GLUT.saveModifiers(event);
-	    FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
-	  }
+            FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
+          }
         }
         else
-	{
+        {
           key = GLUT.getASCIIKey(event['keyCode']);
-	  if( key !== null && GLUT.keyboardUpFunc ) {
-	    event.preventDefault ();
+          if( key !== null && GLUT.keyboardUpFunc ) {
+            event.preventDefault ();
             GLUT.saveModifiers(event);
             FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
-	  }
+          }
         }
       }
     },
-    
+
     onMouseButtonDown: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
       GLUT.buttons |= (1 << event['button']);
-        
+
       if(GLUT.mouseFunc){
-	event.preventDefault ();
+        event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
       }
     },
-      
+
     onMouseButtonUp: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
       GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {
-	event.preventDefault ();
+        event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
       }
