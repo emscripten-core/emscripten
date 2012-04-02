@@ -1552,22 +1552,23 @@ var Wrapper = {
     Wrapper.result[0] = ret.low_;
     Wrapper.result[1] = ret.high_;
   },
+  makeTwo32: function() {
+    Wrapper.two32 = new BigInteger();
+    Wrapper.two32.fromString('4294967296', 10);
+  },
+  lh2bignum: function(l, h) {
+    var a = new BigInteger();
+    a.fromString(h.toString(), 10);
+    var b = new BigInteger();
+    a.multiplyTo(Wrapper.two32, b);
+    var c = new BigInteger();
+    c.fromString(l.toString(), 10);
+    var d = new BigInteger();
+    c.addTo(b, d);
+    return d;
+  },
   divide: function(xl, xh, yl, yh, unsigned) {
-    if (!Wrapper.two32) {
-      Wrapper.two32 = new BigInteger();
-      Wrapper.two32.fromString('4294967296', 10);
-    }
-    function lh2bignum(l, h) {
-      var a = new BigInteger();
-      a.fromString(h.toString(), 10);
-      var b = new BigInteger();
-      a.multiplyTo(Wrapper.two32, b);
-      var c = new BigInteger();
-      c.fromString(l.toString(), 10);
-      var d = new BigInteger();
-      c.addTo(b, d);
-      return d;
-    }
+    if (!Wrapper.two32) Wrapper.makeTwo32();
     if (!unsigned) {
       var x = new goog.math.Long(xl, xh);
       var y = new goog.math.Long(yl, yh);
@@ -1576,8 +1577,8 @@ var Wrapper = {
       Wrapper.result[1] = ret.high_;
     } else {
       // slow precise bignum division
-      var x = lh2bignum(xl >>> 0, xh >>> 0);
-      var y = lh2bignum(yl >>> 0, yh >>> 0);
+      var x = Wrapper.lh2bignum(xl >>> 0, xh >>> 0);
+      var y = Wrapper.lh2bignum(yl >>> 0, yh >>> 0);
       var z = new BigInteger();
       x.divRemTo(y, z, null);
       var l = new BigInteger();
