@@ -67,9 +67,8 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // then load it aligned, and that load-store will make JS engines alter it if it is being
                      // stored to a typed array for security reasons. That will 'fix' the number from being a
                      // NaN or an infinite number.
-var PRECISE_I64_MATH = 0; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
+var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
-                          // Note that precise math currently only handles *signed* values, not unsigned
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.

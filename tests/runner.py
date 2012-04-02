@@ -598,13 +598,13 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
             return 0;
           }
         '''
-        self.do_run(src, '*1311918518731868200\n' +
+        self.do_run(src, '*1311918518731868041\n' +
                          '0,0,0,1,1\n' +
                          '1,0,1,0,1*\n' +
                          '*245127260211081*\n' +
                          '*245127260209443*\n' +
-                         '*18446744073709552000*\n' +
-                         '*576460752303423500*\n' +
+                         '*18446744073709551615*\n' +
+                         '*576460752303423487*\n' +
                          'm1: 127\n' +
                          '*123*\n' +
                          '*127*\n' +
@@ -832,7 +832,6 @@ m_divisor is 1091269979
 
     def test_i64_precise(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-        Settings.PRECISE_I64_MATH = 1
 
         src = r'''
           #include <inttypes.h>
@@ -890,13 +889,9 @@ m_divisor is 1091269979
         code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
         assert 'goog.math.Long' not in code and 'jsbn' not in code, 'i64 precise math should not have been included if not actually used'
 
-        print 'TODO: make precise the default, and imprecise in -O3. Remove precise setting in this test and cube2hash'
-        #1/0.
-
     def test_cube2hash(self):
       # A good test of i64 math
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
-      Settings.PRECISE_I64_MATH = 1
       self.do_run('', 'Usage: hashstring <seed>',
                   libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),  
                   includes=[path_from_root('tests', 'cube2hash')])
