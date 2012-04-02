@@ -404,7 +404,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments) + "]"); ');
+            snippet = snippet.replace('{', '{ var ret = (function() {Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments) + "]"); ');
+            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); Module.printErr("  [     return:" + ret); return ret; }';
           }
         }
 
