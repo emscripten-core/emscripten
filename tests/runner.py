@@ -862,10 +862,11 @@ m_divisor is 1091269979
 
         print 'TODO: make precise the default, and imprecise in -O3. Remove precise setting in this test and cube2hash'
         print 'TODO: only include this code when needed'
-        1/0.
+        #1/0.
 
     def test_cube2hash(self):
       # A good test of i64 math
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
       Settings.PRECISE_I64_MATH = 1
       self.do_run('', 'Usage: hashstring <seed>',
                   libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),  
