@@ -834,9 +834,6 @@ m_divisor is 1091269979
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
         Settings.PRECISE_I64_MATH = 1
 
-        print 'TODO: i == 64 unsigned'
-        print 'TODO: make precise the default, and imprecise in -O3'
-
         src = r'''
           #include <inttypes.h>
           #include <stdio.h>
@@ -848,7 +845,7 @@ m_divisor is 1091269979
               y += x;
               x /= 3;
               y *= 5;
-              printf("unsigned %d: %llu,%llu,%llu,%llu,%llu\n", i, x, y, x+y, x-y, x*y);//, y ? x/y : 0, x ? y/x : 0, y ? x%y : 0, x ? y%x : 0);
+              printf("unsigned %d: %llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n", i, x, y, x+y, x-y, x*y, y ? x/y : 0, x ? y/x : 0, y ? x%y : 0, x ? y%x : 0);
             }
             int64_t x2 = 0, y2 = 0;
             for (int i = 0; i < 64; i++) {
@@ -862,6 +859,10 @@ m_divisor is 1091269979
           }
         '''
         self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
+
+        print 'TODO: i == 64 unsigned'
+        print 'TODO: make precise the default, and imprecise in -O3'
+        #1/0.
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')

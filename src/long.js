@@ -1588,12 +1588,26 @@ var Wrapper = {
       Wrapper.result[1] = parseInt(h.toString()) | 0;
     }
   },
-  modulo: function(xl, xh, yl, yh) {
-    var x = new goog.math.Long(xl, xh);
-    var y = new goog.math.Long(yl, yh);
-    var ret = x.modulo(y);
-    Wrapper.result[0] = ret.low_;
-    Wrapper.result[1] = ret.high_;
+  modulo: function(xl, xh, yl, yh, unsigned) {
+    if (!Wrapper.two32) Wrapper.makeTwo32();
+    if (!unsigned) {
+      var x = new goog.math.Long(xl, xh);
+      var y = new goog.math.Long(yl, yh);
+      var ret = x.modulo(y);
+      Wrapper.result[0] = ret.low_;
+      Wrapper.result[1] = ret.high_;
+    } else {
+      // slow precise bignum division
+      var x = Wrapper.lh2bignum(xl >>> 0, xh >>> 0);
+      var y = Wrapper.lh2bignum(yl >>> 0, yh >>> 0);
+      var z = new BigInteger();
+      x.divRemTo(y, null, z);
+      var l = new BigInteger();
+      var h = new BigInteger();
+      z.divRemTo(Wrapper.two32, h, l);
+      Wrapper.result[0] = parseInt(l.toString()) | 0;
+      Wrapper.result[1] = parseInt(h.toString()) | 0;
+    }
   },
   stringify: function(l, h, unsigned) {
     var ret = new goog.math.Long(l, h).toString();

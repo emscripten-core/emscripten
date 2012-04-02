@@ -1741,7 +1741,7 @@ function processMathop(item) {
       }
       case 'urem': case 'srem': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('modulo');
+          return i64PreciseOp('modulo', op[0] === 'u');
         } else {
           warnI64_1();
           return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u')));
