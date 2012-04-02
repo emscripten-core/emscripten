@@ -1618,8 +1618,9 @@ function processMathop(item) {
         return result;
       }
     }
-    function i64PreciseOp(type) {
-      return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + '),i64Math.result[0])', 'i64Math.result[1]']);
+    function i64PreciseOp(type, lastArg) {
+      return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
+                     (lastArg ? ',' + lastArg : '') + '),i64Math.result[0])', 'i64Math.result[1]']);
     }
     switch (op) {
       // basic integer ops
@@ -1724,7 +1725,7 @@ function processMathop(item) {
       }
       case 'sdiv': case 'udiv': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('divide');
+          return i64PreciseOp('divide', op[0] === 'u');
         } else {
           warnI64_1();
           return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's')));

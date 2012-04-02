@@ -1529,58 +1529,89 @@ BigInteger.prototype.addTo = bnpAddTo;
 //======= end jsbn =======
 
 // Emscripten wrapper
-return {
+var Wrapper = {
   result: [0, 0], // return result stored here
   add: function(xl, xh, yl, yh) {
     var x = new goog.math.Long(xl, xh);
     var y = new goog.math.Long(yl, yh);
     var ret = x.add(y);
-    this.result[0] = ret.low_;
-    this.result[1] = ret.high_;
+    Wrapper.result[0] = ret.low_;
+    Wrapper.result[1] = ret.high_;
   },
   subtract: function(xl, xh, yl, yh) {
     var x = new goog.math.Long(xl, xh);
     var y = new goog.math.Long(yl, yh);
     var ret = x.subtract(y);
-    this.result[0] = ret.low_;
-    this.result[1] = ret.high_;
+    Wrapper.result[0] = ret.low_;
+    Wrapper.result[1] = ret.high_;
   },
   multiply: function(xl, xh, yl, yh) {
     var x = new goog.math.Long(xl, xh);
     var y = new goog.math.Long(yl, yh);
     var ret = x.multiply(y);
-    this.result[0] = ret.low_;
-    this.result[1] = ret.high_;
+    Wrapper.result[0] = ret.low_;
+    Wrapper.result[1] = ret.high_;
   },
-  divide: function(xl, xh, yl, yh) {
-    var x = new goog.math.Long(xl, xh);
-    var y = new goog.math.Long(yl, yh);
-    var ret = x.div(y);
-    this.result[0] = ret.low_;
-    this.result[1] = ret.high_;
+  divide: function(xl, xh, yl, yh, unsigned) {
+    if (!Wrapper.two32) {
+      Wrapper.two32 = new BigInteger();
+      Wrapper.two32.fromString('4294967296', 10);
+    }
+    function lh2bignum(l, h) {
+      var a = new BigInteger();
+      a.fromString(h.toString(), 10);
+      var b = new BigInteger();
+      a.multiplyTo(Wrapper.two32, b);
+      var c = new BigInteger();
+      c.fromString(l.toString(), 10);
+      var d = new BigInteger();
+      c.addTo(b, d);
+      return d;
+    }
+    if (!unsigned) {
+      var x = new goog.math.Long(xl, xh);
+      var y = new goog.math.Long(yl, yh);
+      var ret = x.div(y);
+      Wrapper.result[0] = ret.low_;
+      Wrapper.result[1] = ret.high_;
+    } else {
+      // slow precise bignum division
+      var x = lh2bignum(xl >>> 0, xh >>> 0);
+      var y = lh2bignum(yl >>> 0, yh >>> 0);
+      var z = new BigInteger();
+      x.divRemTo(y, z, null);
+      var l = new BigInteger();
+      var h = new BigInteger();
+      z.divRemTo(Wrapper.two32, h, l);
+      Wrapper.result[0] = parseInt(l.toString()) | 0;
+      Wrapper.result[1] = parseInt(h.toString()) | 0;
+    }
   },
   modulo: function(xl, xh, yl, yh) {
     var x = new goog.math.Long(xl, xh);
     var y = new goog.math.Long(yl, yh);
     var ret = x.modulo(y);
-    this.result[0] = ret.low_;
-    this.result[1] = ret.high_;
+    Wrapper.result[0] = ret.low_;
+    Wrapper.result[1] = ret.high_;
   },
   stringify: function(l, h, unsigned) {
     var ret = new goog.math.Long(l, h).toString();
     if (unsigned && ret[0] == '-') {
       // unsign slowly using jsbn bignums
-      var two64 = new BigInteger();
-      two64.fromString('18446744073709551616', 10); // TODO: only do this once and only if needed
+      if (!Wrapper.two64) {
+        Wrapper.two64 = new BigInteger();
+        Wrapper.two64.fromString('18446744073709551616', 10);
+      }
       var bignum = new BigInteger();
       bignum.fromString(ret, 10);
       ret = new BigInteger();
-      two64.addTo(bignum, ret);
+      Wrapper.two64.addTo(bignum, ret);
       ret = ret.toString(10);
     }
     return ret;
   }
 };
+return Wrapper;
 })();
 
 //======= end closure i64 code =======

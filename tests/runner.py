@@ -835,6 +835,7 @@ m_divisor is 1091269979
         Settings.PRECISE_I64_MATH = 1
 
         print 'TODO: i == 64 unsigned'
+        print 'TODO: make precise the default, and imprecise in -O3'
 
         src = r'''
           #include <inttypes.h>
