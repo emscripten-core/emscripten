@@ -84,6 +84,8 @@ mergeInto(LibraryManager.library, {
       copyOnLock: true
     },
 
+    version: null,
+
     surfaces: {},
     events: [],
     audios: [null],
@@ -162,6 +164,11 @@ mergeInto(LibraryManager.library, {
         ['i32', 'size'],
         ['void*', 'callback'],
         ['void*', 'userdata']
+      ]),
+      version: Runtime.generateStructInfo([
+        ['i8', 'major'],
+        ['i8', 'minor'],
+        ['i8', 'patch']
       ])
     },
 
@@ -367,6 +374,16 @@ mergeInto(LibraryManager.library, {
         console.log('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
     }
+  },
+
+  SDL_Linked_Version: function() {
+    if (SDL.version === null) {
+      SDL.version = _malloc(SDL.structs.version.__size__);
+      {{{ makeSetValue('SDL.version + SDL.structs.version.major', '0', '1', 'i8') }}}
+      {{{ makeSetValue('SDL.version + SDL.structs.version.minor', '0', '3', 'i8') }}}
+      {{{ makeSetValue('SDL.version + SDL.structs.version.patch', '0', '0', 'i8') }}}
+    }
+    return SDL.version;
   },
 
   SDL_Init__deps: ['$SDL'],
