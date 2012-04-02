@@ -6857,14 +6857,13 @@ elif 'browser' in str(sys.argv):
       self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
     def test_glgears(self):
-      # test the OpenGL ES implementation
+      self.reftest(path_from_root('tests', 'gears.png'))
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS',
-                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
-      self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
+      self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used

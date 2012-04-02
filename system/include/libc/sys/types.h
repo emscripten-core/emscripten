@@ -140,6 +140,7 @@ typedef unsigned long vm_size_t;
 
 #define __BIT_TYPES_DEFINED__
 
+// XXX Emscripten: removed unsigned types which are already defined
 typedef signed char int8_t;
 typedef short int16_t;
 typedef int int32_t;

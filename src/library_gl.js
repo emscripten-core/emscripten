@@ -1038,7 +1038,7 @@ var LibraryGLUT = {
                                        Module['canvas'].height);
     }
     _glutPostRedisplay();
-    throw "Entering GLUT mainloop";
+    //throw "Entering GLUT mainloop";
   },
 
 };
