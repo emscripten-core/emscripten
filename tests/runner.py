@@ -6878,7 +6878,10 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_glbook(self):
-      programs = self.get_library('glbook', [os.path.join('Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc')], configure=None)
+      programs = self.get_library('glbook', [
+        os.path.join('Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc'),
+        os.path.join('Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.bc')
+      ], configure=None)
       for program in programs:
         print program
         self.reftest(path_from_root('tests', 'glbook', os.path.basename(program).replace('.bc', '.png')))

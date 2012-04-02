@@ -23,7 +23,7 @@ CH13SRC2=./Chapter_13/ParticleSystem/ParticleSystem.c
 default: all
 
 all: ./Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc \
-#     ./Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.bc \
+     ./Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.bc \
 #     ./Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.bc \
 #     ./Chapter_9/MipMap2D/CH09_MipMap2D.bc \
 #     ./Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.bc \

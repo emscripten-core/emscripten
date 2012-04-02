@@ -29,7 +29,7 @@ typedef struct
    
    // Vertex daata
    GLfloat  *vertices;
-   GLuint *indices;
+   GLushort *indices;
    int       numIndices;
 
    // Rotation angle
@@ -37,6 +37,8 @@ typedef struct
 
    // MVP matrix
    ESMatrix  mvpMatrix;
+
+   GLuint vertPosObject, indicesObject;
 } UserData;
 
 ///
@@ -77,6 +79,14 @@ int Init ( ESContext *esContext )
    
    // Starting rotation angle for the cube
    userData->angle = 45.0f;
+
+   glGenBuffers(1, &userData->vertPosObject);
+   glBindBuffer(GL_ARRAY_BUFFER, userData->vertPosObject);
+   glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(GLfloat) * 3, userData->vertices, GL_STATIC_DRAW);
+
+   glGenBuffers(1, &userData->indicesObject);
+   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, userData->indicesObject);
+   glBufferData(GL_ELEMENT_ARRAY_BUFFER, userData->numIndices * sizeof(GLushort), userData->indices, GL_STATIC_DRAW);
 
    glClearColor ( 0.0f, 0.0f, 0.0f, 0.0f );
    return GL_TRUE;
@@ -137,17 +147,20 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex position
+   glBindBuffer(GL_ARRAY_BUFFER, userData->vertPosObject);
    glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, 
-                           GL_FALSE, 3 * sizeof(GLfloat), userData->vertices );
-   
+                           GL_FALSE, 0, 0 );
    glEnableVertexAttribArray ( userData->positionLoc );
    
    
+   // Load the index buffer
+   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, userData->indicesObject);
+
    // Load the MVP matrix
    glUniformMatrix4fv( userData->mvpLoc, 1, GL_FALSE, (GLfloat*) &userData->mvpMatrix.m[0][0] );
    
    // Draw the cube
-   glDrawElements ( GL_TRIANGLES, userData->numIndices, GL_UNSIGNED_INT, userData->indices );
+   glDrawElements ( GL_TRIANGLES, userData->numIndices, GL_UNSIGNED_SHORT, 0 );
 }
 
 ///

@@ -139,7 +139,7 @@ int ESUTIL_API esGenSphere ( int numSlices, float radius, GLfloat **vertices, GL
 ///         if it is not NULL ) as a GL_TRIANGLE_STRIP
 //
 int ESUTIL_API esGenCube ( float scale, GLfloat **vertices, GLfloat **normals,
-                           GLfloat **texCoords, GLuint **indices )
+                           GLfloat **texCoords, GLushort **indices )
 {
    int i;
    int numVertices = 24;
@@ -256,7 +256,7 @@ int ESUTIL_API esGenCube ( float scale, GLfloat **vertices, GLfloat **normals,
    // Generate the indices
    if ( indices != NULL )
    {
-      GLuint cubeIndices[] =
+      GLushort cubeIndices[] =
       {
          0, 2, 1,
          0, 3, 2, 
@@ -272,7 +272,7 @@ int ESUTIL_API esGenCube ( float scale, GLfloat **vertices, GLfloat **normals,
          20, 22, 21
       };
 
-      *indices = malloc ( sizeof(GLuint) * numIndices );
+      *indices = malloc ( sizeof(GLushort) * numIndices );
       memcpy( *indices, cubeIndices, sizeof( cubeIndices ) );
    }
 

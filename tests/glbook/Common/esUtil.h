@@ -199,7 +199,7 @@ int ESUTIL_API esGenSphere ( int numSlices, float radius, GLfloat **vertices, GL
 ///         if it is not NULL ) as a GL_TRIANGLES
 //
 int ESUTIL_API esGenCube ( float scale, GLfloat **vertices, GLfloat **normals, 
-                           GLfloat **texCoords, GLuint **indices );
+                           GLfloat **texCoords, GLushort **indices );
 
 //
 /// \brief Loads a 24-bit TGA image from a file
