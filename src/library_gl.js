@@ -47,7 +47,13 @@ var LibraryGL = {
             assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
 #endif
             delete this.table[id];
-          }
+          },
+          lookup: function(v) {
+            for (var i = 1; i < this.counter; i++)
+              if (this.table[i] == v)
+                return i;
+	    return 0;
+          },
         };
       }
       return this._hashtables[name];
@@ -67,6 +73,7 @@ var LibraryGL = {
     }
   },
 
+  glGenIntegerv__deps: ['$GL'],
   glGetIntegerv: function(name_, p) {
     var result = Module.ctx.getParameter(name_);
     switch (typeof(result)) {
@@ -199,7 +206,7 @@ var LibraryGL = {
 
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = {{{ makeGetValue('textures', 'i', 'i32') }}};
+      var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       Module.ctx.deleteTexture(GL.hashtable("texture").get(id));
       GL.hashtable("texture").remove(id);
     }
@@ -332,7 +339,7 @@ var LibraryGL = {
 
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = {{{ makeGetValue('buffers', 'i', 'i32') }}};
+      var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       Module.ctx.deleteBuffer(GL.hashtable("buffer").get(id));
       GL.hashtable("buffer").remove(id);
     }
@@ -390,7 +397,7 @@ var LibraryGL = {
     return Module.ctx.isRenderbuffer(fb);
   },
 
-  glBindAttribLocation_deps: ['$GL'],
+  glGetUniformLocation_deps: ['$GL'],
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
     return GL.hashtable("uniform").add(
@@ -548,6 +555,7 @@ var LibraryGL = {
     return GL.hashtable("shader").add(shader);
   },
 
+  glDeleteShader_deps: ['$GL'],
   glDeleteShader: function(shader) {
     Module.ctx.deleteShader(GL.hashtable("shader").get(shader));
   },
@@ -573,19 +581,16 @@ var LibraryGL = {
   glShaderSource: function(shader, count, string, length) {
     var source = "";
     for (var i = 0; i < count; ++i) {
-      var frag = string[i];
+      var frag;
       if (length) {
-        var len = {{{ makeGetValue('length', 'i', 'i32') }}};
+        var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
         if (len < 0) {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
         } else {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}}, len);
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len);
         }
       } else {
-        frag = Pointer_stringify({{{ makeGetValue('string', 'i', 'i32') }}});
-      }
-      if (source.length) {
-        source += "\n";
+        frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
       }
       source += frag;
     }
@@ -640,6 +645,7 @@ var LibraryGL = {
     return GL.hashtable("program").add(Module.ctx.createProgram());
   },
 
+  glDeleteProgram_deps: ['$GL'],
   glDeleteProgram: function(program) {
     Module.ctx.deleteProgram(GL.hashtable("program").get(program));
   },
@@ -777,23 +783,42 @@ var LibraryGL = {
 var LibraryGLUT = {
   $GLUT: {
     initTime: null,
-    idleFunc: null,
+    displayFunc: null,
     keyboardFunc: null,
     keyboardUpFunc: null,
     specialFunc: null,
     specialUpFunc: null,
     reshapeFunc: null,
+    motionFunc: null,
     passiveMotionFunc: null,
     mouseFunc: null,
     lastX: 0,
     lastY: 0,
+    buttons: 0,
+    modifiers: 0,
+
+    saveModifiers: function(event) {
+      GLUT.modifiers = 0;
+      if (event['shiftKey'])
+	GLUT.modifiers += 1; /* GLUT_ACTIVE_SHIFT */
+      if (event['ctrlKey'])
+	GLUT.modifiers += 2; /* GLUT_ACTIVE_CTRL */
+      if (event['altKey'])
+	GLUT.modifiers += 4; /* GLUT_ACTIVE_ALT */
+    },
 
     onMousemove: function(event) {
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
-      if (GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
+	event.preventDefault ();
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
-        }
+      } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
+	event.preventDefault ();
+        GLUT.saveModifiers(event);
+        FUNCTION_TABLE[GLUT.motionFunc](GLUT.lastX, GLUT.lastY);
+      }
     },
 
     getSpecialKey: function(keycode) {
@@ -824,14 +849,29 @@ var LibraryGLUT = {
         return key;
     },
 
+    getASCIIKey: function(keycode) {
+	// TODO apply modifiers, etc
+        return keycode;
+    },
+
     onKeydown: function(event) {
       if (GLUT.specialFunc || GLUT.keyboardFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if( GLUT.specialFunc ) FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
+          if( GLUT.specialFunc ) {
+	    event.preventDefault ();
+            GLUT.saveModifiers(event);
+	    FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
+	  }
         }
-        else if( GLUT.keyboardFunc ) {
-          FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        else
+	{
+          key = GLUT.getASCIIKey(event['keyCode']);
+	  if( key !== null && GLUT.keyboardFunc ) {
+	    event.preventDefault ();
+            GLUT.saveModifiers(event);
+            FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+	  }
         }
       }
     },
@@ -840,10 +880,20 @@ var LibraryGLUT = {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if(GLUT.specialFunc) FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
+          if(GLUT.specialUpFunc) {
+	    event.preventDefault ();
+            GLUT.saveModifiers(event);
+	    FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
+	  }
         }
-        else if(GLUT.keyboardUpFunc) {
-          FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+        else
+	{
+          key = GLUT.getASCIIKey(event['keyCode']);
+	  if( key !== null && GLUT.keyboardUpFunc ) {
+	    event.preventDefault ();
+            GLUT.saveModifiers(event);
+            FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+	  }
         }
       }
     },
@@ -851,8 +901,11 @@ var LibraryGLUT = {
     onMouseButtonDown: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
+      GLUT.buttons |= (1 << event['button']);
         
       if(GLUT.mouseFunc){
+	event.preventDefault ();
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
       }
     },
@@ -860,12 +913,17 @@ var LibraryGLUT = {
     onMouseButtonUp: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
+      GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {
+	event.preventDefault ();
+        GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
       }
     },
   },
+
+  glutGetModifiers: function() { return GLUT.modifiers; },
 
   glutInit__deps: ['$GLUT'],
   glutInit: function(argcp, argv) {
@@ -893,32 +951,16 @@ var LibraryGLUT = {
     }
   },
 
-  glutDisplayFunc: function(func) {
-    var RAF = window['setTimeout'];
-    if (window['requestAnimationFrame']) {
-      RAF = window['requestAnimationFrame'];
-    } else if (window['mozRequestAnimationFrame']) {
-      RAF = window['mozRequestAnimationFrame'];
-    } else if (window['webkitRequestAnimationFrame']) {
-      RAF = window['webkitRequestAnimationFrame'];
-    } else if (window['msRequestAnimationFrame']) {
-      RAF = window['msRequestAnimationFrame'];
-    }
-    RAF.apply(window, [function() {
-      if (GLUT.reshapeFunc) {
-        FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
-                                         Module['canvas'].height);
-      }
-      if (GLUT.idleFunc) {
-        FUNCTION_TABLE[GLUT.idleFunc]();
-      }
-      FUNCTION_TABLE[func]();
-      _glutDisplayFunc(func);
-    }]);
+  glutIdleFunc: function(func) {
+    window.setTimeout(FUNCTION_TABLE[func], 0);
   },
 
-  glutIdleFunc: function(func) {
-    GLUT.idleFunc = func;
+  glutTimerFunc: function(msec, func, value) {
+    window.setTimeout(function() { FUNCTION_TABLE[func](value); }, msec);
+  },
+
+  glutDisplayFunc: function(func) {
+    GLUT.displayFunc = func;
   },
   
   glutKeyboardFunc: function(func) {
@@ -941,10 +983,14 @@ var LibraryGLUT = {
     GLUT.reshapeFunc = func;
   },
   
+  glutMotionFunc: function(func) {
+    GLUT.motionFunc = func;
+  },
+
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
-  
+
   glutMouseFunc: function(func) {
     GLUT.mouseFunc = func;
   },
@@ -967,9 +1013,34 @@ var LibraryGLUT = {
   },
 
   glutInitDisplayMode: function(mode) {},
-  glutMainLoop: function() {},
   glutSwapBuffers: function() {},
-  glutPostRedisplay: function() {},
+
+  glutPostRedisplay: function() {
+    if (GLUT.displayFunc) {
+      var RAF = window['setTimeout'];
+      if (window['requestAnimationFrame']) {
+        RAF = window['requestAnimationFrame'];
+      } else if (window['mozRequestAnimationFrame']) {
+        RAF = window['mozRequestAnimationFrame'];
+      } else if (window['webkitRequestAnimationFrame']) {
+        RAF = window['webkitRequestAnimationFrame'];
+      } else if (window['msRequestAnimationFrame']) {
+        RAF = window['msRequestAnimationFrame'];
+      }
+      RAF.apply(window, [FUNCTION_TABLE[GLUT.displayFunc]]);
+    }
+  },
+
+  glutMainLoop__deps: ['$GLUT'],
+  glutMainLoop: function() {
+    if (GLUT.reshapeFunc) {
+      FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
+                                       Module['canvas'].height);
+    }
+    _glutPostRedisplay();
+    throw "Entering GLUT mainloop";
+  },
+
 };
 
 var LibraryXlib = {
