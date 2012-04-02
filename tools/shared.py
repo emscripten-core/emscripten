@@ -12,6 +12,11 @@ EM_CONFIG = os.environ.get('EM_CONFIG')
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+
+SANITY_FILE = os.environ.get('EM_SANITY_FILE')
+if not SANITY_FILE:
+  SANITY_FILE = CONFIG_FILE + '_sanity'
+
 if not os.path.exists(CONFIG_FILE):
   shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
   print >> sys.stderr, '''
@@ -38,13 +43,19 @@ except Exception, e:
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
-# only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
+# only when SANITY_FILE does not exist or is older than EM_CONFIG (so,
 # we re-check sanity when the settings are changed)
 def check_sanity(force=False):
   try:
+    if not SANITY_FILE:
+      if force:
+        print >> sys.stderr, 'FATAL: Set EM_SANITY_FILE environment variable'
+        sys.exit(1)
+      return
+
     if not force:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
-      sanity_file = CONFIG_FILE + '_sanity'
+      sanity_file = SANITY_FILE
       try:
         sanity_mtime = os.stat(sanity_file).st_mtime
         if sanity_mtime > settings_mtime:

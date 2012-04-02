@@ -6983,8 +6983,6 @@ elif 'sanity' in str(sys.argv):
   def restore():
     shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
 
-  SANITY_FILE = CONFIG_FILE + '_sanity'
-
   def wipe():
     try_delete(CONFIG_FILE)
     try_delete(SANITY_FILE)
@@ -7086,7 +7084,7 @@ elif 'sanity' in str(sys.argv):
       SANITY_MESSAGE = 'Emscripten: Running sanity checks'
       SANITY_FAIL_MESSAGE = 'sanity check failed to run'
 
-      # emcc should check sanity if no ${EM_CONFIG}_sanity
+      # emcc should check sanity if no SANITY_FILE exists
       restore()
       time.sleep(0.1)
       assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity
