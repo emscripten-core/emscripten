@@ -840,7 +840,7 @@ m_divisor is 1091269979
 
           int main() {
             uint64_t x = 0, y = 0;
-            for (int i = 0; i < 63; i++) {
+            for (int i = 0; i < 64; i++) {
               x += 1ULL << i;
               y += x;
               x /= 3;
@@ -860,9 +860,9 @@ m_divisor is 1091269979
         '''
         self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
 
-        print 'TODO: i == 64 unsigned'
         print 'TODO: make precise the default, and imprecise in -O3'
-        #1/0.
+        print 'TODO: only include this code when needed'
+        1/0.
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
