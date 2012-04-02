@@ -860,8 +860,37 @@ m_divisor is 1091269979
         '''
         self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
 
+        # Verify that without precision, we do not include the precision code
+        Settings.PRECISE_I64_MATH = 0
+        self.do_run(src, 'unsigned')
+        code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+        assert 'goog.math.Long' not in code and 'jsbn' not in code, 'i64 precise math should not have been included if not asked for'
+
+        # Verify that even if we ask for precision, if it is not needed it is not included
+        Settings.PRECISE_I64_MATH = 1
+        src = '''
+          #include <inttypes.h>
+          #include <stdio.h>
+
+          int main(int argc, char **argv) {
+            uint64_t x = 2125299906845564, y = 1225891506842664;
+            if (argc == 12) {
+              x = x >> 1;
+              y = y >> 1;
+            }
+            x = x & 12ULL;
+            y = y | 12ULL;
+            x = x ^ y;
+            x <<= 2;
+            y >>= 3;
+            printf("*%llu, %llu*\\n", x, y);
+          }
+        '''
+        self.do_run(src, '*4903566027370624, 153236438355333*')
+        code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+        assert 'goog.math.Long' not in code and 'jsbn' not in code, 'i64 precise math should not have been included if not actually used'
+
         print 'TODO: make precise the default, and imprecise in -O3. Remove precise setting in this test and cube2hash'
-        print 'TODO: only include this code when needed'
         #1/0.
 
     def test_cube2hash(self):

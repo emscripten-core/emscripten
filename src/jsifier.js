@@ -38,7 +38,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
     var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
     print(pre);
-    if (PRECISE_I64_MATH) print(read('long.js'));
 
     Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
   }
@@ -1200,6 +1199,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     // This is the main pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
+    if (PRECISE_I64_MATH && preciseI64MathUsed) {
+      print(read('long.js'));
+    } else {
+      print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
+      print('var i64Math = null;');
+    }
     var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
     generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
     if (RUNTIME_TYPE_INFO) {

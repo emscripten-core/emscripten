@@ -1560,6 +1560,8 @@ function isSignedOp(op, variant) {
 }
 
 var legalizedI64s = USE_TYPED_ARRAYS == 2; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
+var preciseI64MathUsed = false; // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
+                                // needed (+,-,*,/,% - we do not need it for bitops)
 
 function processMathop(item) {
   var op = item.op;
@@ -1617,6 +1619,7 @@ function processMathop(item) {
       }
     }
     function i64PreciseOp(type, lastArg) {
+      preciseI64MathUsed = true;
       return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
                      (lastArg ? ',' + lastArg : '') + '),i64Math.result[0])', 'i64Math.result[1]']);
     }

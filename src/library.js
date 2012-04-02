@@ -2507,12 +2507,12 @@ LibraryManager.library = {
           var prefix = '';
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
 #if PRECISE_I64_MATH == 1
-            if (argSize == 8) argText = i64Math.stringify(origArg[0], origArg[1]); else
+            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1]); else
 #endif
             argText = reSign(currArg, 8 * argSize, 1).toString(10);
           } else if (next == 'u'.charCodeAt(0)) {
 #if PRECISE_I64_MATH == 1
-            if (argSize == 8) argText = i64Math.stringify(origArg[0], origArg[1], true); else
+            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
 #endif
             argText = unSign(currArg, 8 * argSize, 1).toString(10);
             currArg = Math.abs(currArg);
