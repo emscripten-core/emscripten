@@ -860,9 +860,21 @@ m_divisor is 1091269979
         '''
         self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
 
-        print 'TODO: make precise the default, and imprecise in -O3'
+        print 'TODO: make precise the default, and imprecise in -O3. Remove precise setting in this test and cube2hash'
         print 'TODO: only include this code when needed'
         1/0.
+
+    def test_cube2hash(self):
+      # A good test of i64 math
+      Settings.PRECISE_I64_MATH = 1
+      self.do_run('', 'Usage: hashstring <seed>',
+                  libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),  
+                  includes=[path_from_root('tests', 'cube2hash')])
+
+      for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
+                           ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
+                           ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
+        self.do_run('', 'hash value: ' + output, [text], no_build=True)
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')

@@ -683,16 +683,14 @@ function parseArbitraryInt(str, bits) {
   return ret;
 }
 
-function parseI64Constant(str) {
-  assert(USE_TYPED_ARRAYS == 2);
-
+function parseI64Constant(str, legalized) {
   if (!isNumber(str)) {
     // This is a variable. Copy it, so we do not modify the original
     return legalizedI64s ? str : makeCopyI64(str);
   }
 
   var parsed = parseArbitraryInt(str, 64);
-  if (legalizedI64s) return parsed;
+  if (legalizedI64s || legalized) return parsed;
   return '[' + parsed[0] + ',' + parsed[1] + ']';
 }
 

@@ -167,23 +167,27 @@ function JSify(data, functionsOnly, givenFunctions) {
         ret[index++] = 0;
       }
       // Add current value(s)
-      var currValue = flatten(values[i]);
+      var currValue = values[i];
       if (USE_TYPED_ARRAYS == 2 && typeData.fields[i] == 'i64') {
         // 'flatten' out the 64-bit value into two 32-bit halves
-        ret[index++] = currValue>>>0;
+        var parts = parseI64Constant(currValue, true);
+        ret[index++] = parts[0];
         ret[index++] = 0;
         ret[index++] = 0;
         ret[index++] = 0;
-        ret[index++] = Math.floor(currValue/4294967296);
+        ret[index++] = parts[1];
         ret[index++] = 0;
         ret[index++] = 0;
         ret[index++] = 0;
-      } else if (typeof currValue == 'object') {
-        for (var j = 0; j < currValue.length; j++) {
-          ret[index++] = currValue[j];
-        }
       } else {
-        ret[index++] = currValue;
+        currValue = flatten(currValue);
+        if (typeof currValue == 'object') {
+          for (var j = 0; j < currValue.length; j++) {
+            ret[index++] = currValue[j];
+          }
+        } else {
+          ret[index++] = currValue;
+        }
       }
       i += 1;
     }
