@@ -1,9 +1,7 @@
 //"use strict";
 
 // FIXME:
-//  * glGetUniformLocation should return -1 when the value is not valid, not null
 //  * glUniform1fi should be glUniform1iv
-//  * glGetAttribLocation should be -1 when not valid
 //  * single-underscore deps need double underscore (and, just auto-add them all)
 //  * glGetProgramInfoLog and *shader* should be essentially identical
 //  * glGetIntegerv set to bool etc needs fixing
@@ -396,8 +394,9 @@ var LibraryGL = {
   glGetUniformLocation_deps: ['$GL'],
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
-    return GL.hashtable("uniform").add(
-             Module.ctx.getUniformLocation(GL.hashtable("program").get(program), name));
+    var loc = Module.ctx.getUniformLocation(GL.hashtable("program").get(program), name);
+    if (!loc) return -1;
+    return GL.hashtable("uniform").add(loc);
   },
 
   glUniform1f: function(Location, v0) {
