@@ -6859,7 +6859,7 @@ elif 'browser' in str(sys.argv):
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js', '-s', 'CATCH_EXIT_CODE=1'],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
