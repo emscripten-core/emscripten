@@ -1,15 +1,7 @@
 //"use strict";
 
 // FIXME:
-//  * glGetUniformLocation should return -1 when the value is not valid, not null
-//  * glUniform1fi should be glUniform1iv
-//  * glGetAttribLocation lacks return value (and should be -1 when not valid)
 //  * single-underscore deps need double underscore (and, just auto-add them all)
-//  * glGetProgramInfoLog and *shader* should be essentially identical
-//  * glGetIntegerv set to bool etc needs fixing
-//  * glVertexAttribPointer - the last param can be an offset or in gles, a raw pointer to clientside data. need some way to
-//                            warn about that since it silently fails in WebGL (it's a huge offset into the last bound buffer, zeros)
-
 
 var LibraryGL = {
   $GL: {
@@ -81,7 +73,7 @@ var LibraryGL = {
         {{{ makeSetValue('p', '0', 'result', 'i32') }}};
         break;
       case "boolean":
-        {{{ makeSetValue('p', '0', 'result ? 1 : 0', 'i32') }}};
+        {{{ makeSetValue('p', '0', 'result ? 1 : 0', 'i8') }}};
         break;
       case "string":
         throw 'Native code calling glGetIntegerv(' + name_ + ') on a name which returns a string!';
@@ -350,8 +342,7 @@ var LibraryGL = {
   },
 
   glBufferData: function(target, size, data, usage) {
-    var floatArray = new Float32Array(TypedArray_copy(data, size));
-    Module.ctx.bufferData(target, floatArray, usage);
+    Module.ctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
   },
 
   glBufferSubData: function(target, offset, size, data) {
@@ -406,8 +397,9 @@ var LibraryGL = {
   glGetUniformLocation__deps: ['$GL'],
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
-    return GL.hashtable("uniform").add(
-             Module.ctx.getUniformLocation(GL.hashtable("program").get(program), name));
+    var loc = Module.ctx.getUniformLocation(GL.hashtable("program").get(program), name);
+    if (!loc) return -1;
+    return GL.hashtable("uniform").add(loc);
   },
 
   glUniform1f__deps: ['$GL'],
@@ -489,37 +481,6 @@ var LibraryGL = {
     Module.ctx.uniform4fv(Location, value);
   },
 
-  glUniform1fi__deps: ['$GL'],
-  glUniform1fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform1fi(Location, value);
-  },
-
-  glUniform2fi__deps: ['$GL'],
-  glUniform2fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    count *= 2;
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform2fi(Location, value);
-  },
-
-  glUniform3fi__deps: ['$GL'],
-  glUniform3fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    count *= 3;
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform3fi(Location, value);
-  },
-
-  glUniform4fi__deps: ['$GL'],
-  glUniform4fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    count *= 4;
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform4fi(Location, value);
-  },
-
   glUniformMatrix2fv__deps: ['$GL'],
   glUniformMatrix2fv: function(Location, count, transpose, value) {
     Location = GL.hashtable("uniform").get(Location);
@@ -573,7 +534,7 @@ var LibraryGL = {
   glGetAttribLocation: function(program, name) {
     program = GL.hashtable("program").get(program);
     name = Pointer_stringify(name);
-    Module.ctx.getAttribLocation(program, name);
+    return Module.ctx.getAttribLocation(program, name);
   },
 
   glCreateShader__deps: ['$GL'],
@@ -644,7 +605,11 @@ var LibraryGL = {
   glGetShaderInfoLog__deps: ['$GL'],
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
     var log = Module.ctx.getShaderInfoLog(GL.hashtable("shader").get(shader));
-    log.slice(0, maxLength - 1);
+    // Work around a bug in Chromium which causes getShaderInfoLog to return null
+    if (!log) {
+      log = "";
+    }
+    log = log.substr(0, maxLength - 1);
     writeStringToMemory(log, infoLog);
     if (length) {
       {{{ makeSetValue('length', '0', 'log.length', 'i32') }}}
@@ -791,6 +756,7 @@ var LibraryGL = {
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError finish flush'],
  [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture'],
+ [2, 'pixelStorei'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage'],
  [5, 'vertexAttrib4f'],
@@ -802,11 +768,8 @@ var LibraryGL = {
   var stub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
   names.split(' ').forEach(function(name_) {
     var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
-#if ASSERTIONS
     assert(!(cName in LibraryGL), "Cannot reimplement the existing function " + cName);
-#endif
     LibraryGL[cName] = eval(stub.replace('NAME', name_));
-    //print(cName + ': ' + LibraryGL[cName]);
   });
 });
 
@@ -1047,7 +1010,49 @@ var LibraryGLUT = {
     try {
       var ctx = Module.canvas.getContext('experimental-webgl');
       if (!ctx) throw 'Could not create canvas :(';
+#if GL_DEBUG
+      var wrapper = {};
+      wrapper.objectMap = new WeakMap();
+      wrapper.objectCounter = 1;
+      for (var prop in ctx) {
+        (function(prop) {
+          switch (typeof ctx[prop]) {
+            case 'function': {
+              wrapper[prop] = function() {
+                var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
+                  if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
+                  return arg;
+                });
+                Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');
+                var ret = ctx[prop].apply(ctx, arguments);
+                var printRet = ret;
+                if (typeof ret == 'object') {
+                  wrapper.objectMap[ret] = wrapper.objectCounter++;
+                  printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
+                }
+                Module.printErr('[     gl:' + prop + ':return:' + printRet + ']');
+                return ret;
+              }
+              break;
+            }
+            case 'number': case 'string': {
+              wrapper.__defineGetter__(prop, function() {
+                //Module.printErr('[gl_g:' + prop + ':' + ctx[prop] + ']');
+                return ctx[prop];
+              });
+              wrapper.__defineSetter__(prop, function(value) {
+                Module.printErr('[gl_s:' + prop + ':' + value + ']');
+                ctx[prop] = value;
+              });
+              break;
+            }
+          }
+        })(prop);
+      }
+      Module.ctx = wrapper;
+#else
       Module.ctx = ctx;
+#endif
       // Set the background of the canvas to black, because glut gives us a
       // window which has a black background by default.
       Module.canvas.style.backgroundColor = "black";

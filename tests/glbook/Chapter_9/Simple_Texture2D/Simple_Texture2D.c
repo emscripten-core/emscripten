@@ -32,6 +32,8 @@ typedef struct
    // Texture handle
    GLuint textureId;
 
+   GLuint vertexObject, indexObject;
+
 } UserData;
 
 ///
@@ -111,7 +113,27 @@ int Init ( ESContext *esContext )
    // Load the texture
    userData->textureId = CreateSimpleTexture2D ();
 
-   glClearColor ( 0.0f, 0.0f, 0.0f, 0.0f );
+   // Setup the vertex data
+   GLfloat vVertices[] = { -0.5,  0.5, 0.0,  // Position 0
+                            0.0,  0.0,       // TexCoord 0
+                           -0.5, -0.5, 0.0,  // Position 1
+                            0.0,  1.0,       // TexCoord 1
+                            0.5, -0.5, 0.0,  // Position 2
+                            1.0,  1.0,       // TexCoord 2
+                            0.5,  0.5, 0.0,  // Position 3
+                            1.0,  0.0        // TexCoord 3
+                         };
+   GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
+
+   glGenBuffers(1, &userData->vertexObject);
+   glBindBuffer(GL_ARRAY_BUFFER, userData->vertexObject );
+   glBufferData(GL_ARRAY_BUFFER, sizeof(vVertices), vVertices, GL_STATIC_DRAW );
+
+   glGenBuffers(1, &userData->indexObject);
+   glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, userData->indexObject );
+   glBufferData ( GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW );
+
+   glClearColor ( 0.0f, 0.0f, 0.0f, 1.0f );
    return GL_TRUE;
 }
 
@@ -119,34 +141,26 @@ int Init ( ESContext *esContext )
 // Draw a triangle using the shader pair created in Init()
 //
 void Draw ( ESContext *esContext )
-{
-   UserData *userData = esContext->userData;
-   GLfloat vVertices[] = { -0.5f,  0.5f, 0.0f,  // Position 0
-                            0.0f,  0.0f,        // TexCoord 0 
-                           -0.5f, -0.5f, 0.0f,  // Position 1
-                            0.0f,  1.0f,        // TexCoord 1
-                            0.5f, -0.5f, 0.0f,  // Position 2
-                            1.0f,  1.0f,        // TexCoord 2
-                            0.5f,  0.5f, 0.0f,  // Position 3
-                            1.0f,  0.0f         // TexCoord 3
-                         };
-   GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
-      
+{      
    // Set the viewport
    glViewport ( 0, 0, esContext->width, esContext->height );
    
    // Clear the color buffer
    glClear ( GL_COLOR_BUFFER_BIT );
 
+   UserData *userData = esContext->userData;
+
    // Use the program object
    glUseProgram ( userData->programObject );
 
    // Load the vertex position
-   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, 
-                           GL_FALSE, 5 * sizeof(GLfloat), vVertices );
+   glBindBuffer (GL_ARRAY_BUFFER, userData->vertexObject );
+   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT,
+                           GL_FALSE, 5 * 4, 0 );
    // Load the texture coordinate
    glVertexAttribPointer ( userData->texCoordLoc, 2, GL_FLOAT,
-                           GL_FALSE, 5 * sizeof(GLfloat), &vVertices[3] );
+                           GL_FALSE, 5 * 4, 
+                           3 * 4 );
 
    glEnableVertexAttribArray ( userData->positionLoc );
    glEnableVertexAttribArray ( userData->texCoordLoc );
@@ -158,8 +172,8 @@ void Draw ( ESContext *esContext )
    // Set the sampler texture unit to 0
    glUniform1i ( userData->samplerLoc, 0 );
 
-   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
-
+   glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, userData->indexObject );
+   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
 }
 
 ///

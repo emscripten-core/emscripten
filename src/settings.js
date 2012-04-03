@@ -101,6 +101,7 @@ var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 var LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js)
+var GL_DEBUG = 0; // Print out all calls into WebGL
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
                                     // compiler generates code for it, maybe because of stdlibc++ stuff),

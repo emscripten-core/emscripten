@@ -6878,8 +6878,9 @@ elif 'browser' in str(sys.argv):
 
     def test_glbook(self):
       programs = self.get_library('glbook', [
-        os.path.join('Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc'),
-        os.path.join('Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.bc')
+        os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
+        os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.bc'),
+        os.path.join('Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.bc'),
       ], configure=None)
       for program in programs:
         print program
