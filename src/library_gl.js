@@ -2,8 +2,6 @@
 
 // FIXME:
 //  * single-underscore deps need double underscore (and, just auto-add them all)
-//  * glGetProgramInfoLog and *shader* should be essentially identical
-//  * glGetIntegerv set to bool etc needs fixing
 
 var LibraryGL = {
   $GL: {
@@ -581,7 +579,11 @@ var LibraryGL = {
   glGetShaderInfoLog_deps: ['$GL'],
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
     var log = Module.ctx.getShaderInfoLog(GL.hashtable("shader").get(shader));
-    log.slice(0, maxLength - 1);
+    // Work around a bug in Chromium which causes getShaderInfoLog to return null
+    if (!log) {
+      log = "";
+    }
+    log = log.substr(0, maxLength - 1);
     writeStringToMemory(log, infoLog);
     if (length) {
       {{{ makeSetValue('length', '0', 'log.length', 'i32') }}}
