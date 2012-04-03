@@ -34,8 +34,9 @@ typedef struct
    int      numIndices;
    GLfloat *vertices;
    GLfloat *normals;
-   GLuint *indices;
+   GLushort *indices;
 
+   GLuint vertPosObject, vertNormalObject, indicesObject;
 } UserData;
 
 ///
@@ -143,7 +144,20 @@ int Init ( ESContext *esContext )
    userData->numIndices = esGenSphere ( 20, 0.75f, &userData->vertices, &userData->normals,
                                         NULL, &userData->indices );
 
-   glClearColor ( 0.0f, 0.0f, 0.0f, 0.0f );
+   // Generate the VBOs
+   glGenBuffers(1, &userData->vertPosObject);
+   glBindBuffer(GL_ARRAY_BUFFER, userData->vertPosObject);
+   glBufferData(GL_ARRAY_BUFFER, 21 * 21 * 4 * 3, userData->vertices, GL_STATIC_DRAW );
+
+   glGenBuffers(1, &userData->vertNormalObject);
+   glBindBuffer(GL_ARRAY_BUFFER, userData->vertNormalObject );
+   glBufferData(GL_ARRAY_BUFFER, 21 * 21 * 4 * 3, userData->normals, GL_STATIC_DRAW );
+
+   glGenBuffers(1, &userData->indicesObject);
+   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, userData->indicesObject );
+   glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * userData->numIndices, userData->indices, GL_STATIC_DRAW );
+
+   glClearColor ( 0.0f, 0.0f, 0.0f, 1.0f );
    return GL_TRUE;
 }
 
@@ -167,11 +181,13 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex position
-   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, 
-                           GL_FALSE, 0, userData->vertices );
+   glBindBuffer ( GL_ARRAY_BUFFER, userData->vertPosObject );
+   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT,
+                            GL_FALSE, 0, 0 );
    // Load the normal
+   glBindBuffer ( GL_ARRAY_BUFFER, userData->vertNormalObject );
    glVertexAttribPointer ( userData->normalLoc, 3, GL_FLOAT,
-                           GL_FALSE, 0, userData->normals );
+                            GL_FALSE, 0, 0 );
 
    glEnableVertexAttribArray ( userData->positionLoc );
    glEnableVertexAttribArray ( userData->normalLoc );
@@ -183,8 +199,9 @@ void Draw ( ESContext *esContext )
    // Set the sampler texture unit to 0
    glUniform1i ( userData->samplerLoc, 0 );
 
-   glDrawElements ( GL_TRIANGLES, userData->numIndices, 
-                    GL_UNSIGNED_INT, userData->indices );
+   glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, userData->indicesObject );
+   glDrawElements ( GL_TRIANGLES, userData->numIndices,
+                     GL_UNSIGNED_SHORT, 0 );
 }
 
 ///

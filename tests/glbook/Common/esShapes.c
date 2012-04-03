@@ -52,11 +52,11 @@
 ///         if it is not NULL ) as a GL_TRIANGLE_STRIP
 //
 int ESUTIL_API esGenSphere ( int numSlices, float radius, GLfloat **vertices, GLfloat **normals, 
-                             GLfloat **texCoords, GLuint **indices )
+                             GLfloat **texCoords, GLushort **indices )
 {
    int i;
    int j;
-   int numParallels = numSlices / 2;
+   int numParallels = numSlices;
    int numVertices = ( numParallels + 1 ) * ( numSlices + 1 );
    int numIndices = numParallels * numSlices * 6;
    float angleStep = (2.0f * ES_PI) / ((float) numSlices);
@@ -72,7 +72,7 @@ int ESUTIL_API esGenSphere ( int numSlices, float radius, GLfloat **vertices, GL
       *texCoords = malloc ( sizeof(GLfloat) * 2 * numVertices );
 
    if ( indices != NULL )
-      *indices = malloc ( sizeof(GLuint) * numIndices );
+      *indices = malloc ( sizeof(GLushort) * numIndices );
 
    for ( i = 0; i < numParallels + 1; i++ )
    {
@@ -108,7 +108,7 @@ int ESUTIL_API esGenSphere ( int numSlices, float radius, GLfloat **vertices, GL
    // Generate the indices
    if ( indices != NULL )
    {
-      GLuint *indexBuf = (*indices);
+      GLushort *indexBuf = (*indices);
       for ( i = 0; i < numParallels ; i++ ) 
       {
          for ( j = 0; j < numSlices; j++ )

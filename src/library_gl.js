@@ -1021,6 +1021,7 @@ var LibraryGLUT = {
               wrapper[prop] = function() {
                 var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
                   if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
+                  if (arg.subarray) return '{' + arg + '|' + arg.length /*+ '|' + Array.prototype.slice.call(arg).toString().replace(/,/g, ', ')*/ + '}';
                   return arg;
                 });
                 Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');

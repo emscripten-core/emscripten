@@ -25,8 +25,8 @@ default: all
 all: ./Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc \
      ./Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.bc \
      ./Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.bc \
-#     ./Chapter_9/MipMap2D/CH09_MipMap2D.bc \
-#     ./Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.bc \
+     ./Chapter_9/MipMap2D/CH09_MipMap2D.bc \
+     ./Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.bc \
 #     ./Chapter_9/TextureWrap/CH09_TextureWrap.bc \
 #     ./Chapter_10/MultiTexture/CH10_MultiTexture.bc \
 #     ./Chapter_11/Multisample/CH11_Multisample.bc \
