@@ -39,7 +39,7 @@ var LibraryGL = {
                 return i;
               }
             }
-            return null;
+            return 0;
           },
           remove: function(id) {
             if( id == 0 ) return;
