@@ -93,7 +93,7 @@ var LibraryGL = {
                    result instanceof Int32Array ||
                    result instanceof Array) {
           for (var i = 0; i < result.length; ++i) {
-            {{{ makeSetValue('p', 'i', 'result[i]', 'i32') }}};
+            {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}};
           }
         } else if (result instanceof WebGLBuffer) {
           {{{ makeSetValue('p', '0', 'GL.hashtable("buffer").id(result)', 'i32') }}};
@@ -135,7 +135,7 @@ var LibraryGL = {
                    result instanceof Int32Array ||
                    result instanceof Array) {
           for (var i = 0; i < result.length; ++i) {
-            {{{ makeSetValue('p', 'i', 'result[i]', 'float') }}};
+            {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}};
           }
         } else if (result instanceof WebGLBuffer) {
           {{{ makeSetValue('p', '0', 'GL.hashtable("buffer").id(result)', 'float') }}};
@@ -177,7 +177,7 @@ var LibraryGL = {
                    result instanceof Int32Array ||
                    result instanceof Array) {
           for (var i = 0; i < result.length; ++i) {
-            {{{ makeSetValue('p', 'i', 'result[i] != 0', 'i8') }}};
+            {{{ makeSetValue('p', 'i*4', 'result[i] != 0', 'i8') }}};
           }
         } else if (result instanceof WebGLBuffer ||
                    result instanceof WebGLProgram ||
@@ -200,7 +200,7 @@ var LibraryGL = {
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = GL.hashtable("texture").add(Module.ctx.createTexture());
-      {{{ makeSetValue('textures', 'i', 'id', 'i32') }}};
+      {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
   },
 
@@ -333,7 +333,7 @@ var LibraryGL = {
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = GL.hashtable("buffer").add(Module.ctx.createBuffer());
-      {{{ makeSetValue('buffers', 'i', 'id', 'i32') }}};
+      {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
   },
 
@@ -368,13 +368,13 @@ var LibraryGL = {
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = GL.hashtable("renderbuffer").add(Module.ctx.createRenderbuffer());
-      {{{ makeSetValue('renderbuffers', 'i', 'id', 'i32') }}};
+      {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
     }
   },
 
   glDeleteRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
-      var id = {{{ makeGetValue('renderbuffers', 'i', 'i32') }}};
+      var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
       Module.ctx.deleteRenderbuffer(GL.hashtable("renderbuffer").get(id));
       GL.hashtable("renderbuffer").remove(id);
     }
@@ -573,7 +573,7 @@ var LibraryGL = {
     }
     {{{ makeSetValue('count', '0', 'len', 'i32') }}};
     for (var i = 0; i < len; ++i) {
-      {{{ makeSetValue('shaders', 'i', 'GL.hashtable("shader").get(result[i])', 'i32') }}};
+      {{{ makeSetValue('shaders', 'i*4', 'GL.hashtable("shader").get(result[i])', 'i32') }}};
     }
   },
 
@@ -659,7 +659,7 @@ var LibraryGL = {
   glGetShaderPrecisionFormat: function(shaderType, precisionType, range, precision) {
     var result = Module.ctx.getShaderPrecisionFormat(shaderType, precisionType);
     {{{ makeSetValue('range', '0', 'result.rangeMin', 'i32') }}};
-    {{{ makeSetValue('range', '1', 'result.rangeMax', 'i32') }}};
+    {{{ makeSetValue('range', '4', 'result.rangeMax', 'i32') }}};
     {{{ makeSetValue('precision', '0', 'result.precision', 'i32') }}};
   },
 
@@ -716,14 +716,14 @@ var LibraryGL = {
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
       var fb = GL.hashtable("framebuffer").add(Module.ctx.createFramebuffer());
-      {{{ makeSetValue('ids', 'i', 'fb', 'i32') }}};
+      {{{ makeSetValue('ids', 'i*4', 'fb', 'i32') }}};
     }
   },
 
   glDeleteFramebuffers_deps: ['$GL'],
   glDeleteFramebuffers: function(n, framebuffers) {
     for (var i = 0; i < n; ++i) {
-      var fb = GL.hashtable("framebuffer").get({{{ makeGetValue('framebuffers', 'i', 'i32' ) }}});
+      var fb = GL.hashtable("framebuffer").get({{{ makeGetValue('framebuffers', 'i*4', 'i32' ) }}});
       Module.ctx.deleteFramebuffer(fb);
     }
   },
