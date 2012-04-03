@@ -75,7 +75,7 @@ var LibraryGL = {
         {{{ makeSetValue('p', '0', 'result', 'i32') }}};
         break;
       case "boolean":
-        {{{ makeSetValue('p', '0', 'result ? 1 : 0', 'i32') }}};
+        {{{ makeSetValue('p', '0', 'result ? 1 : 0', 'i8') }}};
         break;
       case "string":
         throw 'Native code calling glGetIntegerv(' + name_ + ') on a name which returns a string!';
