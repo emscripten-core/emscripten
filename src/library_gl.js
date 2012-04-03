@@ -10,7 +10,6 @@
 //  * glVertexAttribPointer - the last param can be an offset or in gles, a raw pointer to clientside data. need some way to
 //                            warn about that since it silently fails in WebGL (it's a huge offset into the last bound buffer, zeros)
 
-
 var LibraryGL = {
   $GL: {
     hashtable: function(name) {
@@ -346,8 +345,7 @@ var LibraryGL = {
   },
 
   glBufferData: function(target, size, data, usage) {
-    var floatArray = new Float32Array(TypedArray_copy(data, size));
-    Module.ctx.bufferData(target, floatArray, usage);
+    Module.ctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
   },
 
   glBufferSubData: function(target, offset, size, data) {
@@ -546,7 +544,7 @@ var LibraryGL = {
   glGetAttribLocation: function(program, name) {
     program = GL.hashtable("program").get(program);
     name = Pointer_stringify(name);
-    Module.ctx.getAttribLocation(program, name);
+    return Module.ctx.getAttribLocation(program, name);
   },
 
   glCreateShader_deps: ['$GL'],
@@ -761,6 +759,7 @@ var LibraryGL = {
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError finish flush'],
  [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture'],
+ [2, 'pixelStorei'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage'],
  [5, 'vertexAttrib4f'],
@@ -772,11 +771,8 @@ var LibraryGL = {
   var stub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
   names.split(' ').forEach(function(name_) {
     var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
-#if ASSERTIONS
     assert(!(cName in LibraryGL), "Cannot reimplement the existing function " + cName);
-#endif
     LibraryGL[cName] = eval(stub.replace('NAME', name_));
-    //print(cName + ': ' + LibraryGL[cName]);
   });
 });
 
@@ -1000,7 +996,49 @@ var LibraryGLUT = {
     try {
       var ctx = Module.canvas.getContext('experimental-webgl');
       if (!ctx) throw 'Could not create canvas :(';
+#if GL_DEBUG
+      var wrapper = {};
+      wrapper.objectMap = new WeakMap();
+      wrapper.objectCounter = 1;
+      for (var prop in ctx) {
+        (function(prop) {
+          switch (typeof ctx[prop]) {
+            case 'function': {
+              wrapper[prop] = function() {
+                var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
+                  if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
+                  return arg;
+                });
+                Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');
+                var ret = ctx[prop].apply(ctx, arguments);
+                var printRet = ret;
+                if (typeof ret == 'object') {
+                  wrapper.objectMap[ret] = wrapper.objectCounter++;
+                  printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
+                }
+                Module.printErr('[     gl:' + prop + ':return:' + printRet + ']');
+                return ret;
+              }
+              break;
+            }
+            case 'number': case 'string': {
+              wrapper.__defineGetter__(prop, function() {
+                //Module.printErr('[gl_g:' + prop + ':' + ctx[prop] + ']');
+                return ctx[prop];
+              });
+              wrapper.__defineSetter__(prop, function(value) {
+                Module.printErr('[gl_s:' + prop + ':' + value + ']');
+                ctx[prop] = value;
+              });
+              break;
+            }
+          }
+        })(prop);
+      }
+      Module.ctx = wrapper;
+#else
       Module.ctx = ctx;
+#endif
       // Set the background of the canvas to black, because glut gives us a
       // window which has a black background by default.
       Module.canvas.style.backgroundColor = "black";
