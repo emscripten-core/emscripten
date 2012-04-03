@@ -1,7 +1,6 @@
 //"use strict";
 
 // FIXME:
-//  * glUniform1fi should be glUniform1iv
 //  * single-underscore deps need double underscore (and, just auto-add them all)
 //  * glGetProgramInfoLog and *shader* should be essentially identical
 //  * glGetIntegerv set to bool etc needs fixing
@@ -464,33 +463,6 @@ var LibraryGL = {
     count *= 4;
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
     Module.ctx.uniform4fv(Location, value);
-  },
-
-  glUniform1fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform1fi(Location, value);
-  },
-
-  glUniform2fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    count *= 2;
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform2fi(Location, value);
-  },
-
-  glUniform3fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    count *= 3;
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform3fi(Location, value);
-  },
-
-  glUniform4fi: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
-    count *= 4;
-    value = new Uint32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform4fi(Location, value);
   },
 
   glUniformMatrix2fv: function(Location, count, transpose, value) {
