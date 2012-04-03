@@ -3,12 +3,10 @@
 // FIXME:
 //  * glGetUniformLocation should return -1 when the value is not valid, not null
 //  * glUniform1fi should be glUniform1iv
-//  * glGetAttribLocation lacks return value (and should be -1 when not valid)
+//  * glGetAttribLocation should be -1 when not valid
 //  * single-underscore deps need double underscore (and, just auto-add them all)
 //  * glGetProgramInfoLog and *shader* should be essentially identical
 //  * glGetIntegerv set to bool etc needs fixing
-//  * glVertexAttribPointer - the last param can be an offset or in gles, a raw pointer to clientside data. need some way to
-//                            warn about that since it silently fails in WebGL (it's a huge offset into the last bound buffer, zeros)
 
 var LibraryGL = {
   $GL: {
