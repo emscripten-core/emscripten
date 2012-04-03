@@ -6598,7 +6598,7 @@ elif 'browser' in str(sys.argv):
                   total += Math.abs(expected[y*img.width*4 + x*4 + 2] - actual[y*img.width*4 + x*4 + 2]);
                 }
               }
-              var wrong = Math.ceil(total / (img.width*img.height*3));
+              var wrong = Math.floor(10 * total / (img.width*img.height*3)); // units are 10 * [0-255 pixel diff]
 
               xhr = new XMLHttpRequest();
               xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
