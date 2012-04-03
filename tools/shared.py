@@ -277,7 +277,7 @@ def read_pgo_data(filename):
   '''
   signs_lines = []
   overflows_lines = []
-  
+
   for line in open(filename, 'r'):
     try:
       if line.rstrip() == '': continue
@@ -740,7 +740,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-    args = ['java', '-jar', CLOSURE_COMPILER,
+    args = ['java',
+            '-Xmx1024m',
+            '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--formatting', 'PRETTY_PRINT',
             #'--variable_map_output_file', filename + '.vars',
@@ -799,7 +801,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     elif ord(b[0]) == 222 and ord(b[1]) == 192 and ord(b[2]) == 23 and ord(b[3]) == 11:
       b = open(filename, 'r').read(24)
       return b[20] == 'B' and b[21] == 'C'
-    
+
     return False
 
 # Permanent cache for dlmalloc and stdlibc++
