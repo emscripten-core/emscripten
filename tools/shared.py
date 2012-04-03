@@ -184,7 +184,7 @@ else:
 if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
   SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
 
-WINDOWS = 'win' in sys.platform
+WINDOWS = sys.platform.startswith ('win')
 
 # Temp file utilities
 
