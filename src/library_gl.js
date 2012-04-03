@@ -179,7 +179,7 @@ var LibraryGL = {
                    result instanceof Int32Array ||
                    result instanceof Array) {
           for (var i = 0; i < result.length; ++i) {
-            {{{ makeSetValue('p', 'i*4', 'result[i] != 0', 'i8') }}};
+            {{{ makeSetValue('p', 'i', 'result[i] != 0', 'i8') }}};
           }
         } else if (result instanceof WebGLBuffer ||
                    result instanceof WebGLProgram ||
