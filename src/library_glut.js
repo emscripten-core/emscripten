@@ -16,6 +16,12 @@ var LibraryGLUT = {
     buttons: 0,
     modifiers: 0,
 
+    savePosition: function(event) {
+      /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
+      GLUT.lastX = event['clientX'] - Module['canvas'].offsetLeft;
+      GLUT.lastY = event['clientY'] - Module['canvas'].offsetTop;
+    },
+
     saveModifiers: function(event) {
       GLUT.modifiers = 0;
       if (event['shiftKey'])
@@ -27,8 +33,7 @@ var LibraryGLUT = {
     },
 
     onMousemove: function(event) {
-      GLUT.lastX = event['clientX'];
-      GLUT.lastY = event['clientY'];
+      GLUT.savePosition(event);
       if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
@@ -149,8 +154,7 @@ var LibraryGLUT = {
     },
 
     onMouseButtonDown: function(event){
-      GLUT.lastX = event['clientX'];
-      GLUT.lastY = event['clientY'];
+      GLUT.savePosition(event);
       GLUT.buttons |= (1 << event['button']);
 
       if(GLUT.mouseFunc){
@@ -161,8 +165,7 @@ var LibraryGLUT = {
     },
 
     onMouseButtonUp: function(event){
-      GLUT.lastX = event['clientX'];
-      GLUT.lastY = event['clientY'];
+      GLUT.savePosition(event);
       GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {
