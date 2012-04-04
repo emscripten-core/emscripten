@@ -1044,8 +1044,9 @@ try:
   if js_transform:
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
+    posix = True if not shared.WINDOWS else False
     if DEBUG: print >> sys.stderr, 'emcc: applying transform: %s' % js_transform
-    execute(shlex.split(js_transform) + [os.path.abspath(final)])
+    execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
