@@ -6567,7 +6567,9 @@ elif 'browser' in str(sys.argv):
       basename = os.path.basename(expected)
       shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
       open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
-        Module.postRun = function() {
+        function doReftest() {
+          if (doReftest.done) return;
+          doReftest.done = true;
           var img = new Image();
           img.onload = function() {
             assert(img.width == Module.canvas.width);
@@ -6608,6 +6610,8 @@ elif 'browser' in str(sys.argv):
           }
           img.src = '%s';
         };
+        Module.postRun = doReftest();
+        setTimeout(doReftest, 0); // if run() throws an exception, this will kick in
 ''' % basename)
 
     def test_compression(self):
@@ -6859,7 +6863,7 @@ elif 'browser' in str(sys.argv):
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js', '-s', 'CATCH_EXIT_CODE=1'],
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
                      stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output

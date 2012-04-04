@@ -293,14 +293,14 @@ var LibraryGLUT = {
     }
   },
 
-  glutMainLoop__deps: ['$GLUT', 'exit', 'glutPostRedisplay'],
+  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: function() {
     if (GLUT.reshapeFunc) {
       FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
                                        Module['canvas'].height);
     }
     _glutPostRedisplay();
-    _exit(0); // GLUT mainloop should never return
+    throw 'GLUT mainloop should never return';
   },
 
 };
