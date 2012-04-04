@@ -36,18 +36,22 @@ var LibraryGL = {
           return true;
         return false;
       }
-      var i = source.indexOf(token);
-      if (i < 0) {
-        return false;
-      }
-      if (i > 0 && isIdentChar(source[i - 1])) {
-        return false;
-      }
-      i += token.length;
-      if (i < source.length - 1 && isIdentChar(source[i + 1])) {
-        return false;
-      }
-      return true;
+      var i = -1;
+      do {
+        i = source.indexOf(token, i + 1);
+        if (i < 0) {
+          break;
+        }
+        if (i > 0 && isIdentChar(source[i - 1])) {
+          continue;
+        }
+        i += token.length;
+        if (i < source.length - 1 && isIdentChar(source[i + 1])) {
+          continue;
+        }
+        return true;
+      } while (true);
+      return false;
     },
   },
 
