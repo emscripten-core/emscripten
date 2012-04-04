@@ -542,7 +542,7 @@ try:
 
     if i > 0:
       prev = newargs[i-1]
-      if prev == '-MT': continue # ignore this gcc-style argument
+      if prev in ['-MT', '-install_name']: continue # ignore this gcc-style argument
 
     if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
