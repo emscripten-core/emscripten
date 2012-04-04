@@ -74,6 +74,8 @@ var LibraryGLUT = {
     },
 
     getASCIIKey: function(event) {
+      if (event['ctrlKey'] || event['altKey'] || event['metaKey']) return null;
+
       var keycode = event['keyCode'];
 
       /* The exact list is soooo hard to find in a canonical place! */
