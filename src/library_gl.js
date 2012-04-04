@@ -15,7 +15,15 @@ var LibraryGL = {
     uniforms: {},
     uniformCounter: 1,
     shaders: {},
-    shaderCounter: 1
+    shaderCounter: 1,
+
+    // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
+    scan: function(table, object) {
+      for (var item in table) {
+        if (table[item] == object) return item;
+      }
+      return 0;
+    },
   },
 
   glGetString: function(name_) {
@@ -53,15 +61,15 @@ var LibraryGL = {
             {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}};
           }
         } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'GL.buffers[result]', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.buffers, result)', 'i32') }}};
         } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'GL.programs[result]', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.programs, result)', 'i32') }}};
         } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'GL.framebuffers[result]', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.framebuffers, result)', 'i32') }}};
         } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'GL.renderbuffers[result]', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.renderbuffers, result)', 'i32') }}};
         } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'GL.textures[result]', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.textures, result)', 'i32') }}};
         } else {
           throw 'Unknown object returned from WebGL getParameter';
         }
@@ -95,15 +103,15 @@ var LibraryGL = {
             {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}};
           }
         } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'GL.buffers[result]', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.buffers, result)', 'float') }}};
         } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'GL.programs[result]', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.programs, result)', 'float') }}};
         } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'GL.framebuffers[result]', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.framebuffers, result)', 'float') }}};
         } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'gl.renderbuffers[result]', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.renderbuffers, result)', 'float') }}};
         } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'gl.textures[result]', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.scan(GL.textures, result)', 'float') }}};
         } else {
           throw 'Unknown object returned from WebGL getParameter';
         }
