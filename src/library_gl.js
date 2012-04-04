@@ -2,51 +2,20 @@
 
 var LibraryGL = {
   $GL: {
-    hashtable: function(name) {
-      if (!this._hashtables) {
-        this._hashtables = {};
-      }
-      if (!(name in this._hashtables)) {
-        this._hashtables[name] = {
-          table: {},
-          counter: 1,
-          add: function(obj) {
-            var id = this.counter++;
-            this.table[id] = obj;
-            return id;
-          },
-          get: function(id) {
-            if( id == 0 ) return null;
-#if ASSERTIONS
-            assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
-#endif
-            return this.table[id];
-          },
-          id: function(obj) {
-            for (var i = 1; i < this.counter; ++i) {
-              if (obj == this.table[i]) {
-                return i;
-              }
-            }
-            return 0;
-          },
-          remove: function(id) {
-            if( id == 0 ) return;
-#if ASSERTIONS
-            assert(id < this.counter, "Invalid id " + id + " for the hashtable " + name);
-#endif
-            delete this.table[id];
-          },
-          lookup: function(v) {
-            for (var i = 1; i < this.counter; i++)
-              if (this.table[i] == v)
-                return i;
-            return 0;
-          },
-        };
-      }
-      return this._hashtables[name];
-    },
+    buffers: {},
+    bufferCounter: 1,
+    programs: {},
+    programCounter: 1,
+    framebuffers: {},
+    framebufferCounter: 1,
+    renderbuffer: {},
+    renderbufferCounter: 1,
+    textures: {},
+    textureCounter: 1,
+    uniforms: {},
+    uniformCounter: 1,
+    shaders: {},
+    shaderCounter: 1
   },
 
   glGetString: function(name_) {
@@ -84,15 +53,15 @@ var LibraryGL = {
             {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}};
           }
         } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'GL.hashtable("buffer").id(result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.buffers[result]', 'i32') }}};
         } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'GL.hashtable("program").id(result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.programs[result]', 'i32') }}};
         } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'GL.hashtable("framebuffer").id(result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.framebuffers[result]', 'i32') }}};
         } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'gl.hashtable("renderbuffer").id(result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.renderbuffers[result]', 'i32') }}};
         } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'gl.hashtable("texture").id(result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'GL.textures[result]', 'i32') }}};
         } else {
           throw 'Unknown object returned from WebGL getParameter';
         }
@@ -126,15 +95,15 @@ var LibraryGL = {
             {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}};
           }
         } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'GL.hashtable("buffer").id(result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.buffers[result]', 'float') }}};
         } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'GL.hashtable("program").id(result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.programs[result]', 'float') }}};
         } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'GL.hashtable("framebuffer").id(result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'GL.framebuffers[result]', 'float') }}};
         } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'gl.hashtable("renderbuffer").id(result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'gl.renderbuffers[result]', 'float') }}};
         } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'gl.hashtable("texture").id(result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'gl.textures[result]', 'float') }}};
         } else {
           throw 'Unknown object returned from WebGL getParameter';
         }
@@ -186,7 +155,8 @@ var LibraryGL = {
 
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = GL.hashtable("texture").add(Module.ctx.createTexture());
+      var id = GL.textureCounter++;
+      GL.textures[id] = Module.ctx.createTexture();
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -194,8 +164,8 @@ var LibraryGL = {
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
-      Module.ctx.deleteTexture(GL.hashtable("texture").get(id));
-      GL.hashtable("texture").remove(id);
+      Module.ctx.deleteTexture(GL.textures[id]);
+      GL.textures[id] = null;
     }
   },
 
@@ -296,7 +266,7 @@ var LibraryGL = {
   },
 
   glBindTexture: function(target, texture) {
-    Module.ctx.bindTexture(target, GL.hashtable("texture").get(texture));
+    Module.ctx.bindTexture(target, GL.textures[texture]);
   },
 
   glGetTexParameterfv: function(target, pname, params) {
@@ -308,7 +278,7 @@ var LibraryGL = {
   },
 
   glIsTexture: function(texture) {
-    var fb = GL.hashtable("texture").get(texture);
+    var fb = GL.textures[texture];
     if (typeof(fb) == 'undefined') {
       return false;
     }
@@ -317,7 +287,8 @@ var LibraryGL = {
 
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.hashtable("buffer").add(Module.ctx.createBuffer());
+      var id = GL.bufferCounter++;
+      GL.buffers[id] = Module.ctx.createBuffer();
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -325,8 +296,8 @@ var LibraryGL = {
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
-      Module.ctx.deleteBuffer(GL.hashtable("buffer").get(id));
-      GL.hashtable("buffer").remove(id);
+      Module.ctx.deleteBuffer(GL.buffers[id]);
+      GL.buffers[id] = null;
     }
   },
 
@@ -340,7 +311,7 @@ var LibraryGL = {
   },
 
   glIsBuffer: function(buffer) {
-    var fb = GL.hashtable("buffer").get(buffer);
+    var fb = GL.buffers[buffer];
     if (typeof(fb) == 'undefined') {
       return false;
     }
@@ -349,7 +320,8 @@ var LibraryGL = {
 
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.hashtable("renderbuffer").add(Module.ctx.createRenderbuffer());
+      var id = GL.renderbufferCounter++;
+      GL.renderbuffers[id] = Module.ctx.createRenderbuffer();
       {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -357,13 +329,13 @@ var LibraryGL = {
   glDeleteRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
-      Module.ctx.deleteRenderbuffer(GL.hashtable("renderbuffer").get(id));
-      GL.hashtable("renderbuffer").remove(id);
+      Module.ctx.deleteRenderbuffer(GL.renderbuffers[id]);
+      GL.renderbuffers[id];
     }
   },
 
   glBindRenderbuffer: function(target, renderbuffer) {
-    Module.ctx.bindRenderbuffer(target, GL.hashtable("renderbuffer").get(renderbuffer));
+    Module.ctx.bindRenderbuffer(target, GL.renderbuffers[renderbuffer]);
   },
 
   glGetRenderbufferParameteriv: function(target, pname, params) {
@@ -371,7 +343,7 @@ var LibraryGL = {
   },
 
   glIsRenderbuffer: function(renderbuffer) {
-    var fb = GL.hashtable("renderbuffer").get(renderbuffer);
+    var fb = GL.renderbuffers[renderbuffer];
     if (typeof(fb) == 'undefined') {
       return false;
     }
@@ -380,101 +352,103 @@ var LibraryGL = {
 
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
-    var loc = Module.ctx.getUniformLocation(GL.hashtable("program").get(program), name);
+    var loc = Module.ctx.getUniformLocation(GL.programs[program], name);
     if (!loc) return -1;
-    return GL.hashtable("uniform").add(loc);
+    var id = GL.uniformCounter++;
+    GL.uniforms[id] = loc;
+    return id;
   },
 
-  glUniform1f: function(Location, v0) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform1f(Location, v0);
+  glUniform1f: function(location, v0) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform1f(location, v0);
   },
 
-  glUniform2f: function(Location, v0, v1) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform2f(Location, v0, v1);
+  glUniform2f: function(location, v0, v1) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform2f(location, v0, v1);
   },
 
-  glUniform3f: function(Location, v0, v1, v2) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform3f(Location, v0, v1, v2);
+  glUniform3f: function(location, v0, v1, v2) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform3f(location, v0, v1, v2);
   },
 
-  glUniform4f: function(Location, v0, v1, v2, v3) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform4f(Location, v0, v1, v2, v3);
+  glUniform4f: function(location, v0, v1, v2, v3) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform4f(location, v0, v1, v2, v3);
   },
 
-  glUniform1i: function(Location, v0) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform1i(Location, v0);
+  glUniform1i: function(location, v0) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform1i(location, v0);
   },
 
-  glUniform2i: function(Location, v0, v1) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform2i(Location, v0, v1);
+  glUniform2i: function(location, v0, v1) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform2i(location, v0, v1);
   },
 
-  glUniform3i: function(Location, v0, v1, v2) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform3i(Location, v0, v1, v2);
+  glUniform3i: function(location, v0, v1, v2) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform3i(location, v0, v1, v2);
   },
 
-  glUniform4i: function(Location, v0, v1, v2, v3) {
-    Location = GL.hashtable("uniform").get(Location);
-    Module.ctx.uniform4i(Location, v0, v1, v2, v3);
+  glUniform4i: function(location, v0, v1, v2, v3) {
+    location = GL.uniforms[location];
+    Module.ctx.uniform4i(location, v0, v1, v2, v3);
   },
 
-  glUniform1fv: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
+  glUniform1fv: function(location, count, value) {
+    location = GL.uniforms[location];
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform1fv(Location, value);
+    Module.ctx.uniform1fv(location, value);
   },
 
-  glUniform2fv: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
+  glUniform2fv: function(location, count, value) {
+    location = GL.uniforms[location];
     count *= 2;
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform2fv(Location, value);
+    Module.ctx.uniform2fv(location, value);
   },
 
-  glUniform3fv: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
+  glUniform3fv: function(location, count, value) {
+    location = GL.uniforms[location];
     count *= 3;
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform3fv(Location, value);
+    Module.ctx.uniform3fv(location, value);
   },
 
-  glUniform4fv: function(Location, count, value) {
-    Location = GL.hashtable("uniform").get(Location);
+  glUniform4fv: function(location, count, value) {
+    location = GL.uniforms[location];
     count *= 4;
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniform4fv(Location, value);
+    Module.ctx.uniform4fv(location, value);
   },
 
-  glUniformMatrix2fv: function(Location, count, transpose, value) {
-    Location = GL.hashtable("uniform").get(Location);
+  glUniformMatrix2fv: function(location, count, transpose, value) {
+    location = GL.uniforms[location];
     count *= 4;
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniformMatrix2fv(Location, transpose, value);
+    Module.ctx.uniformMatrix2fv(location, transpose, value);
   },
 
-  glUniformMatrix3fv: function(Location, count, transpose, value) {
-    Location = GL.hashtable("uniform").get(Location);
+  glUniformMatrix3fv: function(location, count, transpose, value) {
+    location = GL.uniforms[location];
     count *= 9;
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniformMatrix3fv(Location, transpose, value);
+    Module.ctx.uniformMatrix3fv(location, transpose, value);
   },
 
-  glUniformMatrix4fv: function(Location, count, transpose, value) {
-    Location = GL.hashtable("uniform").get(Location);
+  glUniformMatrix4fv: function(location, count, transpose, value) {
+    location = GL.uniforms[location];
     count *= 16;
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
-    Module.ctx.uniformMatrix4fv(Location, transpose, value);
+    Module.ctx.uniformMatrix4fv(location, transpose, value);
   },
 
   glBindBuffer: function(target, buffer) {
-    Module.ctx.bindBuffer(target, GL.hashtable("buffer").get(buffer));
+    Module.ctx.bindBuffer(target, GL.buffers[buffer]);
   },
 
   glVertexAttrib1fv: function(index, v) {
@@ -498,34 +472,36 @@ var LibraryGL = {
   },
 
   glGetAttribLocation: function(program, name) {
-    program = GL.hashtable("program").get(program);
+    program = GL.programs[program];
     name = Pointer_stringify(name);
     return Module.ctx.getAttribLocation(program, name);
   },
 
   glCreateShader: function(shaderType) {
-    var shader = Module.ctx.createShader(shaderType);
-    return GL.hashtable("shader").add(shader);
+    var id = GL.shaderCounter++;
+    GL.shaders[id] = Module.ctx.createShader(shaderType);
+    return id;
   },
 
   glDeleteShader: function(shader) {
-    Module.ctx.deleteShader(GL.hashtable("shader").get(shader));
+    Module.ctx.deleteShader(GL.shaders[shader]);
+    GL.shaders[shader] = null;
   },
 
   glDetachShader: function(program, shader) {
-    Module.ctx.detachShader(GL.hashtable("program").get(program),
-                            GL.hashtable("shader").get(shader));
+    Module.ctx.detachShader(GL.programs[program],
+                            GL.shaders[shader]);
   },
 
   glGetAttachedShaders: function(program, maxCount, count, shaders) {
-    var result = Module.ctx.getAttachedShaders(GL.hashtable("program").get(program));
+    var result = Module.ctx.getAttachedShaders(GL.programs[program]);
     var len = result.length;
     if (len > maxCount) {
       len = maxCount;
     }
     {{{ makeSetValue('count', '0', 'len', 'i32') }}};
     for (var i = 0; i < len; ++i) {
-      {{{ makeSetValue('shaders', 'i*4', 'GL.hashtable("shader").get(result[i])', 'i32') }}};
+      {{{ makeSetValue('shaders', 'i*4', 'GL.shaders[result[i]]', 'i32') }}};
     }
   },
 
@@ -545,11 +521,11 @@ var LibraryGL = {
       }
       source += frag;
     }
-    Module.ctx.shaderSource(GL.hashtable("shader").get(shader), source);
+    Module.ctx.shaderSource(GL.shaders[shader], source);
   },
 
   glGetShaderSource: function(shader, bufsize, length, source) {
-    var result = Module.ctx.getShaderSource(GL.hashtable("shader").get(shader));
+    var result = Module.ctx.getShaderSource(GL.shaders[shader]);
     result.slice(0, bufsize - 1);
     writeStringToMemory(result, source);
     if (length) {
@@ -558,11 +534,11 @@ var LibraryGL = {
   },
 
   glCompileShader: function(shader) {
-    Module.ctx.compileShader(GL.hashtable("shader").get(shader));
+    Module.ctx.compileShader(GL.shaders[shader]);
   },
 
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
-    var log = Module.ctx.getShaderInfoLog(GL.hashtable("shader").get(shader));
+    var log = Module.ctx.getShaderInfoLog(GL.shaders[shader]);
     // Work around a bug in Chromium which causes getShaderInfoLog to return null
     if (!log) {
       log = "";
@@ -575,15 +551,15 @@ var LibraryGL = {
   },
 
   glGetShaderiv : function(shader, pname, p) {
-    {{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.hashtable("shader").get(shader), pname)', 'i32') }}};
+    {{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
   },
 
   glGetProgramiv : function(program, pname, p) {
-    {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.hashtable("program").get(program), pname)', 'i32') }}};
+    {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.programs[program], pname)', 'i32') }}};
   },
 
   glIsShader: function(shader) {
-    var fb = GL.hashtable("shader").get(shader);
+    var fb = GL.shaders[shader];
     if (typeof(fb) == 'undefined') {
       return false;
     }
@@ -591,16 +567,19 @@ var LibraryGL = {
   },
 
   glCreateProgram: function() {
-    return GL.hashtable("program").add(Module.ctx.createProgram());
+    var id = GL.programCounter++;
+    GL.programs[id] = Module.ctx.createProgram();
+    return id;
   },
 
   glDeleteProgram: function(program) {
-    Module.ctx.deleteProgram(GL.hashtable("program").get(program));
+    Module.ctx.deleteProgram(GL.programs[program]);
+    GL.programs[program] = null;
   },
 
   glAttachShader: function(program, shader) {
-    Module.ctx.attachShader(GL.hashtable("program").get(program),
-                            GL.hashtable("shader").get(shader));
+    Module.ctx.attachShader(GL.programs[program],
+                            GL.shaders[shader]);
   },
 
   glGetShaderPrecisionFormat: function(shaderType, precisionType, range, precision) {
@@ -611,11 +590,11 @@ var LibraryGL = {
   },
 
   glLinkProgram: function(program) {
-    Module.ctx.linkProgram(GL.hashtable("program").get(program));
+    Module.ctx.linkProgram(GL.programs[program]);
   },
 
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
-    var log = Module.ctx.getProgramInfoLog(GL.hashtable("program").get(program));
+    var log = Module.ctx.getProgramInfoLog(GL.programs[program]);
     // Work around a bug in Chromium which causes getProgramInfoLog to return null
     if (!log) {
       log = "";
@@ -628,15 +607,15 @@ var LibraryGL = {
   },
 
   glUseProgram: function(program) {
-    Module.ctx.useProgram(GL.hashtable("program").get(program));
+    Module.ctx.useProgram(GL.programs[program]);
   },
 
   glValidateProgram: function(program) {
-    Module.ctx.validateProgram(GL.hashtable("program").get(program));
+    Module.ctx.validateProgram(GL.programs[program]);
   },
 
   glIsProgram: function(program) {
-    var fb = GL.hashtable("program").get(program);
+    var fb = GL.programs[program];
     if (typeof(fb) == 'undefined') {
       return false;
     }
@@ -645,35 +624,37 @@ var LibraryGL = {
 
   glBindAttribLocation: function(program, index, name) {
     name = Pointer_stringify(name);
-    Module.ctx.bindAttribLocation(GL.hashtable("program").get(program), index, name);
+    Module.ctx.bindAttribLocation(GL.programs[program], index, name);
   },
 
   glBindFramebuffer: function(target, framebuffer) {
-    Module.ctx.bindFramebuffer(target, GL.hashtable("framebuffer").get(framebuffer));
+    Module.ctx.bindFramebuffer(target, GL.framebuffers[framebuffer]);
   },
 
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
-      var fb = GL.hashtable("framebuffer").add(Module.ctx.createFramebuffer());
-      {{{ makeSetValue('ids', 'i*4', 'fb', 'i32') }}};
+      var id = GL.framebufferCounter++;
+      GL.framebuffers[id] = Module.ctx.createFramebuffer();
+      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
   },
 
   glDeleteFramebuffers: function(n, framebuffers) {
     for (var i = 0; i < n; ++i) {
-      var fb = GL.hashtable("framebuffer").get({{{ makeGetValue('framebuffers', 'i*4', 'i32' ) }}});
-      Module.ctx.deleteFramebuffer(fb);
+      var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
+      Module.ctx.deleteFramebuffer(GL.framebuffers[id]);
+      GL.framebuffers[id] = null;
     }
   },
 
   glFramebufferRenderbuffer: function(target, attachment, renderbuffertarget, renderbuffer) {
     Module.ctx.framebufferRenderbuffer(target, attachment, renderbuffertarget,
-                                       GL.hashtable("renderbuffer").get(renderbuffer));
+                                       GL.renderbuffers[renderbuffer]);
   },
 
   glFramebufferTexture2D: function(target, attachment, textarget, texture, level) {
     Module.ctx.framebufferTexture2D(target, attachment, textarget,
-                                    GL.hashtable("texture").get(texture), level);
+                                    GL.textures[texture], level);
   },
 
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
@@ -682,7 +663,7 @@ var LibraryGL = {
   },
 
   glIsFramebuffer: function(framebuffer) {
-    var fb = GL.hashtable("framebuffer").get(framebuffer);
+    var fb = GL.framebuffers[framebuffer];
     if (typeof(fb) == 'undefined') {
       return false;
     }
