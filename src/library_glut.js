@@ -15,6 +15,8 @@ var LibraryGLUT = {
     lastY: 0,
     buttons: 0,
     modifiers: 0,
+    initWindowWidth: 256,
+    initWindowHeight: 256,
 
     savePosition: function(event) {
       /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
@@ -189,15 +191,32 @@ var LibraryGLUT = {
   },
 
   glutInitWindowSize: function(width, height) {
-    Module['canvas'].width = width;
-    Module['canvas'].height = height;
+    Module['canvas'].width  = GLUT.initWindowWidth  = width;
+    Module['canvas'].height = GLUT.initWindowHeight = height;
   },
 
   glutGet: function(type) {
     switch (type) {
+      case 100: /* GLUT_WINDOW_X */
+	return 0; /* TODO */
+      case 101: /* GLUT_WINDOW_Y */
+	return 0; /* TODO */
+      case 102: /* GLUT_WINDOW_WIDTH */
+	return Module['canvas'].width;
+      case 103: /* GLUT_WINDOW_HEIGHT */
+	return Module['canvas'].height;
+      case 500: /* GLUT_INIT_WINDOW_X */
+	return 0; /* TODO */
+      case 501: /* GLUT_INIT_WINDOW_Y */
+	return 0; /* TODO */
+      case 502: /* GLUT_INIT_WINDOW_WIDTH */
+	return GLUT.initWindowWidth;
+      case 503: /* GLUT_INIT_WINDOW_HEIGHT */
+	return GLUT.initWindowHeight;
       case 700: /* GLUT_ELAPSED_TIME */
         var now = Date.now();
         return now - GLUT.initTime;
+
       default:
         throw "glutGet(" + type + ") not implemented yet";
     }
@@ -308,6 +327,16 @@ var LibraryGLUT = {
     return 1;
   },
 
+  glutReshapeWindow: function(width, height) {
+    Module['canvas'].width  = width;
+    Module['canvas'].height = height;
+    if (GLUT.reshapeFunc) {
+      FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
+    }
+  },
+
+  glutPositionWindow: function(x, y) {/* TODO */},
+
   glutInitDisplayMode: function(mode) {},
   glutSwapBuffers: function() {},
 
@@ -344,10 +373,7 @@ var LibraryGLUT = {
       window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
     });
 
-    if (GLUT.reshapeFunc) {
-      FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
-                                       Module['canvas'].height);
-    }
+    _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
     _glutPostRedisplay();
     throw 'GLUT mainloop should never return';
   },
