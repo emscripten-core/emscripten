@@ -74,11 +74,11 @@ var LibraryGLUT = {
       /* The exact list is soooo hard to find in a canonical place! */
 
       if (48 <= keycode && keycode <= 57)
-        return keycode; // numeric
+        return keycode; // numeric  TODO handle shift?
       if (65 <= keycode && keycode <= 90)
 	return event['shiftKey'] ? keycode : keycode + 32;
       if (106 <= keycode && keycode <= 111)
-	return keycode - 106 + 42; // *,+-./
+	return keycode - 106 + 42; // *,+-./  TODO handle shift?
 
       switch (keycode) {
         case 27: // escape
