@@ -186,11 +186,6 @@ var LibraryGLUT = {
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
-    window.addEventListener("keydown", GLUT.onKeydown, true);
-    window.addEventListener("keyup", GLUT.onKeyup, true);
-    window.addEventListener("mousemove", GLUT.onMousemove, true);
-    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
-    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
   },
 
   glutInitWindowSize: function(width, height) {
@@ -332,8 +327,23 @@ var LibraryGLUT = {
     }
   },
 
-  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutMainLoop__deps: ['$GLUT', 'atexit', 'glutPostRedisplay'],
   glutMainLoop: function() {
+
+    window.addEventListener("keydown", GLUT.onKeydown, true);
+    window.addEventListener("keyup", GLUT.onKeyup, true);
+    window.addEventListener("mousemove", GLUT.onMousemove, true);
+    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
+    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+
+    _atexit(function() {
+      window.removeEventListener("keydown", GLUT.onKeydown, true);
+      window.removeEventListener("keyup", GLUT.onKeyup, true);
+      window.removeEventListener("mousemove", GLUT.onMousemove, true);
+      window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
+      window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+    });
+
     if (GLUT.reshapeFunc) {
       FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
                                        Module['canvas'].height);
