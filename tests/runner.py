@@ -6337,6 +6337,35 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile'], stdout=PIPE, stderr=STDOUT).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_local_link(self):
+      # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
+      # doesn't contain bitcode. However, when we see that we should look for a bitcode file for that
+      # library in the -L paths and system/lib
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        extern void printey();
+        int main() {
+          printey();
+          return 0;
+        }
+      ''')
+
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'subdir'));
+      except:
+        pass
+      open(os.path.join(self.get_dir(), 'subdir', 'libfile.so'), 'w').write('this is not llvm bitcode!')
+
+      open(os.path.join(self.get_dir(), 'libfile.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib\\n");
+        }
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'libfile.cpp'), '-o', 'libfile.so']).communicate()
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.']).communicate()
+      self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_embed_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
