@@ -16,7 +16,6 @@ var LibraryGLUT = {
     buttons: 0,
     modifiers: 0,
 
-    saveModifiers__deps: ['$GLUT'],
     saveModifiers: function(event) {
       GLUT.modifiers = 0;
       if (event['shiftKey'])
@@ -27,7 +26,6 @@ var LibraryGLUT = {
         GLUT.modifiers += 4; /* GLUT_ACTIVE_ALT */
     },
 
-    onMousemove__deps: ['$GLUT'],
     onMousemove: function(event) {
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
@@ -75,7 +73,6 @@ var LibraryGLUT = {
       return keycode;
     },
 
-    onKeydown__deps: ['$GLUT'],
     onKeydown: function(event) {
       if (GLUT.specialFunc || GLUT.keyboardFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
@@ -98,7 +95,6 @@ var LibraryGLUT = {
       }
     },
 
-    onKeyup__deps: ['$GLUT'],
     onKeyup: function(event) {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
@@ -121,7 +117,6 @@ var LibraryGLUT = {
       }
     },
 
-    onMouseButtonDown__deps: ['$GLUT'],
     onMouseButtonDown: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
@@ -134,7 +129,6 @@ var LibraryGLUT = {
       }
     },
 
-    onMouseButtonUp__deps: ['$GLUT'],
     onMouseButtonUp: function(event){
       GLUT.lastX = event['clientX'];
       GLUT.lastY = event['clientY'];
@@ -148,10 +142,8 @@ var LibraryGLUT = {
     },
   },
 
-  glutGetModifiers__deps: ['$GLUT'],
   glutGetModifiers: function() { return GLUT.modifiers; },
 
-  glutInit__deps: ['$GLUT'],
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
@@ -167,7 +159,6 @@ var LibraryGLUT = {
     Module['canvas'].height = height;
   },
 
-  glutGet__deps: ['$GLUT'],
   glutGet: function(type) {
     switch (type) {
       case 700: /* GLUT_ELAPSED_TIME */
@@ -186,47 +177,38 @@ var LibraryGLUT = {
     window.setTimeout(function() { FUNCTION_TABLE[func](value); }, msec);
   },
 
-  glutDisplayFunc__deps: ['$GLUT'],
   glutDisplayFunc: function(func) {
     GLUT.displayFunc = func;
   },
 
-  glutKeyboardFunc__deps: ['$GLUT'],
   glutKeyboardFunc: function(func) {
     GLUT.keyboardFunc = func;
   },
 
-  glutKeyboardUpFunc__deps: ['$GLUT'],
   glutKeyboardUpFunc: function(func) {
     GLUT.keyboardUpFunc = func;
   },
 
-  glutSpecialFunc__deps: ['$GLUT'],
   glutSpecialFunc: function(func) {
     GLUT.specialFunc = func;
   },
 
-  glutSpecialUpFunc__deps: ['$GLUT'],
   glutSpecialUpFunc: function(func) {
     GLUT.specialUpFunc = func;
   },
 
-  glutReshapeFunc__deps: ['$GLUT'],
   glutReshapeFunc: function(func) {
     GLUT.reshapeFunc = func;
   },
 
-  glutMotionFunc__deps: ['$GLUT'],
   glutMotionFunc: function(func) {
     GLUT.motionFunc = func;
   },
 
-  glutPassiveMotionFunc__deps: ['$GLUT'],
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
 
-  glutMouseFunc__deps: ['$GLUT'],
   glutMouseFunc: function(func) {
     GLUT.mouseFunc = func;
   },
@@ -294,7 +276,6 @@ var LibraryGLUT = {
   glutInitDisplayMode: function(mode) {},
   glutSwapBuffers: function() {},
 
-  glutPostRedisplay__deps: ['$GLUT'],
   glutPostRedisplay: function() {
     if (GLUT.displayFunc) {
       var RAF = window['setTimeout'];
@@ -323,5 +304,6 @@ var LibraryGLUT = {
 
 };
 
+autoAddDeps(LibraryGLUT, '$GLUT');
 mergeInto(LibraryManager.library, LibraryGLUT);
 

@@ -6087,3 +6087,12 @@ LibraryManager.library = {
   }
 };
 
+function autoAddDeps(object, name) {
+  name = [name];
+  for (var item in object) {
+    if (item.substr(-6) != '__deps' && !object[item + '__deps']) {
+      object[item + '__deps'] = name;
+    }
+  }
+}
+
