@@ -253,6 +253,7 @@ var LibraryGLUT = {
       var ctx = Module.canvas.getContext('experimental-webgl');
       if (!ctx) throw 'Could not create canvas :(';
 #if GL_DEBUG
+      // Useful to debug native webgl apps: var Module = { printErr: function(x) { console.log(x) } };
       var wrapper = {};
       wrapper.objectMap = new WeakMap();
       wrapper.objectCounter = 1;
@@ -263,7 +264,12 @@ var LibraryGLUT = {
               wrapper[prop] = function() {
                 var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
                   if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
-                  if (arg.subarray) return '{' + arg + '|' + arg.length /*+ '|' + Array.prototype.slice.call(arg).toString().replace(/,/g, ', ')*/ + '}';
+                  if (arg.byteLength) {
+                    var ret = '{' + arg.byteLength + ':';
+                    var arr = Array.prototype.slice.call(new Uint8Array(arg.buffer), 0, 40);
+                    ret += arr.toString().replace(/,/g, ', ') + '}';
+                    return ret;
+                  }
                   return arg;
                 });
                 Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');

@@ -34,6 +34,8 @@ typedef struct
    // Texture handle
    GLuint textureId;
 
+   GLuint vertexObject, indexObject;
+
 } UserData;
 
 ///
@@ -87,6 +89,9 @@ GLuint CreateTexture2D( )
    pixels = GenCheckImage( width, height, 64 );
    if ( pixels == NULL )
       return 0;
+
+   // Use tightly packed data
+   glPixelStorei ( GL_UNPACK_ALIGNMENT, 1 );
 
    // Generate a texture object
    glGenTextures ( 1, &textureId );
@@ -152,7 +157,28 @@ int Init ( ESContext *esContext )
    // Load the texture
    userData->textureId = CreateTexture2D ();
 
-   glClearColor ( 0.0f, 0.0f, 0.0f, 0.0f );
+   // Setup the vertex data
+   GLfloat vVertices[] = { -0.3,  0.3, 0.0, 1.0,  // Position 0
+                           -1.0,  -1.0,           // TexCoord 0
+                           -0.3, -0.3, 0.0, 1.0,  // Position 1
+                           -1.0,  2.0,            // TexCoord 1
+                            0.3, -0.3, 0.0, 1.0,  // Position 2
+                            2.0,  2.0,            // TexCoord 2
+                            0.3,  0.3, 0.0, 1.0,  // Position 3
+                            2.0,  -1.0            // TexCoord 3
+                         };
+   GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
+
+   glGenBuffers(1, &userData->vertexObject);
+   glBindBuffer ( GL_ARRAY_BUFFER, userData->vertexObject );
+   glBufferData ( GL_ARRAY_BUFFER, 6 * 4 * 4, vVertices, GL_STATIC_DRAW );
+
+   glGenBuffers(1, &userData->indexObject);
+   glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, userData->indexObject );
+   glBufferData ( GL_ELEMENT_ARRAY_BUFFER, 6 * 2, indices, GL_STATIC_DRAW );
+
+   glClearColor ( 0.0, 0.0, 0.0, 1.0 );
+
    return GL_TRUE;
 }
 
@@ -162,17 +188,7 @@ int Init ( ESContext *esContext )
 void Draw ( ESContext *esContext )
 {
    UserData *userData = esContext->userData;
-   GLfloat vVertices[] = { -0.3f,  0.3f, 0.0f, 1.0f,  // Position 0
-                           -1.0f,  -1.0f,              // TexCoord 0 
-                           -0.3f, -0.3f, 0.0f, 1.0f, // Position 1
-                           -1.0f,  2.0f,              // TexCoord 1
-                            0.3f, -0.3f, 0.0f, 1.0f, // Position 2
-                            2.0f,  2.0f,              // TexCoord 2
-                            0.3f,  0.3f, 0.0f, 1.0f,  // Position 3
-                            2.0f,  -1.0f               // TexCoord 3
-                         };
-   GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
-      
+
    // Set the viewport
    glViewport ( 0, 0, esContext->width, esContext->height );
    
@@ -183,11 +199,12 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex position
+   glBindBuffer ( GL_ARRAY_BUFFER, userData->vertexObject );
    glVertexAttribPointer ( userData->positionLoc, 4, GL_FLOAT, 
-                           GL_FALSE, 6 * sizeof(GLfloat), vVertices );
+                           GL_FALSE, 6 * sizeof(GLfloat), 0 );
    // Load the texture coordinate
    glVertexAttribPointer ( userData->texCoordLoc, 2, GL_FLOAT,
-                           GL_FALSE, 6 * sizeof(GLfloat), &vVertices[4] );
+                           GL_FALSE, 6 * sizeof(GLfloat), 4 * sizeof(GLfloat) );
 
    glEnableVertexAttribArray ( userData->positionLoc );
    glEnableVertexAttribArray ( userData->texCoordLoc );
@@ -203,19 +220,20 @@ void Draw ( ESContext *esContext )
    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
    glUniform1f ( userData->offsetLoc, -0.7f );   
-   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
+   glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, userData->indexObject );
+   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
 
    // Draw quad with clamp to edge wrap mode
    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
    glUniform1f ( userData->offsetLoc, 0.0f );
-   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
+   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
 
    // Draw quad with mirrored repeat
    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT );
    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT );
    glUniform1f ( userData->offsetLoc, 0.7f );
-   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
+   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
 
 }
 
@@ -243,7 +261,7 @@ int main ( int argc, char *argv[] )
    esInitContext ( &esContext );
    esContext.userData = &userData;
 
-   esCreateWindow ( &esContext, "MipMap 2D", 640, 480, ES_WINDOW_RGB );
+   esCreateWindow ( &esContext, "MipMap 2D", 320, 240, ES_WINDOW_RGB );
 
    if ( !Init ( &esContext ) )
       return 0;

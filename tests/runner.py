@@ -6601,8 +6601,8 @@ elif 'browser' in str(sys.argv):
           doReftest.done = true;
           var img = new Image();
           img.onload = function() {
-            assert(img.width == Module.canvas.width);
-            assert(img.height == Module.canvas.height);
+            assert(img.width == Module.canvas.width, 'Invalid width: ' + Module.canvas.width + ', should be ' + img.width);
+            assert(img.height == Module.canvas.height, 'Invalid height: ' + Module.canvas.height + ', should be ' + img.height);
 
             var canvas = document.createElement('canvas');
             canvas.width = img.width;
@@ -6915,6 +6915,7 @@ elif 'browser' in str(sys.argv):
         os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.bc'),
         os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.bc'),
         os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.bc'),
+        os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.bc'),
       ], configure=None)
       for program in programs:
         print program
