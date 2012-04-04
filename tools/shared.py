@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex
+import shutil, time, os, sys, stat, json, tempfile, copy
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -11,10 +11,13 @@ def path_from_root(*pathelems):
 EM_CONFIG = os.environ.get('EM_CONFIG')
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
-CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-if not os.path.exists(CONFIG_FILE):
-  shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
-  print >> sys.stderr, '''
+if '\n' in EM_CONFIG:
+  CONFIG_FILE = None
+else:
+  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  if not os.path.exists(CONFIG_FILE):
+    shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
+    print >> sys.stderr, '''
 ==============================================================================
 Welcome to Emscripten!
 
@@ -28,9 +31,9 @@ make sure LLVM_ROOT and NODE_JS are correct.
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
 ''' % (EM_CONFIG, CONFIG_FILE)
-  sys.exit(0)
+    sys.exit(0)
 try:
-  exec(open(CONFIG_FILE, 'r').read())
+  exec(open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG)
 except Exception, e:
   print >> sys.stderr, 'Error in evaluating %s (at %s): %s' % (EM_CONFIG, CONFIG_FILE, str(e))
   sys.exit(1)
@@ -43,6 +46,8 @@ except Exception, e:
 def check_sanity(force=False):
   try:
     if not force:
+      if not CONFIG_FILE:
+        return # config stored directly in EM_CONFIG => skip sanity checks
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
       try:
@@ -181,8 +186,11 @@ else:
 #if 'strict' not in str(SPIDERMONKEY_ENGINE): # XXX temporarily disable strict mode until we sort out some stuff
 #  SPIDERMONKEY_ENGINE += ['-e', "options('strict')"] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
 
-if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
-  SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+try:
+  if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+except NameError:
+  pass
 
 WINDOWS = 'win' in sys.platform
 
@@ -226,6 +234,8 @@ class TempFiles:
 def check_engine(engine):
   # TODO: we call this several times, perhaps cache the results?
   try:
+    if not CONFIG_FILE:
+      return True # config stored directly in EM_CONFIG => skip engine check
     return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
   except Exception, e:
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
@@ -473,8 +483,15 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def link(files, target):
     try_delete(target)
-    output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target], stdout=PIPE).communicate()[0]
+    # Make sure that llvm-stub ends up in the target directory.
+    stub = os.path.join(os.path.dirname(target), 'stub') + ('.exe' if sys.platform == 'win32' else '')
+    output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target, '-o', stub], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+    # It might be that llvm-stub was read-only, in which case we make the copy
+    # writable so that it can later be deleted without any problems.  (It would
+    # be better if the stub was made writable in llvm-ld.cpp instead.)
+    if os.path.exists(stub):
+      os.chmod(stub, stat.S_IWRITE)
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
@@ -806,7 +823,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
-  dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  dirname = os.environ.get('EM_CACHE')
+  if not dirname:
+    dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
   @staticmethod
   def erase():
