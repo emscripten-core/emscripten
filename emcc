@@ -554,6 +554,16 @@ try:
           # this should be bitcode, make sure it is valid
           if arg.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg):
             input_files.append(arg)
+          elif arg.endswith(STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES):
+            # if it's not, and it's a library, just add it to libs to find later
+            l = unsuffixed_basename(arg)
+            for prefix in LIB_PREFIXES:
+              if not prefix: continue
+              if l.startswith(prefix):
+                l = l[len(prefix):]
+                break;
+            libs.append(l)
+            newargs[i] = ''
           else:
             print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
       else:
@@ -564,6 +574,7 @@ try:
     elif arg.startswith('-l'):
       libs.append(arg[2:])
       newargs[i] = ''
+
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   # Find library files
