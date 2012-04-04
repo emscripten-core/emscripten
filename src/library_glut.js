@@ -16,6 +16,12 @@ var LibraryGLUT = {
     buttons: 0,
     modifiers: 0,
 
+    savePosition: function(event) {
+      /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
+      GLUT.lastX = event['clientX'] - Module['canvas'].offsetLeft;
+      GLUT.lastY = event['clientY'] - Module['canvas'].offsetTop;
+    },
+
     saveModifiers: function(event) {
       GLUT.modifiers = 0;
       if (event['shiftKey'])
@@ -27,8 +33,7 @@ var LibraryGLUT = {
     },
 
     onMousemove: function(event) {
-      GLUT.lastX = event['clientX'];
-      GLUT.lastY = event['clientY'];
+      GLUT.savePosition(event);
       if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
@@ -68,9 +73,40 @@ var LibraryGLUT = {
         return key;
     },
 
-    getASCIIKey: function(keycode) {
-      // TODO apply modifiers, etc
-      return keycode;
+    getASCIIKey: function(event) {
+      var keycode = event['keyCode'];
+
+      /* The exact list is soooo hard to find in a canonical place! */
+
+      if (48 <= keycode && keycode <= 57)
+        return keycode; // numeric  TODO handle shift?
+      if (65 <= keycode && keycode <= 90)
+	return event['shiftKey'] ? keycode : keycode + 32;
+      if (106 <= keycode && keycode <= 111)
+	return keycode - 106 + 42; // *,+-./  TODO handle shift?
+
+      switch (keycode) {
+        case 27: // escape
+        case 32: // space
+        case 61: // equal
+          return keycode;
+      }
+
+      var s = event['shiftKey'];
+      switch (keycode) {
+        case 186: return s ? 58 : 59; // colon / semi-colon
+        case 187: return s ? 43 : 61; // add / equal (these two may be wrong)
+        case 188: return s ? 60 : 44; // less-than / comma
+        case 189: return s ? 95 : 45; // dash
+        case 190: return s ? 62 : 46; // greater-than / period
+        case 191: return s ? 63 : 47; // forward slash
+        case 219: return s ? 123 : 91; // open bracket
+        case 220: return s ? 124 : 47; // back slash
+        case 221: return s ? 125 : 93; // close braket
+        case 222: return s ? 34 : 39; // single quote
+      }
+
+      return null;
     },
 
     onKeydown: function(event) {
@@ -85,11 +121,11 @@ var LibraryGLUT = {
         }
         else
         {
-          key = GLUT.getASCIIKey(event['keyCode']);
+          key = GLUT.getASCIIKey(event);
           if( key !== null && GLUT.keyboardFunc ) {
             event.preventDefault();
             GLUT.saveModifiers(event);
-            FUNCTION_TABLE[GLUT.keyboardFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+            FUNCTION_TABLE[GLUT.keyboardFunc](key, GLUT.lastX, GLUT.lastY);
           }
         }
       }
@@ -107,19 +143,18 @@ var LibraryGLUT = {
         }
         else
         {
-          key = GLUT.getASCIIKey(event['keyCode']);
+          key = GLUT.getASCIIKey(event);
           if( key !== null && GLUT.keyboardUpFunc ) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            FUNCTION_TABLE[GLUT.keyboardUpFunc](event['keyCode'], GLUT.lastX, GLUT.lastY);
+            FUNCTION_TABLE[GLUT.keyboardUpFunc](key, GLUT.lastX, GLUT.lastY);
           }
         }
       }
     },
 
     onMouseButtonDown: function(event){
-      GLUT.lastX = event['clientX'];
-      GLUT.lastY = event['clientY'];
+      GLUT.savePosition(event);
       GLUT.buttons |= (1 << event['button']);
 
       if(GLUT.mouseFunc){
@@ -130,8 +165,7 @@ var LibraryGLUT = {
     },
 
     onMouseButtonUp: function(event){
-      GLUT.lastX = event['clientX'];
-      GLUT.lastY = event['clientY'];
+      GLUT.savePosition(event);
       GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {

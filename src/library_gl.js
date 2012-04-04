@@ -223,7 +223,7 @@ var LibraryGL = {
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel*2)));
+          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel)));
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexImage2D';
@@ -256,13 +256,13 @@ var LibraryGL = {
             default:
               throw 'Invalid format (' + format + ') passed to glTexSubImage2D';
           }
-          pixels = new Uint8Array(Array_copy(pixels, (width-xoffset+1)*(height-yoffset+1)*sizePerPixel));
+          pixels = new Uint8Array(Array_copy(pixels, width*height*sizePerPixel));
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, (width-xoffset+1)*(height-yoffset+1)*sizePerPixel*2)));
+          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel)));
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexSubImage2D';
@@ -682,10 +682,10 @@ var LibraryGL = {
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture'],
- [2, 'pixelStorei'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture blendEquation'],
+ [2, 'pixelStorei blendFunc blendEquationSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer'],
  [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {
