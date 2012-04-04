@@ -12,6 +12,11 @@ EM_CONFIG = os.environ.get('EM_CONFIG')
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+
+SANITY_FILE = os.environ.get('EM_SANITY_FILE')
+if not SANITY_FILE:
+  SANITY_FILE = CONFIG_FILE + '_sanity'
+
 if not os.path.exists(CONFIG_FILE):
   shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
   print >> sys.stderr, '''
@@ -38,13 +43,19 @@ except Exception, e:
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
-# only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
+# only when SANITY_FILE does not exist or is older than EM_CONFIG (so,
 # we re-check sanity when the settings are changed)
 def check_sanity(force=False):
   try:
+    if not SANITY_FILE:
+      if force:
+        print >> sys.stderr, 'FATAL: Set EM_SANITY_FILE environment variable'
+        sys.exit(1)
+      return
+
     if not force:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
-      sanity_file = CONFIG_FILE + '_sanity'
+      sanity_file = SANITY_FILE
       try:
         sanity_mtime = os.stat(sanity_file).st_mtime
         if sanity_mtime > settings_mtime:
@@ -68,6 +79,10 @@ def check_sanity(force=False):
         print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG)
         sys.exit(0)
 
+    if not os.path.exists(JAVA) and not os.path.exists(JAVA + '.exe'): # .exe extension required for Windows
+      print >> sys.stderr, 'WARNING: Cannot find %s, check JRE_PATH in %s' % (JAVA, EM_CONFIG)
+      sys.exit(0)
+
     if not os.path.exists(CLOSURE_COMPILER):
       print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG)
 
@@ -85,8 +100,9 @@ def check_sanity(force=False):
 
 # Tools/paths
 
-CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
-CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
+JAVA=os.path.expanduser(os.path.join(JRE_PATH, 'java'))
+CLANG_CC=os.path.expanduser(os.path.join(CLANG_PATH, 'clang'))
+CLANG_CPP=os.path.expanduser(os.path.join(CLANG_PATH, 'clang++'))
 CLANG=CLANG_CPP
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
 LLVM_LD=os.path.join(LLVM_ROOT, 'llvm-ld')
@@ -740,7 +756,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-    args = ['java', '-jar', CLOSURE_COMPILER,
+    args = [JAVA, '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--formatting', 'PRETTY_PRINT',
             #'--variable_map_output_file', filename + '.vars',

@@ -3,6 +3,8 @@
 
 EMSCRIPTEN_ROOT = os.path.expanduser('~/Dev/emscripten') # this helps projects using emscripten find it
 
+JRE_PATH = ''
+CLANG_PATH = os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
 LLVM_ROOT = os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
 
 # See below for notes on which JS engine(s) you need
