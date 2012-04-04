@@ -3365,9 +3365,9 @@ LibraryManager.library = {
   },
   __cxa_atexit: 'atexit',
 
-  abort: function(code) {
+  abort: function() {
     ABORT = true;
-    throw 'ABORT: ' + code + ', at ' + (new Error().stack);
+    throw 'abort() at ' + (new Error().stack);
   },
 
   bsearch: function(key, base, num, size, compar) {
