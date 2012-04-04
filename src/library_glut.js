@@ -34,7 +34,7 @@ var LibraryGLUT = {
 
     onMousemove: function(event) {
       GLUT.savePosition(event);
-      if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && event.target == Module.canvas && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
@@ -159,7 +159,10 @@ var LibraryGLUT = {
       GLUT.savePosition(event);
       GLUT.buttons |= (1 << event['button']);
 
-      if(GLUT.mouseFunc){
+      if(event.target == Module.canvas && GLUT.mouseFunc){
+        try {
+          event.target.setCapture();
+        } catch (e) {}
         event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
