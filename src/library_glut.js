@@ -271,6 +271,7 @@ var LibraryGLUT = {
 #else
     Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
 #endif
+    return 1;
   },
 
   glutInitDisplayMode: function(mode) {},
