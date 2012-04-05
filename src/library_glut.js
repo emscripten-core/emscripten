@@ -406,7 +406,7 @@ var LibraryGLUT = {
     }
   },
 
-  glutMainLoop__deps: ['$GLUT', 'atexit', 'glutPostRedisplay'],
+  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: function() {
 
     window.addEventListener("keydown", GLUT.onKeydown, true);
@@ -415,13 +415,13 @@ var LibraryGLUT = {
     window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
     window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
 
-    _atexit(function() {
+    __ATEXIT__.push({ func: function() {
       window.removeEventListener("keydown", GLUT.onKeydown, true);
       window.removeEventListener("keyup", GLUT.onKeyup, true);
       window.removeEventListener("mousemove", GLUT.onMousemove, true);
       window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
       window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
-    });
+    } });
 
     _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
     _glutPostRedisplay();
