@@ -24,6 +24,35 @@ var LibraryGL = {
       }
       return 0;
     },
+
+    // Find a token in a shader source string
+    findToken: function(source, token) {
+      function isIdentChar(ch) {
+        if (ch >= 48 && ch <= 57) // 0-9
+          return true;
+        if (ch >= 65 && ch <= 90) // A-Z
+          return true;
+        if (ch >= 97 && ch <= 122) // a-z
+          return true;
+        return false;
+      }
+      var i = -1;
+      do {
+        i = source.indexOf(token, i + 1);
+        if (i < 0) {
+          break;
+        }
+        if (i > 0 && isIdentChar(source[i - 1])) {
+          continue;
+        }
+        i += token.length;
+        if (i < source.length - 1 && isIdentChar(source[i + 1])) {
+          continue;
+        }
+        return true;
+      } while (true);
+      return false;
+    },
   },
 
   glGetString: function(name_) {
@@ -407,6 +436,33 @@ var LibraryGL = {
     Module.ctx.uniform4i(location, v0, v1, v2, v3);
   },
 
+  glUniform1iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform1iv(location, value);
+  },
+
+  glUniform2iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 2;
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform2iv(location, value);
+  },
+
+  glUniform3iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 3;
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform3iv(location, value);
+  },
+
+  glUniform4iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 4;
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform4iv(location, value);
+  },
+
   glUniform1fv: function(location, count, value) {
     location = GL.uniforms[location];
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
@@ -528,6 +584,21 @@ var LibraryGL = {
         frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
       }
       source += frag;
+    }
+    // Let's see if we need to enable the standard derivatives extension
+    type = Module.ctx.getShaderParameter(GL.shaders[shader], 0x8B4F /* GL_SHADER_TYPE */);
+    if (type == 0x8B30 /* GL_FRAGMENT_SHADER */) {
+      if (GL.findToken(source, "dFdx") ||
+          GL.findToken(source, "dFdy") ||
+          GL.findToken(source, "fwidth")) {
+        source = "#extension GL_OES_standard_derivatives : enable\n" + source;
+        var extension = Module.ctx.getExtension("OES_standard_derivatives");
+#if GL_DEBUG
+        if (!extension) {
+          Module.printErr("Shader attempts to use the standard derivatives extension which is not available.");
+        }
+#endif
+      }
     }
     Module.ctx.shaderSource(GL.shaders[shader], source);
   },
