@@ -2,6 +2,7 @@
 var LibraryGLUT = {
   $GLUT: {
     initTime: null,
+    idleFunc: null,
     displayFunc: null,
     keyboardFunc: null,
     keyboardUpFunc: null,
@@ -265,7 +266,15 @@ var LibraryGLUT = {
   },
 
   glutIdleFunc: function(func) {
-    window.setTimeout(FUNCTION_TABLE[func], 0);
+    callback = function() {
+      if (GLUT.idleFunc) {
+        FUNCTION_TABLE[GLUT.idleFunc]();
+        window.setTimeout(callback, 0);
+      }
+    }
+    if (!GLUT.idleFunc)
+      window.setTimeout(callback, 0);
+    GLUT.idleFunc = func;
   },
 
   glutTimerFunc: function(msec, func, value) {

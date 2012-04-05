@@ -616,8 +616,6 @@ gears_idle(void)
       tRate0 = t;
       frames = 0;
    }
-
-    glutIdleFunc (gears_idle);
 }
 
 static const char vertex_shader[] =
