@@ -385,11 +385,13 @@ var LibraryGLUT = {
     if (GLUT.reshapeFunc) {
       FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
     }
+    _glutPostRedisplay();
   },
 
   glutPositionWindow: function(x, y) {
     GLUT.cancelFullScreen();
     /* TODO */
+    _glutPostRedisplay();
   },
 
   glutFullScreen: function() {
