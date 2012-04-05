@@ -5230,7 +5230,7 @@ def process(filename):
       'postRun': function() {
         Module.print('*');
         var ret;
-        ret = ccall('get_int', 'number'); Module.print([typeof ret, ret]);
+        ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
         ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
         ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
         ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
@@ -5242,7 +5242,7 @@ def process(filename):
         ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
         Module.print('*');
         // part 2: cwrap
-        var multi = cwrap('multi', 'number', ['number', 'number', 'number', 'string']);
+        var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
         Module.print(multi(2, 1.4, 3, 'atr'));
         Module.print(multi(8, 5.4, 4, 'bret'));
         Module.print('*');
