@@ -6880,6 +6880,15 @@ elif 'browser' in str(sys.argv):
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
+    def test_glgears_deriv(self):
+      self.reftest(path_from_root('tests', 'gears.png'))
+      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
+                     stdout=PIPE, stderr=PIPE).communicate()
+      assert len(output[0]) == 0, output[0]
+      assert os.path.exists('something.html'), output
+      self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
+
     def test_glbook(self):
       programs = self.get_library('glbook', [
         os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
