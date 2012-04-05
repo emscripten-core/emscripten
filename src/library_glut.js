@@ -334,10 +334,29 @@ var LibraryGLUT = {
               wrapper[prop] = function() {
                 var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
                   if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
+                  if (arg.toString() == '[object HTMLImageElement]') {
+                    return arg + '\n\n';
+                  }
                   if (arg.byteLength) {
-                    var ret = '{' + arg.byteLength + ':';
-                    var arr = Array.prototype.slice.call(new Uint8Array(arg.buffer), 0, 40);
-                    ret += arr.toString().replace(/,/g, ', ') + '}';
+                    var buf = new ArrayBuffer(32);
+                    var i8buf = new Int8Array(buf);
+                    var f32buf = new Float32Array(buf);
+                    switch(arg.toString()) {
+                      case '[object Uint8Array]':
+                        i8buf.set(arg.subarray(0, 32));
+                        break;
+                      case '[object Float32Array]':
+                        f32buf.set(arg.subarray(0, 5));
+                        break;
+                      default:
+                        alert('unknown array for debugging: ' + arg);
+                        throw 'see alert';
+                    }
+                    var ret = '{' + arg.byteLength + ':\n';
+                    var arr = Array.prototype.slice.call(i8buf);
+                    ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
+                    arr = Array.prototype.slice.call(f32buf, 0, 8);
+                    ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
                     return ret;
                   }
                   return arg;
