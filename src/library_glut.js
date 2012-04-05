@@ -181,6 +181,48 @@ var LibraryGLUT = {
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
       }
     },
+
+    requestFullScreen: function() {
+      var RFS = function() {};
+      if (Module.canvas['requestFullscreen']) {
+        RFS = Module.canvas['requestFullscreen'];
+      } else if (Module.canvas['requestFullScreen']) {
+        RFS = Module.canvas['requestFullScreen'];
+      } else if (Module.canvas['mozRequestFullScreen']) {
+        RFS = Module.canvas['mozRequestFullScreen'];
+      } else if (Module.canvas['webkitRequestFullScreen']) {
+        RFS = Module.canvas['webkitRequestFullScreen'];
+      }
+      RFS.apply(Module.canvas, []);
+    },
+
+    cancelFullScreen: function() {
+      var CFS = function() {};
+      if (document['exitFullscreen']) {
+        CFS = document['exitFullscreen'];
+      } else if (document['cancelFullScreen']) {
+        CFS = document['cancelFullScreen'];
+      } else if (document['mozCancelFullScreen']) {
+        CFS = document['mozCancelFullScreen'];
+      } else if (document['webkitCancelFullScreen']) {
+        CFS = document['webkitCancelFullScreen'];
+      }
+      CFS.apply(document, []);
+    },
+
+    requestAnimationFrame: function(func) {
+      var RAF = window['setTimeout'];
+      if (window['requestAnimationFrame']) {
+        RAF = window['requestAnimationFrame'];
+      } else if (window['mozRequestAnimationFrame']) {
+        RAF = window['mozRequestAnimationFrame'];
+      } else if (window['webkitRequestAnimationFrame']) {
+        RAF = window['webkitRequestAnimationFrame'];
+      } else if (window['msRequestAnimationFrame']) {
+        RAF = window['msRequestAnimationFrame'];
+      }
+      RAF.apply(window, [func]);
+    },
   },
 
   glutGetModifiers: function() { return GLUT.modifiers; },
@@ -328,6 +370,7 @@ var LibraryGLUT = {
   },
 
   glutReshapeWindow: function(width, height) {
+    GLUT.cancelFullScreen();
     Module['canvas'].width  = width;
     Module['canvas'].height = height;
     if (GLUT.reshapeFunc) {
@@ -335,24 +378,22 @@ var LibraryGLUT = {
     }
   },
 
-  glutPositionWindow: function(x, y) {/* TODO */},
+  glutPositionWindow: function(x, y) {
+    GLUT.cancelFullScreen();
+    /* TODO */
+  },
+
+  glutFullScreen: function() {
+    GLUT.requestFullScreen();
+    _glutReshapeWindow(Module['canvas'].clientWidth, Module['canvas'].clientHeight);
+  },
 
   glutInitDisplayMode: function(mode) {},
   glutSwapBuffers: function() {},
 
   glutPostRedisplay: function() {
     if (GLUT.displayFunc) {
-      var RAF = window['setTimeout'];
-      if (window['requestAnimationFrame']) {
-        RAF = window['requestAnimationFrame'];
-      } else if (window['mozRequestAnimationFrame']) {
-        RAF = window['mozRequestAnimationFrame'];
-      } else if (window['webkitRequestAnimationFrame']) {
-        RAF = window['webkitRequestAnimationFrame'];
-      } else if (window['msRequestAnimationFrame']) {
-        RAF = window['msRequestAnimationFrame'];
-      }
-      RAF.apply(window, [FUNCTION_TABLE[GLUT.displayFunc]]);
+      GLUT.requestAnimationFrame(FUNCTION_TABLE[GLUT.displayFunc]);
     }
   },
 
