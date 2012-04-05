@@ -421,7 +421,7 @@ var LibraryGLUT = {
     }
   },
 
-  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
   glutMainLoop: function() {
 
     window.addEventListener("keydown", GLUT.onKeydown, true);
