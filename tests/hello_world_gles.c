@@ -58,12 +58,14 @@
 #define VERTICES_PER_TOOTH 34
 #define GEAR_VERTEX_STRIDE 6
 
+#ifndef HAVE_BUILTIN_SINCOS
 static void
 sincos (double a, double *s, double *c)
 {
   *s = sin (a);
   *c = cos (a);
 }
+#endif
 
 /**
  * Struct describing the vertices in triangle strip
