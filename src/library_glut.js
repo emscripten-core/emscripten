@@ -266,7 +266,7 @@ var LibraryGLUT = {
   },
 
   glutIdleFunc: function(func) {
-    callback = function() {
+    var callback = function() {
       if (GLUT.idleFunc) {
         FUNCTION_TABLE[GLUT.idleFunc]();
         window.setTimeout(callback, 0);
