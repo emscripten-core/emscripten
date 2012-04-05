@@ -12,7 +12,7 @@ var LibraryEGL = {
     return 1;
   },
 
-  eglMakeCurrent: function(display, surface, surface, context) { return 1 },
+  eglMakeCurrent: function(display, surface, surface_, context) { return 1 },
   eglSwapBuffers: function() {},
 };
 
