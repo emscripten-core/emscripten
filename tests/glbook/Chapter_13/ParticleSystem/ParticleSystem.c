@@ -17,8 +17,15 @@
 #include <math.h>
 #include "esUtil.h"
 
-#define NUM_PARTICLES	1000
+#define NUM_PARTICLES	2000
 #define PARTICLE_SIZE   7
+
+int randomTemp = 8765;
+float myrandom() {
+  int curr = randomTemp;
+  randomTemp = (1140671485 * randomTemp + 12820163) % 4294967296;
+  return ((float)curr) / 4294967296;
+}
 
 typedef struct
 {
@@ -40,11 +47,12 @@ typedef struct
    GLuint textureId;
 
    // Particle vertex data
-   float particleData[ NUM_PARTICLES * PARTICLE_SIZE ];
+   GLfloat particleData[ NUM_PARTICLES * PARTICLE_SIZE ];
 
    // Current time
    float time;
 
+  GLuint vertexObject;
 } UserData;
 
 ///
@@ -136,28 +144,30 @@ int Init ( ESContext *esContext )
    userData->colorLoc = glGetUniformLocation ( userData->programObject, "u_color" );
    userData->samplerLoc = glGetUniformLocation ( userData->programObject, "s_texture" );
 
-   glClearColor ( 0.0f, 0.0f, 0.0f, 0.0f );
+   glClearColor ( 0.0f, 0.0f, 0.0f, 1.0f );
 
    // Fill in particle data array
-   srand ( 0 );
    for ( i = 0; i < NUM_PARTICLES; i++ )
    {
-      float *particleData = &userData->particleData[i * PARTICLE_SIZE];
+      GLfloat *particleData = &userData->particleData[i * PARTICLE_SIZE];
    
       // Lifetime of particle
-      (*particleData++) = ( (float)(rand() % 10000) / 10000.0f );
+      (*particleData++) = myrandom();
 
       // End position of particle
-      (*particleData++) = ( (float)(rand() % 10000) / 5000.0f ) - 1.0f;
-      (*particleData++) = ( (float)(rand() % 10000) / 5000.0f ) - 1.0f;
-      (*particleData++) = ( (float)(rand() % 10000) / 5000.0f ) - 1.0f;
+      (*particleData++) = myrandom() * 2 - 1.0f;
+      (*particleData++) = myrandom() * 2 - 1.0f;
+      (*particleData++) = myrandom() * 2 - 1.0f;
 
       // Start position of particle
-      (*particleData++) = ( (float)(rand() % 10000) / 40000.0f ) - 0.125f;
-      (*particleData++) = ( (float)(rand() % 10000) / 40000.0f ) - 0.125f;
-      (*particleData++) = ( (float)(rand() % 10000) / 40000.0f ) - 0.125f;
-
+      (*particleData++) = myrandom() * 0.25 - 0.125f;
+      (*particleData++) = myrandom() * 0.25 - 0.125f;
+      (*particleData++) = myrandom() * 0.25 - 0.125f;
    }
+
+   glGenBuffers(1, &userData->vertexObject);
+   glBindBuffer( GL_ARRAY_BUFFER, userData->vertexObject );
+   glBufferData( GL_ARRAY_BUFFER, NUM_PARTICLES * PARTICLE_SIZE * 4, userData->particleData, GL_STATIC_DRAW );
 
    // Initialize time to cause reset on first update
    userData->time = 1.0f;
@@ -176,6 +186,7 @@ int Init ( ESContext *esContext )
 //
 void Update ( ESContext *esContext, float deltaTime )
 {
+//  deltaTime = 0.1;
    UserData *userData = esContext->userData;
   
    userData->time += deltaTime;
@@ -188,17 +199,17 @@ void Update ( ESContext *esContext, float deltaTime )
       userData->time = 0.0f;
 
       // Pick a new start location and color
-      centerPos[0] = ( (float)(rand() % 10000) / 10000.0f ) - 0.5f;
-      centerPos[1] = ( (float)(rand() % 10000) / 10000.0f ) - 0.5f;
-      centerPos[2] = ( (float)(rand() % 10000) / 10000.0f ) - 0.5f;
+      centerPos[0] = myrandom() - 0.5f;
+      centerPos[1] = myrandom() - 0.5f;
+      centerPos[2] = myrandom() - 0.5f;
       
       glUniform3fv ( userData->centerPositionLoc, 1, &centerPos[0] );
 
       // Random color
-      color[0] = ( (float)(rand() % 10000) / 20000.0f ) + 0.5f;
-      color[1] = ( (float)(rand() % 10000) / 20000.0f ) + 0.5f;
-      color[2] = ( (float)(rand() % 10000) / 20000.0f ) + 0.5f;
-      color[3] = 0.5;
+      color[0] = myrandom() * 0.5 + 0.5f;
+      color[1] = myrandom() * 0.5 + 0.5f;
+      color[2] = myrandom() * 0.5 + 0.5f;
+      color[3] = 1.0;
 
       glUniform4fv ( userData->colorLoc, 1, &color[0] );
    }
@@ -224,17 +235,18 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex attributes
+   glBindBuffer( GL_ARRAY_BUFFER, userData->vertexObject );
    glVertexAttribPointer ( userData->lifetimeLoc, 1, GL_FLOAT, 
                            GL_FALSE, PARTICLE_SIZE * sizeof(GLfloat), 
-                           userData->particleData );
+                           0 );
    
    glVertexAttribPointer ( userData->endPositionLoc, 3, GL_FLOAT,
                            GL_FALSE, PARTICLE_SIZE * sizeof(GLfloat),
-                           &userData->particleData[1] );
+                           4 );
 
    glVertexAttribPointer ( userData->startPositionLoc, 3, GL_FLOAT,
                            GL_FALSE, PARTICLE_SIZE * sizeof(GLfloat),
-                           &userData->particleData[4] );
+                           4 * 4 );
 
    
    glEnableVertexAttribArray ( userData->lifetimeLoc );
@@ -247,10 +259,12 @@ void Draw ( ESContext *esContext )
    // Bind the texture
    glActiveTexture ( GL_TEXTURE0 );
    glBindTexture ( GL_TEXTURE_2D, userData->textureId );
-   glEnable ( GL_TEXTURE_2D );
+   //glEnable ( GL_TEXTURE_2D );
 
    // Set the sampler texture unit to 0
    glUniform1i ( userData->samplerLoc, 0 );
+
+   Update ( esContext, 133 * 0.001125 );
 
    glDrawArrays( GL_POINTS, 0, NUM_PARTICLES );
    
@@ -280,15 +294,17 @@ int main ( int argc, char *argv[] )
    esInitContext ( &esContext );
    esContext.userData = &userData;
 
-   esCreateWindow ( &esContext, "ParticleSystem", 640, 480, ES_WINDOW_RGB );
+   esCreateWindow ( &esContext, "ParticleSystem", 320, 240, ES_WINDOW_RGB );
    
    if ( !Init ( &esContext ) )
       return 0;
 
    esRegisterDrawFunc ( &esContext, Draw );
-   esRegisterUpdateFunc ( &esContext, Update );
+//   esRegisterUpdateFunc ( &esContext, Update );
    
-   esMainLoop ( &esContext );
+   Draw (&esContext);
+  Draw (&esContext);
+  //esMainLoop ( &esContext );
 
    ShutDown ( &esContext );
 }
