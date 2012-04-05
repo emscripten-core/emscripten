@@ -616,6 +616,8 @@ gears_idle(void)
       tRate0 = t;
       frames = 0;
    }
+
+    glutIdleFunc (gears_idle);
 }
 
 static const char vertex_shader[] =
@@ -723,7 +725,7 @@ main(int argc, char *argv[])
    glutCreateWindow("es2gears");
 
    /* Set up glut callback functions */
-   gears_idle();
+   glutIdleFunc (gears_idle);
    glutReshapeFunc(gears_reshape);
    glutDisplayFunc(gears_draw);
    glutSpecialFunc(gears_special);
