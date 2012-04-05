@@ -2,6 +2,7 @@
 var LibraryGLUT = {
   $GLUT: {
     initTime: null,
+    idleFunc: null,
     displayFunc: null,
     keyboardFunc: null,
     keyboardUpFunc: null,
@@ -15,6 +16,8 @@ var LibraryGLUT = {
     lastY: 0,
     buttons: 0,
     modifiers: 0,
+    initWindowWidth: 256,
+    initWindowHeight: 256,
 
     savePosition: function(event) {
       /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
@@ -34,7 +37,7 @@ var LibraryGLUT = {
 
     onMousemove: function(event) {
       GLUT.savePosition(event);
-      if (GLUT.buttons == 0 && GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
@@ -74,6 +77,8 @@ var LibraryGLUT = {
     },
 
     getASCIIKey: function(event) {
+      if (event['ctrlKey'] || event['altKey'] || event['metaKey']) return null;
+
       var keycode = event['keyCode'];
 
       /* The exact list is soooo hard to find in a canonical place! */
@@ -157,7 +162,10 @@ var LibraryGLUT = {
       GLUT.savePosition(event);
       GLUT.buttons |= (1 << event['button']);
 
-      if(GLUT.mouseFunc){
+      if(event.target == Module["canvas"] && GLUT.mouseFunc){
+        try {
+          event.target.setCapture();
+        } catch (e) {}
         event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
@@ -174,6 +182,48 @@ var LibraryGLUT = {
         FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
       }
     },
+
+    requestFullScreen: function() {
+      var RFS = function() {};
+      if (Module["canvas"]['requestFullscreen']) {
+        RFS = Module["canvas"]['requestFullscreen'];
+      } else if (Module["canvas"]['requestFullScreen']) {
+        RFS = Module["canvas"]['requestFullScreen'];
+      } else if (Module["canvas"]['mozRequestFullScreen']) {
+        RFS = Module["canvas"]['mozRequestFullScreen'];
+      } else if (Module["canvas"]['webkitRequestFullScreen']) {
+        RFS = Module["canvas"]['webkitRequestFullScreen'];
+      }
+      RFS.apply(Module["canvas"], []);
+    },
+
+    cancelFullScreen: function() {
+      var CFS = function() {};
+      if (document['exitFullscreen']) {
+        CFS = document['exitFullscreen'];
+      } else if (document['cancelFullScreen']) {
+        CFS = document['cancelFullScreen'];
+      } else if (document['mozCancelFullScreen']) {
+        CFS = document['mozCancelFullScreen'];
+      } else if (document['webkitCancelFullScreen']) {
+        CFS = document['webkitCancelFullScreen'];
+      }
+      CFS.apply(document, []);
+    },
+
+    requestAnimationFrame: function(func) {
+      var RAF = window['setTimeout'];
+      if (window['requestAnimationFrame']) {
+        RAF = window['requestAnimationFrame'];
+      } else if (window['mozRequestAnimationFrame']) {
+        RAF = window['mozRequestAnimationFrame'];
+      } else if (window['webkitRequestAnimationFrame']) {
+        RAF = window['webkitRequestAnimationFrame'];
+      } else if (window['msRequestAnimationFrame']) {
+        RAF = window['msRequestAnimationFrame'];
+      }
+      RAF.apply(window, [func]);
+    },
   },
 
   glutGetModifiers: function() { return GLUT.modifiers; },
@@ -181,30 +231,50 @@ var LibraryGLUT = {
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
-    window.addEventListener("keydown", GLUT.onKeydown, true);
-    window.addEventListener("keyup", GLUT.onKeyup, true);
-    window.addEventListener("mousemove", GLUT.onMousemove, true);
-    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
-    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
   },
 
   glutInitWindowSize: function(width, height) {
-    Module['canvas'].width = width;
-    Module['canvas'].height = height;
+    Module['canvas'].width  = GLUT.initWindowWidth  = width;
+    Module['canvas'].height = GLUT.initWindowHeight = height;
   },
 
   glutGet: function(type) {
     switch (type) {
+      case 100: /* GLUT_WINDOW_X */
+	return 0; /* TODO */
+      case 101: /* GLUT_WINDOW_Y */
+	return 0; /* TODO */
+      case 102: /* GLUT_WINDOW_WIDTH */
+	return Module['canvas'].width;
+      case 103: /* GLUT_WINDOW_HEIGHT */
+	return Module['canvas'].height;
+      case 500: /* GLUT_INIT_WINDOW_X */
+	return 0; /* TODO */
+      case 501: /* GLUT_INIT_WINDOW_Y */
+	return 0; /* TODO */
+      case 502: /* GLUT_INIT_WINDOW_WIDTH */
+	return GLUT.initWindowWidth;
+      case 503: /* GLUT_INIT_WINDOW_HEIGHT */
+	return GLUT.initWindowHeight;
       case 700: /* GLUT_ELAPSED_TIME */
         var now = Date.now();
         return now - GLUT.initTime;
+
       default:
         throw "glutGet(" + type + ") not implemented yet";
     }
   },
 
   glutIdleFunc: function(func) {
-    window.setTimeout(FUNCTION_TABLE[func], 0);
+    var callback = function() {
+      if (GLUT.idleFunc) {
+        FUNCTION_TABLE[GLUT.idleFunc]();
+        window.setTimeout(callback, 0);
+      }
+    }
+    if (!GLUT.idleFunc)
+      window.setTimeout(callback, 0);
+    GLUT.idleFunc = func;
   },
 
   glutTimerFunc: function(msec, func, value) {
@@ -250,7 +320,7 @@ var LibraryGLUT = {
   glutCreateWindow: function(name) {
 #if USE_TYPED_ARRAYS
     try {
-      var ctx = Module.canvas.getContext('experimental-webgl');
+      var ctx = Module["canvas"].getContext('experimental-webgl');
       if (!ctx) throw 'Could not create canvas :(';
 #if GL_DEBUG
       // Useful to debug native webgl apps: var Module = { printErr: function(x) { console.log(x) } };
@@ -304,7 +374,7 @@ var LibraryGLUT = {
 #endif
       // Set the background of the canvas to black, because glut gives us a
       // window which has a black background by default.
-      Module.canvas.style.backgroundColor = "black";
+      Module["canvas"].style.backgroundColor = "black";
     } catch (e) {
       Module.print('(canvas not available)');
     }
@@ -314,31 +384,68 @@ var LibraryGLUT = {
     return 1;
   },
 
+  glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutReshapeWindow: function(width, height) {
+    GLUT.cancelFullScreen();
+    Module['canvas'].width  = width;
+    Module['canvas'].height = height;
+    if (GLUT.reshapeFunc) {
+      FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
+    }
+    _glutPostRedisplay();
+  },
+
+  glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutPositionWindow: function(x, y) {
+    GLUT.cancelFullScreen();
+    /* TODO */
+    _glutPostRedisplay();
+  },
+
+  glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutFullScreen: function() {
+    var width = screen["width"];
+    var height = screen["height"];
+    /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
+    Module['canvas'].width  = width;
+    Module['canvas'].height = height;
+    if (GLUT.reshapeFunc) {
+      FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
+    }
+    GLUT.requestFullScreen();
+    window.setTimeout(function() {
+      _glutPostRedisplay();
+    }, 0);
+  },
+
   glutInitDisplayMode: function(mode) {},
   glutSwapBuffers: function() {},
 
   glutPostRedisplay: function() {
     if (GLUT.displayFunc) {
-      var RAF = window['setTimeout'];
-      if (window['requestAnimationFrame']) {
-        RAF = window['requestAnimationFrame'];
-      } else if (window['mozRequestAnimationFrame']) {
-        RAF = window['mozRequestAnimationFrame'];
-      } else if (window['webkitRequestAnimationFrame']) {
-        RAF = window['webkitRequestAnimationFrame'];
-      } else if (window['msRequestAnimationFrame']) {
-        RAF = window['msRequestAnimationFrame'];
-      }
-      RAF.apply(window, [FUNCTION_TABLE[GLUT.displayFunc]]);
+      GLUT.requestAnimationFrame(FUNCTION_TABLE[GLUT.displayFunc]);
     }
   },
 
   glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: function() {
-    if (GLUT.reshapeFunc) {
-      FUNCTION_TABLE[GLUT.reshapeFunc](Module['canvas'].width,
-                                       Module['canvas'].height);
-    }
+
+    window.addEventListener("keydown", GLUT.onKeydown, true);
+    window.addEventListener("keyup", GLUT.onKeyup, true);
+    window.addEventListener("mousemove", GLUT.onMousemove, true);
+    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
+    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+
+    __ATEXIT__.push({ func: function() {
+      window.removeEventListener("keydown", GLUT.onKeydown, true);
+      window.removeEventListener("keyup", GLUT.onKeyup, true);
+      window.removeEventListener("mousemove", GLUT.onMousemove, true);
+      window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
+      window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      Module["canvas"].width = Module["canvas"].height = 1;
+    } });
+
+    _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
     _glutPostRedisplay();
     throw 'GLUT mainloop should never return';
   },
