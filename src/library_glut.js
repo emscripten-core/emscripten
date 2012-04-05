@@ -447,7 +447,7 @@ var LibraryGLUT = {
 
     _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
     _glutPostRedisplay();
-    throw 'GLUT mainloop should never return';
+    throw 'GLUT mainloop called, simulating infinite loop by throwing so we get right into the JS event loop';
   },
 
 };
