@@ -37,7 +37,7 @@ var LibraryGLUT = {
 
     onMousemove: function(event) {
       GLUT.savePosition(event);
-      if (GLUT.buttons == 0 && event.target == Module.canvas && GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
@@ -162,7 +162,7 @@ var LibraryGLUT = {
       GLUT.savePosition(event);
       GLUT.buttons |= (1 << event['button']);
 
-      if(event.target == Module.canvas && GLUT.mouseFunc){
+      if(event.target == Module["canvas"] && GLUT.mouseFunc){
         try {
           event.target.setCapture();
         } catch (e) {}
@@ -185,16 +185,16 @@ var LibraryGLUT = {
 
     requestFullScreen: function() {
       var RFS = function() {};
-      if (Module.canvas['requestFullscreen']) {
-        RFS = Module.canvas['requestFullscreen'];
-      } else if (Module.canvas['requestFullScreen']) {
-        RFS = Module.canvas['requestFullScreen'];
-      } else if (Module.canvas['mozRequestFullScreen']) {
-        RFS = Module.canvas['mozRequestFullScreen'];
-      } else if (Module.canvas['webkitRequestFullScreen']) {
-        RFS = Module.canvas['webkitRequestFullScreen'];
+      if (Module["canvas"]['requestFullscreen']) {
+        RFS = Module["canvas"]['requestFullscreen'];
+      } else if (Module["canvas"]['requestFullScreen']) {
+        RFS = Module["canvas"]['requestFullScreen'];
+      } else if (Module["canvas"]['mozRequestFullScreen']) {
+        RFS = Module["canvas"]['mozRequestFullScreen'];
+      } else if (Module["canvas"]['webkitRequestFullScreen']) {
+        RFS = Module["canvas"]['webkitRequestFullScreen'];
       }
-      RFS.apply(Module.canvas, []);
+      RFS.apply(Module["canvas"], []);
     },
 
     cancelFullScreen: function() {
@@ -320,7 +320,7 @@ var LibraryGLUT = {
   glutCreateWindow: function(name) {
 #if USE_TYPED_ARRAYS
     try {
-      var ctx = Module.canvas.getContext('experimental-webgl');
+      var ctx = Module["canvas"].getContext('experimental-webgl');
       if (!ctx) throw 'Could not create canvas :(';
 #if GL_DEBUG
       var wrapper = {};
@@ -368,7 +368,7 @@ var LibraryGLUT = {
 #endif
       // Set the background of the canvas to black, because glut gives us a
       // window which has a black background by default.
-      Module.canvas.style.backgroundColor = "black";
+      Module["canvas"].style.backgroundColor = "black";
     } catch (e) {
       Module.print('(canvas not available)');
     }
