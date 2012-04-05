@@ -398,8 +398,8 @@ var LibraryGLUT = {
 
   glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
   glutFullScreen: function() {
-    var width = screen.width;
-    var height = screen.height;
+    var width = screen["width"];
+    var height = screen["height"];
     /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
     Module['canvas'].width  = width;
     Module['canvas'].height = height;
