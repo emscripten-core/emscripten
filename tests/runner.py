@@ -6079,10 +6079,10 @@ TT = %s
 Copyright (C) 2011 the Emscripten authors.
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-''', output[0], output[1])
+''', output[0].replace('\r', ''), output[1].replace('\r', ''))
 
         # --help
-        output = Popen([compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python', compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''%s [options] file...
 
 Most normal gcc/g++ options will work, for example:
@@ -6091,11 +6091,11 @@ Most normal gcc/g++ options will work, for example:
 
 Options that are modified or new in %s include:
   -O0                      No optimizations (default)
-''' % (shortcompiler, shortcompiler), output[0], output[1])
+''' % (shortcompiler, shortcompiler), output[0].replace('\r', ''), output[1].replace('\r', ''))
 
         # emcc src.cpp ==> writes a.out.js
         self.clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -6103,7 +6103,7 @@ Options that are modified or new in %s include:
         # properly report source code errors, and stop there
         self.clear()
         assert not os.path.exists('a.out.js')
-        output = Popen([compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python', compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
         assert len(output[0]) == 0, output[0]
         self.assertNotContained('IOError', output[1]) # no python stack
@@ -6111,36 +6111,36 @@ Options that are modified or new in %s include:
         self.assertContained('error: invalid preprocessing directive', output[1])
         self.assertContained("error: use of undeclared identifier 'cheez", output[1])
         self.assertContained('2 errors generated', output[1])
-        assert output[1].split('2 errors generated.')[1].replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
+        assert output[1].split('2 errors generated.')[1].replace('\r', '').replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         #      regression check: -o js should create "js", with bitcode content
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
           self.clear()
-          Popen([compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           syms = Building.llvm_nm(target)
           assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
           if target == 'js': # make sure emcc can recognize the target as a bitcode file
             shutil.move(target, target + '.bc')
             target += '.bc'
-          output = Popen([compiler, target, '-o', target + '.js'], stdout = PIPE, stderr = PIPE).communicate()
+          output = Popen(['python', compiler, target, '-o', target + '.js'], stdout = PIPE, stderr = PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target + '.js'), 'Expected %s to exist since args are %s : %s' % (target + '.js', str(args), '\n'.join(output))
           self.assertContained('hello, world!', run_js(target + '.js'))
 
         # handle singleton archives
         self.clear()
-        Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         Popen([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.a')
-        output = Popen([compiler, 'a.a']).communicate()
+        output = Popen(['python', compiler, 'a.a']).communicate()
         assert os.path.exists('a.out.js'), output
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # emcc src.ll ==> generates .js
         self.clear()
-        output = Popen([compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python', compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -6152,7 +6152,7 @@ Options that are modified or new in %s include:
           os.mkdir('b_dir')
           for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
             self.clear()
-            output = Popen([compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
+            output = Popen(['python', compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
             assert os.path.exists(path), path + ' does not exist; ' + '\n'.join(output)
             self.assertContained('hello, world!', run_js(path))
         finally:
@@ -6166,7 +6166,7 @@ Options that are modified or new in %s include:
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
           self.clear()
-          output = Popen([compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python', compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
           generated = open('a.out.js').read()
@@ -6192,14 +6192,14 @@ Options that are modified or new in %s include:
         ]:
           #print params, opt_level, bc_params, closure
           self.clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
+          output = Popen(['python', compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           if bc_params is not None:
             if '-O1' in params and 'something.bc' in params:
               assert 'warning: -Ox flags ignored, since not generating JavaScript' in output[1]
             assert os.path.exists('something.bc'), output[1]
-            output = Popen([compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
+            output = Popen(['python', compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('something.js'), output[1]
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
@@ -6240,7 +6240,7 @@ Options that are modified or new in %s include:
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
           self.clear()
-          output = Popen([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python', compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
@@ -6249,7 +6249,7 @@ Options that are modified or new in %s include:
         # Compiling two source files into a final JS.
         for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
           self.clear()
-          output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
+          output = Popen(['python', compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target), '\n'.join(output)
@@ -6257,7 +6257,7 @@ Options that are modified or new in %s include:
 
           # Compiling two files with -c will generate separate .bc files
           self.clear()
-          output = Popen([compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
+          output = Popen(['python', compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           if '-o' in args:
             # specifying -o and -c is an error
@@ -6269,24 +6269,24 @@ Options that are modified or new in %s include:
           assert not os.path.exists(target), 'We should only have created bitcode here: ' + '\n'.join(output)
 
           # Compiling one of them alone is expected to fail
-          output = Popen([compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python', compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           #print '\n'.join(output)
           self.assertContained('is not a function', run_js(target, stderr=STDOUT))
           try_delete(target)
 
           # Combining those bc files into js should work
-          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python', compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
 
           # Combining bc files into another bc should also work
           try_delete(target)
           assert not os.path.exists(target)
-          output = Popen([compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python', compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
           syms = Building.llvm_nm('combined.bc')
           assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
-          output = Popen([compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout = PIPE, stderr = PIPE).communicate()
+          output = Popen(['python', compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout = PIPE, stderr = PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
           self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
@@ -6302,7 +6302,7 @@ f.write('transformed!')
 f.close()
 ''')
         trans_file.close()
-        output = Popen([compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', 'python t.py'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', 'python t.py'], stdout=PIPE, stderr=PIPE).communicate()
         assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
 
       # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
