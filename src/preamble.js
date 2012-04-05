@@ -368,6 +368,7 @@ function cwrap(ident, returnType, argTypes) {
     return ccall(ident, returnType, argTypes, Array.prototype.slice.call(arguments));
   }
 }
+Module["cwrap"] = cwrap;
 
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
