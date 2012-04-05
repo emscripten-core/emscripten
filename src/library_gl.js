@@ -436,6 +436,33 @@ var LibraryGL = {
     Module.ctx.uniform4i(location, v0, v1, v2, v3);
   },
 
+  glUniform1iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform1iv(location, value);
+  },
+
+  glUniform2iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 2;
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform2iv(location, value);
+  },
+
+  glUniform3iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 3;
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform3iv(location, value);
+  },
+
+  glUniform4iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 4;
+    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    Module.ctx.uniform4iv(location, value);
+  },
+
   glUniform1fv: function(location, count, value) {
     location = GL.uniforms[location];
     value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
