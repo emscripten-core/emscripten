@@ -378,6 +378,7 @@ var LibraryGLUT = {
     return 1;
   },
 
+  glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutReshapeWindow: function(width, height) {
     GLUT.cancelFullScreen();
     Module['canvas'].width  = width;
@@ -388,15 +389,27 @@ var LibraryGLUT = {
     _glutPostRedisplay();
   },
 
+  glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutPositionWindow: function(x, y) {
     GLUT.cancelFullScreen();
     /* TODO */
     _glutPostRedisplay();
   },
 
+  glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
   glutFullScreen: function() {
+    var width = screen.width;
+    var height = screen.height;
+    /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
+    Module['canvas'].width  = width;
+    Module['canvas'].height = height;
+    if (GLUT.reshapeFunc) {
+      FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
+    }
     GLUT.requestFullScreen();
-    _glutReshapeWindow(Module['canvas'].clientWidth, Module['canvas'].clientHeight);
+    window.setTimeout(function() {
+      _glutPostRedisplay();
+    }, 0);
   },
 
   glutInitDisplayMode: function(mode) {},
