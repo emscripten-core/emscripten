@@ -33,6 +33,8 @@ typedef struct
    GLuint baseMapTexId;
    GLuint lightMapTexId;
 
+   GLuint vertexObject, indexObject;
+
 } UserData;
 
 
@@ -117,7 +119,27 @@ int Init ( ESContext *esContext )
    if ( userData->baseMapTexId == 0 || userData->lightMapTexId == 0 )
       return FALSE;
 
-   glClearColor ( 0.0f, 0.0f, 0.0f, 0.0f );
+   GLfloat vVertices[] = { -0.5,  0.5, 0.0,  // Position 0
+                            0.0,  0.0,       // TexCoord 0
+                           -0.5, -0.5, 0.0,  // Position 1
+                            0.0,  1.0,       // TexCoord 1
+                            0.5, -0.5, 0.0,  // Position 2
+                            1.0,  1.0,       // TexCoord 2
+                            0.5,  0.5, 0.0,  // Position 3
+                            1.0,  0.0        // TexCoord 3
+                         };
+   GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
+
+   glGenBuffers(1, &userData->vertexObject);
+   glBindBuffer ( GL_ARRAY_BUFFER, userData->vertexObject );
+   glBufferData ( GL_ARRAY_BUFFER, 5 * 4 * 4, vVertices, GL_STATIC_DRAW );
+
+   glGenBuffers(1, &userData->indexObject);
+   glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, userData->indexObject );
+   glBufferData ( GL_ELEMENT_ARRAY_BUFFER, 6 * 2, indices, GL_STATIC_DRAW );
+
+   glClearColor ( 0.0, 0.0, 0.0, 1.0 );
+
    return TRUE;
 }
 
@@ -127,17 +149,7 @@ int Init ( ESContext *esContext )
 void Draw ( ESContext *esContext )
 {
    UserData *userData = esContext->userData;
-   GLfloat vVertices[] = { -0.5f,  0.5f, 0.0f,  // Position 0
-                            0.0f,  0.0f,        // TexCoord 0 
-                           -0.5f, -0.5f, 0.0f,  // Position 1
-                            0.0f,  1.0f,        // TexCoord 1
-                            0.5f, -0.5f, 0.0f,  // Position 2
-                            1.0f,  1.0f,        // TexCoord 2
-                            0.5f,  0.5f, 0.0f,  // Position 3
-                            1.0f,  0.0f         // TexCoord 3
-                         };
-   GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
-      
+
    // Set the viewport
    glViewport ( 0, 0, esContext->width, esContext->height );
    
@@ -148,11 +160,12 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex position
+   glBindBuffer ( GL_ARRAY_BUFFER, userData->vertexObject );
    glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, 
-                           GL_FALSE, 5 * sizeof(GLfloat), vVertices );
+                           GL_FALSE, 5 * sizeof(GLfloat), 0 );
    // Load the texture coordinate
    glVertexAttribPointer ( userData->texCoordLoc, 2, GL_FLOAT,
-                           GL_FALSE, 5 * sizeof(GLfloat), &vVertices[3] );
+                           GL_FALSE, 5 * sizeof(GLfloat), 3 * sizeof(GLfloat) );
 
    glEnableVertexAttribArray ( userData->positionLoc );
    glEnableVertexAttribArray ( userData->texCoordLoc );
@@ -171,7 +184,8 @@ void Draw ( ESContext *esContext )
    // Set the light map sampler to texture unit 1
    glUniform1i ( userData->lightMapLoc, 1 );
 
-   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
+   glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, userData->indexObject );
+   glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
 
    eglSwapBuffers ( esContext->eglDisplay, esContext->eglSurface );
 }

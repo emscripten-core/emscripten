@@ -6639,8 +6639,10 @@ elif 'browser' in str(sys.argv):
           }
           img.src = '%s';
         };
-        Module.postRun = doReftest();
-        setTimeout(doReftest, 0); // if run() throws an exception, this will kick in
+        Module.postRun = doReftest;
+        Module.preRun = function() {
+          setTimeout(doReftest, 0); // if run() throws an exception and postRun is not called, this will kick in
+        };
 ''' % basename)
 
     def test_compression(self):
@@ -6916,11 +6918,18 @@ elif 'browser' in str(sys.argv):
         os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.bc'),
         os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.bc'),
         os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.bc'),
+        os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.bc'),
       ], configure=None)
       for program in programs:
         print program
-        self.reftest(path_from_root('tests', 'glbook', os.path.basename(program).replace('.bc', '.png')))
-        Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js']).communicate()
+        basename = os.path.basename(program)
+        args = []
+        if basename == 'CH10_MultiTexture.bc':
+          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'basemap.tga'), os.path.join(self.get_dir(), 'basemap.tga'))
+          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'lightmap.tga'), os.path.join(self.get_dir(), 'lightmap.tga'))
+          args = ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
+        self.reftest(path_from_root('tests', 'glbook', basename.replace('.bc', '.png')))
+        Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
 elif 'benchmark' in str(sys.argv):

@@ -28,7 +28,7 @@ all: ./Chapter_2/Hello_Triangle/CH02_HelloTriangle.bc \
      ./Chapter_9/MipMap2D/CH09_MipMap2D.bc \
      ./Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.bc \
      ./Chapter_9/TextureWrap/CH09_TextureWrap.bc \
-#     ./Chapter_10/MultiTexture/CH10_MultiTexture.bc \
+     ./Chapter_10/MultiTexture/CH10_MultiTexture.bc \
 #     ./Chapter_11/Multisample/CH11_Multisample.bc \
 #     ./Chapter_11/Stencil_Test/CH11_Stencil_Test.bc \
 #     ./Chapter_13/ParticleSystem/CH13_ParticleSystem.bc
