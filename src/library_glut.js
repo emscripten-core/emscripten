@@ -436,6 +436,7 @@ var LibraryGLUT = {
       window.removeEventListener("mousemove", GLUT.onMousemove, true);
       window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
       window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      Module["canvas"].width = Module["canvas"].height = 1;
     } });
 
     _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
