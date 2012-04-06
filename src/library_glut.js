@@ -36,6 +36,15 @@ var LibraryGLUT = {
     },
 
     onMousemove: function(event) {
+      /* Pierre: Send motion event only if the motion changed, prevents
+       * spamming our app with uncessary callback call. It does happen in
+       * Chrome on Windows.
+       */
+      var newX = event['clientX'] - Module['canvas'].offsetLeft;
+      var newY = event['clientY'] - Module['canvas'].offsetTop;
+      if (newX == GLUT['lastX'] && newY == GLUT['lastY'])
+        return;
+
       GLUT.savePosition(event);
       if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
         event.preventDefault();
@@ -72,6 +81,30 @@ var LibraryGLUT = {
           case 0x24 /*DOM_VK_HOME*/: key = 106 /* GLUT_KEY_HOME */; break;
           case 0x23 /*DOM_VK_END*/: key = 107 /* GLUT_KEY_END */; break;
           case 0x2d /*DOM_VK_INSERT*/: key = 108 /* GLUT_KEY_INSERT */; break;
+
+          case 16   /*DOM_VK_SHIFT*/:
+          case 0x05 /*DOM_VK_LEFT_SHIFT*/:
+            key = 112 /* GLUT_KEY_SHIFT_L */;
+            break;
+          case 0x06 /*DOM_VK_RIGHT_SHIFT*/:
+            key = 113 /* GLUT_KEY_SHIFT_R */;
+            break;
+
+          case 17   /*DOM_VK_CONTROL*/:
+          case 0x03 /*DOM_VK_LEFT_CONTROL*/:
+            key = 114 /* GLUT_KEY_CONTROL_L */;
+            break;
+          case 0x04 /*DOM_VK_RIGHT_CONTROL*/:
+            key = 115 /* GLUT_KEY_CONTROL_R */;
+            break;
+
+          case 18   /*DOM_VK_ALT*/:
+          case 0x02 /*DOM_VK_LEFT_ALT*/:
+            key = 116 /* GLUT_KEY_ALT_L */;
+            break;
+          case 0x01 /*DOM_VK_RIGHT_ALT*/:
+            key = 117 /* GLUT_KEY_ALT_R */;
+            break;
         };
         return key;
     },
