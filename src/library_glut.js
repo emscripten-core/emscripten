@@ -18,6 +18,11 @@ var LibraryGLUT = {
     modifiers: 0,
     initWindowWidth: 256,
     initWindowHeight: 256,
+    // Set when going fullscreen
+    windowX: 0,
+    windowY: 0,
+    windowWidth: 0,
+    windowHeight: 0,
 
     savePosition: function(event) {
       /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
@@ -216,45 +221,55 @@ var LibraryGLUT = {
       }
     },
 
-    requestFullScreen: function() {
-      var RFS = function() {};
-      if (Module["canvas"]['requestFullscreen']) {
-        RFS = Module["canvas"]['requestFullscreen'];
-      } else if (Module["canvas"]['requestFullScreen']) {
-        RFS = Module["canvas"]['requestFullScreen'];
-      } else if (Module["canvas"]['mozRequestFullScreen']) {
-        RFS = Module["canvas"]['mozRequestFullScreen'];
-      } else if (Module["canvas"]['webkitRequestFullScreen']) {
-        RFS = Module["canvas"]['webkitRequestFullScreen'];
+    // TODO add fullscreen API ala:
+    // http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugin/
+    onFullScreenEventChange: function(event){
+      var width;
+      var height;
+      if (document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen) {
+        width = screen["width"];
+        height = screen["height"];
+      } else {
+        width = GLUT.windowWidth;
+        height = GLUT.windowHeight;
+	// TODO set position
+        document.removeEventListener('fullscreenchange', GLUT.onFullScreenEventChange, true);
+        document.removeEventListener('mozfullscreenchange', GLUT.onFullScreenEventChange, true);
+        document.removeEventListener('webkitfullscreenchange', GLUT.onFullScreenEventChange, true);
       }
+      Module['canvas'].width  = width;
+      Module['canvas'].height = height;
+      /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
+      if (GLUT.reshapeFunc) {
+        FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
+      }
+      _glutPostRedisplay();
+    },
+
+    requestFullScreen: function() {
+      var RFS = Module["canvas"]['requestFullscreen'] ||
+                Module["canvas"]['requestFullScreen'] ||
+                Module["canvas"]['mozRequestFullScreen'] ||
+                Module["canvas"]['webkitRequestFullScreen'] ||
+                (function() {});
       RFS.apply(Module["canvas"], []);
     },
 
     cancelFullScreen: function() {
-      var CFS = function() {};
-      if (document['exitFullscreen']) {
-        CFS = document['exitFullscreen'];
-      } else if (document['cancelFullScreen']) {
-        CFS = document['cancelFullScreen'];
-      } else if (document['mozCancelFullScreen']) {
-        CFS = document['mozCancelFullScreen'];
-      } else if (document['webkitCancelFullScreen']) {
-        CFS = document['webkitCancelFullScreen'];
-      }
+      var CFS = document['exitFullscreen'] ||
+                document['cancelFullScreen'] ||
+                document['mozCancelFullScreen'] ||
+                document['webkitCancelFullScreen'] ||
+	        (function() {});
       CFS.apply(document, []);
     },
 
     requestAnimationFrame: function(func) {
-      var RAF = window['setTimeout'];
-      if (window['requestAnimationFrame']) {
-        RAF = window['requestAnimationFrame'];
-      } else if (window['mozRequestAnimationFrame']) {
-        RAF = window['mozRequestAnimationFrame'];
-      } else if (window['webkitRequestAnimationFrame']) {
-        RAF = window['webkitRequestAnimationFrame'];
-      } else if (window['msRequestAnimationFrame']) {
-        RAF = window['msRequestAnimationFrame'];
-      }
+      var RAF = window['requestAnimationFrame'] ||
+                window['mozRequestAnimationFrame'] ||
+                window['webkitRequestAnimationFrame'] ||
+                window['msRequestAnimationFrame'] ||
+                window['setTimeout'];
       RAF.apply(window, [func]);
     },
   },
@@ -456,18 +471,14 @@ var LibraryGLUT = {
 
   glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
   glutFullScreen: function() {
-    var width = screen["width"];
-    var height = screen["height"];
-    /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
-    Module['canvas'].width  = width;
-    Module['canvas'].height = height;
-    if (GLUT.reshapeFunc) {
-      FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
-    }
+    GLUT.windowX = 0; // TODO
+    GLUT.windowY = 0; // TODO
+    GLUT.windowWidth  = Module['canvas'].width;
+    GLUT.windowHeight = Module['canvas'].height;
+    document.addEventListener('fullscreenchange', GLUT.onFullScreenEventChange, true);
+    document.addEventListener('mozfullscreenchange', GLUT.onFullScreenEventChange, true);
+    document.addEventListener('webkitfullscreenchange', GLUT.onFullScreenEventChange, true);
     GLUT.requestFullScreen();
-    window.setTimeout(function() {
-      _glutPostRedisplay();
-    }, 0);
   },
 
   glutInitDisplayMode: function(mode) {},
