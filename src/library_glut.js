@@ -36,6 +36,15 @@ var LibraryGLUT = {
     },
 
     onMousemove: function(event) {
+      /* Pierre: Send motion event only if the motion changed, prevents
+       * spamming our app with uncessary callback call. It does happen in
+       * Chrome on Windows.
+       */
+      var newX = event['clientX'] - Module['canvas'].offsetLeft;
+      var newY = event['clientY'] - Module['canvas'].offsetTop;
+      if (newX == GLUT['lastX'] && newY == GLUT['lastY'])
+        return;
+
       GLUT.savePosition(event);
       if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
         event.preventDefault();
