@@ -214,44 +214,29 @@ var LibraryGLUT = {
     },
 
     requestFullScreen: function() {
-      var RFS = function() {};
-      if (Module["canvas"]['requestFullscreen']) {
-        RFS = Module["canvas"]['requestFullscreen'];
-      } else if (Module["canvas"]['requestFullScreen']) {
-        RFS = Module["canvas"]['requestFullScreen'];
-      } else if (Module["canvas"]['mozRequestFullScreen']) {
-        RFS = Module["canvas"]['mozRequestFullScreen'];
-      } else if (Module["canvas"]['webkitRequestFullScreen']) {
-        RFS = Module["canvas"]['webkitRequestFullScreen'];
-      }
+      var RFS = Module["canvas"]['requestFullscreen'] ||
+                Module["canvas"]['requestFullScreen'] ||
+                Module["canvas"]['mozRequestFullScreen'] ||
+                Module["canvas"]['webkitRequestFullScreen'] ||
+                (function() {});
       RFS.apply(Module["canvas"], []);
     },
 
     cancelFullScreen: function() {
-      var CFS = function() {};
-      if (document['exitFullscreen']) {
-        CFS = document['exitFullscreen'];
-      } else if (document['cancelFullScreen']) {
-        CFS = document['cancelFullScreen'];
-      } else if (document['mozCancelFullScreen']) {
-        CFS = document['mozCancelFullScreen'];
-      } else if (document['webkitCancelFullScreen']) {
-        CFS = document['webkitCancelFullScreen'];
-      }
+      var CFS = document['exitFullscreen'] ||
+                document['cancelFullScreen'] ||
+                document['mozCancelFullScreen'] ||
+                document['webkitCancelFullScreen'] ||
+	        (function() {});
       CFS.apply(document, []);
     },
 
     requestAnimationFrame: function(func) {
-      var RAF = window['setTimeout'];
-      if (window['requestAnimationFrame']) {
-        RAF = window['requestAnimationFrame'];
-      } else if (window['mozRequestAnimationFrame']) {
-        RAF = window['mozRequestAnimationFrame'];
-      } else if (window['webkitRequestAnimationFrame']) {
-        RAF = window['webkitRequestAnimationFrame'];
-      } else if (window['msRequestAnimationFrame']) {
-        RAF = window['msRequestAnimationFrame'];
-      }
+      var RAF = window['requestAnimationFrame'] ||
+                window['mozRequestAnimationFrame'] ||
+                window['webkitRequestAnimationFrame'] ||
+                window['msRequestAnimationFrame'] ||
+                window['setTimeout'];
       RAF.apply(window, [func]);
     },
   },
