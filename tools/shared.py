@@ -6,7 +6,11 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-# Config file
+# Emscripten configuration is done through the EM_CONFIG environment variable.
+# If the string value contained in this environment variable contains newline
+# separated definitions, then these definitions will be used to configure
+# Emscripten.  Otherwise, the string is understood to represent a path to
+# a settings file that contains the required definitions.
 
 EM_CONFIG = os.environ.get('EM_CONFIG')
 if not EM_CONFIG:
