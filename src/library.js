@@ -1867,7 +1867,7 @@ LibraryManager.library = {
 
 #if CATCH_EXIT_CODE
     throw new ExitStatus();
-#else 
+#else
     throw 'exit(' + status + ') called, at ' + new Error().stack;
 #endif
   },
@@ -4408,7 +4408,7 @@ LibraryManager.library = {
     }
     return ret;
   },
-  
+
   llvm_ctlz_i32: function(x) {
     for (var i=0; i<32; i++) {
         if ( (x & (1 << (31-i))) != 0 ) {
@@ -4711,6 +4711,9 @@ LibraryManager.library = {
   llvm_lifetime_start: function() {},
   llvm_lifetime_end: function() {},
 
+  llvm_invariant_start: function() {},
+  llvm_invariant_end: function() {},
+
   // ==========================================================================
   // math.h
   // ==========================================================================
@@ -4935,7 +4938,7 @@ LibraryManager.library = {
     if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
     if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
     if (x == 0) return {{{ cDefine('FP_ZERO') }}};
-    // FP_SUBNORMAL..?  
+    // FP_SUBNORMAL..?
     return {{{ cDefine('FP_NORMAL') }}};
   },
   __fpclassifyd: '__fpclassifyf',
