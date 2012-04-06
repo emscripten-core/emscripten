@@ -1,4 +1,26 @@
-//"use strict";
+/*
+ * GL support.
+ *
+ * Emscripten supports the WebGL-friendly subset of OpenGL, basically what
+ * maps directly to WebGL. This includes almost all of OpenGL ES 2.0,
+ * except for client-side arrays. The reason they are missing from WebGL
+ * is because they are less efficient than properly using GPU-side data.
+ * Similarly, if we emulated client-side arrays here, we would end up
+ * with very bad performance, since we would need to upload the data
+ * on each call to glDrawArrays etc. (Even if there are two calls one
+ * after the other, we can't know the data did not change!) So in
+ * practical terms full OpenGL ES 2.0 emulation would be convenient,
+ * but lead to bad performance so in practice you would need to properly
+ * rewrite your code to a WebGL-friendly subset anyhow.
+ *
+ * Thankfully, rewriting to that subset is general fairly easy. See
+ * the files in tests/glbook for some simple examples ported to that
+ * subset.
+ *
+ * Regarding OpenGL aspects present on desktop GL or on OpenGL ES prior
+ * to 2.0, we also do not support immediate mode (glBegin/glEnd), GL_QUADS,
+ * etc. Some of these might make sense to emulate, some might not.
+ */
 
 var LibraryGL = {
   $GL: {
