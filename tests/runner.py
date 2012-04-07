@@ -6482,6 +6482,13 @@ f.close()
       open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
       self.assertNotContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+      # noInitialRun prevents run
+      for no_initial_run in [0, 1]:
+        Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+        src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read();
+        open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
+        assert ('hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js'))) != no_initial_run, 'only run if no noInitialRun'
+
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()

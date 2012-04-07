@@ -64,6 +64,9 @@ Module['run'] = run;
 #else
 addRunDependency();
 #endif
+if (Module['noInitialRun']) {
+  addRunDependency();
+}
 
 if (runDependencies == 0) {
   var ret = run();
