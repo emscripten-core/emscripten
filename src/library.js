@@ -4394,6 +4394,21 @@ LibraryManager.library = {
     */
   },
 
+  llvm_bswap_i16: function(x) {
+    x = unSign(x, 32);
+    var bytes = [];
+    bytes[0] = x & 255;
+    x >>= 8;
+    bytes[1] = x & 255;
+    x >>= 8;
+    var ret = 0;
+    ret <<= 8;
+    ret += bytes[0];
+    ret <<= 8;
+    ret += bytes[1];
+    return ret;
+  },
+
   llvm_bswap_i32: function(x) {
     x = unSign(x, 32);
     var bytes = [];
