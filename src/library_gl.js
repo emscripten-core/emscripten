@@ -61,11 +61,10 @@ var LibraryGL = {
       // remove 'gl' and initial caps
       var small = original.substr(2);
       small = small[0].toLowerCase() + small.substr(1);
-      console.log('SDL_GL_GetProcAddress: ' + original);
       var func = Module.ctx[small];
       if (!func) {
         console.log('WARNING: getProcAddress failed for ' + original + ' ==> ' + small);
-        return 0;
+        func = function() { console.log('[empty replacement for ' + small + ']') };
       }
       return Runtime.addFunction(function() {
         return func.apply(Module.ctx, arguments);
