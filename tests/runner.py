@@ -6366,6 +6366,39 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.']).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_identical_basenames(self):
+      # Issue 287: files in different dirs but with the same basename get confused as the same,
+      # causing multiply defined symbol errors
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'foo'));
+      except:
+        pass
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'bar'));
+      except:
+        pass
+      open(os.path.join(self.get_dir(), 'foo', 'main.cpp'), 'w').write('''
+        extern void printey();
+        int main() {
+          printey();
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'bar', 'main.cpp'), 'w').write('''
+        #include<stdio.h>
+        void printey() { printf("hello there\\n"); }
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), os.path.join(self.get_dir(), 'bar', 'main.cpp')]).communicate()
+      self.assertContained('hello there', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+      # ditto with first creating .o files
+      try_delete(os.path.join(self.get_dir(), 'a.out.js'))
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'foo', 'main.o')]).communicate()
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'bar', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo', 'main.o'), os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
+      self.assertContained('hello there', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_embed_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
