@@ -473,7 +473,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def link(files, target):
     try_delete(target)
+    stub = 'a.out' if not WINDOWS else 'a.exe'
+    need_cleanup = not os.path.exists(stub)
     output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target], stdout=PIPE).communicate()[0]
+    if need_cleanup: try_delete(stub) # clean up stub left by the linker
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
