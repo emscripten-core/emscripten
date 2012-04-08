@@ -476,10 +476,6 @@ mergeInto(LibraryManager.library, {
     return -1; // -1 == all modes are ok. TODO
   },
 
-  SDL_GL_SetAttribute: function(attr, value) {
-    // TODO
-  },
-
   SDL_SetVideoMode: function(width, height, depth, flags) {
     ['mousedown', 'mouseup', 'mousemove'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
@@ -681,8 +677,6 @@ mergeInto(LibraryManager.library, {
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
   },
-
-  SDL_GL_SwapBuffers: function() {},
 
   SDL_GetTicks: function() {
     return Math.floor(Date.now() - SDL.startTime);
@@ -976,6 +970,18 @@ mergeInto(LibraryManager.library, {
     // This cannot be fast, to render many pixels this way!
     _boxRGBA(surf, x1, y1, x1, y1, r, g, b, a);
   },
+
+  // GL
+
+  SDL_GL_SetAttribute: function(attr, value) {
+    console.log('TODO: SDL_GL_SetAttribute');
+  },
+
+  SDL_GL_GetProcAddress: function(name_) {
+    return GL.getProcAddress(Pointer_stringify(name_));
+  },
+
+  SDL_GL_SwapBuffers: function() {},
 
   // Misc
 

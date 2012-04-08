@@ -56,6 +56,21 @@ var LibraryGL = {
       } while (true);
       return false;
     },
+
+    getProcAddress: function(original) {
+      // remove 'gl' and initial caps
+      var small = original.substr(2);
+      small = small[0].toLowerCase() + small.substr(1);
+      console.log('SDL_GL_GetProcAddress: ' + original);
+      var func = Module.ctx[small];
+      if (!func) {
+        console.log('WARNING: getProcAddress failed for ' + original + ' ==> ' + small);
+        return 0;
+      }
+      return Runtime.addFunction(function() {
+        return func.apply(Module.ctx, arguments);
+      });
+    }
   },
 
   glGetString: function(name_) {

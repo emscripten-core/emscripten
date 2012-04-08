@@ -306,6 +306,13 @@ var Runtime = {
       });
     }
     return ret;
+  },
+
+  addFunction: function(func) {
+    var ret = FUNCTION_TABLE.length;
+    FUNCTION_TABLE.push(func);
+    FUNCTION_TABLE.push(0);
+    return ret;
   }
 };
 
