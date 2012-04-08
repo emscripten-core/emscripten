@@ -108,6 +108,54 @@ mergeInto(LibraryManager.library, {
       16:  304 // shift
     },
 
+    scanCodes: { // SDL keycode ==> SDL scancode
+      97: 4, // A
+      98: 5,
+      99: 6,
+      100: 7,
+      101: 8,
+      102: 9,
+      103: 10,
+      104: 11,
+      105: 12,
+      106: 13,
+      107: 14,
+      108: 15,
+      109: 16,
+      110: 17,
+      111: 18,
+      112: 19,
+      113: 20,
+      114: 21,
+      115: 22,
+      116: 23,
+      117: 24,
+      118: 25,
+      119: 26,
+      120: 27,
+      121: 28,
+      122: 29, // Z
+      48: 30, // 0
+      49: 31,
+      50: 32,
+      51: 33,
+      52: 34,
+      53: 35,
+      54: 36,
+      55: 37,
+      56: 38,
+      57: 39, // 9
+      13: 40, // return
+      9: 43, // tab
+      32: 44, // space
+      92: 49, // backslash
+      47: 56, // slash
+      1106: 82, // up arrow
+      1105: 81, // down arrow
+      1104: 80, // left arrow
+      1103: 79 // right arrow
+    },
+
     structs: {
       Rect: Runtime.generateStructInfo([
         ['i32', 'x'], ['i32', 'y'], ['i32', 'w'], ['i32', 'h'], 
@@ -309,12 +357,13 @@ mergeInto(LibraryManager.library, {
           if (key >= 65 && key <= 90) {
             key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
           }
+          var scan = SDL.scanCodes[key] || key;
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 0x300 : 0x301', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
 
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'key', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}

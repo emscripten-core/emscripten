@@ -6866,7 +6866,7 @@ elif 'browser' in str(sys.argv):
       open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
-      self.run_browser('page.html', '', '/report_result?30030')
+      self.run_browser('page.html', '', '/report_result?510510')
 
     def test_sdl_mouse(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
