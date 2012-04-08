@@ -378,8 +378,9 @@ for i in range(len(sys.argv)-1):
 
 if header: # header or such
   if len(sys.argv) >= 3: # if there is a source and a target, then copy, otherwise do nothing
-    if DEBUG: print >> sys.stderr, 'Just copy.'
-    shutil.copy(sys.argv[-1], sys.argv[-2])
+    sys.argv = filter(lambda arg: not arg.startswith('-I'), sys.argv)
+    if DEBUG: print >> sys.stderr, 'Just copy:', sys.argv[-1], target
+    shutil.copy(sys.argv[-1], target)
   else:
     if DEBUG: print >> sys.stderr, 'No-op.'
   exit(0)
