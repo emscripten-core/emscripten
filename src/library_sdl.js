@@ -161,10 +161,12 @@ mergeInto(LibraryManager.library, {
         ['i32', 'x'], ['i32', 'y'], ['i32', 'w'], ['i32', 'h'], 
       ]),
       PixelFormat: Runtime.generateStructInfo([
+        ['i32', 'format'],
         ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
+        ['i8', 'padding1'], ['i8', 'padding2'],
+        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'],
         ['i8', 'Rloss'], ['i8', 'Gloss'], ['i8', 'Bloss'], ['i8', 'Aloss'],
-        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift'],
-        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'] // Docs say i8, ./include/SDL_video.h says i32...
+        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift']
       ]),
       KeyboardEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
@@ -263,6 +265,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
 
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.format', '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i8') }}} // TODO
