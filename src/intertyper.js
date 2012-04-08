@@ -338,7 +338,8 @@ function intertyper(data, sidePass, baseLineNums) {
             return '/dev/null';
         } else if (item.indent === 0) {
           if ((tokensLength >= 1 && token0Text.substr(-1) == ':') ||
-              (tokensLength >= 3 && token1Text == '<label>'))
+              (tokensLength >= 3 && token1Text == '<label>') ||
+              (tokensLength >= 2 && token1Text == ':'))
             return 'Label';
           if (tokensLength >= 4 && token0Text == 'declare')
             return 'External';
@@ -547,13 +548,15 @@ function intertyper(data, sidePass, baseLineNums) {
   // label
   substrate.addActor('Label', {
     processItem: function(item) {
+      var rawLabel = item.tokens[0].text.substr(-1) == ':' ?
+            '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
+            (item.tokens[1].text == '<label>' ?
+             '%' + item.tokens[2].text.substr(1) :
+             '%' + item.tokens[0].text)
+      var niceLabel = toNiceIdent(rawLabel);
       return [{
         intertype: 'label',
-        ident: toNiceIdent(
-          item.tokens[0].text.substr(-1) == ':' ?
-            '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
-            '%' + item.tokens[2].text.substr(1)
-        ),
+        ident: niceLabel,
         lineNum: item.lineNum
       }];
     }
