@@ -285,11 +285,15 @@ mergeInto(LibraryManager.library, {
       } else {
         canvas = Module['canvas'];
       }
+      var ctx = SDL.createContext(canvas, useWebGL);
+      if (usePageCanvas) {
+        Module.ctx = ctx;
+      }
       SDL.surfaces[surf] = {
         width: width,
         height: height,
         canvas: canvas,
-        ctx: SDL.createContext(canvas, useWebGL),
+        ctx: ctx,
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
@@ -317,7 +321,7 @@ mergeInto(LibraryManager.library, {
           // window which has a black background by default.
           canvas.style.backgroundColor = "black";
         }
-        return Module.ctx = ctx;
+        return ctx;
       } catch (e) {
         Module.print('(canvas not available)');
         return null;
