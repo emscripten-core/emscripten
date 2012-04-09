@@ -365,89 +365,9 @@ var LibraryGLUT = {
     GLUT.mouseFunc = func;
   },
 
+  glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow: function(name) {
-#if USE_TYPED_ARRAYS
-    try {
-      var ctx = Module["canvas"].getContext('experimental-webgl');
-      if (!ctx) throw 'Could not create canvas :(';
-#if GL_DEBUG
-      // Useful to debug native webgl apps: var Module = { printErr: function(x) { console.log(x) } };
-      var wrapper = {};
-      wrapper.objectMap = new WeakMap();
-      wrapper.objectCounter = 1;
-      for (var prop in ctx) {
-        (function(prop) {
-          switch (typeof ctx[prop]) {
-            case 'function': {
-              wrapper[prop] = function() {
-                var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
-                  if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
-                  if (arg.toString() == '[object HTMLImageElement]') {
-                    return arg + '\n\n';
-                  }
-                  if (arg.byteLength) {
-                    var buf = new ArrayBuffer(32);
-                    var i8buf = new Int8Array(buf);
-                    var f32buf = new Float32Array(buf);
-                    switch(arg.toString()) {
-                      case '[object Uint8Array]':
-                        i8buf.set(arg.subarray(0, 32));
-                        break;
-                      case '[object Float32Array]':
-                        f32buf.set(arg.subarray(0, 5));
-                        break;
-                      default:
-                        alert('unknown array for debugging: ' + arg);
-                        throw 'see alert';
-                    }
-                    var ret = '{' + arg.byteLength + ':\n';
-                    var arr = Array.prototype.slice.call(i8buf);
-                    ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
-                    arr = Array.prototype.slice.call(f32buf, 0, 8);
-                    ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
-                    return ret;
-                  }
-                  return arg;
-                });
-                Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');
-                var ret = ctx[prop].apply(ctx, arguments);
-                var printRet = ret;
-                if (typeof ret == 'object') {
-                  wrapper.objectMap[ret] = wrapper.objectCounter++;
-                  printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
-                }
-                Module.printErr('[     gl:' + prop + ':return:' + printRet + ']');
-                return ret;
-              }
-              break;
-            }
-            case 'number': case 'string': {
-              wrapper.__defineGetter__(prop, function() {
-                //Module.printErr('[gl_g:' + prop + ':' + ctx[prop] + ']');
-                return ctx[prop];
-              });
-              wrapper.__defineSetter__(prop, function(value) {
-                Module.printErr('[gl_s:' + prop + ':' + value + ']');
-                ctx[prop] = value;
-              });
-              break;
-            }
-          }
-        })(prop);
-      }
-      Module.ctx = wrapper;
-#else
-      Module.ctx = ctx;
-#endif
-      // Set the background of the canvas to black, because glut gives us a
-      // window which has a black background by default.
-      Module["canvas"].style.backgroundColor = "black";
-    } catch (e) {
-      Module.print('(canvas not available)');
-    }
-#else
-    Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
-#endif
+    Module.ctx = Browser.createContext(Module['canvas'], true);
     return 1;
   },
 

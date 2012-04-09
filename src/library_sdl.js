@@ -76,7 +76,7 @@
 //  * SDL_Quit does nothing.
 
 mergeInto(LibraryManager.library, {
-  $SDL__deps: ['$FS'],
+  $SDL__deps: ['$FS', '$Browser'],
   $SDL: {
     defaults: {
       width: 320,
@@ -285,7 +285,7 @@ mergeInto(LibraryManager.library, {
       } else {
         canvas = Module['canvas'];
       }
-      var ctx = SDL.createContext(canvas, useWebGL);
+      var ctx = Browser.createContext(canvas, useWebGL);
       if (usePageCanvas) {
         Module.ctx = ctx;
       }
@@ -304,28 +304,6 @@ mergeInto(LibraryManager.library, {
         source: source
       };
       return surf;
-    },
-
-    createContext: function(canvas, useWebGL) {
-#if !USE_TYPED_ARRAYS
-      if (useWebGL) {
-	Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
-        return null;
-      }
-#endif
-      try {
-        var ctx = canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
-        if (!ctx) throw 'Could not create canvas :(';
-        if (useWebGL) {
-          // Set the background of the WebGL canvas to black, because SDL gives us a
-          // window which has a black background by default.
-          canvas.style.backgroundColor = "black";
-        }
-        return ctx;
-      } catch (e) {
-        Module.print('(canvas not available)');
-        return null;
-      }
     },
 
     freeSurface: function(surf) {
