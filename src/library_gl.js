@@ -55,20 +55,6 @@ var LibraryGL = {
         return true;
       } while (true);
       return false;
-    },
-
-    getProcAddress: function(original) {
-      // remove 'gl' and initial caps
-      var small = original.substr(2);
-      small = small[0].toLowerCase() + small.substr(1);
-      var func = Module.ctx[small];
-      if (!func) {
-        console.log('WARNING: getProcAddress failed for ' + original + ' ==> ' + small);
-        func = function() { console.log('[empty replacement for ' + small + ']') };
-      }
-      return Runtime.addFunction(function() {
-        return func.apply(Module.ctx, arguments);
-      });
     }
   },
 
@@ -766,6 +752,29 @@ var LibraryGL = {
     return Module.ctx.isFramebuffer(fb);
   },
 
+  // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
+
+  $GLEmulation__deps: ['glCreateShader'],
+  $GLEmulation: {
+    procReplacements: {
+      'glCreateShaderObjectARB': 'glCreateShader'
+    },
+
+    getProcAddress: function(name_) {
+      name_ = GLEmulation.procReplacements[name_] || name_;
+      var func;
+      try {
+        func = eval('_' + name_);
+      } catch(e) {
+        console.log('WARNING: getProcAddress failed for ' + name_);
+        func = function() {
+          console.log('WARNING: empty replacement for ' + name_ + ' called, no-op');
+          return 0;
+        };
+      }
+      return Runtime.addFunction(func);
+    }
+  }
 };
 
 // Simple pass-through functions
