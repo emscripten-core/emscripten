@@ -8,6 +8,8 @@ var LibraryGL = {
     counter: 1,
     packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
+    arrayBufferBound: false,
+    elementArrayBufferBound: false,
     buffers: {},
     programs: {},
     framebuffers: {},
@@ -531,6 +533,11 @@ var LibraryGL = {
 
   glBindBuffer: function(target, buffer) {
     Module.ctx.bindBuffer(target, GL.buffers[buffer]);
+    if (target == 0x8892 /* GL_ARRAY_BUFFER */) {
+      GL.arrayBufferBound = true;
+    } else if (target == 0x8893 /* GL_ELEMENT_ARRAY_BUFFER */) {
+      GL.elementArrayBufferBound = true;
+    }
   },
 
   glVertexAttrib1fv: function(index, v) {
