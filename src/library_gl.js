@@ -51,6 +51,16 @@ var LibraryGL = {
         return true;
       } while (true);
       return false;
+    },
+
+    computeImageSize: function(width, height, sizePerPixel, alignment) {
+      function roundedToNextMultipleOf(x, y) {
+        return Math.floor((x + y - 1) / y) * y
+      }
+      var plainRowSize = width * sizePerPixel;
+      var alignedRowSize = roundedToNextMultipleOf(plainRowSize, alignment);
+      return (height <= 0) ? 0 :
+               ((height - 1) * alignedRowSize + plainRowSize);
     }
   },
 
@@ -254,17 +264,17 @@ var LibraryGL = {
             default:
               throw 'Invalid format (' + format + ') passed to glTexImage2D';
           }
-          pixels = new Uint8Array(Array_copy(pixels, width*height*sizePerPixel));
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel)));
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexImage2D';
       }
+      var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+      pixels = new Uint8Array(Array_copy(pixels, bytes));
     } else {
       pixels = null;
     }
@@ -293,17 +303,17 @@ var LibraryGL = {
             default:
               throw 'Invalid format (' + format + ') passed to glTexSubImage2D';
           }
-          pixels = new Uint8Array(Array_copy(pixels, width*height*sizePerPixel));
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel)));
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexSubImage2D';
       }
+      var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+      pixels = new Uint8Array(Array_copy(pixels, bytes));
     } else {
       pixels = null;
     }
