@@ -3302,8 +3302,9 @@ LibraryManager.library = {
     }
     var info = FS.streams[stream];
     if (!info) return -1;
-    return allocate(info.object.contents.slice(offset, offset+num),
-                    'i8', ALLOC_NORMAL);
+    var contents = info.object.contents;
+    contents = Array.prototype.slice.call(contents, offset, offset+num);
+    return allocate(contents, 'i8', ALLOC_NORMAL);
   },
   __01mmap64_: 'mmap',
 
