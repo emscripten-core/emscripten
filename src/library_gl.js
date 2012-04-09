@@ -748,19 +748,38 @@ var LibraryGL = {
 
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
-  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram'],
+  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram'],
   $GLEmulation: {
     procReplacements: {
       'glCreateShaderObjectARB': 'glCreateShader',
       'glShaderSourceARB': 'glShaderSource',
       'glCompileShaderARB': 'glCompileShader',
       'glCreateProgramObjectARB': 'glCreateProgram',
+      'glAttachObjectARB': 'glAttachShader',
+      'glLinkProgramARB': 'glLinkProgram',
+      'glActiveTextureARB': 'glActiveTexture'
     },
 
     procs: {
-      glDeleteObjectARB: function() {
-        console.log('WARNING: not deleting through glDeleteObject, not sure if shader or program');
-      }
+      glDeleteObjectARB: function(id) {
+        if (GL.programs[id]) {
+          _glDeleteProgram(id);
+        } else if (GL.shaders[id]) {
+          _glDeleteShader(id);
+        } else {
+          console.log('WARNING: deleteObjectARB received invalid id: ' + id);
+        }
+      },
+
+      glGetObjectParameterivARB: function(id, type, result) {
+        if (GL.programs[id]) {
+          _glGetProgramiv(id, type, result);
+        } else if (GL.shaders[id]) {
+          _glGetShaderiv(id, type, result);
+        } else {
+          console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
+        }
+      },
     },
 
     getProcAddress: function(name_) {
