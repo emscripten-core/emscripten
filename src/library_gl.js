@@ -5,20 +5,14 @@
 
 var LibraryGL = {
   $GL: {
+    counter: 1,
     buffers: {},
-    bufferCounter: 1,
     programs: {},
-    programCounter: 1,
     framebuffers: {},
-    framebufferCounter: 1,
     renderbuffer: {},
-    renderbufferCounter: 1,
     textures: {},
-    textureCounter: 1,
     uniforms: {},
-    uniformCounter: 1,
     shaders: {},
-    shaderCounter: 1,
 
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
     scan: function(table, object) {
@@ -195,7 +189,7 @@ var LibraryGL = {
 
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = GL.textureCounter++;
+      var id = GL.counter++;
       GL.textures[id] = Module.ctx.createTexture();
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
@@ -327,7 +321,7 @@ var LibraryGL = {
 
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.bufferCounter++;
+      var id = GL.counter++;
       GL.buffers[id] = Module.ctx.createBuffer();
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
@@ -360,7 +354,7 @@ var LibraryGL = {
 
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.renderbufferCounter++;
+      var id = GL.counter++;
       GL.renderbuffers[id] = Module.ctx.createRenderbuffer();
       {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
     }
@@ -394,7 +388,7 @@ var LibraryGL = {
     name = Pointer_stringify(name);
     var loc = Module.ctx.getUniformLocation(GL.programs[program], name);
     if (!loc) return -1;
-    var id = GL.uniformCounter++;
+    var id = GL.counter++;
     GL.uniforms[id] = loc;
     return id;
   },
@@ -545,7 +539,7 @@ var LibraryGL = {
   },
 
   glCreateShader: function(shaderType) {
-    var id = GL.shaderCounter++;
+    var id = GL.counter++;
     GL.shaders[id] = Module.ctx.createShader(shaderType);
     return id;
   },
@@ -649,7 +643,7 @@ var LibraryGL = {
   },
 
   glCreateProgram: function() {
-    var id = GL.programCounter++;
+    var id = GL.counter++;
     GL.programs[id] = Module.ctx.createProgram();
     return id;
   },
@@ -715,7 +709,7 @@ var LibraryGL = {
 
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
-      var id = GL.framebufferCounter++;
+      var id = GL.counter++;
       GL.framebuffers[id] = Module.ctx.createFramebuffer();
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
