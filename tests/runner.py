@@ -19,11 +19,31 @@ import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile,
 
 if len(sys.argv) == 1:
   print '''
+==============================================================================
 Running the main part of the test suite. Don't forget to run the other parts!
 
   sanity - tests for first run, etc., modifies ~/.emscripten
-  benchmark - run before and after each set of changes before pushing to master, verify no regressions
+  benchmark - run before and after each set of changes before pushing to
+              master, verify no regressions
   browser - runs pages in a web browser
+
+To run one of those parts, do something like
+
+  python tests/runner.py sanity
+
+To run a specific set of tests, you can do things like
+
+  python tests/runner.py o1
+
+(that runs the o1 (-O1) tests). You can run individual tests with
+
+  python tests/runner.py test_hello_world
+
+Combinations work too, for example
+
+  python tests/runner.py browser.test_sdl_image
+==============================================================================
+
 '''
   time.sleep(2)
 
