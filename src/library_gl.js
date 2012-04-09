@@ -6,6 +6,8 @@
 var LibraryGL = {
   $GL: {
     counter: 1,
+    packAlignment: 4,   // default alignment is 4 bytes
+    unpackAlignment: 4, // default alignment is 4 bytes
     buffers: {},
     programs: {},
     framebuffers: {},
@@ -50,6 +52,15 @@ var LibraryGL = {
       } while (true);
       return false;
     }
+  },
+
+  glPixelStorei: function(pname, param) {
+    if (pname == 0x0D05 /* GL_PACK_ALIGNMENT */) {
+      GL.packAlignment = param;
+    } else if (pname == 0x0cf5 /* GL_UNPACK_ALIGNMENT */) {
+      GL.unpackAlignment = param;
+    }
+    Module.ctx.pixelStorei(pname, param);
   },
 
   glGetString: function(name_) {
@@ -804,7 +815,7 @@ var LibraryGL = {
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError finish flush'],
  [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture blendEquation'],
- [2, 'pixelStorei blendFunc blendEquationSeparate'],
+ [2, 'blendFunc blendEquationSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
  [5, 'vertexAttrib4f'],
