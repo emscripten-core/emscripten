@@ -6,6 +6,8 @@
 var LibraryGL = {
   $GL: {
     counter: 1,
+    packAlignment: 4,   // default alignment is 4 bytes
+    unpackAlignment: 4, // default alignment is 4 bytes
     buffers: {},
     programs: {},
     framebuffers: {},
@@ -77,6 +79,15 @@ var LibraryGL = {
       return (height <= 0) ? 0 :
                ((height - 1) * alignedRowSize + plainRowSize);
     }
+  },
+
+  glPixelStorei: function(pname, param) {
+    if (pname == 0x0D05 /* GL_PACK_ALIGNMENT */) {
+      GL.packAlignment = param;
+    } else if (pname == 0x0cf5 /* GL_UNPACK_ALIGNMENT */) {
+      GL.unpackAlignment = param;
+    }
+    Module.ctx.pixelStorei(pname, param);
   },
 
   glGetString: function(name_) {
@@ -1182,7 +1193,7 @@ var LibraryGL = {
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'shadeModel fogi fogfv getError finish flush'],
  [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage'],
- [2, 'pixelStorei blendFunc blendEquationSeparate depthRange depthRange[f]'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f]'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor'],
  [5, 'vertexAttrib4f'],
