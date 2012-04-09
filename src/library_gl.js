@@ -754,23 +754,34 @@ var LibraryGL = {
 
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
-  $GLEmulation__deps: ['glCreateShader'],
+  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram'],
   $GLEmulation: {
     procReplacements: {
-      'glCreateShaderObjectARB': 'glCreateShader'
+      'glCreateShaderObjectARB': 'glCreateShader',
+      'glShaderSourceARB': 'glShaderSource',
+      'glCompileShaderARB': 'glCompileShader',
+      'glCreateProgramObjectARB': 'glCreateProgram',
+    },
+
+    procs: {
+      glDeleteObjectARB: function() {
+        console.log('WARNING: not deleting through glDeleteObject, not sure if shader or program');
+      }
     },
 
     getProcAddress: function(name_) {
       name_ = GLEmulation.procReplacements[name_] || name_;
-      var func;
-      try {
-        func = eval('_' + name_);
-      } catch(e) {
-        console.log('WARNING: getProcAddress failed for ' + name_);
-        func = function() {
-          console.log('WARNING: empty replacement for ' + name_ + ' called, no-op');
-          return 0;
-        };
+      var func = GLEmulation.procs[name_];
+      if (!func) {
+        try {
+          func = eval('_' + name_);
+        } catch(e) {
+          console.log('WARNING: getProcAddress failed for ' + name_);
+          func = function() {
+            console.log('WARNING: empty replacement for ' + name_ + ' called, no-op');
+            return 0;
+          };
+        }
       }
       return Runtime.addFunction(func);
     }
