@@ -115,18 +115,20 @@ EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-# Temp dir
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
-try:
-  EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
-  if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
-    try:
+EMSCRIPTEN_TEMP_DIR = None
+
+if os.environ.get('EMCC_DEBUG'):
+  try:
+    EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
+    if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
       os.makedirs(EMSCRIPTEN_TEMP_DIR)
-    except Exception, e:
-      print >> sys.stderr, 'Warning: Could not create temp dir (%s): %s' % (EMSCRIPTEN_TEMP_DIR, str(e))
-except:
+  except:
+    print >> sys.stderr, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
+
+if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_')
-  print >> sys.stderr, 'Warning: TEMP_DIR not defined in %s, using %s' % (EM_CONFIG, EMSCRIPTEN_TEMP_DIR)
 
 # EM_CONFIG stuff
 

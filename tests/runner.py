@@ -2339,6 +2339,18 @@ def process(filename):
 
         self.do_run(src, 'hello world!\n*100*', post_build=check)
 
+    def test_inlinejs(self):
+        src = r'''
+          #include <stdio.h>
+
+          int main() {
+            asm("Module.print('Inline JS is very cool')");
+            return 0;
+          }
+          '''
+
+        self.do_run(src, 'Inline JS is very cool')
+
     def test_memorygrowth(self):
       # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
       # since we then need to enlarge the heap(s).
@@ -3813,6 +3825,7 @@ Pass: 0.000012 0.000012''')
 def process(filename):
   src = \'\'\'
     var Module = {
+      'noFSInit': true,
       'preRun': function() {
         FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
         FS.createLazyFile('/', 'test.file', 'test.file', true, false);
@@ -6539,9 +6552,15 @@ f.close()
       # noInitialRun prevents run
       for no_initial_run in [0, 1]:
         Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
-        src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read();
+        src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
         open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
         assert ('hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js'))) != no_initial_run, 'only run if no noInitialRun'
+
+        if no_initial_run:
+          # Calling main later should still work, filesystem etc. must be set up.
+          src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\n_main();\n';
+          open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
+          assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
@@ -6973,6 +6992,15 @@ elif 'browser' in str(sys.argv):
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('something.html'), output
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
+
+    def test_glgears_animation(self):
+      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS',
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
+                     stdout=PIPE, stderr=PIPE).communicate()
+      assert len(output[0]) == 0, output[0]
+      assert os.path.exists('something.html'), output
+      self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
     def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
@@ -7513,8 +7541,8 @@ elif 'sanity' in str(sys.argv):
         assert not os.path.exists(EMCC_CACHE)
         try_delete('a.out.js')
 
-        basebc_name = os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-0-basebc.bc')
-        dcebc_name = os.path.join(EMSCRIPTEN_TEMP_DIR, 'emcc-1-dce.bc')
+        basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
+        dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-dce.bc')
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:

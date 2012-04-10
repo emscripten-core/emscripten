@@ -464,6 +464,24 @@ var LibraryGL = {
     return id;
   },
 
+  glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
+    program = GL.programs[program];
+    var info = Module.ctx.getActiveUniform(program, index);
+
+    var infoname = info.name.slice(0, bufsize - 1);
+    writeStringToMemory(infoname, name);
+
+    if (length) {
+      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    }
+    if (size) {
+      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    }
+    if (type) {
+      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+    }
+  },
+
   glUniform1f: function(location, v0) {
     location = GL.uniforms[location];
     Module.ctx.uniform1f(location, v0);
@@ -622,6 +640,24 @@ var LibraryGL = {
     program = GL.programs[program];
     name = Pointer_stringify(name);
     return Module.ctx.getAttribLocation(program, name);
+  },
+
+  glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
+    program = GL.programs[program];
+    var info = Module.ctx.getActiveAttrib(program, index);
+
+    var infoname = info.name.slice(0, bufsize - 1);
+    writeStringToMemory(infoname, name);
+
+    if (length) {
+      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    }
+    if (size) {
+      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    }
+    if (type) {
+      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+    }
   },
 
   glCreateShader: function(shaderType) {

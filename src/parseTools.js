@@ -123,7 +123,7 @@ function isPointerType(type) {
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (/^\[\d+\ x\ (.*)\]/.test(type)) return true; // [15 x ?] blocks. Like structs
-  if (/<?{ [^}]* }>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
+  if (/<?{ ?[^}]* ?}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return type[0] == '%';
 }
@@ -412,7 +412,7 @@ function cleanSegment(segment) {
   return segment;
 }
 
-var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
+var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'frem', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 
 var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast');
 mergeInto(PARSABLE_LLVM_FUNCTIONS, MATHOPS);
@@ -1823,6 +1823,7 @@ function processMathop(item) {
     case 'fsub': return getFastValue(idents[0], '-', idents[1], item.type);
     case 'fdiv': return getFastValue(idents[0], '/', idents[1], item.type);
     case 'fmul': return getFastValue(idents[0], '*', idents[1], item.type);
+    case 'frem': return getFastValue(idents[0], '%', idents[1], item.type);
     case 'uitofp': case 'sitofp': return idents[0];
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 
