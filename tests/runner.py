@@ -3825,6 +3825,7 @@ Pass: 0.000012 0.000012''')
 def process(filename):
   src = \'\'\'
     var Module = {
+      'noFSInit': true,
       'preRun': function() {
         FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
         FS.createLazyFile('/', 'test.file', 'test.file', true, false);
@@ -6551,9 +6552,15 @@ f.close()
       # noInitialRun prevents run
       for no_initial_run in [0, 1]:
         Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
-        src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read();
+        src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
         open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
         assert ('hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js'))) != no_initial_run, 'only run if no noInitialRun'
+
+        if no_initial_run:
+          # Calling main later should still work, filesystem etc. must be set up.
+          src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\n_main();\n';
+          open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
+          assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
 
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()

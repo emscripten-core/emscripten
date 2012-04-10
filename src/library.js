@@ -26,7 +26,8 @@ LibraryManager.library = {
   _impure_ptr: 0,
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: '__ATINIT__.unshift({ func: function() { FS.ignorePermissions = false; if (!FS.init.initialized) FS.init() } });' +
+  $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
+                '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
                 '__ATEXIT__.push({ func: function() { FS.quit() } });',
   $FS: {
     // The path to the current folder.

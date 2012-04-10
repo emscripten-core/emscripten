@@ -40,10 +40,9 @@ function run(args) {
     Module['preRun']();
   }
 
-  initRuntime();
-
   var ret = null;
   if (Module['_main']) {
+    preMain();
     ret = Module.callMain(args);
     if (!Module['noExitRuntime']) {
       exitRuntime();
@@ -59,6 +58,8 @@ function run(args) {
 Module['run'] = run;
 
 // {{PRE_RUN_ADDITIONS}}
+
+initRuntime();
 
 #if INVOKE_RUN
 #else
