@@ -10,6 +10,7 @@ var LibraryGL = {
     unpackAlignment: 4, // default alignment is 4 bytes
     arrayBufferBound: false,
     elementArrayBufferBound: false,
+    vertexAttribPointers: {},
     buffers: {},
     programs: {},
     framebuffers: {},
@@ -63,6 +64,53 @@ var LibraryGL = {
       var alignedRowSize = roundedToNextMultipleOf(plainRowSize, alignment);
       return (height <= 0) ? 0 :
                ((height - 1) * alignedRowSize + plainRowSize);
+    },
+
+    recordVertexAttribPointer: function(index, size, type, normalized,
+                                        stride, pointer) {
+      this.vertexAttribPointers[index] = {
+        size: size,
+        type: type,
+        normalized: normalized,
+        stride: stride,
+        pointer: pointer
+      };
+    },
+
+    setVertexAttribPointers: function(indices, indexSize, count) {
+      function computeArraySize(elem, indices, indexSize, count) {
+        var maxIndex = 0;
+        for (var i = 0; i < count; ++i) {
+          var index;
+          if (indexSize == 1) {
+            index = {{{ makeGetValue('indices', 'i*indexSize' , 'i8') }}};
+          } else if (indexSize == 2) {
+            index = {{{ makeGetValue('indices', 'i*indexSize' , 'i16') }}};
+          } else if (indexSize == 4) {
+            index = {{{ makeGetValue('indices', 'i*indexSize' , 'i32') }}};
+          }
+          if (index > maxIndex) {
+            maxIndex = index;
+          }
+        }
+        // The byte size of elements in the array equals the number of vertices (maxIndex + 1)
+        // times the size of each element times the stride, but since stride is a byte offset,
+        // we need to devide again by the size of each element, hence the below formula.
+        // This is why we can get away here without computing the size of each element.
+        return (maxIndex + 1) * elem.stride;
+      }
+
+      for (var i in GL.vertexAttribPointers) {
+        var elem = GL.vertexAttribPointers[i];
+        var buffer = Module.ctx.createBuffer();
+        Module.ctx.bindBuffer(0x8892 /* GL_ARRAY_BUFFER */, buffer);
+        Module.ctx.bufferData(0x8892,
+            new Uint8Array(Array_copy(elem.pointer,
+                computeArraySize(elem, indices, indexSize, count))),
+            0x88E0 /* GL_STREAM_DRAW */);
+        Module.ctx.vertexAttribPointer(i, elem.size, elem.type,
+            elem.normalized, elem.stride, 0);
+      }
     }
   },
 
@@ -560,6 +608,16 @@ var LibraryGL = {
     Module.ctx.vertexAttrib4fv(index, v);
   },
 
+  glVertexAttribPointer: function(index, size, type, normalized, stride, pointer) {
+    if (GL.arrayBufferBound) {
+      Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, pointer);
+      return;
+    }
+
+    // If there is no buffer bound, we should create and bind our own buffer
+    GL.recordVertexAttribPointer(index, size, type, normalized, stride, pointer);
+  },
+
   glGetAttribLocation: function(program, name) {
     program = GL.programs[program];
     name = Pointer_stringify(name);
@@ -774,6 +832,32 @@ var LibraryGL = {
     return Module.ctx.isFramebuffer(fb);
   },
 
+  glDrawElements: function(mode, count, type, indices) {
+    if (count > 0) {
+      var sizePerElem;
+      switch (type) {
+      case 0x1401 /* GL_UNSIGNED_BYTE */:
+        sizePerElem = 1;
+        break;
+      case 0x1403 /* GL_UNSIGNED_SHORT */:
+        sizePerElem = 2;
+        break;
+      case 0x1405 /* GL_UNSIGNED_INT */:
+        sizePerElem = 4;
+        break;
+      default:
+        throw "Invalid type (" + type + ") passed to glDrawElements";
+      }
+      var buffer = Module.ctx.createBuffer();
+      Module.ctx.bindBuffer(0x8893 /* GL_ELEMENT_ARRAY_BUFFER */, buffer);
+      Module.ctx.bufferData(0x8893,
+          new Uint8Array(Array_copy(indices, count * sizePerElem)),
+          0x88E0 /* GL_STREAM_DRAW */);
+      GL.setVertexAttribPointers(indices, sizePerElem, count);
+      Module.ctx.drawElements(mode, count, type, 0);
+    }
+  },
+
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
   $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram'],
@@ -834,9 +918,8 @@ var LibraryGL = {
  [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture blendEquation'],
  [2, 'blendFunc blendEquationSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate'],
  [5, 'vertexAttrib4f'],
- [6, 'vertexAttribPointer'],
  [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {
   var num = data[0];
   var names = data[1];
