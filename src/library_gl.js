@@ -110,6 +110,15 @@ var LibraryGL = {
             0x88E0 /* GL_STREAM_DRAW */);
         Module.ctx.vertexAttribPointer(i, elem.size, elem.type,
             elem.normalized, elem.stride, 0);
+        elem.buffer = buffer;
+      }
+    },
+
+    deleteVertexAttribPointerBuffers: function() {
+      for (var i in GL.vertexAttribPointers) {
+        var elem = GL.vertexAttribPointers[i];
+        Module.ctx.deleteBuffer(elem.buffer);
+        delete elem.buffer;
       }
     }
   },
@@ -897,6 +906,7 @@ var LibraryGL = {
             0x88E0 /* GL_STREAM_DRAW */);
         GL.setVertexAttribPointers(indices, sizePerElem, count);
         Module.ctx.drawElements(mode, count, type, 0);
+        GL.deleteVertexAttribPointerBuffers();
       }
     }
   },
