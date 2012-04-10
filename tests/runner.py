@@ -6994,7 +6994,7 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_animation.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
                      stdout=PIPE, stderr=PIPE).communicate()
