@@ -2339,6 +2339,18 @@ def process(filename):
 
         self.do_run(src, 'hello world!\n*100*', post_build=check)
 
+    def test_inlinejs(self):
+        src = r'''
+          #include <stdio.h>
+
+          int main() {
+            asm("Module.print('Inline JS is very cool')");
+            return 0;
+          }
+          '''
+
+        self.do_run(src, 'Inline JS is very cool')
+
     def test_memorygrowth(self):
       # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
       # since we then need to enlarge the heap(s).

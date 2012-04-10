@@ -660,17 +660,19 @@ function intertyper(data, sidePass, baseLineNums) {
     item.type = item.tokens[1].text;
     Types.needAnalysis[item.type] = 0;
     while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS) &&
-           item.tokens[2].text != 'null') {
-      // We cannot compile assembly. If you hit this, perhaps tell the compiler not
-      // to generate arch-specific code? |-U__i386__ -U__x86_64__| might help, it undefines
-      // the standard archs.
+           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm') {
       assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
       item.tokens.splice(2, 1);
     }
     var tokensLeft = item.tokens.slice(2);
     item.ident = eatLLVMIdent(tokensLeft);
-    // We cannot compile assembly, see above.
-    assert(item.ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
+    if (item.ident == 'asm') {
+      // Inline assembly is just JavaScript that we paste into the code
+      item.intertype = 'value';
+      if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
+      item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2);
+      return { forward: null, ret: [item], item: item };
+    } 
     if (item.ident.substr(-2) == '()') {
       // See comment in isStructType()
       item.ident = item.ident.substr(0, item.ident.length-2);
