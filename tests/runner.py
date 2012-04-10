@@ -6988,6 +6988,7 @@ elif 'browser' in str(sys.argv):
         os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.bc'),
         os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.bc'),
         os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.bc'),
+        os.path.join('Chapter_9', 'MipMap2D', 'CH09_MipMap2D.bc'),
         os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.bc'),
         os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.bc'),
       ], configure=None)
