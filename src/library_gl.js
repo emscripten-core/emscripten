@@ -848,13 +848,20 @@ var LibraryGL = {
       default:
         throw "Invalid type (" + type + ") passed to glDrawElements";
       }
-      var buffer = Module.ctx.createBuffer();
-      Module.ctx.bindBuffer(0x8893 /* GL_ELEMENT_ARRAY_BUFFER */, buffer);
-      Module.ctx.bufferData(0x8893,
-          new Uint8Array(Array_copy(indices, count * sizePerElem)),
-          0x88E0 /* GL_STREAM_DRAW */);
-      GL.setVertexAttribPointers(indices, sizePerElem, count);
-      Module.ctx.drawElements(mode, count, type, 0);
+      if (GL.elementArrayBufferBound) {
+        // A buffer has already been bound for the elements, and indices is an
+        // index into that buffer.
+        GL.setVertexAttribPointers(indices, sizePerElem, count);
+        Module.ctx.drawElements(mode, count, type, indices);
+      } else {
+        var buffer = Module.ctx.createBuffer();
+        Module.ctx.bindBuffer(0x8893 /* GL_ELEMENT_ARRAY_BUFFER */, buffer);
+        Module.ctx.bufferData(0x8893,
+            new Uint8Array(Array_copy(indices, count * sizePerElem)),
+            0x88E0 /* GL_STREAM_DRAW */);
+        GL.setVertexAttribPointers(indices, sizePerElem, count);
+        Module.ctx.drawElements(mode, count, type, 0);
+      }
     }
   },
 
