@@ -6654,57 +6654,67 @@ elif 'browser' in str(sys.argv):
 ''')
 
     def reftest(self, expected):
-      basename = os.path.basename(expected)
-      shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
+      map(lambda (x): shutil.copyfile(x, os.path.join(self.get_dir(), os.path.basename(x))), expected)
+      basenames = [('"' + os.path.basename(i) + '"') for i in expected]
       open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
         function doReftest() {
           if (doReftest.done) return;
           doReftest.done = true;
-          var img = new Image();
-          img.onload = function() {
-            assert(img.width == Module.canvas.width, 'Invalid width: ' + Module.canvas.width + ', should be ' + img.width);
-            assert(img.height == Module.canvas.height, 'Invalid height: ' + Module.canvas.height + ', should be ' + img.height);
+          var referenceImages = [%s];
+          var imgIndex = 0;
+          function testNextImage() {
+            var img = new Image();
+            img.onload = function() {
+              assert(img.width == Module.canvas.width, 'Invalid width: ' + Module.canvas.width + ', should be ' + img.width);
+              assert(img.height == Module.canvas.height, 'Invalid height: ' + Module.canvas.height + ', should be ' + img.height);
 
-            var canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            var expected = ctx.getImageData(0, 0, img.width, img.height).data;
+              var canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              var ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              var expected = ctx.getImageData(0, 0, img.width, img.height).data;
 
-            var actualUrl = Module.canvas.toDataURL();
-            var actualImage = new Image();
-            actualImage.onload = function() {
-              var actualCanvas = document.createElement('canvas');
-              actualCanvas.width = actualImage.width;
-              actualCanvas.height = actualImage.height;
-              var actualCtx = actualCanvas.getContext('2d');
-              actualCtx.drawImage(actualImage, 0, 0);
-              var actual = actualCtx.getImageData(0, 0, actualImage.width, actualImage.height).data;
+              var actualUrl = Module.canvas.toDataURL();
+              var actualImage = new Image();
+              actualImage.onload = function() {
+                var actualCanvas = document.createElement('canvas');
+                actualCanvas.width = actualImage.width;
+                actualCanvas.height = actualImage.height;
+                var actualCtx = actualCanvas.getContext('2d');
+                actualCtx.drawImage(actualImage, 0, 0);
+                var actual = actualCtx.getImageData(0, 0, actualImage.width, actualImage.height).data;
 
-              var total = 0;
-              for (var x = 0; x < img.width; x++) {
-                for (var y = 0; y < img.height; y++) {
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 0] - actual[y*img.width*4 + x*4 + 0]);
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 1] - actual[y*img.width*4 + x*4 + 1]);
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 2] - actual[y*img.width*4 + x*4 + 2]);
+                var total = 0;
+                for (var x = 0; x < img.width; x++) {
+                  for (var y = 0; y < img.height; y++) {
+                    total += Math.abs(expected[y*img.width*4 + x*4 + 0] - actual[y*img.width*4 + x*4 + 0]);
+                    total += Math.abs(expected[y*img.width*4 + x*4 + 1] - actual[y*img.width*4 + x*4 + 1]);
+                    total += Math.abs(expected[y*img.width*4 + x*4 + 2] - actual[y*img.width*4 + x*4 + 2]);
+                  }
                 }
-              }
-              var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
+                var wrong = Math.floor(10 * total / (img.width*img.height*3));
 
-              xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
-              xhr.send();
+                if (wrong && (imgIndex < referenceImages.length - 1)) {
+                  ++imgIndex;
+                  testNextImage();
+                } else {
+                  xhr = new XMLHttpRequest();
+                  xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
+                  xhr.send();
+                }
+              };
+              actualImage.src = actualUrl;
             };
-            actualImage.src = actualUrl;
+            img.src = referenceImages[imgIndex];
           }
-          img.src = '%s';
+          testNextImage();
         };
         Module['postRun'] = doReftest;
         Module['preRun'] = function() {
           setTimeout(doReftest, 0); // if run() throws an exception and postRun is not called, this will kick in
         };
-''' % basename)
+''' % ','.join(basenames))
 
     def test_compression(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
@@ -6953,7 +6963,10 @@ elif 'browser' in str(sys.argv):
       self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
 
     def test_glgears(self):
-      self.reftest(path_from_root('tests', 'gears.png'))
+      self.reftest([
+                    path_from_root('tests', 'gears.png'),
+                    path_from_root('tests', 'gears-01.png')
+                   ])
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
                      stdout=PIPE, stderr=PIPE).communicate()
@@ -6973,7 +6986,10 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_glgears_deriv(self):
-      self.reftest(path_from_root('tests', 'gears.png'))
+      self.reftest([
+                    path_from_root('tests', 'gears.png'),
+                    path_from_root('tests', 'gears-01.png')
+                   ])
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
                      stdout=PIPE, stderr=PIPE).communicate()
@@ -7004,7 +7020,8 @@ elif 'browser' in str(sys.argv):
           shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_13', 'ParticleSystem', 'smoke.tga'), os.path.join(self.get_dir(), 'smoke.tga'))
           args = ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
-        self.reftest(path_from_root('tests', 'glbook', basename.replace('.bc', '.png')))
+        self.reftest([path_from_root('tests', 'glbook', basename.replace('.bc', '.png')),
+                      path_from_root('tests', 'glbook', basename.replace('.bc', '-01.png'))])
         Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
