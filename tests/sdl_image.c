@@ -16,6 +16,7 @@ int main() {
   }
   assert(image->format->BitsPerPixel == 32);
   assert(image->format->BytesPerPixel == 4);
+  assert(image->pitch == 4*image->w);
 
   SDL_BlitSurface (image, NULL, screen, NULL);
   SDL_FreeSurface (image);
