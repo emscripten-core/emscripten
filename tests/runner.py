@@ -6619,6 +6619,13 @@ fscanfed: 10 - hello
 elif 'browser' in str(sys.argv):
   # Browser tests.
 
+  def server_func(q):
+    class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+      def do_GET(s):
+        q.put(s.path)
+    httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+    httpd.serve_forever() # test runner will kill us
+
   class browser(RunnerCore):
     def __init__(self, *args, **kwargs):
       super(browser, self).__init__(*args, **kwargs)
@@ -6660,26 +6667,6 @@ elif 'browser' in str(sys.argv):
     def run_browser(self, html_file, message, expectedResult=None):
       if expectedResult is not None:
         try:
-          def server_func(q):
-            class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-              def do_GET(s):
-                if 'report_' in s.path:
-                  q.put(s.path)
-                else:
-                  filename = s.path[1:]
-                  if os.path.exists(filename):
-                    s.send_response(200)
-                    s.send_header("Content-type", "text/html")
-                    s.end_headers()
-                    s.wfile.write(open(filename).read())
-                    s.wfile.close()
-                  else:
-                    s.send_response(500)
-                    s.send_header("Content-type", "text/html")
-                    s.end_headers()
-            os.chdir(self.get_dir())
-            httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
-            httpd.serve_forever() # test runner will kill us
           queue = multiprocessing.Queue()
           server = multiprocessing.Process(target=server_func, args=(queue,))
           server.start()
@@ -6694,6 +6681,9 @@ elif 'browser' in str(sys.argv):
           self.assertIdentical(expectedResult, output)
         finally:
           server.terminate()
+          # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
+          # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
+          time.sleep(0.1)
       else:
         webbrowser.open_new(os.path.abspath(html_file))
         print 'A web browser window should have opened a page containing the results of a part of this test.'
