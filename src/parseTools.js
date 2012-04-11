@@ -1293,17 +1293,11 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     }
   } else { // USE_TYPED_ARRAYS == 2)
     if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
-    var warn64 = function() {
-      warnOnce('.ll contains i64 or double values. These 64-bit values are dangerous in USE_TYPED_ARRAYS == 2. ' +
-               'We store i64 as i32, and double as float. This can cause serious problems!');
-    };
     switch(type) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
-      case 'i64': warn64();
-      case 'i32': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-      case 'float': return ['HEAPF32']; break;
-      case 'double': warn64(); return ['HEAPF32']; break;
+      case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
+      case 'float': case 'double': return ['HEAPF32']; break;
       default: {
         throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
       }
@@ -1322,8 +1316,7 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
     var newType = item.type;
     if (isPossiblyFunctionType(oldType) && isPossiblyFunctionType(newType) &&
         countNormalArgs(oldType) != countNormalArgs(newType)) {
-      warn('Casting a function pointer type to another with a different number of arguments. See more info in the source (grep for this text). ' +
-           oldType + ' ==> ' + newType);
+      warnOnce('Casting a function pointer type to another with a different number of arguments. See more info in the source');
       // This may be dangerous as clang generates different code for C and C++ calling conventions. The only problem
       // case appears to be passing a structure by value, C will have (field1, field2) as function args, and the
       // function will internally create a structure with that data, while C++ will have (struct* byVal) and it
@@ -1417,7 +1410,7 @@ function handleOverflow(text, bits) {
   // TODO: handle overflows of i64s
   if (!bits) return text;
   var correct = correctOverflows();
-  warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits + ' at line ' + Framework.currItem.lineNum);
+  warnOnce(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
   if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !PGO) + (
     PGO ? ', "' + Debugging.getIdentifier() + '"' : ''
   ) + ')';

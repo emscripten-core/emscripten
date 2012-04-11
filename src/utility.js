@@ -62,15 +62,21 @@ function warn(a, msg) {
     a = false;
   }
   if (!a) {
-    dprint('Warning: ' + msg);
+    printErr('Warning: ' + msg);
   }
 }
 
-function warnOnce(msg) {
-  if (!warnOnce.msgs) warnOnce.msgs = {};
-  if (msg in warnOnce.msgs) return;
-  warnOnce.msgs[msg] = true;
-  dprint('Warning: ' + msg);
+function warnOnce(a, msg) {
+  if (!msg) {
+    msg = a;
+    a = false;
+  }
+  if (!a) {
+    if (!warnOnce.msgs) warnOnce.msgs = {};
+    if (msg in warnOnce.msgs) return;
+    warnOnce.msgs[msg] = true;
+    printErr('Warning: ' + msg);
+  }
 }
 
 function dedup(items, ident) {
