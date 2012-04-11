@@ -12,7 +12,7 @@ void play() {
   int channel = Mix_PlayChannel(-1, sound, 1);
   assert(channel >= 0);
 
-  emscripten_run_script("setTimeout(Module['_play2'], 1000)");
+  emscripten_run_script("setTimeout(Module['_play2'], 500)");
 }
 
 void play2() {

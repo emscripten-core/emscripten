@@ -6624,19 +6624,64 @@ elif 'browser' in str(sys.argv):
   # Browser tests.
 
   class browser(RunnerCore):
+    def __init__(self, *args, **kwargs):
+      super(browser, self).__init__(*args, **kwargs)
+
+      if hasattr(browser, 'harness_server'): return
+
+      # Run a server and a web page. When a test runs, we tell the server about it,
+      # which tells the web page, which then opens a window with the test. Doing
+      # it this way then allows the page to close() itself when done.
+      def server_func(q):
+        class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+          def do_GET(s):
+            s.send_response(200)
+            s.send_header("Content-type", "text/html")
+            s.end_headers()
+            if s.path == '/run_harness':
+              s.wfile.write(open(path_from_root('tests', 'browser_harness.html')).read())
+            else:
+              result = 'False'
+              if not q.empty():
+                result = q.get()
+              s.wfile.write(result)
+            s.wfile.close()
+        httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
+        httpd.serve_forever() # test runner will kill us
+      browser.harness_queue = multiprocessing.Queue()
+      browser.harness_server = multiprocessing.Process(target=server_func, args=(browser.harness_queue,))
+      browser.harness_server.start()
+      print '[Browser harness server on process %d]' % browser.harness_server.pid
+      webbrowser.open_new('http://localhost:9999/run_harness')
+
+    def __del__(self):
+      if not hasattr(browser, 'harness_server'): return
+
+      browser.harness_server.terminate()
+      delattr(browser, 'harness_server')
+      print '[Browser harness server terminated]'
+      
     def run_browser(self, html_file, message, expectedResult=None):
       if expectedResult is not None:
         try:
           def server_func(q):
             class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
               def do_GET(s):
-                q.put(s.path)
+                if 'report_' in s.path:
+                  q.put(s.path)
+                else:
+                  s.send_response(200)
+                  s.send_header("Content-type", "text/html")
+                  s.end_headers()
+                  s.wfile.write(open(s.path[1:]).read())
+                  s.wfile.close()
+            os.chdir(self.get_dir())
             httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
             httpd.serve_forever() # test runner will kill us
           queue = multiprocessing.Queue()
           server = multiprocessing.Process(target=server_func, args=(queue,))
           server.start()
-          webbrowser.open_new(os.path.abspath(html_file))
+          browser.harness_queue.put('http://localhost:8888/' + html_file)
           output = '[no http server activity]'
           start = time.time()
           while time.time() - start < 5:
@@ -6670,6 +6715,7 @@ elif 'browser' in str(sys.argv):
                   "xhr.open('GET', 'http://localhost:8888/report_result?%d');"
                   "xhr.send();", result);
           emscripten_run_script(output);
+          emscripten_run_script("setTimeout(function() { window.close() }, 1000)");
 ''')
 
     def reftest(self, expected):
@@ -6714,6 +6760,7 @@ elif 'browser' in str(sys.argv):
               xhr = new XMLHttpRequest();
               xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
               xhr.send();
+              setTimeout(function() { window.close() }, 1000);
             };
             actualImage.src = actualUrl;
           }
