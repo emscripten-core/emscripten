@@ -5357,6 +5357,11 @@ LibraryManager.library = {
     // TODO: Implement.
     return 0;
   },
+  strptime_l__deps: ['strptime'],
+  strptime_l: function(s, maxsize, format, timeptr, locale) {
+    // TODO: Should depend on the given locale.
+    return _strptime(s, maxsize, format, timeptr);
+  },
 
   getdate: function(string) {
     // struct tm *getdate(const char *string);
