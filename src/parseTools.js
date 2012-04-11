@@ -1143,6 +1143,13 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   }
 }
 
+function makeHEAPView(which, start, end) {
+  // Assumes USE_TYPED_ARRAYS == 2
+  var size = parseInt(which.replace('U', '').replace('F', ''))/8;
+  var mod = size == 1 ? '' : ('>>' + log2(size));
+  return 'HEAP' + which + '.subarray(' + start + mod + ',' + end + mod + ')';
+}
+
 var PLUS_MUL = set('+', '*');
 var MUL_DIV = set('*', '/');
 var PLUS_MINUS = set('+', '-');

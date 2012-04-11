@@ -205,7 +205,7 @@ var LibraryGL = {
 
   glCompressedTexImage2D: function(target, level, internalformat, width, height, border, imageSize, data) {
     if (data) {
-      data = new Uint8Array(Array_copy(data, imageSize));
+      data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
       data = null;
     }
@@ -214,7 +214,7 @@ var LibraryGL = {
 
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
     if (data) {
-      data = new Uint8Array(Array_copy(data, imageSize));
+      data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
       data = null;
     }
@@ -243,13 +243,13 @@ var LibraryGL = {
             default:
               throw 'Invalid format (' + format + ') passed to glTexImage2D';
           }
-          pixels = new Uint8Array(Array_copy(pixels, width*height*sizePerPixel));
+          pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel)));
+          pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexImage2D';
@@ -282,13 +282,13 @@ var LibraryGL = {
             default:
               throw 'Invalid format (' + format + ') passed to glTexSubImage2D';
           }
-          pixels = new Uint8Array(Array_copy(pixels, width*height*sizePerPixel));
+          pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel)));
+          pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexSubImage2D';
@@ -340,7 +340,7 @@ var LibraryGL = {
   },
 
   glBufferSubData: function(target, offset, size, data) {
-    var floatArray = new Float32Array(TypedArray_copy(data, size, offset));
+    var floatArray = {{{ makeHEAPView('F32', 'data', 'data+size') }}};
     Module.ctx.bufferSubData(target, offset, floatArray);
   },
 
@@ -453,76 +453,76 @@ var LibraryGL = {
 
   glUniform1iv: function(location, count, value) {
     location = GL.uniforms[location];
-    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
     Module.ctx.uniform1iv(location, value);
   },
 
   glUniform2iv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 2;
-    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
     Module.ctx.uniform2iv(location, value);
   },
 
   glUniform3iv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 3;
-    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
     Module.ctx.uniform3iv(location, value);
   },
 
   glUniform4iv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 4;
-    value = new Int32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
     Module.ctx.uniform4iv(location, value);
   },
 
   glUniform1fv: function(location, count, value) {
     location = GL.uniforms[location];
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform1fv(location, value);
   },
 
   glUniform2fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 2;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform2fv(location, value);
   },
 
   glUniform3fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 3;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform3fv(location, value);
   },
 
   glUniform4fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 4;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform4fv(location, value);
   },
 
   glUniformMatrix2fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     count *= 4;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniformMatrix2fv(location, transpose, value);
   },
 
   glUniformMatrix3fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     count *= 9;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniformMatrix3fv(location, transpose, value);
   },
 
   glUniformMatrix4fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     count *= 16;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniformMatrix4fv(location, transpose, value);
   },
 
@@ -531,22 +531,22 @@ var LibraryGL = {
   },
 
   glVertexAttrib1fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 1*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+1*4') }}};
     Module.ctx.vertexAttrib1fv(index, v);
   },
 
   glVertexAttrib2fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 2*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+2*4') }}};
     Module.ctx.vertexAttrib2fv(index, v);
   },
 
   glVertexAttrib3fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 3*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+3*4') }}};
     Module.ctx.vertexAttrib3fv(index, v);
   },
 
   glVertexAttrib4fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 4*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+4*4') }}};
     Module.ctx.vertexAttrib4fv(index, v);
   },
 
