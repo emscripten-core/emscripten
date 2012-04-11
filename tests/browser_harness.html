@@ -1,5 +1,6 @@
 <html>
 <body>
+<div id="output"></div>
 <script>
   var counter = 0;
   function check() {
@@ -8,6 +9,7 @@
     try {
       request.send(null);
       if (request.responseText != 'False') {
+        document.getElementById('output').innerHTML += 'opening test window ' + (counter++) + '..<br>';
         window.open(request.responseText);
       }
       setTimeout(check, 333);
