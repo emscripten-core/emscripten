@@ -36,7 +36,7 @@
         var xhr = new XMLHttpRequest();
         xhr.open('GET', 'http://localhost:8888/report_gl_result?' + result, true);
         xhr.send();
-        setTimeout(function() { _glutDisplayFunc = function(){} }, 2000); // Stop rendering after a while
+        setTimeout(function() { window.close() }, 1000);
       }
       function doTest() {
         var firstImage = Module.canvas.toDataURL();
