@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex
+import shutil, time, os, sys, stat, json, tempfile, copy
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -6,15 +6,22 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-# Config file
+# Emscripten configuration is done through the EM_CONFIG environment variable.
+# If the string value contained in this environment variable contains newline
+# separated definitions, then these definitions will be used to configure
+# Emscripten.  Otherwise, the string is understood to represent a path to
+# a settings file that contains the required definitions.
 
 EM_CONFIG = os.environ.get('EM_CONFIG')
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
-CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-if not os.path.exists(CONFIG_FILE):
-  shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
-  print >> sys.stderr, '''
+if '\n' in EM_CONFIG:
+  CONFIG_FILE = None
+else:
+  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  if not os.path.exists(CONFIG_FILE):
+    shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
+    print >> sys.stderr, '''
 ==============================================================================
 Welcome to Emscripten!
 
@@ -28,9 +35,9 @@ make sure LLVM_ROOT and NODE_JS are correct.
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
 ''' % (EM_CONFIG, CONFIG_FILE)
-  sys.exit(0)
+    sys.exit(0)
 try:
-  exec(open(CONFIG_FILE, 'r').read())
+  exec(open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG)
 except Exception, e:
   print >> sys.stderr, 'Error in evaluating %s (at %s): %s' % (EM_CONFIG, CONFIG_FILE, str(e))
   sys.exit(1)
@@ -43,6 +50,8 @@ except Exception, e:
 def check_sanity(force=False):
   try:
     if not force:
+      if not CONFIG_FILE:
+        return # config stored directly in EM_CONFIG => skip sanity checks
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
       try:
@@ -183,10 +192,13 @@ else:
 #if 'strict' not in str(SPIDERMONKEY_ENGINE): # XXX temporarily disable strict mode until we sort out some stuff
 #  SPIDERMONKEY_ENGINE += ['-e', "options('strict')"] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
 
-if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
-  SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+try:
+  if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+except NameError:
+  pass
 
-WINDOWS = sys.platform.startswith ('win')
+WINDOWS = 'win' in sys.platform
 
 # Temp file utilities
 
@@ -228,6 +240,8 @@ class TempFiles:
 def check_engine(engine):
   # TODO: we call this several times, perhaps cache the results?
   try:
+    if not CONFIG_FILE:
+      return True # config stored directly in EM_CONFIG => skip engine check
     return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
   except Exception, e:
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
@@ -810,7 +824,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
-  dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  dirname = os.environ.get('EM_CACHE')
+  if not dirname:
+    dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
   @staticmethod
   def erase():
