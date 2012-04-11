@@ -6666,11 +6666,17 @@ elif 'browser' in str(sys.argv):
                 if 'report_' in s.path:
                   q.put(s.path)
                 else:
-                  s.send_response(200)
-                  s.send_header("Content-type", "text/html")
-                  s.end_headers()
-                  s.wfile.write(open(s.path[1:]).read())
-                  s.wfile.close()
+                  filename = s.path[1:]
+                  if os.path.exists(filename):
+                    s.send_response(200)
+                    s.send_header("Content-type", "text/html")
+                    s.end_headers()
+                    s.wfile.write(open(filename).read())
+                    s.wfile.close()
+                  else:
+                    s.send_response(500)
+                    s.send_header("Content-type", "text/html")
+                    s.end_headers()
             os.chdir(self.get_dir())
             httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
             httpd.serve_forever() # test runner will kill us
@@ -7001,17 +7007,21 @@ elif 'browser' in str(sys.argv):
       html_file.write('''
         <html>
         <body>
+          Worker Test
           <script>
             var worker = new Worker('worker.js');
             worker.onmessage = function(event) {
-              document.write("<hr>Called back by the worker: " + event.data + "<br><hr>");
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?' + event.data);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
             };
           </script>
         </body>
         </html>
       ''')
       html_file.close()
-      self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
+      self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"', '/report_result?hello%20from%20worker!')
 
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
