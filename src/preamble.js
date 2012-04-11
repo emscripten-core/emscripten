@@ -368,6 +368,7 @@ function cwrap(ident, returnType, argTypes) {
     return ccall(ident, returnType, argTypes, Array.prototype.slice.call(arguments));
   }
 }
+Module["cwrap"] = cwrap;
 
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
@@ -696,12 +697,15 @@ function callRuntimeCallbacks(callbacks) {
 }
 
 var __ATINIT__ = []; // functions called during startup
+var __ATMAIN__ = []; // functions called when main() is to be run
 var __ATEXIT__ = []; // functions called during shutdown
 
 function initRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
-
+function preMain() {
+  callRuntimeCallbacks(__ATMAIN__);
+}
 function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
 

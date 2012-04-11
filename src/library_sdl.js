@@ -76,7 +76,7 @@
 //  * SDL_Quit does nothing.
 
 mergeInto(LibraryManager.library, {
-  $SDL__deps: ['$FS'],
+  $SDL__deps: ['$FS', '$Browser'],
   $SDL: {
     defaults: {
       width: 320,
@@ -108,15 +108,65 @@ mergeInto(LibraryManager.library, {
       16:  304 // shift
     },
 
+    scanCodes: { // SDL keycode ==> SDL scancode
+      97: 4, // A
+      98: 5,
+      99: 6,
+      100: 7,
+      101: 8,
+      102: 9,
+      103: 10,
+      104: 11,
+      105: 12,
+      106: 13,
+      107: 14,
+      108: 15,
+      109: 16,
+      110: 17,
+      111: 18,
+      112: 19,
+      113: 20,
+      114: 21,
+      115: 22,
+      116: 23,
+      117: 24,
+      118: 25,
+      119: 26,
+      120: 27,
+      121: 28,
+      122: 29, // Z
+      48: 30, // 0
+      49: 31,
+      50: 32,
+      51: 33,
+      52: 34,
+      53: 35,
+      54: 36,
+      55: 37,
+      56: 38,
+      57: 39, // 9
+      13: 40, // return
+      9: 43, // tab
+      32: 44, // space
+      92: 49, // backslash
+      47: 56, // slash
+      1106: 82, // up arrow
+      1105: 81, // down arrow
+      1104: 80, // left arrow
+      1103: 79 // right arrow
+    },
+
     structs: {
       Rect: Runtime.generateStructInfo([
         ['i32', 'x'], ['i32', 'y'], ['i32', 'w'], ['i32', 'h'], 
       ]),
       PixelFormat: Runtime.generateStructInfo([
+        ['i32', 'format'],
         ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
+        ['i8', 'padding1'], ['i8', 'padding2'],
+        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'],
         ['i8', 'Rloss'], ['i8', 'Gloss'], ['i8', 'Bloss'], ['i8', 'Aloss'],
-        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift'],
-        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'] // Docs say i8, ./include/SDL_video.h says i32...
+        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift']
       ]),
       KeyboardEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
@@ -210,11 +260,12 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width*4', 'i16') }}}       // SDL_Surface.pitch, assuming RGBA for now,
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width*4', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA for now,
                                                                                // since that is what ImageData gives us in browsers
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
 
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.format', '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i8') }}} // TODO
@@ -234,11 +285,15 @@ mergeInto(LibraryManager.library, {
       } else {
         canvas = Module['canvas'];
       }
+      var ctx = Browser.createContext(canvas, useWebGL);
+      if (usePageCanvas) {
+        Module.ctx = ctx;
+      }
       SDL.surfaces[surf] = {
         width: width,
         height: height,
         canvas: canvas,
-        ctx: SDL.createContext(canvas, useWebGL),
+        ctx: ctx,
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
@@ -249,28 +304,6 @@ mergeInto(LibraryManager.library, {
         source: source
       };
       return surf;
-    },
-
-    createContext: function(canvas, useWebGL) {
-#if !USE_TYPED_ARRAYS
-      if (useWebGL) {
-	Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
-        return null;
-      }
-#endif
-      try {
-        var ctx = canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
-        if (!ctx) throw 'Could not create canvas :(';
-        if (useWebGL) {
-          // Set the background of the WebGL canvas to black, because SDL gives us a
-          // window which has a black background by default.
-          canvas.style.backgroundColor = "black";
-        }
-        return Module.ctx = ctx;
-      } catch (e) {
-        Module.print('(canvas not available)');
-        return null;
-      }
     },
 
     freeSurface: function(surf) {
@@ -309,12 +342,13 @@ mergeInto(LibraryManager.library, {
           if (key >= 65 && key <= 90) {
             key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
           }
+          var scan = SDL.scanCodes[key] || key;
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 0x300 : 0x301', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
 
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'key', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
@@ -418,10 +452,6 @@ mergeInto(LibraryManager.library, {
 
   SDL_ListModes: function(format, flags) {
     return -1; // -1 == all modes are ok. TODO
-  },
-
-  SDL_GL_SetAttribute: function(attr, value) {
-    // TODO
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
@@ -625,8 +655,6 @@ mergeInto(LibraryManager.library, {
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
   },
-
-  SDL_GL_SwapBuffers: function() {},
 
   SDL_GetTicks: function() {
     return Math.floor(Date.now() - SDL.startTime);
@@ -920,6 +948,19 @@ mergeInto(LibraryManager.library, {
     // This cannot be fast, to render many pixels this way!
     _boxRGBA(surf, x1, y1, x1, y1, r, g, b, a);
   },
+
+  // GL
+
+  SDL_GL_SetAttribute: function(attr, value) {
+    console.log('TODO: SDL_GL_SetAttribute');
+  },
+
+  SDL_GL_GetProcAddress__deps: ['$GLEmulation'],
+  SDL_GL_GetProcAddress: function(name_) {
+    return GLEmulation.getProcAddress(Pointer_stringify(name_));
+  },
+
+  SDL_GL_SwapBuffers: function() {},
 
   // Misc
 

@@ -341,6 +341,13 @@ def unsuffixed(name):
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
+seen_names = {}
+def unsuffixed_uniquename(name):
+  ret = unsuffixed_basename(name)
+  if name not in seen_names:
+    seen_names[name] = str(len(seen_names))
+  return ret + '_' + seen_names[name]
+
 # ---------------- End configs -------------
 
 if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
@@ -378,8 +385,9 @@ for i in range(len(sys.argv)-1):
 
 if header: # header or such
   if len(sys.argv) >= 3: # if there is a source and a target, then copy, otherwise do nothing
-    if DEBUG: print >> sys.stderr, 'Just copy.'
-    shutil.copy(sys.argv[-1], sys.argv[-2])
+    sys.argv = filter(lambda arg: not arg.startswith('-I'), sys.argv)
+    if DEBUG: print >> sys.stderr, 'Just copy:', sys.argv[-1], target
+    shutil.copy(sys.argv[-1], target)
   else:
     if DEBUG: print >> sys.stderr, 'No-op.'
   exit(0)
@@ -534,7 +542,7 @@ try:
 
   input_files = []
   has_source_inputs = False
-  lib_dirs = []
+  lib_dirs = [shared.path_from_root('system', 'lib')]
   libs = []
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
@@ -542,7 +550,7 @@ try:
 
     if i > 0:
       prev = newargs[i-1]
-      if prev == '-MT': continue # ignore this gcc-style argument
+      if prev in ['-MT', '-install_name']: continue # ignore this gcc-style argument
 
     if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
@@ -554,6 +562,16 @@ try:
           # this should be bitcode, make sure it is valid
           if arg.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg):
             input_files.append(arg)
+          elif arg.endswith(STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES):
+            # if it's not, and it's a library, just add it to libs to find later
+            l = unsuffixed_basename(arg)
+            for prefix in LIB_PREFIXES:
+              if not prefix: continue
+              if l.startswith(prefix):
+                l = l[len(prefix):]
+                break;
+            libs.append(l)
+            newargs[i] = ''
           else:
             print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
       else:
@@ -564,6 +582,7 @@ try:
     elif arg.startswith('-l'):
       libs.append(arg[2:])
       newargs[i] = ''
+
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   # Find library files
@@ -629,7 +648,7 @@ try:
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
       if DEBUG: print >> sys.stderr, 'emcc: compiling source file: ', input_file
-      output_file = in_temp(unsuffixed_basename(input_file) + '.o')
+      output_file = in_temp(unsuffixed_uniquename(input_file) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
@@ -640,7 +659,7 @@ try:
     else: # bitcode
       if input_file.endswith(BITCODE_SUFFIXES):
         if DEBUG: print >> sys.stderr, 'emcc: copying bitcode file: ', input_file
-        temp_file = in_temp(unsuffixed_basename(input_file) + '.o')
+        temp_file = in_temp(unsuffixed_uniquename(input_file) + '.o')
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
       elif input_file.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
@@ -653,7 +672,7 @@ try:
           # Note that by assembling the .ll file, then disassembling it later, we will
           # remove annotations which is a good thing for compilation time
           if DEBUG: print >> sys.stderr, 'emcc: assembling assembly file: ', input_file
-          temp_file = in_temp(unsuffixed_basename(input_file) + '.o')
+          temp_file = in_temp(unsuffixed_uniquename(input_file) + '.o')
           shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
 
@@ -665,10 +684,10 @@ try:
       print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
     if not specified_target:
       for input_file in input_files:
-        shutil.move(in_temp(unsuffixed_basename(input_file) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
+        shutil.move(in_temp(unsuffixed_uniquename(input_file) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
     else:
       if len(input_files) == 1:
-        shutil.move(in_temp(unsuffixed_basename(input_files[0]) + '.o'), specified_target)
+        shutil.move(in_temp(unsuffixed_uniquename(input_files[0]) + '.o'), specified_target)
       else:
         assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
@@ -1044,8 +1063,9 @@ try:
   if js_transform:
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
+    posix = True if not shared.WINDOWS else False
     if DEBUG: print >> sys.stderr, 'emcc: applying transform: %s' % js_transform
-    execute(shlex.split(js_transform) + [os.path.abspath(final)])
+    execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing

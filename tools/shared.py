@@ -124,18 +124,20 @@ EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-# Temp dir
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
-try:
-  EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
-  if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
-    try:
+EMSCRIPTEN_TEMP_DIR = None
+
+if os.environ.get('EMCC_DEBUG'):
+  try:
+    EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
+    if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
       os.makedirs(EMSCRIPTEN_TEMP_DIR)
-    except Exception, e:
-      print >> sys.stderr, 'Warning: Could not create temp dir (%s): %s' % (EMSCRIPTEN_TEMP_DIR, str(e))
-except:
+  except:
+    print >> sys.stderr, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
+
+if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_')
-  print >> sys.stderr, 'Warning: TEMP_DIR not defined in %s, using %s' % (EM_CONFIG, EMSCRIPTEN_TEMP_DIR)
 
 # EM_CONFIG stuff
 
@@ -487,15 +489,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def link(files, target):
     try_delete(target)
-    # Make sure that llvm-stub ends up in the target directory.
-    stub = os.path.join(os.path.dirname(target), 'stub') + ('.exe' if sys.platform == 'win32' else '')
+    stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme')
     output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target, '-o', stub], stdout=PIPE).communicate()[0]
+    try_delete(stub) # clean up stub left by the linker
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-    # It might be that llvm-stub was read-only, in which case we make the copy
-    # writable so that it can later be deleted without any problems.  (It would
-    # be better if the stub was made writable in llvm-ld.cpp instead.)
-    if os.path.exists(stub):
-      os.chmod(stub, stat.S_IWRITE)
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod

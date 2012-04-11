@@ -1,21 +1,18 @@
-//"use strict";
+/*
+ * GL support. See https://github.com/kripken/emscripten/wiki/OpenGL-support
+ * for current status.
+ */
 
 var LibraryGL = {
   $GL: {
+    counter: 1,
     buffers: {},
-    bufferCounter: 1,
     programs: {},
-    programCounter: 1,
     framebuffers: {},
-    framebufferCounter: 1,
     renderbuffer: {},
-    renderbufferCounter: 1,
     textures: {},
-    textureCounter: 1,
     uniforms: {},
-    uniformCounter: 1,
     shaders: {},
-    shaderCounter: 1,
 
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
     scan: function(table, object) {
@@ -24,6 +21,35 @@ var LibraryGL = {
       }
       return 0;
     },
+
+    // Find a token in a shader source string
+    findToken: function(source, token) {
+      function isIdentChar(ch) {
+        if (ch >= 48 && ch <= 57) // 0-9
+          return true;
+        if (ch >= 65 && ch <= 90) // A-Z
+          return true;
+        if (ch >= 97 && ch <= 122) // a-z
+          return true;
+        return false;
+      }
+      var i = -1;
+      do {
+        i = source.indexOf(token, i + 1);
+        if (i < 0) {
+          break;
+        }
+        if (i > 0 && isIdentChar(source[i - 1])) {
+          continue;
+        }
+        i += token.length;
+        if (i < source.length - 1 && isIdentChar(source[i + 1])) {
+          continue;
+        }
+        return true;
+      } while (true);
+      return false;
+    }
   },
 
   glGetString: function(name_) {
@@ -163,7 +189,7 @@ var LibraryGL = {
 
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = GL.textureCounter++;
+      var id = GL.counter++;
       GL.textures[id] = Module.ctx.createTexture();
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
@@ -179,7 +205,7 @@ var LibraryGL = {
 
   glCompressedTexImage2D: function(target, level, internalformat, width, height, border, imageSize, data) {
     if (data) {
-      data = new Uint8Array(Array_copy(data, imageSize));
+      data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
       data = null;
     }
@@ -188,7 +214,7 @@ var LibraryGL = {
 
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
     if (data) {
-      data = new Uint8Array(Array_copy(data, imageSize));
+      data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
       data = null;
     }
@@ -217,13 +243,13 @@ var LibraryGL = {
             default:
               throw 'Invalid format (' + format + ') passed to glTexImage2D';
           }
-          pixels = new Uint8Array(Array_copy(pixels, width*height*sizePerPixel));
+          pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, width*height*sizePerPixel*2)));
+          pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexImage2D';
@@ -256,13 +282,13 @@ var LibraryGL = {
             default:
               throw 'Invalid format (' + format + ') passed to glTexSubImage2D';
           }
-          pixels = new Uint8Array(Array_copy(pixels, (width-xoffset+1)*(height-yoffset+1)*sizePerPixel));
+          pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
           sizePerPixel = 2;
-          pixels = new Uint16Array(new ArrayBuffer(Array_copy(pixels, (width-xoffset+1)*(height-yoffset+1)*sizePerPixel*2)));
+          pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+width*height*sizePerPixel') }}};
           break;
         default:
           throw 'Invalid type (' + type + ') passed to glTexSubImage2D';
@@ -295,7 +321,7 @@ var LibraryGL = {
 
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.bufferCounter++;
+      var id = GL.counter++;
       GL.buffers[id] = Module.ctx.createBuffer();
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
@@ -314,7 +340,7 @@ var LibraryGL = {
   },
 
   glBufferSubData: function(target, offset, size, data) {
-    var floatArray = new Float32Array(TypedArray_copy(data, size, offset));
+    var floatArray = {{{ makeHEAPView('F32', 'data', 'data+size') }}};
     Module.ctx.bufferSubData(target, offset, floatArray);
   },
 
@@ -328,7 +354,7 @@ var LibraryGL = {
 
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.renderbufferCounter++;
+      var id = GL.counter++;
       GL.renderbuffers[id] = Module.ctx.createRenderbuffer();
       {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
     }
@@ -362,9 +388,27 @@ var LibraryGL = {
     name = Pointer_stringify(name);
     var loc = Module.ctx.getUniformLocation(GL.programs[program], name);
     if (!loc) return -1;
-    var id = GL.uniformCounter++;
+    var id = GL.counter++;
     GL.uniforms[id] = loc;
     return id;
+  },
+
+  glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
+    program = GL.programs[program];
+    var info = Module.ctx.getActiveUniform(program, index);
+
+    var infoname = info.name.slice(0, bufsize - 1);
+    writeStringToMemory(infoname, name);
+
+    if (length) {
+      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    }
+    if (size) {
+      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    }
+    if (type) {
+      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+    }
   },
 
   glUniform1f: function(location, v0) {
@@ -407,51 +451,78 @@ var LibraryGL = {
     Module.ctx.uniform4i(location, v0, v1, v2, v3);
   },
 
+  glUniform1iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    Module.ctx.uniform1iv(location, value);
+  },
+
+  glUniform2iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 2;
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    Module.ctx.uniform2iv(location, value);
+  },
+
+  glUniform3iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 3;
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    Module.ctx.uniform3iv(location, value);
+  },
+
+  glUniform4iv: function(location, count, value) {
+    location = GL.uniforms[location];
+    count *= 4;
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    Module.ctx.uniform4iv(location, value);
+  },
+
   glUniform1fv: function(location, count, value) {
     location = GL.uniforms[location];
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform1fv(location, value);
   },
 
   glUniform2fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 2;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform2fv(location, value);
   },
 
   glUniform3fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 3;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform3fv(location, value);
   },
 
   glUniform4fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 4;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform4fv(location, value);
   },
 
   glUniformMatrix2fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     count *= 4;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniformMatrix2fv(location, transpose, value);
   },
 
   glUniformMatrix3fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     count *= 9;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniformMatrix3fv(location, transpose, value);
   },
 
   glUniformMatrix4fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     count *= 16;
-    value = new Float32Array(TypedArray_copy(value, count*4)); // TODO: optimize
+    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniformMatrix4fv(location, transpose, value);
   },
 
@@ -460,22 +531,22 @@ var LibraryGL = {
   },
 
   glVertexAttrib1fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 1*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+1*4') }}};
     Module.ctx.vertexAttrib1fv(index, v);
   },
 
   glVertexAttrib2fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 2*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+2*4') }}};
     Module.ctx.vertexAttrib2fv(index, v);
   },
 
   glVertexAttrib3fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 3*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+3*4') }}};
     Module.ctx.vertexAttrib3fv(index, v);
   },
 
   glVertexAttrib4fv: function(index, v) {
-    v = new Float32Array(TypedArray_copy(v, 4*4)); // TODO: optimize
+    v = {{{ makeHEAPView('F32', 'v', 'v+4*4') }}};
     Module.ctx.vertexAttrib4fv(index, v);
   },
 
@@ -485,8 +556,26 @@ var LibraryGL = {
     return Module.ctx.getAttribLocation(program, name);
   },
 
+  glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
+    program = GL.programs[program];
+    var info = Module.ctx.getActiveAttrib(program, index);
+
+    var infoname = info.name.slice(0, bufsize - 1);
+    writeStringToMemory(infoname, name);
+
+    if (length) {
+      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    }
+    if (size) {
+      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    }
+    if (type) {
+      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+    }
+  },
+
   glCreateShader: function(shaderType) {
-    var id = GL.shaderCounter++;
+    var id = GL.counter++;
     GL.shaders[id] = Module.ctx.createShader(shaderType);
     return id;
   },
@@ -528,6 +617,21 @@ var LibraryGL = {
         frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
       }
       source += frag;
+    }
+    // Let's see if we need to enable the standard derivatives extension
+    type = Module.ctx.getShaderParameter(GL.shaders[shader], 0x8B4F /* GL_SHADER_TYPE */);
+    if (type == 0x8B30 /* GL_FRAGMENT_SHADER */) {
+      if (GL.findToken(source, "dFdx") ||
+          GL.findToken(source, "dFdy") ||
+          GL.findToken(source, "fwidth")) {
+        source = "#extension GL_OES_standard_derivatives : enable\n" + source;
+        var extension = Module.ctx.getExtension("OES_standard_derivatives");
+#if GL_DEBUG
+        if (!extension) {
+          Module.printErr("Shader attempts to use the standard derivatives extension which is not available.");
+        }
+#endif
+      }
     }
     Module.ctx.shaderSource(GL.shaders[shader], source);
   },
@@ -575,7 +679,7 @@ var LibraryGL = {
   },
 
   glCreateProgram: function() {
-    var id = GL.programCounter++;
+    var id = GL.counter++;
     GL.programs[id] = Module.ctx.createProgram();
     return id;
   },
@@ -641,7 +745,7 @@ var LibraryGL = {
 
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
-      var id = GL.framebufferCounter++;
+      var id = GL.counter++;
       GL.framebuffers[id] = Module.ctx.createFramebuffer();
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
@@ -678,14 +782,67 @@ var LibraryGL = {
     return Module.ctx.isFramebuffer(fb);
   },
 
+  // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
+
+  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram'],
+  $GLEmulation: {
+    procReplacements: {
+      'glCreateShaderObjectARB': 'glCreateShader',
+      'glShaderSourceARB': 'glShaderSource',
+      'glCompileShaderARB': 'glCompileShader',
+      'glCreateProgramObjectARB': 'glCreateProgram',
+      'glAttachObjectARB': 'glAttachShader',
+      'glLinkProgramARB': 'glLinkProgram',
+      'glActiveTextureARB': 'glActiveTexture'
+    },
+
+    procs: {
+      glDeleteObjectARB: function(id) {
+        if (GL.programs[id]) {
+          _glDeleteProgram(id);
+        } else if (GL.shaders[id]) {
+          _glDeleteShader(id);
+        } else {
+          console.log('WARNING: deleteObjectARB received invalid id: ' + id);
+        }
+      },
+
+      glGetObjectParameterivARB: function(id, type, result) {
+        if (GL.programs[id]) {
+          _glGetProgramiv(id, type, result);
+        } else if (GL.shaders[id]) {
+          _glGetShaderiv(id, type, result);
+        } else {
+          console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
+        }
+      },
+    },
+
+    getProcAddress: function(name_) {
+      name_ = GLEmulation.procReplacements[name_] || name_;
+      var func = GLEmulation.procs[name_];
+      if (!func) {
+        try {
+          func = eval('_' + name_);
+        } catch(e) {
+          console.log('WARNING: getProcAddress failed for ' + name_);
+          func = function() {
+            console.log('WARNING: empty replacement for ' + name_ + ' called, no-op');
+            return 0;
+          };
+        }
+      }
+      return Runtime.addFunction(func);
+    }
+  }
 };
 
 // Simple pass-through functions
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture'],
- [2, 'pixelStorei'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture blendEquation'],
+ [2, 'pixelStorei blendFunc blendEquationSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer'],
  [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {

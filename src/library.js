@@ -26,7 +26,8 @@ LibraryManager.library = {
   _impure_ptr: 0,
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: '__ATINIT__.unshift({ func: function() { FS.ignorePermissions = false; if (!FS.init.initialized) FS.init() } });' +
+  $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
+                '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
                 '__ATEXIT__.push({ func: function() { FS.quit() } });',
   $FS: {
     // The path to the current folder.
@@ -3302,8 +3303,9 @@ LibraryManager.library = {
     }
     var info = FS.streams[stream];
     if (!info) return -1;
-    return allocate(info.object.contents.slice(offset, offset+num),
-                    'i8', ALLOC_NORMAL);
+    var contents = info.object.contents;
+    contents = Array.prototype.slice.call(contents, offset, offset+num);
+    return allocate(contents, 'i8', ALLOC_NORMAL);
   },
   __01mmap64_: 'mmap',
 

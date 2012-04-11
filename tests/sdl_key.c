@@ -19,7 +19,13 @@ void one() {
           case SDLK_UP: printf("up\n"); result *= 7; break;
           case SDLK_SPACE: printf("space\n"); result *= 11; break;
           case SDLK_a: printf("a\n"); result *= 13; break;
-          default: { REPORT_RESULT(); emscripten_run_script("throw 'done'"); }
+          default: {
+            if (event.key.keysym.scancode == SDL_SCANCODE_B) {
+              printf("b scancode\n"); result *= 17; break;
+            }
+            REPORT_RESULT();
+            emscripten_run_script("throw 'done'");
+          }
         }
         break;
       default: /* Report an unhandled event */
@@ -38,6 +44,7 @@ int main(int argc, char **argv) {
   emscripten_run_script("simulateKeyEvent(39)");
   emscripten_run_script("simulateKeyEvent(32)");
   emscripten_run_script("simulateKeyEvent(97)");
+  emscripten_run_script("simulateKeyEvent(98)");
   emscripten_run_script("simulateKeyEvent(100)"); // trigger the end
 
   if (argc == 1337) one(); // keep it alive

@@ -69,11 +69,11 @@ function intertyper(data, sidePass, baseLineNums) {
 
         if (mainPass && (line[0] == '%' || line[0] == '@')) {
           // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
-          var testType = /[@%\w\d\.\" ]+ = type .*/.exec(line);
+          var testType = /[@%\w\d\.\" $]+ = type .*/.exec(line);
           if (!testType) {
-            var global = /([@%\w\d\.\" ]+) = .*/.exec(line);
+            var global = /([@%\w\d\.\" $]+) = .*/.exec(line);
             var globalIdent = toNiceIdent(global[1]);
-            var testAlias = /[@%\w\d\.\" ]+ = alias .*/.exec(line);
+            var testAlias = /[@%\w\d\.\" $]+ = alias .*/.exec(line);
             var testString = /^[^"]+c\"[^"]+"/.exec(line);
             Variables.globals[globalIdent] = {
               name: globalIdent,
@@ -338,7 +338,8 @@ function intertyper(data, sidePass, baseLineNums) {
             return '/dev/null';
         } else if (item.indent === 0) {
           if ((tokensLength >= 1 && token0Text.substr(-1) == ':') ||
-              (tokensLength >= 3 && token1Text == '<label>'))
+              (tokensLength >= 3 && token1Text == '<label>') ||
+              (tokensLength >= 2 && token1Text == ':'))
             return 'Label';
           if (tokensLength >= 4 && token0Text == 'declare')
             return 'External';
@@ -547,13 +548,15 @@ function intertyper(data, sidePass, baseLineNums) {
   // label
   substrate.addActor('Label', {
     processItem: function(item) {
+      var rawLabel = item.tokens[0].text.substr(-1) == ':' ?
+            '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
+            (item.tokens[1].text == '<label>' ?
+             '%' + item.tokens[2].text.substr(1) :
+             '%' + item.tokens[0].text)
+      var niceLabel = toNiceIdent(rawLabel);
       return [{
         intertype: 'label',
-        ident: toNiceIdent(
-          item.tokens[0].text.substr(-1) == ':' ?
-            '%' + item.tokens[0].text.substr(0, item.tokens[0].text.length-1) :
-            '%' + item.tokens[2].text.substr(1)
-        ),
+        ident: niceLabel,
         lineNum: item.lineNum
       }];
     }
@@ -657,17 +660,19 @@ function intertyper(data, sidePass, baseLineNums) {
     item.type = item.tokens[1].text;
     Types.needAnalysis[item.type] = 0;
     while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS) &&
-           item.tokens[2].text != 'null') {
-      // We cannot compile assembly. If you hit this, perhaps tell the compiler not
-      // to generate arch-specific code? |-U__i386__ -U__x86_64__| might help, it undefines
-      // the standard archs.
+           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm') {
       assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
       item.tokens.splice(2, 1);
     }
     var tokensLeft = item.tokens.slice(2);
     item.ident = eatLLVMIdent(tokensLeft);
-    // We cannot compile assembly, see above.
-    assert(item.ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
+    if (item.ident == 'asm') {
+      // Inline assembly is just JavaScript that we paste into the code
+      item.intertype = 'value';
+      if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
+      item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2);
+      return { forward: null, ret: [item], item: item };
+    } 
     if (item.ident.substr(-2) == '()') {
       // See comment in isStructType()
       item.ident = item.ident.substr(0, item.ident.length-2);
