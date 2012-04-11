@@ -1,8 +1,12 @@
+(function() {
+
 /**
  * @fileoverview gl-matrix - High performance matrix and vector operations for WebGL
  * @author Brandon Jones
  * @version 1.2.4
  */
+
+// Modifed for emscripten: Global scoping etc.
 
 /*
  * Copyright (c) 2011 Brandon Jones
@@ -27,50 +31,32 @@
  *    distribution.
  */
 
-"use strict";
 
-// Type declarations
-(function(_global) {
-    // account for CommonJS environments
-    _global.glMatrixArrayType = _global.MatrixArray = null;
+/**
+ * @class 3 Dimensional Vector
+ * @name vec3
+ */
+var vec3 = {};
 
-    /**
-     * @class 3 Dimensional Vector
-     * @name vec3
-     */
-    _global.vec3 = {};
+/**
+ * @class 3x3 Matrix
+ * @name mat3
+ */
+var mat3 = {};
 
-    /**
-     * @class 3x3 Matrix
-     * @name mat3
-     */
-    _global.mat3 = {};
+/**
+ * @class 4x4 Matrix
+ * @name mat4
+ */
+var mat4 = {};
 
-    /**
-     * @class 4x4 Matrix
-     * @name mat4
-     */
-    _global.mat4 = {};
+/**
+ * @class Quaternion
+ * @name quat4
+ */
+var quat4 = {};
 
-    /**
-     * @class Quaternion
-     * @name quat4
-     */
-    _global.quat4 = {};
-
-    // explicitly sets and returns the type of array to use within glMatrix
-    _global.setMatrixArrayType = function(type) {
-        return glMatrixArrayType = MatrixArray = type;
-    };
-
-    // auto-detects and returns the best type of array to use within glMatrix, falling
-    // back to Array if typed arrays are unsupported
-    _global.determineMatrixArrayType = function() {
-        return setMatrixArrayType((typeof Float32Array !== 'undefined') ? Float32Array : Array);
-    };
-
-    determineMatrixArrayType();
-})((typeof(exports) != 'undefined') ? global : this);
+var MatrixArray = Float32Array;
 
 /*
  * vec3
@@ -1954,4 +1940,13 @@ quat4.str = function (quat) {
     return '[' + quat[0] + ', ' + quat[1] + ', ' + quat[2] + ', ' + quat[3] + ']';
 };
 
+
+return {
+  vec3: vec3,
+  mat3: mat3,
+  mat4: mat4,
+  quat4: quat4
+};
+
+})();
 
