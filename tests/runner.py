@@ -7020,41 +7020,31 @@ elif 'browser' in str(sys.argv):
 
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
-                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
     def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '-s', 'USE_TYPED_ARRAYS=0',
-                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_glgears_deriv(self):
       self.reftest(path_from_root('tests', 'gears.png'))
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
+      src = open('something.html').read()
+      assert 'gl-matrix' not in src, 'Should not include glMatrix when not needed'
 
     def test_glbook(self):
       programs = self.get_library('glbook', [
