@@ -2639,6 +2639,8 @@ def process(filename):
 
         # part 2: make sure we warn about mixing c and c++ calling conventions here
 
+        if not (self.emcc_args is None or self.emcc_args == []): return # Optimized code is missing the warning comments
+
         header = r'''
           struct point
           {
@@ -2691,17 +2693,11 @@ def process(filename):
         all_name = os.path.join(self.get_dir(), 'all.bc')
         Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
-        try:
-          # This will fail! See explanation near the warning we check for, in the compiler source code
-          self.do_ll_run(all_name, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2')
-        except Exception, e:
-          # Check for warning in the generated code
-          generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-          if self.emcc_args is None or self.emcc_args == []: # Optimized code is missing the warning comments
-            assert 'Casting a function pointer type to another with a different number of arguments.' in generated, 'Missing expected warning'
-            assert 'void (i32, i32)* ==> void (%struct.point.0*)*' in generated, 'Missing expected warning details'
-          return
-        raise Exception('We should not have gotten to here!')
+        # This will fail! See explanation near the warning we check for, in the compiler source code
+        output = Popen(['python', EMCC, all_name], stderr=PIPE).communicate()
+        # Check for warning in the generated code
+        generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+        assert 'Casting a function pointer type to another with a different number of arguments.' in output[1], 'Missing expected warning'
 
     def test_stdlibs(self):
         if Settings.USE_TYPED_ARRAYS == 2:
