@@ -6696,13 +6696,6 @@ elif 'browser' in str(sys.argv):
         time.sleep(5)
         print '(moving on..)'
 
-    def test_html(self):
-      # test HTML generation.
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
-      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
-
     def with_report_result(self, code):
       return code.replace('REPORT_RESULT();', '''
           char output[1000];
@@ -6767,6 +6760,12 @@ elif 'browser' in str(sys.argv):
           setTimeout(doReftest, 0); // if run() throws an exception and postRun is not called, this will kick in
         };
 ''' % basename)
+
+    def test_html(self):
+      # test HTML generation.
+      self.reftest(path_from_root('tests', 'htmltest.png'))
+      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html',  '--pre-js', 'reftest.js']).communicate()
+      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
     def test_compression(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
