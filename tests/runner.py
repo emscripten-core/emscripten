@@ -7509,12 +7509,12 @@ elif 'sanity' in str(sys.argv):
       open(os.path.join(dirname, 'main.cpp'), 'w').write('''
         #include <stdio.h>
         int main() {
-          printf("hello from emcc with no CONFIG_FILE\\n");
+          printf("hello from emcc with no config file\\n");
           return 0;
         }
       ''')
       Popen(['python', EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
-      self.assertContained('hello from emcc with no CONFIG_FILE', run_js(os.path.join(dirname, 'a.out.js')))
+      self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
       del os.environ['EM_CONFIG']
       shutil.rmtree(dirname)
 
