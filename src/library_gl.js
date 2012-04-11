@@ -14,6 +14,20 @@ var LibraryGL = {
     uniforms: {},
     shaders: {},
 
+    matrix: {
+      'm': null, // modelview
+      'p': null  // projection
+    },
+    matrixStack: {
+      'm': [], // modelview
+      'p': []  // projection
+    },
+    currentMatrix: null,
+    initMatrixLibrary: function() {
+      GL.matrix['m'] = GL.matrix.lib.mat4.create();
+      GL.matrix['p'] = GL.matrix.lib.mat4.create();
+    },
+
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
     scan: function(table, object) {
       for (var item in table) {
@@ -780,6 +794,22 @@ var LibraryGL = {
       return false;
     }
     return Module.ctx.isFramebuffer(fb);
+  },
+
+  // OpenGL matrix routines.
+  // Note that in the future we might make these available only in certain modes.
+  glMatrixMode: function(mode) {
+    if (mode == 0x1700 /* GL_MODELVIEW */) {
+      GL.currentMatrix = 'm';
+    } else if (mode == 0x1701 /* GL_PROJECTION */) {
+      GL.currentMatrix = 'p';
+    } else {
+      throw "Wrong mode " + mode + " passed to glMatrixMode";
+    }
+  },
+
+  glLoadIdentity: function() {
+    GL.matrix.lib.mat4.identity(GL.matrix[GL.currentMatrix]);
   },
 
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
