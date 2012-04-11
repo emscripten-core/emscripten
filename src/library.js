@@ -5345,6 +5345,11 @@ LibraryManager.library = {
     // TODO: Implement.
     return 0;
   },
+  strftime_l__deps: ['strftime'],
+  strftime_l: function(s, maxsize, format, timeptr, locale) {
+    // TODO: Should depend on the given locale.
+    return _strftime(s, maxsize, format, timeptr);
+  },
 
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
