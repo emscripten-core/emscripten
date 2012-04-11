@@ -14,6 +14,8 @@ var LibraryGL = {
     uniforms: {},
     shaders: {},
 
+    matrix: {},
+
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
     scan: function(table, object) {
       for (var item in table) {
@@ -834,6 +836,11 @@ var LibraryGL = {
       }
       return Runtime.addFunction(func);
     }
+  },
+
+  glBegin__deps: ['$GL', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') }],
+  glBegin: function() {
+    Module.print('TODO');
   }
 };
 
