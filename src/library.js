@@ -5358,9 +5358,9 @@ LibraryManager.library = {
     return 0;
   },
   strptime_l__deps: ['strptime'],
-  strptime_l: function(s, maxsize, format, timeptr, locale) {
+  strptime_l: function(buf, format, tm, locale) {
     // TODO: Should depend on the given locale.
-    return _strptime(s, maxsize, format, timeptr);
+    return _strptime(buf, format, tm);
   },
 
   getdate: function(string) {
