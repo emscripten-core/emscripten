@@ -11,6 +11,7 @@ Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
 import os, sys, re
 
 ALLOW_POINTERS = False
+ALLOW_MISC = True
 MEMCPY = False
 
 POSTAMBLE = '''
@@ -242,6 +243,14 @@ for i in range(len(lines)):
       index = i+1+lines_added
       lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
       lines_added += 1
+      continue
+    if ALLOW_MISC:
+      m = re.match('  %(?P<var>[\w_.]+) = (call|mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
+      if m:
+        index = i+1+lines_added
+        lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+        lines_added += 1
+        continue
   finally:
     if len(pre) > 0:
       lines[i] = pre + '\n' + lines[i]
