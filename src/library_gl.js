@@ -14,6 +14,7 @@ var LibraryGL = {
     uniforms: {},
     shaders: {},
 
+    // The folowing data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {
       'm': null, // modelview
       'p': null  // projection
@@ -798,7 +799,7 @@ var LibraryGL = {
     return Module.ctx.isFramebuffer(fb);
   },
 
-  // OpenGL matrix routines.
+  // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
   glMatrixMode: function(mode) {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
@@ -1016,7 +1017,9 @@ var LibraryGL = {
     }
   },
 
-  glBegin__deps: ['$GL', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') }],
+  glBegin__deps: ['$GL', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') + ';\n' +
+                                          'GL.initMatrixLibrary();'
+                                    }],
   glBegin: function() {
     Module.print('TODO');
   }
