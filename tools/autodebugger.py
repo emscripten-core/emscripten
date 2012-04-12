@@ -251,6 +251,15 @@ for i in range(len(lines)):
         lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
         lines_added += 1
         continue
+      m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
+      if m:
+        index = i+1+lines_added
+        lines[i] += '\n  %%adpretemp%d = bitcast i8* %%%s to i64*' % (index, m.group('src')) + \
+                    '\n  %%adtemp%d = load i64* %%adpretemp%d, align %s' % (index, index, m.group('align')) + \
+                    '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%adtemp%d)' % ('i64', index, 'i64', index)
+        lines_added += 3
+        continue
+
   finally:
     if len(pre) > 0:
       lines[i] = pre + '\n' + lines[i]
