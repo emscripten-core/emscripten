@@ -1,5 +1,9 @@
 <html>
+<head>
+  <title>Emscripten Browser Test Harness</title>
+</head>
 <body>
+<h2><b>Running tests...</b></h2>
 <div id="output"></div>
 <script>
   var counter = 0;
@@ -9,8 +13,8 @@
     try {
       request.send(null);
       if (request.responseText != 'False') {
-        document.getElementById('output').innerHTML += 'opening test window ' + (counter++) + '..<br>';
         window.open(request.responseText);
+        document.getElementById('output').innerHTML += 'opened test window ' + (counter++) + '..<br>';
       }
       setTimeout(check, 333);
     } catch(e) {
