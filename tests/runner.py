@@ -7542,6 +7542,24 @@ elif 'sanity' in str(sys.argv):
       assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
+      # emcc should be configurable directly from EM_CONFIG without any config file
+      restore()
+      config = open(CONFIG_FILE, 'r').read()
+      os.environ['EM_CONFIG'] = config
+      wipe()
+      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+      open(os.path.join(dirname, 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from emcc with no config file\\n");
+          return 0;
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
+      self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
+      del os.environ['EM_CONFIG']
+      shutil.rmtree(dirname)
+
     def test_emcc_caching(self):
       INCLUDING_MESSAGE = 'emcc: including X'
       BUILDING_MESSAGE = 'emcc: building X for cache'
