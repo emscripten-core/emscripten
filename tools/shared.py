@@ -126,11 +126,12 @@ JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
+CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 EMSCRIPTEN_TEMP_DIR = None
 
 if os.environ.get('EMCC_DEBUG'):
   try:
-    EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
+    EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
     if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
       os.makedirs(EMSCRIPTEN_TEMP_DIR)
   except:

@@ -79,7 +79,7 @@ class RunnerCore(unittest.TestCase):
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
     else:
-      dirname = EMSCRIPTEN_TEMP_DIR
+      dirname = CANONICAL_TEMP_DIR
     if not os.path.exists(dirname):
       os.makedirs(dirname)
     self.working_dir = dirname
