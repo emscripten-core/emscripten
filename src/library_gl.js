@@ -9,7 +9,7 @@ var LibraryGL = {
     buffers: {},
     programs: {},
     framebuffers: {},
-    renderbuffer: {},
+    renderbuffers: {},
     textures: {},
     uniforms: {},
     shaders: {},
