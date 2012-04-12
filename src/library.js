@@ -4258,19 +4258,13 @@ LibraryManager.library = {
   isdigit: function(chr) {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
   },
-  isdigit_l__deps: ['isdigit'],
-  isdigit_l: function(chr, loc) {
-    return _isdigit(chr);
-  },
+  isdigit_l: 'isdigit', // no locale support yet
   isxdigit: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
   },
-  isxdigit_l__deps: ['isxdigit'],
-  isxdigit_l: function(chr, loc) {
-    return _isxdigit(chr);
-  },
+  isxdigit_l: 'isxdigit', // no locale support yet
   isalnum: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
@@ -5345,11 +5339,7 @@ LibraryManager.library = {
     // TODO: Implement.
     return 0;
   },
-  strftime_l__deps: ['strftime'],
-  strftime_l: function(s, maxsize, format, timeptr, locale) {
-    // TODO: Should depend on the given locale.
-    return _strftime(s, maxsize, format, timeptr);
-  },
+  strftime_l: 'strftime', // no locale support yet
 
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
@@ -5357,11 +5347,7 @@ LibraryManager.library = {
     // TODO: Implement.
     return 0;
   },
-  strptime_l__deps: ['strptime'],
-  strptime_l: function(buf, format, tm, locale) {
-    // TODO: Should depend on the given locale.
-    return _strptime(buf, format, tm);
-  },
+  strptime_l: 'strptime', // no locale support yet
 
   getdate: function(string) {
     // struct tm *getdate(const char *string);
