@@ -79,7 +79,7 @@ class RunnerCore(unittest.TestCase):
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
     else:
-      dirname = EMSCRIPTEN_TEMP_DIR
+      dirname = CANONICAL_TEMP_DIR
     if not os.path.exists(dirname):
       os.makedirs(dirname)
     self.working_dir = dirname
@@ -2639,6 +2639,8 @@ def process(filename):
 
         # part 2: make sure we warn about mixing c and c++ calling conventions here
 
+        if not (self.emcc_args is None or self.emcc_args == []): return # Optimized code is missing the warning comments
+
         header = r'''
           struct point
           {
@@ -2691,17 +2693,11 @@ def process(filename):
         all_name = os.path.join(self.get_dir(), 'all.bc')
         Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
-        try:
-          # This will fail! See explanation near the warning we check for, in the compiler source code
-          self.do_ll_run(all_name, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2')
-        except Exception, e:
-          # Check for warning in the generated code
-          generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-          if self.emcc_args is None or self.emcc_args == []: # Optimized code is missing the warning comments
-            assert 'Casting a function pointer type to another with a different number of arguments.' in generated, 'Missing expected warning'
-            assert 'void (i32, i32)* ==> void (%struct.point.0*)*' in generated, 'Missing expected warning details'
-          return
-        raise Exception('We should not have gotten to here!')
+        # This will fail! See explanation near the warning we check for, in the compiler source code
+        output = Popen(['python', EMCC, all_name], stderr=PIPE).communicate()
+        # Check for warning in the generated code
+        generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+        assert 'Casting a function pointer type to another with a different number of arguments.' in output[1], 'Missing expected warning'
 
     def test_stdlibs(self):
         if Settings.USE_TYPED_ARRAYS == 2:
@@ -6670,11 +6666,17 @@ elif 'browser' in str(sys.argv):
                 if 'report_' in s.path:
                   q.put(s.path)
                 else:
-                  s.send_response(200)
-                  s.send_header("Content-type", "text/html")
-                  s.end_headers()
-                  s.wfile.write(open(s.path[1:]).read())
-                  s.wfile.close()
+                  filename = s.path[1:]
+                  if os.path.exists(filename):
+                    s.send_response(200)
+                    s.send_header("Content-type", "text/html")
+                    s.end_headers()
+                    s.wfile.write(open(filename).read())
+                    s.wfile.close()
+                  else:
+                    s.send_response(500)
+                    s.send_header("Content-type", "text/html")
+                    s.end_headers()
             os.chdir(self.get_dir())
             httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
             httpd.serve_forever() # test runner will kill us
@@ -6699,13 +6701,6 @@ elif 'browser' in str(sys.argv):
         print '(sleeping for a bit to keep the directory alive for the web browser..)'
         time.sleep(5)
         print '(moving on..)'
-
-    def test_html(self):
-      # test HTML generation.
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html'], stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
-      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.')
 
     def with_report_result(self, code):
       return code.replace('REPORT_RESULT();', '''
@@ -6771,6 +6766,12 @@ elif 'browser' in str(sys.argv):
           setTimeout(doReftest, 0); // if run() throws an exception and postRun is not called, this will kick in
         };
 ''' % basename)
+
+    def test_html(self):
+      # test HTML generation.
+      self.reftest(path_from_root('tests', 'htmltest.png'))
+      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html',  '--pre-js', 'reftest.js']).communicate()
+      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
     def test_compression(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
@@ -7006,55 +7007,49 @@ elif 'browser' in str(sys.argv):
       html_file.write('''
         <html>
         <body>
+          Worker Test
           <script>
             var worker = new Worker('worker.js');
             worker.onmessage = function(event) {
-              document.write("<hr>Called back by the worker: " + event.data + "<br><hr>");
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?' + event.data);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
             };
           </script>
         </body>
         </html>
       ''')
       html_file.close()
-      self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"')
+      self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"', '/report_result?hello%20from%20worker!')
 
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
-                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
     def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '-s', 'USE_TYPED_ARRAYS=0',
-                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_glgears_deriv(self):
       self.reftest(path_from_root('tests', 'gears.png'))
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js'],
-                     stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('something.html'), output
+      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
+      src = open('something.html').read()
+      assert 'gl-matrix' not in src, 'Should not include glMatrix when not needed'
 
     def test_glbook(self):
       programs = self.get_library('glbook', [
@@ -7546,6 +7541,24 @@ elif 'sanity' in str(sys.argv):
       self.assertContained(SANITY_MESSAGE, output)
       assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+      # emcc should be configurable directly from EM_CONFIG without any config file
+      restore()
+      config = open(CONFIG_FILE, 'r').read()
+      os.environ['EM_CONFIG'] = config
+      wipe()
+      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+      open(os.path.join(dirname, 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from emcc with no config file\\n");
+          return 0;
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
+      self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
+      del os.environ['EM_CONFIG']
+      shutil.rmtree(dirname)
 
     def test_emcc_caching(self):
       INCLUDING_MESSAGE = 'emcc: including X'

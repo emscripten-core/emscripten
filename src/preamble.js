@@ -104,7 +104,7 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 }
 
 function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
-  SAFE_HEAP_ACCESS(dest, type, ignore);
+  SAFE_HEAP_ACCESS(dest, type, false, ignore);
 
 #if SAFE_HEAP_LOG
     Module.print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);

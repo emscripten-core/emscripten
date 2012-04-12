@@ -9,7 +9,7 @@ var LibraryGL = {
     buffers: {},
     programs: {},
     framebuffers: {},
-    renderbuffer: {},
+    renderbuffers: {},
     textures: {},
     uniforms: {},
     shaders: {},
@@ -1014,12 +1014,17 @@ var LibraryGL = {
       }
       return Runtime.addFunction(func);
     }
+  },
+
+  glBegin__deps: ['$GL', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') }],
+  glBegin: function() {
+    Module.print('TODO');
   }
 };
 
-// Simple pass-through functions
+// Simple pass-through functions. Starred ones have return values.
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus generateMipmap activeTexture blendEquation'],
+ [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation'],
  [2, 'pixelStorei blendFunc blendEquationSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
@@ -1029,8 +1034,14 @@ var LibraryGL = {
   var num = data[0];
   var names = data[1];
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
-  var stub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
+  var plainStub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
+  var returnStub = '(function(' + args + ') { ' + (num > 0 ? 'return Module.ctx.NAME(' + args + ')' : '') + ' })';
   names.split(' ').forEach(function(name_) {
+    var stub = plainStub;
+    if (name_[name_.length-1] == '*') {
+      name_ = name_.substr(0, name_.length-1);
+      stub = returnStub;
+    }
     var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
     assert(!(cName in LibraryGL), "Cannot reimplement the existing function " + cName);
     LibraryGL[cName] = eval(stub.replace('NAME', name_));

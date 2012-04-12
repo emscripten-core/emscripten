@@ -375,11 +375,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     processItem: function(item) {
       function addFromLibrary(ident) {
         if (ident in addedLibraryItems) return '';
+        addedLibraryItems[ident] = true;
+
+        // dependencies can be JS functions, which we just run
+        if (typeof ident == 'function') return ident();
+
         // Don't replace implemented functions with library ones (which can happen when we add dependencies).
         // Note: We don't return the dependencies here. Be careful not to end up where this matters
         if (('_' + ident) in Functions.implementedFunctions) return '';
 
-        addedLibraryItems[ident] = true;
         var snippet = LibraryManager.library[ident];
         var redirectedIdent = null;
         var deps = LibraryManager.library[ident + '__deps'] || [];
