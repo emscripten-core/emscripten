@@ -301,6 +301,10 @@ var LibraryGL = {
     Module.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
 
+  glReadPixels: function(x, y, width, height, format, type, pixels) {
+    Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels));
+  },
+
   glBindTexture: function(target, texture) {
     Module.ctx.bindTexture(target, GL.textures[texture]);
   },
