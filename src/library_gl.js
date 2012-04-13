@@ -1106,8 +1106,8 @@ var LibraryGL = {
                               false, 5 * 4, 
                               3 * 4);
 
-      Module.ctx.enableVertexAttribArray(this.positionLoc);
-      Module.ctx.enableVertexAttribArray(this.texCoordLoc);
+      Module.ctx.enableVertexAttribArray(this.positionLocation);
+      Module.ctx.enableVertexAttribArray(this.texCoordLocation);
 
       Module.ctx.activeTexture(Module.ctx.TEXTURE0);
       this.textureId = Module.ctx.createTexture();
