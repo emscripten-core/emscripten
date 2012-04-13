@@ -900,7 +900,7 @@ var LibraryGL = {
   },
 
   glScalef: function(x, y, z) {
-    _glScalef(x, y, z);
+    _glScaled(x, y, z);
   },
 
   glTranslate: function(x, y, z) {
