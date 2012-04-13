@@ -805,6 +805,8 @@ var LibraryGL = {
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
+  glMatrixMode__deps: ['$GL', '$GLImmediate', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') +
+                          ';\nGL.immediate = GLImmediate;\nGL.initMatrixLibrary();\n' }],
   glMatrixMode: function(mode) {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
       GL.currentMatrix = 'm';
@@ -824,6 +826,8 @@ var LibraryGL = {
     GL.matrix[currentMatrix] = GL.matrixStack[GL.currentMatrix].pop();
   },
 
+  glLoadIdentity__deps: ['$GL', '$GLImmediate', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') +
+                            ';\nGL.immediate = GLImmediate;\nGL.initMatrixLibrary();\n' }],
   glLoadIdentity: function() {
     GL.matrix.lib.mat4.identity(GL.matrix[GL.currentMatrix]);
   },
