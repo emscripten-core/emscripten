@@ -899,6 +899,7 @@ var LibraryGL = {
     GL.matrix.lib.mat4.scale(GL.matrix[GL.currentMatrix], [x, y, z]);
   },
 
+  glScalef__deps: ['glScaled'],
   glScalef: function(x, y, z) {
     _glScaled(x, y, z);
   },
@@ -907,6 +908,7 @@ var LibraryGL = {
     GL.matrix.lib.mat4.translate(GL.matrix[GL.currentMatrix], [x, y, z]);
   },
 
+  glTranslatef__deps: ['glTranslated'],
   glTranslatef: function(x, y, z) {
     _glTranslated(x, y, z);
   },
@@ -915,6 +917,7 @@ var LibraryGL = {
     GL.matrix.lib.mat4.rotate(GL.matrix[GL.currentMatrix], angle, [x, y, z]);
   },
 
+  glRotatef__deps: ['glRotated'],
   glRotatef: function(angle, x, y, z) {
     _glRotated(angle, x, y, z);
   },
