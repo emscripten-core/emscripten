@@ -3647,6 +3647,22 @@ at function.:blag
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_run(src, expected)
+      
+		def test_transtrcase(self):
+    	src = '''
+    	 	#include <stdio.h>
+    	 	#include <string.h>
+        int main()	{
+          char szToupr[] = "hello, ";
+          char szTolwr[] = "EMSCRIPTEN";
+          strupr(szToupr);
+          strlwr(szTolwr);
+          printf(szToupr);
+          printf(szTolwr);
+          return 0;
+        }
+    		'''
+    	self.do_run(src, 'HELLO, emscripten')
 
     def test_printf(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
