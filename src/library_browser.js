@@ -53,6 +53,7 @@ mergeInto(LibraryManager.library, {
                       return arg + '\n\n';
                     }
                     if (arg.byteLength) {
+                      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 40)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
                       var buf = new ArrayBuffer(32);
                       var i8buf = new Int8Array(buf);
                       var i16buf = new Int16Array(buf);
@@ -80,25 +81,25 @@ mergeInto(LibraryManager.library, {
                     }
                     return arg;
                   });
-                  Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');
+                  console.log('[gl_f:' + prop + ':' + printArgs + ']');
                   var ret = tempCtx[prop].apply(tempCtx, arguments);
                   var printRet = ret;
                   if (typeof ret == 'object') {
                     wrapper.objectMap[ret] = wrapper.objectCounter++;
                     printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
                   }
-                  Module.printErr('[     gl:' + prop + ':return:' + printRet + ']');
+                  if (typeof printRet != 'undefined') console.log('[     gl:' + prop + ':return:' + printRet + ']');
                   return ret;
                 }
                 break;
               }
               case 'number': case 'string': {
                 wrapper.__defineGetter__(prop, function() {
-                  //Module.printErr('[gl_g:' + prop + ':' + tempCtx[prop] + ']');
+                  //console.log('[gl_g:' + prop + ':' + tempCtx[prop] + ']');
                   return tempCtx[prop];
                 });
                 wrapper.__defineSetter__(prop, function(value) {
-                  Module.printErr('[gl_s:' + prop + ':' + value + ']');
+                  console.log('[gl_s:' + prop + ':' + value + ']');
                   tempCtx[prop] = value;
                 });
                 break;
