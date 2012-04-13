@@ -900,8 +900,8 @@ var LibraryGL = {
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, this.indexCounter), Module.ctx.STATIC_DRAW);
 
       // Render
-      Module.ctx.viewport(0, 0, Module.canvas.width, Module.canvas.height);
-      Module.ctx.clear(Module.ctx.COLOR_BUFFER_BIT);
+      //Module.ctx.viewport(0, 0, Module.canvas.width, Module.canvas.height);
+      //Module.ctx.clear(Module.ctx.COLOR_BUFFER_BIT);
 
       Module.ctx.useProgram(this.program);
 
