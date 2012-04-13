@@ -975,9 +975,9 @@ var LibraryGL = {
   glOrtho: function(){},
 };
 
-// Simple pass-through functions. Starred ones have return values.
+// Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation'],
+ [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation'],
  [2, 'pixelStorei blendFunc blendEquationSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
@@ -989,15 +989,20 @@ var LibraryGL = {
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
   var plainStub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
   var returnStub = '(function(' + args + ') { ' + (num > 0 ? 'return Module.ctx.NAME(' + args + ')' : '') + ' })';
-  names.split(' ').forEach(function(name_) {
+  names.split(' ').forEach(function(name) {
     var stub = plainStub;
-    if (name_[name_.length-1] == '*') {
-      name_ = name_.substr(0, name_.length-1);
+    if (name[name.length-1] == '*') {
+      name = name.substr(0, name.length-1);
       stub = returnStub;
     }
-    var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
+    var cName = name;
+    if (name.indexOf('[') >= 0) {
+      cName = name.replace('[', '').replace(']', '');
+      name = cName.substr(0, cName.length-1);
+    }
+    var cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
     assert(!(cName in LibraryGL), "Cannot reimplement the existing function " + cName);
-    LibraryGL[cName] = eval(stub.replace('NAME', name_));
+    LibraryGL[cName] = eval(stub.replace('NAME', name));
   });
 });
 
