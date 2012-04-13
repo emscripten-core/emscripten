@@ -90,12 +90,16 @@ int main(int argc, char *argv[])
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 
+        SDL_LockSurface(surface);
+
         // Add some greyness
         memset(surface->pixels, 0x66, surface->w*surface->h);
-        
+
         // Edit the texture object's image data using the information SDL_Surface gives us
         glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, 
                       GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels );
+
+        SDL_UnlockSurface(surface);
     } 
     else {
         printf("SDL could not load image.bmp: %s\n", SDL_GetError());

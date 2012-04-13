@@ -286,6 +286,10 @@ var LibraryGLUT = {
     Module['canvas'].height = GLUT.initWindowHeight = height;
   },
 
+  glutInitWindowPosition: function(x, y) {
+    // Ignore for now
+  },
+
   glutGet: function(type) {
     switch (type) {
       case 100: /* GLUT_WINDOW_X */
