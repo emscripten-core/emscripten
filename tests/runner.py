@@ -14,7 +14,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools
 
 
 if len(sys.argv) == 1:
@@ -6619,33 +6619,55 @@ fscanfed: 10 - hello
 elif 'browser' in str(sys.argv):
   # Browser tests.
 
+  # Run a server and a web page. When a test runs, we tell the server about it,
+  # which tells the web page, which then opens a window with the test. Doing
+  # it this way then allows the page to close() itself when done.
+
+  def harness_server_func(q):
+    class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+      def do_GET(s):
+        s.send_response(200)
+        s.send_header("Content-type", "text/html")
+        s.end_headers()
+        if s.path == '/run_harness':
+          s.wfile.write(open(path_from_root('tests', 'browser_harness.html')).read())
+        else:
+          result = 'False'
+          if not q.empty():
+            result = q.get()
+          s.wfile.write(result)
+        s.wfile.close()
+    httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
+    httpd.serve_forever() # test runner will kill us
+
+  def server_func(dir, q):
+    class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+      def do_GET(s):
+        if 'report_' in s.path:
+          q.put(s.path)
+        else:
+          filename = s.path[1:]
+          if os.path.exists(filename):
+            s.send_response(200)
+            s.send_header("Content-type", "text/html")
+            s.end_headers()
+            s.wfile.write(open(filename).read())
+            s.wfile.close()
+          else:
+            s.send_response(500)
+            s.send_header("Content-type", "text/html")
+            s.end_headers()
+    os.chdir(dir)
+    httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+    httpd.serve_forever() # test runner will kill us
+
   class browser(RunnerCore):
     def __init__(self, *args, **kwargs):
       super(browser, self).__init__(*args, **kwargs)
 
       if hasattr(browser, 'harness_server'): return
-
-      # Run a server and a web page. When a test runs, we tell the server about it,
-      # which tells the web page, which then opens a window with the test. Doing
-      # it this way then allows the page to close() itself when done.
-      def server_func(q):
-        class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-          def do_GET(s):
-            s.send_response(200)
-            s.send_header("Content-type", "text/html")
-            s.end_headers()
-            if s.path == '/run_harness':
-              s.wfile.write(open(path_from_root('tests', 'browser_harness.html')).read())
-            else:
-              result = 'False'
-              if not q.empty():
-                result = q.get()
-              s.wfile.write(result)
-            s.wfile.close()
-        httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
-        httpd.serve_forever() # test runner will kill us
       browser.harness_queue = multiprocessing.Queue()
-      browser.harness_server = multiprocessing.Process(target=server_func, args=(browser.harness_queue,))
+      browser.harness_server = multiprocessing.Process(target=harness_server_func, args=(browser.harness_queue,))
       browser.harness_server.start()
       print '[Browser harness server on process %d]' % browser.harness_server.pid
       webbrowser.open_new('http://localhost:9999/run_harness')
@@ -6656,32 +6678,15 @@ elif 'browser' in str(sys.argv):
       browser.harness_server.terminate()
       delattr(browser, 'harness_server')
       print '[Browser harness server terminated]'
+      # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
+      # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
+      time.sleep(0.1)
       
     def run_browser(self, html_file, message, expectedResult=None):
       if expectedResult is not None:
         try:
-          def server_func(q):
-            class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-              def do_GET(s):
-                if 'report_' in s.path:
-                  q.put(s.path)
-                else:
-                  filename = s.path[1:]
-                  if os.path.exists(filename):
-                    s.send_response(200)
-                    s.send_header("Content-type", "text/html")
-                    s.end_headers()
-                    s.wfile.write(open(filename).read())
-                    s.wfile.close()
-                  else:
-                    s.send_response(500)
-                    s.send_header("Content-type", "text/html")
-                    s.end_headers()
-            os.chdir(self.get_dir())
-            httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
-            httpd.serve_forever() # test runner will kill us
           queue = multiprocessing.Queue()
-          server = multiprocessing.Process(target=server_func, args=(queue,))
+          server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue,))
           server.start()
           browser.harness_queue.put('http://localhost:8888/' + html_file)
           output = '[no http server activity]'
@@ -6694,6 +6699,7 @@ elif 'browser' in str(sys.argv):
           self.assertIdentical(expectedResult, output)
         finally:
           server.terminate()
+          time.sleep(0.1) # see comment about Windows above
       else:
         webbrowser.open_new(os.path.abspath(html_file))
         print 'A web browser window should have opened a page containing the results of a part of this test.'
