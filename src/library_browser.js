@@ -47,6 +47,7 @@ mergeInto(LibraryManager.library, {
               case 'function': {
                 wrapper[prop] = function() {
                   var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
+                    if (!arg) return arg;
                     if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
                     if (arg.toString() == '[object HTMLImageElement]') {
                       return arg + '\n\n';
@@ -54,6 +55,7 @@ mergeInto(LibraryManager.library, {
                     if (arg.byteLength) {
                       var buf = new ArrayBuffer(32);
                       var i8buf = new Int8Array(buf);
+                      var i16buf = new Int16Array(buf);
                       var f32buf = new Float32Array(buf);
                       switch(arg.toString()) {
                         case '[object Uint8Array]':
@@ -61,6 +63,9 @@ mergeInto(LibraryManager.library, {
                           break;
                         case '[object Float32Array]':
                           f32buf.set(arg.subarray(0, 5));
+                          break;
+                        case '[object Uint16Array]':
+                          i16buf.set(arg.subarray(0, 16));
                           break;
                         default:
                           alert('unknown array for debugging: ' + arg);
