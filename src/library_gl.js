@@ -1103,6 +1103,7 @@ var LibraryGL = {
       Module.ctx.enableVertexAttribArray(this.texCoordLoc);
 
       Module.ctx.activeTexture(Module.ctx.TEXTURE0);
+      this.textureId = Module.ctx.createTexture();
       Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, this.textureId);
 
       Module.ctx.uniform1i(this.textureLocation, 0);
