@@ -7009,12 +7009,12 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_gl_read.c'), '-o', 'something.html']).communicate()
       self.run_browser('something.html', '.', '/report_result?1')
 
-    def zzztest_sdl_ogl(self):
+    def test_sdl_ogl(self):
       # SDL, OpenGL, textures, immediate mode
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'gears.png'))
+      self.reftest(path_from_root('tests', 'screenshot-gray.png'))
       Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
-      self.run_browser('something.html', 'You should see animating gears.', '/report_result?1779')
+      self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_worker(self):
       # Test running in a web worker
