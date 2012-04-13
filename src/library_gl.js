@@ -1115,8 +1115,8 @@ var LibraryGL = {
 
       Module.ctx.uniform1i(this.textureLocation, 0);
 
-      Module.ctx.uniform4fv(this.modelViewLocation, GL.matrix["m"]);
-      Module.ctx.uniform4fv(this.projectionLocation, GL.matrix["p"]);
+      Module.ctx.uniformMatrix4fv(this.modelViewLocation, 0 /* GL_FALSE */, GL.matrix["m"]);
+      Module.ctx.uniformMatrix4fv(this.projectionLocation, 0 /* GL_FALSE */, GL.matrix["p"]);
 
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
       Module.ctx.drawElements(Module.ctx.TRIANGLES, this.indexCounter, Module.ctx.UNSIGNED_SHORT, 0);
