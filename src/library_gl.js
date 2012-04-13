@@ -316,6 +316,10 @@ var LibraryGL = {
     Module.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
 
+  glReadPixels: function(x, y, width, height, format, type, pixels) {
+    Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels));
+  },
+
   glBindTexture: function(target, texture) {
     Module.ctx.bindTexture(target, GL.textures[texture]);
   },
@@ -963,6 +967,11 @@ var LibraryGL = {
     return 1 /* GL_TRUE */;
   },
 
+  glEnable: function(cap) {
+    if (cap == 0x0DE1) return; // no GL_TEXTURE_2D in GLES or WebGL
+    Module.ctx.enable(cap);
+  },
+
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
   $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram'],
@@ -1017,20 +1026,140 @@ var LibraryGL = {
     }
   },
 
-  glBegin__deps: ['$GL', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') + ';\n' +
-                                          'GL.initMatrixLibrary();'
-                                    }],
-  glBegin: function() {
-    Module.print('TODO');
-  }
+  // Immediate mode
+
+  $GLImmediate: {
+    maxElements: 1024,
+    vertexData: null,
+    indexData: null,
+    vertexCounter: 0,
+    indexCounter: 0,
+    mode: 0,
+
+    initted: false,
+    init: function() {
+      this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
+      Module.ctx.shaderSource(this.vertexShader, 'attribute vec4 a_position;  \n\
+                                                  attribute vec2 a_texCoord;  \n\
+                                                  varying vec2 v_texCoord;    \n\
+                                                  void main()                 \n\
+                                                  {                           \n\
+                                                    gl_Position = a_position; \n\
+                                                    v_texCoord = a_texCoord;  \n\
+                                                  }                           \n');
+      Module.ctx.compileShader(this.vertexShader);
+
+      this.fragmentShader = Module.ctx.createShader(Module.ctx.FRAGMENT_SHADER);
+      Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n\
+                                                    varying vec2 v_texCoord;                            \n\
+                                                    uniform sampler2D s_texture;                        \n\
+                                                    void main()                                         \n\
+                                                    {                                                   \n\
+                                                      gl_FragColor = texture2D( s_texture, v_texCoord );\n\
+                                                    }                                                   \n');
+      Module.ctx.compileShader(this.fragmentShader);
+
+      this.program = Module.ctx.createProgram();
+      Module.ctx.attachShader(this.program, this.vertexShader);
+      Module.ctx.attachShader(this.program, this.fragmentShader);
+      Module.ctx.linkProgram(this.program);
+
+      this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
+      this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord');
+      this.textureLocation = Module.ctx.getUniformLocation(this.program, 's_texture');
+
+      // Buffer for data
+      this.vertexData = new Float32Array(5 * this.maxElements);
+      this.indexData = new Uint16Array(this.maxElements);
+
+      this.vertexObject = Module.ctx.createBuffer();
+      this.indexObject = Module.ctx.createBuffer();
+    },
+    flush: function() {
+      // Upload the data
+      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
+      Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, 5*this.vertexCounter), Module.ctx.STATIC_DRAW);
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, this.indexCounter), Module.ctx.STATIC_DRAW);
+
+      // Render
+      //Module.ctx.viewport(0, 0, Module.canvas.width, Module.canvas.height);
+      //Module.ctx.clear(Module.ctx.COLOR_BUFFER_BIT);
+
+      Module.ctx.useProgram(this.program);
+
+      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
+      Module.ctx.vertexAttribPointer(this.positionLocation, 3, Module.ctx.FLOAT,
+                             false, 5 * 4, 0);
+      Module.ctx.vertexAttribPointer(this.texCoordLocation, 2, Module.ctx.FLOAT,
+                              false, 5 * 4, 
+                              3 * 4);
+
+      Module.ctx.enableVertexAttribArray(this.positionLoc);
+      Module.ctx.enableVertexAttribArray(this.texCoordLoc);
+
+      Module.ctx.activeTexture(Module.ctx.TEXTURE0);
+      Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, this.textureId);
+
+      Module.ctx.uniform1i(this.textureLocation, 0);
+
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+      Module.ctx.drawElements(Module.ctx.TRIANGLES, this.indexCounter, Module.ctx.UNSIGNED_SHORT, 0);
+
+      this.vertexCounter = this.indexCounter = 0;
+    }
+  },
+
+  glBegin__deps: ['$GL', '$GLImmediate', function() { return 'GL.matrix.lib = ' + read('gl-matrix.js') +
+                      ';\nGL.immediate = GLImmediate;\nGL.initMatrixLibrary();\n' }],
+  glBegin: function(mode) {
+    if (!GL.immediate.initted) GL.immediate.init();
+    GL.immediate.mode = mode;
+  },
+
+  glEnd: function() {
+    GL.immediate.flush();
+  },
+
+  glVertex3f: function(x, y, z) {
+    GL.immediate.vertexData[5*GL.immediate.vertexCounter  ] = x;
+    GL.immediate.vertexData[5*GL.immediate.vertexCounter+1] = y;
+    GL.immediate.vertexData[5*GL.immediate.vertexCounter+2] = z;
+    GL.immediate.vertexCounter++;
+#if ASSERTIONS
+    assert(GL.immediate.vertexCounter < GL.immediate.maxElements, 'too many immediate mode vertexes');
+#endif
+    if (GL.immediate.mode == 7) { // GL_QUADS
+      if (GL.immediate.vertexCounter % 4 == 0) {
+        var start = GL.immediate.vertexCounter % 4;
+        GL.immediate.indexData[GL.immediate.indexCounter  ] = start;
+        GL.immediate.indexData[GL.immediate.indexCounter+1] = start+1;
+        GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
+        GL.immediate.indexData[GL.immediate.indexCounter+3] = start;
+        GL.immediate.indexData[GL.immediate.indexCounter+4] = start+2;
+        GL.immediate.indexData[GL.immediate.indexCounter+5] = start+3;
+        GL.immediate.indexCounter += 6;
+      }
+    } else {
+      throw 'only GL_QUADS supported so far';
+    }
+#if ASSERTIONS
+    assert(GL.immediate.indexCounter < GL.immediate.maxElements, 'too many immediate mode indexes');
+#endif
+  },
+
+  glTexCoord2i: function(u, v) {
+    GL.immediate.vertexData[5*GL.immediate.vertexCounter+3] = u;
+    GL.immediate.vertexData[5*GL.immediate.vertexCounter+4] = v;
+  },
 };
 
-// Simple pass-through functions. Starred ones have return values.
+// Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation'],
- [2, 'pixelStorei blendFunc blendEquationSeparate'],
- [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
+ [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage'],
+ [2, 'pixelStorei blendFunc blendEquationSeparate depthRange depthRange[f]'],
+ [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer'],
  [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {
@@ -1039,15 +1168,20 @@ var LibraryGL = {
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
   var plainStub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
   var returnStub = '(function(' + args + ') { ' + (num > 0 ? 'return Module.ctx.NAME(' + args + ')' : '') + ' })';
-  names.split(' ').forEach(function(name_) {
+  names.split(' ').forEach(function(name) {
     var stub = plainStub;
-    if (name_[name_.length-1] == '*') {
-      name_ = name_.substr(0, name_.length-1);
+    if (name[name.length-1] == '*') {
+      name = name.substr(0, name.length-1);
       stub = returnStub;
     }
-    var cName = 'gl' + name_[0].toUpperCase() + name_.substr(1);
+    var cName = name;
+    if (name.indexOf('[') >= 0) {
+      cName = name.replace('[', '').replace(']', '');
+      name = cName.substr(0, cName.length-1);
+    }
+    var cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
     assert(!(cName in LibraryGL), "Cannot reimplement the existing function " + cName);
-    LibraryGL[cName] = eval(stub.replace('NAME', name_));
+    LibraryGL[cName] = eval(stub.replace('NAME', name));
   });
 });
 

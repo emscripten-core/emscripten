@@ -702,6 +702,7 @@ mergeInto(LibraryManager.library, {
     surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
     return surf;
   },
+  SDL_LoadBMP: 'IMG_Load',
 
   // SDL_Audio
 

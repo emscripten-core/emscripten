@@ -47,13 +47,16 @@ mergeInto(LibraryManager.library, {
               case 'function': {
                 wrapper[prop] = function() {
                   var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
+                    if (!arg) return arg;
                     if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
                     if (arg.toString() == '[object HTMLImageElement]') {
                       return arg + '\n\n';
                     }
                     if (arg.byteLength) {
+                      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 40)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
                       var buf = new ArrayBuffer(32);
                       var i8buf = new Int8Array(buf);
+                      var i16buf = new Int16Array(buf);
                       var f32buf = new Float32Array(buf);
                       switch(arg.toString()) {
                         case '[object Uint8Array]':
@@ -61,6 +64,9 @@ mergeInto(LibraryManager.library, {
                           break;
                         case '[object Float32Array]':
                           f32buf.set(arg.subarray(0, 5));
+                          break;
+                        case '[object Uint16Array]':
+                          i16buf.set(arg.subarray(0, 16));
                           break;
                         default:
                           alert('unknown array for debugging: ' + arg);
@@ -75,25 +81,25 @@ mergeInto(LibraryManager.library, {
                     }
                     return arg;
                   });
-                  Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');
+                  console.log('[gl_f:' + prop + ':' + printArgs + ']');
                   var ret = tempCtx[prop].apply(tempCtx, arguments);
                   var printRet = ret;
                   if (typeof ret == 'object') {
                     wrapper.objectMap[ret] = wrapper.objectCounter++;
                     printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
                   }
-                  Module.printErr('[     gl:' + prop + ':return:' + printRet + ']');
+                  if (typeof printRet != 'undefined') console.log('[     gl:' + prop + ':return:' + printRet + ']');
                   return ret;
                 }
                 break;
               }
               case 'number': case 'string': {
                 wrapper.__defineGetter__(prop, function() {
-                  //Module.printErr('[gl_g:' + prop + ':' + tempCtx[prop] + ']');
+                  //console.log('[gl_g:' + prop + ':' + tempCtx[prop] + ']');
                   return tempCtx[prop];
                 });
                 wrapper.__defineSetter__(prop, function(value) {
-                  Module.printErr('[gl_s:' + prop + ':' + value + ']');
+                  console.log('[gl_s:' + prop + ':' + value + ']');
                   tempCtx[prop] = value;
                 });
                 break;

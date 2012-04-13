@@ -126,6 +126,12 @@ JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
+try:
+  TEMP_DIR
+except:
+  print >> sys.stderr, 'TEMP_DIR not defined in ~/.emscripten, using /tmp'
+  TEMP_DIR = '/tmp'
+
 CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 EMSCRIPTEN_TEMP_DIR = None
 
