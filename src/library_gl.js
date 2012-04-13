@@ -977,10 +977,10 @@ var LibraryGL = {
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation'],
- [2, 'pixelStorei blendFunc blendEquationSeparate'],
- [3, 'texParameteri texParameterf drawArrays vertexAttrib2f'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate'],
+ [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage'],
+ [2, 'pixelStorei blendFunc blendEquationSeparate depthRange depthRange[f]'],
+ [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer'],
  [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {
