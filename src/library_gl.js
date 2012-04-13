@@ -1049,9 +1049,11 @@ var LibraryGL = {
       Module.ctx.shaderSource(this.vertexShader, 'attribute vec4 a_position;  \n\
                                                   attribute vec2 a_texCoord;  \n\
                                                   varying vec2 v_texCoord;    \n\
+                                                  uniform mat4 u_modelView;   \n\
+                                                  uniform mat4 u_projection;  \n\
                                                   void main()                 \n\
                                                   {                           \n\
-                                                    gl_Position = a_position; \n\
+                                                    gl_Position = u_projection * (u_modelView * a_position); \n\
                                                     v_texCoord = a_texCoord;  \n\
                                                   }                           \n');
       Module.ctx.compileShader(this.vertexShader);
@@ -1074,6 +1076,8 @@ var LibraryGL = {
       this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
       this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord');
       this.textureLocation = Module.ctx.getUniformLocation(this.program, 's_texture');
+      this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
+      this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
 
       // Buffer for data
       this.vertexData = new Float32Array(5 * this.maxElements);
@@ -1110,6 +1114,9 @@ var LibraryGL = {
       Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, this.textureId);
 
       Module.ctx.uniform1i(this.textureLocation, 0);
+
+      Module.ctx.uniform4fv(this.modelViewLocation, GL.matrix["m"]);
+      Module.ctx.uniform4fv(this.projectionLocation, GL.matrix["p"]);
 
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
       Module.ctx.drawElements(Module.ctx.TRIANGLES, this.indexCounter, Module.ctx.UNSIGNED_SHORT, 0);
