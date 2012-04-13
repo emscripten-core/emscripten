@@ -3997,6 +3997,28 @@ LibraryManager.library = {
     }
     return pdest;
   },
+  
+  strlwr__deps:['tolower'],
+  strlwr: function(pstr){
+    var i = 0;
+    while(1) {
+      var x = {{{ makeGetValue('pstr', 'i', 'i8') }}};
+      if(x == 0) break;
+      {{{ makeSetValue('pstr', 'i', '_tolower(x)', 'i8') }}};
+      i++;
+    }
+  },
+  
+  strupr__deps:['toupper'],
+  strupr: function(pstr){
+    var i = 0;
+    while(1) {
+      var x = {{{ makeGetValue('pstr', 'i', 'i8') }}};
+      if(x == 0) break;
+      {{{ makeSetValue('pstr', 'i', '_toupper(x)', 'i8') }}};
+      i++;
+    }
+  },
 
   strcat__deps: ['strlen'],
   strcat: function(pdest, psrc) {
