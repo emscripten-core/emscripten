@@ -75,7 +75,7 @@
 //
 //  * SDL_Quit does nothing.
 
-mergeInto(LibraryManager.library, {
+var LibrarySDL = {
   $SDL__deps: ['$FS', '$Browser'],
   $SDL: {
     defaults: {
@@ -420,7 +420,6 @@ mergeInto(LibraryManager.library, {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['$SDL'],
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
     ['keydown', 'keyup'].forEach(function(event) {
@@ -988,5 +987,8 @@ mergeInto(LibraryManager.library, {
     window.clearTimeout(id);
     return true;
   }
-});
+};
+
+autoAddDeps(LibrarySDL, '$SDL');
+mergeInto(LibraryManager.library, LibrarySDL);
 

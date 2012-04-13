@@ -881,6 +881,7 @@ try:
     data_files = filter(lambda file_: not os.path.isdir(file_['name']), data_files)
 
     for file_ in data_files:
+      file_['name'] = file_['name'].replace(os.path.sep, '/')
       file_['net_name'] = file_['name']
 
     data_target = unsuffixed(target) + '.data'
@@ -889,12 +890,12 @@ try:
     partial_dirs = []
     for file_ in data_files:
       dirname = os.path.dirname(file_['name'])
-      if dirname != '' and dirname != os.path.sep:
-        parts = dirname.split(os.path.sep)
+      if dirname != '' and dirname != '/':
+        parts = dirname.split('/')
         for i in range(len(parts)):
-          partial = os.path.sep.join(parts[:i+1])
+          partial = '/'.join(parts[:i+1])
           if partial not in partial_dirs:
-            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % (os.path.sep.join(parts[:i]), parts[i])
+            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % ('/'.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
     if final_suffix == 'html':
@@ -903,7 +904,7 @@ try:
       start = 0
       for file_ in data_files:
         file_['data_start'] = start
-        curr = open(file_['name']).read()
+        curr = open(file_['name'], 'rb').read()
         file_['data_end'] = start + len(curr)
         start += len(curr)
         data.write(curr)

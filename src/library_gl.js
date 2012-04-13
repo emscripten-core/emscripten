@@ -356,7 +356,7 @@ var LibraryGL = {
   glIsTexture: function(texture) {
     var fb = GL.textures[texture];
     if (typeof(fb) == 'undefined') {
-      return false;
+      return 0;
     }
     return Module.ctx.isTexture(fb);
   },
@@ -377,6 +377,10 @@ var LibraryGL = {
     }
   },
 
+  glGetBufferParameteriv: function(target, value, data) {
+    {{{ makeSetValue('data', '0', 'Module.ctx.getBufferParameter(target, value)', 'i32') }}};
+  },
+
   glBufferData: function(target, size, data, usage) {
     Module.ctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
   },
@@ -389,7 +393,7 @@ var LibraryGL = {
   glIsBuffer: function(buffer) {
     var fb = GL.buffers[buffer];
     if (typeof(fb) == 'undefined') {
-      return false;
+      return 0;
     }
     return Module.ctx.isBuffer(fb);
   },
@@ -421,9 +425,31 @@ var LibraryGL = {
   glIsRenderbuffer: function(renderbuffer) {
     var fb = GL.renderbuffers[renderbuffer];
     if (typeof(fb) == 'undefined') {
-      return false;
+      return 0;
     }
     return Module.ctx.isRenderbuffer(fb);
+  },
+
+  glGetUniformfv: function(program, location, params) {
+    var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
+    if (typeof data == 'number') {
+      {{{ makeSetValue('params', '0', 'data', 'float') }}};
+    } else {
+      for (var i = 0; i < data.length; i++) {
+        {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}};
+      }
+    }
+  },
+
+  glGetUniformiv: function(program, location, params) {
+    var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
+    if (typeof data == 'number') {
+      {{{ makeSetValue('params', '0', 'data', 'i32') }}};
+    } else {
+      for (var i = 0; i < data.length; i++) {
+        {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}};
+      }
+    }
   },
 
   glGetUniformLocation: function(program, name) {
@@ -715,7 +741,7 @@ var LibraryGL = {
   glIsShader: function(shader) {
     var fb = GL.shaders[shader];
     if (typeof(fb) == 'undefined') {
-      return false;
+      return 0;
     }
     return Module.ctx.isShader(fb);
   },
@@ -771,7 +797,7 @@ var LibraryGL = {
   glIsProgram: function(program) {
     var fb = GL.programs[program];
     if (typeof(fb) == 'undefined') {
-      return false;
+      return 0;
     }
     return Module.ctx.isProgram(fb);
   },
@@ -819,7 +845,7 @@ var LibraryGL = {
   glIsFramebuffer: function(framebuffer) {
     var fb = GL.framebuffers[framebuffer];
     if (typeof(fb) == 'undefined') {
-      return false;
+      return 0;
     }
     return Module.ctx.isFramebuffer(fb);
   },
@@ -1192,11 +1218,11 @@ var LibraryGL = {
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-[[0, 'shadeModel fogi fogfv getError finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask stencilMaskSeparate checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f]'],
+[[0, 'shadeModel fogi fogfv getError* finish flush'],
+ [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage isEnabled*'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
  [6, 'vertexAttribPointer'],
  [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {
