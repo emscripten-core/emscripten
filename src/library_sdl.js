@@ -701,15 +701,20 @@ var LibrarySDL = {
 
   // SDL_Image
 
+  IMG_Load__deps: ['SDL_LockSurface'],
   IMG_Load: function(filename) {
-    // XXX Image load by default creates HWSURFACE, so you must call LockSurface to access
-    //     pixel data from C++!
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedImages[filename];
     assert(raw, 'Cannot find preloaded image ' + filename);
     var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
     var surfData = SDL.surfaces[surf];
     surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
+    // XXX SDL does not specify that loaded images must have available pixel data, in fact
+    //     there are cases where you just want to blit them, so you just need the hardware
+    //     accelerated version. However, code everywhere seems to assume that the pixels
+    //     are in fact available, so we retrieve it here. This does add overhead though.
+    _SDL_LockSurface(surf);
+    surfData.locked = 0; // The surface is not actually locked in this hack
     return surf;
   },
   SDL_LoadBMP: 'IMG_Load',
