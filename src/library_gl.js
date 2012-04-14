@@ -1124,11 +1124,6 @@ var LibraryGL = {
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix], colMajor);
   },
 
-  gluPerspective: function(fov, aspect, near, far) {
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
-        GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far, GL.immediate.currentMatrix));
-  },
-
   glFrustum: function(left, right, bottom, top_, nearVal, farVal) {
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
@@ -1164,6 +1159,13 @@ var LibraryGL = {
   glRotatef__deps: ['glRotated'],
   glRotatef: function(angle, x, y, z) {
     _glRotated(angle, x, y, z);
+  },
+
+  // GLU
+
+  gluPerspective: function(fov, aspect, near, far) {
+    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
+        GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far, GL.immediate.currentMatrix));
   },
 
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
