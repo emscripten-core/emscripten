@@ -47,6 +47,7 @@ mergeInto(LibraryManager.library, {
               case 'function': {
                 wrapper[prop] = function() {
                   var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
+                    if (typeof arg == 'undefined') return '!UNDEFINED!';
                     if (!arg) return arg;
                     if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
                     if (arg.toString() == '[object HTMLImageElement]') {
