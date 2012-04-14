@@ -1062,7 +1062,7 @@ var LibraryGL = {
   glVertex3f: function(x, y, z) {
     GL.immediate.vertexData[5*GL.immediate.vertexCounter  ] = x;
     GL.immediate.vertexData[5*GL.immediate.vertexCounter+1] = y;
-    GL.immediate.vertexData[5*GL.immediate.vertexCounter+2] = z;
+    GL.immediate.vertexData[5*GL.immediate.vertexCounter+2] = z || 0;
     GL.immediate.vertexCounter++;
 #if ASSERTIONS
     assert(GL.immediate.vertexCounter < GL.immediate.maxElements, 'too many immediate mode vertexes');
@@ -1086,10 +1086,13 @@ var LibraryGL = {
 #endif
   },
 
+  glVertex2f: 'glVertex3f',
+
   glTexCoord2i: function(u, v) {
     GL.immediate.vertexData[5*GL.immediate.vertexCounter+3] = u;
     GL.immediate.vertexData[5*GL.immediate.vertexCounter+4] = v;
   },
+  glTexCoord2f: 'glTexCoord2i',
 
   glColor3f: function(){}, // TODO
 
