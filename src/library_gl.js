@@ -427,7 +427,7 @@ var LibraryGL = {
 
   glGetUniformiv: function(program, location, params) {
     var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
-    if (typeof data == 'number') {
+    if (typeof data == 'number' || typeof data == 'boolean') {
       {{{ makeSetValue('params', '0', 'data', 'i32') }}};
     } else {
       for (var i = 0; i < data.length; i++) {
@@ -443,6 +443,32 @@ var LibraryGL = {
     var id = GL.counter++;
     GL.uniforms[id] = loc;
     return id;
+  },
+
+  glGetVertexAttribfv: function(index, pname, params) {
+    var data = Module.ctx.getVertexAttrib(index, pname);
+    if (typeof data == 'number') {
+      {{{ makeSetValue('params', '0', 'data', 'float') }}};
+    } else {
+      for (var i = 0; i < data.length; i++) {
+        {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}};
+      }
+    }
+  },
+
+  glGetVertexAttribiv: function(index, pname, params) {
+    var data = Module.ctx.getVertexAttrib(index, pname);
+    if (typeof data == 'number' || typeof data == 'boolean') {
+      {{{ makeSetValue('params', '0', 'data', 'i32') }}};
+    } else {
+      for (var i = 0; i < data.length; i++) {
+        {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}};
+      }
+    }
+  },
+
+  glGetVertexAttribPointerv: function(index, pname, pointer) {
+    {{{ makeSetValue('pointer', '0', 'Module.ctx.getVertexAttribOffset(index, pname)', 'i32') }}};
   },
 
   glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
