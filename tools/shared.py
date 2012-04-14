@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -145,6 +145,9 @@ if os.environ.get('EMCC_DEBUG'):
 
 if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_')
+  def clean_temp():
+    try_delete(EMSCRIPTEN_TEMP_DIR)
+  atexit.register(clean_temp)
 
 # EM_CONFIG stuff
 
