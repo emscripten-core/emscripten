@@ -23,6 +23,7 @@ void one() {
             if (event.key.keysym.scancode == SDL_SCANCODE_B) {
               printf("b scancode\n"); result *= 17; break;
             }
+            printf("unknown key: sym %d scancode %d\n", event.key.keysym.sym, event.key.keysym.scancode);
             REPORT_RESULT();
             emscripten_run_script("throw 'done'");
           }

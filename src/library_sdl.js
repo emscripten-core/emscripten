@@ -102,6 +102,9 @@ var LibrarySDL = {
       37:  1104, // left arrow
       39:  1103, // right arrow
 
+      33: 1099, // pagedup
+      34: 1102, // pagedown
+
       17:  305, // control (right, or left)
       18:  308, // alt
       109: 45, // minus
@@ -338,6 +341,7 @@ var LibrarySDL = {
       switch(event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
+          //Module.print('Received key event: ' + event.keyCode);
           var key = SDL.keyCodes[event.keyCode] || event.keyCode;
           if (key >= 65 && key <= 90) {
             key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
@@ -348,7 +352,7 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
 
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
