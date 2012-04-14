@@ -119,21 +119,22 @@ int main(int argc, char *argv[])
     glBindTexture( GL_TEXTURE_2D, texture );
 
     glBegin( GL_QUADS );
-        // Top-left vertex (corner)
-        glTexCoord2i( 0, 0 );
-        glVertex3f( 100, 100, 0 );
-    
-        // Bottom-left vertex (corner)
-        glTexCoord2i( 1, 0 );
-        glVertex3f( 600, 100, 0 );
-    
-        // Bottom-right vertex (corner)
-        glTexCoord2i( 1, 1 );
-        glVertex3f( 600, 328, 0 );
-    
-        // Top-right vertex (corner)
-        glTexCoord2i( 0, 1 );
-        glVertex3f( 100, 328, 0 );
+        glTexCoord2i( 0, 0 ); glVertex3f( 10, 10, 0 );
+        glTexCoord2i( 1, 0 ); glVertex3f( 300, 10, 0 );
+        glTexCoord2i( 1, 1 ); glVertex3f( 300, 128, 0 );
+        glTexCoord2i( 0, 1 ); glVertex3f( 10, 128, 0 );
+
+        glTexCoord2f( 0, 0.5 ); glVertex3f( 410, 10, 0 );
+        glTexCoord2f( 1, 0.5 ); glVertex3f( 600, 10, 0 );
+        glTexCoord2f( 1, 1   ); glVertex3f( 630, 200, 0 );
+        glTexCoord2f( 0.5, 1 ); glVertex3f( 310, 250, 0 );
+    glEnd();
+
+    glBegin( GL_TRIANGLE_STRIP );
+        glTexCoord2i( 0, 0 ); glVertex3f( 100, 300, 0 );
+        glTexCoord2i( 1, 0 ); glVertex3f( 300, 300, 0 );
+        glTexCoord2i( 1, 1 ); glVertex3f( 300, 400, 0 );
+        glTexCoord2i( 0, 1 ); glVertex3f( 500, 410, 0 );
     glEnd();
     
     SDL_GL_SwapBuffers();

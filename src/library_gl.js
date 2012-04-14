@@ -1069,7 +1069,7 @@ var LibraryGL = {
 #endif
     if (GL.immediate.mode == 7) { // GL_QUADS
       if (GL.immediate.vertexCounter % 4 == 0) {
-        var start = GL.immediate.vertexCounter % 4;
+        var start = GL.immediate.vertexCounter - 4;
         GL.immediate.indexData[GL.immediate.indexCounter  ] = start;
         GL.immediate.indexData[GL.immediate.indexCounter+1] = start+1;
         GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
@@ -1077,6 +1077,20 @@ var LibraryGL = {
         GL.immediate.indexData[GL.immediate.indexCounter+4] = start+2;
         GL.immediate.indexData[GL.immediate.indexCounter+5] = start+3;
         GL.immediate.indexCounter += 6;
+      }
+    } else if (GL.immediate.mode == 5) { // GL_TRIANGLE_STRIP
+      if (GL.immediate.vertexCounter >= 3) {
+        var start = GL.immediate.vertexCounter - 3;
+        if (GL.immediate.indexCounter % 6 == 0) {
+          GL.immediate.indexData[GL.immediate.indexCounter  ] = start;
+          GL.immediate.indexData[GL.immediate.indexCounter+1] = start+1;
+          GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
+        } else {
+          GL.immediate.indexData[GL.immediate.indexCounter  ] = start+1;
+          GL.immediate.indexData[GL.immediate.indexCounter+1] = start;
+          GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
+        }
+        GL.immediate.indexCounter += 3;
       }
     } else {
       throw 'only GL_QUADS supported so far';
