@@ -474,7 +474,7 @@ var LibrarySDL = {
     var surfData = SDL.surfaces[surf];
 
     surfData.locked++;
-    if (surfData.locked > 1) return;
+    if (surfData.locked > 1) return 0;
 
     if (!surfData.image) {
       surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
@@ -499,6 +499,8 @@ var LibrarySDL = {
     // So we have fields all of the same size, and 5 of them before us.
     // TODO: Use macros like in library.js
     {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
+
+    return 0;
   },
 
   // Copy data from the C++-accessible storage to the canvas backing
