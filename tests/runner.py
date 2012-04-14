@@ -6396,6 +6396,38 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.']).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_js_libraries(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        extern "C" {
+          extern void printey();
+          extern int calcey(int x, int y);
+        }
+        int main() {
+          printey();
+          printf("*%d*\\n", calcey(10, 22));
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'mylib1.js'), 'w').write('''
+        mergeInto(LibraryManager.library, {
+          printey: function() {
+            Module.print('hello from lib!');
+          }
+        });
+      ''')
+      open(os.path.join(self.get_dir(), 'mylib2.js'), 'w').write('''
+        mergeInto(LibraryManager.library, {
+          calcey: function(x, y) {
+            return x + y;
+          }
+        });
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'mylib1.js'),
+                                                                       '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]).communicate()
+      self.assertContained('hello from lib!\n*32*\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_identical_basenames(self):
       # Issue 287: files in different dirs but with the same basename get confused as the same,
       # causing multiply defined symbol errors

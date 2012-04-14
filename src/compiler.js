@@ -114,6 +114,7 @@ load('settings.js');
 
 var settings_file = arguments_[0];
 var ll_file = arguments_[1];
+additionalLibraries = Array.prototype.slice.call(arguments_, 2);
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
@@ -121,6 +122,7 @@ if (settings_file) {
     eval(setting + ' = ' + JSON.stringify(settings[setting]));
   }
 }
+
 
 if (CORRECT_SIGNS >= 2) {
   CORRECT_SIGNS_LINES = set(CORRECT_SIGNS_LINES); // for fast checking

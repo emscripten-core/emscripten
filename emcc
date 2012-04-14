@@ -269,6 +269,9 @@ Options that are modified or new in %s include:
                            target other than HTML is specified using
                            the -o option.
 
+  --js-library <lib>       A JavaScript library to use in addition to
+                           those in Emscripten's src/library_*
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -437,6 +440,7 @@ try:
   compression = None
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
+  js_libraries = []
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -512,6 +516,11 @@ try:
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
       shell_path = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--js-library'):
+      check_bad_eq(newargs[i])
+      js_libraries.append(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
@@ -843,7 +852,8 @@ try:
 
   # Emscripten
   if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
-  final = shared.Building.emscripten(final, append_ext=False)
+  extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
+  final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
   # Embed and preload files
