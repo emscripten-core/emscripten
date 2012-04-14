@@ -860,15 +860,31 @@ var LibraryGL = {
     return Module.ctx.isFramebuffer(fb);
   },
 
-  glEnable: function(cap) {
-    if (cap == 0x0DE1) return; // no GL_TEXTURE_2D in GLES or WebGL
-    Module.ctx.enable(cap);
-  },
-
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
   $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram'],
+  $GLEmulation__postset: 'GLEmulation.init();',
   $GLEmulation: {
+    init: function() {
+      // Add some emulation workarounds
+      _glEnable = function(cap) {
+        if (cap == 0x0DE1) return; // GL_TEXTURE_2D
+        if (cap == 0x0B20) return; // GL_LINE_SMOOTH
+        Module.ctx.enable(cap);
+      };
+      _glDisable = function(cap) {
+        if (cap == 0x0B60) return; // GL_FOG
+        Module.ctx.disable(cap);
+      };
+      var glGetIntegerv = _glGetIntegerv;
+      _glGetIntegerv = function(pname, params) {
+        if (pname == 0x84E2) { // GL_MAX_TEXTURE_UNITS
+          pname = 0x8872; // fake it with GL_MAX_TEXTURE_IMAGE_UNITS
+        }
+        glGetIntegerv(pname, params);
+      };
+    },
+
     procReplacements: {
       'glCreateShaderObjectARB': 'glCreateShader',
       'glShaderSourceARB': 'glShaderSource',
@@ -1075,6 +1091,8 @@ var LibraryGL = {
     GL.immediate.vertexData[5*GL.immediate.vertexCounter+4] = v;
   },
 
+  glColor3f: function(){}, // TODO
+
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
   glMatrixMode__deps: ['$GL', '$GLImmediateSetup'],
@@ -1249,7 +1267,7 @@ var LibraryGL = {
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'shadeModel fogi fogfv getError* finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage isEnabled*'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage isEnabled*'],
  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
