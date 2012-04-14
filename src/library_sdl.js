@@ -488,11 +488,14 @@ var LibrarySDL = {
     }
     if (SDL.defaults.copyOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
+#if USE_TYPED_ARRAYS == 2
+      HEAPU8.set(surfData.image.data, surfData.buffer);
+#else
       var num2 = surfData.image.data.length;
-      // TODO: use typed array Set()
       for (var i = 0; i < num2; i++) {
         {{{ makeSetValue('surfData.buffer', 'i', 'surfData.image.data[i]', 'i8') }}};
       }
+#endif
     }
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
@@ -695,6 +698,8 @@ var LibrarySDL = {
   // SDL_Image
 
   IMG_Load: function(filename) {
+    // XXX Image load by default creates HWSURFACE, so you must call LockSurface to access
+    //     pixel data from C++!
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedImages[filename];
     assert(raw, 'Cannot find preloaded image ' + filename);
