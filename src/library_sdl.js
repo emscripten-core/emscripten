@@ -252,7 +252,7 @@ var LibrarySDL = {
       return 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
     },
 
-    makeSurface: function(width, height, flags, usePageCanvas, source) {
+    makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
       var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
@@ -273,10 +273,10 @@ var LibrarySDL = {
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i8') }}} // TODO
 
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', '0xff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', '0xff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', '0xff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', '0xff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', 'rmask || 0x000000ff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', 'gmask || 0x0000ff00', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', 'bmask || 0x00ff0000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', 'amask || 0xff000000', 'i32') }}}
 
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
@@ -611,7 +611,7 @@ var LibrarySDL = {
   },
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
-    return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface');
+    return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
   },
 
   SDL_DisplayFormatAlpha: function(surf) {
