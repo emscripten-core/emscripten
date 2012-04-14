@@ -1029,11 +1029,10 @@ var LibraryGL = {
       Module.ctx.enableVertexAttribArray(this.positionLocation);
       Module.ctx.enableVertexAttribArray(this.texCoordLocation);
 
-      Module.ctx.activeTexture(Module.ctx.TEXTURE0);
       // Assume the texture is bound
-      //this.textureId = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
-      //Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, this.textureId);
-
+      this.textureId = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
+      Module.ctx.activeTexture(Module.ctx.TEXTURE0);
+      Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, this.textureId);
       Module.ctx.uniform1i(this.textureLocation, 0);
 
       Module.ctx.uniformMatrix4fv(this.modelViewLocation, 0 /* GL_FALSE */, GL.immediate.matrix["m"]);
