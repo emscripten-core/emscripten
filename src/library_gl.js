@@ -1198,29 +1198,17 @@ var LibraryGL = {
   glScaled: function(x, y, z) {
     GL.immediate.matrix.lib.mat4.scale(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
   },
+  glScalef: 'glScaled',
 
-  glScalef__deps: ['glScaled'],
-  glScalef: function(x, y, z) {
-    _glScaled(x, y, z);
-  },
-
-  glTranslate: function(x, y, z) {
+  glTranslated: function(x, y, z) {
     GL.immediate.matrix.lib.mat4.translate(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
   },
-
-  glTranslatef__deps: ['glTranslated'],
-  glTranslatef: function(x, y, z) {
-    _glTranslated(x, y, z);
-  },
+  glTranslatef: 'glTranslated',
 
   glRotated: function(angle, x, y, z) {
     GL.immediate.matrix.lib.mat4.rotate(GL.immediate.matrix[GL.immediate.currentMatrix], angle, [x, y, z]);
   },
-
-  glRotatef__deps: ['glRotated'],
-  glRotatef: function(angle, x, y, z) {
-    _glRotated(angle, x, y, z);
-  },
+  glRotatef: 'glRotated',
 
   // GLU
 
