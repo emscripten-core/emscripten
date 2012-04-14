@@ -1108,7 +1108,26 @@ var LibraryGL = {
   },
   glTexCoord2f: 'glTexCoord2i',
 
-  glColor3f: function(){}, // TODO
+  glColor4b: function(){}, // TODO, including scaling for different arg types
+  glColor4s: 'glColor4b',
+  glColor4i: 'glColor4b',
+  glColor4f: 'glColor4b',
+  glColor4d: 'glColor4b',
+  glColor4ub: 'glColor4b',
+  glColor4us: 'glColor4b',
+  glColor4ui: 'glColor4b',
+
+  glColor3b__deps: ['glColor4b'],
+  glColor3b: function(r, g, b) {
+    _glColor4b(r, g, b, 1); // FIXME: scaling
+  },
+  glColor3s: 'glColor3b',
+  glColor3i: 'glColor3b',
+  glColor3f: 'glColor3b',
+  glColor3d: 'glColor3b',
+  glColor3ub: 'glColor3b',
+  glColor3us: 'glColor3b',
+  glColor3ui: 'glColor3b',
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
