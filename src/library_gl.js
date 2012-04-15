@@ -1014,9 +1014,6 @@ var LibraryGL = {
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, this.indexCounter), Module.ctx.STATIC_DRAW);
 
       // Render
-      //Module.ctx.viewport(0, 0, Module.canvas.width, Module.canvas.height);
-      //Module.ctx.clear(Module.ctx.COLOR_BUFFER_BIT);
-
       Module.ctx.useProgram(this.program);
 
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
@@ -1026,14 +1023,13 @@ var LibraryGL = {
       Module.ctx.enableVertexAttribArray(this.texCoordLocation);
       Module.ctx.enableVertexAttribArray(this.positionLocation);
 
-      // Assume the texture is bound
       var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
       Module.ctx.activeTexture(Module.ctx.TEXTURE0);
       Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
       Module.ctx.uniform1i(this.textureLocation, 0);
 
-      Module.ctx.uniformMatrix4fv(this.modelViewLocation, 0 /* GL_FALSE */, GL.immediate.matrix["m"]);
-      Module.ctx.uniformMatrix4fv(this.projectionLocation, 0 /* GL_FALSE */, GL.immediate.matrix["p"]);
+      Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix["m"]);
+      Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix["p"]);
 
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
       Module.ctx.drawElements(Module.ctx.TRIANGLES, this.indexCounter, Module.ctx.UNSIGNED_SHORT, 0);
