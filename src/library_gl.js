@@ -867,6 +867,7 @@ var LibraryGL = {
   $GLEmulation: {
     init: function() {
       // Add some emulation workarounds
+      console.log('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
       _glEnable = function(cap) {
         if (cap == 0x0DE1) return; // GL_TEXTURE_2D
         if (cap == 0x0B20) return; // GL_LINE_SMOOTH
@@ -965,6 +966,7 @@ var LibraryGL = {
 
     initted: false,
     init: function() {
+      console.log('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
       Module.ctx.shaderSource(this.vertexShader, 'attribute vec3 a_position;  \n\
                                                   attribute vec2 a_texCoord;  \n\
