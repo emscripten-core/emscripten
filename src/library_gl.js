@@ -944,7 +944,6 @@ var LibraryGL = {
     vertexData: null,
     indexData: null,
     vertexCounter: 0,
-    indexCounter: 0,
     mode: 0,
 
     renderers: {},
@@ -971,6 +970,7 @@ var LibraryGL = {
     init: function() {
       console.log('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       GL.immediate.renderers['T2P3'] = { // Texture 2, Position 3 (assumed float)
+        vertexSize: 5*4,
         initted: false,
         init: function() {
           this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
@@ -1033,14 +1033,51 @@ var LibraryGL = {
       this.indexObject = Module.ctx.createBuffer();
     },
     flush: function() {
+      var renderer = this.renderers[this.renderer];
+
+      // Generate index data in a format suitable for GLES 2.0/WebGL
+      var numVertexes = 4 * this.vertexCounter / renderer.vertexSize; // XXX Assumes float
+      assert(numVertexes % 1 == 0);
+      var numIndexes = 0;
+
+      if (GL.immediate.mode == 7) { // GL_QUADS
+        var numQuads = numVertexes / 4;
+        assert(numQuads % 1 == 0);
+        for (var i = 0; i < numQuads; i++) {
+          var start = i*4;
+          GL.immediate.indexData[numIndexes++] = start;
+          GL.immediate.indexData[numIndexes++] = start+1;
+          GL.immediate.indexData[numIndexes++] = start+2;
+          GL.immediate.indexData[numIndexes++] = start;
+          GL.immediate.indexData[numIndexes++] = start+2;
+          GL.immediate.indexData[numIndexes++] = start+3;
+        }
+      } else if (GL.immediate.mode == 5) { // GL_TRIANGLE_STRIP
+        var numTriangles = numVertexes - 2;
+        assert(numTriangles > 0);
+        for (var i = 0; i < numTriangles; i++) {
+          if (i % 2 == 0) {
+            GL.immediate.indexData[numIndexes++] = i;
+            GL.immediate.indexData[numIndexes++] = i+1;
+            GL.immediate.indexData[numIndexes++] = i+2;
+          } else {
+            GL.immediate.indexData[numIndexes++] = i+1;
+            GL.immediate.indexData[numIndexes++] = i;
+            GL.immediate.indexData[numIndexes++] = i+2;
+          }
+        }
+      } else {
+        throw 'unsupported immediate mode ' + GL.immediate.mode;
+      }
+      assert(numIndexes < GL.immediate.maxElements, 'too many immediate mode indexes');
+
       // Upload the data
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
       Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, this.vertexCounter), Module.ctx.STATIC_DRAW);
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, this.indexCounter), Module.ctx.STATIC_DRAW);
+      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, numIndexes), Module.ctx.STATIC_DRAW);
 
       // Render
-      var renderer = this.renderers[this.renderer];
       if (!renderer.initted) renderer.init();
 
       Module.ctx.useProgram(renderer.program);
@@ -1049,9 +1086,9 @@ var LibraryGL = {
       renderer.prepare();
 
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-      Module.ctx.drawElements(Module.ctx.TRIANGLES, this.indexCounter, Module.ctx.UNSIGNED_SHORT, 0);
+      Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, 0);
 
-      this.vertexCounter = this.indexCounter = 0;
+      this.vertexCounter = 0;
     }
   },
 
@@ -1085,38 +1122,6 @@ var LibraryGL = {
       // Decide renderer based on attributes used // TODO: generalize
       GL.immediate.renderer = 'T2P3';
     }
-    var counter = GL.immediate.vertexCounter/5;
-    if (GL.immediate.mode == 7) { // GL_QUADS
-      if (counter % 4 == 0) {
-        var start = counter - 4;
-        GL.immediate.indexData[GL.immediate.indexCounter  ] = start;
-        GL.immediate.indexData[GL.immediate.indexCounter+1] = start+1;
-        GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
-        GL.immediate.indexData[GL.immediate.indexCounter+3] = start;
-        GL.immediate.indexData[GL.immediate.indexCounter+4] = start+2;
-        GL.immediate.indexData[GL.immediate.indexCounter+5] = start+3;
-        GL.immediate.indexCounter += 6;
-      }
-    } else if (GL.immediate.mode == 5) { // GL_TRIANGLE_STRIP
-      if (counter >= 3) {
-        var start = counter - 3;
-        if (GL.immediate.indexCounter % 6 == 0) {
-          GL.immediate.indexData[GL.immediate.indexCounter  ] = start;
-          GL.immediate.indexData[GL.immediate.indexCounter+1] = start+1;
-          GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
-        } else {
-          GL.immediate.indexData[GL.immediate.indexCounter  ] = start+1;
-          GL.immediate.indexData[GL.immediate.indexCounter+1] = start;
-          GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
-        }
-        GL.immediate.indexCounter += 3;
-      }
-    } else {
-      throw 'only GL_QUADS supported so far';
-    }
-#if ASSERTIONS
-    assert(GL.immediate.indexCounter < GL.immediate.maxElements, 'too many immediate mode indexes');
-#endif
   },
 
   glVertex2f: 'glVertex3f',
