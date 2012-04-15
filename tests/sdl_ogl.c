@@ -51,7 +51,9 @@ int main(int argc, char *argv[])
 
     glClearColor( 0, 0, 0, 0 );
     
-    //glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
+#if !EMSCRIPTEN
+    glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
+#endif
 
     glViewport( 0, 0, 640, 480 );
 
