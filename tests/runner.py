@@ -5265,6 +5265,7 @@ def process(filename):
         ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
         ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
         ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
+        ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
         ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
         var p = ccall('malloc', 'pointer', ['number'], [4]);
         setValue(p, 650, 'i32');
@@ -5288,7 +5289,7 @@ def process(filename):
 
       Settings.EXPORTED_FUNCTIONS = ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
 
-      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
+      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
 
     def test_scriptaclass(self):
         header_filename = os.path.join(self.get_dir(), 'header.h')

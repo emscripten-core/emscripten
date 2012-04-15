@@ -315,8 +315,10 @@ var globalScope = this;
 //         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
 //
 // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
-// @param returnType The return type of the function, one of the JS types 'number' or 'string' (use 'number' for any C pointer).
-// @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType.
+// @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
+//                   'array' for JavaScript arrays and typed arrays).
+// @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType,
+//                   except that 'array' is not possible (there is no way for us to know the length of the array)
 // @param args       An array of the arguments to the function, as native JS values (as in returnType)
 //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
 // @return           The return value, as a native JS value (as in returnType)
@@ -328,6 +330,11 @@ function ccall(ident, returnType, argTypes, args) {
       var ret = Runtime.stackAlloc(value.length+1);
       writeStringToMemory(value, ret);
       return ret;
+    } else if (type == 'array') {
+      if (!stack) stack = Runtime.stackSave();
+      var ret = Runtime.stackAlloc(value.length);
+      writeArrayToMemory(value, ret);
+      return ret;
     }
     return value;
   }
@@ -335,6 +342,7 @@ function ccall(ident, returnType, argTypes, args) {
     if (type == 'string') {
       return Pointer_stringify(value);
     }
+    assert(type != 'array');
     return value;
   }
   try {
@@ -829,6 +837,13 @@ function writeStringToMemory(string, buffer, dontAddNull) {
   }
 }
 Module['writeStringToMemory'] = writeStringToMemory;
+
+function writeArrayToMemory(array, buffer) {
+  for (var i = 0; i < array.length; i++) {
+    {{{ makeSetValue('buffer', 'i', 'array[i]', 'i8') }}};
+  }
+}
+Module['writeArrayToMemory'] = writeArrayToMemory;
 
 var STRING_TABLE = [];
 
