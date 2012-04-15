@@ -1049,9 +1049,13 @@ var LibraryGL = {
 
   glEnd: function() {
     GL.immediate.flush();
+    GL.immediate.mode = 0;
   },
 
   glVertex3f: function(x, y, z) {
+#if ASSERTIONS
+    assert(GL.immediate.mode); // must be in begin/end
+#endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = x;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
@@ -1096,6 +1100,9 @@ var LibraryGL = {
   glVertex2f: 'glVertex3f',
 
   glTexCoord2i: function(u, v) {
+#if ASSERTIONS
+    assert(GL.immediate.mode); // must be in begin/end
+#endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
   },
