@@ -7049,6 +7049,13 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
+    def zzztest_sdl_ogl_p(self):
+      # Immediate mode with pointers
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.reftest(path_from_root('tests', 'screenshot-gray.png'))
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
