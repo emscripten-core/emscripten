@@ -986,7 +986,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
       value = range(typeData.fields.length).map(function(i) { return value + '.f' + i });
     }
     for (var i = 0; i < typeData.fields.length; i++) {
-      ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
+      ret.push(makeSetValue(ptr, getFastValue(pos, '+', typeData.flatIndexes[i]), value[i], typeData.fields[i], noNeedFirst));
     }
     return ret.join('; ');
   }

@@ -3,6 +3,7 @@ target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f3
 target triple = "i386-pc-linux-gnu"
 
 @.str = private unnamed_addr constant [15 x i8] c"hello, world!\0A\00", align 1 ; [#uses=1 type=[15 x i8]*]
+@_dispatchTable = internal global i64 0
 
 ; [#uses=0]
 define i32 @main() {
@@ -19,6 +20,9 @@ cond.null:
 cond.end:                                         ; preds = %cond.false, %cond.true
   %cond = phi { i32, i32 } [ { i32 5, i32 6 }, %entry ], [ zeroinitializer, %cond.null ] ; [#uses=1]
   store { i32, i32 } %cond, { i32, i32 }* %comp
+
+  store { i32, i32 } { i32 ptrtoint (i64* @_dispatchTable to i32), i32 0 }, { i32, i32 }* getelementptr inbounds ([1 x i64]* @_dispatchTable, i32 0, i32 0, i32 1), align 4
+
   ret i32 0                             ; [debug line = 6:13]
 }
 
