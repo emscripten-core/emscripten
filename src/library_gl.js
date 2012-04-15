@@ -1009,7 +1009,7 @@ var LibraryGL = {
     flush: function() {
       // Upload the data
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
-      Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, 5*this.vertexCounter), Module.ctx.STATIC_DRAW);
+      Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, this.vertexCounter), Module.ctx.STATIC_DRAW);
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, this.indexCounter), Module.ctx.STATIC_DRAW);
 
@@ -1020,14 +1020,11 @@ var LibraryGL = {
       Module.ctx.useProgram(this.program);
 
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
-      Module.ctx.vertexAttribPointer(this.positionLocation, 3, Module.ctx.FLOAT,
-                             false, 5 * 4, 0);
-      Module.ctx.vertexAttribPointer(this.texCoordLocation, 2, Module.ctx.FLOAT,
-                              false, 5 * 4, 
-                              3 * 4);
+      Module.ctx.vertexAttribPointer(this.texCoordLocation, 2, Module.ctx.FLOAT, false, 5 * 4, 0);
+      Module.ctx.vertexAttribPointer(this.positionLocation, 3, Module.ctx.FLOAT, false, 5 * 4, 2 * 4);
 
-      Module.ctx.enableVertexAttribArray(this.positionLocation);
       Module.ctx.enableVertexAttribArray(this.texCoordLocation);
+      Module.ctx.enableVertexAttribArray(this.positionLocation);
 
       // Assume the texture is bound
       var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
@@ -1059,16 +1056,17 @@ var LibraryGL = {
   },
 
   glVertex3f: function(x, y, z) {
-    GL.immediate.vertexData[5*GL.immediate.vertexCounter  ] = x;
-    GL.immediate.vertexData[5*GL.immediate.vertexCounter+1] = y;
-    GL.immediate.vertexData[5*GL.immediate.vertexCounter+2] = z || 0;
-    GL.immediate.vertexCounter++;
+    GL.immediate.vertexData[GL.immediate.vertexCounter++] = x;
+    GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
+    GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
 #if ASSERTIONS
-    assert(GL.immediate.vertexCounter < GL.immediate.maxElements, 'too many immediate mode vertexes');
+    assert(GL.immediate.vertexCounter < GL.immediate.maxElements);
+    assert(GL.immediate.vertexCounter % 5 == 0);
 #endif
+    var counter = GL.immediate.vertexCounter/5;
     if (GL.immediate.mode == 7) { // GL_QUADS
-      if (GL.immediate.vertexCounter % 4 == 0) {
-        var start = GL.immediate.vertexCounter - 4;
+      if (counter % 4 == 0) {
+        var start = counter - 4;
         GL.immediate.indexData[GL.immediate.indexCounter  ] = start;
         GL.immediate.indexData[GL.immediate.indexCounter+1] = start+1;
         GL.immediate.indexData[GL.immediate.indexCounter+2] = start+2;
@@ -1078,8 +1076,8 @@ var LibraryGL = {
         GL.immediate.indexCounter += 6;
       }
     } else if (GL.immediate.mode == 5) { // GL_TRIANGLE_STRIP
-      if (GL.immediate.vertexCounter >= 3) {
-        var start = GL.immediate.vertexCounter - 3;
+      if (counter >= 3) {
+        var start = counter - 3;
         if (GL.immediate.indexCounter % 6 == 0) {
           GL.immediate.indexData[GL.immediate.indexCounter  ] = start;
           GL.immediate.indexData[GL.immediate.indexCounter+1] = start+1;
@@ -1102,8 +1100,8 @@ var LibraryGL = {
   glVertex2f: 'glVertex3f',
 
   glTexCoord2i: function(u, v) {
-    GL.immediate.vertexData[5*GL.immediate.vertexCounter+3] = u;
-    GL.immediate.vertexData[5*GL.immediate.vertexCounter+4] = v;
+    GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
+    GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
   },
   glTexCoord2f: 'glTexCoord2i',
 
