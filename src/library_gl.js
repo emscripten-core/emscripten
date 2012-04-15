@@ -947,6 +947,9 @@ var LibraryGL = {
     indexCounter: 0,
     mode: 0,
 
+    renderers: {},
+    renderer: null,
+
     // The folowing data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {
       'm': null, // modelview
@@ -967,42 +970,63 @@ var LibraryGL = {
     initted: false,
     init: function() {
       console.log('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
-      this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
-      Module.ctx.shaderSource(this.vertexShader, 'attribute vec3 a_position;  \n\
-                                                  attribute vec2 a_texCoord;  \n\
-                                                  varying vec2 v_texCoord;    \n\
-                                                  uniform mat4 u_modelView;   \n\
-                                                  uniform mat4 u_projection;  \n\
-                                                  void main()                 \n\
-                                                  {                           \n\
-                                                    gl_Position = u_projection * (u_modelView * vec4(a_position, 1.0)); \n\
-                                                    v_texCoord = a_texCoord;  \n\
-                                                  }                           \n');
-      Module.ctx.compileShader(this.vertexShader);
+      GL.immediate.renderers['T2P3'] = { // Texture 2, Position 3 (assumed float)
+        initted: false,
+        init: function() {
+          this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
+          Module.ctx.shaderSource(this.vertexShader, 'attribute vec3 a_position;  \n\
+                                                      attribute vec2 a_texCoord;  \n\
+                                                      varying vec2 v_texCoord;    \n\
+                                                      uniform mat4 u_modelView;   \n\
+                                                      uniform mat4 u_projection;  \n\
+                                                      void main()                 \n\
+                                                      {                           \n\
+                                                        gl_Position = u_projection * (u_modelView * vec4(a_position, 1.0)); \n\
+                                                        v_texCoord = a_texCoord;  \n\
+                                                      }                           \n');
+          Module.ctx.compileShader(this.vertexShader);
 
-      this.fragmentShader = Module.ctx.createShader(Module.ctx.FRAGMENT_SHADER);
-      Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n\
-                                                    varying vec2 v_texCoord;                            \n\
-                                                    uniform sampler2D s_texture;                        \n\
-                                                    void main()                                         \n\
-                                                    {                                                   \n\
-                                                      gl_FragColor = texture2D( s_texture, v_texCoord );\n\
-                                                    }                                                   \n');
-      Module.ctx.compileShader(this.fragmentShader);
+          this.fragmentShader = Module.ctx.createShader(Module.ctx.FRAGMENT_SHADER);
+          Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n\
+                                                        varying vec2 v_texCoord;                            \n\
+                                                        uniform sampler2D s_texture;                        \n\
+                                                        void main()                                         \n\
+                                                        {                                                   \n\
+                                                          gl_FragColor = texture2D( s_texture, v_texCoord );\n\
+                                                        }                                                   \n');
+          Module.ctx.compileShader(this.fragmentShader);
 
-      this.program = Module.ctx.createProgram();
-      Module.ctx.attachShader(this.program, this.vertexShader);
-      Module.ctx.attachShader(this.program, this.fragmentShader);
-      Module.ctx.linkProgram(this.program);
+          this.program = Module.ctx.createProgram();
+          Module.ctx.attachShader(this.program, this.vertexShader);
+          Module.ctx.attachShader(this.program, this.fragmentShader);
+          Module.ctx.linkProgram(this.program);
 
-      this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
-      this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord');
-      this.textureLocation = Module.ctx.getUniformLocation(this.program, 's_texture');
-      this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
-      this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
+          this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
+          this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord');
+          this.textureLocation = Module.ctx.getUniformLocation(this.program, 's_texture');
+          this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
+          this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
+        },
 
-      // Buffer for data
-      this.vertexData = new Float32Array(5 * this.maxElements);
+        prepare: function() {
+          Module.ctx.vertexAttribPointer(this.texCoordLocation, 2, Module.ctx.FLOAT, false, 5 * 4, 0);
+          Module.ctx.vertexAttribPointer(this.positionLocation, 3, Module.ctx.FLOAT, false, 5 * 4, 2 * 4);
+
+          Module.ctx.enableVertexAttribArray(this.texCoordLocation);
+          Module.ctx.enableVertexAttribArray(this.positionLocation);
+
+          var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
+          Module.ctx.activeTexture(Module.ctx.TEXTURE0);
+          Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
+          Module.ctx.uniform1i(this.textureLocation, 0);
+
+          Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix["m"]);
+          Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix["p"]);
+        }
+      };
+
+      // Buffers for data
+      this.vertexData = new Float32Array(this.maxElements);
       this.indexData = new Uint16Array(this.maxElements);
 
       this.vertexObject = Module.ctx.createBuffer();
@@ -1016,22 +1040,13 @@ var LibraryGL = {
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, this.indexCounter), Module.ctx.STATIC_DRAW);
 
       // Render
-      Module.ctx.useProgram(this.program);
+      var renderer = this.renderers[this.renderer];
+      if (!renderer.initted) renderer.init();
 
+      Module.ctx.useProgram(renderer.program);
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
-      Module.ctx.vertexAttribPointer(this.texCoordLocation, 2, Module.ctx.FLOAT, false, 5 * 4, 0);
-      Module.ctx.vertexAttribPointer(this.positionLocation, 3, Module.ctx.FLOAT, false, 5 * 4, 2 * 4);
 
-      Module.ctx.enableVertexAttribArray(this.texCoordLocation);
-      Module.ctx.enableVertexAttribArray(this.positionLocation);
-
-      var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
-      Module.ctx.activeTexture(Module.ctx.TEXTURE0);
-      Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
-      Module.ctx.uniform1i(this.textureLocation, 0);
-
-      Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix["m"]);
-      Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix["p"]);
+      renderer.prepare();
 
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
       Module.ctx.drawElements(Module.ctx.TRIANGLES, this.indexCounter, Module.ctx.UNSIGNED_SHORT, 0);
@@ -1047,6 +1062,7 @@ var LibraryGL = {
   glBegin: function(mode) {
     if (!GL.immediate.initted) GL.immediate.init();
     GL.immediate.mode = mode;
+    GL.immediate.renderer = null;
   },
 
   glEnd: function() {
@@ -1065,6 +1081,10 @@ var LibraryGL = {
     assert(GL.immediate.vertexCounter < GL.immediate.maxElements);
     assert(GL.immediate.vertexCounter % 5 == 0);
 #endif
+    if (!GL.immediate.renderer) {
+      // Decide renderer based on attributes used // TODO: generalize
+      GL.immediate.renderer = 'T2P3';
+    }
     var counter = GL.immediate.vertexCounter/5;
     if (GL.immediate.mode == 7) { // GL_QUADS
       if (counter % 4 == 0) {
