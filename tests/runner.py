@@ -7041,7 +7041,7 @@ elif 'sanity' in str(sys.argv):
         assert (open(CONFIG_FILE).read() == open(path_from_root('settings.py')).read()), 'Settings should be copied from settings.py'
 
         # Second run, with bad EM_CONFIG
-        for settings in ['blah', 'LLVM_ROOT="blah"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
+        for settings in ['blah', 'JRE_PATH="foo"; CLANG_PATH="bar"; LLVM_ROOT="blah"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
           f = open(CONFIG_FILE, 'w')
           f.write(settings)
           f.close()
