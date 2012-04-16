@@ -867,7 +867,7 @@ var LibraryGL = {
   $GLEmulation: {
     init: function() {
       // Add some emulation workarounds
-      console.log('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
+      Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
       _glEnable = function(cap) {
         if (cap == 0x0DE1) return; // GL_TEXTURE_2D
         if (cap == 0x0B20) return; // GL_LINE_SMOOTH
@@ -1069,7 +1069,7 @@ var LibraryGL = {
     // Main functions
     initted: false,
     init: function() {
-      console.log('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
+      Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
 
       // Buffers for data
       this.tempData = new Float32Array(this.maxElements);
