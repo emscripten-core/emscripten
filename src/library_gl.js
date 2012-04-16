@@ -1010,6 +1010,7 @@ var LibraryGL = {
         vertexSize: vertexSize,
         init: function() {
           this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
+          var zero = positionSize == 2 ? '0, ' : '';
           Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n\
                                                       attribute vec2 a_texCoord;  \n\
                                                       varying vec2 v_texCoord;    \n\
@@ -1017,7 +1018,7 @@ var LibraryGL = {
                                                       uniform mat4 u_projection;  \n\
                                                       void main()                 \n\
                                                       {                           \n\
-                                                        gl_Position = u_projection * (u_modelView * vec4(a_position, 1.0)); \n\
+                                                        gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n\
                                                         v_texCoord = a_texCoord;  \n\
                                                       }                           \n');
           Module.ctx.compileShader(this.vertexShader);
