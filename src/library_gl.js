@@ -912,8 +912,27 @@ var LibraryGL = {
             source = 'attribute vec3 a_position; \n\
                       uniform mat4 u_modelView;  \n\
                       uniform mat4 u_projection; \n' +
-                     source.replace('ftransform()', 'u_projection * u_modelView * vec4(a.position, 1.0)');
+                     source.replace(/ftransform\(\)/g, 'u_projection * u_modelView * vec4(a_position, 1.0)');
           }
+          if (source.indexOf('gl_TexCoord[0]') >= 0) {
+            // XXX To handle both regular texture mapping and cube mapping, we use vec3 for tex coordinates.
+            source = 'attribute vec3 a_texCoord; \n\
+                      varying vec3 v_texCoord;   \n' +
+                     source.replace(/gl_TexCoord\[0\]/g, 'v_texCoord').replace(/gl_MultiTexCoord0/g, 'a_texCoord');
+          }
+          if (source.indexOf('gl_Color') >= 0) {
+            source = 'attribute vec4 a_color; \n\
+                      varying vec4 v_color;   \n' +
+                     source.replace(/gl_Color/g, 'a_color').replace(/gl_FrontColor/g, 'v_color');
+          }
+        } else { // Fragment shader
+          if (source.indexOf('gl_TexCoord[0]') >= 0) {
+            source = 'varying vec3 v_texCoord; \n' + source.replace(/gl_TexCoord\[0\]/g, 'v_texCoord');
+          }
+          if (source.indexOf('gl_Color') >= 0) {
+            source = 'varying vec4 v_color; \n' + source.replace(/gl_Color/g, 'v_color');
+          }
+          source = 'precision mediump float;\n' + source;
         }
         GL.shaderSources[shader] = source;
         Module.ctx.shaderSource(GL.shaders[shader], source);
