@@ -862,7 +862,7 @@ var LibraryGL = {
 
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
-  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram'],
+  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram', 'glGetProgramInfoLog', 'glGetShaderInfoLog'],
   $GLEmulation__postset: 'GLEmulation.init();',
   $GLEmulation: {
     init: function() {
@@ -871,9 +871,12 @@ var LibraryGL = {
       _glEnable = function(cap) {
         if (cap == 0x0DE1) return; // GL_TEXTURE_2D
         if (cap == 0x0B20) return; // GL_LINE_SMOOTH
+        if (cap == 0x0B60) return; // GL_FOG
         Module.ctx.enable(cap);
       };
       _glDisable = function(cap) {
+        if (cap == 0x0DE1) return; // GL_TEXTURE_2D
+        if (cap == 0x0B20) return; // GL_LINE_SMOOTH
         if (cap == 0x0B60) return; // GL_FOG
         Module.ctx.disable(cap);
       };
@@ -909,13 +912,31 @@ var LibraryGL = {
 
       glGetObjectParameterivARB: function(id, type, result) {
         if (GL.programs[id]) {
+          if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+            {{{ makeSetValue('result', '0', 'Module.ctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
+            return;
+          }
           _glGetProgramiv(id, type, result);
         } else if (GL.shaders[id]) {
+          if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+            {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
+            return;
+          }
           _glGetShaderiv(id, type, result);
         } else {
           console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
         }
       },
+
+      glGetInfoLogARB: function(id, maxLength, length, infoLog) {
+        if (GL.programs[id]) {
+          _glGetProgramInfoLog(id, maxLength, length, infoLog);
+        } else if (GL.shaders[id]) {
+          _glGetShaderInfoLog(id, maxLength, length, infoLog);
+        } else {
+          console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
+        }
+      }
     },
 
     getProcAddress: function(name_) {
