@@ -1070,6 +1070,7 @@ var LibraryGL = {
     initted: false,
     init: function() {
       Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
+      GL.immediate.initted = true;
 
       // Buffers for data
       this.tempData = new Float32Array(this.maxElements);
