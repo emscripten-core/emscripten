@@ -892,6 +892,42 @@ var LibraryGL = {
         }
         glGetIntegerv(pname, params);
       };
+      // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
+      // tandem with the rest of the program, by itself it cannot suffice.
+      // Note that we need to remember shader types for this rewriting, saving sources makes it easier to debug.
+      GL.shaderTypes = {};
+      GL.shaderSources = {};
+      var glCreateShader = _glCreateShader;
+      _glCreateShader = function(shaderType) {
+        var id = glCreateShader(shaderType);
+        GL.shaderTypes[id] = shaderType;
+        return id;
+      };
+      var glShaderSource = _glShaderSource;
+      _glShaderSource = function(shader, count, string, length) {
+        var source = GL.getSource(shader, count, string, length);
+        if (GL.shaderTypes[shader] == Module.ctx.VERTEX_SHADER) {
+          if (source.indexOf('ftransform()') >= 0) {
+            // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
+            source = 'attribute vec3 a_position; \n\
+                      uniform mat4 u_modelView;  \n\
+                      uniform mat4 u_projection; \n' +
+                     source.replace('ftransform()', 'u_projection * u_modelView * vec4(a.position, 1.0)');
+          }
+        }
+        GL.shaderSources[shader] = source;
+        Module.ctx.shaderSource(GL.shaders[shader], source);
+      };
+      var glCompileShader = _glCompileShader;
+      _glCompileShader = function(shader) {
+        Module.ctx.compileShader(GL.shaders[shader]);
+        if (!Module.ctx.getShaderParameter(GL.shaders[shader], Module.ctx.COMPILE_STATUS)) {
+          console.log('Failed to compile shader: ' + Module.ctx.getShaderInfoLog(GL.shaders[shader]));
+          console.log('Type: ' + GL.shaderTypes[shader]);
+          console.log('Source: ' + GL.shaderSources[shader]);
+          throw 'Shader compilation halt';
+        }
+      };
     },
 
     procReplacements: {
