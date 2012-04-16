@@ -54,6 +54,40 @@ var LibraryGL = {
       return false;
     },
 
+    getSource: function(shader, count, string, length) {
+      var source = '';
+      for (var i = 0; i < count; ++i) {
+        var frag;
+        if (length) {
+          var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
+          if (len < 0) {
+            frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
+          } else {
+            frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len);
+          }
+        } else {
+          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
+        }
+        source += frag;
+      }
+      // Let's see if we need to enable the standard derivatives extension
+      type = Module.ctx.getShaderParameter(GL.shaders[shader], 0x8B4F /* GL_SHADER_TYPE */);
+      if (type == 0x8B30 /* GL_FRAGMENT_SHADER */) {
+        if (GL.findToken(source, "dFdx") ||
+            GL.findToken(source, "dFdy") ||
+            GL.findToken(source, "fwidth")) {
+          source = "#extension GL_OES_standard_derivatives : enable\n" + source;
+          var extension = Module.ctx.getExtension("OES_standard_derivatives");
+#if GL_DEBUG
+          if (!extension) {
+            Module.printErr("Shader attempts to use the standard derivatives extension which is not available.");
+          }
+#endif
+        }
+      }
+      return source;
+    },
+
     computeImageSize: function(width, height, sizePerPixel, alignment) {
       function roundedToNextMultipleOf(x, y) {
         return Math.floor((x + y - 1) / y) * y
@@ -681,36 +715,7 @@ var LibraryGL = {
   },
 
   glShaderSource: function(shader, count, string, length) {
-    var source = "";
-    for (var i = 0; i < count; ++i) {
-      var frag;
-      if (length) {
-        var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
-        if (len < 0) {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
-        } else {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len);
-        }
-      } else {
-        frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
-      }
-      source += frag;
-    }
-    // Let's see if we need to enable the standard derivatives extension
-    type = Module.ctx.getShaderParameter(GL.shaders[shader], 0x8B4F /* GL_SHADER_TYPE */);
-    if (type == 0x8B30 /* GL_FRAGMENT_SHADER */) {
-      if (GL.findToken(source, "dFdx") ||
-          GL.findToken(source, "dFdy") ||
-          GL.findToken(source, "fwidth")) {
-        source = "#extension GL_OES_standard_derivatives : enable\n" + source;
-        var extension = Module.ctx.getExtension("OES_standard_derivatives");
-#if GL_DEBUG
-        if (!extension) {
-          Module.printErr("Shader attempts to use the standard derivatives extension which is not available.");
-        }
-#endif
-      }
-    }
+    var source = GL.getSource(shader, count, string, length);
     Module.ctx.shaderSource(GL.shaders[shader], source);
   },
 
@@ -944,7 +949,7 @@ var LibraryGL = {
       var func = GLEmulation.procs[name_];
       if (!func) {
         try {
-          func = eval('_' + name_);
+          func = eval('_' + name_); // XXX closure, need Module. and for them to be exported
         } catch(e) {
           console.log('WARNING: getProcAddress failed for ' + name_);
           func = function() {
