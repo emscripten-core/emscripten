@@ -1292,7 +1292,7 @@ var LibraryGL = {
   },
 
   glPopMatrix: function() {
-    GL.immediate.matrix[currentMatrix] = GL.immediate.matrixStack[GL.immediate.currentMatrix].pop();
+    GL.immediate.matrix[GL.immediate.currentMatrix] = GL.immediate.matrixStack[GL.immediate.currentMatrix].pop();
   },
 
   glLoadIdentity__deps: ['$GL', '$GLImmediateSetup'],
