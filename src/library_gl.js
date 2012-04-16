@@ -941,7 +941,8 @@ var LibraryGL = {
   $GLImmediate: {
     // Vertex and index data
     maxElements: 1024,
-    vertexData: null,
+    vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer)
+    tempData: null,
     indexData: null,
     vertexCounter: 0,
     mode: 0,
@@ -949,7 +950,7 @@ var LibraryGL = {
     renderers: {},
     renderer: null,
 
-    // The folowing data structures are used for OpenGL Immediate Mode matrix routines.
+    // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {
       'm': null, // modelview
       'p': null  // projection
@@ -966,15 +967,50 @@ var LibraryGL = {
       GL.immediate.currentMatrix = GL.immediate.matrix.lib.mat4.create();
     },
 
-    initted: false,
-    init: function() {
-      console.log('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
-      GL.immediate.renderers['T2P3'] = { // Texture 2, Position 3 (assumed float)
-        vertexSize: 5*4,
-        initted: false,
+    // Clientside attributes
+    TEXTURE: 0,
+    VERTEX: 1,
+    NUM_ATTRIBUTES: 2,
+    ATTRIBUTE_BY_NAME: {
+      'T': 0,
+      'V': 1
+    },
+
+    totalEnabledClientAttributes: 0,
+    enabledClientAttributes: [0, 0],
+    clientAttributes: [null, null],
+
+    setClientAttribute: function(which, name, size, type, stride, pointer) {
+      this.clientAttributes[which] = {
+        size: size, type: type, stride: stride, pointer: pointer, name: name + size
+      };
+    },
+
+    // Renderers
+    setRenderer: function(renderer) {
+      this.renderer = renderer;
+      if (this.renderers[renderer]) return;
+
+      // Create renderer
+      var vertexSize = 0;
+      for (var i = 0; i < renderer.length; i+=2) {
+        var which = renderer[i];
+        var size = parseInt(renderer[i+1]);
+        if (which == 'V') {
+          positionSize = size;
+          positionOffset = vertexSize;
+        } else if (which == 'T') {
+          textureSize = size;
+          textureOffset = vertexSize;
+        }
+        vertexSize += size * 4; // XXX assuming float
+      }
+      // TODO: verify vertexSize is equal to the stride in enabled client arrays
+      this.renderers[renderer] = {
+        vertexSize: vertexSize,
         init: function() {
           this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
-          Module.ctx.shaderSource(this.vertexShader, 'attribute vec3 a_position;  \n\
+          Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n\
                                                       attribute vec2 a_texCoord;  \n\
                                                       varying vec2 v_texCoord;    \n\
                                                       uniform mat4 u_modelView;   \n\
@@ -1009,8 +1045,10 @@ var LibraryGL = {
         },
 
         prepare: function() {
-          Module.ctx.vertexAttribPointer(this.texCoordLocation, 2, Module.ctx.FLOAT, false, 5 * 4, 0);
-          Module.ctx.vertexAttribPointer(this.positionLocation, 3, Module.ctx.FLOAT, false, 5 * 4, 2 * 4);
+          Module.ctx.vertexAttribPointer(this.texCoordLocation, textureSize, Module.ctx.FLOAT, false,
+                                         vertexSize, textureOffset);
+          Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, Module.ctx.FLOAT, false,
+                                         vertexSize, positionOffset);
 
           Module.ctx.enableVertexAttribArray(this.texCoordLocation);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
@@ -1024,19 +1062,67 @@ var LibraryGL = {
           Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix["p"]);
         }
       };
+      this.renderers[renderer].init();
+    },
+
+    // Main functions
+    initted: false,
+    init: function() {
+      console.log('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
 
       // Buffers for data
-      this.vertexData = new Float32Array(this.maxElements);
+      this.tempData = new Float32Array(this.maxElements);
       this.indexData = new Uint16Array(this.maxElements);
 
       this.vertexObject = Module.ctx.createBuffer();
       this.indexObject = Module.ctx.createBuffer();
+
+      // Replace some functions with immediate-mode aware versions
+      _glDrawArrays = function(mode, first, count) {
+        if (GL.immediate.totalEnabledClientAttributes == 0) {
+          Module.ctx.drawArrays(mode, first, count);
+          return;
+        }
+#if ASSERTIONS
+        assert(first == 0); // TODO
+#endif
+        // Client attributes are to be used here, emulate that
+        var stride = 0, bytes = 0, attributes = [], start, renderer = '';
+        for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
+          if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
+        }
+        attributes.sort(function(x, y) { return x.pointer - y.pointer });
+        start = attributes[0].pointer;
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+#if ASSERTIONS
+          assert(attribute.stride);
+          assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
+#endif
+          stride = attribute.stride;
+          bytes += attribute.size * 4 * count; // XXX assuming float
+          renderer += attribute.name;
+        }
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+          attribute.offset = attribute.pointer - start;
+#if ASSERTIONS
+          assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
+#endif
+        }
+        GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+        GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
+        GL.immediate.mode = mode;
+        GL.immediate.setRenderer(renderer);
+        GL.immediate.flush();
+      };
     },
     flush: function() {
       var renderer = this.renderers[this.renderer];
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * this.vertexCounter / renderer.vertexSize; // XXX Assumes float
+      // TODO: if the mode is one that works in GLES 2.0/WebGL (not GL_QUADS), do not generate indexes at all
+      var numVertexes = 4 * this.vertexCounter / renderer.vertexSize; // XXX assuming float
       assert(numVertexes % 1 == 0);
       var numIndexes = 0;
 
@@ -1078,8 +1164,6 @@ var LibraryGL = {
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, numIndexes), Module.ctx.STATIC_DRAW);
 
       // Render
-      if (!renderer.initted) renderer.init();
-
       Module.ctx.useProgram(renderer.program);
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
 
@@ -1100,6 +1184,7 @@ var LibraryGL = {
     if (!GL.immediate.initted) GL.immediate.init();
     GL.immediate.mode = mode;
     GL.immediate.renderer = null;
+    GL.immediate.vertexData = GL.immediate.tempData;
   },
 
   glEnd: function() {
@@ -1120,7 +1205,7 @@ var LibraryGL = {
 #endif
     if (!GL.immediate.renderer) {
       // Decide renderer based on attributes used // TODO: generalize
-      GL.immediate.renderer = 'T2P3';
+      GL.immediate.setRenderer('T2V3');
     }
   },
 
@@ -1155,6 +1240,36 @@ var LibraryGL = {
   glColor3ub: 'glColor3b',
   glColor3us: 'glColor3b',
   glColor3ui: 'glColor3b',
+
+  // ClientState/gl*Pointer
+
+  glEnableClientState: function(cap, disable) {
+    if (!GL.immediate.initted) GL.immediate.init();
+    switch(cap) {
+      case 0x8078: // GL_TEXTURE_COORD_ARRAY
+        GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE] = !disable; break;
+      case 0x8074: // GL_VERTEX_ARRAY
+        GL.immediate.enabledClientAttributes[GL.immediate.VERTEX] = !disable; break;
+      default:
+        throw 'unhandled clientstate: ' + cap;
+    }
+    if (!disable) {
+      GL.immediate.totalEnabledClientAttributes++;
+    } else {
+      GL.immediate.totalEnabledClientAttributes--;
+    }
+  },
+  glDisableClientState: function(cap) {
+    _glEnableClientState(cap, 1);
+  },
+
+  glTexCoordPointer: function(size, type, stride, pointer) {
+    GL.immediate.setClientAttribute(GL.immediate.TEXTURE, 'T', size, type, stride, pointer);
+  },
+
+  glVertexPointer: function(size, type, stride, pointer) {
+    GL.immediate.setClientAttribute(GL.immediate.VERTEX, 'V', size, type, stride, pointer);
+  },
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
