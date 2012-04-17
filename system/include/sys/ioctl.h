@@ -10,6 +10,9 @@ extern "C" {
 
 int ioctl(int d, int request, ...);
 
+#define SO_RCVTIMEO 1000
+#define SO_SNDTIMEO 2000
+
 #ifdef __cplusplus
 }
 #endif
