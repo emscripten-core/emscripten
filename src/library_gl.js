@@ -909,23 +909,24 @@ var LibraryGL = {
         var source = GL.getSource(shader, count, string, length);
         GL.shaderOriginalSources[shader] = source;
         if (GL.shaderTypes[shader] == Module.ctx.VERTEX_SHADER) {
-          if (source.indexOf('ftransform()') >= 0) {
-            // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
-            source = 'attribute vec3 a_position; \n\
-                      uniform mat4 u_modelView;  \n\
-                      uniform mat4 u_projection; \n' +
-                     source.replace(/ftransform\(\)/g, 'u_projection * u_modelView * vec4(a_position, 1.0)')
-                           .replace(/gl_Vertex/g, 'a_position')
-                           .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
-          }
+          // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
+          source = 'attribute vec4 a_position; \n\
+                    uniform mat4 u_modelView;  \n\
+                    uniform mat4 u_projection; \n' +
+                   source.replace(/ftransform\(\)/g, 'u_projection * u_modelView * a_position')
+                         .replace(/gl_Vertex/g, 'a_position')
+                         .replace(/gl_ModelViewMatrix/g, 'u_modelView')
+                         .replace(/gl_ProjectionMatrix/g, 'u_projection')
+                         .replace(/gl_ModelViewProjectionMatrix/g, 'u_modelView * u_projection')
+                         .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
           for (var i = 0; i <= 3; i++) {
-            // XXX To handle both regular texture mapping and cube mapping, we use vec3 for tex coordinates.
+            // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
                            .replace(new RegExp('gl_MultiTexCoord' + i, 'g'), 'a_texCoord' + i);
             if (source != old) {
-              source = 'attribute vec3 a_texCoord' + i + '; \n\
-                        varying vec3 v_texCoord' + i + ';   \n' + source;
+              source = 'attribute vec4 a_texCoord' + i + '; \n\
+                        varying vec4 v_texCoord' + i + ';   \n' + source;
             }
           }
           if (source.indexOf('gl_Color') >= 0) {
@@ -942,7 +943,7 @@ var LibraryGL = {
             var old = 0;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
             if (source != old) {
-              source = 'varying vec3 v_texCoord' + i + ';   \n' + source;
+              source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
             }
           }
           if (source.indexOf('gl_Color') >= 0) {
