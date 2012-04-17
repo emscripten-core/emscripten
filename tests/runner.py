@@ -6812,6 +6812,17 @@ elif 'browser' in str(sys.argv):
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html',  '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
+    def build_native_lzma(self):
+      lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
+      if os.path.isfile(lzma_native) and os.access(lzma_native, os.X_OK): return
+
+      cwd = os.getcwd()
+      try:
+        os.chdir(path_from_root('third_party', 'lzma.js'))
+        Popen(['sh', './doit.sh']).communicate()
+      finally:
+        os.chdir(cwd)
+
     def test_compression(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
@@ -6824,6 +6835,7 @@ elif 'browser' in str(sys.argv):
         }
       '''))
 
+      self.build_native_lzma()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html',
              '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                             path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
@@ -6926,6 +6938,7 @@ elif 'browser' in str(sys.argv):
         }
       '''))
 
+      self.build_native_lzma()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt', '--preload-file', 'datafile2.txt',
              '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                             path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
@@ -6954,6 +6967,7 @@ elif 'browser' in str(sys.argv):
         shutil.copyfile(image, os.path.join(self.get_dir(), basename))
         open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()).replace('screenshot.jpg', basename))
 
+        self.build_native_lzma()
         Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename, '-o', 'page.html',
                '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                               path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
