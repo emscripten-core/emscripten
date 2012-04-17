@@ -500,11 +500,16 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return generated_libs
 
   @staticmethod
-  def link(files, target):
+  def link(files, target, create_binary_wrapper=False):
     try_delete(target)
-    stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme') + ('.exe' if WINDOWS else '')
+    if not create_binary_wrapper:
+      stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme') + ('.exe' if WINDOWS else '')
+    else:
+      stub = target
+      target += ".bc"
     output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target, '-o', stub], stdout=PIPE).communicate()[0]
-    try_delete(stub) # clean up stub left by the linker
+    if not create_binary_wrapper:
+      try_delete(stub) # clean up stub left by the linker
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
