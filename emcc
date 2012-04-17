@@ -551,7 +551,8 @@ try:
 
   input_files = []
   has_source_inputs = False
-  lib_dirs = [shared.path_from_root('system', 'lib')]
+  lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
+              shared.path_from_root('system', 'lib')]
   libs = []
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
