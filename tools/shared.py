@@ -425,7 +425,7 @@ class Building:
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
     env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
-    env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
+    #env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
