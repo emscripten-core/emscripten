@@ -1,16 +1,22 @@
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<html>
+<!doctype html>
+<html lang="en-us">
   <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Emscripten-Generated Code</title>
+    <style>
+      .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+      canvas.emscripten { width: 256px; height: 256px; border: 1px solid black; }
+      textarea.emscripten { font-family: monospace; width: 80%; }
+      div.emscripten { text-align: center; }
+    </style>
+  </head>
   <body>
-    <center>
-      <canvas id='canvas' width='256' height='256' style="border: 1px solid black"
-              oncontextmenu="event.preventDefault()"></canvas>
-      <hr>
-      <textarea id="output" style="font-family: monospace; width: 80%" rows="8"></textarea>
-      <hr>
-      <div id='status'>Downloading...</div>
-    </center>
+    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <hr/>
+    <textarea class="emscripten" id="output" rows="8"></textarea>
+    <hr>
+    <div class="emscripten" id="status">Downloading...</div>
     <hr>
     <script type='text/javascript'>
       // connect to canvas
@@ -40,7 +46,7 @@
       };
 
       {{{ SCRIPT_CODE }}}
+
     </script>
   </body>
 </html>
-
