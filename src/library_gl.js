@@ -897,6 +897,7 @@ var LibraryGL = {
       // Note that we need to remember shader types for this rewriting, saving sources makes it easier to debug.
       GL.shaderTypes = {};
       GL.shaderSources = {};
+      GL.shaderOriginalSources = {};
       var glCreateShader = _glCreateShader;
       _glCreateShader = function(shaderType) {
         var id = glCreateShader(shaderType);
@@ -906,13 +907,16 @@ var LibraryGL = {
       var glShaderSource = _glShaderSource;
       _glShaderSource = function(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
+        GL.shaderOriginalSources[shader] = source;
         if (GL.shaderTypes[shader] == Module.ctx.VERTEX_SHADER) {
           if (source.indexOf('ftransform()') >= 0) {
             // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
             source = 'attribute vec3 a_position; \n\
                       uniform mat4 u_modelView;  \n\
                       uniform mat4 u_projection; \n' +
-                     source.replace(/ftransform\(\)/g, 'u_projection * u_modelView * vec4(a_position, 1.0)');
+                     source.replace(/ftransform\(\)/g, 'u_projection * u_modelView * vec4(a_position, 1.0)')
+                           .replace(/gl_Vertex/g, 'a_position')
+                           .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
           }
           if (source.indexOf('gl_TexCoord[0]') >= 0) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec3 for tex coordinates.
@@ -924,6 +928,10 @@ var LibraryGL = {
             source = 'attribute vec4 a_color; \n\
                       varying vec4 v_color;   \n' +
                      source.replace(/gl_Color/g, 'a_color').replace(/gl_FrontColor/g, 'v_color');
+          }
+          if (source.indexOf('gl_FogFragCoord') >= 0) {
+            source = 'varying float v_fogCoord;   \n' +
+                     source.replace(/gl_FogFragCoord/g, 'v_fogCoord');
           }
         } else { // Fragment shader
           if (source.indexOf('gl_TexCoord[0]') >= 0) {
@@ -943,6 +951,7 @@ var LibraryGL = {
         if (!Module.ctx.getShaderParameter(GL.shaders[shader], Module.ctx.COMPILE_STATUS)) {
           console.log('Failed to compile shader: ' + Module.ctx.getShaderInfoLog(GL.shaders[shader]));
           console.log('Type: ' + GL.shaderTypes[shader]);
+          console.log('Original source: ' + GL.shaderOriginalSources[shader]);
           console.log('Source: ' + GL.shaderSources[shader]);
           throw 'Shader compilation halt';
         }
