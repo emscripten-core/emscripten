@@ -1630,6 +1630,9 @@ m_divisor is 1091269979
         if self.emcc_args is None:
           if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
           self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
+        else:
+          if '-O2' in self.emcc_args:
+            self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
         src = '''
           #include <stdio.h>
@@ -1710,6 +1713,8 @@ m_divisor is 1091269979
 
     def test_uncaught_exception(self):
         if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
+        if '-O2' in self.emcc_args:
+          self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
         Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
         Settings.DISABLE_EXCEPTION_CATCHING = 0

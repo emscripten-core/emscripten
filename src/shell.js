@@ -115,6 +115,10 @@ if (!Module['arguments']) {
 }
 // *** Environment setup code ***
 
+// Closure helpers
+Module.print = Module['print'];
+Module.printErr = Module['printErr'];
+
   {{BODY}}
 
   // {{MODULE_ADDITIONS}}

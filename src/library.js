@@ -4587,12 +4587,12 @@ LibraryManager.library = {
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
       if (___cxa_does_inherit(typeArray[i], throwntype, thrown))
-        return { 'f0':thrown, 'f1':typeArray[i]};
+        return { f0:thrown, f1:typeArray[i] };
     }
     // Shouldn't happen unless we have bogus data in typeArray
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
-    return {'f0':thrown,'f1':throwntype};
+    return { f0:thrown, f1 :throwntype };
   },
 
   // Recursively walks up the base types of 'possibilityType'
