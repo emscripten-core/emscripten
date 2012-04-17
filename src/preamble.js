@@ -76,7 +76,7 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   Module.print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
 #endif
 
-  if (!ignore && !value && value !== 0 && value !== false && !isNaN(value)) { // false can be the result of a mathop comparator; NaN can be the result of a math function
+  if (!ignore && !value && (value === null || value === undefined)) {
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
   SAFE_HEAP_ACCESS(dest, type, true, ignore);
