@@ -1,10 +1,14 @@
 #ifndef _SYS_SOCKET_H
 #define _SYS_SOCKET_H
 
+#include <netdb.h>
+#include <sys/select.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// Note that the values of these constants are mostly arbitrary numbers.
 #define SOMAXCONN 128
 #define PF_INET 2
 #define SO_BROADCAST 6
@@ -17,8 +21,10 @@ extern "C" {
 #define SO_REUSEADDR 30
 #define SO_SNDBUF 40
 #define SO_RCVBUF 60
+#define SO_LINGER 70
+#define SO_NOSIGPIPE 80
 
-typedef int socklen_t;
+#define SHUT_RDWR 1
 
 typedef unsigned int sa_family_t;
 #define AF_INET 1
@@ -41,6 +47,7 @@ int bind(int sockfd, const struct sockaddr *my_addr, socklen_t addrlen);
 int listen(int sockfd, int backlog);
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen); 
 int connect(int sockfd, const struct sockaddr *serv_addr, socklen_t addrlen); 
+int shutdown(int sockfd, int how);
 int getsockopt(int s, int level, int optname, void *optval, socklen_t *optlen);
 ssize_t recv(int s, void *buf, size_t len, int flags);
 ssize_t send(int s, const void *buf, size_t len, int flags);
