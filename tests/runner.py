@@ -1341,6 +1341,21 @@ m_divisor is 1091269979
         '''
         self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
+    def test_strings_index(self):
+        src = '''
+          #include <stdio.h>
+          #include <strings.h>
+          int main(int argc, char** argv) {
+            const char *dictionary = "wangchung";
+            int character = 'n';
+            const char *position_of_character = index(dictionary, character);
+            int distance_into_string_of_character = (position_of_character - dictionary);
+            printf("%d,%d\\n", (distance_into_string_of_character == 2), distance_into_string_of_character);
+            return 0;
+          }
+        '''
+        self.do_run(src, '1,2')
+
     def test_errar(self):
         src = r'''
           #include <stdio.h>
