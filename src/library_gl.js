@@ -918,11 +918,14 @@ var LibraryGL = {
                            .replace(/gl_Vertex/g, 'a_position')
                            .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
           }
-          if (source.indexOf('gl_TexCoord[0]') >= 0) {
-            // XXX To handle both regular texture mapping and cube mapping, we use vec3 for tex coordinates.
-            source = 'attribute vec3 a_texCoord; \n\
-                      varying vec3 v_texCoord;   \n' +
-                     source.replace(/gl_TexCoord\[0\]/g, 'v_texCoord').replace(/gl_MultiTexCoord0/g, 'a_texCoord');
+          for (var i = 0; i <= 3; i++) {
+            if (source.indexOf('gl_TexCoord[' + i + ']') >= 0) {
+              // XXX To handle both regular texture mapping and cube mapping, we use vec3 for tex coordinates.
+              source = 'attribute vec3 a_texCoord' + i + '; \n\
+                        varying vec3 v_texCoord' + i + ';   \n' +
+                       source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
+                             .replace(new RegExp('gl_MultiTexCoord' + i, 'g'), 'a_texCoord' + i);
+            }
           }
           if (source.indexOf('gl_Color') >= 0) {
             source = 'attribute vec4 a_color; \n\
@@ -934,8 +937,11 @@ var LibraryGL = {
                      source.replace(/gl_FogFragCoord/g, 'v_fogCoord');
           }
         } else { // Fragment shader
-          if (source.indexOf('gl_TexCoord[0]') >= 0) {
-            source = 'varying vec3 v_texCoord; \n' + source.replace(/gl_TexCoord\[0\]/g, 'v_texCoord');
+          for (var i = 0; i <= 3; i++) {
+            if (source.indexOf('gl_TexCoord[' + i + ']') >= 0) {
+              source = 'varying vec3 v_texCoord' + i + ';   \n' +
+                       source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
+            }
           }
           if (source.indexOf('gl_Color') >= 0) {
             source = 'varying vec4 v_color; \n' + source.replace(/gl_Color/g, 'v_color');
