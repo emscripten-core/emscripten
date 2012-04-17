@@ -1,7 +1,17 @@
+#ifndef _IOCTL_H
+#define _IOCTL_H
 
-/* ioctl.h */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define SO_RCVTIMEO 1000
-#define SO_SNDTIMEO 2000
+#define SIOCGIFCONF 1 // bogus value
+#define SIOCGIFNETMASK 2 // bogus value
 
+int ioctl(int d, int request, ...);
 
+#ifdef __cplusplus
+}
+#endif
+
+#endif
