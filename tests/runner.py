@@ -3747,12 +3747,20 @@ at function.:blag
           sscanf("-3.03", "%f", &a);
           printf("%.4f\n", a);
 
+          char buffy[100];
+          sscanf("cheez some thing moar 123\nyet more\n", "cheez %s", buffy);
+          printf("|%s|\n", buffy);
+          sscanf("cheez something\nmoar 123\nyet more\n", "cheez %s", buffy);
+          printf("|%s|\n", buffy);
+          sscanf("cheez somethingmoar\tyet more\n", "cheez %s", buffy);
+          printf("|%s|\n", buffy);
           return 0;
         }
         '''
-      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300')
+      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|')
 
-      # Part 2: doubles
+    def test_sscanf_2(self):
+      # doubles
       if Settings.USE_TYPED_ARRAYS == 2:
         for ftype in ['float', 'double']:
           src = r'''

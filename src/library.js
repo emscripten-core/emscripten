@@ -2294,7 +2294,7 @@ LibraryManager.library = {
                 (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
                                   next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
-                (type === 's') &&
+                (type === 's' && (next != ' '.charCodeAt(0) && next != '\t'.charCodeAt(0) && next != '\n'.charCodeAt(0))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
