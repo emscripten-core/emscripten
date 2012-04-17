@@ -919,12 +919,13 @@ var LibraryGL = {
                            .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
           }
           for (var i = 0; i <= 3; i++) {
-            if (source.indexOf('gl_TexCoord[' + i + ']') >= 0) {
-              // XXX To handle both regular texture mapping and cube mapping, we use vec3 for tex coordinates.
+            // XXX To handle both regular texture mapping and cube mapping, we use vec3 for tex coordinates.
+            var old = source;
+            source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
+                           .replace(new RegExp('gl_MultiTexCoord' + i, 'g'), 'a_texCoord' + i);
+            if (source != old) {
               source = 'attribute vec3 a_texCoord' + i + '; \n\
-                        varying vec3 v_texCoord' + i + ';   \n' +
-                       source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
-                             .replace(new RegExp('gl_MultiTexCoord' + i, 'g'), 'a_texCoord' + i);
+                        varying vec3 v_texCoord' + i + ';   \n' + source;
             }
           }
           if (source.indexOf('gl_Color') >= 0) {
@@ -938,14 +939,16 @@ var LibraryGL = {
           }
         } else { // Fragment shader
           for (var i = 0; i <= 3; i++) {
-            if (source.indexOf('gl_TexCoord[' + i + ']') >= 0) {
-              source = 'varying vec3 v_texCoord' + i + ';   \n' +
-                       source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
+            var old = 0;
+            source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
+            if (source != old) {
+              source = 'varying vec3 v_texCoord' + i + ';   \n' + source;
             }
           }
           if (source.indexOf('gl_Color') >= 0) {
             source = 'varying vec4 v_color; \n' + source.replace(/gl_Color/g, 'v_color');
           }
+          source = source.replace(/gl_Fog.color/g, 'vec4(0.0)'); // XXX TODO
           source = 'precision mediump float;\n' + source;
         }
         GL.shaderSources[shader] = source;
