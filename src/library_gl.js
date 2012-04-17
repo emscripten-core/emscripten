@@ -1102,6 +1102,8 @@ var LibraryGL = {
         vertexSize += size * 4; // XXX assuming float
       }
       // TODO: verify vertexSize is equal to the stride in enabled client arrays
+      // TODO: assert that we can create the renderer type we were asked
+      // TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
       this.renderers[renderer] = {
         vertexSize: vertexSize,
         init: function() {
