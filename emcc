@@ -709,7 +709,7 @@ try:
         # we have multiple files: Link them TODO: llvm link-time opts?
         #[arg.split('-Wl,')[1] for arg in filter(lambda arg: arg.startswith('-Wl,'), sys.argv)]
         if DEBUG: print >> sys.stderr, 'emcc: link: ', specified_target, temp_files
-	shared.Building.link(temp_files, specified_target, create_binary_wrapper = not shared_lib)
+        shared.Building.link(temp_files, specified_target, create_binary_wrapper = not shared_lib)
     exit(0)
 
   ## Continue on to create JavaScript
