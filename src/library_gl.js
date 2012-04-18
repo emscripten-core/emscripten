@@ -903,6 +903,7 @@ var LibraryGL = {
             {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
             return;
           }
+          case 0x8871: pname = Module.ctx.MAX_COMBINED_TEXTURE_IMAGE_UNITS /* close enough */; break; // GL_MAX_TEXTURE_COORDS
         }
         glGetIntegerv(pname, params);
       };
