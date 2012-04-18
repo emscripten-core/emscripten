@@ -688,6 +688,8 @@ var LibrarySDL = {
     return 0;
   },
 
+  SDL_PumpEvents: function(){},
+
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
     var surfData = SDL.surfaces[surf];
     surfData.colors = [];
@@ -711,7 +713,10 @@ var LibrarySDL = {
   IMG_Load: function(filename) {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedImages[filename];
-    assert(raw, 'Cannot find preloaded image ' + filename);
+    if (!raw) {
+      Module.printErr('Cannot find preloaded image ' + filename);
+      return 0;
+    }
     var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
     var surfData = SDL.surfaces[surf];
     surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
@@ -821,7 +826,10 @@ var LibrarySDL = {
   Mix_LoadWAV_RW: function(filename, freesrc) {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedAudios[filename];
-    assert(raw, 'Cannot find preloaded audio ' + filename);
+    if (!raw) {
+      Module.printErr('Cannot find preloaded audio ' + filename);
+      return 0;
+    }
     var id = SDL.audios.length;
     SDL.audios.push({
       source: filename,
@@ -838,6 +846,7 @@ var LibrarySDL = {
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
     var audio = SDL.audios[id].audio;
+    if (!audio) return 0;
     if (audio.currentTime) audio.src = audio.src; // This hack prevents lags on replaying // TODO: parallel sounds through //cloneNode(true).play()
     audio.play();
     return 1; // XXX should return channel
@@ -850,6 +859,7 @@ var LibrarySDL = {
   Mix_PlayMusic: function(id, loops) {
     loops = Math.max(loops, 1);
     var audio = SDL.audios[id].audio;
+    if (!audio) return 0;
     audio.loop = loops != 1; // TODO: handle N loops for finite N
     audio.play();
     SDL.music = audio;
@@ -857,14 +867,16 @@ var LibrarySDL = {
   },
 
   Mix_PauseMusic: function(id) {
-    var audio = SDL.audios[id].audio;
-    audio.pause();
+    var audio = SDL.audios[id];
+    if (!audio) return 0;
+    audio.audio.pause();
     return 0;
   },
 
   Mix_ResumeMusic: function(id) {
-    var audio = SDL.audios[id].audio;
-    audio.play();
+    var audio = SDL.audios[id];
+    if (!audio) return 0;
+    audio.audio.play();
     return 0;
   },
 
