@@ -984,12 +984,9 @@ var LibraryGL = {
 
     procReplacements: {
       'glCreateShaderObjectARB': 'glCreateShader',
-      'glShaderSourceARB': 'glShaderSource',
-      'glCompileShaderARB': 'glCompileShader',
       'glCreateProgramObjectARB': 'glCreateProgram',
       'glAttachObjectARB': 'glAttachShader',
-      'glLinkProgramARB': 'glLinkProgram',
-      'glActiveTextureARB': 'glActiveTexture'
+      'glUseProgramObjectARB': 'glUseProgram'
     },
 
     procs: {
@@ -1032,16 +1029,21 @@ var LibraryGL = {
       }
     },
 
-    getProcAddress: function(name_) {
-      name_ = GLEmulation.procReplacements[name_] || name_;
-      var func = GLEmulation.procs[name_];
+    getProcAddress: function(name) {
+      name = GLEmulation.procReplacements[name] || name;
+      var func = GLEmulation.procs[name];
       if (!func) {
         try {
-          func = eval('_' + name_); // XXX closure, need Module. and for them to be exported
+          try {
+            func = eval('_' + name); // XXX closure, need Module. and for them to be exported
+          } catch(e) {
+            if (name.substr(-3) == 'ARB') name = name.substr(0, name.length-3);
+            func = eval('_' + name); // XXX closure, need Module. and for them to be exported
+          }
         } catch(e) {
-          console.log('WARNING: getProcAddress failed for ' + name_);
+          console.log('WARNING: getProcAddress failed for ' + name);
           func = function() {
-            console.log('WARNING: empty replacement for ' + name_ + ' called, no-op');
+            console.log('WARNING: empty replacement for ' + name + ' called, no-op');
             return 0;
           };
         }
