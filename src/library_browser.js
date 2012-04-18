@@ -19,6 +19,13 @@ mergeInto(LibraryManager.library, {
     _emscripten_set_main_loop.cancel = true;
   },
 
+  emscripten_async_call: function(func, millis) {
+    // TODO: cache these to avoid generating garbage
+    setTimeout(function() {
+      FUNCTION_TABLE[func]();
+    }, millis);
+  },
+
   $Browser: {
     createContext: function(canvas, useWebGL) {
 #if !USE_TYPED_ARRAYS
