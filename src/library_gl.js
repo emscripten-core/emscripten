@@ -1113,7 +1113,7 @@ var LibraryGL = {
       if (this.renderers[renderer]) return;
 
       // Create renderer
-      var vertexSize = 0;
+      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0;
       for (var i = 0; i < renderer.length; i+=2) {
         var which = renderer[i];
         var size = parseInt(renderer[i+1]);
@@ -1123,11 +1123,14 @@ var LibraryGL = {
         } else if (which == 'T') {
           textureSize = size;
           textureOffset = vertexSize;
+        } else {
+          throw 'Cannot create shader rendederer for ' + renderer;
         }
         vertexSize += size * 4; // XXX assuming float
       }
+      assert(positionSize > 0);
+      assert(textureSize > 0);
       // TODO: verify vertexSize is equal to the stride in enabled client arrays
-      // TODO: assert that we can create the renderer type we were asked
       // TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
       this.renderers[renderer] = {
         vertexSize: vertexSize,
