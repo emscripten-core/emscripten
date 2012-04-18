@@ -33,6 +33,9 @@ void one() {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
         printf("button up: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
         result += 5 * (m->button + m->state + m->x + m->y);
+        // Remove another click we want to ignore
+        assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONDOWN) == 1);
+        assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONUP, SDL_MOUSEBUTTONUP) == 1);
         break;
       }
     }
@@ -48,6 +51,7 @@ int main() {
 
   emscripten_run_script("simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
   emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click
+  emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
   emscripten_run_script("simulateMouseEvent(30, 77, -1)"); // move some more
   emscripten_run_script("simulateMouseEvent(30, 77, 1)"); // trigger the end
 

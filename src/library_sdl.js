@@ -96,6 +96,14 @@ var LibrarySDL = {
     mouseX: 0,
     mouseY: 0,
 
+    DOMEventToSDLEvent: {
+      'keydown': 0x300,
+      'keyup': 0x301,
+      'mousedown': 0x401,
+      'mouseup': 0x402,
+      'mousemove': 0x400
+    },
+
     keyCodes: { // DOM code ==> SDL code
       38:  1106, // up arrow
       40:  1105, // down arrow
@@ -334,7 +342,7 @@ var LibrarySDL = {
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
-        _memcpy(ptr, event, SDL.structs.KeyboardEvent.__size__);
+        _memcpy(ptr, event, SDL.structs.KeyboardEvent.__size__); // XXX
         return;
       }
 
@@ -347,7 +355,7 @@ var LibrarySDL = {
             key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
           }
           var scan = SDL.scanCodes[key] || key;
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 0x300 : 0x301', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
@@ -366,13 +374,13 @@ var LibrarySDL = {
           var y = event.pageY - Module['canvas'].offsetTop;
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'down ? 0x401 : 0x402', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'x', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'y', 'i32') }}};
           } else {
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', '0x400', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.button', 'event.button', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
@@ -684,8 +692,26 @@ var LibrarySDL = {
 
   SDL_PushEvent: function(ptr) {
     SDL.events.push(ptr); // XXX Should we copy it? Not clear from API
-
     return 0;
+  },
+
+  SDL_PeepEvents: function(events, numEvents, action, from, to) {
+    switch(action) {
+      case 2: { // SDL_GETEVENT
+        assert(numEvents == 1);
+        var got = 0;
+        while (SDL.events.length > 0 && numEvents > 0) {
+          var type = SDL.DOMEventToSDLEvent[SDL.events[0].type];
+          if (type < from || type > to) break;
+          SDL.makeCEvent(SDL.events.shift(), events);
+          got++;
+          numEvents--;
+          // events += sizeof(..)
+        }
+        return got;
+      }
+      default: throw 'SDL_PeepEvents does not yet support that action: ' + action;
+    }
   },
 
   SDL_PumpEvents: function(){},
