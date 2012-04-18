@@ -802,6 +802,14 @@ var LibrarySDL = {
     return 0;
   },
 
+  Mix_AllocateChannels: function(num) {
+    return num; // fake it
+  },
+
+  Mix_ChannelFinished: function(func) {
+    SDL.channelFinished = func; // TODO
+  },
+
   Mix_HookMusicFinished: function(func) {
     SDL.hookMusicFinished = func;
   },
