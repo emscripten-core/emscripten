@@ -1027,6 +1027,10 @@ var LibraryGL = {
         } else {
           console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
         }
+      },
+
+      glBindProgramARB: function(type, id) {
+        assert(id == 0);
       }
     },
 
