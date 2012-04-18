@@ -867,7 +867,6 @@ var LibraryGL = {
 
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
-  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram', 'glGetProgramInfoLog', 'glGetShaderInfoLog'],
   $GLEmulation__postset: 'GLEmulation.init();',
   $GLEmulation: {
     init: function() {
@@ -1582,5 +1581,14 @@ var LibraryGL = {
 });
 
 autoAddDeps(LibraryGL, '$GL');
+
+// Emulation requires everything else, potentially
+LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0);
+for (var item in LibraryGL) {
+  if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(0, 2) == 'gl') {
+    LibraryGL.$GLEmulation__deps.push(item);
+  }
+}
+
 mergeInto(LibraryManager.library, LibraryGL);
 
