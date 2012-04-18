@@ -509,7 +509,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var info = Module.ctx.getActiveUniform(program, index);
 
-    var infoname = info.name.slice(0, bufsize - 1);
+    var infoname = info.name.slice(0, bufSize - 1);
     writeStringToMemory(infoname, name);
 
     if (length) {
@@ -672,7 +672,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var info = Module.ctx.getActiveAttrib(program, index);
 
-    var infoname = info.name.slice(0, bufsize - 1);
+    var infoname = info.name.slice(0, bufSize - 1);
     writeStringToMemory(infoname, name);
 
     if (length) {
@@ -719,9 +719,9 @@ var LibraryGL = {
     Module.ctx.shaderSource(GL.shaders[shader], source);
   },
 
-  glGetShaderSource: function(shader, bufsize, length, source) {
+  glGetShaderSource: function(shader, bufSize, length, source) {
     var result = Module.ctx.getShaderSource(GL.shaders[shader]);
-    result.slice(0, bufsize - 1);
+    result.slice(0, bufSize - 1);
     writeStringToMemory(result, source);
     if (length) {
       {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
