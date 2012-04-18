@@ -887,8 +887,23 @@ var LibraryGL = {
       };
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = function(pname, params) {
-        if (pname == 0x84E2) { // GL_MAX_TEXTURE_UNITS
-          pname = 0x8872; // fake it with GL_MAX_TEXTURE_IMAGE_UNITS
+        switch (pname) {
+          case 0x84E2: pname = Module.ctx.MAX_TEXTURE_IMAGE_UNITS /* fake it */; break; // GL_MAX_TEXTURE_UNITS
+          case 0x8B4A: { // GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB
+            var result = Module.ctx.getParameter(Module.ctx.MAX_VERTEX_UNIFORM_VECTORS);
+            {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
+            return;
+          }
+          case 0x8B49: { // GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB
+            var result = Module.ctx.getParameter(Module.ctx.MAX_FRAGMENT_UNIFORM_VECTORS);
+            {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
+            return;
+          }
+          case 0x8B4B: { // GL_MAX_VARYING_FLOATS_ARB
+            var result = Module.ctx.getParameter(Module.ctx.MAX_VARYING_VECTORS);
+            {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
+            return;
+          }
         }
         glGetIntegerv(pname, params);
       };
@@ -919,7 +934,7 @@ var LibraryGL = {
                          .replace(/gl_ProjectionMatrix/g, 'u_projection')
                          .replace(/gl_ModelViewProjectionMatrix/g, 'u_modelView * u_projection')
                          .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
-          for (var i = 0; i <= 3; i++) {
+          for (var i = 0; i <= 6; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
@@ -939,7 +954,7 @@ var LibraryGL = {
                      source.replace(/gl_FogFragCoord/g, 'v_fogCoord');
           }
         } else { // Fragment shader
-          for (var i = 0; i <= 3; i++) {
+          for (var i = 0; i <= 6; i++) {
             var old = 0;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
             if (source != old) {
