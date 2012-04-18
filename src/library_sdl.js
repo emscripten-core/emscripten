@@ -610,6 +610,14 @@ var LibrarySDL = {
     return 0;
   },
 
+  SDL_WarpMouse: function(x, y) {
+    SDL.events.push({
+      type: 'mousemove',
+      pageX: x + Module['canvas'].offsetLeft,
+      pageY: y + Module['canvas'].offsetTop
+    });
+  },
+
   SDL_ShowCursor: function(toggle) {
     // TODO
   },
