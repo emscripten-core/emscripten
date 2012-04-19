@@ -9,7 +9,7 @@ int last = 0;
 
 extern "C" {
 
-void third() {
+void __attribute__((used)) third() {
   int now = SDL_GetTicks();
   printf("thard! %d\n", now);
   assert(fabs(now - last - 1000) < 500);
@@ -22,7 +22,7 @@ void second() {
   printf("sacond! %d\n", now);
   assert(fabs(now - last - 500) < 250);
   last = now;
-  emscripten_async_call(third, 1000);
+  emscripten_async_run_script("_third()", 1000);
 }
 
 }

@@ -3,6 +3,16 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
+  emscripten_async_run_script__deps: ['emscripten_run_script'],
+  emscripten_async_run_script: function(script, millis) {
+    Module['noExitRuntime'] = true;
+
+    // TODO: cache these to avoid generating garbage
+    setTimeout(function() {
+      _emscripten_run_script(script);
+    }, millis);
+  },
+
   emscripten_set_main_loop: function(func, fps) {
     Module['noExitRuntime'] = true;
 

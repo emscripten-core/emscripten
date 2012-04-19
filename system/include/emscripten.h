@@ -17,6 +17,7 @@ extern "C" {
  */
 extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);
+extern void emscripten_async_run_script(const char *script, int millis);
 
 /*
  * Set a C function as the main event loop. The JS environment
