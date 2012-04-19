@@ -841,6 +841,8 @@ var LibrarySDL = {
     return 0;
   },
 
+  Mix_CloseAudio: 'SDL_CloseAudio',
+
   Mix_AllocateChannels: function(num) {
     return num; // fake it
   },
