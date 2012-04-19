@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<math.h>
+#include<stdlib.h>
 #include<SDL.h>
 #include<emscripten.h>
 #include<assert.h>
@@ -26,10 +27,17 @@ void second() {
 
 }
 
+void never() {
+  int result = 0;
+  REPORT_RESULT();
+}
+
 int main() {
   SDL_Init(0);
   last = SDL_GetTicks();
   printf("frist! %d\n", last);
+
+  atexit(never); // should never be called - it is wrong to exit the runtime orderly if we have async calls!
 
   emscripten_async_call(second, 500);
 
