@@ -7695,8 +7695,8 @@ elif 'sanity' in str(sys.argv):
             assert os.path.exists(EMCC_CACHE)
             assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
             if libname == 'libcxx':
-              assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 4000000, 'libc++ is big'
-              assert os.stat(basebc_name).st_size > 4000000, 'libc++ is indeed big'
+              assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 3500000, 'libc++ is big'
+              assert os.stat(basebc_name).st_size > 3500000, 'libc++ is indeed big'
               assert os.stat(dcebc_name).st_size < 2000000, 'Dead code elimination must remove most of libc++'
       finally:
         if emcc_debug:
