@@ -909,6 +909,27 @@ m_divisor is 1091269979
         code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
         assert 'goog.math.Long' not in code and 'jsbn' not in code, 'i64 precise math should not have been included if not actually used'
 
+    def test_i64_zextneg(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+      src = r'''
+        #include <stdint.h>
+        #include <stdio.h>
+
+        int main(int argc, char *argv[])
+        {
+            uint8_t byte = 0x80;
+            uint16_t two = byte;
+            uint32_t four = byte;
+            uint64_t eight = byte;
+
+            printf("value: %d,%d,%d,%lld.\n", byte, two, four, eight);
+
+            return 0;
+        }
+      '''
+      self.do_run(src, 'value: 128,128,128,128.')
+
     def test_cube2hash(self):
       # A good test of i64 math
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
