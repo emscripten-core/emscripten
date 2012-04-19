@@ -116,8 +116,8 @@ var LibraryGL = {
         return allocate(intArrayFromString(Module.ctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
       case 0x1F03 /* GL_EXTENSIONS */:
         return allocate(intArrayFromString(Module.ctx.getSupportedExtensions().join(' ')), 'i8', ALLOC_NORMAL);
-      case 0x8B8C /*GL_SHADING_LANGUAGE_VERSION*/:
-        return allocate(intArrayFromString("OpenGL ES GLSL ES 1.00 (WebGL)"), 'i8', ALLOC_NORMAL);
+      case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
+        return allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
       default:
         throw 'Failure: Invalid glGetString value: ' + name_;
     }
