@@ -2702,7 +2702,7 @@ def process(filename):
         output = Popen(['python', EMCC, all_name], stderr=PIPE).communicate()
         # Check for warning in the generated code
         generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-        assert 'Casting a function pointer type to another with a different number of arguments.' in output[1], 'Missing expected warning'
+        assert 'Casting a function pointer type to another with a different number of arguments' in output[1], 'Missing expected warning'
 
     def test_stdlibs(self):
         if Settings.USE_TYPED_ARRAYS == 2:
