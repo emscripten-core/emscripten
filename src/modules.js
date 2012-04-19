@@ -259,8 +259,9 @@ var LibraryManager = {
   load: function() {
     assert(!this.library);
 
-    for (var suffix in set('', '_sdl', '_browser', '_gl')) {
-      eval(processMacros(preprocess(read('library' + suffix + '.js'))));
+    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js'].concat(additionalLibraries);
+    for (var i = 0; i < libraries.length; i++) {
+      eval(processMacros(preprocess(read(libraries[i]))));
     }
   },
 

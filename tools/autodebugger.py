@@ -11,17 +11,21 @@ Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
 import os, sys, re
 
 ALLOW_POINTERS = False
+ALLOW_MISC = True
 MEMCPY = False
 
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
+@.emscripten.autodebug.str.64 = private constant [13 x i8] c"AD:%d,%d,%d\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
 entry:
-  %0 = sitofp i64 %value to double ; [#uses=1]
-  %1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %0) ; [#uses=0]
+  %0 = trunc i64 %value to i32
+  %1 = lshr i64 %value, 32
+  %2 = trunc i64 %1 to i32
+  %3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]* @.emscripten.autodebug.str.64, i32 0, i32 0), i32 %line, i32 %0, i32 %2) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -239,6 +243,23 @@ for i in range(len(lines)):
       index = i+1+lines_added
       lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
       lines_added += 1
+      continue
+    if ALLOW_MISC:
+      m = re.match('  %(?P<var>[\w_.]+) = (call|mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
+      if m:
+        index = i+1+lines_added
+        lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+        lines_added += 1
+        continue
+      m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
+      if m:
+        index = i+1+lines_added
+        lines[i] += '\n  %%adpretemp%d = bitcast i8* %%%s to i64*' % (index, m.group('src')) + \
+                    '\n  %%adtemp%d = load i64* %%adpretemp%d, align %s' % (index, index, m.group('align')) + \
+                    '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%adtemp%d)' % ('i64', index, 'i64', index)
+        lines_added += 3
+        continue
+
   finally:
     if len(pre) > 0:
       lines[i] = pre + '\n' + lines[i]

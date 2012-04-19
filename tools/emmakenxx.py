@@ -4,7 +4,7 @@
 see emmaken.py
 '''
 
-import os, sys
+import os, subprocess, sys
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
@@ -14,5 +14,5 @@ from tools.shared import *
 
 emmaken = path_from_root('tools', 'emmaken.py')
 os.environ['EMMAKEN_CXX'] = '1'
-exit(os.execvp('python', ['python', emmaken] + sys.argv[1:]))
+exit(subprocess.call(['python', emmaken] + sys.argv[1:]))
 

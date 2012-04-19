@@ -7,7 +7,7 @@
       return null;
     }
   }, function(arg) {
-    print("TO DEVICE: " + arg);
+    Module.print("TO DEVICE: " + arg);
   });
   FS.createDevice('/', 'broken-device', function() {
     throw new Error('Broken device input.');

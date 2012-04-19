@@ -1,31 +1,44 @@
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <html>
   <head>
     <title>Emscripten-Generated Code</title>
   <body>
     <center>
-      <canvas id='canvas' width='256' height='256'></canvas>
+      <canvas id='canvas' width='256' height='256' style="border: 1px solid black"
+              oncontextmenu="event.preventDefault()"></canvas>
+      <hr>
+      <textarea id="output" style="font-family: monospace; width: 80%" rows="8"></textarea>
+      <hr>
+      <div id='status'>Downloading...</div>
     </center>
     <hr>
-    <div id='output'></div>
-    <hr>
     <script type='text/javascript'>
-      /**
-       * TODO: Encapsulate this part in a reusable token such as
-       *       EMSCRIPTEN_ENVIRONMENT so that we can share code
-       *       between the default shell and custom ones.
-       */
       // connect to canvas
       var Module = {
         print: (function() {
           var element = document.getElementById('output');
+          element.value = ''; // clear browser cache
           return function(text) {
-            element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+            // These replacements are necessary if you render to raw HTML
+            //text = text.replace(/&/g, "&amp;");
+            //text = text.replace(/</g, "&lt;");
+            //text = text.replace(/>/g, "&gt;");
+            //text = text.replace('\n', '<br>', 'g');
+            element.value += text + "\n";
+            element.scrollTop = 99999; // focus on bottom
           };
         })(),
-        canvas: document.getElementById('canvas')
+        canvas: document.getElementById('canvas'),
+        setStatus: function(text) {
+          document.getElementById('status').innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Downloading: ' + (this.totalDependencies-left) + '/' + this.totalDependencies : 'All downloads complete.');
+        }
       };
 
-      // The compiled code
       {{{ SCRIPT_CODE }}}
     </script>
   </body>

@@ -42,8 +42,26 @@ bindings, and to prevent DFE from removing the code we care about. The
 JS bindings do more serious work, creating class structures in JS and
 linking them to the C bindings.
 
-NOTE: ammo.js is currently the biggest consumer of this code. For some
-      more docs you can see that project's README
+Notes:
+ * ammo.js is currently the biggest consumer of this code. For some
+    more docs you can see that project's README,
+
+      https://github.com/kripken/ammo.js
+
+    Another project using these bindings is box2d.js,
+
+      https://github.com/kripken/box2d.js
+
+ * Functions implemented inline in classes may not be actually
+    compiled into bitcode, unless they are actually used. That may
+    confuse the bindings generator.
+
+ * C strings (char *) passed to functions are treated in a special way.
+    If you pass in a pointer, it is assumed to be a pointer and left as
+    is. Otherwise it must be a JS string, and we convert it to a C
+    string on the *stack*. The C string will live for the current
+    function call. If you need it for longer, you need to create a copy
+    in your C++ code.
 '''
 
 import os, sys, glob, re
@@ -507,6 +525,12 @@ function customizeVTable(object, replacementPairs) {
   return object;
 }
 Module['customizeVTable'] = customizeVTable;
+
+// Converts a value into a C-style string.
+function ensureString(value) {
+  if (typeof value == 'number') return value;
+  return allocate(intArrayFromString(value), 'i8', ALLOC_STACK);
+}
 ''')
 
 def generate_wrapping_code(classname):
@@ -645,17 +669,25 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
     #print 'zz types:', map(lambda arg: arg['type'], args)
 
+    has_string_convs = False
+
     # We can assume that NULL is passed for null pointers, so object arguments can always
     # have .ptr done on them
-    def justargs_fixed(args):
-      ret = justargs(args)[:]
-      for i in range(len(args)):
-        arg = args[i]
-        if clean_type(arg['type']) in classes:
-          ret[i] += '.ptr'
-      return ret
+    justargs_fixed = justargs(args)[:]
+    for i in range(len(args)):
+      arg = args[i]
+      clean = clean_type(arg['type'])
+      if clean in classes:
+        justargs_fixed[i] += '.ptr'
+      elif arg['type'].replace(' ', '').endswith('char*'):
+        justargs_fixed[i] = 'ensureString(' + justargs_fixed[i] + ')'
+        has_string_convs = True
 
     calls = ''
+    if has_string_convs:
+      calls += 'var stack = Runtime.stackSave();\n';
+      calls += 'try {\n'
+
     #print 'js loopin', params, '|', len(args)#, args
     for args in params:
       i = len(args)
@@ -667,12 +699,12 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       if constructor:
         if not dupe:
           calls += '''this.ptr = _%s_p%d(%s);
-''' % (fullname, i, ', '.join(justargs_fixed(args)[:i]))
+''' % (fullname, i, ', '.join(justargs_fixed[:i]))
         else:
           calls += '''this.ptr = _%s_p%d(%s);
-''' % (fullname, i, ', '.join(justargs_fixed(args)[:i]))
+''' % (fullname, i, ', '.join(justargs_fixed[:i]))
       else:
-        return_value = '''_%s_p%d(%s)''' % (fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs_fixed(args)[:i]))
+        return_value = '''_%s_p%d(%s)''' % (fullname, i, ', '.join((['this.ptr'] if need_self else []) + justargs_fixed[:i]))
         print 'zz making return', classname, method['name'], method['returns'], return_value
         if method['returns'] in classes:
           # Generate a wrapper
@@ -681,6 +713,9 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
           # Normal return
           calls += ('return ' if ret != 'void' else '') + return_value + ';'
         calls += '\n'
+
+    if has_string_convs:
+      calls += '} finally { Runtime.stackRestore(stack) }\n';
 
     print 'Maekin:', classname, generating_classname, mname, mname_suffixed
     if constructor:

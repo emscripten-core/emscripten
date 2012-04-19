@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -6,15 +6,22 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-# Config file
+# Emscripten configuration is done through the EM_CONFIG environment variable.
+# If the string value contained in this environment variable contains newline
+# separated definitions, then these definitions will be used to configure
+# Emscripten.  Otherwise, the string is understood to be a path to a settings
+# file that contains the required definitions.
 
 EM_CONFIG = os.environ.get('EM_CONFIG')
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
-CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-if not os.path.exists(CONFIG_FILE):
-  shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
-  print >> sys.stderr, '''
+if '\n' in EM_CONFIG:
+  CONFIG_FILE = None
+else:
+  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  if not os.path.exists(CONFIG_FILE):
+    shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
+    print >> sys.stderr, '''
 ==============================================================================
 Welcome to Emscripten!
 
@@ -28,9 +35,9 @@ make sure LLVM_ROOT and NODE_JS are correct.
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
 ''' % (EM_CONFIG, CONFIG_FILE)
-  sys.exit(0)
+    sys.exit(0)
 try:
-  exec(open(CONFIG_FILE, 'r').read())
+  exec(open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG)
 except Exception, e:
   print >> sys.stderr, 'Error in evaluating %s (at %s): %s' % (EM_CONFIG, CONFIG_FILE, str(e))
   sys.exit(1)
@@ -43,6 +50,8 @@ except Exception, e:
 def check_sanity(force=False):
   try:
     if not force:
+      if not CONFIG_FILE:
+        return # config stored directly in EM_CONFIG => skip sanity checks
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
       try:
@@ -115,18 +124,30 @@ EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-# Temp dir
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
 try:
-  EMSCRIPTEN_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
-  if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
-    try:
-      os.makedirs(EMSCRIPTEN_TEMP_DIR)
-    except Exception, e:
-      print >> sys.stderr, 'Warning: Could not create temp dir (%s): %s' % (EMSCRIPTEN_TEMP_DIR, str(e))
+  TEMP_DIR
 except:
+  print >> sys.stderr, 'TEMP_DIR not defined in ~/.emscripten, using /tmp'
+  TEMP_DIR = '/tmp'
+
+CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
+EMSCRIPTEN_TEMP_DIR = None
+
+if os.environ.get('EMCC_DEBUG'):
+  try:
+    EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
+    if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
+      os.makedirs(EMSCRIPTEN_TEMP_DIR)
+  except:
+    print >> sys.stderr, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
+
+if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_')
-  print >> sys.stderr, 'Warning: TEMP_DIR not defined in %s, using %s' % (EM_CONFIG, EMSCRIPTEN_TEMP_DIR)
+  def clean_temp():
+    try_delete(EMSCRIPTEN_TEMP_DIR)
+  atexit.register(clean_temp)
 
 # EM_CONFIG stuff
 
@@ -138,6 +159,11 @@ except:
   except Exception, e:
     print 'ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG
     raise
+
+try:
+  CLOSURE_COMPILER
+except:
+  CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
 # Additional compiler options
 
@@ -176,8 +202,13 @@ else:
 #if 'strict' not in str(SPIDERMONKEY_ENGINE): # XXX temporarily disable strict mode until we sort out some stuff
 #  SPIDERMONKEY_ENGINE += ['-e', "options('strict')"] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
 
-if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
-  SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+try:
+  if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+except NameError:
+  pass
+
+WINDOWS = sys.platform.startswith ('win')
 
 # Temp file utilities
 
@@ -185,7 +216,10 @@ def try_delete(filename):
   try:
     os.unlink(filename)
   except:
-    pass
+    try:
+      shutil.rmtree(filename)
+    except:
+      pass
 
 class TempFiles:
   def __init__(self):
@@ -216,12 +250,14 @@ class TempFiles:
 def check_engine(engine):
   # TODO: we call this several times, perhaps cache the results?
   try:
+    if not CONFIG_FILE:
+      return True # config stored directly in EM_CONFIG => skip engine check
     return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
   except Exception, e:
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
 
-def timeout_run(proc, timeout, note):
+def timeout_run(proc, timeout, note='unnamed process'):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
@@ -231,11 +267,14 @@ def timeout_run(proc, timeout, note):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
+EM_DEBUG = os.environ.get('EM_DEBUG')
+
 def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
   if engine is None: engine = JS_ENGINES[0]
   if type(engine) is not list: engine = [engine]
-  return timeout_run(Popen(engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args,
-                     stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
+  command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
+  if EM_DEBUG: print >> sys.stderr, 'run_js: ' + ' '.join(command)
+  return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
@@ -267,7 +306,7 @@ def read_pgo_data(filename):
   '''
   signs_lines = []
   overflows_lines = []
-  
+
   for line in open(filename, 'r'):
     try:
       if line.rstrip() == '': continue
@@ -334,6 +373,7 @@ class Settings:
           Settings.CORRECT_OVERFLOWS = 0
           Settings.CORRECT_ROUNDINGS = 0
           Settings.DOUBLE_MODE = 0
+          Settings.PRECISE_I64_MATH = 0
           if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
     global Settings
@@ -352,11 +392,11 @@ class Building:
   @staticmethod
   def get_building_env():
     env = os.environ.copy()
-    env['CC'] = EMCC
-    env['CXX'] = EMXX
-    env['AR'] = EMAR
-    env['RANLIB'] = EMRANLIB
-    env['LIBTOOL'] = EMLIBTOOL
+    env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
+    env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
+    env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
+    env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
+    env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
@@ -368,14 +408,14 @@ class Building:
 
   @staticmethod
   def handle_CMake_toolchain(args, env):
-    CMakeToolchain = '''# the name of the target operating system
+    CMakeToolchain = ('''# the name of the target operating system
 SET(CMAKE_SYSTEM_NAME Linux)
 
 # which C and C++ compiler to use
-SET(CMAKE_C_COMPILER   $EMSCRIPTEN_ROOT/emcc)
-SET(CMAKE_CXX_COMPILER $EMSCRIPTEN_ROOT/em++)
-SET(CMAKE_AR           $EMSCRIPTEN_ROOT/emar)
-SET(CMAKE_RANLIB       $EMSCRIPTEN_ROOT/emranlib)
+SET(CMAKE_C_COMPILER   %(winfix)s$EMSCRIPTEN_ROOT/emcc)
+SET(CMAKE_CXX_COMPILER %(winfix)s$EMSCRIPTEN_ROOT/em++)
+SET(CMAKE_AR           %(winfix)s$EMSCRIPTEN_ROOT/emar)
+SET(CMAKE_RANLIB       %(winfix)s$EMSCRIPTEN_ROOT/emranlib)
 SET(CMAKE_C_FLAGS      $CFLAGS)
 SET(CMAKE_CXX_FLAGS    $CXXFLAGS)
 
@@ -388,8 +428,8 @@ SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
-      .replace('$EMSCRIPTEN_ROOT', path_from_root('')) \
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS else 'python ' }) \
+      .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
       .replace('$CFLAGS', env['CFLAGS']) \
       .replace('$CXXFLAGS', env['CFLAGS'])
     toolchainFile = mkstemp(suffix='.txt')[1]
@@ -404,17 +444,17 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
     if 'cmake' in args[0]:
       args = Building.handle_CMake_toolchain(args, env)
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
+    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
     del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None):
     if env is None:
       env = Building.get_building_env()
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()[0]
+    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['./configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers).
@@ -462,7 +502,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
   @staticmethod
   def link(files, target):
     try_delete(target)
-    output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target], stdout=PIPE).communicate()[0]
+    stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme') + ('.exe' if WINDOWS else '')
+    output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target, '-o', stub], stdout=PIPE).communicate()[0]
+    try_delete(stub) # clean up stub left by the linker
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
@@ -550,13 +592,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen([EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen([EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 
@@ -729,13 +771,19 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
 
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-    cc_output = Popen(['java', '-jar', CLOSURE_COMPILER,
-                       '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-                       '--formatting', 'PRETTY_PRINT',
-                       #'--variable_map_output_file', filename + '.vars',
-                       '--js', filename, '--js_output_file', filename + '.cc.js'], stdout=PIPE, stderr=STDOUT).communicate()[0]
-    if 'ERROR' in cc_output or not os.path.exists(filename + '.cc.js'):
-      raise Exception('closure compiler error: ' + cc_output)
+    args = ['java',
+            '-Xmx1024m',
+            '-jar', CLOSURE_COMPILER,
+            '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+            '--formatting', 'PRETTY_PRINT',
+            #'--variable_map_output_file', filename + '.vars',
+            '--js', filename, '--js_output_file', filename + '.cc.js']
+    if os.environ.get('EMCC_CLOSURE_ARGS'):
+      args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+    process = Popen(args, stdout=PIPE, stderr=STDOUT)
+    cc_output = process.communicate()[0]
+    if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
+      raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
 
     return filename + '.cc.js'
 
@@ -784,12 +832,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
     elif ord(b[0]) == 222 and ord(b[1]) == 192 and ord(b[2]) == 23 and ord(b[3]) == 11:
       b = open(filename, 'r').read(24)
       return b[20] == 'B' and b[21] == 'C'
-    
+
     return False
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
-  dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  dirname = os.environ.get('EM_CACHE')
+  if not dirname:
+    dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
   @staticmethod
   def erase():

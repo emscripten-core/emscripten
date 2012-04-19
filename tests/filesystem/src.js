@@ -10,18 +10,18 @@ FS.createLink('/abc', 'rootLink', '/', true, true);
 FS.createLink('/abc', 'relativeLink', '../def', true, true);
 
 function explore(path) {
-  print(path);
+  Module.print(path);
   var ret = FS.analyzePath(path);
-  print('  isRoot: ' + ret.isRoot);
-  print('  exists: ' + ret.exists);
-  print('  error: ' + ret.error);
-  print('  path: ' + ret.path);
-  print('  name: ' + ret.name);
-  print('  object.contents: ' + (ret.object && JSON.stringify(Object.keys(ret.object.contents || {}))));
-  print('  parentExists: ' + ret.parentExists);
-  print('  parentPath: ' + ret.parentPath);
-  print('  parentObject.contents: ' + (ret.parentObject && JSON.stringify(Object.keys(ret.parentObject.contents))));
-  print('');
+  Module.print('  isRoot: ' + ret.isRoot);
+  Module.print('  exists: ' + ret.exists);
+  Module.print('  error: ' + ret.error);
+  Module.print('  path: ' + ret.path);
+  Module.print('  name: ' + ret.name);
+  Module.print('  object.contents: ' + (ret.object && JSON.stringify(Object.keys(ret.object.contents || {}))));
+  Module.print('  parentExists: ' + ret.parentExists);
+  Module.print('  parentPath: ' + ret.parentPath);
+  Module.print('  parentObject.contents: ' + (ret.parentObject && JSON.stringify(Object.keys(ret.parentObject.contents))));
+  Module.print('');
 }
 
 FS.currentPath = '/abc';

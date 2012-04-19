@@ -35,7 +35,7 @@ def path_from_root(*pathelems):
 temp_files = shared.TempFiles()
 
 
-def emscript(infile, settings, outfile):
+def emscript(infile, settings, outfile, libraries=[]):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -49,7 +49,7 @@ def emscript(infile, settings, outfile):
   s.write(settings)
   s.close()
   compiler = path_from_root('src', 'compiler.js')
-  shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, infile], stdout=outfile, cwd=path_from_root('src'))
+  shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, infile] + libraries, stdout=outfile, cwd=path_from_root('src'))
   outfile.close()
 
 
@@ -123,8 +123,11 @@ def main(args):
     #print >> sys.stderr, 'new defs:', str(defines).replace(',', ',\n  '), '\n\n'
     settings.setdefault('C_DEFINES', {}).update(defines)
 
+  # libraries
+  libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
+
   # Compile the assembly to Javascript.
-  emscript(args.infile, json.dumps(settings), args.outfile)
+  emscript(args.infile, json.dumps(settings), args.outfile, libraries)
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
@@ -136,6 +139,10 @@ if __name__ == '__main__':
                     default=[],
                     action='append',
                     help='System headers (comma separated) whose #defines should be exposed to the compiled code.')
+  parser.add_option('-L', '--libraries',
+                    default=[],
+                    action='append',
+                    help='Library files (comma separated) to use in addition to those in emscripten src/library_*.')
   parser.add_option('-o', '--outfile',
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')

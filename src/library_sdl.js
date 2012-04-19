@@ -75,50 +75,146 @@
 //
 //  * SDL_Quit does nothing.
 
-mergeInto(LibraryManager.library, {
-  $SDL__deps: ['$Browser'],
+var LibrarySDL = {
+  $SDL__deps: ['$FS', '$Browser'],
   $SDL: {
     defaults: {
       width: 320,
       height: 200,
-      copyScreenOnLock: false
+      copyOnLock: true
     },
+
+    version: null,
 
     surfaces: {},
     events: [],
+    audios: [null],
+    fonts: [null],
 
-    keyCodes: {
-      38:  273, // up arrow
-      40:  274, // down arrow
-      37:  276, // left arrow
-      39:  275, // right arrow
+    keyboardState: null,
+    startTime: null,
+    mouseX: 0,
+    mouseY: 0,
+
+    DOMEventToSDLEvent: {
+      'keydown': 0x300,
+      'keyup': 0x301,
+      'mousedown': 0x401,
+      'mouseup': 0x402,
+      'mousemove': 0x400
+    },
+
+    keyCodes: { // DOM code ==> SDL code
+      38:  1106, // up arrow
+      40:  1105, // down arrow
+      37:  1104, // left arrow
+      39:  1103, // right arrow
+
+      33: 1099, // pagedup
+      34: 1102, // pagedown
+
       17:  305, // control (right, or left)
       18:  308, // alt
       109: 45, // minus
       16:  304 // shift
     },
 
+    scanCodes: { // SDL keycode ==> SDL scancode
+      97: 4, // A
+      98: 5,
+      99: 6,
+      100: 7,
+      101: 8,
+      102: 9,
+      103: 10,
+      104: 11,
+      105: 12,
+      106: 13,
+      107: 14,
+      108: 15,
+      109: 16,
+      110: 17,
+      111: 18,
+      112: 19,
+      113: 20,
+      114: 21,
+      115: 22,
+      116: 23,
+      117: 24,
+      118: 25,
+      119: 26,
+      120: 27,
+      121: 28,
+      122: 29, // Z
+      48: 30, // 0
+      49: 31,
+      50: 32,
+      51: 33,
+      52: 34,
+      53: 35,
+      54: 36,
+      55: 37,
+      56: 38,
+      57: 39, // 9
+      13: 40, // return
+      9: 43, // tab
+      32: 44, // space
+      92: 49, // backslash
+      47: 56, // slash
+      1106: 82, // up arrow
+      1105: 81, // down arrow
+      1104: 80, // left arrow
+      1103: 79 // right arrow
+    },
+
     structs: {
       Rect: Runtime.generateStructInfo([
-        ['i16', 'x'], ['i16', 'y'], ['i16', 'w'], ['i16', 'h'], 
+        ['i32', 'x'], ['i32', 'y'], ['i32', 'w'], ['i32', 'h'], 
       ]),
       PixelFormat: Runtime.generateStructInfo([
+        ['i32', 'format'],
         ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
+        ['i8', 'padding1'], ['i8', 'padding2'],
+        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'],
         ['i8', 'Rloss'], ['i8', 'Gloss'], ['i8', 'Bloss'], ['i8', 'Aloss'],
-        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift'],
-        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'] // Docs say i8, ./include/SDL_video.h says i32...
+        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift']
       ]),
       KeyboardEvent: Runtime.generateStructInfo([
-        ['i8', 'type'],
-        ['i8', 'which'],
+        ['i32', 'type'],
+        ['i32', 'windowID'],
         ['i8', 'state'],
+        ['i8', 'repeat'],
+        ['i8', 'padding2'],
+        ['i8', 'padding3'],
         ['i32', 'keysym']
       ]),
       keysym: Runtime.generateStructInfo([
-        ['i8', 'scancode'],
+        ['i32', 'scancode'],
         ['i32', 'sym'],
-        ['i32', 'mod'],
-        ['i16', 'unicode']
+        ['i16', 'mod'],
+        ['i32', 'unicode']
+      ]),
+      MouseMotionEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'windowID'],
+        ['i8', 'state'],
+        ['i8', 'padding1'],
+        ['i8', 'padding2'],
+        ['i8', 'padding3'],
+        ['i32', 'x'],
+        ['i32', 'y'],
+        ['i32', 'xrel'],
+        ['i32', 'yrel']
+      ]),
+      MouseButtonEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'windowID'],
+        ['i8', 'button'],
+        ['i8', 'state'],
+        ['i8', 'padding1'],
+        ['i8', 'padding2'],
+        ['i32', 'x'],
+        ['i32', 'y']
       ]),
       AudioSpec: Runtime.generateStructInfo([
         ['i32', 'freq'],
@@ -129,12 +225,45 @@ mergeInto(LibraryManager.library, {
         ['i32', 'size'],
         ['void*', 'callback'],
         ['void*', 'userdata']
+      ]),
+      version: Runtime.generateStructInfo([
+        ['i8', 'major'],
+        ['i8', 'minor'],
+        ['i8', 'patch']
       ])
     },
 
-    makeSurface: function(width, height, flags) {
+    loadRect: function(rect) {
+      return {
+        x: {{{ makeGetValue('rect + SDL.structs.Rect.x', '0', 'i32') }}},
+        y: {{{ makeGetValue('rect + SDL.structs.Rect.y', '0', 'i32') }}},
+        w: {{{ makeGetValue('rect + SDL.structs.Rect.w', '0', 'i32') }}},
+        h: {{{ makeGetValue('rect + SDL.structs.Rect.h', '0', 'i32') }}}
+      };
+    },
+
+    // Load SDL color into a CSS-style color specification
+    loadColorToCSSRGB: function(color) {
+      var rgba = {{{ makeGetValue('color', '0', 'i32') }}};
+      return 'rgb(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ')';
+    },
+    loadColorToCSSRGBA: function(color) {
+      var rgba = {{{ makeGetValue('color', '0', 'i32') }}};
+      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (((rgba >> 24)&255)/255) + ')';
+    },
+
+    translateColorToCSSRGBA: function(rgba) {
+      return 'rgba(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba&255)/255) + ')';
+    },
+
+    translateRGBAToCSSRGBA: function(r, g, b, a) {
+      return 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
+    },
+
+    makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
+      flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
-      var buffer = _malloc(width*height*4);
+      var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
       var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
@@ -142,70 +271,69 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width*4', 'i16') }}}       // SDL_Surface.pitch, assuming RGBA for now,
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width*4', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA for now,
                                                                                // since that is what ImageData gives us in browsers
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
 
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.format', '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i8') }}} // TODO
 
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', '0xff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', '0xff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', '0xff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', '0xff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', 'rmask || 0x000000ff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', 'gmask || 0x0000ff00', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', 'bmask || 0x00ff0000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', 'amask || 0xff000000', 'i32') }}}
 
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
-
+      var canvas;
+      if (!usePageCanvas) {
+        canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+      } else {
+        canvas = Module['canvas'];
+      }
+      var ctx = Browser.createContext(canvas, useWebGL);
+      if (usePageCanvas) {
+        Module.ctx = ctx;
+      }
       SDL.surfaces[surf] = {
         width: width,
         height: height,
-        canvas: Module['canvas'],
-        ctx: SDL.createContext(useWebGL),
+        canvas: canvas,
+        ctx: ctx,
         surf: surf,
         buffer: buffer,
         pixelFormat: pixelFormat,
-        alpha: 255
+        alpha: 255,
+        flags: flags,
+        locked: 0,
+        usePageCanvas: usePageCanvas,
+        source: source
       };
       return surf;
-    },
-
-    createContext: function(useWebGL) {
-#if !USE_TYPED_ARRAYS
-      if (useWebGL) {
-	Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
-        return null;
-      }
-#endif
-      try {
-        var ctx = Module.canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
-        if (!ctx) throw 'Could not create canvas :(';
-        if (useWebGL) {
-          // Set the background of the WebGL canvas to black, because SDL gives us a
-          // window which has a black background by default.
-          Module.canvas.style.backgroundColor = "black";
-        }
-        return Module.ctx = ctx;
-      } catch (e) {
-        Module.print('(canvas not available)');
-        return null;
-      }
     },
 
     freeSurface: function(surf) {
       _free(SDL.surfaces[surf].buffer);
       _free(SDL.surfaces[surf].pixelFormat);
       _free(surf);
-      delete SDL.surfaces[surf];
+      SDL.surfaces[surf] = null;
     },
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'keydown': case 'keyup':
-          //print('zz receive Event: ' + event.keyCode);
+        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mousemove':
           SDL.events.push(event);
+          if ((event.keyCode >= 37 && event.keyCode <= 40) || // arrow keys
+              event.keyCode == 32 || // space
+              event.keyCode == 33 || event.keyCode == 34) { // page up/down
+            event.preventDefault();
+          }
+          break;
       }
       //event.preventDefault();
       return false;
@@ -214,45 +342,113 @@ mergeInto(LibraryManager.library, {
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
-        _memcpy(ptr, event, SDL.structs.KeyboardEvent.__size__);
+        _memcpy(ptr, event, SDL.structs.KeyboardEvent.__size__); // XXX
         return;
       }
 
       switch(event.type) {
-        case 'keydown': case 'keyup':
+        case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
+          //Module.print('Received key event: ' + event.keyCode);
           var key = SDL.keyCodes[event.keyCode] || event.keyCode;
           if (key >= 65 && key <= 90) {
             key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
           }
-          //print('zz passing over Event: ' + key);
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'down ? 2 : 3', 'i8') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i8') }}}
+          var scan = SDL.scanCodes[key] || key;
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
+          //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
 
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'key', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
 
+          {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
+
           break;
-        case 'keypress': break // TODO
+        }
+        case 'mousedown': case 'mouseup': case 'mousemove': {
+          var x = event.pageX - Module['canvas'].offsetLeft;
+          var y = event.pageY - Module['canvas'].offsetTop;
+          if (event.type != 'mousemove') {
+            var down = event.type === 'mousedown';
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'x', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'y', 'i32') }}};
+          } else {
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.button', 'event.button', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'x - SDL.mouseX', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'y - SDL.mouseY', 'i32') }}};
+          }
+          SDL.mouseX = x;
+          SDL.mouseY = y;
+          break;
+        }
       default:
         throw 'Unhandled SDL event: ' + event.type;
+      }
+    },
+
+    estimateTextWidth: function(fontData, text) {
+      var h = fontData.size;
+      var fontString = h + 'px sans-serif';
+      // TODO: use temp context, not screen's, to avoid affecting its performance?
+      var tempCtx = SDL.surfaces[SDL.screen].ctx;
+      tempCtx.save();
+      tempCtx.font = fontString;
+      var ret = tempCtx.measureText(text).width | 0;
+      tempCtx.restore();
+      return ret;
+    },
+
+    // Debugging
+
+    debugSurface: function(surfData) {
+      console.log('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
+      var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+      var data = image.data;
+      var num = Math.min(surfData.width, surfData.height);
+      for (var i = 0; i < num; i++) {
+        console.log('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
     }
   },
 
-  SDL_Init__deps: ['$SDL'],
+  SDL_Linked_Version: function() {
+    if (SDL.version === null) {
+      SDL.version = _malloc(SDL.structs.version.__size__);
+      {{{ makeSetValue('SDL.version + SDL.structs.version.major', '0', '1', 'i8') }}}
+      {{{ makeSetValue('SDL.version + SDL.structs.version.minor', '0', '3', 'i8') }}}
+      {{{ makeSetValue('SDL.version + SDL.structs.version.patch', '0', '0', 'i8') }}}
+    }
+    return SDL.version;
+  },
+
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
-    ['keydown', 'keyup', 'keypress'].forEach(function(event) {
+    ['keydown', 'keyup'].forEach(function(event) {
       addEventListener(event, SDL.receiveEvent, true);
     });
+    SDL.keyboardState = _malloc(0x10000);
+    _memset(SDL.keyboardState, 0, 0x10000);
     return 0; // success
   },
 
-  SDL_WasInit: function() { return 0 }, // TODO
+  SDL_WasInit__deps: ['SDL_Init'],
+  SDL_WasInit: function() {
+    if (SDL.startTime === null) {
+      _SDL_Init();
+    }
+    return 1;
+  },
 
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
@@ -269,46 +465,66 @@ mergeInto(LibraryManager.library, {
     return -1; // -1 == all modes are ok. TODO
   },
 
-  SDL_GL_SetAttribute: function(attr, value) {
-    // TODO
-  },
-
   SDL_SetVideoMode: function(width, height, depth, flags) {
+    ['mousedown', 'mouseup', 'mousemove'].forEach(function(event) {
+      Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
+    });
     Module['canvas'].width = width;
     Module['canvas'].height = height;
-    return SDL.screen = SDL.makeSurface(width, height, flags);
+    return SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
   },
 
   SDL_Quit: function() {
-    print('SDL_Quit called (and ignored)');
+    for (var i = 0; i < SDL.audios; i++) {
+      SDL.audios[i].pause();
+    }
+    Module.print('SDL_Quit called (and ignored)');
   },
 
+  // Copy data from the canvas backing to a C++-accessible storage
   SDL_LockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
+
+    surfData.locked++;
+    if (surfData.locked > 1) return 0;
+
     if (!surfData.image) {
       surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-      var data = surfData.image.data;
-      var num = data.length;
-      for (var i = 0; i < num/4; i++) {
-        data[i*4+3] = 255; // opacity, as canvases blend alpha
+      if (surf == SDL.screen) {
+        var data = surfData.image.data;
+        var num = data.length;
+        for (var i = 0; i < num/4; i++) {
+          data[i*4+3] = 255; // opacity, as canvases blend alpha
+        }
       }
     }
-    if (SDL.defaults.copyScreenOnLock) {
+    if (SDL.defaults.copyOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
+#if USE_TYPED_ARRAYS == 2
+      HEAPU8.set(surfData.image.data, surfData.buffer);
+#else
       var num2 = surfData.image.data.length;
       for (var i = 0; i < num2; i++) {
         {{{ makeSetValue('surfData.buffer', 'i', 'surfData.image.data[i]', 'i8') }}};
       }
+#endif
     }
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
     // TODO: Use macros like in library.js
     {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
+
+    return 0;
   },
 
+  // Copy data from the C++-accessible storage to the canvas backing
   SDL_UnlockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
+
+    surfData.locked--;
+    if (surfData.locked > 0) return;
+
     // Copy pixel data to image
     var num = surfData.image.data.length;
     if (!surfData.colors) {
@@ -318,12 +534,14 @@ mergeInto(LibraryManager.library, {
       assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
       var src = buffer >> 2;
       var dst = 0;
+      var isScreen = surf == SDL.screen;
       while (dst < num) {
+        // TODO: access underlying data buffer and write in 32-bit chunks or more
         var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-        data[dst]   = val & 0xff;
+        data[dst  ] = val & 0xff;
         data[dst+1] = (val >> 8) & 0xff;
         data[dst+2] = (val >> 16) & 0xff;
-        data[dst+3] = 0xff;
+        data[dst+3] = isScreen ? 0xff : ((val >> 24) & 0xff);
         src++;
         dst += 4;
       }
@@ -361,7 +579,8 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Flip: function(surf) {
-    // We actually do this in Unlock...
+    // We actually do this in Unlock, since the screen surface has as its canvas
+    // backing the page canvas element
   },
 
   SDL_UpdateRect: function(surf, x, y, w, h) {
@@ -369,7 +588,7 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_Delay: function(delay) {
-    print('SDL_Delay called! - potential infinite loop');
+    throw 'SDL_Delay called! Potential infinite loop, quitting. ' + new Error().stack;
   },
 
   SDL_WM_SetCaption: function(title, icon) {
@@ -381,6 +600,16 @@ mergeInto(LibraryManager.library, {
     // TODO
   },
 
+  SDL_GetKeyboardState: function() {
+    return SDL.keyboardState;
+  },
+
+  SDL_GetMouseState: function(x, y) {
+    if (x) {{{ makeSetValue('x', '0', 'SDL.mouseX', 'i32') }}};
+    if (y) {{{ makeSetValue('y', '0', 'SDL.mouseY', 'i32') }}};
+    return 0;
+  },
+
   SDL_ShowCursor: function(toggle) {
     // TODO
   },
@@ -390,54 +619,64 @@ mergeInto(LibraryManager.library, {
   },
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
-    return SDL.makeSurface(width, height, flags);
+    return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
+  },
+
+  SDL_DisplayFormatAlpha: function(surf) {
+    var oldData = SDL.surfaces[surf];
+    var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
+    var newData = SDL.surfaces[ret];
+    //newData.ctx.putImageData(oldData.ctx.getImageData(0, 0, oldData.width, oldData.height), 0, 0);
+    newData.ctx.drawImage(oldData.canvas, 0, 0);
+    return ret;
   },
 
   SDL_FreeSurface: function(surf) {
-    SDL.freeSurface(surf);
+    if (surf) SDL.freeSurface(surf);
   },
 
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
-    assert(!srcrect && !dstrect); // TODO
     var srcData = SDL.surfaces[src];
     var dstData = SDL.surfaces[dst];
-    assert(srcData.width === dstData.width && srcData.height === dstData.height);
-    {{{ makeCopyValues('dstData.buffer', 'srcData.buffer', 'srcData.width*srcData.height*4', 'i8', null, 1) }}}
+    var sr, dr;
+    if (srcrect) {
+      sr = SDL.loadRect(srcrect);
+    } else {
+      sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
+    }
+    if (dstrect) {
+      dr = SDL.loadRect(dstrect);
+    } else {
+      dr = { x: 0, y: 0, w: -1, h: -1 };
+    }
+    dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, sr.w, sr.h);
+    if (dst != SDL.screen) {
+      // XXX As in IMG_Load, for compatibility we write out |pixels|
+      console.log('WARNING: copying canvas data to memory for compatibility');
+      _SDL_LockSurface(dst);
+      dstData.locked--; // The surface is not actually locked in this hack
+    }
     return 0;
   },
 
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
-    var c1 = color & 0xff;
-    var c2 = (color >> 8) & 0xff;
-    var c3 = (color >> 16) & 0xff;
-    var rx = {{{ makeGetValue('rect + SDL.structs.Rect.x', '0', 'i16') }}};
-    var ry = {{{ makeGetValue('rect + SDL.structs.Rect.y', '0', 'i16') }}};
-    var rw = {{{ makeGetValue('rect + SDL.structs.Rect.w', '0', 'i16') }}};
-    var rh = {{{ makeGetValue('rect + SDL.structs.Rect.h', '0', 'i16') }}};
-    var data = surfData.image.data;
-    var width = surfData.width;
-    for (var y = ry; y < ry + rh; y++) {
-      var base = y*width*4;
-      for (var x = rx; x < rx + rw; x++) {
-        var start = x*4 + base;
-        data[start]   = c1;
-        data[start+1] = c2;
-        data[start+2] = c3;
-      }
-    }
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    var r = SDL.loadRect(rect);
+    surfData.ctx.save();
+    surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
+    surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
+    surfData.ctx.restore();
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return _SDL_Blit(src, srcrect, dst, dstrect);
+    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
   },
 
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
   },
-
-  SDL_GL_SwapBuffers: function() {},
 
   SDL_GetTicks: function() {
     return Math.floor(Date.now() - SDL.startTime);
@@ -453,9 +692,29 @@ mergeInto(LibraryManager.library, {
 
   SDL_PushEvent: function(ptr) {
     SDL.events.push(ptr); // XXX Should we copy it? Not clear from API
-
     return 0;
   },
+
+  SDL_PeepEvents: function(events, numEvents, action, from, to) {
+    switch(action) {
+      case 2: { // SDL_GETEVENT
+        assert(numEvents == 1);
+        var got = 0;
+        while (SDL.events.length > 0 && numEvents > 0) {
+          var type = SDL.DOMEventToSDLEvent[SDL.events[0].type];
+          if (type < from || type > to) break;
+          SDL.makeCEvent(SDL.events.shift(), events);
+          got++;
+          numEvents--;
+          // events += sizeof(..)
+        }
+        return got;
+      }
+      default: throw 'SDL_PeepEvents does not yet support that action: ' + action;
+    }
+  },
+
+  SDL_PumpEvents: function(){},
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
     var surfData = SDL.surfaces[surf];
@@ -476,18 +735,26 @@ mergeInto(LibraryManager.library, {
 
   // SDL_Image
 
+  IMG_Load__deps: ['SDL_LockSurface'],
   IMG_Load: function(filename) {
-    filename = Pointer_stringify(filename);
-    var format = filename.split('.').slice(-1)[0];
-    var data = readBinary(filename);
-    var raw = Browser.decodeImage(data, format);
-    var surf = SDL.makeSurface(raw.width, raw.height, 0);
-    // XXX Extremely inefficient!
-    for (var i = 0; i < raw.width*raw.height*4; i++) {
-      {{{ makeSetValue('SDL.surfaces[surf].buffer', 'i', 'raw.data[i]', 'i8') }}}
+    filename = FS.standardizePath(Pointer_stringify(filename));
+    var raw = preloadedImages[filename];
+    if (!raw) {
+      Module.printErr('Cannot find preloaded image ' + filename);
+      return 0;
     }
+    var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
+    var surfData = SDL.surfaces[surf];
+    surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
+    // XXX SDL does not specify that loaded images must have available pixel data, in fact
+    //     there are cases where you just want to blit them, so you just need the hardware
+    //     accelerated version. However, code everywhere seems to assume that the pixels
+    //     are in fact available, so we retrieve it here. This does add overhead though.
+    _SDL_LockSurface(surf);
+    surfData.locked--; // The surface is not actually locked in this hack
     return surf;
   },
+  SDL_LoadBMP: 'IMG_Load',
 
   // SDL_Audio
 
@@ -560,14 +827,224 @@ mergeInto(LibraryManager.library, {
   SDL_CondWait: function() {},
   SDL_DestroyCond: function() {},
 
-//SDL_CreateYUVOverlay
-//SDL_CreateThread, SDL_WaitThread etc
-
   // SDL Mixer
 
-  Mix_OpenAudio: function() { return -1 },
+  Mix_OpenAudio: function(frequency, format, channels, chunksize) {
+    return 0;
+  },
+
+  Mix_AllocateChannels: function(num) {
+    return num; // fake it
+  },
+
+  Mix_ChannelFinished: function(func) {
+    SDL.channelFinished = func; // TODO
+  },
+
+  Mix_HookMusicFinished: function(func) {
+    SDL.hookMusicFinished = func;
+  },
+
+  Mix_VolumeMusic: function(func) {
+    return 0; // TODO
+  },
+
+  Mix_LoadWAV_RW: function(filename, freesrc) {
+    filename = FS.standardizePath(Pointer_stringify(filename));
+    var raw = preloadedAudios[filename];
+    if (!raw) {
+      Module.printErr('Cannot find preloaded audio ' + filename);
+      return 0;
+    }
+    var id = SDL.audios.length;
+    SDL.audios.push({
+      source: filename,
+      audio: raw
+    });
+    return id;
+  },
+
+  Mix_FreeChunk: function(id) {
+    SDL.audios[id].audio.pause();
+    SDL.audios[id] = null;
+  },
+
+  Mix_PlayChannel: function(channel, id, loops) {
+    // TODO: handle loops
+    var audio = SDL.audios[id].audio;
+    if (!audio) return 0;
+    if (audio.currentTime) audio.src = audio.src; // This hack prevents lags on replaying // TODO: parallel sounds through //cloneNode(true).play()
+    audio.play();
+    return 1; // XXX should return channel
+  },
+  Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
+
+  Mix_LoadMUS: 'Mix_LoadWAV_RW',
+  Mix_FreeMusic: 'Mix_FreeChunk',
+
+  Mix_PlayMusic: function(id, loops) {
+    loops = Math.max(loops, 1);
+    var audio = SDL.audios[id].audio;
+    if (!audio) return 0;
+    audio.loop = loops != 1; // TODO: handle N loops for finite N
+    audio.play();
+    SDL.music = audio;
+    return 0;
+  },
+
+  Mix_PauseMusic: function(id) {
+    var audio = SDL.audios[id];
+    if (!audio) return 0;
+    audio.audio.pause();
+    return 0;
+  },
+
+  Mix_ResumeMusic: function(id) {
+    var audio = SDL.audios[id];
+    if (!audio) return 0;
+    audio.audio.play();
+    return 0;
+  },
+
+  Mix_HaltMusic: function() {
+    var audio = SDL.music;
+    if (!audio) return 0;
+    audio.src = audio.src; // rewind
+    audio.pause();
+    SDL.music = null;
+    if (SDL.hookMusicFinished) {
+      FUNCTION_TABLE[SDL.hookMusicFinished]();
+    }
+    return 0;
+  },
+
+  Mix_FadeInMusicPos: 'Mix_PlayMusic', // XXX ignore fading in effect
+
+  Mix_FadeOutMusic: 'Mix_HaltMusic', // XXX ignore fading out effect
+
+  // SDL TTF
+
+  TTF_Init: function() { return 0 },
+
+  TTF_OpenFont: function(filename, size) {
+    filename = FS.standardizePath(Pointer_stringify(filename));
+    var id = SDL.fonts.length;
+    SDL.fonts.push({
+      name: filename, // but we don't actually do anything with it..
+      size: size
+    });
+    return id;
+  },
+
+  TTF_RenderText_Solid: function(font, text, color) {
+    // XXX the font and color are ignored
+    text = Pointer_stringify(text) || ' '; // if given an empty string, still return a valid surface
+    var fontData = SDL.fonts[font];
+    var w = SDL.estimateTextWidth(fontData, text);
+    var h = fontData.size;
+    var color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
+    var fontString = h + 'px sans-serif';
+    var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
+    var surfData = SDL.surfaces[surf];
+    surfData.ctx.save();
+    surfData.ctx.fillStyle = color;
+    surfData.ctx.font = fontString;
+    surfData.ctx.textBaseline = 'top';
+    surfData.ctx.fillText(text, 0, 0);
+    surfData.ctx.restore();
+    return surf;
+  },
+  TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
+  TTF_RenderText_Shaded: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
+
+  TTF_SizeText: function(font, text, w, h) {
+    var fontData = SDL.fonts[font];
+    if (w) {
+      {{{ makeSetValue('w', '0', 'SDL.estimateTextWidth(fontData, Pointer_stringify(text))', 'i32') }}};
+    }
+    if (h) {
+      {{{ makeSetValue('h', '0', 'fontData.size', 'i32') }}};
+    }
+    return 0;
+  },
+
+  TTF_FontAscent: function(font) {
+    var fontData = SDL.fonts[font];
+    return Math.floor(fontData.size*0.98); // XXX
+  },
+
+  TTF_FontDescent: function(font) {
+    var fontData = SDL.fonts[font];
+    return Math.floor(fontData.size*0.02); // XXX
+  },
+
+  // SDL gfx
+
+  boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
+    surfData.ctx.save();
+    surfData.ctx.fillStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
+    surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
+    surfData.ctx.restore();
+  },
+
+  rectangleRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    surfData.ctx.save();
+    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
+    surfData.ctx.strokeRect(x1, y1, x2-x1, y2-y1);
+    surfData.ctx.restore();
+  },
+
+  lineRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    surfData.ctx.save();
+    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
+    surfData.ctx.beginPath();
+    surfData.ctx.moveTo(x1, y1);
+    surfData.ctx.lineTo(x2, y2);
+    surfData.ctx.stroke();
+    surfData.ctx.restore();
+  },
+
+  pixelRGBA__deps: ['boxRGBA'],
+  pixelRGBA: function(surf, x1, y1, r, g, b, a) {
+    // This cannot be fast, to render many pixels this way!
+    _boxRGBA(surf, x1, y1, x1, y1, r, g, b, a);
+  },
+
+  // GL
+
+  SDL_GL_SetAttribute: function(attr, value) {
+    console.log('TODO: SDL_GL_SetAttribute');
+  },
+
+  SDL_GL_GetProcAddress__deps: ['$GLEmulation'],
+  SDL_GL_GetProcAddress: function(name_) {
+    return GLEmulation.getProcAddress(Pointer_stringify(name_));
+  },
+
+  SDL_GL_SwapBuffers: function() {},
+
+  // Misc
 
   SDL_InitSubSystem: function(flags) { return 0 },
+
+  SDL_NumJoysticks: function() { return 0 },
+
+  SDL_RWFromFile: function(filename, mode) {
+    return filename; // XXX We just forward the filename
+  },
+
+  SDL_EnableUNICODE: function(on) {
+    var ret = SDL.unicode || 0;
+    SDL.unicode = on;
+    return ret;
+  },
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
@@ -577,6 +1054,9 @@ mergeInto(LibraryManager.library, {
   SDL_RemoveTimer: function(id) {
     window.clearTimeout(id);
     return true;
-  },
-});
+  }
+};
+
+autoAddDeps(LibrarySDL, '$SDL');
+mergeInto(LibraryManager.library, LibrarySDL);
 

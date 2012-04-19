@@ -123,7 +123,7 @@ function isPointerType(type) {
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (/^\[\d+\ x\ (.*)\]/.test(type)) return true; // [15 x ?] blocks. Like structs
-  if (/<?{ [^}]* }>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
+  if (/<?{ ?[^}]* ?}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return type[0] == '%';
 }
@@ -412,7 +412,7 @@ function cleanSegment(segment) {
   return segment;
 }
 
-var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
+var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'frem', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 
 var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast');
 mergeInto(PARSABLE_LLVM_FUNCTIONS, MATHOPS);
@@ -499,7 +499,7 @@ function IEEEUnHex(stringy) {
   while (stringy.length < 16) stringy = '0' + stringy;
   if (FAKE_X86_FP80 && stringy.length > 16) {
     stringy = stringy.substr(stringy.length-16, 16);
-    warnOnce('.ll contains floating-point values with more than 64 bits. Faking values for them. If they are used, this will almost certainly fail!');
+    warnOnce('.ll contains floating-point values with more than 64 bits. Faking values for them. If they are used, this will almost certainly break horribly!');
   }
   assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific'); // |long double| can cause x86_fp80 which causes this
   var top = eval('0x' + stringy[0]);
@@ -559,12 +559,12 @@ function splitI64(value) {
     return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
   }
 }
-function mergeI64(value) {
+function mergeI64(value, unsigned) {
   assert(USE_TYPED_ARRAYS == 2);
   if (legalizedI64s) {
-    return RuntimeGenerator.makeBigInt(value + '$0', value + '$1');
+    return RuntimeGenerator.makeBigInt(value + '$0', value + '$1', unsigned);
   } else {
-    return makeInlineCalculation(RuntimeGenerator.makeBigInt('VALUE[0]', 'VALUE[1]'), value, 'tempI64');
+    return makeInlineCalculation(RuntimeGenerator.makeBigInt('VALUE[0]', 'VALUE[1]', unsigned), value, 'tempI64');
   }
 }
 
@@ -683,16 +683,14 @@ function parseArbitraryInt(str, bits) {
   return ret;
 }
 
-function parseI64Constant(str) {
-  assert(USE_TYPED_ARRAYS == 2);
-
+function parseI64Constant(str, legalized) {
   if (!isNumber(str)) {
     // This is a variable. Copy it, so we do not modify the original
     return legalizedI64s ? str : makeCopyI64(str);
   }
 
   var parsed = parseArbitraryInt(str, 64);
-  if (legalizedI64s) return parsed;
+  if (legalizedI64s || legalized) return parsed;
   return '[' + parsed[0] + ',' + parsed[1] + ']';
 }
 
@@ -988,7 +986,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
       value = range(typeData.fields.length).map(function(i) { return value + '.f' + i });
     }
     for (var i = 0; i < typeData.fields.length; i++) {
-      ret.push(makeSetValue(ptr, pos + typeData.flatIndexes[i], value[i], typeData.fields[i], noNeedFirst));
+      ret.push(makeSetValue(ptr, getFastValue(pos, '+', typeData.flatIndexes[i]), value[i], typeData.fields[i], noNeedFirst));
     }
     return ret.join('; ');
   }
@@ -1145,6 +1143,13 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   }
 }
 
+function makeHEAPView(which, start, end) {
+  // Assumes USE_TYPED_ARRAYS == 2
+  var size = parseInt(which.replace('U', '').replace('F', ''))/8;
+  var mod = size == 1 ? '' : ('>>' + log2(size));
+  return 'HEAP' + which + '.subarray(' + start + mod + ',' + end + mod + ')';
+}
+
 var PLUS_MUL = set('+', '*');
 var MUL_DIV = set('*', '/');
 var PLUS_MINUS = set('+', '-');
@@ -1288,17 +1293,11 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     }
   } else { // USE_TYPED_ARRAYS == 2)
     if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
-    var warn64 = function() {
-      warnOnce('.ll contains i64 or double values. These 64-bit values are dangerous in USE_TYPED_ARRAYS == 2. ' +
-               'We store i64 as i32, and double as float. This can cause serious problems!');
-    };
     switch(type) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
-      case 'i64': warn64();
-      case 'i32': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-      case 'float': return ['HEAPF32']; break;
-      case 'double': warn64(); return ['HEAPF32']; break;
+      case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
+      case 'float': case 'double': return ['HEAPF32']; break;
       default: {
         throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
       }
@@ -1317,8 +1316,7 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
     var newType = item.type;
     if (isPossiblyFunctionType(oldType) && isPossiblyFunctionType(newType) &&
         countNormalArgs(oldType) != countNormalArgs(newType)) {
-      warn('Casting a function pointer type to another with a different number of arguments. See more info in the source (grep for this text). ' +
-           oldType + ' ==> ' + newType);
+      warnOnce('Casting a function pointer type to another with a different number of arguments. See more info in the source');
       // This may be dangerous as clang generates different code for C and C++ calling conventions. The only problem
       // case appears to be passing a structure by value, C will have (field1, field2) as function args, and the
       // function will internally create a structure with that data, while C++ will have (struct* byVal) and it
@@ -1412,7 +1410,7 @@ function handleOverflow(text, bits) {
   // TODO: handle overflows of i64s
   if (!bits) return text;
   var correct = correctOverflows();
-  warn(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits + ' at line ' + Framework.currItem.lineNum);
+  warnOnce(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
   if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !PGO) + (
     PGO ? ', "' + Debugging.getIdentifier() + '"' : ''
   ) + ')';
@@ -1537,7 +1535,8 @@ function makeRounding(value, bits, signed, floatConversion) {
   // TODO: handle roundings of i64s
   assert(bits);
   // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
-  if (bits <= 32 && signed) return '((' + value + ')|0)'; // This is fast and even correct, for all cases
+  if (bits <= 32 && signed) return '((' + value + ')&-1)'; // This is fast and even correct, for all cases. Note that it is the same
+                                                           // as |0, but &-1 hints to the js optimizer that this is a rounding correction
   // Do Math.floor, which is reasonably fast, if we either don't care, or if we can be sure
   // the value is non-negative
   if (!correctRoundings() || (!signed && !floatConversion)) return 'Math.floor(' + value + ')';
@@ -1561,6 +1560,8 @@ function isSignedOp(op, variant) {
 }
 
 var legalizedI64s = USE_TYPED_ARRAYS == 2; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
+var preciseI64MathUsed = false; // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
+                                // needed (+,-,*,/,% - we do not need it for bitops)
 
 function processMathop(item) {
   var op = item.op;
@@ -1617,6 +1618,11 @@ function processMathop(item) {
         return result;
       }
     }
+    function i64PreciseOp(type, lastArg) {
+      preciseI64MathUsed = true;
+      return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
+                     (lastArg ? ',' + lastArg : '') + '),i64Math.result[0])', 'i64Math.result[1]']);
+    }
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -1672,22 +1678,22 @@ function processMathop(item) {
       case 'fptoui': case 'fptosi': return finish(splitI64(idents[0]));
       case 'icmp': {
         switch (variant) {
-          case 'uge': return high1 + ' >= ' + high2 + ' && (' + high1 + ' > '  + high2 + ' || ' +
-                                                                low1 + ' >= ' + low2 + ')';
+          case 'uge': return '(' + high1 + '>>>0) >= (' + high2 + '>>>0) && ((' + high1 + '>>>0) >  ('  + high2 + '>>>0) || ' +
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
           case 'sge': return '(' + high1 + '|0) >= (' + high2 + '|0) && ((' + high1 + '|0) >  ('  + high2 + '|0) || ' +
-                                                                        '(' + low1 + '|0) >= ('  + low2 + '|0))';
-          case 'ule': return high1 + ' <= ' + high2 + ' && (' + high1 + ' < '  + high2 + ' || ' +
-                                                                low1 + ' <= ' + low2 + ')';
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
+          case 'ule': return '(' + high1 + '>>>0) <= (' + high2 + '>>>0) && ((' + high1 + '>>>0) <  (' + high2 + '>>>0) || ' +
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
           case 'sle': return '(' + high1 + '|0) <= (' + high2 + '|0) && ((' + high1 + '|0) <  (' + high2 + '|0) || ' +
-                                                                        '(' + low1 + '|0) <= (' + low2 + '|0))';
-          case 'ugt': return high1 + ' > ' + high2 + ' || (' + high1 + ' == ' + high2 + ' && ' +
-                                                               low1 + ' > '  + low2 + ')';
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
+          case 'ugt': return '(' + high1 + '>>>0) > (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
           case 'sgt': return '(' + high1 + '|0) > (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '|0) >  (' + low2 + '|0))';
-          case 'ult': return high1 + ' < ' + high2 + ' || (' + high1 + ' == ' + high2 + ' && ' +
-                                                               low1 + ' < '  + low2 + ')';
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
+          case 'ult': return '(' + high1 + '>>>0) < (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
           case 'slt': return '(' + high1 + '|0) < (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '|0) <  (' + low2 + '|0))';
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
           case 'ne':  return low1 + ' != ' + low2 + ' || ' + high1 + ' != ' + high2 + '';
           case 'eq':  return low1 + ' == ' + low2 + ' && ' + high1 + ' == ' + high2 + '';
           default: throw 'Unknown icmp variant: ' + variant;
@@ -1702,11 +1708,46 @@ function processMathop(item) {
       case 'ptrtoint': return makeI64(idents[0], 0);
       case 'inttoptr': return '(' + idents[0] + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
       // Dangerous, rounded operations. TODO: Fully emulate
-      case 'add': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1])));
-      case 'sub': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1])));
-      case 'sdiv': case 'udiv': warnI64_1(); return finish(splitI64(makeRounding(mergeI64(idents[0]) + '/' + mergeI64(idents[1]), bits, op[0] === 's')));
-      case 'mul': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '*' + mergeI64(idents[1])));
-      case 'urem': case 'srem': warnI64_1(); return finish(splitI64(mergeI64(idents[0]) + '%' + mergeI64(idents[1])));
+      case 'add': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('add');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1])));
+        }
+      }
+      case 'sub': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('subtract');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1])));
+        }
+      }
+      case 'sdiv': case 'udiv': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('divide', op[0] === 'u');
+        } else {
+          warnI64_1();
+          return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's')));
+        }
+      }
+      case 'mul': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('multiply');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u')));
+        }
+      }
+      case 'urem': case 'srem': {
+        if (PRECISE_I64_MATH) {
+          return i64PreciseOp('modulo', op[0] === 'u');
+        } else {
+          warnI64_1();
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u')));
+        }
+      }
       case 'bitcast': {
         // Pointers are not 64-bit, so there is really only one possible type of bitcast here, int to float or vice versa
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
@@ -1782,6 +1823,7 @@ function processMathop(item) {
     case 'fsub': return getFastValue(idents[0], '-', idents[1], item.type);
     case 'fdiv': return getFastValue(idents[0], '/', idents[1], item.type);
     case 'fmul': return getFastValue(idents[0], '*', idents[1], item.type);
+    case 'frem': return getFastValue(idents[0], '%', idents[1], item.type);
     case 'uitofp': case 'sitofp': return idents[0];
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 

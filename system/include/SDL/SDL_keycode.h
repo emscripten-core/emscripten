@@ -41,7 +41,9 @@
  */
 typedef Sint32 SDL_Keycode;
 
-#define SDLK_SCANCODE_MASK (1<<30)
+// XXX Emscripten: We use a mask of 10, which is closer to old SDL, and gives
+//     a better chance of SDL 1.X apps working
+#define SDLK_SCANCODE_MASK (1<<10)
 #define SDL_SCANCODE_TO_KEYCODE(X)	(X | SDLK_SCANCODE_MASK)
 
 enum

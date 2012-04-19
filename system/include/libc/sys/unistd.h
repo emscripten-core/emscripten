@@ -260,9 +260,10 @@ int	_EXFUN(unlinkat, (int, const char *, int));
 
 #include <sys/features.h>
 
-#define STDIN_FILENO    0       /* standard input file descriptor */
-#define STDOUT_FILENO   1       /* standard output file descriptor */
-#define STDERR_FILENO   2       /* standard error file descriptor */
+/* XXX Emscripten: start these at 1, we can use pointers as equals to file descriptors */
+#define STDIN_FILENO    1       /* standard input file descriptor */
+#define STDOUT_FILENO   2       /* standard output file descriptor */
+#define STDERR_FILENO   3       /* standard error file descriptor */
 
 /*
  *  sysconf values per IEEE Std 1003.1, 2008 Edition

@@ -32,38 +32,49 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  initRuntime();
+  if (Module['setStatus']) {
+    Module['setStatus'](''); // clear the status from "Downloading.." etc.
+  }
+
+  if (Module['preRun']) {
+    Module['preRun']();
+  }
 
   var ret = null;
   if (Module['_main']) {
+    preMain();
     ret = Module.callMain(args);
-    exitRuntime();
+    if (!Module['noExitRuntime']) {
+      exitRuntime();
+    }
   }
+
+  if (Module['postRun']) {
+    Module['postRun']();
+  }
+
   return ret;
 }
 Module['run'] = run;
 
 // {{PRE_RUN_ADDITIONS}}
 
-if (Module['preRun']) {
-  Module['preRun']();
-}
+initRuntime();
 
 #if INVOKE_RUN
 #else
-Module['noInitialRun'] = true;
+addRunDependency();
 #endif
+if (Module['noInitialRun']) {
+  addRunDependency();
+}
 
-if (!Module['noInitialRun']) {
+if (runDependencies == 0) {
   var ret = run();
 #if CATCH_EXIT_CODE
-  print('Exit Status: ' + ret);
+  Module.print('Exit Status: ' + ret);
 #endif
 }
 
 // {{POST_RUN_ADDITIONS}}
-
-if (Module['postRun']) {
-  Module['postRun']();
-}
 

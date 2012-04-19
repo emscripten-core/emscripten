@@ -1,0 +1,29 @@
+<html>
+<head>
+  <title>Emscripten Browser Test Harness</title>
+</head>
+<body>
+<h2><b>Running tests...</b></h2>
+<div id="output"></div>
+<script>
+  var counter = 0;
+  function check() {
+    var request = new XMLHttpRequest();
+    request.open('GET', '/check', false);
+    try {
+      request.send(null);
+      if (request.responseText != 'False') {
+        window.open(request.responseText);
+        document.getElementById('output').innerHTML += 'opened test window ' + (counter++) + '..<br>';
+      }
+      setTimeout(check, 333);
+    } catch(e) {
+      document.write('Tests complete. View log in console.');
+      return;
+    }
+  }
+  check();
+</script>
+</body>
+</html>
+

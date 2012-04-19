@@ -24,7 +24,7 @@
 
 #include <machine/_types.h>
 
-#if defined(__rtems__) || defined(__XMK__)
+#if defined(__rtems__) || defined(__XMK__) || defined(EMSCRIPTEN)
 /*
  *  The following section is RTEMS specific and is needed to more
  *  closely match the types defined in the BSD sys/types.h.
@@ -140,14 +140,11 @@ typedef unsigned long vm_size_t;
 
 #define __BIT_TYPES_DEFINED__
 
+// XXX Emscripten: removed unsigned types which are already defined
 typedef signed char int8_t;
-typedef unsigned char u_int8_t;
 typedef short int16_t;
-typedef unsigned short u_int16_t;
 typedef int int32_t;
-typedef unsigned int u_int32_t;
 typedef long long int64_t;
-typedef unsigned long long u_int64_t;
 typedef int32_t register_t;
 #endif /* __MS_types__ */
 

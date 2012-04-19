@@ -14,13 +14,14 @@ int main() {
       *((char*)screen->pixels + i*256*4 + j*4 + 0) = i;
       *((char*)screen->pixels + i*256*4 + j*4 + 1) = j;
       *((char*)screen->pixels + i*256*4 + j*4 + 2) = 255-i;
-      *((char*)screen->pixels + i*256*4 + j*4 + 3) = 255;
+      *((char*)screen->pixels + i*256*4 + j*4 + 3) = (i+j)%255; // actually ignored, since this is to the screen
     }
   }
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
   SDL_Flip(screen); 
 
-  printf("you should see a colored cube.");
+  printf("you should see a smoothly-colored square - no sharp lines but the square borders!\n");
+  printf("and here is some text that should be HTML-friendly: amp: |&| double-quote: |\"| quote: |'| less-than, greater-than, html-like tags: |<cheez></cheez>|\nanother line.\n");
 
   SDL_Quit();
 

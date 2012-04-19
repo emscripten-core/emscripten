@@ -14,7 +14,7 @@ var HEAP_WATCHED = [];
 var HEAP_HISTORY = [];
 function SAFE_HEAP_CLEAR(dest) {
 #if SAFE_HEAP_LOG
-  print('SAFE_HEAP clear: ' + dest);
+  Module.print('SAFE_HEAP clear: ' + dest);
 #endif
   HEAP_HISTORY[dest] = [];
 }
@@ -22,7 +22,7 @@ var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 
 function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
-  //if (dest === A_NUMBER) print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
+  //if (dest === A_NUMBER) Module.print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
 
 #if USE_TYPED_ARRAYS
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
@@ -59,12 +59,12 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 //    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
 //    if (history[0].type !== type) {
     if (history !== type && !ignore) {
-      print('Load-store consistency assumption failure! ' + dest);
-      print('\n');
-      print(JSON.stringify(history));
-      print('\n');
-      print('LOAD: ' + type + ', ' + new Error().stack);
-      print('\n');
+      Module.print('Load-store consistency assumption failure! ' + dest);
+      Module.print('\n');
+      Module.print(JSON.stringify(history));
+      Module.print('\n');
+      Module.print('LOAD: ' + type + ', ' + new Error().stack);
+      Module.print('\n');
       SAFE_HEAP_ERRORS++;
       assert(SAFE_HEAP_ERRORS <= ACCEPTABLE_SAFE_HEAP_ERRORS, 'Load-store consistency assumption failure!');
     }
@@ -73,15 +73,15 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #if SAFE_HEAP_LOG
-  print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
+  Module.print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
 #endif
 
-  if (!ignore && !value && value !== 0 && value !== false && !isNaN(value)) { // false can be the result of a mathop comparator; NaN can be the result of a math function
+  if (!ignore && !value && (value === null || value === undefined)) {
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
   SAFE_HEAP_ACCESS(dest, type, true, ignore);
   if (dest in HEAP_WATCHED) {
-    print((new Error()).stack);
+    Module.print((new Error()).stack);
     throw "Bad store!" + dest;
   }
 
@@ -104,10 +104,10 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 }
 
 function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
-  SAFE_HEAP_ACCESS(dest, type, ignore);
+  SAFE_HEAP_ACCESS(dest, type, false, ignore);
 
 #if SAFE_HEAP_LOG
-    print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
+    Module.print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
 #endif
 
 #if USE_TYPED_ARRAYS == 2
@@ -132,7 +132,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 
 function SAFE_HEAP_COPY_HISTORY(dest, src) {
 #if SAFE_HEAP_LOG
-  print('SAFE_HEAP copy: ' + [dest, src]);
+  Module.print('SAFE_HEAP copy: ' + [dest, src]);
 #endif
   HEAP_HISTORY[dest] = HEAP_HISTORY[src];
   SAFE_HEAP_ACCESS(dest, HEAP_HISTORY[dest] || null, true, false);
@@ -160,7 +160,7 @@ var CorrectionsMonitor = {
       sig = (new Error().stack).toString().split('\n')[2].split(':').slice(-1)[0]; // Spidermonkey-specific FIXME
     sig = type + '|' + sig;
     if (!this.sigs[sig]) {
-      //print('Correction: ' + sig);
+      //Module.print('Correction: ' + sig);
       this.sigs[sig] = [0, 0]; // fail, succeed
     }
     this.sigs[sig][succeed ? 1 : 0]++;
@@ -181,7 +181,7 @@ var CorrectionsMonitor = {
     items.sort(function(x, y) { return y.total - x.total; });
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
+      Module.print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
     }
 #endif
   }
@@ -253,7 +253,7 @@ Module['stopProfiling'] = stopProfiling;
 
 function printProfiling() {
   function dumpData(name_, node, indent) {
-    print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
+    Module.print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
     var children = [];
     for (var child in node.children) {
       children.push(node.children[child]);
@@ -265,57 +265,6 @@ function printProfiling() {
   dumpData('root', PROFILING_ROOT, ' ');
 }
 Module['printProfiling'] = printProfiling;
-
-function printXULProfiling() {
-  function dumpData(name_, node, indent) {
-    var children = [];
-    for (var child in node.children) {
-      children.push(node.children[child]);
-      children[children.length-1].name_ = child;
-    }
-    print('<treeitem' + (children.length > 0 ? ' container="true"' : '') + '>');
-    print('  <treerow>');
-    print('    <treecell label="' + name_ + '"/>');
-    print('    <treecell label="' + node.time + '"/>');
-    print('    <treecell label="' + node.calls + '"/>');
-    print('  </treerow>');
-
-    if (children.length > 0) {
-      print('  <treechildren>');
-      children.sort(function(x, y) { return y.time - x.time });
-      children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
-      print('  </treechildren>');
-    }
-
-    print('</treeitem>');
-  }
-
-  print('<?xml version="1.0"?>');
-  print('<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>  ');
-  print('<?xml-stylesheet href="file://C:/main.css" type="text/css"?>        ');
-  print('<window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">  ');
-  print('<tree id="myTree" flex="1" hidecolumnpicker="false" seltype="single" class="tree"');
-  print('      rows="5">');
-  print('  <treecols id="myTree2-treeCols">');
-  print('    <treecol id="myTree2-treeCol0" primary="true" flex="2" label="Name"');
-  print('             persist="width" ordinal="1"/>');
-  print('    <splitter class="tree-splitter" ordinal="2"/>');
-  print('    <treecol id="myTree2-treeCol1" flex="1" label="Milliseconds"');
-  print('             persist="width" ordinal="3"/>');
-  print('    <treecol id="myTree2-treeCol2" flex="1" label="Calls"');
-  print('             persist="width" ordinal="4"/>');
-  print('  </treecols>');
-  print('  <treechildren>');
-
-  dumpData('root', PROFILING_ROOT, ' ');
-
-  print('  </treechildren>');
-  print('</tree>');
-  print('</window>');
-
-  // This requires    dom.allow_XUL_XBL_for_file
-}
-Module['printXULProfiling'] = printXULProfiling;
 #endif
 
 //========================================
@@ -335,7 +284,7 @@ var tempI64, tempI64b;
 #endif
 
 function abort(text) {
-  print(text + ':\n' + (new Error).stack);
+  Module.print(text + ':\n' + (new Error).stack);
   ABORT = true;
   throw "Assertion: " + text;
 }
@@ -366,17 +315,25 @@ var globalScope = this;
 //         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
 //
 // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
-// @param returnType The return type of the function, one of the JS types 'number' or 'string' (use 'number' for any C pointer).
-// @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType.
+// @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
+//                   'array' for JavaScript arrays and typed arrays).
+// @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType,
+//                   except that 'array' is not possible (there is no way for us to know the length of the array)
 // @param args       An array of the arguments to the function, as native JS values (as in returnType)
 //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
 // @return           The return value, as a native JS value (as in returnType)
 function ccall(ident, returnType, argTypes, args) {
+  var stack = 0;
   function toC(value, type) {
     if (type == 'string') {
-      var ret = STACKTOP;
-      Runtime.stackAlloc(value.length+1);
+      if (!stack) stack = Runtime.stackSave();
+      var ret = Runtime.stackAlloc(value.length+1);
       writeStringToMemory(value, ret);
+      return ret;
+    } else if (type == 'array') {
+      if (!stack) stack = Runtime.stackSave();
+      var ret = Runtime.stackAlloc(value.length);
+      writeArrayToMemory(value, ret);
       return ret;
     }
     return value;
@@ -385,6 +342,7 @@ function ccall(ident, returnType, argTypes, args) {
     if (type == 'string') {
       return Pointer_stringify(value);
     }
+    assert(type != 'array');
     return value;
   }
   try {
@@ -399,7 +357,9 @@ function ccall(ident, returnType, argTypes, args) {
   var cArgs = args ? args.map(function(arg) {
     return toC(arg, argTypes[i++]);
   }) : [];
-  return fromC(func.apply(null, cArgs), returnType);
+  var ret = fromC(func.apply(null, cArgs), returnType);
+  if (stack) Runtime.stackRestore(stack);
+  return ret;
 }
 Module["ccall"] = ccall;
 
@@ -416,6 +376,7 @@ function cwrap(ident, returnType, argTypes) {
     return ccall(ident, returnType, argTypes, Array.prototype.slice.call(arguments));
   }
 }
+Module["cwrap"] = cwrap;
 
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
@@ -594,7 +555,7 @@ var FHEAP;
 #endif
 #endif
 #if USE_TYPED_ARRAYS == 2
-var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32;
+var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
 #endif
 
 var STACK_ROOT, STACKTOP, STACK_MAX;
@@ -603,7 +564,7 @@ var STATICTOP;
 function enlargeMemory() {
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
-  printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
   assert(STATICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
@@ -631,6 +592,7 @@ function enlargeMemory() {
   HEAPU16 = new Uint16Array(buffer);
   HEAPU32 = new Uint32Array(buffer);
   HEAPF32 = new Float32Array(buffer);
+  HEAPF64 = new Float64Array(buffer);
   HEAP8.set(oldHEAP8);
 #endif
 }
@@ -662,6 +624,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
   HEAPU16 = new Uint16Array(buffer);
   HEAPU32 = new Uint32Array(buffer);
   HEAPF32 = new Float32Array(buffer);
+  HEAPF64 = new Float64Array(buffer);
 
   // Endianness check (note: assumes compiler arch was little-endian)
   HEAP32[0] = 255;
@@ -697,6 +660,7 @@ Module['HEAPU8'] = HEAPU8;
 Module['HEAPU16'] = HEAPU16;
 Module['HEAPU32'] = HEAPU32;
 Module['HEAPF32'] = HEAPF32;
+Module['HEAPF64'] = HEAPF64;
 #endif
 
 STACK_ROOT = STACKTOP = Runtime.alignMemory(STATICTOP);
@@ -707,7 +671,7 @@ var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
 var tempDoubleI8  = HEAP8.subarray(tempDoublePtr);
 var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
 var tempDoubleF32 = HEAPF32.subarray(tempDoublePtr >> 2);
-var tempDoubleF64 = new Float64Array(HEAP8.buffer).subarray(tempDoublePtr >> 3);
+var tempDoubleF64 = HEAPF64.subarray(tempDoublePtr >> 3);
 function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
   tempDoubleI8[0] = HEAP8[ptr];
   tempDoubleI8[1] = HEAP8[ptr+1];
@@ -741,12 +705,15 @@ function callRuntimeCallbacks(callbacks) {
 }
 
 var __ATINIT__ = []; // functions called during startup
+var __ATMAIN__ = []; // functions called when main() is to be run
 var __ATEXIT__ = []; // functions called during shutdown
 
 function initRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
-
+function preMain() {
+  callRuntimeCallbacks(__ATMAIN__);
+}
 function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
 
@@ -774,11 +741,14 @@ Module['Array_copy'] = Array_copy;
 #if USE_TYPED_ARRAYS
 // Copies a list of num items on the HEAP into a
 // JavaScript typed array.
-function TypedArray_copy(ptr, num) {
+function TypedArray_copy(ptr, num, offset /*optional*/) {
   // TODO: optimize this!
-  var arr = new Uint8Array(num);
-  for (var i = 0; i < num; ++i) {
-    arr[i] = {{{ makeGetValue('ptr', 'i', 'i8') }}};
+  if (offset === undefined) {
+    offset = 0;
+  }
+  var arr = new Uint8Array(num - offset);
+  for (var i = offset; i < num; ++i) {
+    arr[i - offset] = {{{ makeGetValue('ptr', 'i', 'i8') }}};
   }
   return arr.buffer;
 }
@@ -807,11 +777,14 @@ Module['String_copy'] = String_copy;
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.
 // For LLVM-originating strings, see parser.js:parseLLVMString function
-function intArrayFromString(stringy, dontAddNull) {
+function intArrayFromString(stringy, dontAddNull, length /* optional */) {
   var ret = [];
   var t;
   var i = 0;
-  while (i < stringy.length) {
+  if (length === undefined) {
+    length = stringy.length;
+  }
+  while (i < length) {
     var chr = stringy.charCodeAt(i);
     if (chr > 0xFF) {
 #if ASSERTIONS
@@ -865,10 +838,36 @@ function writeStringToMemory(string, buffer, dontAddNull) {
 }
 Module['writeStringToMemory'] = writeStringToMemory;
 
+function writeArrayToMemory(array, buffer) {
+  for (var i = 0; i < array.length; i++) {
+    {{{ makeSetValue('buffer', 'i', 'array[i]', 'i8') }}};
+  }
+}
+Module['writeArrayToMemory'] = writeArrayToMemory;
+
 var STRING_TABLE = [];
 
 {{{ unSign }}}
 {{{ reSign }}}
+
+// A counter of dependencies for calling run(). If we need to
+// do asynchronous work before running, increment this and
+// decrement it. Incrementing must happen in Module.preRun
+// or PRE_RUN_ADDITIONS (used by emcc to add file preloading).
+var runDependencies = 0;
+function addRunDependency() {
+  runDependencies++;
+  if (Module['monitorRunDependencies']) {
+    Module['monitorRunDependencies'](runDependencies);
+  }
+}
+function removeRunDependency() {
+  runDependencies--;
+  if (Module['monitorRunDependencies']) {
+    Module['monitorRunDependencies'](runDependencies);
+  }
+  if (runDependencies == 0) run();
+}
 
 // === Body ===
 

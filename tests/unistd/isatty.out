@@ -1,10 +1,10 @@
-read: -1
+read: 0
 errno: 25
-write: -1
+write: 0
 errno: 25
-all: -1
+all: 0
 errno: 25
-folder: -1
+folder: 0
 errno: 25
-file: -1
+file: 0
 errno: 25

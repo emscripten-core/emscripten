@@ -26,7 +26,8 @@ LibraryManager.library = {
   _impure_ptr: 0,
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: '__ATINIT__.unshift({ func: function() { FS.ignorePermissions = false; if (!FS.init.initialized) FS.init() } });' +
+  $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
+                '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
                 '__ATEXIT__.push({ func: function() { FS.quit() } });',
   $FS: {
     // The path to the current folder.
@@ -86,6 +87,23 @@ LibraryManager.library = {
         parentPath: null,
         parentObject: null
       };
+#if FS_LOG
+      var inputPath = path;
+      function log() {
+        print('FS.analyzePath("' + inputPath + '", ' +
+                                   dontResolveLastLink + ', ' +
+                                   linksVisited + ') => {' +
+              'isRoot: ' + ret.isRoot + ', ' +
+              'exists: ' + ret.exists + ', ' +
+              'error: ' + ret.error + ', ' +
+              'name: "' + ret.name + '", ' +
+              'path: "' + ret.path + '", ' +
+              'object: ' + ret.object + ', ' +
+              'parentExists: ' + ret.parentExists + ', ' +
+              'parentPath: "' + ret.parentPath + '", ' +
+              'parentObject: ' + ret.parentObject + '}');
+      }
+#endif
       path = FS.absolutePath(path);
       if (path == '/') {
         ret.isRoot = true;
@@ -123,8 +141,12 @@ LibraryManager.library = {
               break;
             }
             var link = FS.absolutePath(current.link, traversed.join('/'));
-            return FS.analyzePath([link].concat(path).join('/'),
-                                  dontResolveLastLink, linksVisited + 1);
+            ret = FS.analyzePath([link].concat(path).join('/'),
+                                 dontResolveLastLink, linksVisited + 1);
+#if FS_LOG
+            log();
+#endif
+            return ret;
           }
           traversed.push(target);
           if (path.length == 0) {
@@ -133,8 +155,10 @@ LibraryManager.library = {
             ret.object = current;
           }
         }
-        return ret;
       }
+#if FS_LOG
+      log();
+#endif
       return ret;
     },
     // Finds the file system object at a given path. If dontResolveLastLink is
@@ -152,6 +176,13 @@ LibraryManager.library = {
     },
     // Creates a file system record: file, link, device or folder.
     createObject: function(parent, name, properties, canRead, canWrite) {
+#if FS_LOG
+      print('FS.createObject("' + parent + '", ' +
+                            '"' + name + '", ' +
+                                JSON.stringify(properties) + ', ' +
+                                canRead + ', ' +
+                                canWrite + ')');
+#endif
       if (!parent) parent = '/';
       if (typeof parent === 'string') parent = FS.findObject(parent);
 
@@ -219,8 +250,8 @@ LibraryManager.library = {
     // Creates a file record from existing data.
     createDataFile: function(parent, name, data, canRead, canWrite) {
       if (typeof data === 'string') {
-        var dataArray = [];
-        for (var i = 0; i < data.length; i++) dataArray.push(data.charCodeAt(i));
+        var dataArray = new Array(data.length);
+        for (var i = 0, len = data.length; i < len; ++i) dataArray[i] = data.charCodeAt(i);
         data = dataArray;
       }
       var properties = {isDevice: false, contents: data};
@@ -255,29 +286,13 @@ LibraryManager.library = {
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
-        // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', obj.url, false);
-
-        // Some hints to the browser that we want binary data.
-        if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
-        if (xhr.overrideMimeType) {
-          xhr.overrideMimeType('text/plain; charset=x-user-defined');
-        }
-
-        xhr.send(null);
-        if (xhr.status != 200 && xhr.status != 0) success = false;
-        if (xhr.response !== undefined) {
-          obj.contents = new Uint8Array(xhr.response || []);
-        } else {
-          obj.contents = intArrayFromString(xhr.responseText || '', true);
-        }
-      } else if (typeof read !== 'undefined') {
+        assert('Cannot do synchronous binary XHRs in modern browsers. Use --embed-file or --preload-file in emcc');
+      } else if (Module['read']) {
         // Command-line.
         try {
           // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
           //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(read(obj.url), true);
+          obj.contents = intArrayFromString(Module['read'](obj.url), true);
         } catch (e) {
           success = false;
         }
@@ -309,34 +324,52 @@ LibraryManager.library = {
 
       FS.ensureRoot();
 
+      // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
+      input = input || Module['stdin'];
+      output = output || Module['stdout'];
+      error = error || Module['stderr'];
+
       // Default handlers.
-      if (!input) input = function() {
-        if (!input.cache || !input.cache.length) {
-          var result;
-          if (typeof window != 'undefined' &&
-              typeof window.prompt == 'function') {
-            // Browser.
-            result = window.prompt('Input: ');
-          } else if (typeof readline == 'function') {
-            // Command line.
-            result = readline();
+      var stdinOverridden = true, stdoutOverridden = true, stderrOverridden = true;
+      if (!input) {
+        stdinOverridden = false;
+        input = function() {
+          if (!input.cache || !input.cache.length) {
+            var result;
+            if (typeof window != 'undefined' &&
+                typeof window.prompt == 'function') {
+              // Browser.
+              result = window.prompt('Input: ');
+            } else if (typeof readline == 'function') {
+              // Command line.
+              result = readline();
+            }
+            if (!result) result = '';
+            input.cache = intArrayFromString(result + '\n', true);
           }
-          if (!result) result = '';
-          input.cache = intArrayFromString(result + '\n', true);
-        }
-        return input.cache.shift();
-      };
-      if (!output) output = function(val) {
+          return input.cache.shift();
+        };
+      }
+      function simpleOutput(val) {
         if (val === null || val === '\n'.charCodeAt(0)) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
         } else {
           output.buffer.push(String.fromCharCode(val));
         }
-      };
-      if (!output.printer) output.printer = print;
+      }
+      if (!output) {
+        stdoutOverridden = false;
+        output = simpleOutput;
+      }
+      if (!output.printer) output.printer = Module['print'];
       if (!output.buffer) output.buffer = [];
-      if (!error) error = output;
+      if (!error) {
+        stderrOverridden = false;
+        error = simpleOutput;
+      }
+      if (!error.printer) error.printer = Module['print'];
+      if (!error.buffer) error.buffer = [];
 
       // Create the temporary folder.
       FS.createFolder('/', 'tmp', true, true);
@@ -356,6 +389,7 @@ LibraryManager.library = {
         isRead: true,
         isWrite: false,
         isAppend: false,
+        isTerminal: !stdinOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -367,6 +401,7 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
+        isTerminal: !stdoutOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -378,6 +413,7 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
+        isTerminal: !stderrOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -400,9 +436,24 @@ LibraryManager.library = {
 
     quit: function() {
       if (!FS.init.initialized) return;
-      // Flush any partially-printed lines in stdout and stderr
-      if (FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output('\n'.charCodeAt(0));
-      if (FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output('\n'.charCodeAt(0));
+      // Flush any partially-printed lines in stdout and stderr. Careful, they may have been closed
+      if (FS.streams[2] && FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output('\n'.charCodeAt(0));
+      if (FS.streams[3] && FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output('\n'.charCodeAt(0));
+    },
+
+    // Standardizes a path. Useful for making comparisons of pathnames work in a consistent manner.
+    // For example, ./file and file are really the same, so this function will remove ./
+    standardizePath: function(path) {
+      if (path.substr(0, 2) == './') path = path.substr(2);
+      return path;
+    },
+
+    deleteFile: function(path) {
+      var path = FS.analyzePath(path);
+      if (!path.parentExists || !path.exists) {
+        throw 'Invalid path ' + path;
+      }
+      delete path.parentObject.contents[path.name];
     }
   },
 
@@ -1386,9 +1437,13 @@ LibraryManager.library = {
   isatty: function(fildes) {
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
-    // For now it's easier to pretend we have no terminals.
-    ___setErrNo(FS.streams[fildes] ? ERRNO_CODES.ENOTTY : ERRNO_CODES.EBADF);
-    return -1;
+    if (!FS.streams[fildes]) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return 0;
+    }
+    if (FS.streams[fildes].isTerminal) return 1;
+    ___setErrNo(ERRNO_CODES.ENOTTY);
+    return 0;
   },
   lchown__deps: ['chown'],
   lchown: function(path, owner, group) {
@@ -2239,7 +2294,7 @@ LibraryManager.library = {
                 (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
                                   next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
-                (type === 's') &&
+                (type === 's' && (next != ' '.charCodeAt(0) && next != '\t'.charCodeAt(0) && next != '\n'.charCodeAt(0))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
@@ -2433,6 +2488,10 @@ LibraryManager.library = {
           var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
+#if PRECISE_I64_MATH == 1
+          var origArg = currArg;
+#endif
+          var argText;
 #if USE_TYPED_ARRAYS == 2
           // Flatten i64-1 [low, high] into a (slightly rounded) double
           if (argSize == 8) {
@@ -2446,11 +2505,16 @@ LibraryManager.library = {
           }
           // Format the number.
           var currAbsArg = Math.abs(currArg);
-          var argText;
           var prefix = '';
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
+#if PRECISE_I64_MATH == 1
+            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1]); else
+#endif
             argText = reSign(currArg, 8 * argSize, 1).toString(10);
           } else if (next == 'u'.charCodeAt(0)) {
+#if PRECISE_I64_MATH == 1
+            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
+#endif
             argText = unSign(currArg, 8 * argSize, 1).toString(10);
             currArg = Math.abs(currArg);
           } else if (next == 'o'.charCodeAt(0)) {
@@ -2711,7 +2775,9 @@ LibraryManager.library = {
     var flush = function(filedes) {
       // Right now we write all data directly, except for output devices.
       if (filedes in FS.streams && FS.streams[filedes].object.output) {
-        FS.streams[filedes].object.output(null);
+        if (!FS.streams[filedes].isTerminal) { // don't flush terminals, it would cause a \n to also appear
+          FS.streams[filedes].object.output(null);
+        }
       }
     };
     try {
@@ -3237,8 +3303,9 @@ LibraryManager.library = {
     }
     var info = FS.streams[stream];
     if (!info) return -1;
-    return allocate(info.object.contents.slice(offset, offset+num),
-                    'i8', ALLOC_NORMAL);
+    var contents = info.object.contents;
+    contents = Array.prototype.slice.call(contents, offset, offset+num);
+    return allocate(contents, 'i8', ALLOC_NORMAL);
   },
   __01mmap64_: 'mmap',
 
@@ -3300,9 +3367,9 @@ LibraryManager.library = {
   },
   __cxa_atexit: 'atexit',
 
-  abort: function(code) {
+  abort: function() {
     ABORT = true;
-    throw 'ABORT: ' + code + ', at ' + (new Error().stack);
+    throw 'abort() at ' + (new Error().stack);
   },
 
   bsearch: function(key, base, num, size, compar) {
@@ -3553,7 +3620,7 @@ LibraryManager.library = {
       ENV['USER'] = 'root';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
-      ENV['HOME'] = '/';
+      ENV['HOME'] = '/home/emscripten';
       ENV['LANG'] = 'en_US.UTF-8';
       ENV['_'] = './this.program';
       // Allocate memory.
@@ -4191,11 +4258,13 @@ LibraryManager.library = {
   isdigit: function(chr) {
     return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
   },
+  isdigit_l: 'isdigit', // no locale support yet
   isxdigit: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
            (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
   },
+  isxdigit_l: 'isxdigit', // no locale support yet
   isalnum: function(chr) {
     return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
            (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
@@ -4394,7 +4463,7 @@ LibraryManager.library = {
       ___cxa_throw.initialized = true;
     }
 #if EXCEPTION_DEBUG
-    print('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
+    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
 #endif
     {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
     {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}}
@@ -4518,12 +4587,12 @@ LibraryManager.library = {
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
       if (___cxa_does_inherit(typeArray[i], throwntype, thrown))
-        return { 'f0':thrown, 'f1':typeArray[i]};
+        return { f0:thrown, f1:typeArray[i] };
     }
     // Shouldn't happen unless we have bogus data in typeArray
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
-    return {'f0':thrown,'f1':throwntype};
+    return { f0:thrown, f1 :throwntype };
   },
 
   // Recursively walks up the base types of 'possibilityType'
@@ -4586,16 +4655,20 @@ LibraryManager.library = {
   _ZTIPv: [0],
 
   llvm_uadd_with_overflow_i32: function(x, y) {
+    x = x>>>0;
+    y = y>>>0;
     return {
-      f0: x+y,
-      f1: 0 // We never overflow... for now
+      f0: (x+y)>>>0,
+      f1: x+y > 4294967295
     };
   },
 
   llvm_umul_with_overflow_i32: function(x, y) {
+    x = x>>>0;
+    y = y>>>0;
     return {
-      f0: x*y,
-      f1: 0 // We never overflow... for now
+      f0: (x*y)>>>0,
+      f1: x*y > 4294967295
     };
   },
 
@@ -4948,7 +5021,7 @@ LibraryManager.library = {
       var lib_module = eval(lib_data)(FUNCTION_TABLE.length);
     } catch (e) {
 #if ASSERTIONS
-      print('Error in loading dynamic library: ' + e);
+      Module.printErr('Error in loading dynamic library: ' + e);
 #endif
       DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
       return 0;
@@ -5183,7 +5256,7 @@ LibraryManager.library = {
     var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
     {{{ makeSetValue('tmPtr', 'offsets.tm_isdst', 'dst', 'i32') }}}
 
-    var timezone = date.toString().match(/\(([A-Z]+)\)/)[1];
+    var timezone = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | date.toString().match(/\(([A-Z]+)\)/)[1];
     if (!(timezone in ___tm_timezones)) {
       ___tm_timezones[timezone] = allocate(intArrayFromString(timezone), 'i8', ALLOC_NORMAL);
     }
@@ -5245,8 +5318,8 @@ LibraryManager.library = {
     var summer = new Date(2000, 6, 1);
     {{{ makeSetValue('__daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
 
-    var winterName = winter.toString().match(/\(([A-Z]+)\)/)[1];
-    var summerName = summer.toString().match(/\(([A-Z]+)\)/)[1];
+    var winterName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | winter.toString().match(/\(([A-Z]+)\)/)[1];
+    var summerName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
     __tzname = _malloc(2 * {{{ Runtime.QUANTUM_SIZE }}}); // glibc does not need the double __
@@ -5266,6 +5339,7 @@ LibraryManager.library = {
     // TODO: Implement.
     return 0;
   },
+  strftime_l: 'strftime', // no locale support yet
 
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
@@ -5273,6 +5347,7 @@ LibraryManager.library = {
     // TODO: Implement.
     return 0;
   },
+  strptime_l: 'strptime', // no locale support yet
 
   getdate: function(string) {
     // struct tm *getdate(const char *string);
@@ -5985,12 +6060,12 @@ LibraryManager.library = {
     invalid: 0,
     dump: function() {
       if (Profiling.invalid) {
-        print('Invalid # of calls to Profiling begin and end!');
+        Module.printErr('Invalid # of calls to Profiling begin and end!');
         return;
       }
-      print('Profiling data:')
+      Module.printErr('Profiling data:')
       for (var i = 0; i < Profiling.max_; i++) {
-        print('Block ' + i + ': ' + Profiling.times[i]);
+        Module.printErr('Block ' + i + ': ' + Profiling.times[i]);
       }
     }
   },
@@ -6009,4 +6084,13 @@ LibraryManager.library = {
          + 'Profiling.invalid--;'
   }
 };
+
+function autoAddDeps(object, name) {
+  name = [name];
+  for (var item in object) {
+    if (item.substr(-6) != '__deps' && !object[item + '__deps']) {
+      object[item + '__deps'] = name;
+    }
+  }
+}
 

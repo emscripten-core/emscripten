@@ -46,16 +46,27 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#include <Glut/glut.h>
+#else
 #include <GL/gl.h>
 #include <GL/glut.h>
-
-#ifndef HAVE_BUILTIN_SINCOS
-#include "sincos.h"
 #endif
 
 #define STRIPS_PER_TOOTH 7
 #define VERTICES_PER_TOOTH 34
 #define GEAR_VERTEX_STRIDE 6
+
+#ifndef HAVE_BUILTIN_SINCOS
+#define sincos _sincos
+static void
+sincos (double a, double *s, double *c)
+{
+  *s = sin (a);
+  *c = cos (a);
+}
+#endif
 
 /**
  * Struct describing the vertices in triangle strip
@@ -715,7 +726,7 @@ main(int argc, char *argv[])
    glutCreateWindow("es2gears");
 
    /* Set up glut callback functions */
-   gears_idle();
+   glutIdleFunc (gears_idle);
    glutReshapeFunc(gears_reshape);
    glutDisplayFunc(gears_draw);
    glutSpecialFunc(gears_special);

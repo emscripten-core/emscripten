@@ -8,7 +8,8 @@ try {
 } catch(e) {}
 
 
-// The environment setup code appears here, in shell.js, in js_optimizer.js and in tests/hello_world.js because it can't be shared. Keep them in sync!
+// The environment setup code appears here, in js_optimizer.js and in tests/hello_world.js because it can't be shared. Keep them in sync!
+// It also appears, in modified form, in shell.js.
 // *** Environment setup code ***
 var arguments_ = [];
 
@@ -28,11 +29,14 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   var nodeFS = require('fs');
+  var nodePath = require('path');
 
   read = function(filename) {
+    filename = nodePath['normalize'](filename);
     var ret = nodeFS['readFileSync'](filename).toString();
-    if (!ret && filename[0] != '/') {
-      filename = __dirname.split('/').slice(0, -1).join('/') + '/src/' + filename;
+    // The path is absolute if the normalized version is the same as the resolved.
+    if (!ret && filename != nodePath['resolve'](filename)) {
+      filename = path.join(__dirname, '..', 'src', filename);
       ret = nodeFS['readFileSync'](filename).toString();
     }
     return ret;
@@ -50,9 +54,9 @@ if (ENVIRONMENT_IS_NODE) {
     this['read'] = function(f) { snarf(f) };
   }
 
-  if (!this['arguments']) {
+  if (typeof scriptArgs != 'undefined') {
     arguments_ = scriptArgs;
-  } else {
+  } else if (typeof arguments != 'undefined') {
     arguments_ = arguments;
   }
 
@@ -110,6 +114,7 @@ load('settings.js');
 
 var settings_file = arguments_[0];
 var ll_file = arguments_[1];
+additionalLibraries = Array.prototype.slice.call(arguments_, 2);
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
@@ -117,6 +122,7 @@ if (settings_file) {
     eval(setting + ' = ' + JSON.stringify(settings[setting]));
   }
 }
+
 
 if (CORRECT_SIGNS >= 2) {
   CORRECT_SIGNS_LINES = set(CORRECT_SIGNS_LINES); // for fast checking

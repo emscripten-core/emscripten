@@ -7,7 +7,7 @@ emar - ar helper script
 This script acts as a frontend replacement for ar. See emcc.
 '''
 
-import os, sys
+import os, subprocess, sys
 from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -18,5 +18,5 @@ if DEBUG:
   print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
 
 if len(newargs) > 2:
-  os.execvp(shared.LLVM_AR, newargs)
+  subprocess.call(newargs)
 

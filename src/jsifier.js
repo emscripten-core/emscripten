@@ -166,23 +166,27 @@ function JSify(data, functionsOnly, givenFunctions) {
         ret[index++] = 0;
       }
       // Add current value(s)
-      var currValue = flatten(values[i]);
+      var currValue = values[i];
       if (USE_TYPED_ARRAYS == 2 && typeData.fields[i] == 'i64') {
         // 'flatten' out the 64-bit value into two 32-bit halves
-        ret[index++] = currValue>>>0;
+        var parts = parseI64Constant(currValue, true);
+        ret[index++] = parts[0];
         ret[index++] = 0;
         ret[index++] = 0;
         ret[index++] = 0;
-        ret[index++] = Math.floor(currValue/4294967296);
+        ret[index++] = parts[1];
         ret[index++] = 0;
         ret[index++] = 0;
         ret[index++] = 0;
-      } else if (typeof currValue == 'object') {
-        for (var j = 0; j < currValue.length; j++) {
-          ret[index++] = currValue[j];
-        }
       } else {
-        ret[index++] = currValue;
+        currValue = flatten(currValue);
+        if (typeof currValue == 'object') {
+          for (var j = 0; j < currValue.length; j++) {
+            ret[index++] = currValue[j];
+          }
+        } else {
+          ret[index++] = currValue;
+        }
       }
       i += 1;
     }
@@ -229,7 +233,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
       return JSON.stringify(parseLLVMString(value.text)) +
-             ' /* ' + value.text.substr(0, 20).replace(/\*/g, '_') + ' */'; // make string safe for inclusion in comment
+             ' /* ' + value.text.substr(0, 20).replace(/[*<>]/g, '_') + ' */'; // make string safe for inclusion in comment
     } else {
       return alignStruct(handleSegments(value.contents), type);
     }
@@ -371,11 +375,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     processItem: function(item) {
       function addFromLibrary(ident) {
         if (ident in addedLibraryItems) return '';
+        addedLibraryItems[ident] = true;
+
+        // dependencies can be JS functions, which we just run
+        if (typeof ident == 'function') return ident();
+
         // Don't replace implemented functions with library ones (which can happen when we add dependencies).
         // Note: We don't return the dependencies here. Be careful not to end up where this matters
         if (('_' + ident) in Functions.implementedFunctions) return '';
 
-        addedLibraryItems[ident] = true;
         var snippet = LibraryManager.library[ident];
         var redirectedIdent = null;
         var deps = LibraryManager.library[ident + '__deps'] || [];
@@ -400,7 +408,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ print("[library call:' + ident + ']"); ');
+            snippet = snippet.replace('{', '{ var ret = (function() {Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments) + "]"); ');
+            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); Module.printErr("  [     return:" + ret); return ret; }';
           }
         }
 
@@ -540,7 +549,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       });
 
-      if (LABEL_DEBUG) func.JS += "  print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
+      if (LABEL_DEBUG) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
@@ -558,7 +567,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (!label) return '';
           var ret = '';
           if (LABEL_DEBUG) {
-            ret += indent + "print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+            ret += indent + "Module.print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
           }
           if (EXECUTION_TIMEOUT > 0) {
             ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
@@ -921,13 +930,16 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var ret = '';
     var first = true;
+    var signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
     for (var targetLabel in targetLabels) {
       if (!first) {
         ret += 'else ';
       } else {
         first = false;
       }
-      ret += 'if (' + targetLabels[targetLabel].map(function(value) { return makeComparison(item.ident, value, item.type) }).join(' || ') + ') {\n';
+      ret += 'if (' + targetLabels[targetLabel].map(function(value) {
+        return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
+      }).join(' || ') + ') {\n';
       ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
     }
@@ -948,7 +960,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           +  '}\n';
     }
     if (LABEL_DEBUG) {
-      ret += "print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
+      ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     }
     ret += 'return';
@@ -958,7 +970,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
-    return (EXCEPTION_DEBUG ? 'print("Resuming exception");' : '') + 
+    return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
     	'throw ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') + ';';
   });
   makeFuncLineActor('invoke', function(item) {
@@ -971,7 +983,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             + '} catch(e) { '
             + 'if (typeof e != "number") throw e; '
             + 'if (ABORT) throw e; __THREW__ = true; '
-            + (EXCEPTION_DEBUG ? 'print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
+            + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
             + 'return null } })();';
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
@@ -1192,6 +1204,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     // This is the main pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
+    if (PRECISE_I64_MATH && preciseI64MathUsed) {
+      print(read('long.js'));
+    } else {
+      print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
+      print('var i64Math = null;');
+    }
     var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
     generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
     if (RUNTIME_TYPE_INFO) {

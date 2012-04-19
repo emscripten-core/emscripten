@@ -67,6 +67,8 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // then load it aligned, and that load-store will make JS engines alter it if it is being
                      // stored to a typed array for security reasons. That will 'fix' the number from being a
                      // NaN or an infinite number.
+var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
+                          // we use the 'double trick' which is fast but incurs rounding at high values.
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -99,6 +101,9 @@ var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 var LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js)
+
+var GL_DEBUG = 0; // Print out all calls into WebGL
+
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
                                     // compiler generates code for it, maybe because of stdlibc++ stuff),
@@ -136,6 +141,9 @@ var CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected
 var CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that:
                            // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
                            // we will do slow but correct C rounding operations.
+var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
+                // a new project and want to see a list of file system operations happening
+                // so that you can create a virtual file system with all of the required files.
 
 var PGO = 0; // Profile-guided optimization.
              // When run with the CHECK_* options, will not fail on errors. Instead, will
@@ -148,8 +156,8 @@ var PGO = 0; // Profile-guided optimization.
 
 var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
 
-var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported, so they are guaranteed to
-                                    // be accessible outside of the generated code.
+var EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']; // Functions that are explicitly exported, so they are guaranteed to
+                                                        // be accessible outside of the generated code even after running closure compiler.
 
 var IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
                             // This is useful if your project code includes a function, and you want to replace

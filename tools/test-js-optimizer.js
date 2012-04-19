@@ -422,4 +422,8 @@ function notComps() {
     shoo();
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps"]
+function tricky() {
+  // The &-1 is a rounding correction, and must not be removed
+  var $conv642 = ($conv6374 - (($132 << 16 >> 16 | 0) / 2 & -1) | 0) & 65535;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps", "tricky"]
