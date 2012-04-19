@@ -1138,34 +1138,34 @@ var LibraryGL = {
         vertexSize += size * 4; // XXX assuming float
       }
       assert(positionSize > 0);
-      assert(textureSize > 0);
       // TODO: verify vertexSize is equal to the stride in enabled client arrays
-      // TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
+      // XXX TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
       this.renderers[renderer] = {
         vertexSize: vertexSize,
         init: function() {
           this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
           var zero = positionSize == 2 ? '0, ' : '';
-          Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n\
-                                                      attribute vec2 a_texCoord;  \n\
-                                                      varying vec2 v_texCoord;    \n\
-                                                      uniform mat4 u_modelView;   \n\
-                                                      uniform mat4 u_projection;  \n\
-                                                      void main()                 \n\
-                                                      {                           \n\
-                                                        gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n\
-                                                        v_texCoord = a_texCoord;  \n\
-                                                      }                           \n');
+          Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n' +
+                                                     'attribute vec2 a_texCoord;  \n' +
+                                                     (textureSize ? 'varying vec2 v_texCoord;    \n' : '') +
+                                                     'uniform mat4 u_modelView;   \n' +
+                                                     'uniform mat4 u_projection;  \n' +
+                                                     'void main()                 \n' +
+                                                     '{                           \n' +
+                                                     '  gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' +
+                                                     (textureSize ? 'v_texCoord = a_texCoord;    \n' : '') +
+                                                     '}                           \n');
           Module.ctx.compileShader(this.vertexShader);
 
           this.fragmentShader = Module.ctx.createShader(Module.ctx.FRAGMENT_SHADER);
-          Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n\
-                                                        varying vec2 v_texCoord;                            \n\
-                                                        uniform sampler2D s_texture;                        \n\
-                                                        void main()                                         \n\
-                                                        {                                                   \n\
-                                                          gl_FragColor = texture2D( s_texture, v_texCoord );\n\
-                                                        }                                                   \n');
+          Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n' +
+                                                       'varying vec2 v_texCoord;                            \n' +
+                                                       'uniform sampler2D s_texture;                        \n' +
+                                                       'void main()                                         \n' +
+                                                       '{                                                   \n' +
+                                                       (textureSize ? 'gl_FragColor = texture2D( s_texture, v_texCoord );\n' :
+                                                                      'gl_FragColor = vec4(0.8, 0.1, 1.0, 1.0);') +
+                                                       '}                                                   \n');
           Module.ctx.compileShader(this.fragmentShader);
 
           this.program = Module.ctx.createProgram();
