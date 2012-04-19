@@ -1072,6 +1072,7 @@ var LibraryGL = {
 
     renderers: {},
     renderer: null,
+    rendererComponents: {},
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {
@@ -1110,9 +1111,15 @@ var LibraryGL = {
     },
 
     // Renderers
+    addRendererComponent: function(component) {
+      if (this.rendererComponents[component]) return;
+      this.rendererComponents[component] = 1;
+      this.renderer += component;
+    },
+
     setRenderer: function(renderer) {
       this.renderer = renderer;
-      if (this.renderers[renderer]) return;
+      if (this.renderers[renderer]) return this.renderers[renderer];
 
       // Create renderer
       var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0;
@@ -1192,6 +1199,8 @@ var LibraryGL = {
         }
       };
       this.renderers[renderer].init();
+
+      return this.renderers[renderer];
     },
 
     // Main functions
@@ -1248,7 +1257,7 @@ var LibraryGL = {
       };
     },
     flush: function() {
-      var renderer = this.renderers[this.renderer];
+      var renderer = this.setRenderer(this.renderer);
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
       // TODO: if the mode is one that works in GLES 2.0/WebGL (not GL_QUADS), do not generate indexes at all
@@ -1313,7 +1322,8 @@ var LibraryGL = {
   glBegin: function(mode) {
     if (!GL.immediate.initted) GL.immediate.init();
     GL.immediate.mode = mode;
-    GL.immediate.renderer = null;
+    GL.immediate.renderer = '';
+    GL.immediate.rendererComponents = {};
     GL.immediate.vertexData = GL.immediate.tempData;
   },
 
@@ -1333,10 +1343,7 @@ var LibraryGL = {
     assert(GL.immediate.vertexCounter < GL.immediate.maxElements);
     assert(GL.immediate.vertexCounter % 5 == 0);
 #endif
-    if (!GL.immediate.renderer) {
-      // Decide renderer based on attributes used // TODO: generalize
-      GL.immediate.setRenderer('T2V3');
-    }
+    GL.immediate.addRendererComponent('V3');
   },
 
   glVertex2f: 'glVertex3f',
@@ -1347,6 +1354,7 @@ var LibraryGL = {
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
+    GL.immediate.addRendererComponent('T2');
   },
   glTexCoord2f: 'glTexCoord2i',
 
