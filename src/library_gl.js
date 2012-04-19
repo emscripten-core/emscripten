@@ -1348,6 +1348,11 @@ var LibraryGL = {
   },
   glTexCoord2f: 'glTexCoord2i',
 
+  glTexCoord2fv__deps: ['glTexCoord2f'],
+  glTexCoord2fv: function(v) {
+    _glTexCoord2f({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
+  },
+
   glColor4b: function(){}, // TODO, including scaling for different arg types
   glColor4s: 'glColor4b',
   glColor4i: 'glColor4b',
@@ -1368,6 +1373,8 @@ var LibraryGL = {
   glColor3ub: 'glColor3b',
   glColor3us: 'glColor3b',
   glColor3ui: 'glColor3b',
+
+  glColor3fv: function(){}, // TODO
 
   // ClientState/gl*Pointer
 
