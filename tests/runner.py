@@ -7093,7 +7093,7 @@ elif 'browser' in str(sys.argv):
     def test_sdl_ogl(self):
       # SDL, OpenGL, textures, immediate mode
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray.png'))
+      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
       Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 

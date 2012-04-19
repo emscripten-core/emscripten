@@ -138,16 +138,15 @@ int main(int argc, char *argv[])
         glTexCoord2i( 1, 1 ); glVertex3f( 300, 400, 0 );
         glTexCoord2i( 0, 1 ); glVertex3f( 500, 410, 0 );
     glEnd();
-/*
+
     glDisable(GL_TEXTURE_2D);
 
     glBegin( GL_QUADS );
-        glVertex3f( 10, 10, 0 );
-        glVertex3f( 300, 10, 0 );
-        glVertex3f( 300, 128, 0 );
-        glVertex3f( 10, 128, 0 );
+        glVertex3f( 10, 410, 0 );
+        glVertex3f( 300, 410, 0 );
+        glVertex3f( 300, 480, 0 );
+        glVertex3f( 10, 470, 0 );
     glEnd();
-*/
 
     SDL_GL_SwapBuffers();
     

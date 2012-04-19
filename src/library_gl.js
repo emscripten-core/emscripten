@@ -1341,7 +1341,6 @@ var LibraryGL = {
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
 #if ASSERTIONS
     assert(GL.immediate.vertexCounter < GL.immediate.maxElements);
-    assert(GL.immediate.vertexCounter % 5 == 0);
 #endif
     GL.immediate.addRendererComponent('V3');
   },
