@@ -611,6 +611,7 @@ var LibrarySDL = {
   },
 
   SDL_WarpMouse: function(x, y) {
+    return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
     SDL.events.push({
       type: 'mousemove',
       pageX: x + Module['canvas'].offsetLeft,
