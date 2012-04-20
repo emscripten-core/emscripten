@@ -1114,24 +1114,37 @@ var LibraryGL = {
     },
 
     // Clientside attributes
-    TEXTURE: 0,
-    VERTEX: 1,
-    NORMAL: 2,
-    COLOR: 3,
-    NUM_ATTRIBUTES: 4,
+    VERTEX: 0,
+    NORMAL: 1,
+    COLOR: 2,
+    TEXTURE0: 3,
+    TEXTURE1: 4,
+    TEXTURE2: 5,
+    TEXTURE3: 6,
+    TEXTURE4: 7,
+    TEXTURE5: 8,
+    TEXTURE6: 9,
+    NUM_ATTRIBUTES: 10,
     ATTRIBUTE_BY_NAME: {
-      'T': 0,
-      'V': 1,
-      'N': 2,
-      'C': 3
+      'V': 0,
+      'N': 1,
+      'C': 2,
+      'T0': 3,
+      'T1': 4,
+      'T2': 5,
+      'T3': 6,
+      'T4': 7,
+      'T5': 8,
+      'T6': 9
     },
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
     clientAttributes: [null, null],
+    clientActiveTexture: 0,
 
-    setClientAttribute: function(which, name, size, type, stride, pointer) {
-      this.clientAttributes[which] = {
+    setClientAttribute: function(name, size, type, stride, pointer) {
+      this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]] = {
         size: size, type: type, stride: stride, pointer: pointer, name: name + size
       };
     },
@@ -1148,18 +1161,21 @@ var LibraryGL = {
       if (this.renderers[renderer]) return this.renderers[renderer];
 
       // Create renderer
-      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0;
+      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0, which, size;
       for (var i = 0; i < renderer.length; i+=2) {
         var which = renderer[i];
-        var size = parseInt(renderer[i+1]);
         if (which == 'V') {
+          size = parseInt(renderer[i+1]);
           positionSize = size;
           positionOffset = vertexSize;
         } else if (which == 'T') {
+          index = parseInt(renderer[i+1])
+          size = parseInt(renderer[i+2]);
+          i++;
           textureSize = size;
           textureOffset = vertexSize;
         } else {
-          throw 'Cannot create shader rendederer for ' + renderer;
+          throw 'Cannot create shader rendederer for ' + renderer + ' because of ' + which;
         }
         vertexSize += size * 4; // XXX assuming float
       }
@@ -1261,10 +1277,11 @@ var LibraryGL = {
         for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
           if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
         }
-        attributes.sort(function(x, y) { return x.pointer - y.pointer });
+        attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
         start = attributes[0].pointer;
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
+          if (!attribute) break;
 #if ASSERTIONS
           assert(attribute.stride);
           assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
@@ -1275,6 +1292,7 @@ var LibraryGL = {
         }
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
+          if (!attribute) break;
           attribute.offset = attribute.pointer - start;
 #if ASSERTIONS
           assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
@@ -1376,7 +1394,7 @@ var LibraryGL = {
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
-    GL.immediate.addRendererComponent('T2');
+    GL.immediate.addRendererComponent('T02');
   },
   glTexCoord2f: 'glTexCoord2i',
 
@@ -1417,7 +1435,7 @@ var LibraryGL = {
     if (!GL.immediate.initted) GL.immediate.init();
     switch(cap) {
       case 0x8078: // GL_TEXTURE_COORD_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE] = !disable; break;
+        GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0] = !disable; break;
       case 0x8074: // GL_VERTEX_ARRAY
         GL.immediate.enabledClientAttributes[GL.immediate.VERTEX] = !disable; break;
       case 0x8075: // GL_NORMAL_ARRAY
@@ -1438,16 +1456,20 @@ var LibraryGL = {
   },
 
   glTexCoordPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.TEXTURE, 'T', size, type, stride, pointer);
+    GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
   },
   glVertexPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.VERTEX, 'V', size, type, stride, pointer);
+    GL.immediate.setClientAttribute('V', size, type, stride, pointer);
   },
   glNormalPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.NORMAL, 'N', size, type, stride, pointer);
+    GL.immediate.setClientAttribute('N', size, type, stride, pointer);
   },
   glColorPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.COLOR, 'C', size, type, stride, pointer);
+    GL.immediate.setClientAttribute('C', size, type, stride, pointer);
+  },
+
+  glClientActiveTexture: function(texture) {
+    GL.immediate.clientActiveTexture = texture;
   },
 
   // OpenGL Immediate Mode matrix routines.
