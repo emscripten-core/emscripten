@@ -1174,8 +1174,10 @@ var LibraryGL = {
           index = parseInt(renderer[i+1])
           size = parseInt(renderer[i+2]);
           i++;
-          textureSize = size;
-          textureOffset = vertexSize;
+          if (index == 0) { // TODO: support other textures
+            textureSize = size;
+            textureOffset = vertexSize;
+          }
         } else {
           throw 'Cannot create shader rendederer for ' + renderer + ' because of ' + which;
         }
