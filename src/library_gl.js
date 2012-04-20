@@ -874,18 +874,21 @@ var LibraryGL = {
     init: function() {
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
+
       _glEnable = function(cap) {
         if (cap == 0x0DE1) return; // GL_TEXTURE_2D
         if (cap == 0x0B20) return; // GL_LINE_SMOOTH
         if (cap == 0x0B60) return; // GL_FOG
         Module.ctx.enable(cap);
       };
+
       _glDisable = function(cap) {
         if (cap == 0x0DE1) return; // GL_TEXTURE_2D
         if (cap == 0x0B20) return; // GL_LINE_SMOOTH
         if (cap == 0x0B60) return; // GL_FOG
         Module.ctx.disable(cap);
       };
+
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = function(pname, params) {
         switch (pname) {
@@ -909,6 +912,7 @@ var LibraryGL = {
         }
         glGetIntegerv(pname, params);
       };
+
       // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
       // tandem with the rest of the program, by itself it cannot suffice.
       // Note that we need to remember shader types for this rewriting, saving sources makes it easier to debug.
@@ -921,6 +925,7 @@ var LibraryGL = {
         GL.shaderTypes[id] = shaderType;
         return id;
       };
+
       var glShaderSource = _glShaderSource;
       _glShaderSource = function(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
@@ -972,6 +977,7 @@ var LibraryGL = {
         GL.shaderSources[shader] = source;
         Module.ctx.shaderSource(GL.shaders[shader], source);
       };
+
       var glCompileShader = _glCompileShader;
       _glCompileShader = function(shader) {
         Module.ctx.compileShader(GL.shaders[shader]);
@@ -981,6 +987,17 @@ var LibraryGL = {
           console.log('Original source: ' + GL.shaderOriginalSources[shader]);
           console.log('Source: ' + GL.shaderSources[shader]);
           throw 'Shader compilation halt';
+        }
+      };
+
+      var glGetFloatv = _glGetFloatv;
+      _glGetFloatv = function(pname, params) {
+        if (pname == 0x0BA6) { // GL_MODELVIEW_MATRIX
+          HEAPF32.set(GL.immediate.matrix['m'], params >> 2);
+        } else if (pname == 0x0BA7) { // GL_PROJECTION_MATRIX
+          HEAPF32.set(GL.immediate.matrix['p'], params >> 2);
+        } else {
+          glGetFloatv(pname, params);
         }
       };
     },
@@ -1063,7 +1080,7 @@ var LibraryGL = {
 
   $GLImmediate: {
     // Vertex and index data
-    maxElements: 1024,
+    maxElements: 10240,
     vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer)
     tempData: null,
     indexData: null,
@@ -1381,6 +1398,8 @@ var LibraryGL = {
   glColor3ui: 'glColor3b',
 
   glColor3fv: function(){}, // TODO
+
+  glFogf: function(){}, // TODO
 
   // ClientState/gl*Pointer
 
