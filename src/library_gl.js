@@ -998,6 +998,8 @@ var LibraryGL = {
           HEAPF32.set(GL.immediate.matrix['p'], params >> 2);
         } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
           HEAPF32.set(GL.immediate.matrix['t'], params >> 2);
+        } else if (pname == 0x0B66) { // GL_FOG_COLOR
+          {{{ makeSetValue('params', '0', '0', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
