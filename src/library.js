@@ -3956,19 +3956,35 @@ LibraryManager.library = {
   },
 
   strspn: function(pstr, pset) {
-    var str = String_copy(pstr, true);
-    var set = String_copy(pset);
-    var i = 0;
-    while (set.indexOf(str[i]) != -1) i++; // Must halt, as 0 is in str but not set
-    return i;
+    var str = pstr, set, strcurr, setcurr;
+    while (1) {
+      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
+      if (!strcurr) return str - pstr;
+      set = pset;
+      while (1) {
+        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
+        if (!setcurr || setcurr == strcurr) break;
+        set++;
+      }
+      if (!setcurr) return str - pstr;
+      str++;
+    }
   },
 
   strcspn: function(pstr, pset) {
-    var str = String_copy(pstr, true);
-    var set = String_copy(pset, true);
-    var i = 0;
-    while (set.indexOf(str[i]) == -1) i++; // Must halt, as 0 is in both
-    return i;
+    var str = pstr, set, strcurr, setcurr;
+    while (1) {
+      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
+      if (!strcurr) return str - pstr;
+      set = pset;
+      while (1) {
+        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
+        if (!setcurr || setcurr == strcurr) break;
+        set++;
+      }
+      if (setcurr) return str - pstr;
+      str++;
+    }
   },
 
   strcpy: function(pdest, psrc) {
