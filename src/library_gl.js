@@ -1402,6 +1402,7 @@ var LibraryGL = {
   glColor3ui: 'glColor3b',
 
   glColor3fv: function(){}, // TODO
+  glColor4fv: function(){},
 
   glFogf: function(){}, // TODO
 
