@@ -996,6 +996,8 @@ var LibraryGL = {
           HEAPF32.set(GL.immediate.matrix['m'], params >> 2);
         } else if (pname == 0x0BA7) { // GL_PROJECTION_MATRIX
           HEAPF32.set(GL.immediate.matrix['p'], params >> 2);
+        } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
+          HEAPF32.set(GL.immediate.matrix['t'], params >> 2);
         } else {
           glGetFloatv(pname, params);
         }
@@ -1094,17 +1096,20 @@ var LibraryGL = {
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {
       'm': null, // modelview
-      'p': null  // projection
+      'p': null, // projection
+      't': null  // texture
     },
     matrixStack: {
-      'm': [], // modelview
-      'p': []  // projection
+      'm': [],
+      'p': [],
+      't': []
     },
     currentMatrix: 'm', // default is modelview
     tempMatrix: null,
     initMatrixLibrary: function() {
       GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
       GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrix['t'] = GL.immediate.matrix.lib.mat4.create();
       GL.immediate.currentMatrix = GL.immediate.matrix.lib.mat4.create();
     },
 
@@ -1220,8 +1225,8 @@ var LibraryGL = {
           Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
           Module.ctx.uniform1i(this.textureLocation, 0);
 
-          Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix["m"]);
-          Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix["p"]);
+          Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
+          Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
         }
       };
       this.renderers[renderer].init();
@@ -1453,6 +1458,8 @@ var LibraryGL = {
       GL.immediate.currentMatrix = 'm';
     } else if (mode == 0x1701 /* GL_PROJECTION */) {
       GL.immediate.currentMatrix = 'p';
+    } else if (mode == 0x1702) { // GL_TEXTURE
+      GL.immediate.currentMatrix = 't';
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
     }
