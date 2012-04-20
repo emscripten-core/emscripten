@@ -1318,9 +1318,8 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
       var oldCount = countNormalArgs(oldType);
       var newCount = countNormalArgs(newType);
       if (oldCount != newCount && oldCount && newCount) {
-        if (!ASSERTIONS) {
-          warnOnce('Casting a function pointer type to another with a different number of arguments. See more info in the compiler source');
-        } else {
+        warnOnce('Casting a function pointer type to another with a different number of arguments. See more info in the compiler source');
+        if (VERBOSE) {
           warnOnce('Casting a function pointer type to another with a different number of arguments: ' + oldType + ' vs. ' + newType + ', on ' + item.params[0].ident);
         }
         // This may be dangerous as clang generates different code for C and C++ calling conventions. The only problem
