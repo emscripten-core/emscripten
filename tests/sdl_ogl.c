@@ -139,7 +139,9 @@ int main(int argc, char *argv[])
         glTexCoord2i( 0, 1 ); glVertex3f( 500, 410, 0 );
     glEnd();
 
+#if !EMSCRIPTEN
     glDisable(GL_TEXTURE_2D);
+#endif
 
     glBegin( GL_QUADS );
         glVertex3f( 10, 410, 0 );

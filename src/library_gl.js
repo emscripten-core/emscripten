@@ -1142,6 +1142,7 @@ var LibraryGL = {
       // XXX TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
       this.renderers[renderer] = {
         vertexSize: vertexSize,
+        hasTexture: textureSize > 0,
         init: function() {
           this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
           var zero = positionSize == 2 ? '0, ' : '';
@@ -1181,12 +1182,16 @@ var LibraryGL = {
         },
 
         prepare: function() {
-          Module.ctx.vertexAttribPointer(this.texCoordLocation, textureSize, Module.ctx.FLOAT, false,
-                                         vertexSize, textureOffset);
+          if (this.hasTexture) {
+            Module.ctx.vertexAttribPointer(this.texCoordLocation, textureSize, Module.ctx.FLOAT, false,
+                                           vertexSize, textureOffset);
+          }
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, Module.ctx.FLOAT, false,
                                          vertexSize, positionOffset);
 
-          Module.ctx.enableVertexAttribArray(this.texCoordLocation);
+          if (this.hasTexture) {
+            Module.ctx.enableVertexAttribArray(this.texCoordLocation);
+          }
           Module.ctx.enableVertexAttribArray(this.positionLocation);
 
           var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
@@ -1263,44 +1268,32 @@ var LibraryGL = {
       // TODO: if the mode is one that works in GLES 2.0/WebGL (not GL_QUADS), do not generate indexes at all
       var numVertexes = 4 * this.vertexCounter / renderer.vertexSize; // XXX assuming float
       assert(numVertexes % 1 == 0);
+
       var numIndexes = 0;
-
-      if (GL.immediate.mode == 7) { // GL_QUADS
-        var numQuads = numVertexes / 4;
-        assert(numQuads % 1 == 0);
-        for (var i = 0; i < numQuads; i++) {
-          var start = i*4;
-          GL.immediate.indexData[numIndexes++] = start;
-          GL.immediate.indexData[numIndexes++] = start+1;
-          GL.immediate.indexData[numIndexes++] = start+2;
-          GL.immediate.indexData[numIndexes++] = start;
-          GL.immediate.indexData[numIndexes++] = start+2;
-          GL.immediate.indexData[numIndexes++] = start+3;
-        }
-      } else if (GL.immediate.mode == 5) { // GL_TRIANGLE_STRIP
-        var numTriangles = numVertexes - 2;
-        assert(numTriangles > 0);
-        for (var i = 0; i < numTriangles; i++) {
-          if (i % 2 == 0) {
-            GL.immediate.indexData[numIndexes++] = i;
-            GL.immediate.indexData[numIndexes++] = i+1;
-            GL.immediate.indexData[numIndexes++] = i+2;
-          } else {
-            GL.immediate.indexData[numIndexes++] = i+1;
-            GL.immediate.indexData[numIndexes++] = i;
-            GL.immediate.indexData[numIndexes++] = i+2;
+      if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
+        if (GL.immediate.mode == 7) { // GL_QUADS
+          var numQuads = numVertexes / 4;
+          assert(numQuads % 1 == 0);
+          for (var i = 0; i < numQuads; i++) {
+            var start = i*4;
+            GL.immediate.indexData[numIndexes++] = start;
+            GL.immediate.indexData[numIndexes++] = start+1;
+            GL.immediate.indexData[numIndexes++] = start+2;
+            GL.immediate.indexData[numIndexes++] = start;
+            GL.immediate.indexData[numIndexes++] = start+2;
+            GL.immediate.indexData[numIndexes++] = start+3;
           }
+        } else {
+          throw 'unsupported immediate mode ' + GL.immediate.mode;
         }
-      } else {
-        throw 'unsupported immediate mode ' + GL.immediate.mode;
-      }
-      assert(numIndexes < GL.immediate.maxElements, 'too many immediate mode indexes');
+        assert(numIndexes < GL.immediate.maxElements, 'too many immediate mode indexes');
 
-      // Upload the data
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+        Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, numIndexes), Module.ctx.STATIC_DRAW);
+      }
+
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
       Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, this.vertexCounter), Module.ctx.STATIC_DRAW);
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, numIndexes), Module.ctx.STATIC_DRAW);
 
       // Render
       Module.ctx.useProgram(renderer.program);
@@ -1308,8 +1301,12 @@ var LibraryGL = {
 
       renderer.prepare();
 
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-      Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, 0);
+      if (numIndexes) {
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+        Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, 0);
+      } else {
+        Module.ctx.drawArrays(GL.immediate.mode, 0, numVertexes);
+      }
 
       this.vertexCounter = 0;
     }
