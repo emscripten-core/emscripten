@@ -61,6 +61,9 @@ def check_sanity(force=False):
       except:
         pass
 
+      print >> sys.stderr, '(Emscripten: Config file changed, clearing cache)' # LLVM may have changed, etc.
+      Cache.erase()
+
     print >> sys.stderr, '(Emscripten: Running sanity checks)'
 
     if not check_engine(COMPILER_ENGINE):
