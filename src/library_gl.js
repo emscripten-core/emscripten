@@ -1111,10 +1111,14 @@ var LibraryGL = {
     // Clientside attributes
     TEXTURE: 0,
     VERTEX: 1,
-    NUM_ATTRIBUTES: 2,
+    NORMAL: 2,
+    COLOR: 3,
+    NUM_ATTRIBUTES: 4,
     ATTRIBUTE_BY_NAME: {
       'T': 0,
-      'V': 1
+      'V': 1,
+      'N': 2,
+      'C': 3
     },
 
     totalEnabledClientAttributes: 0,
@@ -1410,6 +1414,10 @@ var LibraryGL = {
         GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE] = !disable; break;
       case 0x8074: // GL_VERTEX_ARRAY
         GL.immediate.enabledClientAttributes[GL.immediate.VERTEX] = !disable; break;
+      case 0x8075: // GL_NORMAL_ARRAY
+        GL.immediate.enabledClientAttributes[GL.immediate.NORMAL] = !disable; break;
+      case 0x8076: // GL_COLOR_ARRAY
+        GL.immediate.enabledClientAttributes[GL.immediate.COLOR] = !disable; break;
       default:
         throw 'unhandled clientstate: ' + cap;
     }
@@ -1426,9 +1434,14 @@ var LibraryGL = {
   glTexCoordPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.TEXTURE, 'T', size, type, stride, pointer);
   },
-
   glVertexPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.VERTEX, 'V', size, type, stride, pointer);
+  },
+  glNormalPointer: function(size, type, stride, pointer) {
+    GL.immediate.setClientAttribute(GL.immediate.NORMAL, 'N', size, type, stride, pointer);
+  },
+  glColorPointer: function(size, type, stride, pointer) {
+    GL.immediate.setClientAttribute(GL.immediate.COLOR, 'C', size, type, stride, pointer);
   },
 
   // OpenGL Immediate Mode matrix routines.
