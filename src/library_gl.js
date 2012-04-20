@@ -509,7 +509,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var info = Module.ctx.getActiveUniform(program, index);
 
-    var infoname = info.name.slice(0, bufsize - 1);
+    var infoname = info.name.slice(0, bufSize - 1);
     writeStringToMemory(infoname, name);
 
     if (length) {
@@ -672,7 +672,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var info = Module.ctx.getActiveAttrib(program, index);
 
-    var infoname = info.name.slice(0, bufsize - 1);
+    var infoname = info.name.slice(0, bufSize - 1);
     writeStringToMemory(infoname, name);
 
     if (length) {
@@ -719,9 +719,9 @@ var LibraryGL = {
     Module.ctx.shaderSource(GL.shaders[shader], source);
   },
 
-  glGetShaderSource: function(shader, bufsize, length, source) {
+  glGetShaderSource: function(shader, bufSize, length, source) {
     var result = Module.ctx.getShaderSource(GL.shaders[shader]);
-    result.slice(0, bufsize - 1);
+    result.slice(0, bufSize - 1);
     writeStringToMemory(result, source);
     if (length) {
       {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
@@ -867,7 +867,6 @@ var LibraryGL = {
 
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
-  $GLEmulation__deps: ['glCreateShader', 'glShaderSource', 'glCompileShader', 'glCreateProgram', 'glDeleteShader', 'glDeleteProgram', 'glAttachShader', 'glActiveTexture', 'glGetShaderiv', 'glGetProgramiv', 'glLinkProgram', 'glGetProgramInfoLog', 'glGetShaderInfoLog'],
   $GLEmulation__postset: 'GLEmulation.init();',
   $GLEmulation: {
     init: function() {
@@ -904,6 +903,7 @@ var LibraryGL = {
             {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
             return;
           }
+          case 0x8871: pname = Module.ctx.MAX_COMBINED_TEXTURE_IMAGE_UNITS /* close enough */; break; // GL_MAX_TEXTURE_COORDS
         }
         glGetIntegerv(pname, params);
       };
@@ -985,12 +985,9 @@ var LibraryGL = {
 
     procReplacements: {
       'glCreateShaderObjectARB': 'glCreateShader',
-      'glShaderSourceARB': 'glShaderSource',
-      'glCompileShaderARB': 'glCompileShader',
       'glCreateProgramObjectARB': 'glCreateProgram',
       'glAttachObjectARB': 'glAttachShader',
-      'glLinkProgramARB': 'glLinkProgram',
-      'glActiveTextureARB': 'glActiveTexture'
+      'glUseProgramObjectARB': 'glUseProgram'
     },
 
     procs: {
@@ -1030,19 +1027,28 @@ var LibraryGL = {
         } else {
           console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
         }
+      },
+
+      glBindProgramARB: function(type, id) {
+        assert(id == 0);
       }
     },
 
-    getProcAddress: function(name_) {
-      name_ = GLEmulation.procReplacements[name_] || name_;
-      var func = GLEmulation.procs[name_];
+    getProcAddress: function(name) {
+      name = GLEmulation.procReplacements[name] || name;
+      var func = GLEmulation.procs[name];
       if (!func) {
         try {
-          func = eval('_' + name_); // XXX closure, need Module. and for them to be exported
+          try {
+            func = eval('_' + name); // XXX closure, need Module. and for them to be exported
+          } catch(e) {
+            if (name.substr(-3) == 'ARB') name = name.substr(0, name.length-3);
+            func = eval('_' + name); // XXX closure, need Module. and for them to be exported
+          }
         } catch(e) {
-          console.log('WARNING: getProcAddress failed for ' + name_);
+          console.log('WARNING: getProcAddress failed for ' + name);
           func = function() {
-            console.log('WARNING: empty replacement for ' + name_ + ' called, no-op');
+            console.log('WARNING: empty replacement for ' + name + ' called, no-op');
             return 0;
           };
         }
@@ -1107,7 +1113,7 @@ var LibraryGL = {
       if (this.renderers[renderer]) return;
 
       // Create renderer
-      var vertexSize = 0;
+      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0;
       for (var i = 0; i < renderer.length; i+=2) {
         var which = renderer[i];
         var size = parseInt(renderer[i+1]);
@@ -1117,11 +1123,14 @@ var LibraryGL = {
         } else if (which == 'T') {
           textureSize = size;
           textureOffset = vertexSize;
+        } else {
+          throw 'Cannot create shader rendederer for ' + renderer;
         }
         vertexSize += size * 4; // XXX assuming float
       }
+      assert(positionSize > 0);
+      assert(textureSize > 0);
       // TODO: verify vertexSize is equal to the stride in enabled client arrays
-      // TODO: assert that we can create the renderer type we were asked
       // TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
       this.renderers[renderer] = {
         vertexSize: vertexSize,
@@ -1339,6 +1348,11 @@ var LibraryGL = {
   },
   glTexCoord2f: 'glTexCoord2i',
 
+  glTexCoord2fv__deps: ['glTexCoord2f'],
+  glTexCoord2fv: function(v) {
+    _glTexCoord2f({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
+  },
+
   glColor4b: function(){}, // TODO, including scaling for different arg types
   glColor4s: 'glColor4b',
   glColor4i: 'glColor4b',
@@ -1359,6 +1373,8 @@ var LibraryGL = {
   glColor3ub: 'glColor3b',
   glColor3us: 'glColor3b',
   glColor3ui: 'glColor3b',
+
+  glColor3fv: function(){}, // TODO
 
   // ClientState/gl*Pointer
 
@@ -1582,5 +1598,14 @@ var LibraryGL = {
 });
 
 autoAddDeps(LibraryGL, '$GL');
+
+// Emulation requires everything else, potentially
+LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0);
+for (var item in LibraryGL) {
+  if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(0, 2) == 'gl') {
+    LibraryGL.$GLEmulation__deps.push(item);
+  }
+}
+
 mergeInto(LibraryManager.library, LibraryGL);
 

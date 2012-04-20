@@ -4,6 +4,8 @@
 
 mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps) {
+    Module['noExitRuntime'] = true;
+
     fps = fps || 60; // TODO: use requestAnimationFrame
     _emscripten_set_main_loop.cancel = false;
     var jsFunc = FUNCTION_TABLE[func];
@@ -20,6 +22,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_call: function(func, millis) {
+    Module['noExitRuntime'] = true;
+
     // TODO: cache these to avoid generating garbage
     setTimeout(function() {
       FUNCTION_TABLE[func]();

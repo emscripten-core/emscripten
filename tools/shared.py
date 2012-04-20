@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -76,6 +76,11 @@ def check_sanity(force=False):
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG)
         sys.exit(0)
+
+    try:
+      subprocess.call(['java', '-version'], stdout=PIPE, stderr=PIPE)
+    except:
+      print >> sys.stderr, 'WARNING: java does not seem to exist, required for closure compiler. -O2 and above will fail.'
 
     if not os.path.exists(CLOSURE_COMPILER):
       print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG)

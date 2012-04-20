@@ -610,6 +610,14 @@ var LibrarySDL = {
     return 0;
   },
 
+  SDL_WarpMouse: function(x, y) {
+    SDL.events.push({
+      type: 'mousemove',
+      pageX: x + Module['canvas'].offsetLeft,
+      pageY: y + Module['canvas'].offsetTop
+    });
+  },
+
   SDL_ShowCursor: function(toggle) {
     // TODO
   },
@@ -832,6 +840,8 @@ var LibrarySDL = {
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     return 0;
   },
+
+  Mix_CloseAudio: 'SDL_CloseAudio',
 
   Mix_AllocateChannels: function(num) {
     return num; // fake it
