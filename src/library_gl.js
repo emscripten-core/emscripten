@@ -1070,6 +1070,7 @@ var LibraryGL = {
             func = eval('_' + name); // XXX closure, need Module. and for them to be exported
           } catch(e) {
             if (name.substr(-3) == 'ARB') name = name.substr(0, name.length-3);
+            if (name.substr(-3) == 'EXT') name = name.substr(0, name.length-3);
             func = eval('_' + name); // XXX closure, need Module. and for them to be exported
           }
         } catch(e) {
