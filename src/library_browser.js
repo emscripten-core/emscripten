@@ -67,50 +67,54 @@ mergeInto(LibraryManager.library, {
             switch (typeof tempCtx[prop]) {
               case 'function': {
                 wrapper[prop] = function() {
-                  var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
-                    if (typeof arg == 'undefined') return '!UNDEFINED!';
-                    if (!arg) return arg;
-                    if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
-                    if (arg.toString() == '[object HTMLImageElement]') {
-                      return arg + '\n\n';
-                    }
-                    if (arg.byteLength) {
-                      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 40)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
-                      var buf = new ArrayBuffer(32);
-                      var i8buf = new Int8Array(buf);
-                      var i16buf = new Int16Array(buf);
-                      var f32buf = new Float32Array(buf);
-                      switch(arg.toString()) {
-                        case '[object Uint8Array]':
-                          i8buf.set(arg.subarray(0, 32));
-                          break;
-                        case '[object Float32Array]':
-                          f32buf.set(arg.subarray(0, 5));
-                          break;
-                        case '[object Uint16Array]':
-                          i16buf.set(arg.subarray(0, 16));
-                          break;
-                        default:
-                          alert('unknown array for debugging: ' + arg);
-                          throw 'see alert';
+                  if (GL.debug) {
+                    var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
+                      if (typeof arg == 'undefined') return '!UNDEFINED!';
+                      if (!arg) return arg;
+                      if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
+                      if (arg.toString() == '[object HTMLImageElement]') {
+                        return arg + '\n\n';
                       }
-                      var ret = '{' + arg.byteLength + ':\n';
-                      var arr = Array.prototype.slice.call(i8buf);
-                      ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
-                      arr = Array.prototype.slice.call(f32buf, 0, 8);
-                      ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
-                      return ret;
-                    }
-                    return arg;
-                  });
-                  console.log('[gl_f:' + prop + ':' + printArgs + ']');
-                  var ret = tempCtx[prop].apply(tempCtx, arguments);
-                  var printRet = ret;
-                  if (typeof ret == 'object') {
-                    wrapper.objectMap[ret] = wrapper.objectCounter++;
-                    printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
+                      if (arg.byteLength) {
+                        return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 40)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
+                        var buf = new ArrayBuffer(32);
+                        var i8buf = new Int8Array(buf);
+                        var i16buf = new Int16Array(buf);
+                        var f32buf = new Float32Array(buf);
+                        switch(arg.toString()) {
+                          case '[object Uint8Array]':
+                            i8buf.set(arg.subarray(0, 32));
+                            break;
+                          case '[object Float32Array]':
+                            f32buf.set(arg.subarray(0, 5));
+                            break;
+                          case '[object Uint16Array]':
+                            i16buf.set(arg.subarray(0, 16));
+                            break;
+                          default:
+                            alert('unknown array for debugging: ' + arg);
+                            throw 'see alert';
+                        }
+                        var ret = '{' + arg.byteLength + ':\n';
+                        var arr = Array.prototype.slice.call(i8buf);
+                        ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
+                        arr = Array.prototype.slice.call(f32buf, 0, 8);
+                        ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
+                        return ret;
+                      }
+                      return arg;
+                    });
+                    console.log('[gl_f:' + prop + ':' + printArgs + ']');
                   }
-                  if (typeof printRet != 'undefined') console.log('[     gl:' + prop + ':return:' + printRet + ']');
+                  var ret = tempCtx[prop].apply(tempCtx, arguments);
+                  if (GL.debug) {
+                    var printRet = ret;
+                    if (typeof ret == 'object') {
+                      wrapper.objectMap[ret] = wrapper.objectCounter++;
+                      printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
+                    }
+                    if (typeof printRet != 'undefined') console.log('[     gl:' + prop + ':return:' + printRet + ']');
+                  }
                   return ret;
                 }
                 break;
@@ -121,7 +125,9 @@ mergeInto(LibraryManager.library, {
                   return tempCtx[prop];
                 });
                 wrapper.__defineSetter__(prop, function(value) {
-                  console.log('[gl_s:' + prop + ':' + value + ']');
+                  if (GL.debug) {
+                    console.log('[gl_s:' + prop + ':' + value + ']');
+                  }
                   tempCtx[prop] = value;
                 });
                 break;

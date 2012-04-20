@@ -5,6 +5,10 @@
 
 var LibraryGL = {
   $GL: {
+#if GL_DEBUG
+    debug: false,
+#endif
+
     counter: 1,
     buffers: {},
     programs: {},
