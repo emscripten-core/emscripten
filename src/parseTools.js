@@ -1321,7 +1321,7 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
         if (!ASSERTIONS) {
           warnOnce('Casting a function pointer type to another with a different number of arguments. See more info in the compiler source');
         } else {
-          warn('Casting a function pointer type to another with a different number of arguments: ' + oldType + ' vs. ' + newType + ', on ' + item.params[0].ident);
+          warnOnce('Casting a function pointer type to another with a different number of arguments: ' + oldType + ' vs. ' + newType + ', on ' + item.params[0].ident);
         }
         // This may be dangerous as clang generates different code for C and C++ calling conventions. The only problem
         // case appears to be passing a structure by value, C will have (field1, field2) as function args, and the
