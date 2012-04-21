@@ -764,6 +764,7 @@ var LibrarySDL = {
     return surf;
   },
   SDL_LoadBMP: 'IMG_Load',
+  SDL_LoadBMP_RW: 'IMG_Load',
 
   // SDL_Audio
 
