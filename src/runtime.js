@@ -361,7 +361,7 @@ var Runtime = {
       return '<' + arg + '|' + Runtime.printObjectMap[arg] + '>';
     }
     if (typeof arg == 'number') {
-      return '0x' + arg.toString(16);
+      if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
     }
     return arg;
   }
