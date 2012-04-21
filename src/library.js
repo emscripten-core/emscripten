@@ -4703,6 +4703,15 @@ LibraryManager.library = {
     };
   },
 
+  llvm_uadd_with_overflow_i64__deps: [function() { preciseI64MathUsed = 1 }],
+  llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
+    i64Math.add(xl, xh, yl, yh);
+    return {
+      f0: i64Math.result,
+      f1: 0 // XXX Need to hack support for this in long.js
+    };
+  },
+
   llvm_stacksave: function() {
     var self = _llvm_stacksave;
     if (!self.LLVM_SAVEDSTACKS) {

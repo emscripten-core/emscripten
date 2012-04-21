@@ -1030,7 +1030,16 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('extractvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
-    return item.ident + '.f' + item.indexes[0][0].text;
+    var index = item.indexes[0][0].text;
+    var valueType = Types.types[item.type].fields[index];
+    if (USE_TYPED_ARRAYS != 2 || valueType != 'i64') {
+      return item.ident + '.f' + index;
+    } else {
+      var assignTo = item.assignTo;
+      item.assignTo = null;
+      return 'var ' + assignTo + '$0 = ' + item.ident + '.f' + index + '[0];' +
+             'var ' + assignTo + '$1 = ' + item.ident + '.f' + index + '[1];';
+    }
   });
   makeFuncLineActor('insertvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: see extractvalue

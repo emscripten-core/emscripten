@@ -930,6 +930,27 @@ m_divisor is 1091269979
       '''
       self.do_run(src, 'value: 128,128,128,128.')
 
+    def test_i64_7z(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+      src = r'''
+        #include <stdint.h>
+        #include <stdio.h>
+        uint64_t a, b;
+        int main(int argc, char *argv[])
+        {
+            a = argc;
+            b = argv[1][0];
+            if (a > a + b || a > a + b + 1) {
+                printf("one %lld, %lld", a, b);
+                return 0;
+            }
+            printf("zero %lld, %lld", a, b);
+            return 0;
+        }
+      '''
+      self.do_run(src, 'zero 2, 104', ['hallo'])
+
     def test_cube2hash(self):
       # A good test of i64 math
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
