@@ -921,8 +921,10 @@ var LibraryGL = {
       // tandem with the rest of the program, by itself it cannot suffice.
       // Note that we need to remember shader types for this rewriting, saving sources makes it easier to debug.
       GL.shaderTypes = {};
+#if GL_DEBUG
       GL.shaderSources = {};
       GL.shaderOriginalSources = {};
+#endif
       var glCreateShader = _glCreateShader;
       _glCreateShader = function(shaderType) {
         var id = glCreateShader(shaderType);
@@ -933,7 +935,9 @@ var LibraryGL = {
       var glShaderSource = _glShaderSource;
       _glShaderSource = function(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
+#if GL_DEBUG
         GL.shaderOriginalSources[shader] = source;
+#endif
         if (GL.shaderTypes[shader] == Module.ctx.VERTEX_SHADER) {
           // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
           source = 'attribute vec4 a_position; \n\
@@ -978,7 +982,9 @@ var LibraryGL = {
           source = source.replace(/gl_Fog.color/g, 'vec4(0.0)'); // XXX TODO
           source = 'precision mediump float;\n' + source;
         }
+#if GL_DEBUG
         GL.shaderSources[shader] = source;
+#endif
         Module.ctx.shaderSource(GL.shaders[shader], source);
       };
 
@@ -988,11 +994,37 @@ var LibraryGL = {
         if (!Module.ctx.getShaderParameter(GL.shaders[shader], Module.ctx.COMPILE_STATUS)) {
           console.log('Failed to compile shader: ' + Module.ctx.getShaderInfoLog(GL.shaders[shader]));
           console.log('Type: ' + GL.shaderTypes[shader]);
+#if GL_DEBUG
           console.log('Original source: ' + GL.shaderOriginalSources[shader]);
           console.log('Source: ' + GL.shaderSources[shader]);
+#else
+          console.log('Enable GL_DEBUG to see shader source');
+#endif
           throw 'Shader compilation halt';
         }
       };
+
+#if GL_DEBUG
+      GL.programShaders = {};
+      var glAttachShader = _glAttachShader;
+      _glAttachShader = function(program, shader) {
+        if (!GL.programShaders[program]) GL.programShaders[program] = {};
+        GL.programShaders[program][shader] = 1;
+        glAttachShader(program, shader);
+      };
+
+      var glUseProgram = _glUseProgram;
+      _glUseProgram = function(program) {
+        if (GL.debug) {
+          console.log('[using program with shaders:]');
+          for (var shader in GL.programShaders[program]) {
+            console.log('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
+            console.log('         Source: ' + GL.shaderSources[shader]);
+          }
+        }
+        glUseProgram(program);
+      }
+#endif
 
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = function(pname, params) {
