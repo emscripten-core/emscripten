@@ -432,7 +432,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           ident = '_' + ident;
         }
-        var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+        var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
         if (ident in EXPORTED_FUNCTIONS) {
           text += '\nModule["' + ident + '"] = ' + ident + ';';
