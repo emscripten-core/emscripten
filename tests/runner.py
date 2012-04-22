@@ -4942,7 +4942,7 @@ def process(filename):
       self.do_run(r'''
                         #define SQLITE_DISABLE_LFS
                         #define LONGDOUBLE_TYPE double
-                        #define SQLITE_INT64_TYPE int
+                        #define SQLITE_INT64_TYPE long long int
                         #define SQLITE_THREADSAFE 0
                    ''' + open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() +
                          open(path_from_root('tests', 'sqlite', 'benchmark.c'), 'r').read(),
