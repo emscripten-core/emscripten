@@ -970,7 +970,7 @@ var LibraryGL = {
           }
         } else { // Fragment shader
           for (var i = 0; i <= 6; i++) {
-            var old = 0;
+            var old = source;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
             if (source != old) {
               source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
@@ -1548,6 +1548,9 @@ var LibraryGL = {
   },
 
   glLoadMatrixf: function(matrix) {
+#if GL_DEBUG
+    console.log('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16));
+#endif
     GL.immediate.matrix.lib.mat4.set(GL.immediate.matrix[GL.immediate.currentMatrix],
         {{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}});
   },
