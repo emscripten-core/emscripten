@@ -19,6 +19,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 int main(int argc, char *argv[])
 {
@@ -53,17 +54,13 @@ int main(int argc, char *argv[])
     
     // Load the OpenGL texture
 
-    GLuint texture; // Texture object handle
-    SDL_Surface *surface; // Gives us the information to make the texture
+    GLuint texture;
+    SDL_Surface *surface;
     
     if ( (surface = IMG_Load("screenshot.png")) ) { 
-    
-        // Check that the image's width is a power of 2
         if ( (surface->w & (surface->w - 1)) != 0 ) {
             printf("warning: image.bmp's width is not a power of 2\n");
         }
-    
-        // Also check if the height is a power of 2
         if ( (surface->h & (surface->h - 1)) != 0 ) {
             printf("warning: image.bmp's height is not a power of 2\n");
         }
@@ -71,7 +68,7 @@ int main(int argc, char *argv[])
         glGenTextures( 1, &texture );
         glBindTexture( GL_TEXTURE_2D, texture );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );urface gives us
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
         glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, 
                       GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels );
     } 
@@ -89,10 +86,12 @@ int main(int argc, char *argv[])
 
     // BEGIN
 
+    glewInit();
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glFrustum(-0.6435469817188064, 0.6435469817188064 ,-0.48266022190470925, 0.48266022190470925 ,0.5400000214576721, 2048);
-    glMatrixMode(GL_MODELVIEW0);
+    glMatrixMode(GL_MODELVIEW);
     GLfloat matrixData[] = { -1, 0, 0, 0,
                               0, 0,-1, 0,
                               0, 1, 0, 0,
@@ -120,7 +119,7 @@ int main(int argc, char *argv[])
     glGenBuffers(1, &arrayBuffer);
     glGenBuffers(1, &elementBuffer);
 
-    GLuchar arrayData[] = {
+    GLubyte arrayData[] = {
 /*
 [0, 0,   0, 67] ==>  128 float
 [0, 0, 128, 67] ==>  256 float
@@ -189,13 +188,13 @@ int main(int argc, char *argv[])
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
 
     // sauer vertex data is apparently 0-12: V3F, 12: N1B, 16-24: T2F, 24-28: T2S, 28-32: C4B
-    glVertexPointer(3, GL_FLOAT, 32, 0); // all these apply to the ARRAY_BUFFER that is bound
-    glTexCoordPointer(2, GL_FLOAT ,32, 16);
+    glVertexPointer(3, GL_FLOAT, 32, (void*)0); // all these apply to the ARRAY_BUFFER that is bound
+    glTexCoordPointer(2, GL_FLOAT, 32, (void*)16);
     glClientActiveTexture(GL_TEXTURE1);
-    glTexCoordPointer(2, GL_SHORT, 32, 24);
+    glTexCoordPointer(2, GL_SHORT, 32, (void*)24);
     glClientActiveTexture(GL_TEXTURE0); // likely not needed, it is a cleanup
-    glNormalPointer(GL_BYTE, 32, 12);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 32, 28);
+    glNormalPointer(GL_BYTE, 32, (void*)12);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 32, (void*)28);
 
     glBindTexture(GL_TEXTURE_2D, texture); // diffuse?
     glActiveTexture(GL_TEXTURE0);
@@ -205,29 +204,29 @@ int main(int argc, char *argv[])
 
     GLint ok;
 
-    char *vertexShader = "#pragma CUBE2_fog\n"
-                         "uniform vec4 texgenscroll;\n"
-                         "void main(void)\n"
-                         "{\n"
-                         "    gl_Position = ftransform();\n"
-                         "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy + texgenscroll.xy;\n"
-                         "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy * 3.051851e-05;\n"
-                         "    #pragma CUBE2_shadowmap\n"
-                         "    #pragma CUBE2_dynlight\n"
-                         "    #pragma CUBE2_water\n"
-                         "}\n";
-    char *fragmentShader = "uniform vec4 colorparams;\n"
-                           "uniform sampler2D diffusemap, lightmap;\n"
-                           "void main(void)\n"
-                           "{\n"
-                           "    vec4 diffuse = texture2D(diffusemap, gl_TexCoord[0].xy);\n"
-                           "    vec4 lm = texture2D(lightmap, gl_TexCoord[1].xy);\n"
-                           "    #pragma CUBE2_shadowmap lm\n"
-                           "    #pragma CUBE2_dynlight lm\n"
-                           "    diffuse *= colorparams;\n"
-                           "    gl_FragColor = diffuse * lm;\n"
-                           "    #pragma CUBE2_water\n"
-                           "}\n";
+    const char *vertexShader = "#pragma CUBE2_fog\n"
+                               "uniform vec4 texgenscroll;\n"
+                               "void main(void)\n"
+                               "{\n"
+                               "    gl_Position = ftransform();\n"
+                               "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy + texgenscroll.xy;\n"
+                               "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy * 3.051851e-05;\n"
+                               "    #pragma CUBE2_shadowmap\n"
+                               "    #pragma CUBE2_dynlight\n"
+                               "    #pragma CUBE2_water\n"
+                               "}\n";
+    const char *fragmentShader = "uniform vec4 colorparams;\n"
+                                 "uniform sampler2D diffusemap, lightmap;\n"
+                                 "void main(void)\n"
+                                 "{\n"
+                                 "    vec4 diffuse = texture2D(diffusemap, gl_TexCoord[0].xy);\n"
+                                 "    vec4 lm = texture2D(lightmap, gl_TexCoord[1].xy);\n"
+                                 "    #pragma CUBE2_shadowmap lm\n"
+                                 "    #pragma CUBE2_dynlight lm\n"
+                                 "    diffuse *= colorparams;\n"
+                                 "    gl_FragColor = diffuse * lm;\n"
+                                 "    #pragma CUBE2_water\n"
+                                 "}\n";
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vertexShader, NULL);
@@ -238,7 +237,6 @@ int main(int argc, char *argv[])
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fs, 1, &fragmentShader, NULL);
     glCompileShader(fs);
-    GLint ok;
     glGetShaderiv(fs, GL_COMPILE_STATUS, &ok);
     assert(ok);
 
@@ -267,15 +265,15 @@ int main(int argc, char *argv[])
     assert(colorparamsLocation >= 0);
 
     GLfloat texgenscrollData[] = { 0, 0, 0, 0 };
-    glUniform4fv(texgenscrollLocation, 1, textgenscrollData);
+    glUniform4fv(texgenscrollLocation, 1, texgenscrollData);
 
     GLfloat colorparamsData[] = { 2, 2, 2, 1 };
     glUniform4fv(colorparamsLocation, 1, colorparamsData);
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 12);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 24);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 36);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)12);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*) 0);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)24);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)36);
 
     // END
 
