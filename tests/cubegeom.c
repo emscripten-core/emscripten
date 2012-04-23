@@ -15,7 +15,6 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #include "GL/glew.h"
 
 #include "SDL/SDL.h"
-#include "SDL/SDL_image.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -39,35 +38,21 @@ int main(int argc, char *argv[])
     glClearColor( 0, 0, 0, 0 );
     glClear( GL_COLOR_BUFFER_BIT );
 
-    // Load the OpenGL texture
+    // Create a texture
 
     GLuint texture;
-    SDL_Surface *surface;
-    
-    if ( (surface = IMG_Load("screenshot.png")) ) { 
-        if ( (surface->w & (surface->w - 1)) != 0 ) {
-            printf("warning: width is not a power of 2\n");
-        }
-        if ( (surface->h & (surface->h - 1)) != 0 ) {
-            printf("warning: height is not a power of 2\n");
-        }
-    
-        glGenTextures( 1, &texture );
-        glBindTexture( GL_TEXTURE_2D, texture );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, 
-                      GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels );
-    } 
-    else {
-        printf("SDL could not load image.bmp: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }    
-    
-    if ( surface ) { 
-        SDL_FreeSurface( surface );
+    glGenTextures( 1, &texture );
+    glBindTexture( GL_TEXTURE_2D, texture );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    GLubyte textureData[16*16*4];
+    for (int x = 0; x < 16; x++) {
+      for (int y = 0; y < 16; y++) {
+        *((int*)&textureData[(x*16 + y) * 4]) = x*16 + ((y*16) << 8);
+      }
     }
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, 
+                  GL_RGBA, GL_UNSIGNED_BYTE, textureData );
 
     // Create a second texture
 
@@ -99,7 +84,7 @@ int main(int argc, char *argv[])
     glRotated(0, 0, 1, 0);
     glRotated(0,-1, 0, 0);
     glRotated(0, 0, 0,-1);
-    glTranslated(-512,-512,-527);
+    //glTranslated(-512,-512,-527); // XXX this should be uncommented, but if it is then nothing is shown
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
