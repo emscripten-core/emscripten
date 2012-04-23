@@ -3480,8 +3480,8 @@ LibraryManager.library = {
 
     return ret * multiplier;
   },
-  strtod_l: 'strtold', // no locale support yet
-  strtold: 'strtod', // XXX does long double need special care?
+  strtod_l: 'strtod', // no locale support yet
+  strtold: 'strtod', // XXX add real support for long double
   strtold_l: 'strtold', // no locale support yet
 
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
