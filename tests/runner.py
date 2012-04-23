@@ -7210,18 +7210,18 @@ elif 'browser' in str(sys.argv):
         Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
-    def btest(self, filename, expected): # TODO: use in all other tests
-      open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(open(path_from_root('tests', filename)).read()))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), filename), '-o', 'something.html']).communicate()
-      self.run_browser('something.html', '.', '/report_result?' + expected)
-
-    def zzztest_ftransform(self):
-      self.btest('ftransform.c', '1')
+    def btest(self, filename, expected, reference=None, args=[]): # TODO: use in all other tests
+      if not reference:
+        open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(open(path_from_root('tests', filename)).read()))
+      else:
+        shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
+        self.reftest(path_from_root('tests', reference))
+        args += ['--pre-js', 'reftest.js']
+      Popen(['python', EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html']).communicate()
+      self.run_browser('test.html', '.', '/report_result?' + expected)
 
     def test_emscripten_api(self):
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'emscripten_api_browser.cpp')).read()))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html']).communicate()
-      self.run_browser('page.html', '', '/report_result?1')
+      self.btest('emscripten_api_browser.cpp', '1')
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
