@@ -7211,6 +7211,14 @@ elif 'browser' in str(sys.argv):
         Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
+    def btest(self, filename, expected): # TODO: use in all other tests
+      open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(open(path_from_root('tests', filename)).read()))
+      Popen(['python', EMCC, os.path.join(self.get_dir(), filename), '-o', 'something.html']).communicate()
+      self.run_browser('something.html', '.', '/report_result?' + expected)
+
+    def zzztest_ftransform(self):
+      self.btest('ftransform.c', '1')
+
     def test_emscripten_api(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'emscripten_api_browser.cpp')).read()))
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html']).communicate()
