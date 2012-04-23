@@ -1549,7 +1549,7 @@ var LibraryGL = {
 
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
-    console.log('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16));
+    console.log('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GL.immediate.matrix.lib.mat4.set(GL.immediate.matrix[GL.immediate.currentMatrix],
         {{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}});
