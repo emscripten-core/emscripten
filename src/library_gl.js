@@ -1400,7 +1400,7 @@ var LibraryGL = {
   $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GL.immediate = GLImmediate; GL.immediate.matrix.lib = ' + read('gl-matrix.js') + '; GL.immediate.initMatrixLibrary();\n' }],
   $GLImmediateSetup: {},
 
-  glBegin__deps: ['$GL', '$GLImmediateSetup'],
+  glBegin__deps: ['$GLImmediateSetup'],
   glBegin: function(mode) {
     if (!GL.immediate.initted) GL.immediate.init();
     GL.immediate.mode = mode;
