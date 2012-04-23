@@ -81,6 +81,20 @@ int main(int argc, char *argv[])
     if ( surface ) { 
         SDL_FreeSurface( surface );
     }
+
+    // Create a second texture
+
+    GLuint texture2;
+    glGenTextures( 1, &texture2 );
+    glBindTexture( GL_TEXTURE_2D, texture2 );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    GLubyte texture2Data[] = { 0xff,    0,    0, 0xff,
+                                  0, 0xff,    0, 0xaa,
+                                  0,    0, 0xff, 0x55,
+                               0x80, 0x90, 0x70,    0 };
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0,
+                  GL_RGBA, GL_UNSIGNED_BYTE, texture2Data );
     
     glClear( GL_COLOR_BUFFER_BIT );
 
@@ -199,7 +213,7 @@ int main(int argc, char *argv[])
     glBindTexture(GL_TEXTURE_2D, texture); // diffuse?
     glActiveTexture(GL_TEXTURE0);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture); // lightmap? should be different
+    glBindTexture(GL_TEXTURE_2D, texture2); // lightmap?
     glActiveTexture(GL_TEXTURE0);
 
     GLint ok;
