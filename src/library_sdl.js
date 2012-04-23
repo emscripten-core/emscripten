@@ -104,7 +104,7 @@ var LibrarySDL = {
       'mousemove': 0x400
     },
 
-    keyCodes: { // DOM code ==> SDL code
+    keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       38:  1106, // up arrow
       40:  1105, // down arrow
       37:  1104, // left arrow
@@ -116,7 +116,31 @@ var LibrarySDL = {
       17:  305, // control (right, or left)
       18:  308, // alt
       109: 45, // minus
-      16:  304 // shift
+      16:  304, // shift
+      
+      96: 88 | 1<<10, // keypad 0
+      97: 89 | 1<<10, // keypad 1
+      98: 90 | 1<<10, // keypad 2
+      99: 91 | 1<<10, // keypad 3
+      100: 92 | 1<<10, // keypad 4
+      101: 93 | 1<<10, // keypad 5
+      102: 94 | 1<<10, // keypad 6
+      103: 95 | 1<<10, // keypad 7
+      104: 96 | 1<<10, // keypad 8
+      105: 97 | 1<<10, // keypad 9
+
+      112: 58 | 1<<10, // F1
+      113: 59 | 1<<10, // F2
+      114: 60 | 1<<10, // F3
+      115: 61 | 1<<10, // F4
+      116: 62 | 1<<10, // F5
+      117: 63 | 1<<10, // F6
+      118: 64 | 1<<10, // F7
+      119: 65 | 1<<10, // F8
+      120: 66 | 1<<10, // F9
+      121: 67 | 1<<10, // F10
+      122: 68 | 1<<10, // F11
+      123: 69 | 1<<10, // F12
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode
@@ -164,11 +188,6 @@ var LibrarySDL = {
       47: 56, // slash
       305: 224, // ctrl
       308: 226, // alt
-      1113: 89, // keypad 1
-      1106: 82, // up arrow
-      1105: 81, // down arrow
-      1104: 80, // left arrow
-      1103: 79 // right arrow
     },
 
     structs: {
@@ -354,11 +373,18 @@ var LibrarySDL = {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           //Module.print('Received key event: ' + event.keyCode);
-          var key = SDL.keyCodes[event.keyCode] || event.keyCode;
+          var key = event.keyCode;
           if (key >= 65 && key <= 90) {
-            key = String.fromCharCode(key).toLowerCase().charCodeAt(0);
+            key += 32; // make lowercase for SDL
+          } else {
+            key = SDL.keyCodes[event.keyCode] || event.keyCode;
           }
-          var scan = SDL.scanCodes[key] || key;
+          var scan;
+          if (key >= 1024) {
+            scan = key - 1024;
+          } else {
+            scan = SDL.scanCodes[key] || key;
+          }
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
           //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}

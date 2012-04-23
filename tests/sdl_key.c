@@ -45,8 +45,8 @@ int main(int argc, char **argv) {
   emscripten_run_script("simulateKeyEvent(37)"); // left
   emscripten_run_script("simulateKeyEvent(39)"); // right
   emscripten_run_script("simulateKeyEvent(32)"); // space
-  emscripten_run_script("simulateKeyEvent(97)"); // a
-  emscripten_run_script("simulateKeyEvent(98)"); // b
+  emscripten_run_script("simulateKeyEvent(65)"); // a
+  emscripten_run_script("simulateKeyEvent(66)"); // b
   emscripten_run_script("simulateKeyEvent(100)"); // trigger the end
 
   if (argc == 1337) one(); // keep it alive
