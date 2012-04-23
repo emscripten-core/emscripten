@@ -30,28 +30,15 @@ int main(int argc, char *argv[])
     }
 
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    screen = SDL_SetVideoMode( 640, 480, 16, SDL_OPENGL );
+    screen = SDL_SetVideoMode( 1024, 768, 24, SDL_OPENGL );
     if ( !screen ) {
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
     }
     
     glClearColor( 0, 0, 0, 0 );
-    
-#if !EMSCRIPTEN
-    glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
-#endif
+    glClear( GL_COLOR_BUFFER_BIT );
 
-    glViewport( 0, 0, 640, 480 );
-
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-
-    glOrtho( 0, 640, 480, 0, -1, 1 );
-    
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-    
     // Load the OpenGL texture
 
     GLuint texture;
@@ -59,10 +46,10 @@ int main(int argc, char *argv[])
     
     if ( (surface = IMG_Load("screenshot.png")) ) { 
         if ( (surface->w & (surface->w - 1)) != 0 ) {
-            printf("warning: image.bmp's width is not a power of 2\n");
+            printf("warning: width is not a power of 2\n");
         }
         if ( (surface->h & (surface->h - 1)) != 0 ) {
-            printf("warning: image.bmp's height is not a power of 2\n");
+            printf("warning: height is not a power of 2\n");
         }
     
         glGenTextures( 1, &texture );
@@ -96,8 +83,6 @@ int main(int argc, char *argv[])
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0,
                   GL_RGBA, GL_UNSIGNED_BYTE, texture2Data );
     
-    glClear( GL_COLOR_BUFFER_BIT );
-
     // BEGIN
 
     glewInit();
@@ -218,16 +203,12 @@ int main(int argc, char *argv[])
 
     GLint ok;
 
-    const char *vertexShader = "#pragma CUBE2_fog\n"
-                               "uniform vec4 texgenscroll;\n"
+    const char *vertexShader = "uniform vec4 texgenscroll;\n"
                                "void main(void)\n"
                                "{\n"
                                "    gl_Position = ftransform();\n"
                                "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy + texgenscroll.xy;\n"
                                "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy * 3.051851e-05;\n"
-                               "    #pragma CUBE2_shadowmap\n"
-                               "    #pragma CUBE2_dynlight\n"
-                               "    #pragma CUBE2_water\n"
                                "}\n";
     const char *fragmentShader = "uniform vec4 colorparams;\n"
                                  "uniform sampler2D diffusemap, lightmap;\n"
@@ -235,11 +216,8 @@ int main(int argc, char *argv[])
                                  "{\n"
                                  "    vec4 diffuse = texture2D(diffusemap, gl_TexCoord[0].xy);\n"
                                  "    vec4 lm = texture2D(lightmap, gl_TexCoord[1].xy);\n"
-                                 "    #pragma CUBE2_shadowmap lm\n"
-                                 "    #pragma CUBE2_dynlight lm\n"
                                  "    diffuse *= colorparams;\n"
                                  "    gl_FragColor = diffuse * lm;\n"
-                                 "    #pragma CUBE2_water\n"
                                  "}\n";
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -270,7 +248,7 @@ int main(int argc, char *argv[])
 
     GLint diffusemapLocation = glGetUniformLocation(program, "diffusemap");
     assert(diffusemapLocation >= 0);
-    glUniform1i(diffusemapLocation, 0); // sampler2D? Is it the texture unit?
+    glUniform1i(diffusemapLocation, 0);
 
     GLint texgenscrollLocation = glGetUniformLocation(program, "texgenscroll");
     assert(texgenscrollLocation >= 0);
@@ -294,13 +272,9 @@ int main(int argc, char *argv[])
     SDL_GL_SwapBuffers();
     
 #if !EMSCRIPTEN
-    // Wait for 3 seconds to give us a chance to see the image
     SDL_Delay(3000);
 #endif
 
-    // Now we can delete the OpenGL texture and close down SDL
-    glDeleteTextures( 1, &texture );
-    
     SDL_Quit();
     
     return 0;
