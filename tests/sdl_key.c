@@ -25,7 +25,8 @@ void one() {
             }
             printf("unknown key: sym %d scancode %d\n", event.key.keysym.sym, event.key.keysym.scancode);
             REPORT_RESULT();
-            emscripten_run_script("throw 'done'");
+            emscripten_run_script("throw 'done'"); // comment this out to leave event handling active. Use the following to log DOM keys:
+                                                   // addEventListener('keyup', function(event) { console.log(event.keyCode) }, true)
           }
         }
         break;
@@ -39,13 +40,13 @@ int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
-  emscripten_run_script("simulateKeyEvent(38)");
-  emscripten_run_script("simulateKeyEvent(40)");
-  emscripten_run_script("simulateKeyEvent(37)");
-  emscripten_run_script("simulateKeyEvent(39)");
-  emscripten_run_script("simulateKeyEvent(32)");
-  emscripten_run_script("simulateKeyEvent(97)");
-  emscripten_run_script("simulateKeyEvent(98)");
+  emscripten_run_script("simulateKeyEvent(38)"); // up
+  emscripten_run_script("simulateKeyEvent(40)"); // down
+  emscripten_run_script("simulateKeyEvent(37)"); // left
+  emscripten_run_script("simulateKeyEvent(39)"); // right
+  emscripten_run_script("simulateKeyEvent(32)"); // space
+  emscripten_run_script("simulateKeyEvent(97)"); // a
+  emscripten_run_script("simulateKeyEvent(98)"); // b
   emscripten_run_script("simulateKeyEvent(100)"); // trigger the end
 
   if (argc == 1337) one(); // keep it alive
