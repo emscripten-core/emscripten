@@ -204,8 +204,8 @@ int main(int argc, char *argv[])
                                "void main(void)\n"
                                "{\n"
                                "    gl_Position = ftransform();\n"
-                               "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy/100 + texgenscroll.xy;\n" // added /100 here
-                               "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy/100 * 3.051851e-05;\n"
+                               "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy/100.0 + texgenscroll.xy;\n" // added /100 here
+                               "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy/100.0 * 3.051851e-05;\n"
                                "}\n";
     const char *fragmentShader = "uniform vec4 colorparams;\n"
                                  "uniform sampler2D diffusemap, lightmap;\n"
