@@ -774,6 +774,10 @@ var LibrarySDL = {
 
   // SDL_Image
 
+  IMG_Init: function(flags) {
+    return flags; // We support JPG, PNG, TIF because browsers do
+  },
+
   IMG_Load__deps: ['SDL_LockSurface'],
   IMG_Load: function(filename) {
     filename = FS.standardizePath(Pointer_stringify(filename));
