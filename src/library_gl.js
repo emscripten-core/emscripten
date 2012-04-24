@@ -1342,42 +1342,61 @@ var LibraryGL = {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
-#if ASSERTIONS
         assert(first == 0); // TODO
-#endif
-        // Client attributes are to be used here, emulate that
-        var stride = 0, bytes = 0, attributes = [], start, renderer = '';
-        for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
-          if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
+
+        var renderer = GL.immediate.prepareClientAttributes(count);
+        GL.immediate.mode = mode;
+        GL.immediate.setRenderer(renderer);
+        GL.immediate.flush();
+      };
+
+      _glDrawElements = function(mode, count, type, indices) {
+        if (GL.immediate.totalEnabledClientAttributes == 0) {
+          Module.ctx.drawElements(mode, count, type, indices);
+          return;
         }
-        attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
-        start = attributes[0].pointer;
-        for (var i = 0; i < attributes.length; i++) {
-          var attribute = attributes[i];
-          if (!attribute) break;
-#if ASSERTIONS
-          assert(attribute.stride);
-          assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
-#endif
-          stride = attribute.stride;
-          bytes += attribute.size * 4 * count; // XXX assuming float
-          renderer += attribute.name;
-        }
-        for (var i = 0; i < attributes.length; i++) {
-          var attribute = attributes[i];
-          if (!attribute) break;
-          attribute.offset = attribute.pointer - start;
-#if ASSERTIONS
-          assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
-#endif
-        }
-        GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
-        GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
+
+        var renderer = GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
         GL.immediate.setRenderer(renderer);
         GL.immediate.flush();
       };
     },
+
+    prepareClientAttributes: function(count) {
+      // Client attributes are to be used here, emulate that
+      var stride = 0, bytes = 0, attributes = [], start, renderer = '';
+      for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
+        if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
+      }
+      attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
+      start = attributes[0].pointer;
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (!attribute) break;
+#if ASSERTIONS
+        assert(attribute.stride);
+        assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
+#endif
+        stride = attribute.stride;
+        bytes += attribute.size * 4 * count; // XXX assuming float
+        renderer += attribute.name;
+      }
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (!attribute) break;
+        attribute.offset = attribute.pointer - start;
+#if ASSERTIONS
+        assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
+#endif
+      }
+
+      GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+      GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
+
+      return renderer;
+    },
+
     flush: function() {
       var renderer = this.setRenderer(this.renderer);
 
