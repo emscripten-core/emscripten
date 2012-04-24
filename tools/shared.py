@@ -216,7 +216,17 @@ try:
 except NameError:
   pass
 
-WINDOWS = sys.platform.startswith ('win')
+WINDOWS = sys.platform.startswith('win')
+
+# If we have 'env', we should use that to find python, because |python| may fail while |env python| may work
+# (For example, if system python is 3.x while we need 2.x, and env gives 2.x if told to do so.)
+ENV_PREFIX = []
+if not WINDOWS:
+  try:
+    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    ENV_PREFIX = ['env']
+  except:
+    pass
 
 # Temp file utilities
 
@@ -617,7 +627,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Run Emscripten
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
