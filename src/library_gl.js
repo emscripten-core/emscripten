@@ -1521,6 +1521,7 @@ var LibraryGL = {
   glTexCoordPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
   },
+  glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute('V', size, type, stride, pointer);
   },
