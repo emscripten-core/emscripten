@@ -316,7 +316,7 @@ var Runtime = {
   },
 
 #if RUNTIME_DEBUG
-  debug: false, // Switch to true at runtime to enable logging at the right times
+  debug: true, // Switch to false at runtime to disable logging at the right times
 
   printObjectMap: null,
   printObjectCounter: 1,

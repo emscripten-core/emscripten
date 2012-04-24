@@ -102,11 +102,11 @@ var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 var LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 
-var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You must also set
-                       // Runtime.debug at runtime for logging to happen, and can unset it when you
-                       // no longer want logging. A simple way to set it in C++ is
-                       //   emscripten_run_script("Runtime.debug = 1;");
-var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you must set a runtime
+var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
+                       // Runtime.debug at runtime for logging to cease, and can set it when you
+                       // want it back. A simple way to set it in C++ is
+                       //   emscripten_run_script("Runtime.debug = ...;");
+var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you

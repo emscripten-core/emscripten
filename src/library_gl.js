@@ -6,7 +6,7 @@
 var LibraryGL = {
   $GL: {
 #if GL_DEBUG
-    debug: false,
+    debug: true,
 #endif
 
     counter: 1,
