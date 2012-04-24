@@ -3587,6 +3587,7 @@ def process(filename):
           printf("%g\n", strtod("0", &endptr));
           printf("%g\n", strtod("0.", &endptr));
           printf("%g\n", strtod("0.0", &endptr));
+          printf("%g\n", strtod("-0.0", &endptr));
           printf("%g\n", strtod("1", &endptr));
           printf("%g\n", strtod("1.", &endptr));
           printf("%g\n", strtod("1.0", &endptr));
@@ -3611,6 +3612,7 @@ def process(filename):
         0
         0
         0
+        0
         1
         1
         1
@@ -3629,6 +3631,7 @@ def process(filename):
         '''
 
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
+      self.do_run(src.replace('strtod', 'strtold'), re.sub(r'\n\s+', '\n', expected)) # XXX add real support for long double
 
     def test_strtok(self):
       src = r'''
