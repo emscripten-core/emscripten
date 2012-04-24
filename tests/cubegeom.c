@@ -12,9 +12,14 @@ RESULTING FROM THE USE, MODIFICATION, OR
 REDISTRIBUTION OF THIS SOFTWARE.
 */
 
+#if !EMSCRIPTEN
 #include "GL/glew.h"
+#endif
 
 #include "SDL/SDL.h"
+#if EMSCRIPTEN
+#include "SDL/SDL_opengl.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -29,7 +34,7 @@ int main(int argc, char *argv[])
     }
 
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    screen = SDL_SetVideoMode( 1024, 768, 24, SDL_OPENGL );
+    screen = SDL_SetVideoMode( 640, 480, 24, SDL_OPENGL );
     if ( !screen ) {
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
@@ -70,7 +75,9 @@ int main(int argc, char *argv[])
     
     // BEGIN
 
+#if !EMSCRIPTEN
     glewInit();
+#endif
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
