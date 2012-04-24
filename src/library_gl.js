@@ -920,7 +920,7 @@ var LibraryGL = {
       // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
       // tandem with the rest of the program, by itself it cannot suffice.
       // Note that we need to remember shader types for this rewriting, saving sources makes it easier to debug.
-      GL.shaderTypes = {};
+      GL.shaderInfos = {};
 #if GL_DEBUG
       GL.shaderSources = {};
       GL.shaderOriginalSources = {};
@@ -928,7 +928,10 @@ var LibraryGL = {
       var glCreateShader = _glCreateShader;
       _glCreateShader = function(shaderType) {
         var id = glCreateShader(shaderType);
-        GL.shaderTypes[id] = shaderType;
+        GL.shaderInfos[id] = {
+          type: shaderType,
+          ftransform: false
+        };
         return id;
       };
 
@@ -938,8 +941,9 @@ var LibraryGL = {
 #if GL_DEBUG
         GL.shaderOriginalSources[shader] = source;
 #endif
-        if (GL.shaderTypes[shader] == Module.ctx.VERTEX_SHADER) {
+        if (GL.shaderInfos[shader].type == Module.ctx.VERTEX_SHADER) {
           // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
+          var old = source;
           source = 'attribute vec4 a_position; \n\
                     uniform mat4 u_modelView;  \n\
                     uniform mat4 u_projection; \n' +
@@ -949,6 +953,9 @@ var LibraryGL = {
                          .replace(/gl_ProjectionMatrix/g, 'u_projection')
                          .replace(/gl_ModelViewProjectionMatrix/g, 'u_modelView * u_projection')
                          .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
+          if (old != source) {
+            GL.shaderInfos[shader].ftransform = true; // we will need to provide the fixed function stuff as attributes and uniforms
+          }
           for (var i = 0; i <= 6; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
@@ -993,7 +1000,7 @@ var LibraryGL = {
         Module.ctx.compileShader(GL.shaders[shader]);
         if (!Module.ctx.getShaderParameter(GL.shaders[shader], Module.ctx.COMPILE_STATUS)) {
           console.log('Failed to compile shader: ' + Module.ctx.getShaderInfoLog(GL.shaders[shader]));
-          console.log('Type: ' + GL.shaderTypes[shader]);
+          console.log('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
 #if GL_DEBUG
           console.log('Original source: ' + GL.shaderOriginalSources[shader]);
           console.log('Source: ' + GL.shaderSources[shader]);
@@ -1008,23 +1015,26 @@ var LibraryGL = {
       GL.programShaders = {};
       var glAttachShader = _glAttachShader;
       _glAttachShader = function(program, shader) {
-        if (!GL.programShaders[program]) GL.programShaders[program] = {};
-        GL.programShaders[program][shader] = 1;
+        if (!GL.programShaders[program]) GL.programShaders[program] = [];
+        GL.programShaders[program].push(shader);
         glAttachShader(program, shader);
       };
+#endif
 
       var glUseProgram = _glUseProgram;
       _glUseProgram = function(program) {
+#if GL_DEBUG
         if (GL.debug) {
           console.log('[using program with shaders:]');
-          for (var shader in GL.programShaders[program]) {
+          GL.programShaders[program].forEach(function(shader) {
             console.log('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
             console.log('         Source: ' + GL.shaderSources[shader]);
-          }
+          });
         }
+#endif
+        GL.currProgram = program;
         glUseProgram(program);
       }
-#endif
 
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = function(pname, params) {
@@ -1196,10 +1206,30 @@ var LibraryGL = {
     },
 
     setRenderer: function(renderer) {
+      if (GL.currProgram) {
+        // A user-defined program is in use, use that
+        renderer = 'U' + GL.currProgram;
+      }
       this.renderer = renderer;
       if (this.renderers[renderer]) return this.renderers[renderer];
 
-      // Create renderer
+      if (renderer[0] == 'U') {
+        this.createUserDefinedRenderer(renderer);
+      } else {
+        this.createAutomaticRenderer(renderer);
+      }
+
+      return this.renderers[renderer];
+    },
+
+    createAutomaticRenderer: function(renderer) {
+      this.renderers[renderer] = {
+        prepare: function() {
+        }
+      };
+    },
+
+    createAutomaticRenderer: function(renderer) {
       var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0, which, size;
       for (var i = 0; i < renderer.length; i+=2) {
         var which = renderer[i];
@@ -1287,8 +1317,6 @@ var LibraryGL = {
         }
       };
       this.renderers[renderer].init();
-
-      return this.renderers[renderer];
     },
 
     // Main functions
