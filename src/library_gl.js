@@ -1034,6 +1034,16 @@ var LibraryGL = {
         glUseProgram(program);
       }
 
+      var glBindBuffer = _glBindBuffer;
+      _glBindBuffer = function(target, buffer) {
+        glBindBuffer(target, buffer);
+        if (target == Module.ctx.ARRAY_BUFFER) {
+          GL.currArrayBuffer = buffer;
+        } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
+          GL.currElementArrayBuffer = buffer;
+        }
+      };
+
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = function(pname, params) {
         if (pname == 0x0BA6) { // GL_MODELVIEW_MATRIX
@@ -1518,12 +1528,12 @@ var LibraryGL = {
     _glEnableClientState(cap, 1);
   },
 
-  glTexCoordPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
-  },
   glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute('V', size, type, stride, pointer);
+  },
+  glTexCoordPointer: function(size, type, stride, pointer) {
+    GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
   },
   glNormalPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute('N', size, type, stride, pointer);
