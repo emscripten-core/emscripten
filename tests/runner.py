@@ -7127,12 +7127,6 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
-    def zzztest_cubegeom(self):
-      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'cubegeom.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
-      self.run_browser('something.html', '', '/report_result?0')
-
     def test_worker(self):
       # Test running in a web worker
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
@@ -7229,6 +7223,9 @@ elif 'browser' in str(sys.argv):
 
     def test_sdlglshader(self):
       self.btest('sdlglshader.c', reference='sdlglshader.png')
+
+    def zzztest_cubegeom(self):
+      self.btest('cubegeom.c', reference='sdlglshader.png')
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do

@@ -13,11 +13,15 @@ REDISTRIBUTION OF THIS SOFTWARE.
 */
 
 #if !EMSCRIPTEN
+#define USE_GLEW 1
+#endif
+
+#if USE_GLEW
 #include "GL/glew.h"
 #endif
 
 #include "SDL/SDL.h"
-#if EMSCRIPTEN
+#if !USE_GLEW
 #include "SDL/SDL_opengl.h"
 #endif
 
@@ -75,13 +79,14 @@ int main(int argc, char *argv[])
     
     // BEGIN
 
-#if !EMSCRIPTEN
+#if USE_GLEW
     glewInit();
 #endif
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glFrustum(-0.6435469817188064, 0.6435469817188064 ,-0.48266022190470925, 0.48266022190470925 ,0.5400000214576721, 2048);
+    // original: glFrustum(-0.6435469817188064, 0.6435469817188064 ,-0.48266022190470925, 0.48266022190470925 ,0.5400000214576721, 2048);
+    glFrustum(-0.6435469817188064, 0.1435469817188064 ,-0.48266022190470925, 0.88266022190470925 ,0.5400000214576721, 2048);
     glMatrixMode(GL_MODELVIEW);
     GLfloat matrixData[] = { -1, 0, 0, 0,
                               0, 0,-1, 0,
@@ -199,8 +204,8 @@ int main(int argc, char *argv[])
                                "void main(void)\n"
                                "{\n"
                                "    gl_Position = ftransform();\n"
-                               "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy + texgenscroll.xy;\n"
-                               "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy * 3.051851e-05;\n"
+                               "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy/100 + texgenscroll.xy;\n" // added /100 here
+                               "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy/100 * 3.051851e-05;\n"
                                "}\n";
     const char *fragmentShader = "uniform vec4 colorparams;\n"
                                  "uniform sampler2D diffusemap, lightmap;\n"
