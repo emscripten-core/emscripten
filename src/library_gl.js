@@ -1238,7 +1238,7 @@ var LibraryGL = {
             textureOffset = vertexSize;
           }
         } else {
-          throw 'Cannot create shader rendederer for ' + renderer + ' because of ' + which;
+          console.log('Warning: Ignoring renderer attribute ' + which);
         }
         vertexSize += size * 4; // XXX assuming float
       }
@@ -1554,8 +1554,8 @@ var LibraryGL = {
   glTexCoordPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
   },
-  glNormalPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute('N', size, type, stride, pointer);
+  glNormalPointer: function(type, stride, pointer) {
+    GL.immediate.setClientAttribute('N', 1, type, stride, pointer);
   },
   glColorPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute('C', size, type, stride, pointer);
@@ -1595,27 +1595,23 @@ var LibraryGL = {
   },
 
   glLoadMatrixd: function(matrix) {
-    GL.immediate.matrix.lib.mat4.set(GL.immediate.matrix[GL.immediate.currentMatrix],
-        {{{ makeHEAPView('F64', 'matrix', 'matrix+16*8') }}});
+    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+16*8') }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
     console.log('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
-    GL.immediate.matrix.lib.mat4.set(GL.immediate.matrix[GL.immediate.currentMatrix],
-        {{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}});
+    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixd: function(matrix) {
-    GL.immediate.matrix.lib.mat4.set(GL.immediate.matrix[GL.immediate.currentMatrix],
-        {{{ makeHEAPView('F64', 'matrix', 'matrix+16*8') }}});
+    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+16*8') }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
     GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixf: function(matrix) {
-    GL.immediate.matrix.lib.mat4.set(GL.immediate.matrix[GL.immediate.currentMatrix],
-        {{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}});
+    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
     GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
@@ -1631,16 +1627,14 @@ var LibraryGL = {
 
   glMultTransposeMatrixd: function(matrix) {
     var colMajor = GL.immediate.matrix.lib.mat4.create();
-    GL.immediate.matrix.lib.mat4.set(colMajor,
-        {{{ makeHEAPView('F64', 'matrix', 'matrix+16*8') }}});
+    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+16*8') }}}, colMajor);
     GL.immediate.matrix.lib.mat4.transpose(colMajor);
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix], colMajor);
   },
 
   glMultTransposeMatrixf: function(matrix) {
     var colMajor = GL.immediate.matrix.lib.mat4.create();
-    GL.immediate.matrix.lib.mat4.set(colMajor,
-        {{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}});
+    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}}, colMajor);
     GL.immediate.matrix.lib.mat4.transpose(colMajor);
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix], colMajor);
   },
