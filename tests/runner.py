@@ -7225,7 +7225,7 @@ elif 'browser' in str(sys.argv):
       self.btest('sdlglshader.c', reference='sdlglshader.png')
 
     def zzztest_cubegeom(self):
-      self.btest('cubegeom.c', reference='sdlglshader.png')
+      self.btest('cubegeom.c', reference='sdlglshader.png', args=['-s', 'GL_DEBUG=1'])
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do

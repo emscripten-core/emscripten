@@ -1430,12 +1430,15 @@ var LibraryGL = {
         Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, numIndexes), Module.ctx.STATIC_DRAW);
       }
 
-      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
-      Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, this.vertexCounter), Module.ctx.STATIC_DRAW);
+      if (!GL.currArrayBuffer) {
+        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
+        Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, this.vertexCounter), Module.ctx.STATIC_DRAW);
+      }
 
       // Render
-      Module.ctx.useProgram(renderer.program);
-      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
+      if (!GL.currProgram) {
+        Module.ctx.useProgram(renderer.program);
+      }
 
       renderer.prepare();
 
@@ -1446,6 +1449,13 @@ var LibraryGL = {
         Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, 0);
       } else {
         Module.ctx.drawArrays(GL.immediate.mode, 0, numVertexes);
+      }
+
+      if (!GL.currArrayBuffer) {
+        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+      }
+      if (!GL.currProgram) {
+        Module.ctx.useProgram(null);
       }
 
       this.vertexCounter = 0;
