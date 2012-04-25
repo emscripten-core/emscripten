@@ -1280,10 +1280,10 @@ var LibraryGL = {
             this.fragmentShader = Module.ctx.createShader(Module.ctx.FRAGMENT_SHADER);
             Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n' +
                                                          'varying vec2 v_texCoord;                            \n' +
-                                                         'uniform sampler2D s_texture;                        \n' +
+                                                         'uniform sampler2D u_texture;                        \n' +
                                                          'void main()                                         \n' +
                                                          '{                                                   \n' +
-                                                         (textureSize ? 'gl_FragColor = texture2D( s_texture, v_texCoord );\n' :
+                                                         (textureSize ? 'gl_FragColor = texture2D( u_texture, v_texCoord );\n' :
                                                                         'gl_FragColor = vec4(0.8, 0.1, 1.0, 1.0);') +
                                                          '}                                                   \n');
             Module.ctx.compileShader(this.fragmentShader);
@@ -1296,7 +1296,7 @@ var LibraryGL = {
 
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
           this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord');
-          this.textureLocation = Module.ctx.getUniformLocation(this.program, 's_texture');
+          this.textureLocation = Module.ctx.getUniformLocation(this.program, 'u_texture');
           this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
         },
