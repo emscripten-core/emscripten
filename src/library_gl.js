@@ -1214,11 +1214,14 @@ var LibraryGL = {
     },
 
     setRenderer: function(renderer) {
-      this.renderer = renderer;
-      if (this.renderers[renderer]) return this.renderers[renderer];
-
-      this.createRenderer(renderer);
-      return this.renderers[renderer];
+      var name = renderer;
+      if (GL.currProgram) {
+        name = 'UD' + GL.currProgram; // user-defined program renderer
+      }
+      this.renderer = name;
+      if (this.renderers[name]) return this.renderers[name];
+      this.renderers[name] = this.createRenderer(renderer);
+      return this.renderers[name];
     },
 
     createRenderer: function(renderer) {
@@ -1246,7 +1249,7 @@ var LibraryGL = {
       // TODO: verify vertexSize is equal to the stride in enabled client arrays
       // XXX TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
       var useCurrProgram = !!GL.currProgram;
-      this.renderers[renderer] = {
+      var ret = {
         vertexSize: vertexSize,
         hasTexture: textureSize > 0,
         init: function() {
@@ -1311,6 +1314,7 @@ var LibraryGL = {
           }
           Module.ctx.enableVertexAttribArray(this.positionLocation);
 
+          // TODO: use client texture info
           var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
           Module.ctx.activeTexture(Module.ctx.TEXTURE0);
           Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
@@ -1320,7 +1324,8 @@ var LibraryGL = {
           Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
         }
       };
-      this.renderers[renderer].init();
+      ret.init();
+      return ret;
     },
 
     // Main functions
