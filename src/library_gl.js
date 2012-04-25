@@ -1266,14 +1266,14 @@ var LibraryGL = {
             this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
             var zero = positionSize == 2 ? '0, ' : '';
             Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n' +
-                                                       'attribute vec2 a_texCoord;  \n' +
+                                                       'attribute vec2 a_texCoord0;  \n' +
                                                        (textureSize ? 'varying vec2 v_texCoord;    \n' : '') +
                                                        'uniform mat4 u_modelView;   \n' +
                                                        'uniform mat4 u_projection;  \n' +
                                                        'void main()                 \n' +
                                                        '{                           \n' +
                                                        '  gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' +
-                                                       (textureSize ? 'v_texCoord = a_texCoord;    \n' : '') +
+                                                       (textureSize ? 'v_texCoord = a_texCoord0;    \n' : '') +
                                                        '}                           \n');
             Module.ctx.compileShader(this.vertexShader);
 
@@ -1295,7 +1295,7 @@ var LibraryGL = {
           }
 
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
-          this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord');
+          this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord0');
           this.textureLocation = Module.ctx.getUniformLocation(this.program, 'u_texture');
           this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
@@ -1314,11 +1314,12 @@ var LibraryGL = {
           }
           Module.ctx.enableVertexAttribArray(this.positionLocation);
 
-          // TODO: use client texture info
-          var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
-          Module.ctx.activeTexture(Module.ctx.TEXTURE0);
-          Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
-          Module.ctx.uniform1i(this.textureLocation, 0);
+          if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
+            var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
+            Module.ctx.activeTexture(Module.ctx.TEXTURE0);
+            Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
+            Module.ctx.uniform1i(this.textureLocation, 0);
+          }
 
           Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
           Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
