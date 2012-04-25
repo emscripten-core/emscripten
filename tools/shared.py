@@ -610,13 +610,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen(['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(ENV_PREFIX + ['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen(['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(ENV_PREFIX + ['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 

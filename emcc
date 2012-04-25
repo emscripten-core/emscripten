@@ -722,9 +722,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      execute(['python', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
+      execute(shared.ENV_PREFIX + ['python', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      execute(['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
+      execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
@@ -846,7 +846,7 @@ try:
 
   if AUTODEBUG:
     if DEBUG: print >> sys.stderr, 'emcc: autodebug'
-    execute(['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
+    execute(shared.ENV_PREFIX + ['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
 
