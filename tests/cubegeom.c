@@ -87,15 +87,15 @@ int main(int argc, char *argv[])
     glLoadIdentity();
     // original: glFrustum(-0.6435469817188064, 0.6435469817188064 ,-0.48266022190470925, 0.48266022190470925 ,0.5400000214576721, 2048);
     glFrustum(-0.6435469817188064, 0.1435469817188064 ,-0.48266022190470925, 0.88266022190470925 ,0.5400000214576721, 2048);
+    //GLfloat pm[] = { 1.372136116027832, 0, 0, 0, 0, 0.7910231351852417, 0, 0, -0.6352481842041016, 0.29297152161598206, -1.0005275011062622, -1, 0, 0, -1.080284833908081, 0 };
+    //glLoadMatrixf(pm);
+
     glMatrixMode(GL_MODELVIEW);
     GLfloat matrixData[] = { -1, 0, 0, 0,
                               0, 0,-1, 0,
                               0, 1, 0, 0,
                               0, 0, 0, 1 };
     glLoadMatrixf(matrixData);
-    glRotated(0, 0, 1, 0);
-    glRotated(0,-1, 0, 0);
-    glRotated(0, 0, 0,-1);
     //glTranslated(-512,-512,-527); // XXX this should be uncommented, but if it is then nothing is shown
 
     glEnable(GL_CULL_FACE);
