@@ -1359,7 +1359,7 @@ var LibraryGL = {
         var renderer = GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
         GL.immediate.setRenderer(renderer);
-        GL.immediate.flush();
+        GL.immediate.flush(count);
       };
     },
 
@@ -1397,7 +1397,7 @@ var LibraryGL = {
       return renderer;
     },
 
-    flush: function() {
+    flush: function(numProvidedIndexes) {
       var renderer = this.setRenderer(this.renderer);
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
@@ -1406,7 +1406,9 @@ var LibraryGL = {
       assert(numVertexes % 1 == 0);
 
       var numIndexes = 0;
-      if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
+      if (numProvidedIndexes) {
+        numIndexes = numProvidedIndexes;
+      } else if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
         if (GL.immediate.mode == 7) { // GL_QUADS
           var numQuads = numVertexes / 4;
           assert(numQuads % 1 == 0);
@@ -1438,7 +1440,9 @@ var LibraryGL = {
       renderer.prepare();
 
       if (numIndexes) {
-        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+        if (!numProvidedIndexes) {
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+        }
         Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, 0);
       } else {
         Module.ctx.drawArrays(GL.immediate.mode, 0, numVertexes);
