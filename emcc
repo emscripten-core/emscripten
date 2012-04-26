@@ -272,6 +272,10 @@ Options that are modified or new in %s include:
   --js-library <lib>       A JavaScript library to use in addition to
                            those in Emscripten's src/library_*
 
+  -v                       Turns on verbose output. This will pass
+                           -v to Clang, and also enable EMCC_DEBUG
+                           to details emcc's operations
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -512,6 +516,10 @@ try:
       newargs[i+1] = ''
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
+      newargs[i] = ''
+    elif newargs[i] == '-v':
+      shared.COMPILER_OPTS += ['-v']
+      DEBUG = 1
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
