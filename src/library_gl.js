@@ -1602,7 +1602,7 @@ var LibraryGL = {
   },
 
   glClientActiveTexture: function(texture) {
-    GL.immediate.clientActiveTexture = texture;
+    GL.immediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
   },
 
   // OpenGL Immediate Mode matrix routines.
