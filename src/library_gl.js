@@ -1034,6 +1034,12 @@ var LibraryGL = {
         glUseProgram(program);
       }
 
+      var glDeleteProgram = _glDeleteProgram;
+      _glDeleteProgram = function(program) {
+        glDeleteProgram(program);
+        if (program == GL.currProgram) GL.currProgram = 0;
+      };
+
       var glBindBuffer = _glBindBuffer;
       _glBindBuffer = function(target, buffer) {
         glBindBuffer(target, buffer);
@@ -1041,6 +1047,16 @@ var LibraryGL = {
           GL.currArrayBuffer = buffer;
         } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
           GL.currElementArrayBuffer = buffer;
+        }
+      };
+
+      var glDeleteBuffers = _glDeleteBuffers;
+      _glDeleteBuffers = function(n, buffers) {
+        glDeleteBuffers(n, buffers);
+        for (var i = 0; i < n; i++) {
+          var buffer = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
+          if (buffer == GL.currArrayBuffer) GL.currArrayBuffer = 0;
+          if (buffer == GL.currElementArrayBuffer) GL.currElementArrayBuffer = 0;
         }
       };
 
