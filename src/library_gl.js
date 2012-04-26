@@ -967,9 +967,13 @@ var LibraryGL = {
             }
           }
           if (source.indexOf('gl_Color') >= 0) {
-            source = 'attribute vec4 a_color; \n\
-                      varying vec4 v_color;   \n' +
-                     source.replace(/gl_Color/g, 'a_color').replace(/gl_FrontColor/g, 'v_color');
+            source = 'varying vec4 v_color;   \n' +
+                     source.replace(/gl_Color/g, 'vec4(1, 1, 1, 1)').replace(/gl_FrontColor/g, 'v_color'); // XXX gl_Color can be either an attribute, or
+                                                                                                           //     from glColor, and we don't know which here.
+                                                                                                           //     For now, just use white
+            //source = 'attribute vec4 a_color; \n\
+            //          varying vec4 v_color;   \n' +
+            //         source.replace(/gl_Color/g, 'a_color').replace(/gl_FrontColor/g, 'v_color');
           }
           if (source.indexOf('gl_FogFragCoord') >= 0) {
             source = 'varying float v_fogCoord;   \n' +
