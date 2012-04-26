@@ -1235,8 +1235,8 @@ var LibraryGL = {
 
     setRenderer: function(renderer) {
       var name = renderer;
-      if (GL.currProgram) {
-        name = 'UD' + GL.currProgram; // user-defined program renderer
+      if (GL.currProgram && renderer[0] != 'U') {
+        name = 'UD' + GL.currProgram + '|' + renderer; // user-defined program renderer
       }
       this.renderer = name;
       if (this.renderers[name]) return this.renderers[name];
