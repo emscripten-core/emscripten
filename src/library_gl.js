@@ -951,19 +951,32 @@ var LibraryGL = {
 #endif
         if (GL.shaderInfos[shader].type == Module.ctx.VERTEX_SHADER) {
           // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
+          var has_pm = source.search(/u_projection/) >= 0;
+          var has_mm = source.search(/u_modelView/) >= 0;
+          var has_pv = source.search(/a_position/) >= 0;
+          var need_pm = 0, need_mm = 0, need_pv = 0;
           var old = source;
-          source = 'attribute vec4 a_position; \n\
-                    uniform mat4 u_modelView;  \n\
-                    uniform mat4 u_projection; \n' +
-                   source.replace(/ftransform\(\)/g, 'u_projection * u_modelView * a_position')
-                         .replace(/gl_Vertex/g, 'a_position')
-                         .replace(/gl_ModelViewMatrix/g, 'u_modelView')
-                         .replace(/gl_ProjectionMatrix/g, 'u_projection')
-                         .replace(/gl_ModelViewProjectionMatrix/g, 'u_modelView * u_projection')
-                         .replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
-          if (old != source) {
-            GL.shaderInfos[shader].ftransform = true; // we will need to provide the fixed function stuff as attributes and uniforms
-          }
+          source = source.replace(/ftransform\(\)/g, '(u_projection * u_modelView * a_position)');
+          if (old != source) need_pm = need_mm = need_pv = 1;
+          old = source;
+          source = source.replace(/gl_ProjectionMatrix/g, 'u_projection');
+          if (old != source) need_pm = 1;
+          old = source;
+          source = source.replace(/gl_ModelViewMatrix/g, 'u_modelView');
+          if (old != source) need_mm = 1;
+          old = source;
+          source = source.replace(/gl_Vertex/g, 'a_position');
+          if (old != source) need_pv = 1;
+          old = source;
+          source = source.replace(/gl_ModelViewProjectionMatrix/g, '(u_modelView * u_projection)');
+          if (old != source) need_pm = need_mm = 1;
+          old = source;
+          source = source.replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
+          if (old != source) need_mm = 1;
+          if (need_pv && !has_pv) source = 'attribute vec4 a_position; \n' + source;
+          if (need_mm && !has_mm) source = 'uniform mat4 u_modelView; \n' + source;
+          if (need_pm && !has_pm) source = 'uniform mat4 u_projection; \n' + source;
+          GL.shaderInfos[shader].ftransform = need_pm || need_mm || need_pv; // we will need to provide the fixed function stuff as attributes and uniforms
           for (var i = 0; i <= 6; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
@@ -1349,8 +1362,8 @@ var LibraryGL = {
             Module.ctx.uniform1i(this.textureLocation, 0);
           }
 
-          Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
-          Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
+          if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
+          if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
         }
       };
       ret.init();
@@ -1615,7 +1628,7 @@ var LibraryGL = {
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
-  glMatrixMode__deps: ['$GL', '$GLImmediateSetup'],
+  glMatrixMode__deps: ['$GL', '$GLImmediateSetup', '$GLEmulation'], // emulation is not strictly needed, this is a workaround
   glMatrixMode: function(mode) {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
       GL.immediate.currentMatrix = 'm';
