@@ -80,6 +80,19 @@ void shaders() {
   assert(ok);
 
   glUseProgram(program);
+
+  {
+    // Also, check getting the error log
+    const char *fakeVertexShader = "atbute ve4 blarg; ### AAA\n";
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &fakeVertexShader, NULL);
+    glCompileShader(vs);
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &ok);
+    assert(!ok);
+    GLint infoLen = 0;
+    glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &infoLen);
+    assert(infoLen > 1);
+  }
 }
 
 int main(int argc, char *argv[])

@@ -752,11 +752,19 @@ var LibraryGL = {
   },
 
   glGetShaderiv : function(shader, pname, p) {
-    {{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
+    if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
+      {{{ makeSetValue('p', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[shader]).length + 1', 'i32') }}};
+    } else {
+      {{{ makeSetValue('p', '0', 'Module.ctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
+    }
   },
 
   glGetProgramiv : function(program, pname, p) {
-    {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.programs[program], pname)', 'i32') }}};
+    if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
+      {{{ makeSetValue('p', '0', 'Module.ctx.getProgramInfoLog(GL.programs[program]).length + 1', 'i32') }}};
+    } else {
+      {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.programs[program], pname)', 'i32') }}};
+    }
   },
 
   glIsShader: function(shader) {
@@ -1008,10 +1016,10 @@ var LibraryGL = {
 #if GL_DEBUG
           console.log('Original source: ' + GL.shaderOriginalSources[shader]);
           console.log('Source: ' + GL.shaderSources[shader]);
+          throw 'Shader compilation halt';
 #else
           console.log('Enable GL_DEBUG to see shader source');
 #endif
-          throw 'Shader compilation halt';
         }
       };
 

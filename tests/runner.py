@@ -7227,7 +7227,7 @@ elif 'browser' in str(sys.argv):
     def test_gl_ps(self):
       # pointers and a shader
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'GL_DEBUG=1'])
+      self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
     def zzztest_cubegeom(self):
       self.btest('cubegeom.c', reference='sdlglshader.png', args=['-s', 'GL_DEBUG=1'])
