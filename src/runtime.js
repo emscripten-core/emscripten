@@ -322,6 +322,7 @@ var Runtime = {
 
   prettyPrint: function(arg) {
     if (typeof arg == 'undefined') return '!UNDEFINED!';
+    if (typeof arg == 'boolean') arg = arg + 0;
     if (!arg) return arg;
     var index = Runtime.printObjectList.indexOf(arg);
     if (index >= 0) return '<' + arg + '|' + index + '>';
