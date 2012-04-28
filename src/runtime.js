@@ -318,14 +318,13 @@ var Runtime = {
 #if RUNTIME_DEBUG
   debug: true, // Switch to false at runtime to disable logging at the right times
 
-  printObjectMap: null,
-  printObjectCounter: 1,
+  printObjectList: [],
 
   prettyPrint: function(arg) {
-    if (!Runtime.printObjectMap) Runtime.printObjectMap = new WeakMap();
     if (typeof arg == 'undefined') return '!UNDEFINED!';
     if (!arg) return arg;
-    if (Runtime.printObjectMap[arg]) return '<' + arg + '|' + Runtime.printObjectMap[arg] + '>';
+    var index = Runtime.printObjectList.indexOf(arg);
+    if (index >= 0) return '<' + arg + '|' + index + '>';
     if (arg.toString() == '[object HTMLImageElement]') {
       return arg + '\n\n';
     }
@@ -357,8 +356,8 @@ var Runtime = {
       return ret;
     }
     if (typeof arg == 'object') {
-      Runtime.printObjectMap[arg] = Runtime.printObjectCounter++;
-      return '<' + arg + '|' + Runtime.printObjectMap[arg] + '>';
+      Runtime.printObjectList.push(arg);
+      return '<' + arg + '|' + (Runtime.printObjectList.length-1) + '>';
     }
     if (typeof arg == 'number') {
       if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
