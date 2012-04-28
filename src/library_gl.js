@@ -1286,6 +1286,7 @@ var LibraryGL = {
           }
         } else {
           console.log('Warning: Ignoring renderer attribute ' + which);
+          size = parseInt(renderer[i+1]);
         }
         vertexSize += size * 4; // XXX assuming float
       }
@@ -1346,17 +1347,17 @@ var LibraryGL = {
         },
 
         prepare: function() {
+          if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
+          if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
+
+          Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, Module.ctx.FLOAT, false,
+                                         vertexSize, positionOffset);
+          Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTexture) {
             Module.ctx.vertexAttribPointer(this.texCoordLocation, textureSize, Module.ctx.FLOAT, false,
                                            vertexSize, textureOffset);
-          }
-          Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, Module.ctx.FLOAT, false,
-                                         vertexSize, positionOffset);
-
-          if (this.hasTexture) {
             Module.ctx.enableVertexAttribArray(this.texCoordLocation);
           }
-          Module.ctx.enableVertexAttribArray(this.positionLocation);
 
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
             var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
@@ -1364,9 +1365,6 @@ var LibraryGL = {
             Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
             Module.ctx.uniform1i(this.textureLocation, 0);
           }
-
-          if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
-          if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
         }
       };
       ret.init();
@@ -1415,7 +1413,7 @@ var LibraryGL = {
 
     prepareClientAttributes: function(count) {
       // Client attributes are to be used here, emulate that
-      var stride = 0, bytes = 0, attributes = [], start, renderer = '';
+      var stride = 0, attributes = [], start;
       for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
         if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
       }
@@ -1429,18 +1427,32 @@ var LibraryGL = {
         assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
 #endif
         stride = attribute.stride;
-        bytes += attribute.size * 4 * count; // XXX assuming float
-        renderer += attribute.name;
       }
+
+      var renderer = '', bytes = 0;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
         if (!attribute) break;
         attribute.offset = attribute.pointer - start;
+        if (attribute.offset > bytes) { // ensure we start where we should
+          assert((attribute.offset - bytes)%4 == 0); // assuming float
+          renderer += '?' + ((attribute.offset - bytes)/4);
+          bytes += attribute.offset - bytes; // XXX assuming float
+        }
+        renderer += attribute.name;
+        bytes += attribute.size * 4; // XXX assuming float
 #if ASSERTIONS
         assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
 #endif
       }
 
+      if (bytes < stride) { // ensure the size is that of the stride
+        assert((stride - bytes)%4 == 0); // assuming float
+        renderer += '?' + ((stride-bytes)/4);
+        bytes = stride;
+      }
+
+      bytes *= count;
       GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
       GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
 

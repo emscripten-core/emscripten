@@ -29,6 +29,6 @@ for line in lines:
   line = re.sub('(0x[\dabcdef]+)', lambda hexx: reps[nice(hexx.group(0))] if nice(hexx.group(0)) in reps else nice(hexx.group(0)), line)
   print line
 
-for i in range(100):
-  print
+#for i in range(100):
+#  print
 

@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);
     glEnableVertexAttribArray(0);
 
-    glBindAttribLocation(program, 1, "v_texCoord0");
+    glBindAttribLocation(program, 1, "a_texCoord0");
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 32, (void*)16);
     glEnableVertexAttribArray(1);
 
