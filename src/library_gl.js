@@ -1244,6 +1244,16 @@ var LibraryGL = {
     clientAttributes: [null, null],
     clientActiveTexture: 0,
 
+    byteSizeByType: {
+      0x1400: 1, // GL_BYTE
+      0x1401: 1, // GL_UNSIGNED_BYTE
+      0x1402: 2, // GL_SHORT
+      0x1403: 2, // GL_UNSIGNED_SHORT
+      0x1404: 4, // GL_INT
+      0x1405: 4, // GL_UNSIGNED_INT
+      0x1406: 4  // GL_FLOAT
+    },
+
     setClientAttribute: function(name, size, type, stride, pointer) {
       this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]] = {
         size: size, type: type, stride: stride, pointer: pointer, name: name + size
@@ -1276,6 +1286,7 @@ var LibraryGL = {
           size = parseInt(renderer[i+1]);
           positionSize = size;
           positionOffset = vertexSize;
+          vertexSize += size * 4; // XXX assuming float
         } else if (which == 'T') {
           index = parseInt(renderer[i+1])
           size = parseInt(renderer[i+2]);
@@ -1284,11 +1295,16 @@ var LibraryGL = {
             textureSize = size;
             textureOffset = vertexSize;
           }
+          vertexSize += size * 4; // XXX assuming float
+        } else if (which == 'N') {
+          vertexSize += 4; // 1 char, + alignment
+        } else if (which == 'C') {
+          vertexSize += 4; // Up to 4 chars, + alignment
         } else {
           console.log('Warning: Ignoring renderer attribute ' + which);
           size = parseInt(renderer[i+1]);
+          vertexSize += size * 4; // XXX assuming float
         }
-        vertexSize += size * 4; // XXX assuming float
       }
       assert(positionSize > 0);
       // TODO: verify vertexSize is equal to the stride in enabled client arrays
@@ -1435,16 +1451,19 @@ var LibraryGL = {
         if (!attribute) break;
         attribute.offset = attribute.pointer - start;
         if (attribute.offset > bytes) { // ensure we start where we should
-          assert((attribute.offset - bytes)%4 == 0); // assuming float
+          assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
           renderer += '?' + ((attribute.offset - bytes)/4);
-          bytes += attribute.offset - bytes; // XXX assuming float
+          bytes += attribute.offset - bytes;
         }
         renderer += attribute.name;
-        bytes += attribute.size * 4; // XXX assuming float
+        bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type];
+        if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
 #if ASSERTIONS
         assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
 #endif
       }
+
+      assert(stride == 0 || bytes <= stride);
 
       if (bytes < stride) { // ensure the size is that of the stride
         assert((stride - bytes)%4 == 0); // assuming float
