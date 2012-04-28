@@ -7238,8 +7238,8 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_pre3(self):
       self.btest('cubegeom_pre3.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1'])
 
-    def zzztest_cubegeom(self):
-      self.btest('cubegeom.c', reference='sdlglshader.png', args=['-s', 'GL_DEBUG=1'])
+    def test_cubegeom(self):
+      self.btest('cubegeom.c', expected='-1402263178')
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
