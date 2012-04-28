@@ -980,11 +980,14 @@ var LibraryGL = {
           for (var i = 0; i <= 6; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
+            var need_vtc = source.search('v_texCoord' + i) == -1;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
                            .replace(new RegExp('gl_MultiTexCoord' + i, 'g'), 'a_texCoord' + i);
             if (source != old) {
-              source = 'attribute vec4 a_texCoord' + i + '; \n\
-                        varying vec4 v_texCoord' + i + ';   \n' + source;
+              source = 'attribute vec4 a_texCoord' + i + '; \n' + source;
+              if (need_vtc) {
+                source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
+              }
             }
           }
           if (source.indexOf('gl_Color') >= 0) {
@@ -1394,7 +1397,7 @@ var LibraryGL = {
         var renderer = GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
         GL.immediate.setRenderer(renderer);
-        GL.immediate.flush();
+        GL.immediate.flush(null, first);
       };
 
       _glDrawElements = function(mode, count, type, indices) {
@@ -1406,7 +1409,7 @@ var LibraryGL = {
         var renderer = GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
         GL.immediate.setRenderer(renderer);
-        GL.immediate.flush(count);
+        GL.immediate.flush(count, indices);
       };
     },
 
@@ -1444,7 +1447,9 @@ var LibraryGL = {
       return renderer;
     },
 
-    flush: function(numProvidedIndexes) {
+    flush: function(numProvidedIndexes, startIndex) {
+      startIndex = startIndex || 0;
+
       var renderer = this.setRenderer(this.renderer);
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
@@ -1493,9 +1498,9 @@ var LibraryGL = {
         if (!numProvidedIndexes) {
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
         }
-        Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, 0);
+        Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, startIndex);
       } else {
-        Module.ctx.drawArrays(GL.immediate.mode, 0, numVertexes);
+        Module.ctx.drawArrays(GL.immediate.mode, startIndex, numVertexes);
       }
 
       if (!GL.currArrayBuffer) {
