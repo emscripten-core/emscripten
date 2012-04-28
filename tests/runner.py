@@ -7230,7 +7230,7 @@ elif 'browser' in str(sys.argv):
       self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
     def test_cubegeom_pre(self):
-      self.btest('cubegeom_pre.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1'])
+      self.btest('cubegeom_pre.c', expected='-1472804742')
 
     def test_cubegeom_pre2(self):
       self.btest('cubegeom_pre2.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1'])
