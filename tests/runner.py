@@ -7232,7 +7232,7 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_pre(self):
       self.btest('cubegeom_pre.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1'])
 
-    def zzztest_cubegeom_pre2(self):
+    def test_cubegeom_pre2(self):
       self.btest('cubegeom_pre2.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1'])
 
     def zzztest_cubegeom(self):
