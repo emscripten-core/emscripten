@@ -349,8 +349,17 @@ var LibrarySDL = {
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mousemove':
+        case 'mousemove':
+          // workaround for firefox bug 750111
+          event.movementX = event.mozMovementX;
+          event.movementY = event.mozMovementY;
+          // fall through
+        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup':
           SDL.events.push(event);
+          if (SDL.events.length >= 10000) {
+            Module.printErr('SDL event queue full, dropping earliest event');
+            SDL.events.shift();
+          }
           if ((event.keyCode >= 37 && event.keyCode <= 40) || // arrow keys
               event.keyCode == 32 || // space
               event.keyCode == 33 || event.keyCode == 34) { // page up/down
@@ -358,7 +367,6 @@ var LibrarySDL = {
           }
           break;
       }
-      //event.preventDefault();
       return false;
     },
     
@@ -415,8 +423,8 @@ var LibrarySDL = {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'x - SDL.mouseX', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'y - SDL.mouseY', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.getMovementX(x - SDL.mouseX, event)', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'Browser.getMovementY(y - SDL.mouseY, event)', 'i32') }}};
           }
           SDL.mouseX = x;
           SDL.mouseY = y;
