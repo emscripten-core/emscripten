@@ -1209,7 +1209,7 @@ function getFastValue(a, op, b, type) {
       return a;
     }
   }
-  return a + op + b;
+  return '(' + a + ')' + op + '(' + b + ')';
 }
 
 function getFastValues(list, op, type) {
