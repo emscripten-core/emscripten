@@ -1757,7 +1757,7 @@ var LibraryGL = {
   glTranslatef: 'glTranslated',
 
   glRotated: function(angle, x, y, z) {
-    GL.immediate.matrix.lib.mat4.rotate(GL.immediate.matrix[GL.immediate.currentMatrix], angle, [x, y, z]);
+    GL.immediate.matrix.lib.mat4.rotate(GL.immediate.matrix[GL.immediate.currentMatrix], angle*Math.PI/180, [x, y, z]);
   },
   glRotatef: 'glRotated',
 
