@@ -141,6 +141,8 @@ var LibrarySDL = {
       121: 67 | 1<<10, // F10
       122: 68 | 1<<10, // F11
       123: 69 | 1<<10, // F12
+
+      191: 47, // slash (/)
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode
