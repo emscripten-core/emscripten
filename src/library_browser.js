@@ -144,3 +144,17 @@ mergeInto(LibraryManager.library, {
   }
 });
 
+/* Useful stuff for browser debugging
+
+function slowLog(label, text) {
+  if (!slowLog.labels) slowLog.labels = {};
+  if (!slowLog.labels[label]) slowLog.labels[label] = 0;
+  var now = Date.now();
+  if (now - slowLog.labels[label] > 1000) {
+    Module.print(label + ': ' + text);
+    slowLog.labels[label] = now;
+  }
+}
+
+*/
+
