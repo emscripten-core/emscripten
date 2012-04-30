@@ -316,9 +316,9 @@ var Runtime = {
   },
 
   warnOnce: function(text) {
-    if (!warnOnce.shown) warnOnce.shown = {};
-    if (!warnOnce.shown[text]) {
-      warnOnce.shown[text] = 1;
+    if (!Runtime.warnOnce.shown) Runtime.warnOnce.shown = {};
+    if (!Runtime.warnOnce.shown[text]) {
+      Runtime.warnOnce.shown[text] = 1;
       Module.printErr(text);
     }
   },
