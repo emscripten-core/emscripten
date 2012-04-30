@@ -1406,8 +1406,6 @@ var LibraryGL = {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
-        assert(first == 0); // TODO
-
         var renderer = GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
         GL.immediate.setRenderer(renderer);
