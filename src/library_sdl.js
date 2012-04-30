@@ -801,7 +801,7 @@ var LibrarySDL = {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedImages[filename];
     if (!raw) {
-      Module.printErr('Cannot find preloaded image ' + filename);
+      Runtime.warnOnce('Cannot find preloaded image ' + filename);
       return 0;
     }
     var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
@@ -917,7 +917,7 @@ var LibrarySDL = {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedAudios[filename];
     if (!raw) {
-      Module.printErr('Cannot find preloaded audio ' + filename);
+      Runtime.warnOnce('Cannot find preloaded audio ' + filename);
       return 0;
     }
     var id = SDL.audios.length;
