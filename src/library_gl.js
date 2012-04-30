@@ -1572,8 +1572,12 @@ var LibraryGL = {
 #endif
     GL.immediate.addRendererComponent('V3');
   },
-
   glVertex2f: 'glVertex3f',
+
+  glVertex3fv__deps: ['glVertex3f'],
+  glVertex3fv: function(p) {
+    _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
+  },
 
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
