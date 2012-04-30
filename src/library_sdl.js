@@ -356,7 +356,15 @@ var LibrarySDL = {
           event.movementX = event.mozMovementX;
           event.movementY = event.mozMovementY;
           // fall through
-        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup':
+        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll':
+          if (event.type == 'DOMMouseScroll') {
+            event = {
+              type: 'mousedown',
+              button: event.detail > 0 ? 3 : 4,
+              pageX: event.pageX,
+              pageY: event.pageY
+            };
+          }
           SDL.events.push(event);
           if (SDL.events.length >= 10000) {
             Module.printErr('SDL event queue full, dropping earliest event');
@@ -506,7 +514,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove'].forEach(function(event) {
+    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Module['canvas'].width = width;
