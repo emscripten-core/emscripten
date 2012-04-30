@@ -1381,6 +1381,13 @@ var LibraryGL = {
             Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
             Module.ctx.uniform1i(this.textureLocation, 0);
           }
+        },
+
+        cleanup: function() {
+          Module.ctx.disableVertexAttribArray(this.positionLocation);
+          if (this.hasTexture) {
+            Module.ctx.disableVertexAttribArray(this.texCoordLocation);
+          }
         }
       };
       ret.init();
@@ -1531,6 +1538,8 @@ var LibraryGL = {
       } else {
         Module.ctx.drawArrays(GL.immediate.mode, startIndex, numVertexes);
       }
+
+      renderer.cleanup();
 
       if (!GL.currArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
