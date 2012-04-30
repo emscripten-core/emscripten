@@ -17,6 +17,10 @@ SANITY_FILE = os.environ.get('EM_SANITY_FILE')
 if not SANITY_FILE:
   SANITY_FILE = CONFIG_FILE + '_sanity'
 
+CACHE_DIR = os.environ.get('EM_CACHE_DIR')
+if not CACHE_DIR:
+  CACHE_DIR = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+
 if not os.path.exists(CONFIG_FILE):
   shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
   print >> sys.stderr, '''
@@ -817,7 +821,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' \
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
-  dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  dirname = CACHE_DIR
 
   @staticmethod
   def erase():
