@@ -1483,7 +1483,9 @@ var LibraryGL = {
       }
 
       bytes *= count;
-      GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+      if (!GL.currArrayBuffer) {
+        GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+      }
       GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
 
       return renderer;
