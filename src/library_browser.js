@@ -5,6 +5,7 @@
 mergeInto(LibraryManager.library, {
   $Browser: {
     pointerLock: false,
+    asyncCalls: {},
 
     createContext: function(canvas, useWebGL) {
 #if !USE_TYPED_ARRAYS
@@ -147,10 +148,12 @@ mergeInto(LibraryManager.library, {
   emscripten_async_call: function(func, millis) {
     Module['noExitRuntime'] = true;
 
-    // TODO: cache these to avoid generating garbage
-    setTimeout(function() {
-      FUNCTION_TABLE[func]();
-    }, millis);
+    if (!Browser.asyncCalls[func]) {
+      Browser.asyncCalls[func] = function() {
+        FUNCTION_TABLE[func]();
+      };
+    }
+    setTimeout(Browser.asyncCalls[func], millis);
   }
 });
 
