@@ -1241,7 +1241,7 @@ var LibraryGL = {
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
-    clientAttributes: [null, null],
+    clientAttributes: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
     clientActiveTexture: 0,
 
     byteSizeByType: {
@@ -1255,9 +1255,12 @@ var LibraryGL = {
     },
 
     setClientAttribute: function(name, size, type, stride, pointer) {
-      this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]] = {
-        size: size, type: type, stride: stride, pointer: pointer, name: name + size
-      };
+      var attrib = this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]];
+      attrib.size = size;
+      attrib.type = type;
+      attrib.stride = stride;
+      attrib.pointer = pointer;
+      attrib.name = name + size;
     },
 
     // Renderers
@@ -1432,9 +1435,12 @@ var LibraryGL = {
       };
     },
 
+    tempClientAttributes: [],
     prepareClientAttributes: function(count) {
       // Client attributes are to be used here, emulate that
-      var stride = 0, attributes = [], start;
+      var stride = 0, start;
+      var attributes = GL.immediate.tempClientAttributes;
+      attributes.length = 0;
       for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
         if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
       }
