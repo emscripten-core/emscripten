@@ -9,12 +9,25 @@ int last = 0;
 
 extern "C" {
 
+void mainey() {
+  static int counter = 0;
+  printf("mainey: %d\n", counter++);
+  if (counter == 10) {
+    int result = 1;
+    REPORT_RESULT();
+  }
+}
+
+void four() {
+  printf("four!\n");
+  emscripten_set_main_loop(mainey, 0);
+}
+
 void __attribute__((used)) third() {
   int now = SDL_GetTicks();
   printf("thard! %d\n", now);
   assert(fabs(now - last - 1000) < 500);
-  int result = 1;
-  REPORT_RESULT();
+  emscripten_async_call(four, -1); // triggers requestAnimationFrame
 }
 
 void second() {

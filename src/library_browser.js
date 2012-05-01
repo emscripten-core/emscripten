@@ -100,6 +100,18 @@ mergeInto(LibraryManager.library, {
       canvas.requestFullScreen(); 
     },
 
+    requestAnimationFrame: function(func) {
+      if (!window.requestAnimationFrame) {
+        window.requestAnimationFrame = window['requestAnimationFrame'] ||
+                                       window['mozRequestAnimationFrame'] ||
+                                       window['webkitRequestAnimationFrame'] ||
+                                       window['msRequestAnimationFrame'] ||
+                                       window['oRequestAnimationFrame'] ||
+                                       window['setTimeout'];
+      }
+      window.requestAnimationFrame(func);
+    },
+
     getMovementX: function(delta, event) {
       if (!Browser.pointerLock) return delta;
       return event.movementX ||
@@ -130,15 +142,24 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps) {
     Module['noExitRuntime'] = true;
 
-    fps = fps || 60; // TODO: use requestAnimationFrame
     _emscripten_set_main_loop.cancel = false;
     var jsFunc = FUNCTION_TABLE[func];
-    function doOne() {
-      if (_emscripten_set_main_loop.cancel) return;
-      jsFunc();
-      setTimeout(doOne, 1000/fps); // doing this each time means that on exception, we stop
+
+    if (fps && fps > 0) {
+      function doOne() {
+        if (_emscripten_set_main_loop.cancel) return;
+        jsFunc();
+        setTimeout(doOne, 1000/fps); // doing this each time means that on exception, we stop
+      }
+      setTimeout(doOne, 1000/fps);
+    } else {
+      function doOneRAF() {
+        if (_emscripten_set_main_loop.cancel) return;
+        jsFunc();
+        Browser.requestAnimationFrame(doOneRAF);
+      }
+      Browser.requestAnimationFrame(doOneRAF);
     }
-    setTimeout(doOne, 1000/fps);
   },
 
   emscripten_cancel_main_loop: function(func) {
@@ -153,7 +174,11 @@ mergeInto(LibraryManager.library, {
         FUNCTION_TABLE[func]();
       };
     }
-    setTimeout(Browser.asyncCalls[func], millis);
+    if (millis >= 0) {
+      setTimeout(Browser.asyncCalls[func], millis);
+    } else {
+      Browser.requestAnimationFrame(Browser.asyncCalls[func]);
+    }
   }
 });
 

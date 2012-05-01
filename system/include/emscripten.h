@@ -22,8 +22,8 @@ extern void emscripten_async_run_script(const char *script, int millis);
 /*
  * Set a C function as the main event loop. The JS environment
  * will call that function at a specified number of frames per
- * second. Setting 0 as the fps will use the default browser
- * frame rate.
+ * second. Setting 0 or a negative value as the fps will use
+ * the browser's requestAnimationFrame mechanism.
  */
 extern void emscripten_set_main_loop(void (*func)(), int fps);
 extern void emscripten_cancel_main_loop();
@@ -33,6 +33,9 @@ extern void emscripten_cancel_main_loop();
  * control to the JS event loop. This is done by a setTimeout.
  * When building natively this becomes a simple direct call,
  * after SDL_Delay (you must include SDL.h for that).
+ *
+ * If millis is negative, the browser's requestAnimationFrame
+ * mechanism is used.
  */
 #if EMSCRIPTEN
 extern void emscripten_async_call(void (*func)(), int millis);
