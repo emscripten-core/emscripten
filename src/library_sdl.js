@@ -360,7 +360,7 @@ var LibrarySDL = {
           if (event.type == 'DOMMouseScroll') {
             event = {
               type: 'mousedown',
-              button: event.detail > 0 ? 3 : 4,
+              button: event.detail > 0 ? 4 : 3,
               pageX: event.pageX,
               pageY: event.pageY
             };
