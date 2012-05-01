@@ -1311,7 +1311,6 @@ var LibraryGL = {
       }
       assert(positionSize > 0);
       // TODO: verify vertexSize is equal to the stride in enabled client arrays
-      // XXX TODO: use bufferSubData to prevent reallocation of new buffers? Or all on GPU and doesn't matter? Anyhow, use DYNAMIC as hint
       var useCurrProgram = !!GL.currProgram;
       var ret = {
         vertexSize: vertexSize,
@@ -1408,7 +1407,14 @@ var LibraryGL = {
       this.indexData = new Uint16Array(this.maxElements);
 
       this.vertexObject = Module.ctx.createBuffer();
+      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
+      Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.maxElements*4, Module.ctx.DYNAMIC_DRAW);
+      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+
       this.indexObject = Module.ctx.createBuffer();
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.maxElements*2, Module.ctx.DYNAMIC_DRAW);
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
 
       // Replace some functions with immediate-mode aware versions
       _glDrawArrays = function(mode, first, count) {
@@ -1497,7 +1503,6 @@ var LibraryGL = {
       var renderer = this.setRenderer(this.renderer);
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      // TODO: if the mode is one that works in GLES 2.0/WebGL (not GL_QUADS), do not generate indexes at all
       var numVertexes = 4 * this.vertexCounter / renderer.vertexSize; // XXX assuming float
       assert(numVertexes % 1 == 0);
 
@@ -1523,12 +1528,12 @@ var LibraryGL = {
         assert(numIndexes < GL.immediate.maxElements, 'too many immediate mode indexes');
 
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-        Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexData.subarray(0, numIndexes), Module.ctx.STATIC_DRAW);
+        Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, this.indexData.subarray(0, numIndexes));
       }
 
       if (!GL.currArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
-        Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.vertexData.subarray(0, this.vertexCounter), Module.ctx.STATIC_DRAW);
+        Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, 0, this.vertexData.subarray(0, this.vertexCounter));
       }
 
       // Render
