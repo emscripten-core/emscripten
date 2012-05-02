@@ -6612,6 +6612,19 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
       self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_sdl_endianness(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        #include <SDL/SDL.h>
+
+        int main() {
+          printf("%d, %d, %d\n", SDL_BYTEORDER, SDL_LIL_ENDIAN, SDL_BIG_ENDIAN);
+          return 0;
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_prepost(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>
