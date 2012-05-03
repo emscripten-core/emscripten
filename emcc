@@ -708,11 +708,9 @@ try:
       else:
         assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
-        # we have multiple files: Link them TODO: llvm link-time opts?
-        ld_args = temp_files + ['-b', specified_target]
-                  #[arg.split('-Wl,')[1] for arg in filter(lambda arg: arg.startswith('-Wl,'), sys.argv)]
-        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(ld_args)
-        execute([shared.LLVM_LD, '-disable-opt'] + ld_args)
+        # we have multiple files: Link them
+        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(temp_files)
+        shared.Building.link(temp_files, specified_target)
     exit(0)
 
   ## Continue on to create JavaScript
