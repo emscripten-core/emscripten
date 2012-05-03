@@ -191,6 +191,7 @@ if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
   EMSDK_OPTS = ['-nostdinc', '-nostdinc++', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdinc++', '-Xclang', '-nostdsysteminc',
+    '-Xclang', '-isystem' + path_from_root('system', 'local', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
@@ -414,7 +415,7 @@ class Building:
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
     env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
-    env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
+    #env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
@@ -422,6 +423,8 @@ class Building:
     env['HOST_CXX'] = CLANG_CPP
     env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
     env['HOST_CXXFLAGS'] = "-W" #if set to nothing, CXXFLAGS is used, which we don't want
+    env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
+    env['PKG_CONFIG_PATH'] = os.environ.get ('EM_PKG_CONFIG_PATH') or ''
     return env
 
   @staticmethod
@@ -518,11 +521,16 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return generated_libs
 
   @staticmethod
-  def link(files, target):
+  def link(files, target, create_binary_wrapper=False):
     try_delete(target)
-    stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme') + ('.exe' if WINDOWS else '')
+    if not create_binary_wrapper:
+      stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme') + ('.exe' if WINDOWS else '')
+    else:
+      stub = target
+      target += ".bc"
     output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target, '-o', stub], stdout=PIPE).communicate()[0]
-    try_delete(stub) # clean up stub left by the linker
+    if not create_binary_wrapper:
+      try_delete(stub) # clean up stub left by the linker
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
