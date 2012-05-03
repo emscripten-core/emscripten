@@ -12,7 +12,6 @@ OBJECTS = \
   debug.bc \
   hash.bc \
   mutex.bc \
-  readme.txt \
   string.bc \
   thread.bc \
   valarray.bc \
