@@ -142,10 +142,12 @@ var LibrarySDL = {
       122: 68 | 1<<10, // F11
       123: 69 | 1<<10, // F12
 
+      188: 44, // comma
+      190: 46, // period
       191: 47, // slash (/)
     },
 
-    scanCodes: { // SDL keycode ==> SDL scancode
+    scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
       97: 4, // A
       98: 5,
       99: 6,
@@ -172,6 +174,9 @@ var LibrarySDL = {
       120: 27,
       121: 28,
       122: 29, // Z
+      44: 54, // comma
+      46: 55, // period
+      47: 56, // slash
       49: 30, // 1
       50: 31,
       51: 32,
@@ -187,7 +192,6 @@ var LibrarySDL = {
       27: 41, // escape
       32: 44, // space
       92: 49, // backslash
-      47: 56, // slash
       305: 224, // ctrl
       308: 226, // alt
     },
