@@ -207,11 +207,10 @@ else:
 
 # Engine tweaks
 
-#if 'strict' not in str(SPIDERMONKEY_ENGINE): # XXX temporarily disable strict mode until we sort out some stuff
-#  SPIDERMONKEY_ENGINE += ['-e', "options('strict')"] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
-
 try:
   if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    if type(SPIDERMONKEY_ENGINE) is str:
+      SPIDERMONKEY_ENGINE = [SPIDERMONKEY_ENGINE]
     SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
 except NameError:
   pass
