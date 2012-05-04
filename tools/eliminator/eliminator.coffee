@@ -183,19 +183,26 @@ class Eliminator
     todo = {}
     for element of @affects
       todo[element] = 1
+
+    #process.stdout.write 'pre ' + JSON.stringify(@affects, null, '  ') + '\n'
+
     while incomplete
       incomplete = false
       nextTodo = {}
-      for source of todo
+      for source of @affects
         targets = @affects[source]
         for target of targets
-          for target2 of @affects[target]
-            if not @affects[source][target2]
-              if not @isLocal[source] then @dependsOnAGlobal[target2] = true
-              @affects[source][target2] = true
-              nextTodo[source] = 1
-              incomplete = true
+          if todo[target]
+            for target2 of @affects[target]
+              if not @affects[source][target2]
+                if not @isLocal[source] then @dependsOnAGlobal[target2] = true
+                @affects[source][target2] = true
+                nextTodo[source] = 1
+                incomplete = true
       todo = nextTodo
+
+    #process.stdout.write 'post ' + JSON.stringify(@affects, null, '  ') + '\n'
+
     return undefined
 
   # Analyzes the live ranges of single-def variables. Requires dependencies to
