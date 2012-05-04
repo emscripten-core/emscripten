@@ -189,14 +189,13 @@ class Eliminator
     while incomplete
       incomplete = false
       nextTodo = {}
-      for source of @affects
-        targets = @affects[source]
+      for source, targets of @affects
         for target of targets
           if todo[target]
             for target2 of @affects[target]
-              if not @affects[source][target2]
+              if not targets[target2]
                 if not @isLocal[source] then @dependsOnAGlobal[target2] = true
-                @affects[source][target2] = true
+                targets[target2] = true
                 nextTodo[source] = 1
                 incomplete = true
       todo = nextTodo
