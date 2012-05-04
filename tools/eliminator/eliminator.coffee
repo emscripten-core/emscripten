@@ -180,15 +180,22 @@ class Eliminator
   # synchronizes @dependsOnAGlobal to the new dependencies.
   calculateTransitiveDependencies: ->
     incomplete = true
+    todo = {}
+    for element of @dependsOn
+      todo[element] = 1
     while incomplete
       incomplete = false
-      for target, sources of @dependsOn
+      nextTodo = {}
+      for target of todo
+        sources = @dependsOn[target]
         for source of sources
           for source2 of @dependsOn[source]
             if not @dependsOn[target][source2]
               if not @isLocal[target] then @dependsOnAGlobal[source2] = true
               @dependsOn[target][source2] = true
+              nextTodo[source2] = 1
               incomplete = true
+      todo = nextTodo
     return undefined
 
   # Analyzes the live ranges of single-def variables. Requires dependencies to
