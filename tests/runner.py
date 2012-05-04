@@ -950,6 +950,11 @@ m_divisor is 1091269979
       '''
       self.do_run(src, 'zero 2, 104', ['hallo'])
 
+    def test_sha1(self):
+      if self.emcc_args == None: return self.skip('needs ta2')
+
+      self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+
     def test_cube2hash(self):
       # A good test of i64 math
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
