@@ -928,8 +928,16 @@ var LibrarySDL = {
     SDL.hookMusicFinished = func;
   },
 
+  Mix_Volume: function(channel, volume) {
+    return 0; // TODO
+  },
+
   Mix_VolumeMusic: function(func) {
     return 0; // TODO
+  },
+
+  Mix_SetPanning: function() {
+    return 0; // error
   },
 
   Mix_LoadWAV_RW: function(filename, freesrc) {
@@ -964,6 +972,10 @@ var LibrarySDL = {
 
   Mix_FadingChannel: function(channel) {
     return 0; // MIX_NO_FADING, TODO
+  },
+
+  Mix_HaltChannel: function(channel) {
+    return 0;
   },
 
   Mix_LoadMUS: 'Mix_LoadWAV_RW',
