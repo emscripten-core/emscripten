@@ -107,8 +107,8 @@ class Eliminator
     # Maps a given single-def variable to the AST expression of its initial value.
     @initialValue = {}
     # Maps identifiers to single-def variables which reference it in their
-    # initial value.
-    @dependsOn = {}
+    # initial value, i.e., which other variables it affects.
+    @affects = {}
 
   # Runs the eliminator on a given function body updating the AST in-place.
   #   @returns: The number of variables eliminated, or undefined if skipped.
@@ -157,7 +157,7 @@ class Eliminator
 
   # Analyzes the initial values of single-def variables. Requires basic variable
   # stats to have been calculated. Fills the following member variables:
-  #   dependsOn
+  #   affects
   #   dependsOnAGlobal
   #   usesOnlySimpleNodes
   analyzeInitialValues: ->
@@ -170,30 +170,30 @@ class Eliminator
         else if type is 'name'
           reference = node[1]
           if reference != 'undefined'
-            if not @dependsOn[reference]? then @dependsOn[reference] = {}
+            if not @affects[reference]? then @affects[reference] = {}
             if not @isLocal[reference] then @dependsOnAGlobal[varName] = true
-            @dependsOn[reference][varName] = true
+            @affects[reference][varName] = true
         return undefined
     return undefined
 
-  # Updates the dependency graph (@dependsOn) to its transitive closure and 
+  # Updates the dependency graph (@affects) to its transitive closure and 
   # synchronizes @dependsOnAGlobal to the new dependencies.
   calculateTransitiveDependencies: ->
     incomplete = true
     todo = {}
-    for element of @dependsOn
+    for element of @affects
       todo[element] = 1
     while incomplete
       incomplete = false
       nextTodo = {}
-      for target of todo
-        sources = @dependsOn[target]
-        for source of sources
-          for source2 of @dependsOn[source]
-            if not @dependsOn[target][source2]
-              if not @isLocal[target] then @dependsOnAGlobal[source2] = true
-              @dependsOn[target][source2] = true
-              nextTodo[source2] = 1
+      for source of todo
+        targets = @affects[source]
+        for target of targets
+          for target2 of @affects[target]
+            if not @affects[source][target2]
+              if not @isLocal[source] then @dependsOnAGlobal[target2] = true
+              @affects[source][target2] = true
+              nextTodo[source] = 1
               incomplete = true
       todo = nextTodo
     return undefined
@@ -218,8 +218,8 @@ class Eliminator
           while reference[0] != 'name'
             reference = reference[1]
           reference = reference[1]
-          if @dependsOn[reference]?
-            for varName of @dependsOn[reference]
+          if @affects[reference]?
+            for varName of @affects[reference]
               if isLive[varName]
                 isLive[varName] = false
 
@@ -271,8 +271,8 @@ class Eliminator
           if @isSingleDef[varName]
             isLive[varName] = true
           # Mark variables that depend on it as no longer live
-          if @dependsOn[varName]?
-            for varNameDep of @dependsOn[varName]
+          if @affects[varName]?
+            for varNameDep of @affects[varName]
               if isLive[varNameDep]
                 isLive[varNameDep] = false
         return node
