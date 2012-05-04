@@ -962,6 +962,10 @@ var LibrarySDL = {
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
 
+  Mix_FadingChannel: function(channel) {
+    return 0; // MIX_NO_FADING, TODO
+  },
+
   Mix_LoadMUS: 'Mix_LoadWAV_RW',
   Mix_FreeMusic: 'Mix_FreeChunk',
 
