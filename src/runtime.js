@@ -323,6 +323,17 @@ var Runtime = {
     }
   },
 
+  funcWrappers: {},
+
+  getFuncWrapper: function(func) {
+    if (!Runtime.funcWrappers[func]) {
+      Runtime.funcWrappers[func] = function() {
+        FUNCTION_TABLE[func].apply(null, arguments);
+      };
+    }
+    return Runtime.funcWrappers[func];
+  },
+
 #if RUNTIME_DEBUG
   debug: true, // Switch to false at runtime to disable logging at the right times
 

@@ -5,7 +5,6 @@
 mergeInto(LibraryManager.library, {
   $Browser: {
     pointerLock: false,
-    asyncCalls: {},
 
     createContext: function(canvas, useWebGL) {
 #if !USE_TYPED_ARRAYS
@@ -128,14 +127,6 @@ mergeInto(LibraryManager.library, {
              0; // delta;
     },
 
-    getAsyncCall: function(func) {
-      if (!Browser.asyncCalls[func]) {
-        Browser.asyncCalls[func] = function() {
-          FUNCTION_TABLE[func].apply(null, arguments);
-        };
-      }
-      return Browser.asyncCalls[func];
-    }
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],
@@ -178,7 +169,7 @@ mergeInto(LibraryManager.library, {
   emscripten_async_call: function(func, millis) {
     Module['noExitRuntime'] = true;
 
-    var asyncCall = Browser.getAsyncCall(func);
+    var asyncCall = Runtime.getFuncWrapper(func);
     if (millis >= 0) {
       setTimeout(asyncCall, millis);
     } else {
