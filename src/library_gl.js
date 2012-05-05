@@ -990,14 +990,15 @@ var LibraryGL = {
               }
             }
           }
+          if (source.indexOf('gl_FrontColor') >= 0) {
+            source = 'varying vec4 v_color; \n' +
+                     source.replace(/gl_FrontColor/g, 'v_color');
+          }
           if (source.indexOf('gl_Color') >= 0) {
-            source = 'varying vec4 v_color;   \n' +
-                     source.replace(/gl_Color/g, 'vec4(1, 1, 1, 1)').replace(/gl_FrontColor/g, 'v_color'); // XXX gl_Color can be either an attribute, or
-                                                                                                           //     from glColor, and we don't know which here.
-                                                                                                           //     For now, just use white
-            //source = 'attribute vec4 a_color; \n\
-            //          varying vec4 v_color;   \n' +
-            //         source.replace(/gl_Color/g, 'a_color').replace(/gl_FrontColor/g, 'v_color');
+            source = 'attribute vec4 a_color; \n' +
+                     'uniform vec4 u_color; \n' +
+                     'uniform int u_hasColorAttrib; \n' +
+                     source.replace(/gl_Color/g, '(u_hasColorAttrib > 0 ? a_color : u_color)');
           }
           if (source.indexOf('gl_FogFragCoord') >= 0) {
             source = 'varying float v_fogCoord;   \n' +
@@ -1243,6 +1244,7 @@ var LibraryGL = {
     enabledClientAttributes: [0, 0],
     clientAttributes: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
     clientActiveTexture: 0,
+    clientColor: null,
 
     byteSizeByType: {
       0x1400: 1, // GL_BYTE
@@ -1282,7 +1284,7 @@ var LibraryGL = {
     },
 
     createRenderer: function(renderer) {
-      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0, which, size;
+      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0, colorSize = 0, colorOffset = 0, which, size;
       for (var i = 0; i < renderer.length; i+=2) {
         var which = renderer[i];
         if (which == 'V') {
@@ -1302,6 +1304,9 @@ var LibraryGL = {
         } else if (which == 'N') {
           vertexSize += 4; // 1 char, + alignment
         } else if (which == 'C') {
+          size = parseInt(renderer[i+1]);
+          colorSize = size;
+          colorOffset = vertexSize;
           vertexSize += 4; // Up to 4 chars, + alignment
         } else {
           console.log('Warning: Ignoring renderer attribute ' + which);
@@ -1315,6 +1320,8 @@ var LibraryGL = {
       var ret = {
         vertexSize: vertexSize,
         hasTexture: textureSize > 0,
+        hasColor: colorSize > 0,
+
         init: function() {
           if (useCurrProgram) {
             if (GL.shaderInfos[GL.programShaders[GL.currProgram][0]].type == Module.ctx.VERTEX_SHADER) {
@@ -1359,9 +1366,13 @@ var LibraryGL = {
 
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
           this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord0');
+          this.colorLocation = Module.ctx.getAttribLocation(this.program, 'a_color');
+
           this.textureLocation = Module.ctx.getUniformLocation(this.program, 'u_texture');
           this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
+          this.hasColorAttribLocation = Module.ctx.getUniformLocation(this.program, 'u_hasColorAttrib');
+          this.colorUniformLocation = Module.ctx.getUniformLocation(this.program, 'u_color');
         },
 
         prepare: function() {
@@ -1376,7 +1387,15 @@ var LibraryGL = {
                                            vertexSize, textureOffset);
             Module.ctx.enableVertexAttribArray(this.texCoordLocation);
           }
-
+          if (this.hasColor) {
+            Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, Module.ctx.UNSIGNED_BYTE, true,
+                                           vertexSize, colorOffset);
+            Module.ctx.enableVertexAttribArray(this.colorLocation);
+            Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
+          } else {
+            Module.ctx.uniform1i(this.hasColorAttribLocation, 0);
+            Module.ctx.uniform4fv(this.colorUniformLocation, GL.immediate.clientColor);
+          }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
             var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
             Module.ctx.activeTexture(Module.ctx.TEXTURE0);
@@ -1389,6 +1408,9 @@ var LibraryGL = {
           Module.ctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTexture) {
             Module.ctx.disableVertexAttribArray(this.texCoordLocation);
+          }
+          if (this.hasColor) {
+            Module.ctx.disableVertexAttribArray(this.colorLocation);
           }
         }
       };
@@ -1415,6 +1437,8 @@ var LibraryGL = {
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.maxElements*2, Module.ctx.DYNAMIC_DRAW);
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+
+      this.clientColor = new Float32Array([1, 1, 1, 1]);
 
       // Replace some functions with immediate-mode aware versions
       _glDrawArrays = function(mode, first, count) {
