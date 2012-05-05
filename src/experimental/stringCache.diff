@@ -1,0 +1,147 @@
+diff --git a/src/library_gl.js b/src/library_gl.js
+index 7471578..9228964 100644
+--- a/src/library_gl.js
++++ b/src/library_gl.js
+@@ -1256,28 +1256,28 @@ var LibraryGL = {
+ 
+     setClientAttribute: function(name, size, type, stride, pointer) {
+       var attrib = this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]];
+       attrib.size = size;
+       attrib.type = type;
+       attrib.stride = stride;
+       attrib.pointer = pointer;
+-      attrib.name = name + size;
++      attrib.name = Runtime.getStringConcat(name, size);
+     },
+ 
+     // Renderers
+     addRendererComponent: function(component) {
+       if (this.rendererComponents[component]) return;
+       this.rendererComponents[component] = 1;
+-      this.renderer += component;
++      this.renderer = Runtime.getStringConcat(this.renderer, component);
+     },
+ 
+     setRenderer: function(renderer) {
+       var name = renderer;
+       if (GL.currProgram && renderer[0] != 'U') {
+-        name = 'UD' + GL.currProgram + '|' + renderer; // user-defined program renderer
++        name = Runtime.getStringConcat(Runtime.getStringConcat('UD', GL.currProgram), Runtime.getStringConcat('|', renderer)); // user-defined program renderer
+       }
+       this.renderer = name;
+       if (this.renderers[name]) return this.renderers[name];
+       this.renderers[name] = this.createRenderer(renderer);
+       return this.renderers[name];
+     },
+ 
+@@ -1300,15 +1300,18 @@ var LibraryGL = {
+           }
+           vertexSize += size * 4; // XXX assuming float
+         } else if (which == 'N') {
+           vertexSize += 4; // 1 char, + alignment
+         } else if (which == 'C') {
+           vertexSize += 4; // Up to 4 chars, + alignment
+         } else {
+-          console.log('Warning: Ignoring renderer attribute ' + which);
++#if ASSERTIONS
++          console.log('Warning: Ignoring renderer attribute');
++          console.log(which);
++#endif
+           size = parseInt(renderer[i+1]);
+           vertexSize += size * 4; // XXX assuming float
+         }
+       }
+       assert(positionSize > 0);
+       // TODO: verify vertexSize is equal to the stride in enabled client arrays
+       var useCurrProgram = !!GL.currProgram;
+@@ -1465,30 +1468,30 @@ var LibraryGL = {
+       var renderer = '', bytes = 0;
+       for (var i = 0; i < attributes.length; i++) {
+         var attribute = attributes[i];
+         if (!attribute) break;
+         attribute.offset = attribute.pointer - start;
+         if (attribute.offset > bytes) { // ensure we start where we should
+           assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
+-          renderer += '?' + ((attribute.offset - bytes)/4);
++          renderer = Runtime.getStringConcat(renderer, Runtime.getStringConcat('?', ((attribute.offset - bytes)/4)));
+           bytes += attribute.offset - bytes;
+         }
+-        renderer += attribute.name;
++        renderer = Runtime.getStringConcat(renderer, attribute.name);
+         bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type];
+         if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
+ #if ASSERTIONS
+         assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
+ #endif
+       }
+ 
+       assert(stride == 0 || bytes <= stride);
+ 
+       if (bytes < stride) { // ensure the size is that of the stride
+         assert((stride - bytes)%4 == 0); // assuming float
+-        renderer += '?' + ((stride-bytes)/4);
++        renderer = Runtime.getStringConcat(renderer, Runtime.getStringConcat('?', ((stride-bytes)/4)));
+         bytes = stride;
+       }
+ 
+       bytes *= count;
+       if (!GL.currArrayBuffer) {
+         GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+       }
+@@ -1671,15 +1674,15 @@ var LibraryGL = {
+   },
+ 
+   glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
+   glVertexPointer: function(size, type, stride, pointer) {
+     GL.immediate.setClientAttribute('V', size, type, stride, pointer);
+   },
+   glTexCoordPointer: function(size, type, stride, pointer) {
+-    GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
++    GL.immediate.setClientAttribute(Runtime.getStringConcat('T', GL.immediate.clientActiveTexture), size, type, stride, pointer);
+   },
+   glNormalPointer: function(type, stride, pointer) {
+     GL.immediate.setClientAttribute('N', 1, type, stride, pointer);
+   },
+   glColorPointer: function(size, type, stride, pointer) {
+     GL.immediate.setClientAttribute('C', size, type, stride, pointer);
+   },
+diff --git a/src/runtime.js b/src/runtime.js
+index 6a251c4..012a66d 100644
+--- a/src/runtime.js
++++ b/src/runtime.js
+@@ -319,25 +319,34 @@ var Runtime = {
+     if (!Runtime.warnOnce.shown) Runtime.warnOnce.shown = {};
+     if (!Runtime.warnOnce.shown[text]) {
+       Runtime.warnOnce.shown[text] = 1;
+       Module.printErr(text);
+     }
+   },
+ 
++  // Cache for JS function wrappers for C functions in FUNCTION_TABLE
+   funcWrappers: {},
+-
+   getFuncWrapper: function(func) {
+     if (!Runtime.funcWrappers[func]) {
+       Runtime.funcWrappers[func] = function() {
+         FUNCTION_TABLE[func].apply(null, arguments);
+       };
+     }
+     return Runtime.funcWrappers[func];
+   },
+ 
++  // Cache for small recurring strings generated by concatenating other
++  // strings, use this to avoid needless allocation and collection
++  stringCache: {},
++  getStringConcat: function(a, b) {
++    var cacheItem = Runtime.stringCache[a];
++    if (!cacheItem) cacheItem = Runtime.stringCache[a] = {};
++    return cacheItem[b] || (cacheItem[b] = a + b);
++  },
++
+ #if RUNTIME_DEBUG
+   debug: true, // Switch to false at runtime to disable logging at the right times
+ 
+   printObjectList: [],
+ 
+   prettyPrint: function(arg) {
+     if (typeof arg == 'undefined') return '!UNDEFINED!';
