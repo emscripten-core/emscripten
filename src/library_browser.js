@@ -126,6 +126,15 @@ mergeInto(LibraryManager.library, {
              event.mozMovementY ||
              event.webkitMovementY ||
              0; // delta;
+    },
+
+    getAsyncCall: function(func) {
+      if (!Browser.asyncCalls[func]) {
+        Browser.asyncCalls[func] = function() {
+          FUNCTION_TABLE[func].apply(null, arguments);
+        };
+      }
+      return Browser.asyncCalls[func];
     }
   },
 
@@ -169,15 +178,11 @@ mergeInto(LibraryManager.library, {
   emscripten_async_call: function(func, millis) {
     Module['noExitRuntime'] = true;
 
-    if (!Browser.asyncCalls[func]) {
-      Browser.asyncCalls[func] = function() {
-        FUNCTION_TABLE[func]();
-      };
-    }
+    var asyncCall = Browser.getAsyncCall(func);
     if (millis >= 0) {
-      setTimeout(Browser.asyncCalls[func], millis);
+      setTimeout(asyncCall, millis);
     } else {
-      Browser.requestAnimationFrame(Browser.asyncCalls[func]);
+      Browser.requestAnimationFrame(asyncCall);
     }
   }
 });

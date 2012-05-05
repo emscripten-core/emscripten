@@ -1,79 +1,7 @@
 //"use strict";
 
-// To use emscripten's SDL library here, you need to define
-// Module.canvas.
-//
-// More specifically, our SDL implementation will look for
-// Module.canvas. You should fill it using something like
-//
-//      function onLoad() {
-//        // Pass canvas and context to the generated code
-//        Module.canvas = document.getElementById('canvas');
-//      }
-//
-// Note that this must be called during onload, since you will
-// only be able to access the canvas element in the page after
-// it loads. You will likely also want to disable running by
-// default, with something like
-//
-//      var Module = {
-//        noInitialRun: true
-//      };
-//
-// which is defined BEFORE you load the compiled code.
-
-// The test_emcc test in the tests/runner.py will test this
-// in its last phase, where it generates HTML. You can see
-// a concrete example there. The HTML source is in src/shell.html.
-// Here is a more comprehensive example:
-
-/*
-<html>
-  <head>
-    <title>Demo</title>
-    <script type='text/javascript'>
-      var Module = {
-        noInitialRun: true
-      };
-
-      // implement print
-      var print = function(text) {
-        var element = document.getElementById('output')
-        element.innerHTML = text.replace('\n', '<br>', 'g') + element.innerHTML;
-      }
-    </script>
-    <script src='doom.ccsimple.js' type='text/javascript'></script>
-    <script type='text/javascript'>
-      function onLoad() {
-        // Pass canvas and context to the generated code, and do the actual run() here
-        Module.canvas = document.getElementById('canvas');
-        Module.run();
-      }
-    </script>
-  <body onload='onLoad()' style='background-color: black; color: white'>
-    <center>
-      <canvas id='canvas' width='320' height='200'></canvas>
-    </center>
-    <div id='output'></div>
-  </body>
-</html>
-*/
-
-// Other stuff to take into account:
-//
-//  * Make sure alpha values are proper in your input. If they are all 0, everything will be transparent!
-//
-//  * Your code should not write a 32-bit value and expect that to set an RGBA pixel.
-//    The reason is that that data will be read as 8-bit values, and according to the
-//    load-store consistency assumption, it should be written that way (see docs/paper.pdf).
-//    Instead, do something like        *ptr++ = R; *ptr++ = G; *ptr++ = B;
-//
-//  * A normal C++ main loop with SDL_Delay will not work in JavaScript - there is no way
-//    to wait for a short time without locking up the web page entirely. The simplest
-//    solution here is to have a singleIteration() function which is a single loop
-//    iteration, and from JS to do something like      setInterval(_singleIteration, 1/30)
-//
-//  * SDL_Quit does nothing.
+// See browser tests for examples (tests/runner.py, search for sdl_). Run with
+//    python tests/runner.py browser
 
 var LibrarySDL = {
   $SDL__deps: ['$FS', '$Browser'],
@@ -469,6 +397,20 @@ var LibrarySDL = {
       return ret;
     },
 
+    // Sound
+
+    allocateChannels: function(num) { // called from Mix_AllocateChannels and init
+      if (SDL.numChannels && SDL.numChannels >= num) return;
+      SDL.numChannels = num;
+      SDL.channels = [];
+      for (var i = 0; i < num; i++) {
+        SDL.channels[i] = {
+          audio: null,
+          volume: 1.0
+        };
+      }
+    },
+
     // Debugging
 
     debugSurface: function(surfData) {
@@ -840,6 +782,8 @@ var LibrarySDL = {
   // SDL_Audio
 
   SDL_OpenAudio: function(desired, obtained) {
+    SDL.allocateChannels(32);
+
     // FIXME: Assumes 16-bit audio
     assert(obtained === 0, 'Cannot return obtained SDL audio params');
 
@@ -911,29 +855,27 @@ var LibrarySDL = {
   // SDL Mixer
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
+    SDL.allocateChannels(32);
     return 0;
   },
 
   Mix_CloseAudio: 'SDL_CloseAudio',
 
   Mix_AllocateChannels: function(num) {
-    return num; // fake it
+    SDL.allocateChannels(num);
+    return num;
   },
 
   Mix_ChannelFinished: function(func) {
-    SDL.channelFinished = func; // TODO
-  },
-
-  Mix_HookMusicFinished: function(func) {
-    SDL.hookMusicFinished = func;
+    SDL.channelFinished = func;
   },
 
   Mix_Volume: function(channel, volume) {
-    return 0; // TODO
-  },
-
-  Mix_VolumeMusic: function(func) {
-    return 0; // TODO
+    var info = SDL.channels[channel];
+    var ret = info.volume * 128;
+    info.volume = volume / 128;
+    if (info.audio) info.audio.volume = info.volume;
+    return ret;
   },
 
   Mix_SetPanning: function() {
@@ -956,7 +898,6 @@ var LibrarySDL = {
   },
 
   Mix_FreeChunk: function(id) {
-    SDL.audios[id].audio.pause();
     SDL.audios[id] = null;
   },
 
@@ -964,9 +905,25 @@ var LibrarySDL = {
     // TODO: handle loops
     var audio = SDL.audios[id].audio;
     if (!audio) return 0;
-    if (audio.currentTime) audio.src = audio.src; // This hack prevents lags on replaying // TODO: parallel sounds through //cloneNode(true).play()
-    audio.play();
-    return 1; // XXX should return channel
+    if (channel == -1) {
+      channel = 0;
+      for (var i = 0; i < SDL.numChannels; i++) {
+        if (!SDL.channels[i].audio) {
+          channel = i;
+          break;
+        }
+      }
+    }
+    var info = SDL.channels[channel];
+    info.audio = audio.cloneNode(true);
+    if (SDL.channelFinished) {
+      info.audio.onended = function() { // TODO: cache these
+        Browser.getAsyncCall(SDL.channelFinished)(channel);
+      }
+    }
+    info.audio.play();
+    info.audio.volume = info.volume;
+    return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
 
@@ -975,10 +932,27 @@ var LibrarySDL = {
   },
 
   Mix_HaltChannel: function(channel) {
+    var info = SDL.channels[channel];
+    if (info.audio) {
+      info.audio.pause();
+      info.audio = null;
+    }
+    if (SDL.channelFinished) {
+      Browser.getAsyncCall(SDL.channelFinished)(channel);
+    }
     return 0;
   },
 
+  Mix_HookMusicFinished: function(func) {
+    SDL.hookMusicFinished = func;
+  },
+
+  Mix_VolumeMusic: function(func) {
+    return 0; // TODO
+  },
+
   Mix_LoadMUS: 'Mix_LoadWAV_RW',
+
   Mix_FreeMusic: 'Mix_FreeChunk',
 
   Mix_PlayMusic: function(id, loops) {

@@ -6799,7 +6799,7 @@ elif 'browser' in str(sys.argv):
           browser.harness_queue.put('http://localhost:8888/' + html_file)
           output = '[no http server activity]'
           start = time.time()
-          while time.time() - start < 5:
+          while time.time() - start < 60:
             if not queue.empty():
               output = queue.get()
               break
