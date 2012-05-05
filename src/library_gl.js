@@ -1438,7 +1438,7 @@ var LibraryGL = {
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.maxElements*2, Module.ctx.DYNAMIC_DRAW);
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
 
-      this.clientColor = new Float32Array([1, 1, 1, 1]);
+      this.clientColor = new Float32Array([1, 1, 1, 1]); // TODO: modify this when glColor called not in begin/end
 
       // Replace some functions with immediate-mode aware versions
       _glDrawArrays = function(mode, first, count) {
