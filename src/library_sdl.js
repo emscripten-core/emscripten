@@ -917,7 +917,7 @@ var LibrarySDL = {
     var info = SDL.channels[channel];
     info.audio = audio.cloneNode(true);
     if (SDL.channelFinished) {
-      info.audio.onended = function() { // TODO: cache these
+      info.audio['onended'] = function() { // TODO: cache these
         Browser.getAsyncCall(SDL.channelFinished)(channel);
       }
     }
