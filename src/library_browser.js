@@ -101,7 +101,7 @@ mergeInto(LibraryManager.library, {
 
       canvas.requestFullScreen = canvas['requestFullScreen'] ||
                                  canvas['mozRequestFullScreen'] ||
-                                 canvas['webkitRequestFullScreen'];
+                                 (canvas['webkitRequestFullScreen'] ? function() { canvas['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
       canvas.requestFullScreen(); 
     },
 
