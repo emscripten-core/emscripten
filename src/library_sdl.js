@@ -257,10 +257,7 @@ var LibrarySDL = {
       } else {
         canvas = Module['canvas'];
       }
-      var ctx = Browser.createContext(canvas, useWebGL);
-      if (usePageCanvas) {
-        Module.ctx = ctx;
-      }
+      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas);
       SDL.surfaces[surf] = {
         width: width,
         height: height,

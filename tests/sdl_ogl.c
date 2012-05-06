@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
     glViewport( 0, 0, 640, 480 );
 
     glMatrixMode( GL_PROJECTION );
+    glPushMatrix(); // just for testing
     glLoadIdentity();
 
     glOrtho( 0, 640, 480, 0, -1, 1 );

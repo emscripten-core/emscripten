@@ -1182,6 +1182,7 @@ var LibraryGL = {
 
   // GL Immediate mode
 
+  $GLImmediate__postset: 'Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
   $GLImmediate: {
     // Vertex and index data
     maxElements: 10240,
@@ -1196,24 +1197,10 @@ var LibraryGL = {
     rendererComponents: {},
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
-    matrix: {
-      'm': null, // modelview
-      'p': null, // projection
-      't': null  // texture
-    },
-    matrixStack: {
-      'm': [],
-      'p': [],
-      't': []
-    },
+    matrix: {},
+    matrixStack: {},
     currentMatrix: 'm', // default is modelview
     tempMatrix: null,
-    initMatrixLibrary: function() {
-      GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrix['t'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.currentMatrix = GL.immediate.matrix.lib.mat4.create();
-    },
 
     // Clientside attributes
     VERTEX: 0,
@@ -1227,18 +1214,7 @@ var LibraryGL = {
     TEXTURE5: 8,
     TEXTURE6: 9,
     NUM_ATTRIBUTES: 10,
-    ATTRIBUTE_BY_NAME: {
-      'V': 0,
-      'N': 1,
-      'C': 2,
-      'T0': 3,
-      'T1': 4,
-      'T2': 5,
-      'T3': 6,
-      'T4': 7,
-      'T5': 8,
-      'T6': 9
-    },
+    ATTRIBUTE_BY_NAME: {},
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
@@ -1424,6 +1400,33 @@ var LibraryGL = {
       Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       GL.immediate.initted = true;
 
+      // No JSON notation for these objects, for closure w/js optimizer
+      this.matrix['m'] = null; // modelview
+      this.matrix['p'] = null; // projection
+      this.matrix['t'] = null; // texture
+
+      this.matrixStack['m'] = [];
+      this.matrixStack['p'] = [];
+      this.matrixStack['t'] = [];
+
+      this.ATTRIBUTE_BY_NAME['V'] = 0;
+      this.ATTRIBUTE_BY_NAME['N'] = 1;
+      this.ATTRIBUTE_BY_NAME['C'] = 2;
+      this.ATTRIBUTE_BY_NAME['T0'] = 3;
+      this.ATTRIBUTE_BY_NAME['T1'] = 4;
+      this.ATTRIBUTE_BY_NAME['T2'] = 5;
+      this.ATTRIBUTE_BY_NAME['T3'] = 6;
+      this.ATTRIBUTE_BY_NAME['T4'] = 7;
+      this.ATTRIBUTE_BY_NAME['T5'] = 8;
+      this.ATTRIBUTE_BY_NAME['T6'] = 9;
+
+      // Initialize matrix library
+
+      GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrix['t'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.currentMatrix = GL.immediate.matrix.lib.mat4.create();
+
       // Buffers for data
       this.tempData = new Float32Array(this.maxElements);
       this.indexData = new Uint16Array(this.maxElements);
@@ -1589,12 +1592,11 @@ var LibraryGL = {
     }
   },
 
-  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GL.immediate = GLImmediate; GL.immediate.matrix.lib = ' + read('gl-matrix.js') + '; GL.immediate.initMatrixLibrary();\n' }],
+  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GL.immediate = GLImmediate; GL.immediate.matrix.lib = ' + read('gl-matrix.js') + ';\n' }],
   $GLImmediateSetup: {},
 
   glBegin__deps: ['$GLImmediateSetup'],
   glBegin: function(mode) {
-    if (!GL.immediate.initted) GL.immediate.init();
     GL.immediate.mode = mode;
     GL.immediate.renderer = '';
     GL.immediate.rendererComponents = {};
@@ -1671,7 +1673,6 @@ var LibraryGL = {
   // ClientState/gl*Pointer
 
   glEnableClientState: function(cap, disable) {
-    if (!GL.immediate.initted) GL.immediate.init();
     switch(cap) {
       case 0x8078: // GL_TEXTURE_COORD_ARRAY
         GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0] = !disable; break;

@@ -5,8 +5,9 @@
 mergeInto(LibraryManager.library, {
   $Browser: {
     pointerLock: false,
+    moduleContextCreatedCallbacks: [],
 
-    createContext: function(canvas, useWebGL) {
+    createContext: function(canvas, useWebGL, setInModule) {
 #if !USE_TYPED_ARRAYS
       if (useWebGL) {
         Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
@@ -62,6 +63,10 @@ mergeInto(LibraryManager.library, {
 #endif
         // Set the background of the WebGL canvas to black
         canvas.style.backgroundColor = "black";
+      }
+      if (setInModule) {
+        Module.ctx = ctx;
+        Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
       }
       return ctx;
     },
