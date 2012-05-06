@@ -3,6 +3,7 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
+  $Browser__postset: 'Module["requestFullscreen"] = function() { Browser.requestFullscreen() };\n', // export requestFullscreen
   $Browser: {
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
