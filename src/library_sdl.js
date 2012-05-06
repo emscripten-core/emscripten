@@ -28,13 +28,7 @@ var LibrarySDL = {
     mouseX: 0,
     mouseY: 0,
 
-    DOMEventToSDLEvent: {
-      'keydown': 0x300,
-      'keyup': 0x301,
-      'mousedown': 0x401,
-      'mouseup': 0x402,
-      'mousemove': 0x400
-    },
+    DOMEventToSDLEvent: {},
 
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       38:  1106, // up arrow
@@ -438,6 +432,12 @@ var LibrarySDL = {
     });
     SDL.keyboardState = _malloc(0x10000);
     _memset(SDL.keyboardState, 0, 0x10000);
+    // Initialize this structure carefully for closure
+    SDL.DOMEventToSDLEvent['keydown'] = 0x300;
+    SDL.DOMEventToSDLEvent['keyup'] = 0x301;
+    SDL.DOMEventToSDLEvent['mousedown'] = 0x401;
+    SDL.DOMEventToSDLEvent['mouseup'] = 0x402;
+    SDL.DOMEventToSDLEvent['mousemove'] = 0x400;
     return 0; // success
   },
 
