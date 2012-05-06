@@ -1173,6 +1173,22 @@ var LibraryGL = {
         case 'glUniform4iv': func = _glUniform4iv; break;
         case 'glBindAttribLocation': func = _glBindAttribLocation; break;
         case 'glGetActiveUniform': func = _glGetActiveUniform; break;
+        case 'glGenBuffers': func = _glGenBuffers; break;
+        case 'glBindBuffer': func = _glBindBuffer; break;
+        case 'glBufferData': func = _glBufferData; break;
+        case 'glBufferSubData': func = _glBufferSubData; break;
+        case 'glDeleteBuffers': func = _glDeleteBuffers; break;
+        case 'glActiveTexture': func = _glActiveTexture; break;
+        case 'glClientActiveTexture': func = _glClientActiveTexture; break;
+        case 'glGetProgramiv': func = _glGetProgramiv; break;
+        case 'glEnableVertexAttribArray': func = _glEnableVertexAttribArray; break;
+        case 'glDisableVertexAttribArray': func = _glDisableVertexAttribArray; break;
+        case 'glVertexAttribPointer': func = _glVertexAttribPointer; break;
+        case 'glBindRenderbuffer': func = _glBindRenderbuffer; break;
+        case 'glDeleteRenderbuffers': func = _glDeleteRenderbuffers; break;
+        case 'glGenRenderbuffers': func = _glGenRenderbuffers; break;
+        case 'glCompressedTexImage2D': func = _glCompressedTexImage2D; break;
+        case 'glCompressedTexSubImage2D': func = _glCompressedTexSubImage2D; break;
         default: {
           console.log('WARNING: getProcAddress failed for ' + name);
           func = function() {
