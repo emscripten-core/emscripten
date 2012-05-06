@@ -1316,8 +1316,6 @@ var LibraryGL = {
       var useCurrProgram = !!GL.currProgram;
       var ret = {
         vertexSize: vertexSize,
-        hasTexture: textureSize > 0,
-        hasColor: colorSize > 0,
 
         init: function() {
           if (useCurrProgram) {
@@ -1370,6 +1368,10 @@ var LibraryGL = {
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
           this.hasColorAttribLocation = Module.ctx.getUniformLocation(this.program, 'u_hasColorAttrib');
           this.colorUniformLocation = Module.ctx.getUniformLocation(this.program, 'u_color');
+
+          this.hasTexture = textureSize > 0 && this.texCoordLocation >= 0;
+          this.hasColorAttrib = colorSize > 0 && this.colorLocation >= 0;
+          this.hasColorUniform = !!this.colorUniformLocation;
         },
 
         prepare: function() {
@@ -1384,12 +1386,12 @@ var LibraryGL = {
                                            vertexSize, textureOffset);
             Module.ctx.enableVertexAttribArray(this.texCoordLocation);
           }
-          if (this.hasColor) {
+          if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, Module.ctx.UNSIGNED_BYTE, true,
                                            vertexSize, colorOffset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
-          } else {
+          } else if (this.hasColorUniform) {
             Module.ctx.uniform1i(this.hasColorAttribLocation, 0);
             Module.ctx.uniform4fv(this.colorUniformLocation, GL.immediate.clientColor);
           }
@@ -1406,7 +1408,7 @@ var LibraryGL = {
           if (this.hasTexture) {
             Module.ctx.disableVertexAttribArray(this.texCoordLocation);
           }
-          if (this.hasColor) {
+          if (this.hasColorAttrib) {
             Module.ctx.disableVertexAttribArray(this.colorLocation);
           }
         }
