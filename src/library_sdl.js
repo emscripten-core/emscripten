@@ -280,8 +280,8 @@ var LibrarySDL = {
       switch(event.type) {
         case 'mousemove':
           // workaround for firefox bug 750111
-          event.movementX = event.mozMovementX;
-          event.movementY = event.mozMovementY;
+          event['movementX'] = event['mozMovementX'];
+          event['movementY'] = event['mozMovementY'];
           // fall through
         case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll':
           if (event.type == 'DOMMouseScroll') {
