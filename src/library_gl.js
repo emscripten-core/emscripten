@@ -1105,70 +1105,75 @@ var LibraryGL = {
       };
     },
 
-    procReplacements: {
-      'glCreateShaderObjectARB': 'glCreateShader',
-      'glCreateProgramObjectARB': 'glCreateProgram',
-      'glAttachObjectARB': 'glAttachShader',
-      'glUseProgramObjectARB': 'glUseProgram'
-    },
-
-    procs: {
-      glDeleteObjectARB: function(id) {
-        if (GL.programs[id]) {
-          _glDeleteProgram(id);
-        } else if (GL.shaders[id]) {
-          _glDeleteShader(id);
-        } else {
-          console.log('WARNING: deleteObjectARB received invalid id: ' + id);
-        }
-      },
-
-      glGetObjectParameterivARB: function(id, type, result) {
-        if (GL.programs[id]) {
-          if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-            {{{ makeSetValue('result', '0', 'Module.ctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
-            return;
-          }
-          _glGetProgramiv(id, type, result);
-        } else if (GL.shaders[id]) {
-          if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-            {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
-            return;
-          }
-          _glGetShaderiv(id, type, result);
-        } else {
-          console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
-        }
-      },
-
-      glGetInfoLogARB: function(id, maxLength, length, infoLog) {
-        if (GL.programs[id]) {
-          _glGetProgramInfoLog(id, maxLength, length, infoLog);
-        } else if (GL.shaders[id]) {
-          _glGetShaderInfoLog(id, maxLength, length, infoLog);
-        } else {
-          console.log('WARNING: getObjectParameterivARB received invalid id: ' + id);
-        }
-      },
-
-      glBindProgramARB: function(type, id) {
-        assert(id == 0);
-      }
-    },
-
     getProcAddress: function(name) {
-      name = GLEmulation.procReplacements[name] || name;
-      var func = GLEmulation.procs[name];
-      if (!func) {
-        try {
-          try {
-            func = eval('_' + name); // XXX closure, need Module. and for them to be exported
-          } catch(e) {
-            if (name.substr(-3) == 'ARB') name = name.substr(0, name.length-3);
-            if (name.substr(-3) == 'EXT') name = name.substr(0, name.length-3);
-            func = eval('_' + name); // XXX closure, need Module. and for them to be exported
+      name = name.replace('EXT', '').replace('ARB', '');
+      // Do the translation carefully because of closure
+      switch (name) {
+        case 'glCreateShaderObject': case 'glCreateShader': func = _glCreateShader; break;
+        case 'glCreateProgramObject': case 'glCreateProgram': func = _glCreateProgram; break;
+        case 'glAttachObject': case 'glAttachShader': func = _glAttachShader; break;
+        case 'glUseProgramObject': case 'glUseProgram': func = _glUseProgram; break;
+        case 'glDeleteObject': func = function(id) {
+          if (GL.programs[id]) {
+            _glDeleteProgram(id);
+          } else if (GL.shaders[id]) {
+            _glDeleteShader(id);
+          } else {
+            console.log('WARNING: deleteObject received invalid id: ' + id);
           }
-        } catch(e) {
+        }; break;
+        case 'glGetObjectParameteriv': func = function(id, type, result) {
+          if (GL.programs[id]) {
+            if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+              {{{ makeSetValue('result', '0', 'Module.ctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
+              return;
+            }
+            _glGetProgramiv(id, type, result);
+          } else if (GL.shaders[id]) {
+            if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+              {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
+              return;
+            }
+            _glGetShaderiv(id, type, result);
+          } else {
+            console.log('WARNING: getObjectParameteriv received invalid id: ' + id);
+          }
+        }; break;
+        case 'glGetInfoLog': func = function(id, maxLength, length, infoLog) {
+          if (GL.programs[id]) {
+            _glGetProgramInfoLog(id, maxLength, length, infoLog);
+          } else if (GL.shaders[id]) {
+            _glGetShaderInfoLog(id, maxLength, length, infoLog);
+          } else {
+            console.log('WARNING: getObjectParameteriv received invalid id: ' + id);
+          }
+        }; break;
+        case 'glBindProgram': func = function(type, id) {
+          assert(id == 0);
+        }; break;
+        case 'glShaderSource': func = _glShaderSource; break;
+        case 'glCompileShader': func = _glCompileShader; break;
+        case 'glLinkProgram': func = _glLinkProgram; break;
+        case 'glGetUniformLocation': func = _glGetUniformLocation; break;
+        case 'glUniform1f': func = _glUniform1f; break;
+        case 'glUniform2f': func = _glUniform2f; break;
+        case 'glUniform3f': func = _glUniform3f; break;
+        case 'glUniform4f': func = _glUniform4f; break;
+        case 'glUniform1fv': func = _glUniform1fv; break;
+        case 'glUniform2fv': func = _glUniform2fv; break;
+        case 'glUniform3fv': func = _glUniform3fv; break;
+        case 'glUniform4fv': func = _glUniform4fv; break;
+        case 'glUniform1i': func = _glUniform1i; break;
+        case 'glUniform2i': func = _glUniform2i; break;
+        case 'glUniform3i': func = _glUniform3i; break;
+        case 'glUniform4i': func = _glUniform4i; break;
+        case 'glUniform1iv': func = _glUniform1iv; break;
+        case 'glUniform2iv': func = _glUniform2iv; break;
+        case 'glUniform3iv': func = _glUniform3iv; break;
+        case 'glUniform4iv': func = _glUniform4iv; break;
+        case 'glBindAttribLocation': func = _glBindAttribLocation; break;
+        case 'glGetActiveUniform': func = _glGetActiveUniform; break;
+        default: {
           console.log('WARNING: getProcAddress failed for ' + name);
           func = function() {
             console.log('WARNING: empty replacement for ' + name + ' called, no-op');

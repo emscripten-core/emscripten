@@ -7240,7 +7240,7 @@ elif 'browser' in str(sys.argv):
       self.btest('emscripten_api_browser.cpp', '1')
 
     def test_sdlglshader(self):
-      self.btest('sdlglshader.c', reference='sdlglshader.png')
+      self.btest('sdlglshader.c', reference='sdlglshader.png', args=['--closure', '1'])
 
     def test_gl_ps(self):
       # pointers and a shader
