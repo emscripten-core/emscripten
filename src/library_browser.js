@@ -7,6 +7,7 @@ mergeInto(LibraryManager.library, {
   $Browser: {
     mainLoop: {
       scheduler: null,
+      shouldPause: false,
       paused: false
     },
     pointerLock: false,
@@ -154,8 +155,19 @@ mergeInto(LibraryManager.library, {
 
     var jsFunc = FUNCTION_TABLE[func];
     var wrapper = function() {
-      if (Browser.mainLoop.paused) return;
+      if (Browser.mainLoop.shouldPause) {
+        // catch pauses from non-main loop sources
+        Browser.mainLoop.paused = true;
+        Browser.mainLoop.shouldPause = false;
+        return;
+      }
       jsFunc();
+      if (Browser.mainLoop.shouldPause) {
+        // catch pauses from the main loop itself
+        Browser.mainLoop.paused = true;
+        Browser.mainLoop.shouldPause = false;
+        return;
+      }
       Browser.mainLoop.scheduler();
     }
     if (fps && fps > 0) {
@@ -172,16 +184,19 @@ mergeInto(LibraryManager.library, {
 
   emscripten_cancel_main_loop: function(func) {
     Browser.mainLoop.scheduler = null;
-    Browser.mainLoop.paused = true;
+    Browser.mainLoop.shouldPause = true;
   },
 
   emscripten_pause_main_loop: function(func) {
-    Browser.mainLoop.paused = true;
+    Browser.mainLoop.shouldPause = true;
   },
 
   emscripten_resume_main_loop: function(func) {
-    Browser.mainLoop.paused = false;
-    Browser.mainLoop.scheduler();
+    if (Browser.mainLoop.paused) {
+      Browser.mainLoop.paused = false;
+      Browser.mainLoop.scheduler();
+    }
+    Browser.mainLoop.shouldPause = false;
   },
 
   emscripten_async_call: function(func, millis) {
