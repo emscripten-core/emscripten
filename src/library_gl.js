@@ -1189,6 +1189,15 @@ var LibraryGL = {
         case 'glGenRenderbuffers': func = _glGenRenderbuffers; break;
         case 'glCompressedTexImage2D': func = _glCompressedTexImage2D; break;
         case 'glCompressedTexSubImage2D': func = _glCompressedTexSubImage2D; break;
+        case 'glBindFramebuffer': func = _glBindFramebuffer; break;
+        case 'glGenFramebuffers': func = _glGenFramebuffers; break;
+        case 'glDeleteFramebuffers': func = _glDeleteFramebuffers; break;
+        case 'glFramebufferRenderbuffer': func = _glFramebufferRenderbuffer; break;
+        case 'glFramebufferTexture2D': func = _glFramebufferTexture2D; break;
+        case 'glGetFramebufferAttachmentParameteriv': func = _glGetFramebufferAttachmentParameteriv; break;
+        case 'glIsFramebuffer': func = _glIsFramebuffer; break;
+        case 'glCheckFramebufferStatus': func = _glCheckFramebufferStatus; break;
+        case 'glRenderbufferStorage': func = _glRenderbufferStorage; break;
         default: {
           console.log('WARNING: getProcAddress failed for ' + name);
           func = function() {
