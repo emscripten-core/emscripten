@@ -5,6 +5,10 @@
 mergeInto(LibraryManager.library, {
   $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n', // export requestFullScreen
   $Browser: {
+    mainLoop: {
+      scheduler: null,
+      paused: false
+    },
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
 
@@ -148,28 +152,36 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps) {
     Module['noExitRuntime'] = true;
 
-    _emscripten_set_main_loop.cancel = false;
     var jsFunc = FUNCTION_TABLE[func];
-
-    if (fps && fps > 0) {
-      function doOne() {
-        if (_emscripten_set_main_loop.cancel) return;
-        jsFunc();
-        setTimeout(doOne, 1000/fps); // doing this each time means that on exception, we stop
-      }
-      setTimeout(doOne, 1000/fps);
-    } else {
-      function doOneRAF() {
-        if (_emscripten_set_main_loop.cancel) return;
-        jsFunc();
-        Browser.requestAnimationFrame(doOneRAF);
-      }
-      Browser.requestAnimationFrame(doOneRAF);
+    var wrapper = function() {
+      if (Browser.mainLoop.paused) return;
+      jsFunc();
+      Browser.mainLoop.scheduler();
     }
+    if (fps && fps > 0) {
+      Browser.mainLoop.scheduler = function() {
+        setTimeout(wrapper, 1000/fps); // doing this each time means that on exception, we stop
+      }
+    } else {
+      Browser.mainLoop.scheduler = function() {
+        Browser.requestAnimationFrame(wrapper);
+      }
+    }
+    Browser.mainLoop.scheduler();
   },
 
   emscripten_cancel_main_loop: function(func) {
-    _emscripten_set_main_loop.cancel = true;
+    Browser.mainLoop.scheduler = null;
+    Browser.mainLoop.paused = true;
+  },
+
+  emscripten_pause_main_loop: function(func) {
+    Browser.mainLoop.paused = true;
+  },
+
+  emscripten_resume_main_loop: function(func) {
+    Browser.mainLoop.paused = false;
+    Browser.mainLoop.scheduler();
   },
 
   emscripten_async_call: function(func, millis) {

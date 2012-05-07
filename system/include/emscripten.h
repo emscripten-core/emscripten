@@ -24,8 +24,18 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * will call that function at a specified number of frames per
  * second. Setting 0 or a negative value as the fps will use
  * the browser's requestAnimationFrame mechanism.
+ *
+ * Pausing and resuming the main loop is useful if your app
+ * needs to perform some synchronous operation, for example
+ * to load a file from the network. It might be wrong to
+ * run the main loop before that finishes (the original
+ * code assumes that), so you can break the code up into
+ * asynchronous callbacks, but you must pause the main
+ * loop until they complete.
  */
 extern void emscripten_set_main_loop(void (*func)(), int fps);
+extern void emscripten_pause_main_loop();
+extern void emscripten_resume_main_loop();
 extern void emscripten_cancel_main_loop();
 
 /*

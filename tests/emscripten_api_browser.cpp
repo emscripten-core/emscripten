@@ -9,11 +9,20 @@ int last = 0;
 
 extern "C" {
 
+bool fived = false;
+void five() {
+  fived = true;
+  emscripten_resume_main_loop();
+}
+
 void mainey() {
   static int counter = 0;
   printf("mainey: %d\n", counter++);
-  if (counter == 10) {
-    int result = 1;
+  if (counter == 20) {
+    emscripten_pause_main_loop();
+    emscripten_async_call(five, 1000);
+  } else if (counter == 22) { // very soon after 20, so without pausing we fail
+    int result = fived;
     REPORT_RESULT();
   }
 }
