@@ -1362,8 +1362,8 @@ var LibraryGL = {
                                                          'varying vec4 v_color;                               \n' +
                                                          'void main()                                         \n' +
                                                          '{                                                   \n' +
-                                                         (textureSize ? 'gl_FragColor = texture2D( u_texture, v_texCoord );\n' :
-                                                                        'gl_FragColor = v_color;\n') + // XXX multply!
+                                                         (textureSize ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
+                                                                        'gl_FragColor = v_color;\n') +
                                                          '}                                                   \n');
             Module.ctx.compileShader(this.fragmentShader);
 
