@@ -1216,7 +1216,8 @@ var LibraryGL = {
   $GLImmediate: {
     // Vertex and index data
     maxElements: 10240,
-    vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer)
+    vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer). Default view is F32
+    vertexDataU8: null, // U8 view
     tempData: null,
     indexData: null,
     vertexCounter: 0,
@@ -1342,12 +1343,15 @@ var LibraryGL = {
             Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n' +
                                                        'attribute vec2 a_texCoord0;  \n' +
                                                        (textureSize ? 'varying vec2 v_texCoord;    \n' : '') +
+                                                       'varying vec4 v_color; \n' +
+                                                       (colorSize ? 'attribute vec4 a_color; \n': 'uniform vec4 u_color; \n') +
                                                        'uniform mat4 u_modelView;   \n' +
                                                        'uniform mat4 u_projection;  \n' +
                                                        'void main()                 \n' +
                                                        '{                           \n' +
                                                        '  gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' +
                                                        (textureSize ? 'v_texCoord = a_texCoord0;    \n' : '') +
+                                                       (colorSize ? 'v_color = a_color; \n' : 'v_color = u_color; \n') +
                                                        '}                           \n');
             Module.ctx.compileShader(this.vertexShader);
 
@@ -1355,10 +1359,11 @@ var LibraryGL = {
             Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n' +
                                                          'varying vec2 v_texCoord;                            \n' +
                                                          'uniform sampler2D u_texture;                        \n' +
+                                                         'varying vec4 v_color;                               \n' +
                                                          'void main()                                         \n' +
                                                          '{                                                   \n' +
                                                          (textureSize ? 'gl_FragColor = texture2D( u_texture, v_texCoord );\n' :
-                                                                        'gl_FragColor = vec4(0.8, 0.1, 1.0, 1.0);') +
+                                                                        'gl_FragColor = v_color;\n') + // XXX multply!
                                                          '}                                                   \n');
             Module.ctx.compileShader(this.fragmentShader);
 
@@ -1463,6 +1468,8 @@ var LibraryGL = {
       this.tempData = new Float32Array(this.maxElements);
       this.indexData = new Uint16Array(this.maxElements);
 
+      this.vertexDataU8 = new Uint8Array(this.tempData.buffer);
+
       this.vertexObject = Module.ctx.createBuffer();
       Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
       Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.maxElements*4, Module.ctx.DYNAMIC_DRAW);
@@ -1473,7 +1480,7 @@ var LibraryGL = {
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.maxElements*2, Module.ctx.DYNAMIC_DRAW);
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
 
-      this.clientColor = new Float32Array([1, 1, 1, 1]); // TODO: modify this when glColor called not in begin/end
+      this.clientColor = new Float32Array([1, 1, 1, 1]);
 
       // Replace some functions with immediate-mode aware versions
       _glDrawArrays = function(mode, first, count) {
@@ -1620,6 +1627,7 @@ var LibraryGL = {
         Module.ctx.useProgram(null);
       }
 
+      this.mode = 0;
       this.vertexCounter = 0;
     }
   },
@@ -1631,13 +1639,12 @@ var LibraryGL = {
   glBegin: function(mode) {
     GL.immediate.mode = mode;
     GL.immediate.renderer = '';
-    GL.immediate.rendererComponents = {};
+    GL.immediate.rendererComponents = {}; // XXX
     GL.immediate.vertexData = GL.immediate.tempData;
   },
 
   glEnd: function() {
     GL.immediate.flush();
-    GL.immediate.mode = 0;
   },
 
   glVertex3f: function(x, y, z) {
@@ -1674,29 +1681,62 @@ var LibraryGL = {
     _glTexCoord2f({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
   },
 
-  glColor4b: function(){}, // TODO, including scaling for different arg types
-  glColor4s: 'glColor4b',
-  glColor4i: 'glColor4b',
-  glColor4f: 'glColor4b',
-  glColor4d: 'glColor4b',
-  glColor4ub: 'glColor4b',
-  glColor4us: 'glColor4b',
-  glColor4ui: 'glColor4b',
-
-  glColor3b__deps: ['glColor4b'],
-  glColor3b: function(r, g, b) {
-    _glColor4b(r, g, b, 1); // FIXME: scaling
+  glColor4f: function(r, g, b, a) {
+    // TODO: make ub the default, not f, save a few mathops
+    if (GL.immediate.mode) {
+      var start = GL.immediate.vertexCounter << 2;
+      GL.immediate.vertexDataU8[start + 0] = r * 255;
+      GL.immediate.vertexDataU8[start + 1] = g * 255;
+      GL.immediate.vertexDataU8[start + 2] = b * 255;
+      GL.immediate.vertexDataU8[start + 3] = a * 255;
+      GL.immediate.vertexCounter++;
+      GL.immediate.addRendererComponent('C4');
+    } else {
+      GL.immediate.clientColor[0] = r;
+      GL.immediate.clientColor[1] = g;
+      GL.immediate.clientColor[2] = b;
+      GL.immediate.clientColor[3] = a;
+    }
   },
-  glColor3s: 'glColor3b',
-  glColor3i: 'glColor3b',
-  glColor3f: 'glColor3b',
-  glColor3d: 'glColor3b',
-  glColor3ub: 'glColor3b',
-  glColor3us: 'glColor3b',
-  glColor3ui: 'glColor3b',
+  glColor4d: 'glColor4f',
+  glColor4ub__deps: ['glColor4f'],
+  glColor4ub: function(r, g, b, a) {
+    _glColor4f((r&255)/255, (g&255)/255, (b&255)/255, (a&255)/255);
+  },
+  glColor4us__deps: ['glColor4f'],
+  glColor4us: function(r, g, b, a) {
+    _glColor4f((r&65525)/65535, (g&65525)/65535, (b&65525)/65535, (a&65525)/65535);
+  },
+  glColor4ui__deps: ['glColor4f'],
+  glColor4ui: function(r, g, b, a) {
+    _glColor4f((r>>>0)/4294967295, (g>>>0)/4294967295, (b>>>0)/4294967295, (a>>>0)/4294967295);
+  },
+  glColor3f__deps: ['glColor4f'],
+  glColor3f: function(r, g, b) {
+    _glColor4f(r, g, b, 1);
+  },
+  glColor3d: 'glColor3f',
+  glColor3ub__deps: ['glColor4ub'],
+  glColor3ub: function(r, g, b) {
+    _glColor4ub(r, g, b, 255);
+  },
+  glColor3us__deps: ['glColor4us'],
+  glColor3us: function(r, g, b) {
+    _glColor4us(r, g, b, 65535);
+  },
+  glColor3ui__deps: ['glColor4ui'],
+  glColor3ui: function(r, g, b) {
+    _glColor4ui(r, g, b, 4294967295);
+  },
 
-  glColor3fv: function(){}, // TODO
-  glColor4fv: function(){},
+  glColor3fv__deps: ['glColor3f'],
+  glColor3fv: function(p) {
+    _glColor3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
+  },
+  glColor4fv__deps: ['glColor4f'],
+  glColor4fv: function(p) {
+    _glColor4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
+  },
 
   glFogf: function(){}, // TODO
 
