@@ -1000,6 +1000,10 @@ var LibraryGL = {
                      'uniform int u_hasColorAttrib; \n' +
                      source.replace(/gl_Color/g, '(u_hasColorAttrib > 0 ? a_color : u_color)');
           }
+          if (source.indexOf('gl_Normal') >= 0) {
+            source = 'attribute vec3 a_normal; \n' +
+                     source.replace(/gl_Normal/g, 'a_normal');
+          }
           if (source.indexOf('gl_FogFragCoord') >= 0) {
             source = 'varying float v_fogCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogCoord');
@@ -1291,7 +1295,7 @@ var LibraryGL = {
     },
 
     createRenderer: function(renderer) {
-      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0, colorSize = 0, colorOffset = 0, which, size;
+      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0, colorSize = 0, colorOffset = 0, normalSize = 0, normalOffset = 0, which, size;
       for (var i = 0; i < renderer.length; i+=2) {
         var which = renderer[i];
         if (which == 'V') {
@@ -1309,7 +1313,10 @@ var LibraryGL = {
           }
           vertexSize += size * 4; // XXX assuming float
         } else if (which == 'N') {
-          vertexSize += 4; // 1 char, + alignment
+          size = parseInt(renderer[i+1]);
+          normalSize = size;
+          normalOffset = vertexSize;
+          vertexSize += 4; // 3 chars, + alignment
         } else if (which == 'C') {
           size = parseInt(renderer[i+1]);
           colorSize = size;
@@ -1376,6 +1383,7 @@ var LibraryGL = {
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
           this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord0');
           this.colorLocation = Module.ctx.getAttribLocation(this.program, 'a_color');
+          this.normalLocation = Module.ctx.getAttribLocation(this.program, 'a_normal');
 
           this.textureLocation = Module.ctx.getUniformLocation(this.program, 'u_texture');
           this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
@@ -1386,6 +1394,7 @@ var LibraryGL = {
           this.hasTexture = textureSize > 0 && this.texCoordLocation >= 0;
           this.hasColorAttrib = colorSize > 0 && this.colorLocation >= 0;
           this.hasColorUniform = !!this.colorUniformLocation;
+          this.hasNormal = this.normalLocation >= 0;
         },
 
         prepare: function() {
@@ -1409,6 +1418,11 @@ var LibraryGL = {
             Module.ctx.uniform1i(this.hasColorAttribLocation, 0);
             Module.ctx.uniform4fv(this.colorUniformLocation, GL.immediate.clientColor);
           }
+          if (this.hasNormal) {
+            Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, Module.ctx.BYTE, true,
+                                           vertexSize, normalOffset);
+            Module.ctx.enableVertexAttribArray(this.normalLocation);
+          }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
             var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
             Module.ctx.activeTexture(Module.ctx.TEXTURE0);
@@ -1424,6 +1438,9 @@ var LibraryGL = {
           }
           if (this.hasColorAttrib) {
             Module.ctx.disableVertexAttribArray(this.colorLocation);
+          }
+          if (this.hasNormal) {
+            Module.ctx.disableVertexAttribArray(this.normalLocation);
           }
         }
       };
@@ -1775,7 +1792,7 @@ var LibraryGL = {
     GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
   },
   glNormalPointer: function(type, stride, pointer) {
-    GL.immediate.setClientAttribute('N', 1, type, stride, pointer);
+    GL.immediate.setClientAttribute('N', 3, type, stride, pointer);
   },
   glColorPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute('C', size, type, stride, pointer);
