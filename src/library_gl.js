@@ -1528,9 +1528,8 @@ var LibraryGL = {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
-        var renderer = GL.immediate.prepareClientAttributes(count);
+        GL.immediate.renderer = GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
-        GL.immediate.setRenderer(renderer);
         GL.immediate.flush(null, first);
       };
 
@@ -1539,10 +1538,8 @@ var LibraryGL = {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
         }
-
-        var renderer = GL.immediate.prepareClientAttributes(count);
+        GL.immediate.renderer = GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
-        GL.immediate.setRenderer(renderer);
         GL.immediate.flush(count, indices);
       };
     },
