@@ -1323,10 +1323,13 @@ var LibraryGL = {
       }
       var stride = GL.immediate.stride;
       var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
+      var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
       var positionOffset = GL.immediate.clientAttributes[GL.immediate.VERTEX].offset;
       var colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
+      var colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
       var colorOffset = GL.immediate.clientAttributes[GL.immediate.COLOR].offset;
       var normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
+      var normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
       var normalOffset = GL.immediate.clientAttributes[GL.immediate.NORMAL].offset;
       var ret = {
         init: function() {
@@ -1403,7 +1406,7 @@ var LibraryGL = {
           if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
-          Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, Module.ctx.FLOAT, false,
+          Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
                                          stride, positionOffset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
@@ -1416,7 +1419,7 @@ var LibraryGL = {
             }
           }
           if (this.hasColorAttrib) {
-            Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, Module.ctx.UNSIGNED_BYTE, true,
+            Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
                                            stride, colorOffset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
@@ -1425,7 +1428,7 @@ var LibraryGL = {
             Module.ctx.uniform4fv(this.colorUniformLocation, GL.immediate.clientColor);
           }
           if (this.hasNormal) {
-            Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, Module.ctx.BYTE, true,
+            Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
                                            stride, normalOffset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
