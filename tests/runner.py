@@ -7266,6 +7266,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_normal(self):
       self.btest('cubegeom_normal.c', expected='752917084')
 
+    def test_cubegeom_mt(self):
+      self.btest('cubegeom_mt.c', expected='188641320')
+
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.

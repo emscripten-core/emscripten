@@ -1311,7 +1311,12 @@ var LibraryGL = {
             textureSize = size;
             textureOffset = vertexSize;
           }
-          vertexSize += size * 4; // XXX assuming float
+          if (renderer[i+2] == 's') { // special case: half-size texture
+            i++;
+            vertexSize += size * 2; // short
+          } else {
+            vertexSize += size * 4; // float
+          }
         } else if (which == 'N') {
           size = parseInt(renderer[i+1]);
           normalSize = size;
@@ -1557,6 +1562,9 @@ var LibraryGL = {
         }
         renderer += attribute.name;
         bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type];
+        if (attribute.name[0] == 'T' && GL.immediate.byteSizeByType[attribute.type] == 2) {
+          renderer += 's'; // special case, texture coords can be 4 *or* 2-size
+        }
         if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
 #if ASSERTIONS
         assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
@@ -1764,7 +1772,7 @@ var LibraryGL = {
   glEnableClientState: function(cap, disable) {
     switch(cap) {
       case 0x8078: // GL_TEXTURE_COORD_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0] = !disable; break;
+        GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture] = !disable; break;
       case 0x8074: // GL_VERTEX_ARRAY
         GL.immediate.enabledClientAttributes[GL.immediate.VERTEX] = !disable; break;
       case 0x8075: // GL_NORMAL_ARRAY
