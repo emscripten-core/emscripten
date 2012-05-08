@@ -366,7 +366,7 @@ var LibraryGL = {
   },
 
   glBindTexture: function(target, texture) {
-    Module.ctx.bindTexture(target, GL.textures[texture]);
+    Module.ctx.bindTexture(target, texture ? GL.textures[texture] : null);
   },
 
   glGetTexParameterfv: function(target, pname, params) {
@@ -439,7 +439,7 @@ var LibraryGL = {
   },
 
   glBindRenderbuffer: function(target, renderbuffer) {
-    Module.ctx.bindRenderbuffer(target, GL.renderbuffers[renderbuffer]);
+    Module.ctx.bindRenderbuffer(target, renderbuffer ? GL.renderbuffers[renderbuffer] : null);
   },
 
   glGetRenderbufferParameteriv: function(target, pname, params) {
@@ -645,7 +645,7 @@ var LibraryGL = {
   },
 
   glBindBuffer: function(target, buffer) {
-    Module.ctx.bindBuffer(target, GL.buffers[buffer]);
+    Module.ctx.bindBuffer(target, buffer ? GL.buffers[buffer] : null);
   },
 
   glVertexAttrib1fv: function(index, v) {
@@ -837,7 +837,7 @@ var LibraryGL = {
   },
 
   glBindFramebuffer: function(target, framebuffer) {
-    Module.ctx.bindFramebuffer(target, GL.framebuffers[framebuffer]);
+    Module.ctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : null);
   },
 
   glGenFramebuffers: function(n, ids) {
