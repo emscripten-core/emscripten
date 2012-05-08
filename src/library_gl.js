@@ -1295,7 +1295,9 @@ var LibraryGL = {
     },
 
     createRenderer: function(renderer) {
-      var vertexSize = 0, positionSize = 0, positionOffset = 0, textureSize = 0, textureOffset = 0, colorSize = 0, colorOffset = 0, normalSize = 0, normalOffset = 0, which, size;
+      var vertexSize = 0, positionSize = 0, positionOffset = 0, colorSize = 0, colorOffset = 0, normalSize = 0, normalOffset = 0;
+      var textureSizes = [], textureOffsets = [], textureTypes = [], hasTextures = false;
+      var which, size, index;
       for (var i = 0; i < renderer.length; i+=2) {
         var which = renderer[i];
         if (which == 'V') {
@@ -1307,16 +1309,17 @@ var LibraryGL = {
           index = parseInt(renderer[i+1])
           size = parseInt(renderer[i+2]);
           i++;
-          if (index == 0) { // TODO: support other textures
-            textureSize = size;
-            textureOffset = vertexSize;
-          }
+          textureSizes[index] = size;
+          textureOffsets[index] = vertexSize;
           if (renderer[i+2] == 's') { // special case: half-size texture
             i++;
-            vertexSize += size * 2; // short
+            vertexSize += size * 2;
+            textureTypes[index] = Module.ctx.SHORT;
           } else {
-            vertexSize += size * 4; // float
+            vertexSize += size * 4;
+            textureTypes[index] = Module.ctx.FLOAT;
           }
+          hasTextures = true;
         } else if (which == 'N') {
           size = parseInt(renderer[i+1]);
           normalSize = size;
@@ -1354,7 +1357,7 @@ var LibraryGL = {
             var zero = positionSize == 2 ? '0, ' : '';
             Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n' +
                                                        'attribute vec2 a_texCoord0;  \n' +
-                                                       (textureSize ? 'varying vec2 v_texCoord;    \n' : '') +
+                                                       (hasTextures ? 'varying vec2 v_texCoord;    \n' : '') +
                                                        'varying vec4 v_color; \n' +
                                                        (colorSize ? 'attribute vec4 a_color; \n': 'uniform vec4 u_color; \n') +
                                                        'uniform mat4 u_modelView;   \n' +
@@ -1362,7 +1365,7 @@ var LibraryGL = {
                                                        'void main()                 \n' +
                                                        '{                           \n' +
                                                        '  gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' +
-                                                       (textureSize ? 'v_texCoord = a_texCoord0;    \n' : '') +
+                                                       (hasTextures ? 'v_texCoord = a_texCoord0;    \n' : '') +
                                                        (colorSize ? 'v_color = a_color; \n' : 'v_color = u_color; \n') +
                                                        '}                           \n');
             Module.ctx.compileShader(this.vertexShader);
@@ -1374,7 +1377,7 @@ var LibraryGL = {
                                                          'varying vec4 v_color;                               \n' +
                                                          'void main()                                         \n' +
                                                          '{                                                   \n' +
-                                                         (textureSize ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
+                                                         (hasTextures ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
                                                                         'gl_FragColor = v_color;\n') +
                                                          '}                                                   \n');
             Module.ctx.compileShader(this.fragmentShader);
@@ -1386,20 +1389,27 @@ var LibraryGL = {
           }
 
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
-          this.texCoordLocation = Module.ctx.getAttribLocation(this.program, 'a_texCoord0');
+          this.texCoordLocations = [];
+          for (var i = 0; i < textureSizes.length; i++) {
+            if (textureSizes[i]) {
+              this.texCoordLocations[i] = Module.ctx.getAttribLocation(this.program, 'a_texCoord' + i);
+            }
+          }
           this.colorLocation = Module.ctx.getAttribLocation(this.program, 'a_color');
           this.normalLocation = Module.ctx.getAttribLocation(this.program, 'a_normal');
 
-          this.textureLocation = Module.ctx.getUniformLocation(this.program, 'u_texture');
+          this.textureLocation = Module.ctx.getUniformLocation(this.program, 'u_texture'); // only for immediate mode with no shaders, so only one is enough
           this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
           this.hasColorAttribLocation = Module.ctx.getUniformLocation(this.program, 'u_hasColorAttrib');
           this.colorUniformLocation = Module.ctx.getUniformLocation(this.program, 'u_color');
 
-          this.hasTexture = textureSize > 0 && this.texCoordLocation >= 0;
+          this.hasTextures = hasTextures;
           this.hasColorAttrib = colorSize > 0 && this.colorLocation >= 0;
           this.hasColorUniform = !!this.colorUniformLocation;
           this.hasNormal = this.normalLocation >= 0;
+
+          this.floatType = Module.ctx.FLOAT; // minor optimization
         },
 
         prepare: function() {
@@ -1409,10 +1419,14 @@ var LibraryGL = {
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, Module.ctx.FLOAT, false,
                                          vertexSize, positionOffset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
-          if (this.hasTexture) {
-            Module.ctx.vertexAttribPointer(this.texCoordLocation, textureSize, Module.ctx.FLOAT, false,
-                                           vertexSize, textureOffset);
-            Module.ctx.enableVertexAttribArray(this.texCoordLocation);
+          if (this.hasTextures) {
+            for (var i = 0; i < textureSizes.length; i++) {
+              if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
+                Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
+                                               vertexSize, textureOffsets[i]);
+                Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
+              }
+            }
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, Module.ctx.UNSIGNED_BYTE, true,
@@ -1438,8 +1452,12 @@ var LibraryGL = {
 
         cleanup: function() {
           Module.ctx.disableVertexAttribArray(this.positionLocation);
-          if (this.hasTexture) {
-            Module.ctx.disableVertexAttribArray(this.texCoordLocation);
+          if (this.hasTextures) {
+            for (var i = 0; i < textureSizes.length; i++) {
+              if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
+                Module.ctx.disableVertexAttribArray(this.texCoordLocations[i]);
+              }
+            }
           }
           if (this.hasColorAttrib) {
             Module.ctx.disableVertexAttribArray(this.colorLocation);

@@ -7252,7 +7252,7 @@ elif 'browser' in str(sys.argv):
       self.btest('cubegeom_pre.c', expected='-1472804742')
 
     def test_cubegeom_pre2(self):
-      self.btest('cubegeom_pre2.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1'])
+      self.btest('cubegeom_pre2.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
 
     def test_cubegeom_pre3(self):
       self.btest('cubegeom_pre3.c', expected='-1472804742')
@@ -7267,7 +7267,7 @@ elif 'browser' in str(sys.argv):
       self.btest('cubegeom_normal.c', expected='752917084')
 
     def test_cubegeom_mt(self):
-      self.btest('cubegeom_mt.c', expected='188641320')
+      self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
