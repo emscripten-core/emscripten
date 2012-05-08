@@ -1227,9 +1227,8 @@ var LibraryGL = {
     vertexCounter: 0,
     mode: 0,
 
-    renderers: {},
-    renderer: null,
-    rendererComponents: {},
+    rendererCache: {},
+    rendererComponents: {}, // cache for calls inside glBegin/end, XXX not yet implemented
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {},
@@ -1249,11 +1248,13 @@ var LibraryGL = {
     TEXTURE5: 8,
     TEXTURE6: 9,
     NUM_ATTRIBUTES: 10,
+    NUM_TEXTURES: 7,
     ATTRIBUTE_BY_NAME: {},
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
-    clientAttributes: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
+    clientAttributes: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}], // raw data, including possible unneeded ones
+    liveClientAttributes: [], // the ones actually alive in the current computation, sorted
     clientActiveTexture: 0,
     clientColor: null,
 
@@ -1269,79 +1270,65 @@ var LibraryGL = {
 
     setClientAttribute: function(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]];
+      attrib.name = name;
       attrib.size = size;
       attrib.type = type;
       attrib.stride = stride;
       attrib.pointer = pointer;
-      attrib.name = name + size;
     },
 
     // Renderers
-    addRendererComponent: function(component) {
+    addRendererComponent: function(component) { // XXX needs rewriting
       if (this.rendererComponents[component]) return;
       this.rendererComponents[component] = 1;
-      this.renderer += component;
     },
 
-    setRenderer: function(renderer) {
-      var name = renderer;
-      if (GL.currProgram && renderer[0] != 'U') {
-        name = 'UD' + GL.currProgram + '|' + renderer; // user-defined program renderer
+    getRenderer: function() {
+      // return a renderer object given the liveClientAttributes
+      // we maintain a cache of renderers, optimized to not generate garbage
+      var attributes = GL.immediate.liveClientAttributes;
+      var cacheItem = GL.immediate.rendererCache;
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (!cacheItem[attribute.name]) cacheItem[attribute.name] = {};
+        cacheItem = cacheItem[attribute.name];
+        if (!cacheItem[attribute.size]) cacheItem[attribute.size] = {};
+        cacheItem = cacheItem[attribute.size];
+        if (!cacheItem[attribute.type]) cacheItem[attribute.type] = {};
+        cacheItem = cacheItem[attribute.type];
       }
-      this.renderer = name;
-      if (this.renderers[name]) return this.renderers[name];
-      this.renderers[name] = this.createRenderer(renderer);
-      return this.renderers[name];
+      if (GL.currProgram) {
+        if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = {};
+        cacheItem = cacheItem[GL.currProgram];
+      }
+      if (!cacheItem.renderer) {
+#if GL_DEBUG
+        console.log('generating renderer for ' + JSON.stringify(attributes));
+#endif
+        cacheItem.renderer = this.createRenderer();
+      }
+      return cacheItem.renderer;
     },
 
     createRenderer: function(renderer) {
-      var vertexSize = 0, positionSize = 0, positionOffset = 0, colorSize = 0, colorOffset = 0, normalSize = 0, normalOffset = 0;
-      var textureSizes = [], textureOffsets = [], textureTypes = [], hasTextures = false;
-      var which, size, index;
-      for (var i = 0; i < renderer.length; i+=2) {
-        var which = renderer[i];
-        if (which == 'V') {
-          size = parseInt(renderer[i+1]);
-          positionSize = size;
-          positionOffset = vertexSize;
-          vertexSize += size * 4; // XXX assuming float
-        } else if (which == 'T') {
-          index = parseInt(renderer[i+1])
-          size = parseInt(renderer[i+2]);
-          i++;
-          textureSizes[index] = size;
-          textureOffsets[index] = vertexSize;
-          if (renderer[i+2] == 's') { // special case: half-size texture
-            i++;
-            vertexSize += size * 2;
-            textureTypes[index] = Module.ctx.SHORT;
-          } else {
-            vertexSize += size * 4;
-            textureTypes[index] = Module.ctx.FLOAT;
-          }
+      var useCurrProgram = !!GL.currProgram;
+      var hasTextures = false, textureSizes = [], textureTypes = [], textureOffsets = [];
+      for (var i = 0; i < GL.immediate.NUM_TEXTURES; i++) {
+        if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + i]) {
+          textureSizes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].size;
+          textureTypes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].type;
+          textureOffsets[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset;
           hasTextures = true;
-        } else if (which == 'N') {
-          size = parseInt(renderer[i+1]);
-          normalSize = size;
-          normalOffset = vertexSize;
-          vertexSize += 4; // 3 chars, + alignment
-        } else if (which == 'C') {
-          size = parseInt(renderer[i+1]);
-          colorSize = size;
-          colorOffset = vertexSize;
-          vertexSize += 4; // Up to 4 chars, + alignment
-        } else {
-          console.log('Warning: Ignoring renderer attribute ' + which);
-          size = parseInt(renderer[i+1]);
-          vertexSize += size * 4; // XXX assuming float
         }
       }
-      assert(positionSize > 0);
-      // TODO: verify vertexSize is equal to the stride in enabled client arrays
-      var useCurrProgram = !!GL.currProgram;
+      var stride = GL.immediate.stride;
+      var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
+      var positionOffset = GL.immediate.clientAttributes[GL.immediate.VERTEX].offset;
+      var colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
+      var colorOffset = GL.immediate.clientAttributes[GL.immediate.COLOR].offset;
+      var normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
+      var normalOffset = GL.immediate.clientAttributes[GL.immediate.NORMAL].offset;
       var ret = {
-        vertexSize: vertexSize,
-
         init: function() {
           if (useCurrProgram) {
             if (GL.shaderInfos[GL.programShaders[GL.currProgram][0]].type == Module.ctx.VERTEX_SHADER) {
@@ -1417,20 +1404,20 @@ var LibraryGL = {
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, Module.ctx.FLOAT, false,
-                                         vertexSize, positionOffset);
+                                         stride, positionOffset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < textureSizes.length; i++) {
               if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               vertexSize, textureOffsets[i]);
+                                               stride, textureOffsets[i]);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, Module.ctx.UNSIGNED_BYTE, true,
-                                           vertexSize, colorOffset);
+                                           stride, colorOffset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
           } else if (this.hasColorUniform) {
@@ -1439,7 +1426,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, Module.ctx.BYTE, true,
-                                           vertexSize, normalOffset);
+                                           stride, normalOffset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
@@ -1528,7 +1515,7 @@ var LibraryGL = {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
-        GL.immediate.renderer = GL.immediate.prepareClientAttributes(count);
+        GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
         GL.immediate.flush(null, first);
       };
@@ -1538,17 +1525,16 @@ var LibraryGL = {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
         }
-        GL.immediate.renderer = GL.immediate.prepareClientAttributes(count);
+        GL.immediate.prepareClientAttributes(count);
         GL.immediate.mode = mode;
         GL.immediate.flush(count, indices);
       };
     },
 
-    tempClientAttributes: [],
     prepareClientAttributes: function(count) {
       // Client attributes are to be used here, emulate that
       var stride = 0, start;
-      var attributes = GL.immediate.tempClientAttributes;
+      var attributes = GL.immediate.liveClientAttributes;
       attributes.length = 0;
       for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
         if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
@@ -1565,51 +1551,42 @@ var LibraryGL = {
         stride = attribute.stride;
       }
 
-      var renderer = '', bytes = 0;
+      var bytes = 0;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
         if (!attribute) break;
         attribute.offset = attribute.pointer - start;
         if (attribute.offset > bytes) { // ensure we start where we should
           assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
-          renderer += '?' + ((attribute.offset - bytes)/4);
           bytes += attribute.offset - bytes;
         }
-        renderer += attribute.name;
         bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type];
-        if (attribute.name[0] == 'T' && GL.immediate.byteSizeByType[attribute.type] == 2) {
-          renderer += 's'; // special case, texture coords can be 4 *or* 2-size
-        }
         if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
 #if ASSERTIONS
         assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
 #endif
       }
-
       assert(stride == 0 || bytes <= stride);
-
       if (bytes < stride) { // ensure the size is that of the stride
         assert((stride - bytes)%4 == 0); // assuming float
-        renderer += '?' + ((stride-bytes)/4);
         bytes = stride;
       }
+      GL.immediate.stride = bytes;
 
       bytes *= count;
       if (!GL.currArrayBuffer) {
         GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
       }
       GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
-
-      return renderer;
     },
 
     flush: function(numProvidedIndexes, startIndex) {
       startIndex = startIndex || 0;
 
-      var renderer = this.setRenderer(this.renderer);
+      var renderer = this.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * this.vertexCounter / renderer.vertexSize; // XXX assuming float
+      var numVertexes = 4 * this.vertexCounter / GL.immediate.stride; // XXX assuming float
       assert(numVertexes % 1 == 0);
 
       var numIndexes = 0;
@@ -1678,12 +1655,13 @@ var LibraryGL = {
   glBegin__deps: ['$GLImmediateSetup'],
   glBegin: function(mode) {
     GL.immediate.mode = mode;
-    GL.immediate.renderer = '';
     GL.immediate.rendererComponents = {}; // XXX
     GL.immediate.vertexData = GL.immediate.tempData;
   },
 
   glEnd: function() {
+    GL.immediate.prepareClientAttributes();
+    GL.immediate.mode = mode;
     GL.immediate.flush();
   },
 
