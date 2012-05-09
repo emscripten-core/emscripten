@@ -1282,6 +1282,9 @@ var LibraryGL = {
     addRendererComponent: function(name, size, type) {
       if (!this.rendererComponents[name]) {
         this.rendererComponents[name] = 1;
+#if ASSERTIONS
+        assert(!this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]]); // cannot get mixed up with this, for example we will disable this later
+#endif
         this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]] = true;
         this.setClientAttribute(name, size, type, 0, this.rendererComponentPointer);
         this.rendererComponentPointer += size * this.byteSizeByType[type];
@@ -1290,9 +1293,9 @@ var LibraryGL = {
       }
     },
 
-    disableAllClientAttributes: function() {
-      for (var i = 0; i < this.NUM_ATTRIBUTES; i++) {
-        this.enabledClientAttributes[i] = 0;
+    disableBeginEndClientAttributes: function() {
+      for (var name in this.rendererComponents) {
+        this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]] = false;
       }
     },
 
@@ -1679,7 +1682,7 @@ var LibraryGL = {
   glEnd: function() {
     GL.immediate.prepareClientAttributes(GL.immediate.rendererComponents['V'], true);
     GL.immediate.flush();
-    GL.immediate.disableAllClientAttributes();
+    GL.immediate.disableBeginEndClientAttributes();
   },
 
   glVertex3f: function(x, y, z) {
