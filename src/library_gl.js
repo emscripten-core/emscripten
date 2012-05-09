@@ -1228,7 +1228,8 @@ var LibraryGL = {
     mode: 0,
 
     rendererCache: {},
-    rendererComponents: {}, // cache for calls inside glBegin/end, XXX not yet implemented
+    rendererComponents: {}, // small cache for calls inside glBegin/end. counts how many times the element was seen
+    rendererComponentPointer: 0, // next place to start a glBegin/end component
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {},
@@ -1278,9 +1279,21 @@ var LibraryGL = {
     },
 
     // Renderers
-    addRendererComponent: function(component) { // XXX needs rewriting
-      if (this.rendererComponents[component]) return;
-      this.rendererComponents[component] = 1;
+    addRendererComponent: function(name, size, type) {
+      if (!this.rendererComponents[name]) {
+        this.rendererComponents[name] = 1;
+        this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]] = true;
+        this.setClientAttribute(name, size, type, 0, this.rendererComponentPointer);
+        this.rendererComponentPointer += size * this.byteSizeByType[type];
+      } else {
+        this.rendererComponents[name]++;
+      }
+    },
+
+    disableAllClientAttributes: function() {
+      for (var i = 0; i < this.NUM_ATTRIBUTES; i++) {
+        this.enabledClientAttributes[i] = 0;
+      }
     },
 
     getRenderer: function() {
@@ -1518,7 +1531,7 @@ var LibraryGL = {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
-        GL.immediate.prepareClientAttributes(count);
+        GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
         GL.immediate.flush(null, first);
       };
@@ -1528,13 +1541,16 @@ var LibraryGL = {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
         }
-        GL.immediate.prepareClientAttributes(count);
+        GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
         GL.immediate.flush(count, indices);
       };
     },
 
-    prepareClientAttributes: function(count) {
+    // Prepares and analyzes client attributes.
+    //   count: number of elements we will draw
+    //   beginEnd: whether we are drawing the results of a begin/end block
+    prepareClientAttributes: function(count, beginEnd) {
       // Client attributes are to be used here, emulate that
       var stride = 0, start;
       var attributes = GL.immediate.liveClientAttributes;
@@ -1548,10 +1564,9 @@ var LibraryGL = {
         var attribute = attributes[i];
         if (!attribute) break;
 #if ASSERTIONS
-        assert(attribute.stride);
         assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
 #endif
-        stride = attribute.stride;
+        if (attribute.stride) stride = attribute.stride;
       }
 
       var bytes = 0;
@@ -1565,22 +1580,20 @@ var LibraryGL = {
         }
         bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type];
         if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
-#if ASSERTIONS
-        assert(0 <= attribute.offset && attribute.offset < stride); // must all be in the same buffer
-#endif
       }
       assert(stride == 0 || bytes <= stride);
       if (bytes < stride) { // ensure the size is that of the stride
-        assert((stride - bytes)%4 == 0); // assuming float
         bytes = stride;
       }
       GL.immediate.stride = bytes;
 
-      bytes *= count;
-      if (!GL.currArrayBuffer) {
-        GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+      if (!beginEnd) {
+        bytes *= count;
+        if (!GL.currArrayBuffer) {
+          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+        }
+        GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
       }
-      GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
     },
 
     flush: function(numProvidedIndexes, startIndex) {
@@ -1659,13 +1672,14 @@ var LibraryGL = {
   glBegin: function(mode) {
     GL.immediate.mode = mode;
     GL.immediate.rendererComponents = {}; // XXX
+    GL.immediate.rendererComponentPointer = 0;
     GL.immediate.vertexData = GL.immediate.tempData;
   },
 
   glEnd: function() {
-    GL.immediate.prepareClientAttributes();
-    GL.immediate.mode = mode;
+    GL.immediate.prepareClientAttributes(GL.immediate.rendererComponents['V'], true);
     GL.immediate.flush();
+    GL.immediate.disableAllClientAttributes();
   },
 
   glVertex3f: function(x, y, z) {
@@ -1678,7 +1692,7 @@ var LibraryGL = {
 #if ASSERTIONS
     assert(GL.immediate.vertexCounter < GL.immediate.maxElements);
 #endif
-    GL.immediate.addRendererComponent('V3');
+    GL.immediate.addRendererComponent('V', 3, Module.ctx.FLOAT);
   },
   glVertex2f: 'glVertex3f',
 
@@ -1693,7 +1707,7 @@ var LibraryGL = {
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
-    GL.immediate.addRendererComponent('T02');
+    GL.immediate.addRendererComponent('T0', 2, Module.ctx.FLOAT);
   },
   glTexCoord2f: 'glTexCoord2i',
 
@@ -1711,7 +1725,7 @@ var LibraryGL = {
       GL.immediate.vertexDataU8[start + 2] = b * 255;
       GL.immediate.vertexDataU8[start + 3] = a * 255;
       GL.immediate.vertexCounter++;
-      GL.immediate.addRendererComponent('C4');
+      GL.immediate.addRendererComponent('C', 4, Module.ctx.UNSIGNED_BYTE);
     } else {
       GL.immediate.clientColor[0] = r;
       GL.immediate.clientColor[1] = g;
