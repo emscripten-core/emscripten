@@ -371,8 +371,10 @@ LibraryManager.library = {
       if (!error.printer) error.printer = Module['print'];
       if (!error.buffer) error.buffer = [];
 
-      // Create the temporary folder.
-      FS.createFolder('/', 'tmp', true, true);
+      // Create the temporary folder, if not already created
+      try {
+        FS.createFolder('/', 'tmp', true, true);
+      } catch(e) {}
 
       // Create the I/O devices.
       var devFolder = FS.createFolder('/', 'dev', true, true);

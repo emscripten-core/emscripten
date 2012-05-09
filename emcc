@@ -906,7 +906,8 @@ try:
     partial_dirs = []
     for file_ in data_files:
       dirname = os.path.dirname(file_['name'])
-      if dirname != '' and dirname != '/':
+      dirname = dirname.lstrip('/') # absolute paths start with '/', remove that
+      if dirname != '':
         parts = dirname.split('/')
         for i in range(len(parts)):
           partial = '/'.join(parts[:i+1])

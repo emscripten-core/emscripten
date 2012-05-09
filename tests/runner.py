@@ -6923,25 +6923,34 @@ elif 'browser' in str(sys.argv):
 
     def test_preload_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-        #include <stdio.h>
-        #include <string.h>
-        #include <emscripten.h>
-        int main() {
-          FILE *f = fopen("somefile.txt", "r");
-          char buf[100];
-          fread(buf, 1, 20, f);
-          buf[20] = 0;
-          fclose(f);
-          printf("|%s|\n", buf);
+      def make_main(path):
+        print path
+        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+          #include <stdio.h>
+          #include <string.h>
+          #include <emscripten.h>
+          int main() {
+            FILE *f = fopen("%s", "r");
+            char buf[100];
+            fread(buf, 1, 20, f);
+            buf[20] = 0;
+            fclose(f);
+            printf("|%%s|\n", buf);
 
-          int result = !strcmp("load me right before", buf);
-          REPORT_RESULT();
-          return 0;
-        }
-      '''))
+            int result = !strcmp("load me right before", buf);
+            REPORT_RESULT();
+            return 0;
+          }
+        ''' % path))
 
+      make_main('somefile.txt')
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+      # By absolute path
+
+      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     def test_multifile(self):
