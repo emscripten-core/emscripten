@@ -1341,12 +1341,18 @@ var LibraryGL = {
       var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
       var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
       var positionOffset = GL.immediate.clientAttributes[GL.immediate.VERTEX].offset;
-      var colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
-      var colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
-      var colorOffset = GL.immediate.clientAttributes[GL.immediate.COLOR].offset;
-      var normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
-      var normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
-      var normalOffset = GL.immediate.clientAttributes[GL.immediate.NORMAL].offset;
+      var colorSize = 0, colorType, colorOffset;
+      if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
+        colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
+        colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
+        colorOffset = GL.immediate.clientAttributes[GL.immediate.COLOR].offset;
+      }
+      var normalSize = 0, normalType, normalOffset;
+      if (GL.immediate.enabledClientAttributes[GL.immediate.NORMAL]) {
+        normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
+        normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
+        normalOffset = GL.immediate.clientAttributes[GL.immediate.NORMAL].offset;
+      }
       var ret = {
         init: function() {
           if (useCurrProgram) {
@@ -1413,7 +1419,7 @@ var LibraryGL = {
           this.hasTextures = hasTextures;
           this.hasColorAttrib = colorSize > 0 && this.colorLocation >= 0;
           this.hasColorUniform = !!this.colorUniformLocation;
-          this.hasNormal = this.normalLocation >= 0;
+          this.hasNormal = normalSize > 0 && this.normalLocation >= 0;
 
           this.floatType = Module.ctx.FLOAT; // minor optimization
         },

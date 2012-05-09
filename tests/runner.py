@@ -7278,6 +7278,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_mt(self):
       self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
 
+    def test_cubegeom_color2(self):
+      self.btest('cubegeom_color2.c', expected='1121999515')
+
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.
