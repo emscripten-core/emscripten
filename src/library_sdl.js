@@ -746,7 +746,6 @@ var LibrarySDL = {
   },
 
   SDL_WM_GrabInput: function() {},
-  SDL_ShowCursor: function() {},
 
   // SDL_Image
 
