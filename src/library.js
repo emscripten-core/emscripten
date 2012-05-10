@@ -2244,6 +2244,15 @@ LibraryManager.library = {
   // TODO: Document.
   _scanString__deps: ['_isFloat'],
   _scanString: function(format, get, unget, varargs) {
+    if (!__scanString.whiteSpace) {
+      __scanString.whiteSpace = {};
+      __scanString.whiteSpace[' '.charCodeAt(0)] = 1;
+      __scanString.whiteSpace['\t'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace['\n'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace[' '] = 1;
+      __scanString.whiteSpace['\t'] = 1;
+      __scanString.whiteSpace['\n'] = 1;
+    }
     // Supports %x, %4x, %d.%d, %s, %f, %lf.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
@@ -2251,6 +2260,7 @@ LibraryManager.library = {
     var argsi = 0;
     var fields = 0;
     var argIndex = 0;
+    var next;
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
       if (next <= 0) return fields;
       var next = get();
@@ -2266,10 +2276,13 @@ LibraryManager.library = {
         if (formatIndex != maxSpecifierStart) {
           max_ = parseInt(format.slice(maxSpecifierStart, formatIndex), 10);
         }
-        // TODO: Handle type size modifier.
         var long_ = false;
+        var half = false;
         if (format[formatIndex] == 'l') {
           long_ = true;
+          formatIndex++;
+        } else if (format[formatIndex] == 'h') {
+          half = true;
           formatIndex++;
         }
         var type = format[formatIndex];
@@ -2290,13 +2303,16 @@ LibraryManager.library = {
             buffer.pop();
             unget();
           }
+          unget();
+          next = get();
         } else {
           while ((curr < max_ || isNaN(max_)) && next > 0) {
-            if ((type === 'd' && next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-                (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
-                                  next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
-                                  next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
-                (type === 's' && (next != ' '.charCodeAt(0) && next != '\t'.charCodeAt(0) && next != '\n'.charCodeAt(0))) &&
+            if (!(next in __scanString.whiteSpace) && // stop on whitespace
+                ((type == 's' ||
+                 ((type === 'd' || type == 'u') && next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                 (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
+                                   next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
+                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
@@ -2311,8 +2327,12 @@ LibraryManager.library = {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
         switch (type) {
-          case 'd':
-            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}}
+          case 'd': case 'u':
+            if (half) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
+            } else {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
+            }
             break;
           case 'x':
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
@@ -2332,6 +2352,12 @@ LibraryManager.library = {
             break;
         }
         fields++;
+      } else if (format[formatIndex] in __scanString.whiteSpace) {
+        while (next in __scanString.whiteSpace) {
+          next = get();
+          if (next <= 0) return fields;  // End of input.
+        }
+        unget();
       } else {
         // Not a specifier.
         if (format[formatIndex].charCodeAt(0) !== next) {

@@ -3808,10 +3808,23 @@ at function.:blag
           printf("|%s|\n", buffy);
           sscanf("cheez somethingmoar\tyet more\n", "cheez %s", buffy);
           printf("|%s|\n", buffy);
+
+          int numverts = -1;
+          printf("%d\n", sscanf("	numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
+          printf("%d\n", numverts);
+
+          int index;
+          float u, v;
+          short start, count;
+          printf("%d\n", sscanf("	vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
+          printf("%d,%.6f,%.6f,%hu,%hu\n", index, u, v, start, count);
+
           return 0;
         }
         '''
-      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|')
+      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
+                       '1\n1499\n' +
+                       '5\n87,0.481565,0.059481,0,1\n')
 
     def test_sscanf_2(self):
       # doubles
