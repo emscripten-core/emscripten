@@ -1534,9 +1534,11 @@ var LibraryGL = {
 
       this.clientColor = new Float32Array([1, 1, 1, 1]);
 
-      // Replace some functions with immediate-mode aware versions
+      // Replace some functions with immediate-mode aware versions. If there are no client
+      // attributes enabled, and we use webgl-friendly modes (no GL_QUADS), then no need
+      // for emulation
       _glDrawArrays = function(mode, first, count) {
-        if (GL.immediate.totalEnabledClientAttributes == 0) {
+        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
@@ -1546,7 +1548,7 @@ var LibraryGL = {
       };
 
       _glDrawElements = function(mode, count, type, indices) {
-        if (GL.immediate.totalEnabledClientAttributes == 0) {
+        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
         }
