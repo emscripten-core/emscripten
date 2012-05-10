@@ -7299,6 +7299,20 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_color2(self):
       self.btest('cubegeom_color2.c', expected='1121999515')
 
+    def test_pre_run_deps(self):
+      # Adding a dependency in preRun will delay run
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.preRun = function() {
+          addRunDependency();
+          Module.print('preRun called, added a dependency...');
+          setTimeout(function() {
+            Module.okk = 10;
+            removeRunDependency()
+          }, 2000);
+        };
+      ''')
+      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
+
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.
