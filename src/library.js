@@ -2306,13 +2306,15 @@ LibraryManager.library = {
           unget();
           next = get();
         } else {
+          var first = true;
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
-                ((type == 's' ||
-                 ((type === 'd' || type == 'u') && next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                (type == 's' ||
+                 ((type === 'd' || type == 'u') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                                                    (first && next == '-'.charCodeAt(0)))) ||
                  (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
                                    next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
-                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))))) &&
+                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0)))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
@@ -2320,6 +2322,7 @@ LibraryManager.library = {
             } else {
               break;
             }
+            first = false;
           }
         }
         if (buffer.length === 0) return 0;  // Failure.
