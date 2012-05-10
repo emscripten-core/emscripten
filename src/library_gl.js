@@ -887,17 +887,20 @@ var LibraryGL = {
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
 
+      // XXX some of these ignored capabilities may lead to incorrect rendering, if we do not emulate them in shaders
+      var ignoredCapabilities = {
+        0x0DE1: 1, // GL_TEXTURE_2D
+        0x0B20: 1, // GL_LINE_SMOOTH
+        0x0B60: 1, // GL_FOG
+        0x8513: 1, // GL_TEXTURE_CUBE_MAP
+        0x0BA1: 1  // GL_NORMALIZE
+      };
       _glEnable = function(cap) {
-        if (cap == 0x0DE1) return; // GL_TEXTURE_2D
-        if (cap == 0x0B20) return; // GL_LINE_SMOOTH
-        if (cap == 0x0B60) return; // GL_FOG
+        if (cap in ignoredCapabilities) return;
         Module.ctx.enable(cap);
       };
-
       _glDisable = function(cap) {
-        if (cap == 0x0DE1) return; // GL_TEXTURE_2D
-        if (cap == 0x0B20) return; // GL_LINE_SMOOTH
-        if (cap == 0x0B60) return; // GL_FOG
+        if (cap in ignoredCapabilities) return;
         Module.ctx.disable(cap);
       };
 
