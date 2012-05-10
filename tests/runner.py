@@ -7299,6 +7299,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_color2(self):
       self.btest('cubegeom_color2.c', expected='1121999515')
 
+    def test_cubegeom_texturematrix(self):
+      self.btest('cubegeom_texturematrix.c', expected='1297500583')
+
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''

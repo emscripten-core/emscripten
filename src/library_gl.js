@@ -980,7 +980,7 @@ var LibraryGL = {
           if (need_mm && !has_mm) source = 'uniform mat4 u_modelView; \n' + source;
           if (need_pm && !has_pm) source = 'uniform mat4 u_projection; \n' + source;
           GL.shaderInfos[shader].ftransform = need_pm || need_mm || need_pv; // we will need to provide the fixed function stuff as attributes and uniforms
-          for (var i = 0; i <= 6; i++) {
+          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
             var need_vtc = source.search('v_texCoord' + i) == -1;
@@ -991,6 +991,12 @@ var LibraryGL = {
               if (need_vtc) {
                 source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
               }
+            }
+
+            old = source;
+            source = source.replace(new RegExp('gl_TextureMatrix\\[' + i + '\\]', 'g'), 'u_textureMatrix' + i);
+            if (source != old) {
+              source = 'uniform mat4 u_textureMatrix' + i + '; \n' + source;
             }
           }
           if (source.indexOf('gl_FrontColor') >= 0) {
@@ -1012,7 +1018,7 @@ var LibraryGL = {
                      source.replace(/gl_FogFragCoord/g, 'v_fogCoord');
           }
         } else { // Fragment shader
-          for (var i = 0; i <= 6; i++) {
+          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
             var old = source;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
             if (source != old) {
@@ -1103,7 +1109,7 @@ var LibraryGL = {
         } else if (pname == 0x0BA7) { // GL_PROJECTION_MATRIX
           HEAPF32.set(GL.immediate.matrix['p'], params >> 2);
         } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
-          HEAPF32.set(GL.immediate.matrix['t'], params >> 2);
+          HEAPF32.set(GL.immediate.matrix['t' + GL.immediate.clientActiveTexture], params >> 2);
         } else if (pname == 0x0B66) { // GL_FOG_COLOR
           {{{ makeSetValue('params', '0', '0', 'float') }}};
         } else {
@@ -1223,6 +1229,7 @@ var LibraryGL = {
   $GLImmediate: {
     // Vertex and index data
     maxElements: 10240,
+    MAX_TEXTURES: 7,
     vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer). Default view is F32
     vertexDataU8: null, // U8 view
     tempData: null,
@@ -1410,6 +1417,10 @@ var LibraryGL = {
               this.texCoordLocations[i] = Module.ctx.getAttribLocation(this.program, 'a_texCoord' + i);
             }
           }
+          this.textureMatrixLocations = [];
+          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+            this.textureMatrixLocations[i] = Module.ctx.getUniformLocation(this.program, 'u_textureMatrix' + i);
+          }
           this.colorLocation = Module.ctx.getAttribLocation(this.program, 'a_color');
           this.normalLocation = Module.ctx.getAttribLocation(this.program, 'a_normal');
 
@@ -1440,6 +1451,11 @@ var LibraryGL = {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
                                                stride, textureOffsets[i]);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
+              }
+            }
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+              if (this.textureMatrixLocations[i]) { // XXX might we need this even without the condition we are currently in?
+                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix['t' + i]);
               }
             }
           }
@@ -1495,11 +1511,15 @@ var LibraryGL = {
       // No JSON notation for these objects, for closure w/js optimizer
       this.matrix['m'] = null; // modelview
       this.matrix['p'] = null; // projection
-      this.matrix['t'] = null; // texture
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        this.matrix['t' + i] = null; // texture
+      }
 
       this.matrixStack['m'] = [];
       this.matrixStack['p'] = [];
-      this.matrixStack['t'] = [];
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        this.matrixStack['t' + i] = [];
+      }
 
       this.ATTRIBUTE_BY_NAME['V'] = 0;
       this.ATTRIBUTE_BY_NAME['N'] = 1;
@@ -1516,7 +1536,9 @@ var LibraryGL = {
 
       GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
       GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrix['t'] = GL.immediate.matrix.lib.mat4.create();
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
+      }
       GL.immediate.currentMatrix = GL.immediate.matrix.lib.mat4.create();
 
       // Buffers for data
@@ -1843,7 +1865,7 @@ var LibraryGL = {
     } else if (mode == 0x1701 /* GL_PROJECTION */) {
       GL.immediate.currentMatrix = 'p';
     } else if (mode == 0x1702) { // GL_TEXTURE
-      GL.immediate.currentMatrix = 't';
+      GL.immediate.currentMatrix = 't' + GL.immediate.clientActiveTexture;
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
     }
