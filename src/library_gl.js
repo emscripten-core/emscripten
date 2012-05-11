@@ -1226,6 +1226,7 @@ var LibraryGL = {
   // GL Immediate mode
 
   $GLImmediate__postset: 'Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
+  $GLImmediate__deps: ['$Browser'],
   $GLImmediate: {
     // Vertex and index data
     maxElements: 10240,
