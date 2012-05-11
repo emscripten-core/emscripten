@@ -9,7 +9,7 @@ var VAR_NATIVIZED = 'nativized';
 var VAR_EMULATED = 'emulated';
 
 var ENTRY_IDENT = toNiceIdent('%0');
-var ENTRY_IDENTS = set(toNiceIdent('%0'), toNiceIdent('%1'));
+var ENTRY_IDENT_IDS = set(0, 1); // XXX
 
 function recomputeLines(func) {
   func.lines = func.labels.map(function(label) { return label.lines }).reduce(concatenator, []);
@@ -1180,7 +1180,9 @@ function analyzer(data, sidePass) {
         func.labelIdsInverse = {};
         func.labelIds[toNiceIdent('%0')] = 0;
         func.labelIdsInverse[0] = toNiceIdent('%0');
-        func.labelIdCounter = 1;
+        func.labelIds[toNiceIdent('%1')] = 1;
+        func.labelIdsInverse[1] = toNiceIdent('%1');
+        func.labelIdCounter = 2;
         func.labels.forEach(function(label) {
           func.labelIds[label.ident] = func.labelIdCounter++;
           func.labelIdsInverse[func.labelIdCounter-1] = label.ident;
@@ -1206,6 +1208,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 phi.params[i].label = func.labelIds[phi.params[i].label];
+                assert(phi.params[i].label);
               }
             }
           });
@@ -1221,9 +1224,10 @@ function analyzer(data, sidePass) {
         // So we need to handle that in a special way here.
         function getActualLabelId(labelId) {
           if (func.labelsDict[labelId]) return labelId;
-          if (labelId in ENTRY_IDENTS) {
-            assert(func.labelsDict[ENTRY_IDENT]);
-            return ENTRY_IDENT;
+          if (labelId in ENTRY_IDENT_IDS) {
+            labelId = func.labelIds[ENTRY_IDENT];
+            assert(func.labelsDict[labelId]);
+            return labelId;
           }
           return null;
         }
@@ -1327,6 +1331,7 @@ function analyzer(data, sidePass) {
               if (phi.intertype == 'phi') {
                 for (var i = 0; i < phi.params.length; i++) {
                   var param = phi.params[i];
+                  assert(param.label);
                   var sourceLabelId = getActualLabelId(param.label);
                   if (sourceLabelId) {
                     var sourceLabel = func.labelsDict[sourceLabelId];
