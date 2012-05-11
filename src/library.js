@@ -257,10 +257,19 @@ LibraryManager.library = {
       var properties = {isDevice: false, contents: data};
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
-    // Creates a file record for lazy-loading from a URL.
+    // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
+    // XHR, which is not possible in browsers except in a web worker! Use preloading,
+    // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile: function(parent, name, url, canRead, canWrite) {
       var properties = {isDevice: false, url: url};
       return FS.createFile(parent, name, properties, canRead, canWrite);
+    },
+    // Preloads a file asynchronously. You can call this before run, for example in
+    // preRun. run will be delayed until this file arrives and is set up.
+    createPreloadedFile: function(parent, name, url, canRead, canWrite) {
+      Browser.asyncLoad(url, function(data) {
+        FS.createDataFile(parent, name, data, canRead, canWrite);
+      });
     },
     // Creates a link to a sepcific local path.
     createLink: function(parent, name, target, canRead, canWrite) {

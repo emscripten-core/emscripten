@@ -138,6 +138,22 @@ mergeInto(LibraryManager.library, {
              0; // delta;
     },
 
+    asyncLoad: function(url, callback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onload = function() {
+        var arrayBuffer = xhr.response;
+        assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
+        callback(new Uint8Array(arrayBuffer));
+        removeRunDependency();
+      };
+      xhr.onerror = function(event) {
+        assert(arrayBuffer, 'Loading data file "' + url + '" failed.');
+      };
+      xhr.send(null);
+      addRunDependency();
+    }
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],

@@ -73,6 +73,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       libFuncsToInclude = ['memcpy', 'memset', 'malloc', 'free'];
     }
+    if (GENERATING_HTML) {
+      libFuncsToInclude.push('$Browser');
+    }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
         intertype: 'functionStub',

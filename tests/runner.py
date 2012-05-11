@@ -6971,6 +6971,17 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
+      # With FS.preloadFile
+
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.preRun = function() {
+          FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
+        };
+      ''')
+      make_main('someotherfile.txt')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
     def test_multifile(self):
       # a few files inside a directory
       self.clear()

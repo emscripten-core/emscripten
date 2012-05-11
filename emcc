@@ -717,6 +717,9 @@ try:
 
   if DEBUG: print >> sys.stderr, 'emcc: will generate JavaScript'
 
+  if final_suffix == 'html':
+    shared.Settings.GENERATING_HTML = 1
+
   extra_files_to_link = []
 
   if not LEAVE_INPUTS_RAW and not AUTODEBUG:
