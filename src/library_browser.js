@@ -208,6 +208,18 @@ mergeInto(LibraryManager.library, {
     } else {
       Browser.requestAnimationFrame(asyncCall);
     }
+  },
+
+  emscripten_hide_mouse: function() {
+    var styleSheet = document.styleSheets[0];
+    var rules = styleSheet.cssRules;
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i].cssText.substr(0, 5) == 'canvas') {
+        styleSheet.deleteRule(i);
+        i--;
+      }
+    }
+    styleSheet.insertRule('canvas.emscripten { border: 1px solid black; cursor: none; }', 0);
   }
 });
 

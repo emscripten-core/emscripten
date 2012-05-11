@@ -57,6 +57,14 @@ void emscripten_async_call(void (*func)(), int millis) {
 #endif
 
 /*
+ * Hide the OS mouse cursor over the canvas. Note that SDL's
+ * SDL_ShowCursor command shows and hides the SDL cursor, not
+ * the OS one. This command is useful to hide the OS cursor
+ * if your app draws its own cursor.
+ */
+void emscripten_hide_mouse();
+
+/*
  * This macro-looking function will cause Emscripten to
  * generate a comment in the generated code.
  * XXX This is deprecated for now, because it requires us to
