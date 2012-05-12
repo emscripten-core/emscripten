@@ -1182,7 +1182,7 @@ function registerize(ast, conservative) {
           reg = freeRegs.pop();
         } else {
           reg = nextReg++;
-          fullNames[reg] = 'r' + reg;
+          fullNames[reg] = 'r' + reg; // TODO: even smaller names
         }
         varRegs[name] = reg;
       }
@@ -1223,8 +1223,33 @@ function registerize(ast, conservative) {
         }
       }
     });
+    // Remove all vars
+    traverse(fun, function(node, type) {
+      if (type == 'var') {
+        var vars = node[1];
+        if (vars.length > 1) {
+          var ret = ['stat', []];
+          var curr = ret[1];
+          for (var i = 0; i < vars.length-1; i++) {
+            curr[0] = 'seq';
+            curr[1] = ['assign', true, ['name', vars[i][0]], vars[i][1]];
+            if (i != vars.length-2) curr = curr[2] = [];
+          }
+          curr[2] = ['assign', true, ['name', vars[vars.length-1][0]], vars[vars.length-1][1]];
+          return ret;
+        } else {
+          return ['assign', true, ['name', vars[0][0]], vars[0][1]];
+        }
+      }
+    });
+    vacuum(fun);
+    // Add vars at the beginning
+    var vars = [];
+    for (var i = 1; i < nextReg; i++) {
+      vars.push([fullNames[i]]);
+    }
+    getStatements(fun).unshift(['var', vars]);
   });
-  //printErr('zz post: ' + dump(ast));
 }
 
 // Passes table
