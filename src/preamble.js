@@ -853,8 +853,11 @@ var STRING_TABLE = [];
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
-// decrement it. Incrementing must happen in Module.preRun
-// or PRE_RUN_ADDITIONS (used by emcc to add file preloading).
+// decrement it. Incrementing must happen in a place like
+// PRE_RUN_ADDITIONS (used by emcc to add file preloading).
+// Note that you can add dependencies in preRun, even though
+// it happens right before run - run will be postponed until
+// the dependencies are met.
 var runDependencies = 0;
 function addRunDependency() {
   runDependencies++;

@@ -272,6 +272,10 @@ Options that are modified or new in %s include:
   --js-library <lib>       A JavaScript library to use in addition to
                            those in Emscripten's src/library_*
 
+  -v                       Turns on verbose output. This will pass
+                           -v to Clang, and also enable EMCC_DEBUG
+                           to details emcc's operations
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -513,6 +517,10 @@ try:
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
       newargs[i] = ''
+    elif newargs[i] == '-v':
+      shared.COMPILER_OPTS += ['-v']
+      DEBUG = 1
+      newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
       shell_path = newargs[i+1]
@@ -700,11 +708,9 @@ try:
       else:
         assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
-        # we have multiple files: Link them TODO: llvm link-time opts?
-        ld_args = temp_files + ['-b', specified_target]
-                  #[arg.split('-Wl,')[1] for arg in filter(lambda arg: arg.startswith('-Wl,'), sys.argv)]
-        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(ld_args)
-        execute([shared.LLVM_LD, '-disable-opt'] + ld_args)
+        # we have multiple files: Link them
+        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(temp_files)
+        shared.Building.link(temp_files, specified_target)
     exit(0)
 
   ## Continue on to create JavaScript
@@ -722,9 +728,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      execute(['python', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
+      execute(shared.ENV_PREFIX + ['python', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      execute(['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
+      execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
@@ -846,7 +852,7 @@ try:
 
   if AUTODEBUG:
     if DEBUG: print >> sys.stderr, 'emcc: autodebug'
-    execute(['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
+    execute(shared.ENV_PREFIX + ['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
 
@@ -900,7 +906,8 @@ try:
     partial_dirs = []
     for file_ in data_files:
       dirname = os.path.dirname(file_['name'])
-      if dirname != '' and dirname != '/':
+      dirname = dirname.lstrip('/') # absolute paths start with '/', remove that
+      if dirname != '':
         parts = dirname.split('/')
         for i in range(len(parts)):
           partial = '/'.join(parts[:i+1])
@@ -979,14 +986,23 @@ try:
               var b = new Blob([byteArray.buffer], { type: '%(mimetype)s' });
               var url = URLObject.createObjectURL(b); // XXX we never revoke this!
               var audio = new Audio();
+              audio.removedDependency = false;
               audio['oncanplaythrough'] = function() { // XXX string for closure
                 audio['oncanplaythrough'] = null;
                 preloadedAudios['%(filename)s'] = audio;
-                removeRunDependency();
+                if (!audio.removedDependency) {
+                  removeRunDependency();
+                  audio.removedDependency = true;
+                }
               };
               audio.onerror = function(event) {
-                console.log('Audio %(filename)s could not be decoded');
+                if (!audio.removedDependency) {
+                  console.log('Audio %(filename)s could not be decoded or timed out trying to decode');
+                  removeRunDependency();
+                  audio.removedDependency = true;
+                }
               };
+              setTimeout(audio.onerror, 2000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
               audio.src = url;
             } else {
               preloadedAudios['%(filename)s'] = new Audio(); // empty shim

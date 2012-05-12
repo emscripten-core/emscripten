@@ -408,8 +408,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ var ret = (function() {Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments) + "]"); ');
-            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); Module.printErr("  [     return:" + ret); return ret; }';
+            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
           }
         }
 
@@ -432,7 +432,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           ident = '_' + ident;
         }
-        var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+        var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
         if (ident in EXPORTED_FUNCTIONS) {
           text += '\nModule["' + ident + '"] = ' + ident + ';';
@@ -1030,7 +1030,16 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('extractvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
-    return item.ident + '.f' + item.indexes[0][0].text;
+    var index = item.indexes[0][0].text;
+    var valueType = Types.types[item.type].fields[index];
+    if (USE_TYPED_ARRAYS != 2 || valueType != 'i64') {
+      return item.ident + '.f' + index;
+    } else {
+      var assignTo = item.assignTo;
+      item.assignTo = null;
+      return 'var ' + assignTo + '$0 = ' + item.ident + '.f' + index + '[0];' +
+             'var ' + assignTo + '$1 = ' + item.ident + '.f' + index + '[1];';
+    }
   });
   makeFuncLineActor('insertvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: see extractvalue

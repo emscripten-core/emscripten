@@ -22,12 +22,78 @@ RESULTING FROM THE USE, MODIFICATION, OR
 REDISTRIBUTION OF THIS SOFTWARE.
 */
 
+#if !EMSCRIPTEN
+#define USE_GLEW 1
+#endif
+
+#if USE_GLEW
+#include "GL/glew.h"
+#endif
+
 #include "SDL/SDL.h"
 #include "SDL/SDL_image.h"
+#if !USE_GLEW
 #include "SDL/SDL_opengl.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
+
+void shaders() {
+#if USE_GLEW
+  glewInit();
+#endif
+
+  GLint ok;
+
+  const char *vertexShader = "void main(void) \n"
+                             "{ \n"
+                             "    gl_Position = ftransform(); \n"
+                             "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+                             "    gl_FrontColor = gl_Color; \n"
+                             "} \n";
+  const char *fragmentShader = "uniform sampler2D tex0; \n"
+                               "void main(void) \n"
+                               "{ \n"
+                               "    gl_FragColor = gl_Color * texture2D(tex0, gl_TexCoord[0].xy); \n"
+                               "} \n";
+
+  GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vs, 1, &vertexShader, NULL);
+  glCompileShader(vs);
+  glGetShaderiv(vs, GL_COMPILE_STATUS, &ok);
+  assert(ok);
+
+  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fs, 1, &fragmentShader, NULL);
+  glCompileShader(fs);
+  glGetShaderiv(fs, GL_COMPILE_STATUS, &ok);
+  assert(ok);
+
+  GLuint program = glCreateProgram();
+
+  glAttachShader(program, vs);
+  glAttachShader(program, fs);
+  glLinkProgram(program);
+  glGetProgramiv(program, GL_LINK_STATUS, &ok);
+  assert(ok);
+
+  glUseProgram(program);
+
+  {
+    // Also, check getting the error log
+    const char *fakeVertexShader = "atbute ve4 blarg; ### AAA\n";
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &fakeVertexShader, NULL);
+    glCompileShader(vs);
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &ok);
+    assert(!ok);
+    GLint infoLen = 0;
+    glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &infoLen);
+    assert(infoLen > 1);
+  }
+}
 
 int main(int argc, char *argv[])
 {
@@ -58,11 +124,12 @@ int main(int argc, char *argv[])
     glViewport( 0, 0, 640, 480 );
 
     glMatrixMode( GL_PROJECTION );
-    glPushMatrix(); // just for testing
-    glLoadIdentity();
+    GLfloat matrixData[] = { 2.0/640,        0,  0,  0,
+                                   0, -2.0/480,  0,  0,
+                                   0,        0, -1,  0,
+                                  -1,        1,  0,  1 };
+    glLoadMatrixf(matrixData); // test loadmatrix
 
-    glOrtho( 0, 640, 480, 0, -1, 1 );
-    
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
     
@@ -118,46 +185,34 @@ int main(int argc, char *argv[])
     // Clear the screen before drawing
     glClear( GL_COLOR_BUFFER_BIT );
     
+    shaders();
+
     // Bind the texture to which subsequent calls refer to
     glBindTexture( GL_TEXTURE_2D, texture );
 
-    glBegin( GL_QUADS );
-        glTexCoord2i( 0, 0 ); glVertex3f( 10, 10, 0 );
-        glTexCoord2i( 1, 0 ); glVertex3f( 300, 10, 0 );
-        glTexCoord2i( 1, 1 ); glVertex3f( 300, 128, 0 );
-        glTexCoord2i( 0, 1 ); glVertex3f( 10, 128, 0 );
+    // Use clientside vertex pointers to render two items
+    GLfloat vertexData[] = { 0, 0, 10, 10, // texture2, position2
+                             1, 0, 300, 10,
+                             1, 1, 300, 128,
+                             0, 1, 10, 128,
+                             0, 0.5, 410, 10,
+                             1, 0.5, 600, 10,
+                             1, 1, 630, 200,
+                             0.5, 1, 310, 250,
+                             0, 0, 100, 300,
+                             1, 0, 300, 300,
+                             1, 1, 300, 400,
+                             0, 1, 100, 400 };
 
-        glTexCoord2f( 0, 0.5 ); glVertex3f( 410, 10, 0 );
-        glTexCoord2f( 1, 0.5 ); glVertex3f( 600, 10, 0 );
-        glTexCoord2f( 1, 1   ); glVertex3f( 630, 200, 0 );
-        glTexCoord2f( 0.5, 1 ); glVertex3f( 310, 250, 0 );
-    glEnd();
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 4*4, &vertexData[0]);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 4*4, &vertexData[2]);
 
-    glBegin( GL_TRIANGLE_STRIP );
-        glTexCoord2i( 0, 0 ); glVertex3f( 100, 300, 0 );
-        glTexCoord2i( 1, 0 ); glVertex3f( 300, 300, 0 );
-        glTexCoord2i( 1, 1 ); glVertex3f( 300, 400, 0 );
-        glTexCoord2i( 0, 1 ); glVertex3f( 500, 410, 0 );
-    glEnd();
+    glDrawArrays(GL_QUADS, 0, 12);
 
-#if !EMSCRIPTEN
-    glDisable(GL_TEXTURE_2D);
-#endif
-
-    glColor3ub(90, 255, 255);
-    glBegin( GL_QUADS );
-        glVertex3f( 10, 410, 0 );
-        glVertex3f( 300, 410, 0 );
-        glVertex3f( 300, 480, 0 );
-        glVertex3f( 10, 470, 0 );
-    glEnd();
-
-    glBegin( GL_QUADS );
-        glColor3f(1.0, 0, 1.0);   glVertex3f( 410, 410, 0 );
-        glColor3f(0, 1.0, 0);     glVertex3f( 600, 410, 0 );
-        glColor3f(0, 0, 1.0);     glVertex3f( 600, 480, 0 );
-        glColor3f(1.0, 1.0, 1.0); glVertex3f( 410, 470, 0 );
-    glEnd();
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
 
     SDL_GL_SwapBuffers();
     

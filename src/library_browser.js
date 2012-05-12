@@ -3,35 +3,17 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
-  emscripten_set_main_loop: function(func, fps) {
-    Module['noExitRuntime'] = true;
-
-    fps = fps || 60; // TODO: use requestAnimationFrame
-    _emscripten_set_main_loop.cancel = false;
-    var jsFunc = FUNCTION_TABLE[func];
-    function doOne() {
-      if (_emscripten_set_main_loop.cancel) return;
-      jsFunc();
-      setTimeout(doOne, 1000/fps); // doing this each time means that on exception, we stop
-    }
-    setTimeout(doOne, 1000/fps);
-  },
-
-  emscripten_cancel_main_loop: function(func) {
-    _emscripten_set_main_loop.cancel = true;
-  },
-
-  emscripten_async_call: function(func, millis) {
-    Module['noExitRuntime'] = true;
-
-    // TODO: cache these to avoid generating garbage
-    setTimeout(function() {
-      FUNCTION_TABLE[func]();
-    }, millis);
-  },
-
+  $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n', // export requestFullScreen
   $Browser: {
-    createContext: function(canvas, useWebGL) {
+    mainLoop: {
+      scheduler: null,
+      shouldPause: false,
+      paused: false
+    },
+    pointerLock: false,
+    moduleContextCreatedCallbacks: [],
+
+    createContext: function(canvas, useWebGL, setInModule) {
 #if !USE_TYPED_ARRAYS
       if (useWebGL) {
         Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
@@ -50,57 +32,19 @@ mergeInto(LibraryManager.library, {
         // Useful to debug native webgl apps: var Module = { printErr: function(x) { console.log(x) } };
         var tempCtx = ctx;
         var wrapper = {};
-        wrapper.objectMap = new WeakMap();
-        wrapper.objectCounter = 1;
         for (var prop in tempCtx) {
           (function(prop) {
             switch (typeof tempCtx[prop]) {
               case 'function': {
                 wrapper[prop] = function() {
-                  var printArgs = Array.prototype.slice.call(arguments).map(function(arg) {
-                    if (typeof arg == 'undefined') return '!UNDEFINED!';
-                    if (!arg) return arg;
-                    if (wrapper.objectMap[arg]) return '<' + arg + '|' + wrapper.objectMap[arg] + '>';
-                    if (arg.toString() == '[object HTMLImageElement]') {
-                      return arg + '\n\n';
-                    }
-                    if (arg.byteLength) {
-                      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 40)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
-                      var buf = new ArrayBuffer(32);
-                      var i8buf = new Int8Array(buf);
-                      var i16buf = new Int16Array(buf);
-                      var f32buf = new Float32Array(buf);
-                      switch(arg.toString()) {
-                        case '[object Uint8Array]':
-                          i8buf.set(arg.subarray(0, 32));
-                          break;
-                        case '[object Float32Array]':
-                          f32buf.set(arg.subarray(0, 5));
-                          break;
-                        case '[object Uint16Array]':
-                          i16buf.set(arg.subarray(0, 16));
-                          break;
-                        default:
-                          alert('unknown array for debugging: ' + arg);
-                          throw 'see alert';
-                      }
-                      var ret = '{' + arg.byteLength + ':\n';
-                      var arr = Array.prototype.slice.call(i8buf);
-                      ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
-                      arr = Array.prototype.slice.call(f32buf, 0, 8);
-                      ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
-                      return ret;
-                    }
-                    return arg;
-                  });
-                  console.log('[gl_f:' + prop + ':' + printArgs + ']');
-                  var ret = tempCtx[prop].apply(tempCtx, arguments);
-                  var printRet = ret;
-                  if (typeof ret == 'object') {
-                    wrapper.objectMap[ret] = wrapper.objectCounter++;
-                    printRet = '<' + ret + '|' + wrapper.objectMap[ret] + '>';
+                  if (GL.debug) {
+                    var printArgs = Array.prototype.slice.call(arguments).map(Runtime.prettyPrint);
+                    console.log('[gl_f:' + prop + ':' + printArgs + ']');
                   }
-                  if (typeof printRet != 'undefined') console.log('[     gl:' + prop + ':return:' + printRet + ']');
+                  var ret = tempCtx[prop].apply(tempCtx, arguments);
+                  if (GL.debug && typeof ret != 'undefined') {
+                    console.log('[     gl:' + prop + ':return:' + Runtime.prettyPrint(ret) + ']');
+                  }
                   return ret;
                 }
                 break;
@@ -111,7 +55,9 @@ mergeInto(LibraryManager.library, {
                   return tempCtx[prop];
                 });
                 wrapper.__defineSetter__(prop, function(value) {
-                  console.log('[gl_s:' + prop + ':' + value + ']');
+                  if (GL.debug) {
+                    console.log('[gl_s:' + prop + ':' + value + ']');
+                  }
                   tempCtx[prop] = value;
                 });
                 break;
@@ -124,49 +70,158 @@ mergeInto(LibraryManager.library, {
         // Set the background of the WebGL canvas to black
         canvas.style.backgroundColor = "black";
       }
+      if (setInModule) {
+        Module.ctx = ctx;
+        Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+      }
       return ctx;
     },
 
-    // Given binary data for an image, in a format like PNG or JPG, we convert it
-    // to flat pixel data. We do so using the browser's native code.
-    // This is deprecated, it is preferred to load binary files, createObjectURL, etc.,
-    // see the sdl_* tests.
-    /*decodeImage: function(pixels, format) {
-      function encodeBase64(data) {
-        var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-        var PAD = '=';
-        var ret = '';
-        var leftchar = 0;
-        var leftbits = 0;
-        for (var i = 0; i < data.length; i++) {
-          leftchar = (leftchar << 8) | data[i];
-          leftbits += 8;
-          while (leftbits >= 6) {
-            var curr = (leftchar >> (leftbits-6)) & 0x3f;
-            leftbits -= 6;
-            ret += BASE[curr];
-          }
+    requestFullScreen: function() {
+      var canvas = Module.canvas;
+      function fullScreenChange() {
+        if (document['webkitFullScreenElement'] === canvas ||
+            document['mozFullScreenElement'] === canvas ||
+            document['fullScreenElement'] === canvas) {
+          canvas.requestPointerLock = canvas['requestPointerLock'] ||
+                                      canvas['mozRequestPointerLock'] ||
+                                      canvas['webkitRequestPointerLock'];
+          canvas.requestPointerLock();
         }
-        if (leftbits == 2) {
-          ret += BASE[(leftchar&3) << 4];
-          ret += PAD + PAD;
-        } else if (leftbits == 4) {
-          ret += BASE[(leftchar&0xf) << 2];
-          ret += PAD;
-        }
-        return ret;
       }
-      var image = new Image();
-      image.src = 'data:image/' + format + ';base64,' + encodeBase64(pixels);
-      assert(image.complete, 'Image could not be decoded'); // page reload might fix it, decoding is async... need .onload handler...
-      var canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(image, 0, 0);
-      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      return imageData;
-    },*/ 
+
+      document.addEventListener('fullscreenchange', fullScreenChange, false);
+      document.addEventListener('mozfullscreenchange', fullScreenChange, false);
+      document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
+
+      function pointerLockChange() {
+        Browser.pointerLock = document['pointerLockElement'] === canvas ||
+                              document['mozPointerLockElement'] === canvas ||
+                              document['webkitPointerLockElement'] === canvas;
+      }
+
+      document.addEventListener('pointerlockchange', pointerLockChange, false);
+      document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+      document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
+
+      canvas.requestFullScreen = canvas['requestFullScreen'] ||
+                                 canvas['mozRequestFullScreen'] ||
+                                 (canvas['webkitRequestFullScreen'] ? function() { canvas['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
+      canvas.requestFullScreen(); 
+    },
+
+    requestAnimationFrame: function(func) {
+      if (!window.requestAnimationFrame) {
+        window.requestAnimationFrame = window['requestAnimationFrame'] ||
+                                       window['mozRequestAnimationFrame'] ||
+                                       window['webkitRequestAnimationFrame'] ||
+                                       window['msRequestAnimationFrame'] ||
+                                       window['oRequestAnimationFrame'] ||
+                                       window['setTimeout'];
+      }
+      window.requestAnimationFrame(func);
+    },
+
+    getMovementX: function(delta, event) {
+      if (!Browser.pointerLock) return delta;
+      return event['movementX'] ||
+             event['mozMovementX'] ||
+             event['webkitMovementX'] ||
+             0; // delta;
+    },
+
+    getMovementY: function(delta, event) {
+      if (!Browser.pointerLock) return delta;
+      return event['movementY'] ||
+             event['mozMovementY'] ||
+             event['webkitMovementY'] ||
+             0; // delta;
+    },
+
+  },
+
+  emscripten_async_run_script__deps: ['emscripten_run_script'],
+  emscripten_async_run_script: function(script, millis) {
+    Module['noExitRuntime'] = true;
+
+    // TODO: cache these to avoid generating garbage
+    setTimeout(function() {
+      _emscripten_run_script(script);
+    }, millis);
+  },
+
+  emscripten_set_main_loop: function(func, fps) {
+    Module['noExitRuntime'] = true;
+
+    var jsFunc = FUNCTION_TABLE[func];
+    var wrapper = function() {
+      if (Browser.mainLoop.shouldPause) {
+        // catch pauses from non-main loop sources
+        Browser.mainLoop.paused = true;
+        Browser.mainLoop.shouldPause = false;
+        return;
+      }
+      jsFunc();
+      if (Browser.mainLoop.shouldPause) {
+        // catch pauses from the main loop itself
+        Browser.mainLoop.paused = true;
+        Browser.mainLoop.shouldPause = false;
+        return;
+      }
+      Browser.mainLoop.scheduler();
+    }
+    if (fps && fps > 0) {
+      Browser.mainLoop.scheduler = function() {
+        setTimeout(wrapper, 1000/fps); // doing this each time means that on exception, we stop
+      }
+    } else {
+      Browser.mainLoop.scheduler = function() {
+        Browser.requestAnimationFrame(wrapper);
+      }
+    }
+    Browser.mainLoop.scheduler();
+  },
+
+  emscripten_cancel_main_loop: function(func) {
+    Browser.mainLoop.scheduler = null;
+    Browser.mainLoop.shouldPause = true;
+  },
+
+  emscripten_pause_main_loop: function(func) {
+    Browser.mainLoop.shouldPause = true;
+  },
+
+  emscripten_resume_main_loop: function(func) {
+    if (Browser.mainLoop.paused) {
+      Browser.mainLoop.paused = false;
+      Browser.mainLoop.scheduler();
+    }
+    Browser.mainLoop.shouldPause = false;
+  },
+
+  emscripten_async_call: function(func, millis) {
+    Module['noExitRuntime'] = true;
+
+    var asyncCall = Runtime.getFuncWrapper(func);
+    if (millis >= 0) {
+      setTimeout(asyncCall, millis);
+    } else {
+      Browser.requestAnimationFrame(asyncCall);
+    }
   }
 });
+
+/* Useful stuff for browser debugging
+
+function slowLog(label, text) {
+  if (!slowLog.labels) slowLog.labels = {};
+  if (!slowLog.labels[label]) slowLog.labels[label] = 0;
+  var now = Date.now();
+  if (now - slowLog.labels[label] > 1000) {
+    Module.print(label + ': ' + text);
+    slowLog.labels[label] = now;
+  }
+}
+
+*/
 

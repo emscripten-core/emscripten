@@ -140,12 +140,8 @@ typedef unsigned long vm_size_t;
 
 #define __BIT_TYPES_DEFINED__
 
-// XXX Emscripten: removed unsigned types which are already defined
-typedef signed char int8_t;
-typedef short int16_t;
-typedef int int32_t;
-typedef long long int64_t;
-typedef int32_t register_t;
+// XXX Emscripten: removed types which are already defined, get them from stdint
+#include <stdint.h>
 #endif /* __MS_types__ */
 
 /*

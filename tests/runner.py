@@ -355,7 +355,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
         if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and settings.py and the paths therein.' % EM_CONFIG)
         for engine in js_engines:
-          engine = filter(lambda arg: arg != '-n', engine) # SpiderMonkey issue 716255
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
               js_output = output_nicerizer(js_output)
@@ -908,6 +907,53 @@ m_divisor is 1091269979
         self.do_run(src, '*4903566027370624, 153236438355333*')
         code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
         assert 'goog.math.Long' not in code and 'jsbn' not in code, 'i64 precise math should not have been included if not actually used'
+
+    def test_i64_zextneg(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+      src = r'''
+        #include <stdint.h>
+        #include <stdio.h>
+
+        int main(int argc, char *argv[])
+        {
+            uint8_t byte = 0x80;
+            uint16_t two = byte;
+            uint32_t four = byte;
+            uint64_t eight = byte;
+
+            printf("value: %d,%d,%d,%lld.\n", byte, two, four, eight);
+
+            return 0;
+        }
+      '''
+      self.do_run(src, 'value: 128,128,128,128.')
+
+    def test_i64_7z(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+      src = r'''
+        #include <stdint.h>
+        #include <stdio.h>
+        uint64_t a, b;
+        int main(int argc, char *argv[])
+        {
+            a = argc;
+            b = argv[1][0];
+            if (a > a + b || a > a + b + 1) {
+                printf("one %lld, %lld", a, b);
+                return 0;
+            }
+            printf("zero %lld, %lld", a, b);
+            return 0;
+        }
+      '''
+      self.do_run(src, 'zero 2, 104', ['hallo'])
+
+    def test_sha1(self):
+      if self.emcc_args == None: return self.skip('needs ta2')
+
+      self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
     def test_cube2hash(self):
       # A good test of i64 math
@@ -2702,7 +2748,7 @@ def process(filename):
         output = Popen(['python', EMCC, all_name], stderr=PIPE).communicate()
         # Check for warning in the generated code
         generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-        assert 'Casting a function pointer type to another with a different number of arguments.' in output[1], 'Missing expected warning'
+        assert 'Casting a function pointer type to another with a different number of arguments' in output[1], 'Missing expected warning'
 
     def test_stdlibs(self):
         if Settings.USE_TYPED_ARRAYS == 2:
@@ -3546,6 +3592,7 @@ def process(filename):
           printf("%g\n", strtod("0", &endptr));
           printf("%g\n", strtod("0.", &endptr));
           printf("%g\n", strtod("0.0", &endptr));
+          printf("%g\n", strtod("-0.0", &endptr));
           printf("%g\n", strtod("1", &endptr));
           printf("%g\n", strtod("1.", &endptr));
           printf("%g\n", strtod("1.0", &endptr));
@@ -3570,6 +3617,7 @@ def process(filename):
         0
         0
         0
+        0
         1
         1
         1
@@ -3588,6 +3636,7 @@ def process(filename):
         '''
 
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))
+      self.do_run(src.replace('strtod', 'strtold'), re.sub(r'\n\s+', '\n', expected)) # XXX add real support for long double
 
     def test_strtok(self):
       src = r'''
@@ -3759,10 +3808,28 @@ at function.:blag
           printf("|%s|\n", buffy);
           sscanf("cheez somethingmoar\tyet more\n", "cheez %s", buffy);
           printf("|%s|\n", buffy);
+
+          int numverts = -1;
+          printf("%d\n", sscanf("	numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
+          printf("%d\n", numverts);
+
+          int index;
+          float u, v;
+          short start, count;
+          printf("%d\n", sscanf("	vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
+          printf("%d,%.6f,%.6f,%hu,%hu\n", index, u, v, start, count);
+
+          int neg, neg2, neg3 = 0;
+          printf("%d\n", sscanf("-123 -765 -34-6", "%d %u %d", &neg, &neg2, &neg3));
+          printf("%d,%u,%d\n", neg, neg2, neg3);
+
           return 0;
         }
         '''
-      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|')
+      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
+                       '1\n1499\n' +
+                       '5\n87,0.481565,0.059481,0,1\n' +
+                       '3\n-123,4294966531,-34\n')
 
     def test_sscanf_2(self):
       # doubles
@@ -4900,7 +4967,7 @@ def process(filename):
       self.do_run(r'''
                         #define SQLITE_DISABLE_LFS
                         #define LONGDOUBLE_TYPE double
-                        #define SQLITE_INT64_TYPE int
+                        #define SQLITE_INT64_TYPE long long int
                         #define SQLITE_THREADSAFE 0
                    ''' + open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() +
                          open(path_from_root('tests', 'sqlite', 'benchmark.c'), 'r').read(),
@@ -6568,6 +6635,19 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
       self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_sdl_endianness(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        #include <SDL/SDL.h>
+
+        int main() {
+          printf("%d, %d, %d\n", SDL_BYTEORDER, SDL_LIL_ENDIAN, SDL_BIG_ENDIAN);
+          return 0;
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_prepost(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>
@@ -6737,7 +6817,7 @@ elif 'browser' in str(sys.argv):
           browser.harness_queue.put('http://localhost:8888/' + html_file)
           output = '[no http server activity]'
           start = time.time()
-          while time.time() - start < 5:
+          while time.time() - start < 60:
             if not queue.empty():
               output = queue.get()
               break
@@ -6861,25 +6941,34 @@ elif 'browser' in str(sys.argv):
 
     def test_preload_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-        #include <stdio.h>
-        #include <string.h>
-        #include <emscripten.h>
-        int main() {
-          FILE *f = fopen("somefile.txt", "r");
-          char buf[100];
-          fread(buf, 1, 20, f);
-          buf[20] = 0;
-          fclose(f);
-          printf("|%s|\n", buf);
+      def make_main(path):
+        print path
+        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+          #include <stdio.h>
+          #include <string.h>
+          #include <emscripten.h>
+          int main() {
+            FILE *f = fopen("%s", "r");
+            char buf[100];
+            fread(buf, 1, 20, f);
+            buf[20] = 0;
+            fclose(f);
+            printf("|%%s|\n", buf);
 
-          int result = !strcmp("load me right before", buf);
-          REPORT_RESULT();
-          return 0;
-        }
-      '''))
+            int result = !strcmp("load me right before", buf);
+            REPORT_RESULT();
+            return 0;
+          }
+        ''' % path))
 
+      make_main('somefile.txt')
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+      # By absolute path
+
+      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     def test_multifile(self):
@@ -7048,10 +7137,11 @@ elif 'browser' in str(sys.argv):
             Module['canvas'].dispatchEvent(event1);
           }
         }
+        window['simulateMouseEvent'] = simulateMouseEvent;
       ''')
       open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
     def test_sdl_audio(self):
@@ -7070,10 +7160,10 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', '.', '/report_result?1')
 
     def test_sdl_ogl(self):
-      # SDL, OpenGL, textures, immediate mode
+      # SDL, OpenGL, textures, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_p(self):
@@ -7163,10 +7253,65 @@ elif 'browser' in str(sys.argv):
         Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
+    def btest(self, filename, expected=None, reference=None, args=[]): # TODO: use in all other tests
+      if not reference:
+        open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(open(path_from_root('tests', filename)).read()))
+      else:
+        expected = '0' # 0 pixels difference than reference
+        shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
+        self.reftest(path_from_root('tests', reference))
+        args += ['--pre-js', 'reftest.js']
+      Popen(['python', EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html'] + args).communicate()
+      self.run_browser('test.html', '.', '/report_result?' + expected)
+
     def test_emscripten_api(self):
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'emscripten_api_browser.cpp')).read()))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html']).communicate()
-      self.run_browser('page.html', '', '/report_result?1')
+      self.btest('emscripten_api_browser.cpp', '1')
+
+    def test_sdlglshader(self):
+      self.btest('sdlglshader.c', reference='sdlglshader.png', args=['--closure', '1'])
+
+    def test_gl_ps(self):
+      # pointers and a shader
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
+
+    def test_cubegeom_pre(self):
+      self.btest('cubegeom_pre.c', expected='-1472804742')
+
+    def test_cubegeom_pre2(self):
+      self.btest('cubegeom_pre2.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
+
+    def test_cubegeom_pre3(self):
+      self.btest('cubegeom_pre3.c', expected='-1472804742')
+
+    def test_cubegeom(self):
+      self.btest('cubegeom.c', expected='188641320')
+
+    def test_cubegeom_color(self):
+      self.btest('cubegeom_color.c', expected='588472350')
+
+    def test_cubegeom_normal(self):
+      self.btest('cubegeom_normal.c', expected='752917084')
+
+    def test_cubegeom_mt(self):
+      self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
+
+    def test_cubegeom_color2(self):
+      self.btest('cubegeom_color2.c', expected='1121999515')
+
+    def test_pre_run_deps(self):
+      # Adding a dependency in preRun will delay run
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.preRun = function() {
+          addRunDependency();
+          Module.print('preRun called, added a dependency...');
+          setTimeout(function() {
+            Module.okk = 10;
+            removeRunDependency()
+          }, 2000);
+        };
+      ''')
+      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do

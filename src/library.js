@@ -371,8 +371,10 @@ LibraryManager.library = {
       if (!error.printer) error.printer = Module['print'];
       if (!error.buffer) error.buffer = [];
 
-      // Create the temporary folder.
-      FS.createFolder('/', 'tmp', true, true);
+      // Create the temporary folder, if not already created
+      try {
+        FS.createFolder('/', 'tmp', true, true);
+      } catch(e) {}
 
       // Create the I/O devices.
       var devFolder = FS.createFolder('/', 'dev', true, true);
@@ -1867,7 +1869,7 @@ LibraryManager.library = {
 
 #if CATCH_EXIT_CODE
     throw new ExitStatus();
-#else 
+#else
     throw 'exit(' + status + ') called, at ' + new Error().stack;
 #endif
   },
@@ -2242,6 +2244,15 @@ LibraryManager.library = {
   // TODO: Document.
   _scanString__deps: ['_isFloat'],
   _scanString: function(format, get, unget, varargs) {
+    if (!__scanString.whiteSpace) {
+      __scanString.whiteSpace = {};
+      __scanString.whiteSpace[' '.charCodeAt(0)] = 1;
+      __scanString.whiteSpace['\t'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace['\n'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace[' '] = 1;
+      __scanString.whiteSpace['\t'] = 1;
+      __scanString.whiteSpace['\n'] = 1;
+    }
     // Supports %x, %4x, %d.%d, %s, %f, %lf.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
@@ -2249,6 +2260,7 @@ LibraryManager.library = {
     var argsi = 0;
     var fields = 0;
     var argIndex = 0;
+    var next;
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
       if (next <= 0) return fields;
       var next = get();
@@ -2264,10 +2276,13 @@ LibraryManager.library = {
         if (formatIndex != maxSpecifierStart) {
           max_ = parseInt(format.slice(maxSpecifierStart, formatIndex), 10);
         }
-        // TODO: Handle type size modifier.
         var long_ = false;
+        var half = false;
         if (format[formatIndex] == 'l') {
           long_ = true;
+          formatIndex++;
+        } else if (format[formatIndex] == 'h') {
+          half = true;
           formatIndex++;
         }
         var type = format[formatIndex];
@@ -2288,13 +2303,18 @@ LibraryManager.library = {
             buffer.pop();
             unget();
           }
+          unget();
+          next = get();
         } else {
+          var first = true;
           while ((curr < max_ || isNaN(max_)) && next > 0) {
-            if ((type === 'd' && next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-                (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
-                                  next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
-                                  next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
-                (type === 's' && (next != ' '.charCodeAt(0) && next != '\t'.charCodeAt(0) && next != '\n'.charCodeAt(0))) &&
+            if (!(next in __scanString.whiteSpace) && // stop on whitespace
+                (type == 's' ||
+                 ((type === 'd' || type == 'u') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                                                    (first && next == '-'.charCodeAt(0)))) ||
+                 (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
+                                   next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
+                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0)))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
@@ -2302,6 +2322,7 @@ LibraryManager.library = {
             } else {
               break;
             }
+            first = false;
           }
         }
         if (buffer.length === 0) return 0;  // Failure.
@@ -2309,8 +2330,12 @@ LibraryManager.library = {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
         switch (type) {
-          case 'd':
-            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}}
+          case 'd': case 'u':
+            if (half) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
+            } else {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
+            }
             break;
           case 'x':
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
@@ -2330,6 +2355,12 @@ LibraryManager.library = {
             break;
         }
         fields++;
+      } else if (format[formatIndex] in __scanString.whiteSpace) {
+        while (next in __scanString.whiteSpace) {
+          next = get();
+          if (next <= 0) return fields;  // End of input.
+        }
+        unget();
       } else {
         // Not a specifier.
         if (format[formatIndex].charCodeAt(0) !== next) {
@@ -3480,6 +3511,9 @@ LibraryManager.library = {
 
     return ret * multiplier;
   },
+  strtod_l: 'strtod', // no locale support yet
+  strtold: 'strtod', // XXX add real support for long double
+  strtold_l: 'strtold', // no locale support yet
 
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
   _parseInt: function(str, endptr, base, min, max, bits, unsign) {
@@ -3956,19 +3990,35 @@ LibraryManager.library = {
   },
 
   strspn: function(pstr, pset) {
-    var str = String_copy(pstr, true);
-    var set = String_copy(pset);
-    var i = 0;
-    while (set.indexOf(str[i]) != -1) i++; // Must halt, as 0 is in str but not set
-    return i;
+    var str = pstr, set, strcurr, setcurr;
+    while (1) {
+      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
+      if (!strcurr) return str - pstr;
+      set = pset;
+      while (1) {
+        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
+        if (!setcurr || setcurr == strcurr) break;
+        set++;
+      }
+      if (!setcurr) return str - pstr;
+      str++;
+    }
   },
 
   strcspn: function(pstr, pset) {
-    var str = String_copy(pstr, true);
-    var set = String_copy(pset, true);
-    var i = 0;
-    while (set.indexOf(str[i]) == -1) i++; // Must halt, as 0 is in both
-    return i;
+    var str = pstr, set, strcurr, setcurr;
+    while (1) {
+      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
+      if (!strcurr) return str - pstr;
+      set = pset;
+      while (1) {
+        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
+        if (!setcurr || setcurr == strcurr) break;
+        set++;
+      }
+      if (setcurr) return str - pstr;
+      str++;
+    }
   },
 
   strcpy: function(pdest, psrc) {
@@ -4394,6 +4444,21 @@ LibraryManager.library = {
     */
   },
 
+  llvm_bswap_i16: function(x) {
+    x = unSign(x, 32);
+    var bytes = [];
+    bytes[0] = x & 255;
+    x >>= 8;
+    bytes[1] = x & 255;
+    x >>= 8;
+    var ret = 0;
+    ret <<= 8;
+    ret += bytes[0];
+    ret <<= 8;
+    ret += bytes[1];
+    return ret;
+  },
+
   llvm_bswap_i32: function(x) {
     x = unSign(x, 32);
     var bytes = [];
@@ -4408,7 +4473,7 @@ LibraryManager.library = {
     }
     return ret;
   },
-  
+
   llvm_ctlz_i32: function(x) {
     for (var i=0; i<32; i++) {
         if ( (x & (1 << (31-i))) != 0 ) {
@@ -4672,6 +4737,24 @@ LibraryManager.library = {
     };
   },
 
+  llvm_uadd_with_overflow_i64__deps: [function() { preciseI64MathUsed = 1 }],
+  llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
+    i64Math.add(xl, xh, yl, yh);
+    return {
+      f0: i64Math.result,
+      f1: 0 // XXX Need to hack support for this in long.js
+    };
+  },
+
+  llvm_umul_with_overflow_i64__deps: [function() { preciseI64MathUsed = 1 }],
+  llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
+    i64Math.mul(xl, xh, yl, yh);
+    return {
+      f0: i64Math.result,
+      f1: 0 // XXX Need to hack support for this in long.js
+    };
+  },
+
   llvm_stacksave: function() {
     var self = _llvm_stacksave;
     if (!self.LLVM_SAVEDSTACKS) {
@@ -4710,6 +4793,9 @@ LibraryManager.library = {
 
   llvm_lifetime_start: function() {},
   llvm_lifetime_end: function() {},
+
+  llvm_invariant_start: function() {},
+  llvm_invariant_end: function() {},
 
   // ==========================================================================
   // math.h
@@ -4935,7 +5021,7 @@ LibraryManager.library = {
     if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
     if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
     if (x == 0) return {{{ cDefine('FP_ZERO') }}};
-    // FP_SUBNORMAL..?  
+    // FP_SUBNORMAL..?
     return {{{ cDefine('FP_NORMAL') }}};
   },
   __fpclassifyd: '__fpclassifyf',

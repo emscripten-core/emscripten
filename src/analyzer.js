@@ -544,6 +544,10 @@ function analyzer(data, sidePass) {
                       params: [(signed && j + whole > sourceElements.length) ? signedKeepAlive : null],
                       type: 'i32',
                     };
+                    if (j == 0 && isUnsignedOp(value.op) && sourceBits < 32) {
+                      // zext sign correction
+                      result.ident = makeSignOp(result.ident, 'i' + sourceBits, 'un', 1, 1);
+                    }
                     if (fraction != 0) {
                       var other = {
                         intertype: 'value',

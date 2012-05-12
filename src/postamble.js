@@ -38,6 +38,11 @@ function run(args) {
 
   if (Module['preRun']) {
     Module['preRun']();
+    if (runDependencies > 0) {
+      // preRun added a dependency, run will be called later
+      Module['preRun'] = null;
+      return 0;
+    }
   }
 
   var ret = null;
