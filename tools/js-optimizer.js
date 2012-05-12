@@ -1226,7 +1226,7 @@ function registerize(ast, conservative) {
     // Remove all vars
     traverse(fun, function(node, type) {
       if (type == 'var') {
-        var vars = node[1];
+        var vars = node[1].filter(function(varr) { return varr[1] });
         if (vars.length > 1) {
           var ret = ['stat', []];
           var curr = ret[1];
@@ -1237,18 +1237,22 @@ function registerize(ast, conservative) {
           }
           curr[2] = ['assign', true, ['name', vars[vars.length-1][0]], vars[vars.length-1][1]];
           return ret;
-        } else {
+        } else if (vars.length == 1) {
           return ['assign', true, ['name', vars[0][0]], vars[0][1]];
+        } else {
+          return emptyNode();
         }
       }
     });
     vacuum(fun);
     // Add vars at the beginning
-    var vars = [];
-    for (var i = 1; i < nextReg; i++) {
-      vars.push([fullNames[i]]);
+    if (nextReg > 1) {
+      var vars = [];
+      for (var i = 1; i < nextReg; i++) {
+        vars.push([fullNames[i]]);
+      }
+      getStatements(fun).unshift(['var', vars]);
     }
-    getStatements(fun).unshift(['var', vars]);
   });
 }
 

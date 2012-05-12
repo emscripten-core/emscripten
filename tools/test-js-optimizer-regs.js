@@ -23,4 +23,46 @@ function test() {
   var ck = f(), ck2 = 100, ck3 = 1000, ck4 = 100000;
   f(ck());
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test"]
+function primes() {
+  var __label__;
+  var $curri_01 = 2;
+  var $primes_02 = 0;
+  $_$2 : while (1) {
+    var $primes_02;
+    var $curri_01;
+    var $conv1 = $curri_01 | 0;
+    var $call = _sqrtf($conv1);
+    var $j_0 = 2;
+    $_$4 : while (1) {
+      var $j_0;
+      var $conv = $j_0 | 0;
+      var $cmp2 = $conv < $call;
+      if (!$cmp2) {
+        var $ok_0 = 1;
+        break $_$4;
+      }
+      var $rem = ($curri_01 | 0) % ($j_0 | 0);
+      var $cmp3 = ($rem | 0) == 0;
+      if ($cmp3) {
+        var $ok_0 = 0;
+        break $_$4;
+      }
+      var $inc = $j_0 + 1 | 0;
+      var $j_0 = $inc;
+    }
+    var $ok_0;
+    var $inc5_primes_0 = $ok_0 + $primes_02 | 0;
+    var $inc7 = $curri_01 + 1 | 0;
+    var $cmp = ($inc5_primes_0 | 0) < 1e5;
+    if ($cmp) {
+      var $curri_01 = $inc7;
+      var $primes_02 = $inc5_primes_0;
+    } else {
+      break $_$2;
+    }
+  }
+  var $call8 = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $curri_01, tempInt));
+  return 1;
+  return null;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes"]
