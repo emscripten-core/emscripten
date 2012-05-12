@@ -1176,6 +1176,7 @@ function registerize(ast, conservative) {
     var fullNames = {};
     var loopRegs = [];
     var loops = 0;
+    var saved = 0;
     function decUse(name) {
       if (!varUses[name]) return false; // no uses left, or not a relevant variable
       var reg = varRegs[name];
@@ -1183,6 +1184,7 @@ function registerize(ast, conservative) {
         // acquire register
         if (freeRegs.length > 0) {
           reg = freeRegs.pop();
+          saved++;
         } else {
           reg = nextReg++;
           fullNames[reg] = 'r' + reg; // TODO: even smaller names
@@ -1256,6 +1258,7 @@ function registerize(ast, conservative) {
       }
       getStatements(fun).unshift(['var', vars]);
     }
+    printErr(fun[1] + ': saved ' + saved + ' vars through registerization');
   });
 }
 
