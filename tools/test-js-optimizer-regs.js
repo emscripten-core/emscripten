@@ -65,4 +65,18 @@ function primes() {
   return 1;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes"]
+function atomic() {
+  var $x$s2;
+  var __stackBase__ = STACKTOP;
+  STACKTOP += 4;
+  var $x$s2 = __stackBase__ >> 2;
+  HEAP32[$x$s2] = 10;
+  var $0 = (tempValue = HEAP32[$x$s2], HEAP32[$x$s2] == 10 && (HEAP32[$x$s2] = 7), tempValue);
+  var $conv = ($0 | 0) == 10 & 1;
+  var $2 = HEAP32[$x$s2];
+  var $call = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = $2, HEAP32[tempInt + 4 >> 2] = $conv, tempInt));
+  STACKTOP = __stackBase__;
+  return 0;
+  return null;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic"]

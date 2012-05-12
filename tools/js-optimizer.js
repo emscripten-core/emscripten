@@ -1150,7 +1150,10 @@ function registerize(ast, conservative) {
       if (type == 'var') {
         node[1].forEach(function(arg) {
           var name = arg[0];
-          varUses[name] = 1;
+          if (!varUses[name]) { // may have multiple var definitions
+            varUses[name] = 0;
+          }
+          varUses[name]++;
         });
       }
     });
@@ -1174,7 +1177,7 @@ function registerize(ast, conservative) {
     var loopRegs = [];
     var loops = 0;
     function decUse(name) {
-      if (!varUses[name]) return varRegs[name]; // no uses left, but still need to replace the name if it has a register
+      if (!varUses[name]) return false; // no uses left, or not a relevant variable
       var reg = varRegs[name];
       if (!reg) {
         // acquire register
