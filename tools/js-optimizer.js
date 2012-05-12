@@ -1140,6 +1140,93 @@ function loopOptimizer(ast) {
   vacuum(ast);
 }
 
+// Very simple 'registerization', coalescing of variables into a smaller number.
+function registerize(ast, conservative) {
+  traverseGeneratedFunctions(ast, function(fun) {
+    // Find the # of uses of each variable. The definition is considered a 'use'
+    // First, find all the var definitions
+    var varUses = {};
+    traverse(fun, function(node, type) {
+      if (type == 'var') {
+        node[1].forEach(function(arg) {
+          var name = arg[0];
+          varUses[name] = 1;
+        });
+      }
+    });
+    // Find uses of those variables
+    traverse(fun, function(node, type) {
+      if (type == 'name') {
+        var name = node[1];
+        if (varUses[name]) {
+          varUses[name]++;
+        }
+      }
+    });
+    // Go through the function's code, assigning 'registers'.
+    // The only tricky bit is to keep variables locked on a register through loops,
+    // since they can potentially be returned to. We use a simple approach of
+    // locking the register to the topmost loop.
+    var varRegs = {}; // maps variables to the register they will use all their life
+    var freeRegs = [];
+    var nextReg = 1;
+    var fullNames = {};
+    var loopRegs = [];
+    var loops = 0;
+    function decUse(name) {
+      if (!varUses[name]) return varRegs[name]; // no uses left, but still need to replace the name if it has a register
+      var reg = varRegs[name];
+      if (!reg) {
+        // acquire register
+        if (freeRegs.length > 0) {
+          reg = freeRegs.pop();
+        } else {
+          reg = nextReg++;
+          fullNames[reg] = 'r' + reg;
+        }
+        varRegs[name] = reg;
+      }
+      varUses[name]--;
+      assert(varUses[name] >= 0);
+      if (varUses[name] == 0) {
+        if (loops == 0) {
+          // free register
+          freeRegs.push(reg);
+        } else {
+          loopRegs.push(reg);
+        }
+      }
+      return true;
+    }
+    traverse(fun, function(node, type) { // XXX we rely on traversal order being the same as execution order here
+      if (type == 'var') {
+        node[1].forEach(function(arg) {
+          var name = arg[0];
+          if (decUse(name)) {
+            arg[0] = fullNames[varRegs[name]];
+          }
+        });
+      } else if (type == 'name') {
+        var name = node[1];
+        if (decUse(name)) {
+          node[1] = fullNames[varRegs[name]];
+        }
+      } else if (type in LOOP) {
+        loops++;
+      }
+    }, function(node, type) {
+      if (type in LOOP) {
+        loops--;
+        if (loops == 0 && loopRegs.length > 0) {
+          freeRegs = freeRegs.concat(loopRegs);
+          loopRegs = [];
+        }
+      }
+    });
+  });
+  //printErr('zz post: ' + dump(ast));
+}
+
 // Passes table
 
 var compress = false;
@@ -1156,6 +1243,7 @@ var passes = {
   simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
+  registerize: registerize,
   compress: function() { compress = true; }
 };
 
