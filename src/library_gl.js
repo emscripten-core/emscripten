@@ -973,7 +973,7 @@ var LibraryGL = {
           source = source.replace(/gl_Vertex/g, 'a_position');
           if (old != source) need_pv = 1;
           old = source;
-          source = source.replace(/gl_ModelViewProjectionMatrix/g, '(u_modelView * u_projection)');
+          source = source.replace(/gl_ModelViewProjectionMatrix/g, '(u_projection * u_modelView)');
           if (old != source) need_pm = need_mm = 1;
           old = source;
           source = source.replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient

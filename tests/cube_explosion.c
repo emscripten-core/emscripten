@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     GLubyte textureData[16*16*4];
     for (int x = 0; x < 16; x++) {
       for (int y = 0; y < 16; y++) {
-        *((int*)&textureData[(x*16 + y) * 4]) = x*16 + ((y*16) << 8) + ((x*16) << 16) + 0xff000000;
+        *((int*)&textureData[(x*16 + y) * 4]) = x*16 + ((y*16) << 8) + ((y*16) << 16) + 0xff331177;
       }
     }
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, 
@@ -182,9 +182,7 @@ int main(int argc, char *argv[])
     glVertexPointer(3, GL_FLOAT, 20, 0);
     glTexCoordPointer(2, GL_FLOAT, 20, (void*)12);
 
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    glPushMatrix(); // still modelview?
+    glPushMatrix();
     glTranslated(484.50579833984375, 589.3919067382812, 528.0055541992188);
 
     GLint texgenSLocation = glGetUniformLocation(program, "texgenS");
@@ -198,9 +196,10 @@ int main(int argc, char *argv[])
     glUniform4fv(texgenTLocation, 1, texgenTData);
 
     GLint centerLocation = glGetUniformLocation(program, "center");
-    assert(centerLocation >= 0);
-    GLfloat centerData[4] = { 484.50579833984375, 589.3919067382812, 528.0055541992188, 0 };
-    glUniform4fv(centerLocation, 1, centerData);
+    if (centerLocation >= 0) {
+      GLfloat centerData[4] = { 484.50579833984375, 589.3919067382812, 528.0055541992188, 0 };
+      glUniform4fv(centerLocation, 1, centerData);
+    }
 
     GLint animstateLocation = glGetUniformLocation(program, "animstate");
     assert(animstateLocation >= 0);
@@ -209,11 +208,10 @@ int main(int argc, char *argv[])
 
     glRotated(1529.857142857143, 0.5773502588272095, 0.5773502588272095, 0.5773502588272095);
     glScaled(-55, 55, -55);
-    glActiveTexture(GL_TEXTURE1);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture); // XXX this is after setting Pointers, do we miss it? Also, does it not need clientActiveTexture - should we have updated that?
     glActiveTexture(GL_TEXTURE0);
-    glColor4ub(-1,15 ,15, 255);
-    glColor4f(1, 0.058823529411764705, 0.058823529411764705, 1); // seems unneeded to have two calls to color...
+    glColor4f(1, 0.158823529411764705, 0.058823529411764705, 1);
 
     glDrawElements(GL_TRIANGLES, 432, GL_UNSIGNED_SHORT, 0);
 

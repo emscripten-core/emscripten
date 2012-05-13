@@ -7315,8 +7315,8 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_texturematrix(self):
       self.btest('cubegeom_texturematrix.c', expected='1297500583')
 
-    def zzztest_cube_explosion(self):
-      self.btest('cube_explosion.c', expected='-1472804742')
+    def test_cube_explosion(self):
+      self.btest('cube_explosion.c', expected='667220544')
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
