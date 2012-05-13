@@ -39,7 +39,7 @@
         canvas: document.getElementById('canvas'),
         setStatus: function(text) {
           if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-          document.getElementById('status').innerHTML = '';
+          document.getElementById('status').innerHTML = text;
           if (text) {
             var counter = 0;
             Module.setStatus.interval = setInterval(function() {

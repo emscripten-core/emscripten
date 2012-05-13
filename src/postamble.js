@@ -41,29 +41,35 @@ function run(args) {
     }
   }
 
+  function doRun() {
+    var ret = 0;
+    if (Module['_main']) {
+      preMain();
+      ret = Module.callMain(args);
+      if (!Module['noExitRuntime']) {
+        exitRuntime();
+      }
+    }
+    if (Module['postRun']) {
+      Module['postRun']();
+    }
+    return ret;
+  }
+
+#if GENERATING_HTML
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
-#if GENERATING_HTML
     setTimeout(function() {
-      Module['setStatus'](''); // clear 'Running...' after first frame
+      doRun();
+      Module['setStatus']('');
     }, 1);
+    return 0;
+  } else {
+    return doRun();
+  }
+#else
+  return doRun();
 #endif
-  }
-
-  var ret = null;
-  if (Module['_main']) {
-    preMain();
-    ret = Module.callMain(args);
-    if (!Module['noExitRuntime']) {
-      exitRuntime();
-    }
-  }
-
-  if (Module['postRun']) {
-    Module['postRun']();
-  }
-
-  return ret;
 }
 Module['run'] = run;
 
