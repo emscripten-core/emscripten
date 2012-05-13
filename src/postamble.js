@@ -32,10 +32,6 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  if (Module['setStatus']) {
-    Module['setStatus'](''); // clear the status from "Downloading.." etc.
-  }
-
   if (Module['preRun']) {
     Module['preRun']();
     if (runDependencies > 0) {
@@ -43,6 +39,15 @@ function run(args) {
       Module['preRun'] = null;
       return 0;
     }
+  }
+
+  if (Module['setStatus']) {
+    Module['setStatus']('Running...');
+#if GENERATING_HTML
+    setTimeout(function() {
+      Module['setStatus'](''); // clear 'Running...' after first frame
+    }, 1);
+#endif
   }
 
   var ret = null;

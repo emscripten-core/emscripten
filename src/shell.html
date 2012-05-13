@@ -12,13 +12,13 @@
     </style>
   </head>
   <body>
+    <hr/>
+    <div class="emscripten" id="status">Downloading...</div>
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-    <ht/>
+    <hr/>
     <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
     <hr/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
-    <hr>
-    <div class="emscripten" id="status">Downloading...</div>
     <hr>
     <script type='text/javascript'>
       // connect to canvas
@@ -38,14 +38,30 @@
         })(),
         canvas: document.getElementById('canvas'),
         setStatus: function(text) {
-          document.getElementById('status').innerHTML = text;
+          if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+          document.getElementById('status').innerHTML = '';
+          if (text) {
+            var counter = 0;
+            Module.setStatus.interval = setInterval(function() {
+              counter++;
+              counter %= 3;
+              var dots = ' ';
+              for (var i = 0; i < counter; i++) dots += '.';
+              dots += '*';
+              for (var i = counter; i < 2; i++) dots += '.';
+              document.getElementById('status').innerHTML = text.replace('...', dots);
+            }, 300);
+          }
         },
         totalDependencies: 0,
         monitorRunDependencies: function(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Downloading: ' + (this.totalDependencies-left) + '/' + this.totalDependencies : 'All downloads complete.');
+          Module.setStatus(left ? 'Downloading: ' + (this.totalDependencies-left) + '/' + this.totalDependencies + '...' : 'All downloads complete.');
         }
       };
+      Module.setStatus('Downloading...');
+    </script>      
+    <script type='text/javascript'>
 
       {{{ SCRIPT_CODE }}}
 
