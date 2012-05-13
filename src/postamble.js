@@ -60,8 +60,10 @@ function run(args) {
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
     setTimeout(function() {
+      setTimeout(function() {
+        Module['setStatus']('');
+      }, 1);
       doRun();
-      Module['setStatus']('');
     }, 1);
     return 0;
   } else {
