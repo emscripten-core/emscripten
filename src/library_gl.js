@@ -952,6 +952,8 @@ var LibraryGL = {
 #if GL_DEBUG
         GL.shaderOriginalSources[shader] = source;
 #endif
+        // XXX We add attributes and uniforms to shaders. The program can ask for the # of them, and see the
+        // ones we generated, potentially confusing it? Perhaps we should hide them.
         if (GL.shaderInfos[shader].type == Module.ctx.VERTEX_SHADER) {
           // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
           var has_pm = source.search(/u_projection/) >= 0;
