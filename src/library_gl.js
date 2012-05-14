@@ -1644,6 +1644,7 @@ var LibraryGL = {
       var numVertexes = 4 * this.vertexCounter / GL.immediate.stride; // XXX assuming float
       assert(numVertexes % 1 == 0);
 
+      var boundElementArrayBuffer = false;
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
@@ -1667,6 +1668,7 @@ var LibraryGL = {
 
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
         Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, this.indexData.subarray(0, numIndexes));
+        boundElementArrayBuffer = true;
       }
 
       if (!GL.currArrayBuffer) {
@@ -1694,6 +1696,9 @@ var LibraryGL = {
 
       if (!GL.currArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+      }
+      if (boundElementArrayBuffer) {
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
       }
       if (!GL.currProgram) {
         Module.ctx.useProgram(null);
