@@ -1287,7 +1287,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 var param = phi.params[i];
-                assert(param.label);
+                if (!param.label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
                 var sourceLabelId = getActualLabelId(param.label);
                 if (sourceLabelId) {
                   var sourceLabel = func.labelsDict[sourceLabelId];
