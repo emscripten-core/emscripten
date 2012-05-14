@@ -69,6 +69,11 @@ mergeInto(LibraryManager.library, {
 #endif
         // Set the background of the WebGL canvas to black
         canvas.style.backgroundColor = "black";
+
+        // Warn on context loss
+        canvas.addEventListener('webglcontextlost', function(event) {
+          alert('WebGL context lost. You will need to reload the page.');
+        }, false);
       }
       if (setInModule) {
         Module.ctx = ctx;
