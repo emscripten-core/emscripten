@@ -893,7 +893,9 @@ var LibraryGL = {
         0x0B20: 1, // GL_LINE_SMOOTH
         0x0B60: 1, // GL_FOG
         0x8513: 1, // GL_TEXTURE_CUBE_MAP
-        0x0BA1: 1  // GL_NORMALIZE
+        0x0BA1: 1, // GL_NORMALIZE
+        0x0C60: 1, // GL_TEXTURE_GEN_S
+        0x0C61: 1  // GL_TEXTURE_GEN_T
       };
       _glEnable = function(cap) {
         if (cap in ignoredCapabilities) return;
