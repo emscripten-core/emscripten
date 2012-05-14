@@ -349,6 +349,7 @@ LibraryManager.library = {
                 typeof window.prompt == 'function') {
               // Browser.
               result = window.prompt('Input: ');
+              if (result === null) result = '\x00'; // cancel ==> EOF
             } else if (typeof readline == 'function') {
               // Command line.
               result = readline();
