@@ -1808,6 +1808,18 @@ var LibraryGL = {
     _glColor4ui(r, g, b, 4294967295);
   },
 
+  glColor3ubv__deps: ['glColor3ub'],
+  glColor3ubv: function(p) {
+    _glColor3ub({{{ makeGetValue('p', '0', 'i8') }}}, {{{ makeGetValue('p', '1', 'i8') }}}, {{{ makeGetValue('p', '2', 'i8') }}});
+  },
+  glColor3usv__deps: ['glColor3us'],
+  glColor3usv: function(p) {
+    _glColor3us({{{ makeGetValue('p', '0', 'i16') }}}, {{{ makeGetValue('p', '2', 'i16') }}}, {{{ makeGetValue('p', '4', 'i16') }}});
+  },
+  glColor3uiv__deps: ['glColor3ui'],
+  glColor3uiv: function(p) {
+    _glColor3ui({{{ makeGetValue('p', '0', 'i32') }}}, {{{ makeGetValue('p', '4', 'i32') }}}, {{{ makeGetValue('p', '8', 'i32') }}});
+  },
   glColor3fv__deps: ['glColor3f'],
   glColor3fv: function(p) {
     _glColor3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
