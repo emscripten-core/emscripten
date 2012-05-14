@@ -6419,6 +6419,26 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+    def test_catch_undef(self):
+      open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+        #include <vector>
+        #include <stdio.h>
+         
+        class Test {
+        public:
+          std::vector<int> vector;
+        };
+         
+        Test globalInstance;
+         
+        int main() {
+          printf("hello, world!\n");
+          return 1;
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
+      self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 

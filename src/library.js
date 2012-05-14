@@ -4806,6 +4806,8 @@ LibraryManager.library = {
   llvm_invariant_start: function() {},
   llvm_invariant_end: function() {},
 
+  llvm_objectsize_i32: function() { return -1 }, // TODO: support this
+
   // ==========================================================================
   // math.h
   // ==========================================================================
