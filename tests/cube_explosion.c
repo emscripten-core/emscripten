@@ -177,6 +177,10 @@ int main(int argc, char *argv[])
     glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
 
+    // try to confuse the client state tracker
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glVertexPointer(3, GL_FLOAT, 20, 0);

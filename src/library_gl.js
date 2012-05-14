@@ -1824,22 +1824,25 @@ var LibraryGL = {
   // ClientState/gl*Pointer
 
   glEnableClientState: function(cap, disable) {
+    var attrib;
     switch(cap) {
       case 0x8078: // GL_TEXTURE_COORD_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture] = !disable; break;
+        attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
       case 0x8074: // GL_VERTEX_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.VERTEX] = !disable; break;
+        attrib = GL.immediate.VERTEX; break;
       case 0x8075: // GL_NORMAL_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.NORMAL] = !disable; break;
+        attrib = GL.immediate.NORMAL; break;
       case 0x8076: // GL_COLOR_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.COLOR] = !disable; break;
+        attrib = GL.immediate.COLOR; break;
       default:
         throw 'unhandled clientstate: ' + cap;
     }
-    if (!disable) {
-      GL.immediate.totalEnabledClientAttributes++;
-    } else {
+    if (disable && GL.immediate.enabledClientAttributes[attrib]) {
+      GL.immediate.enabledClientAttributes[attrib] = false;
       GL.immediate.totalEnabledClientAttributes--;
+    } else if (!disable && !GL.immediate.enabledClientAttributes[attrib]) {
+      GL.immediate.enabledClientAttributes[attrib] = true;
+      GL.immediate.totalEnabledClientAttributes++;
     }
   },
   glDisableClientState: function(cap) {
