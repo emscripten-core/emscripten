@@ -241,6 +241,14 @@ mergeInto(LibraryManager.library, {
       }
     }
     styleSheet.insertRule('canvas.emscripten { border: 1px solid black; cursor: none; }', 0);
+  },
+
+  emscripten_get_now: function() {
+    if (window['performance'] && window['performance']['now']) {
+      return window['performance']['now']();
+    } else {
+      return Date.now();
+    }
   }
 });
 
