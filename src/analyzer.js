@@ -1208,7 +1208,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 phi.params[i].label = func.labelIds[phi.params[i].label];
-                assert(phi.params[i].label);
+                if (!phi.params[i].label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
               }
             }
           });
