@@ -32,8 +32,13 @@ void GC_FREE(void *ptr);
 void GC_REGISTER_FINALIZER_NO_ORDER((void*)ptr, void (*func)(),      void *arg,
                                                 void *(*old_func)(), void *old_arg);
 
-/* Non-Boehm addition. Call this once per frame or such, it will collect if necessary */
+/* Non-Boehm additions */
+
+/* Call this once per frame or such, it will collect if necessary */
 void GC_MAYBE_COLLECT();
+
+/* Forces a GC. Mainly useful for testing, but call it if you know a good time to GC in your app. */
+void GC_FORCE_COLLECT();
 
 #ifdef __cplusplus
 }

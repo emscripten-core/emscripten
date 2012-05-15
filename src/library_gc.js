@@ -2,24 +2,37 @@
 if (GC_SUPPORT) {
   var LibraryGC = {
     $GC: {
-      sizes: {},
-      scannables: {}, // iterable
+      ALLOCATIONS_TO_GC: 1*1024*1024,
+
+      sizes: {}, // if in this map, then a live allocated object. this is iterable
+      scannables: {},
       finalizers: {},
       finalizerArgs: {},
 
       totalAllocations: 0, // bytes of all currently active objects
       recentAllocations: 0, // bytes allocated since last gc. ignores free()s
 
+      init: function() {
+        assert(!GC.initted);
+        GC.initted = true;
+#if GENERATING_HTML
+        setInterval(function() {
+          GC.maybeGC();
+        }, 1000);
+#else
+        // No HTML intervals, so you need to call GC.maybeCollect() or GC.collect() manually
+#endif
+      },
+
       malloc: function(bytes, clear, scannable) {
+        if (!bytes) return 0;
         var ptr;
         if (clear) {
           ptr = _calloc(bytes);
         } else {
           ptr = _malloc(bytes);
         }
-        if (scannable) {
-          GC.scannables[ptr] = 1;
-        }
+        GC.scannables[ptr] = scannable;
         GC.sizes[ptr] = bytes;
         GC.totalAllocations += bytes;
         GC.recentAllocations += bytes;
@@ -27,13 +40,13 @@ if (GC_SUPPORT) {
       },
 
       free: function(ptr) { // does not check if anything refers to it, this is a forced free
-        if (GC.scannables[ptr]) delete GC.scannables[ptr];
         var finalizer = GC.finalizers[ptr];
         if (finalizer) {
           Runtime.getFuncWrapper(finalizer)(GC.finalizerArgs[ptr]);
           GC.finalizers[ptr] = 0;
         }
         _free(ptr);
+        delete GC.sizes[ptr];
         GC.totalAllocations -= GC.sizes[ptr];
       },
 
@@ -56,33 +69,64 @@ if (GC_SUPPORT) {
       },
 
       needCollect: function() {
-        return true; // TODO: heuristics, # of allocations, time, etc.
+        return GC.recentAllocations >= GC.ALLOCATIONS_TO_GC; // TODO: time, etc.
       },
 
       collect: function() {
         GC.prep();
         GC.mark();
         GC.sweep();
+        GC.recentAllocations = 0;
+      },
+
+      scan: function(start, end) { // scans a memory region and adds new reachable objects
+        for (var i = start; i < sbrk.end; i += {{{ Runtime.getNativeTypeSize('void*') }}}) {
+          var ptr = {{{ makeGetValue('i', '0', 'void*') }}};
+          if (GC.sizes[ptr] && !GC.reachable[ptr]) {
+            GC.reachable[ptr] = 1;
+            if (GC.scannables[ptr]) {
+              GC.reachableList.push(ptr);
+            }
+          }
+        }
       },
 
       prep: function() { // Clear reachables and scan for roots
-        GC.reachable = {}; // XXX
-        // static data areas: STACK_MAX to sbrk.DYNAMIC_START (after that, sbrk manages it
-        //                     for dlmalloc). Note that DYNAMIC_START may not exist yet,
-        //                     then use STATICTOP.
-        // stack: STACK_ROOT to STACKTOP
-        // registers: call scanners
+        GC.reachable = {}; // 1 if reachable. XXX
+        GC.reachableList = []; // each reachable is added once to this. XXX
+        // static data areas
+        var staticStart = STACK_MAX;
+        var staticEnd = sbrk.DYNAMIC_START || STATICTOP; // after DYNAMIC_START, sbrk manages it (but it might not exist yet)
+        GC.scan(staticStart, staticEnd);
+        // TODO: scan stack and registers. Currently we assume we run from a timeout or such, so no stack/regs
+        //    stack: STACK_ROOT to STACKTOP
+        //    registers: call scanners
       },
 
       mark: function() { // mark all reachable from roots
+        for (var i = 0; i < GC.reachableList.length; i++) { // note that the list length changes as we push more
+          var ptr = GC.reachableList[i];
+          GC.scan(ptr, ptr + GC.sizes[ptr]);
+        }
       },
 
       sweep: function() { // traverse all objects and free all unreachable
+        var freeList = [];
+        for (var ptr in GC.sizes) {
+          if (!GC.reachable[ptr]) {
+            freeList.push(ptr);
+          }
+        }
+        for (var i = 0; i < freeList.length; i++) {
+          GC.free(freeList[i]);
+        }
       }
     },
 
     GC_INIT__deps: ['$GC'],
-    GC_INIT: function(){},
+    GC_INIT: function() {
+      GC.init();
+    },
 
     GC_MALLOC__deps: ['$GC'],
     GC_MALLOC: function(bytes) {
@@ -107,6 +151,11 @@ if (GC_SUPPORT) {
     GC_MAYBE_COLLECT__deps: ['$GC'],
     GC_MAYBE_COLLECT: function() {
       GC.maybeCollect();
+    },
+
+    GC_FORCE_COLLECT__deps: ['$GC'],
+    GC_FORCE_COLLECT: function() {
+      GC.collect();
     }
   };
 
