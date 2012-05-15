@@ -6094,6 +6094,57 @@ def process(filename):
       '''
       self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
 
+    def test_gc(self):
+      Settings.GC_SUPPORT = 1
+
+      src = r'''
+        #include <stdio.h>
+        #include <gc.h>
+        #include <assert.h>
+
+        void *global;
+
+        void finalizer(void *ptr, void *arg) {
+          printf("finalizing (global == %d)\n", ptr == global);
+        }
+
+        void finalizer2(void *ptr, void *arg) {
+          printf("finalizing2 (global == %d)\n", ptr == global);
+        }
+
+        int main() {
+          GC_INIT();
+
+          global = GC_MALLOC(1024); // rooted since in a static allocation
+          GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
+          printf("alloc %p\n", global);
+
+          void *local = GC_MALLOC(1024); // not rooted since stack is not scanned
+          GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, 0, 0, 0);
+          printf("alloc %p\n", local);
+
+          assert((char*)local - (char*)global >= 1024 || (char*)global - (char*)local >= 1024);
+
+          void *local2 = GC_MALLOC(1024); // no finalizer
+          printf("alloc %p\n", local2);
+
+          void *local3 = GC_MALLOC(1024); // with finalizable2
+          GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer2, 0, 0, 0);
+          printf("alloc %p\n", local);
+
+          void *local4 = GC_MALLOC(1024); // yet another
+          GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer2, 0, 0, 0);
+          printf("alloc %p\n", local);
+
+          printf("*\n");
+          GC_FORCE_COLLECT();
+          printf("*\n");
+
+          GC_FREE(global);
+          global = 0;
+        }
+      '''
+      self.do_run(src, '*\nfinalizing (global == 0)\nfinalizing2 (global == 0)\nfinalizing2 (global == 0)\n*\nfinalizing (global == 1)\n')
 
   # Generate tests for everything
   def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):

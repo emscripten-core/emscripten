@@ -2,16 +2,18 @@
  * Boehm-compatible GC API
  */
 
+#include <stdlib.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void __attribute__((used)) __GC_KEEPALIVE__() {
   // Force inclusion of necessary dlmalloc functions
-  static times = 1;
+  static int times = 1;
   void *x = malloc(times);
   free(x);
-  x = calloc(times);
+  x = calloc(times, 1);
   free(x);
   times++;
 }
@@ -29,8 +31,8 @@ void *GC_MALLOC_ATOMIC(int bytes);
 void GC_FREE(void *ptr);
 
 /* Register a finalizer. func(ptr, arg) will be called. The old values are saved in old_func, old_arg */
-void GC_REGISTER_FINALIZER_NO_ORDER((void*)ptr, void (*func)(),      void *arg,
-                                                void *(*old_func)(), void *old_arg);
+void GC_REGISTER_FINALIZER_NO_ORDER(void *ptr, void (*func)(void *, void *),      void *arg,
+                                               void *(*old_func)(void *, void *), void *old_arg);
 
 /* Non-Boehm additions */
 

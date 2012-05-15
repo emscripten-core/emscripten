@@ -1,6 +1,7 @@
 
 if (GC_SUPPORT) {
   var LibraryGC = {
+    $GC__deps: ['sbrk'],
     $GC: {
       ALLOCATIONS_TO_GC: 1*1024*1024,
 
@@ -28,7 +29,7 @@ if (GC_SUPPORT) {
         if (!bytes) return 0;
         var ptr;
         if (clear) {
-          ptr = _calloc(bytes);
+          ptr = _calloc(1, bytes);
         } else {
           ptr = _malloc(bytes);
         }
@@ -42,7 +43,7 @@ if (GC_SUPPORT) {
       free: function(ptr) { // does not check if anything refers to it, this is a forced free
         var finalizer = GC.finalizers[ptr];
         if (finalizer) {
-          Runtime.getFuncWrapper(finalizer)(GC.finalizerArgs[ptr]);
+          Runtime.getFuncWrapper(finalizer)(ptr, GC.finalizerArgs[ptr]);
           GC.finalizers[ptr] = 0;
         }
         _free(ptr);
@@ -80,7 +81,7 @@ if (GC_SUPPORT) {
       },
 
       scan: function(start, end) { // scans a memory region and adds new reachable objects
-        for (var i = start; i < sbrk.end; i += {{{ Runtime.getNativeTypeSize('void*') }}}) {
+        for (var i = start; i < end; i += {{{ Runtime.getNativeTypeSize('void*') }}}) {
           var ptr = {{{ makeGetValue('i', '0', 'void*') }}};
           if (GC.sizes[ptr] && !GC.reachable[ptr]) {
             GC.reachable[ptr] = 1;
@@ -96,7 +97,7 @@ if (GC_SUPPORT) {
         GC.reachableList = []; // each reachable is added once to this. XXX
         // static data areas
         var staticStart = STACK_MAX;
-        var staticEnd = sbrk.DYNAMIC_START || STATICTOP; // after DYNAMIC_START, sbrk manages it (but it might not exist yet)
+        var staticEnd = _sbrk.DYNAMIC_START || STATICTOP; // after DYNAMIC_START, sbrk manages it (but it might not exist yet)
         GC.scan(staticStart, staticEnd);
         // TODO: scan stack and registers. Currently we assume we run from a timeout or such, so no stack/regs
         //    stack: STACK_ROOT to STACKTOP
