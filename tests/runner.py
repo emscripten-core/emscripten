@@ -6094,23 +6094,6 @@ def process(filename):
       '''
       self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
 
-    def test_emconfig(self):
-      output = Popen(['python', EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0]
-      assert output == LLVM_ROOT + "\n"
-      invalid = 'Usage: em-config VAR_NAME\n'
-      # Don't accept variables that do not exist
-      output = Popen(['python', EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], stdout=PIPE, stderr=PIPE).communicate()[0]
-      assert output == invalid
-      # Don't accept no arguments
-      output = Popen(['python', EMCONFIG], stdout=PIPE, stderr=PIPE).communicate()[0]
-      assert output == invalid
-      # Don't accept more than one variable
-      output = Popen(['python', EMCONFIG, 'LLVM_ROOT', 'EMCC'], stdout=PIPE, stderr=PIPE).communicate()[0]
-      assert output == invalid
-      # Don't accept arbitrary python code
-      output = Popen(['python', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0]
-      assert output == invalid
-
 
   # Generate tests for everything
   def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):
@@ -6780,6 +6763,23 @@ seeked=,,.
 fscanfed: 10 - hello
 ''', output[0])
       self.assertIdentical('texte\n', output[1])
+
+    def test_emconfig(self):
+      output = Popen(['python', EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == LLVM_ROOT + "\n"
+      invalid = 'Usage: em-config VAR_NAME\n'
+      # Don't accept variables that do not exist
+      output = Popen(['python', EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
+      # Don't accept no arguments
+      output = Popen(['python', EMCONFIG], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
+      # Don't accept more than one variable
+      output = Popen(['python', EMCONFIG, 'LLVM_ROOT', 'EMCC'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
+      # Don't accept arbitrary python code
+      output = Popen(['python', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
 
 elif 'browser' in str(sys.argv):
   # Browser tests.
