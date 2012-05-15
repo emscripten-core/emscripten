@@ -6105,46 +6105,105 @@ def process(filename):
         void *global;
 
         void finalizer(void *ptr, void *arg) {
-          printf("finalizing (global == %d)\n", ptr == global);
+          printf("finalizing %d (global == %d)\n", (int)arg, ptr == global);
         }
 
         void finalizer2(void *ptr, void *arg) {
-          printf("finalizing2 (global == %d)\n", ptr == global);
+          printf("finalizing2 %d (global == %d)\n", (int)arg, ptr == global);
         }
 
         int main() {
           GC_INIT();
 
+          void *local, *local2, *local3, *local4;
+
+          // Hold on to global, drop locals
+
           global = GC_MALLOC(1024); // rooted since in a static allocation
           GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
           printf("alloc %p\n", global);
 
-          void *local = GC_MALLOC(1024); // not rooted since stack is not scanned
-          GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, 0, 0, 0);
+          local = GC_MALLOC(1024); // not rooted since stack is not scanned
+          GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void*)1, 0, 0);
           printf("alloc %p\n", local);
 
           assert((char*)local - (char*)global >= 1024 || (char*)global - (char*)local >= 1024);
 
-          void *local2 = GC_MALLOC(1024); // no finalizer
+          local2 = GC_MALLOC(1024); // no finalizer
           printf("alloc %p\n", local2);
 
-          void *local3 = GC_MALLOC(1024); // with finalizable2
-          GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer2, 0, 0, 0);
+          local3 = GC_MALLOC(1024); // with finalizable2
+          GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer2, (void*)2, 0, 0);
           printf("alloc %p\n", local);
 
-          void *local4 = GC_MALLOC(1024); // yet another
-          GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer2, 0, 0, 0);
+          local4 = GC_MALLOC(1024); // yet another
+          GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer2, (void*)3, 0, 0);
           printf("alloc %p\n", local);
 
-          printf("*\n");
+          printf("basic test\n");
+
           GC_FORCE_COLLECT();
+
           printf("*\n");
 
-          GC_FREE(global);
+          GC_FREE(global); // force free will actually work
+
+          // scanning inside objects
+
+          global = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
+          local = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void*)1, 0, 0);
+          local2 = GC_MALLOC_ATOMIC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local2, finalizer, (void*)2, 0, 0);
+          local3 = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer, (void*)3, 0, 0);
+          local4 = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer, (void*)4, 0, 0);
+
+          void **globalData = (void**)global;
+          globalData[0] = local;
+          globalData[1] = local2;
+
+          void **localData = (void**)local;
+          localData[0] = local3;
+
+          void **local2Data = (void**)local2;
+          local2Data[0] = local4; // actually ignored, because local2 is atomic, so 4 is freeable
+
+          printf("object scan test test\n");
+
+          GC_FORCE_COLLECT();
+
+          printf("*\n");
+
+          GC_FREE(global); // force free will actually work
+
+          printf("*\n");
+
+          GC_FORCE_COLLECT();
+
+          printf(".\n");
+
           global = 0;
         }
       '''
-      self.do_run(src, '*\nfinalizing (global == 0)\nfinalizing2 (global == 0)\nfinalizing2 (global == 0)\n*\nfinalizing (global == 1)\n')
+      self.do_run(src, '''basic test
+finalizing 1 (global == 0)
+finalizing2 2 (global == 0)
+finalizing2 3 (global == 0)
+*
+finalizing 0 (global == 1)
+object scan test test
+finalizing 4 (global == 0)
+*
+finalizing 0 (global == 1)
+*
+finalizing 1 (global == 0)
+finalizing 2 (global == 0)
+finalizing 3 (global == 0)
+.
+''')
 
   # Generate tests for everything
   def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):
