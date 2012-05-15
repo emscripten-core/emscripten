@@ -6095,6 +6095,8 @@ def process(filename):
       self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
 
     def test_gc(self):
+      if self.emcc_args == None: return self.skip('needs ta2')
+
       Settings.GC_SUPPORT = 1
 
       src = r'''
