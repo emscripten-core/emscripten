@@ -1835,6 +1835,8 @@ var LibraryGL = {
 
   glPolygonMode: function(){}, // TODO
 
+  glAlphaFunc: function(){}, // TODO
+
   // ClientState/gl*Pointer
 
   glEnableClientState: function(cap, disable) {
