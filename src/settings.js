@@ -216,6 +216,8 @@ var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. I
                        // if you can, to get the original source code to build without x86_fp80
                        // (which is nonportable anyhow).
 
+var GC_SUPPORT = 0; // Enables GC, see gc.h
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:

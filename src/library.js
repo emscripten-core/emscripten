@@ -2229,6 +2229,9 @@ LibraryManager.library = {
     if (!self.called) {
       STATICTOP = alignMemoryPage(STATICTOP); // make sure we start out aligned
       self.called = true;
+#if GC_SUPPORT
+      _sbrk.DYNAMIC_START = STATICTOP;
+#endif
     }
     var ret = STATICTOP;
     if (bytes != 0) Runtime.staticAlloc(bytes);
