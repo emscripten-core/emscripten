@@ -1964,6 +1964,7 @@ var LibraryGL = {
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
   },
+  glOrthof: 'glOrtho',
 
   glScaled: function(x, y, z) {
     GL.immediate.matrix.lib.mat4.scale(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
