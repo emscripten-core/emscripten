@@ -6186,6 +6186,8 @@ def process(filename):
           printf(".\n");
 
           global = 0;
+
+          return 0;
         }
       '''
       self.do_run(src, '''basic test

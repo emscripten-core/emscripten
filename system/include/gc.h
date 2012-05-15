@@ -13,6 +13,8 @@ void __attribute__((used)) __GC_KEEPALIVE__() {
   static int times = 1;
   void *x = malloc(times);
   free(x);
+  x = calloc(1, times);
+  free(x);
   x = calloc(times, 1);
   free(x);
   times++;

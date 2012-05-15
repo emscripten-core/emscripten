@@ -115,7 +115,7 @@ if (GC_SUPPORT) {
         var freeList = [];
         for (var ptr in GC.sizes) {
           if (!GC.reachable[ptr]) {
-            freeList.push(ptr);
+            freeList.push(parseInt(ptr));
           }
         }
         for (var i = 0; i < freeList.length; i++) {
