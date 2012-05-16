@@ -18,7 +18,7 @@ if (GC_SUPPORT) {
         GC.initted = true;
 #if GENERATING_HTML
         setInterval(function() {
-          GC.maybeGC();
+          GC.maybeCollect();
         }, 1000);
 #else
         // No HTML intervals, so you need to call GC.maybeCollect() or GC.collect() manually
