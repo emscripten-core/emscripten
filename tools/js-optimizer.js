@@ -1163,7 +1163,7 @@ function registerize(ast) {
           curr[2] = ['assign', true, ['name', vars[vars.length-1][0]], vars[vars.length-1][1]];
           return ret;
         } else if (vars.length == 1) {
-          return ['assign', true, ['name', vars[0][0]], vars[0][1]];
+          return ['stat', ['assign', true, ['name', vars[0][0]], vars[0][1]]];
         } else {
           return emptyNode();
         }

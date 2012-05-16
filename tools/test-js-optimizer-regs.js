@@ -180,4 +180,27 @@ function fcntl_open() {
   return 0;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open"]
+function ex() {
+  var __stackBase__ = STACKTOP;
+  STACKTOP += 4;
+  var $e1 = __stackBase__;
+  var $puts = _puts(STRING_TABLE._str17 | 0);
+  var $x41 = $e1 | 0;
+  var $i_04 = 0;
+  while (1) {
+    var $i_04;
+    var $call1 = _printf(STRING_TABLE.__str15 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $i_04, tempInt));
+    ((function() {
+      try {
+        __THREW__ = false;
+        return __Z5magici($i_04);
+      } catch (e) {
+        if (typeof e != "number") throw e;
+        if (ABORT) throw e;
+        __THREW__ = true;
+        return null;
+      }
+    }))();
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex"]

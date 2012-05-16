@@ -174,4 +174,27 @@ function fcntl_open() {
   return 0;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open"]
+function ex() {
+  var r1, r2;
+  r1 = STACKTOP;
+  STACKTOP += 4;
+  r2 = r1;
+  r1 = _puts(STRING_TABLE._str17 | 0);
+  r1 = r2 | 0;
+  r2 = 0;
+  while (1) {
+    r1 = _printf(STRING_TABLE.__str15 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r2, tempInt));
+    ((function() {
+      try {
+        __THREW__ = false;
+        return __Z5magici(r2);
+      } catch (e) {
+        if (typeof e != "number") throw e;
+        if (ABORT) throw e;
+        __THREW__ = true;
+        return null;
+      }
+    }))();
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex"]
