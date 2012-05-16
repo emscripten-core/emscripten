@@ -7330,6 +7330,13 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
+    def test_sdl_ogl_defaultmatrixmode(self):
+      # SDL, OpenGL, textures, immediate mode. Closure for more coverage
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
+
     def test_sdl_ogl_p(self):
       # Immediate mode with pointers
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))

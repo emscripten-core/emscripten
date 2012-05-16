@@ -1513,13 +1513,6 @@ var LibraryGL = {
       Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       GL.immediate.initted = true;
 
-      // No JSON notation for these objects, for closure w/js optimizer
-      this.matrix['m'] = null; // modelview
-      this.matrix['p'] = null; // projection
-      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-        this.matrix['t' + i] = null; // texture
-      }
-
       this.matrixStack['m'] = [];
       this.matrixStack['p'] = [];
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
@@ -1544,7 +1537,6 @@ var LibraryGL = {
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
         GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
       }
-      GL.immediate.currentMatrix = GL.immediate.matrix.lib.mat4.create();
 
       // Buffers for data
       this.tempData = new Float32Array(this.maxElements);
