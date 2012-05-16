@@ -90,18 +90,18 @@ LibraryManager.library = {
 #if FS_LOG
       var inputPath = path;
       function log() {
-        print('FS.analyzePath("' + inputPath + '", ' +
-                                   dontResolveLastLink + ', ' +
-                                   linksVisited + ') => {' +
-              'isRoot: ' + ret.isRoot + ', ' +
-              'exists: ' + ret.exists + ', ' +
-              'error: ' + ret.error + ', ' +
-              'name: "' + ret.name + '", ' +
-              'path: "' + ret.path + '", ' +
-              'object: ' + ret.object + ', ' +
-              'parentExists: ' + ret.parentExists + ', ' +
-              'parentPath: "' + ret.parentPath + '", ' +
-              'parentObject: ' + ret.parentObject + '}');
+        Module['print']('FS.analyzePath("' + inputPath + '", ' +
+                                             dontResolveLastLink + ', ' +
+                                             linksVisited + ') => {' +
+                        'isRoot: ' + ret.isRoot + ', ' +
+                        'exists: ' + ret.exists + ', ' +
+                        'error: ' + ret.error + ', ' +
+                        'name: "' + ret.name + '", ' +
+                        'path: "' + ret.path + '", ' +
+                        'object: ' + ret.object + ', ' +
+                        'parentExists: ' + ret.parentExists + ', ' +
+                        'parentPath: "' + ret.parentPath + '", ' +
+                        'parentObject: ' + ret.parentObject + '}');
       }
 #endif
       path = FS.absolutePath(path);
@@ -177,11 +177,11 @@ LibraryManager.library = {
     // Creates a file system record: file, link, device or folder.
     createObject: function(parent, name, properties, canRead, canWrite) {
 #if FS_LOG
-      print('FS.createObject("' + parent + '", ' +
-                            '"' + name + '", ' +
-                                JSON.stringify(properties) + ', ' +
-                                canRead + ', ' +
-                                canWrite + ')');
+      Module['print']('FS.createObject("' + parent + '", ' +
+                                      '"' + name + '", ' +
+                                          JSON.stringify(properties) + ', ' +
+                                          canRead + ', ' +
+                                          canWrite + ')');
 #endif
       if (!parent) parent = '/';
       if (typeof parent === 'string') parent = FS.findObject(parent);
