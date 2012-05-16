@@ -1220,17 +1220,21 @@ function registerize(ast) {
     }
     // Go through the function's code, assigning 'registers'.
     // The only tricky bit is to keep variables locked on a register through loops,
-    // since they can potentially be returned to. We use a simple approach of
-    // locking the register to the topmost loop.
+    // since they can potentially be returned to. Optimizable variables lock onto
+    // loops that they enter, unoptimizable variables lock in a conservative way
+    // into the topmost loop.
     var varRegs = {}; // maps variables to the register they will use all their life
     var freeRegs = [];
     var nextReg = 1;
     var fullNames = {};
-    var loopRegs = [];
-    var loops = 0;
+    var loopRegs = { 1: [] }; // for each loop nesting level, the list of bound variables
+    var loops = 0; // 0 is toplevel, 1 is first loop, etc
     var saved = 0;
+    var activeOptimizables = {};
+    var optimizableLoops = {};
     function decUse(name) {
       if (!varUses[name]) return false; // no uses left, or not a relevant variable
+      if (optimizables[name]) activeOptimizables[name] = 1;
       var reg = varRegs[name];
       if (!reg) {
         // acquire register
@@ -1246,11 +1250,20 @@ function registerize(ast) {
       varUses[name]--;
       assert(varUses[name] >= 0);
       if (varUses[name] == 0) {
-        if (loops == 0 || optimizables[name]) {
+        if (optimizables[name]) delete activeOptimizables[name];
+        // If we are not in a loop, or we are optimizable and not bound to a loop
+        // (we might have been in one but left it), we can free the register now.
+        if (loops == 0 || (optimizables[name] && !optimizableLoops[name])) {
           // free register
           freeRegs.push(reg);
         } else {
-          loopRegs.push(reg);
+          // when the relevant loop is exited, we will free the register
+          if (optimizables[name]) {
+            if (!loopRegs[loops]) loopRegs[loops] = [];
+            loopRegs[loops].push(reg);
+          } else {
+            loopRegs[1].push(reg);
+          }
         }
       }
       return true;
@@ -1263,14 +1276,21 @@ function registerize(ast) {
         }
       } else if (type in LOOP) {
         loops++;
+        // Active optimizables lock onto this loop, if not locked onto one that encloses this one
+        for (var name in activeOptimizables) {
+          if (!optimizableLoops[name]) {
+            optimizableLoops[name] = loops;
+          }
+        }
       }
     }, function(node, type) {
       if (type in LOOP) {
-        loops--;
-        if (loops == 0 && loopRegs.length > 0) {
-          freeRegs = freeRegs.concat(loopRegs);
-          loopRegs = [];
+        // Free registers that were locked to this loop
+        if (loopRegs[loops]) {
+          freeRegs = freeRegs.concat(loopRegs[loops]);
+          loopRegs[loops] = [];
         }
+        loops--;
       }
     });
     // Add vars at the beginning

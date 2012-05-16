@@ -25,7 +25,7 @@ function test() {
   f(r1());
 }
 function primes() {
-  var r1, r2, r3, r4, r5, r6;
+  var r1, r2, r3, r4, r5, r6, r7;
   r1 = 2;
   r2 = 0;
   $_$2 : while (1) {
@@ -39,26 +39,26 @@ function primes() {
         r6 = 1;
         break $_$4;
       }
-      r4 = (r1 | 0) % (r3 | 0);
-      r5 = (r4 | 0) == 0;
-      if (r5) {
+      r5 = (r1 | 0) % (r3 | 0);
+      r7 = (r5 | 0) == 0;
+      if (r7) {
         r6 = 0;
         break $_$4;
       }
-      r5 = r3 + 1 | 0;
-      r3 = r5;
+      r7 = r3 + 1 | 0;
+      r3 = r7;
     }
-    r5 = r6 + r2 | 0;
-    r3 = r1 + 1 | 0;
-    r4 = (r5 | 0) < 1e5;
-    if (r4) {
-      r1 = r3;
-      r2 = r5;
+    r3 = r6 + r2 | 0;
+    r4 = r1 + 1 | 0;
+    r7 = (r3 | 0) < 1e5;
+    if (r7) {
+      r1 = r4;
+      r2 = r3;
     } else {
       break $_$2;
     }
   }
-  r6 = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r1, tempInt));
+  r2 = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r1, tempInt));
   return 1;
   return null;
 }
