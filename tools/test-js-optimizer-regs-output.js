@@ -76,4 +76,102 @@ function atomic() {
   return 0;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic"]
+function fcntl_open() {
+  var r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17;
+  r1 = STACKTOP;
+  STACKTOP += 84;
+  r2 = r1;
+  r3 = r1 + 72;
+  r4 = r3 | 0;
+  for (r5 = STRING_TABLE.__ZZ4mainE16nonexistent_name | 0, r6 = r4, r7 = r5 + 12; r5 < r7; r5++, r6++) {
+    HEAP8[r6] = HEAP8[r5];
+  }
+  r5 = (r2 + 8 | 0) >> 2;
+  r8 = r2 >> 2;
+  r9 = r3 + 9 | 0;
+  r10 = r3 + 10 | 0;
+  r3 = 0;
+  while (1) {
+    r11 = HEAP32[__ZZ4mainE5modes + (r3 << 2) >> 2];
+    r12 = r11 | 512;
+    r13 = r3 + 97 & 255;
+    r14 = 0;
+    while (1) {
+      r15 = (r14 & 1 | 0) == 0 ? r11 : r12;
+      r16 = (r14 & 2 | 0) == 0 ? r15 : r15 | 2048;
+      r15 = (r14 & 4 | 0) == 0 ? r16 : r16 | 1024;
+      r16 = (r14 & 8 | 0) == 0 ? r15 : r15 | 8;
+      r15 = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = r3, HEAP32[tempInt + 4 >> 2] = r14, tempInt));
+      r15 = _open(STRING_TABLE.__str2 | 0, r16, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = 511, tempInt));
+      r17 = (r15 | 0) != -1 & 1;
+      r15 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r17, tempInt));
+      r17 = ___errno();
+      r15 = HEAP32[r17 >> 2];
+      r17 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r15, tempInt));
+      r15 = _stat(STRING_TABLE.__str2 | 0, r2);
+      r15 = HEAP32[r5] & -512;
+      r17 = _printf(STRING_TABLE.__str4 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r15, tempInt));
+      for (r6 = r8, r7 = r6 + 18; r6 < r7; r6++) {
+        HEAP32[r6] = 0;
+      }
+      r15 = _putchar(10);
+      r15 = ___errno();
+      HEAP32[r15 >> 2] = 0;
+      r15 = _printf(STRING_TABLE.__str6 | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = r3, HEAP32[tempInt + 4 >> 2] = r14, tempInt));
+      r15 = _open(STRING_TABLE.__str7 | 0, r16, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = 511, tempInt));
+      r17 = (r15 | 0) != -1 & 1;
+      r15 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r17, tempInt));
+      r17 = ___errno();
+      r15 = HEAP32[r17 >> 2];
+      r17 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r15, tempInt));
+      r15 = _stat(STRING_TABLE.__str7 | 0, r2);
+      r15 = HEAP32[r5] & -512;
+      r17 = _printf(STRING_TABLE.__str4 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r15, tempInt));
+      for (r6 = r8, r7 = r6 + 18; r6 < r7; r6++) {
+        HEAP32[r6] = 0;
+      }
+      r15 = _putchar(10);
+      r15 = ___errno();
+      HEAP32[r15 >> 2] = 0;
+      HEAP8[r9] = r13;
+      HEAP8[r10] = r14 + 97 & 255;
+      r15 = _printf(STRING_TABLE.__str8 | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = r3, HEAP32[tempInt + 4 >> 2] = r14, tempInt));
+      r15 = _open(r4, r16, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = 511, tempInt));
+      r17 = (r15 | 0) != -1 & 1;
+      r15 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r17, tempInt));
+      r17 = ___errno();
+      r15 = HEAP32[r17 >> 2];
+      r17 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r15, tempInt));
+      r15 = _stat(r4, r2);
+      r15 = HEAP32[r5] & -512;
+      r17 = _printf(STRING_TABLE.__str4 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r15, tempInt));
+      for (r6 = r8, r7 = r6 + 18; r6 < r7; r6++) {
+        HEAP32[r6] = 0;
+      }
+      r16 = _putchar(10);
+      r16 = ___errno();
+      HEAP32[r16 >> 2] = 0;
+      r16 = r14 + 1 | 0;
+      if ((r16 | 0) == 16) {
+        break;
+      }
+      r14 = r16;
+    }
+    r14 = r3 + 1 | 0;
+    if ((r14 | 0) == 3) {
+      break;
+    }
+    r3 = r14;
+  }
+  r3 = _puts(STRING_TABLE._str | 0);
+  r3 = _creat(STRING_TABLE.__str10 | 0, 511);
+  r6 = (r3 | 0) != -1 & 1;
+  r3 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r6, tempInt));
+  r6 = ___errno();
+  r3 = HEAP32[r6 >> 2];
+  r6 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r3, tempInt));
+  STACKTOP = r1;
+  return 0;
+  return null;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open"]

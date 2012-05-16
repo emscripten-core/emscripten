@@ -1231,7 +1231,7 @@ function registerize(ast) {
     var freeRegs = [];
     var nextReg = 1;
     var fullNames = {};
-    var loopRegs = { 1: [] }; // for each loop nesting level, the list of bound variables
+    var loopRegs = {}; // for each loop nesting level, the list of bound variables
     var loops = 0; // 0 is toplevel, 1 is first loop, etc
     var saved = 0;
     var activeOptimizables = {};
@@ -1262,12 +1262,9 @@ function registerize(ast) {
           freeRegs.push(reg);
         } else {
           // when the relevant loop is exited, we will free the register
-          if (optimizables[name]) {
-            if (!loopRegs[loops]) loopRegs[loops] = [];
-            loopRegs[loops].push(reg);
-          } else {
-            loopRegs[1].push(reg);
-          }
+          var releventLoop = optimizables[name] ? (optimizableLoops[name] || 1) : 1;
+          if (!loopRegs[releventLoop]) loopRegs[releventLoop] = [];
+          loopRegs[releventLoop].push(reg);
         }
       }
       return true;

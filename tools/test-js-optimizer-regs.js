@@ -79,4 +79,105 @@ function atomic() {
   return 0;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic"]
+function fcntl_open() {
+  var $1$s2;
+  var $st_mode$s2;
+  var __stackBase__ = STACKTOP;
+  STACKTOP += 84;
+  var $s = __stackBase__;
+  var $nonexistent_name = __stackBase__ + 72;
+  var $0 = $nonexistent_name | 0;
+  for (var $$src = STRING_TABLE.__ZZ4mainE16nonexistent_name | 0, $$dest = $0, $$stop = $$src + 12; $$src < $$stop; $$src++, $$dest++) {
+    HEAP8[$$dest] = HEAP8[$$src];
+  }
+  var $st_mode$s2 = ($s + 8 | 0) >> 2;
+  var $1$s2 = $s >> 2; // critical variable, becomes r8
+  var $arrayidx43 = $nonexistent_name + 9 | 0;
+  var $arrayidx46 = $nonexistent_name + 10 | 0;
+  var $i_04 = 0;
+  while (1) {
+    var $i_04;
+    var $2 = HEAP32[__ZZ4mainE5modes + ($i_04 << 2) >> 2];
+    var $or = $2 | 512;
+    var $conv42 = $i_04 + 97 & 255;
+    var $j_03 = 0;
+    while (1) {
+      var $j_03;
+      var $flags_0 = ($j_03 & 1 | 0) == 0 ? $2 : $or;
+      var $flags_0_or7 = ($j_03 & 2 | 0) == 0 ? $flags_0 : $flags_0 | 2048;
+      var $flags_2 = ($j_03 & 4 | 0) == 0 ? $flags_0_or7 : $flags_0_or7 | 1024;
+      var $flags_2_or17 = ($j_03 & 8 | 0) == 0 ? $flags_2 : $flags_2 | 8;
+      var $call = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = $i_04, HEAP32[tempInt + 4 >> 2] = $j_03, tempInt));
+      var $call19 = _open(STRING_TABLE.__str2 | 0, $flags_2_or17, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = 511, tempInt));
+      var $conv = ($call19 | 0) != -1 & 1;
+      var $call21 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $conv, tempInt));
+      var $call22 = ___errno();
+      var $3 = HEAP32[$call22 >> 2];
+      var $call23 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $3, tempInt));
+      var $call24 = _stat(STRING_TABLE.__str2 | 0, $s);
+      var $and25 = HEAP32[$st_mode$s2] & -512;
+      var $call26 = _printf(STRING_TABLE.__str4 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $and25, tempInt));
+      for (var $$dest = $1$s2, $$stop = $$dest + 18; $$dest < $$stop; $$dest++) {
+        HEAP32[$$dest] = 0;
+      }
+      var $putchar = _putchar(10);
+      var $call28 = ___errno();
+      HEAP32[$call28 >> 2] = 0;
+      var $call29 = _printf(STRING_TABLE.__str6 | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = $i_04, HEAP32[tempInt + 4 >> 2] = $j_03, tempInt));
+      var $call30 = _open(STRING_TABLE.__str7 | 0, $flags_2_or17, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = 511, tempInt));
+      var $conv32 = ($call30 | 0) != -1 & 1;
+      var $call33 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $conv32, tempInt));
+      var $call34 = ___errno();
+      var $5 = HEAP32[$call34 >> 2];
+      var $call35 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $5, tempInt));
+      var $call36 = _stat(STRING_TABLE.__str7 | 0, $s);
+      var $and38 = HEAP32[$st_mode$s2] & -512;
+      var $call39 = _printf(STRING_TABLE.__str4 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $and38, tempInt));
+      for (var $$dest = $1$s2, $$stop = $$dest + 18; $$dest < $$stop; $$dest++) {
+        HEAP32[$$dest] = 0;
+      }
+      var $putchar1 = _putchar(10);
+      var $call41 = ___errno();
+      HEAP32[$call41 >> 2] = 0;
+      HEAP8[$arrayidx43] = $conv42;
+      HEAP8[$arrayidx46] = $j_03 + 97 & 255;
+      var $call47 = _printf(STRING_TABLE.__str8 | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = $i_04, HEAP32[tempInt + 4 >> 2] = $j_03, tempInt));
+      var $call48 = _open($0, $flags_2_or17, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = 511, tempInt));
+      var $conv50 = ($call48 | 0) != -1 & 1;
+      var $call51 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $conv50, tempInt));
+      var $call52 = ___errno();
+      var $7 = HEAP32[$call52 >> 2];
+      var $call53 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $7, tempInt));
+      var $call55 = _stat($0, $s);
+      var $and57 = HEAP32[$st_mode$s2] & -512;
+      var $call58 = _printf(STRING_TABLE.__str4 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $and57, tempInt));
+      for (var $$dest = $1$s2, $$stop = $$dest + 18; $$dest < $$stop; $$dest++) {
+        HEAP32[$$dest] = 0;
+      }
+      var $putchar2 = _putchar(10);
+      var $call60 = ___errno();
+      HEAP32[$call60 >> 2] = 0;
+      var $inc = $j_03 + 1 | 0;
+      if (($inc | 0) == 16) {
+        break;
+      }
+      var $j_03 = $inc;
+    }
+    var $inc62 = $i_04 + 1 | 0;
+    if (($inc62 | 0) == 3) {
+      break;
+    }
+    var $i_04 = $inc62;
+  }
+  var $puts = _puts(STRING_TABLE._str | 0);
+  var $call65 = _creat(STRING_TABLE.__str10 | 0, 511);
+  var $conv67 = ($call65 | 0) != -1 & 1;
+  var $call68 = _printf(STRING_TABLE.__str1 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $conv67, tempInt));
+  var $call69 = ___errno();
+  var $9 = HEAP32[$call69 >> 2];
+  var $call70 = _printf(STRING_TABLE.__str3 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $9, tempInt));
+  STACKTOP = __stackBase__;
+  return 0;
+  return null;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open"]
