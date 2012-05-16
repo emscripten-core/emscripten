@@ -1223,6 +1223,10 @@ function registerize(ast) {
     // since they can potentially be returned to. Optimizable variables lock onto
     // loops that they enter, unoptimizable variables lock in a conservative way
     // into the topmost loop.
+    // Note that we cannot lock onto a variable in a loop if it was used and free'd
+    // before! (then they could overwrite us in the early part of the loop). For now
+    // we just use a fresh register to make sure we avoid this, but it could be
+    // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
     var freeRegs = [];
     var nextReg = 1;
@@ -1238,7 +1242,7 @@ function registerize(ast) {
       var reg = varRegs[name];
       if (!reg) {
         // acquire register
-        if (freeRegs.length > 0) {
+        if (optimizables[name] && freeRegs.length > 0) {
           reg = freeRegs.pop();
           saved++;
         } else {
@@ -1301,7 +1305,7 @@ function registerize(ast) {
       }
       getStatements(fun).unshift(['var', vars]);
     }
-    printErr(fun[1] + ': saved ' + saved + ' vars through registerization');
+    printErr(fun[1] + ': saved ' + saved + ' / ' + (saved + nextReg - 1) + ' vars through registerization'); // not totally accurate
   });
 }
 
