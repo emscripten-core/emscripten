@@ -119,6 +119,7 @@ load('utility.js');
 var FUNCTION = set('defun', 'function');
 var LOOP = set('do', 'while', 'for');
 var LOOP_FLOW = set('break', 'continue');
+var ASSIGN_OR_ALTER = set('assign', 'unary-postfix', 'unary-prefix');
 
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
@@ -1141,20 +1142,29 @@ function loopOptimizer(ast) {
 }
 
 // Very simple 'registerization', coalescing of variables into a smaller number.
-function registerize(ast, conservative) {
+function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     // Find the # of uses of each variable. The definition is considered a 'use'
     // First, find all the var definitions
     var varUses = {};
+    var varAssigns = {};
     traverse(fun, function(node, type) {
       if (type == 'var') {
         node[1].forEach(function(arg) {
           var name = arg[0];
-          if (!varUses[name]) { // may have multiple var definitions
-            varUses[name] = 0;
-          }
+          if (!varUses[name]) varUses[name] = 0; // may have multiple var definitions
           varUses[name]++;
+          if (arg[1]) {
+            if (!varAssigns[name]) varAssigns[name] = 0;
+            varAssigns[name]++;
+          }
         });
+      } else if (type in ASSIGN_OR_ALTER) {
+        if (node[2] && node[2][0] == 'name') {
+          var name = node[2][1];
+          if (!varAssigns[name]) varAssigns[name] = 0;
+          varAssigns[name]++;
+        }
       }
     });
     // Find uses of those variables
