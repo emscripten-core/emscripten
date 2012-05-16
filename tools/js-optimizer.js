@@ -120,6 +120,7 @@ var FUNCTION = set('defun', 'function');
 var LOOP = set('do', 'while', 'for');
 var LOOP_FLOW = set('break', 'continue');
 var ASSIGN_OR_ALTER = set('assign', 'unary-postfix', 'unary-prefix');
+var CONTROL_FLOW = set('do', 'while', 'for', 'if', 'switch');
 
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
@@ -1169,26 +1170,54 @@ function registerize(ast) {
       }
     });
     vacuum(fun);
-    // Find the # of uses of each variable
+    // Find the # of uses of each variable.
+    // While doing so, check if all a variable's uses are dominated in a simple
+    // way by a simple assign, if so, then we can assign its register to it
+    // just for its definition to its last use, and not to the entire toplevel loop,
+    // we call such variables "optimizable"
     var varUses = {};
-    var varAssigns = {};
+    var level = 1;
+    var levelDominations = {};
+    var varLevels = {};
+    var possibles = {};
+    var unoptimizables = {};
     traverse(fun, function(node, type) {
       if (type == 'name') {
         var name = node[1];
         if (localVars[name]) {
           if (!varUses[name]) varUses[name] = 0;
           varUses[name]++;
+          if (possibles[name] && !varLevels[name]) unoptimizables[name] = 1; // used outside of simple domination
         }
-      } else if (type in ASSIGN_OR_ALTER) {
+      } else if (type == 'assign' && typeof node[1] != 'string') {
         if (node[2] && node[2][0] == 'name') {
           var name = node[2][1];
-          if (localVars[name]) {
-            if (!varAssigns[name]) varAssigns[name] = 0;
-            varAssigns[name]++;
+          // if local and not yet used, this might be optimizable if we dominate
+          // all other uses
+          if (localVars[name] && !varUses[name] && !varLevels[name]) {
+            possibles[name] = 1;
+            varLevels[name] = level;
+            if (!levelDominations[level]) levelDominations[level] = {};
+            levelDominations[level][name] = 1;
           }
         }
+      } else if (type in CONTROL_FLOW) {
+        level++;
+      }
+    }, function(node, type) {
+      if (type in CONTROL_FLOW) {
+        // Invalidate all dominating on this level, further users make it unoptimizable
+        for (var name in levelDominations[level]) {
+          varLevels[name] = 0;
+        }
+        levelDominations[level] = null;
+        level--;
       }
     });
+    var optimizables = {};
+    for (var possible in possibles) {
+      if (!unoptimizables[possible]) optimizables[possible] = 1;
+    }
     // Go through the function's code, assigning 'registers'.
     // The only tricky bit is to keep variables locked on a register through loops,
     // since they can potentially be returned to. We use a simple approach of
@@ -1217,7 +1246,7 @@ function registerize(ast) {
       varUses[name]--;
       assert(varUses[name] >= 0);
       if (varUses[name] == 0) {
-        if (loops == 0) {
+        if (loops == 0 || optimizables[name]) {
           // free register
           freeRegs.push(reg);
         } else {

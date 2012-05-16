@@ -1,7 +1,7 @@
 function test() {
   var i = 0;
   f(i);
-  i++;
+  i+=1;
   var j = i + 2;
   g(i, j);
   f(i);
