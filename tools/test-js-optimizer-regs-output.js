@@ -64,15 +64,15 @@ function primes() {
 }
 function atomic() {
   var r1, r2, r3, r4;
-  r2 = STACKTOP;
+  r1 = STACKTOP;
   STACKTOP += 4;
-  r1 = r2 >> 2;
-  HEAP32[r1] = 10;
-  r3 = (tempValue = HEAP32[r1], HEAP32[r1] == 10 && (HEAP32[r1] = 7), tempValue);
+  r2 = r1 >> 2;
+  HEAP32[r2] = 10;
+  r3 = (tempValue = HEAP32[r2], HEAP32[r2] == 10 && (HEAP32[r2] = 7), tempValue);
   r4 = (r3 | 0) == 10 & 1;
-  r3 = HEAP32[r1];
-  r1 = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = r3, HEAP32[tempInt + 4 >> 2] = r4, tempInt));
-  STACKTOP = r2;
+  r3 = HEAP32[r2];
+  r2 = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = r3, HEAP32[tempInt + 4 >> 2] = r4, tempInt));
+  STACKTOP = r1;
   return 0;
   return null;
 }

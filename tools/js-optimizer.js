@@ -1144,35 +1144,48 @@ function loopOptimizer(ast) {
 // Very simple 'registerization', coalescing of variables into a smaller number.
 function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
-    // Find the # of uses of each variable. The definition is considered a 'use'
-    // First, find all the var definitions
-    var varUses = {};
-    var varAssigns = {};
+    // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
+    // We also mark local variables - i.e., having a var definition
+    var localVars = {};
     traverse(fun, function(node, type) {
       if (type == 'var') {
-        node[1].forEach(function(arg) {
-          var name = arg[0];
-          if (!varUses[name]) varUses[name] = 0; // may have multiple var definitions
-          varUses[name]++;
-          if (arg[1]) {
-            if (!varAssigns[name]) varAssigns[name] = 0;
-            varAssigns[name]++;
+        node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
+        var vars = node[1].filter(function(varr) { return varr[1] });
+        if (vars.length > 1) {
+          var ret = ['stat', []];
+          var curr = ret[1];
+          for (var i = 0; i < vars.length-1; i++) {
+            curr[0] = 'seq';
+            curr[1] = ['assign', true, ['name', vars[i][0]], vars[i][1]];
+            if (i != vars.length-2) curr = curr[2] = [];
           }
-        });
-      } else if (type in ASSIGN_OR_ALTER) {
-        if (node[2] && node[2][0] == 'name') {
-          var name = node[2][1];
-          if (!varAssigns[name]) varAssigns[name] = 0;
-          varAssigns[name]++;
+          curr[2] = ['assign', true, ['name', vars[vars.length-1][0]], vars[vars.length-1][1]];
+          return ret;
+        } else if (vars.length == 1) {
+          return ['assign', true, ['name', vars[0][0]], vars[0][1]];
+        } else {
+          return emptyNode();
         }
       }
     });
-    // Find uses of those variables
+    vacuum(fun);
+    // Find the # of uses of each variable
+    var varUses = {};
+    var varAssigns = {};
     traverse(fun, function(node, type) {
       if (type == 'name') {
         var name = node[1];
-        if (varUses[name]) {
+        if (localVars[name]) {
+          if (!varUses[name]) varUses[name] = 0;
           varUses[name]++;
+        }
+      } else if (type in ASSIGN_OR_ALTER) {
+        if (node[2] && node[2][0] == 'name') {
+          var name = node[2][1];
+          if (localVars[name]) {
+            if (!varAssigns[name]) varAssigns[name] = 0;
+            varAssigns[name]++;
+          }
         }
       }
     });
@@ -1214,14 +1227,7 @@ function registerize(ast) {
       return true;
     }
     traverse(fun, function(node, type) { // XXX we rely on traversal order being the same as execution order here
-      if (type == 'var') {
-        node[1].forEach(function(arg) {
-          var name = arg[0];
-          if (decUse(name)) {
-            arg[0] = fullNames[varRegs[name]];
-          }
-        });
-      } else if (type == 'name') {
+      if (type == 'name') {
         var name = node[1];
         if (decUse(name)) {
           node[1] = fullNames[varRegs[name]];
@@ -1238,28 +1244,6 @@ function registerize(ast) {
         }
       }
     });
-    // Remove all vars
-    traverse(fun, function(node, type) {
-      if (type == 'var') {
-        var vars = node[1].filter(function(varr) { return varr[1] });
-        if (vars.length > 1) {
-          var ret = ['stat', []];
-          var curr = ret[1];
-          for (var i = 0; i < vars.length-1; i++) {
-            curr[0] = 'seq';
-            curr[1] = ['assign', true, ['name', vars[i][0]], vars[i][1]];
-            if (i != vars.length-2) curr = curr[2] = [];
-          }
-          curr[2] = ['assign', true, ['name', vars[vars.length-1][0]], vars[vars.length-1][1]];
-          return ret;
-        } else if (vars.length == 1) {
-          return ['assign', true, ['name', vars[0][0]], vars[0][1]];
-        } else {
-          return emptyNode();
-        }
-      }
-    });
-    vacuum(fun);
     // Add vars at the beginning
     if (nextReg > 1) {
       var vars = [];
