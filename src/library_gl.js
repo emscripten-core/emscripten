@@ -1118,6 +1118,8 @@ var LibraryGL = {
           {{{ makeSetValue('params', '0', '0', 'float') }}};
         } else if (pname == 0x0B63) { // GL_FOG_START
           {{{ makeSetValue('params', '0', '0', 'float') }}};
+        } else if (pname == 0x0B64) { // GL_FOG_END
+          {{{ makeSetValue('params', '0', '0', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
