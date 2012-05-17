@@ -133,6 +133,11 @@ This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   '''
   exit(0)
+elif sys.argv[1] == '-v':
+  print '''Configured with: --enable-languages=c,c++ --with-system-zlib --enable-threads=posix --enable-nls
+emcc version 2.0
+  '''
+  exit(0)
 elif sys.argv[1] == '--help':
   this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
 
