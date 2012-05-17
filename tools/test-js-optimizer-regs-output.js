@@ -197,4 +197,32 @@ function ex() {
     }))();
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex"]
+function switchey(x) {
+  var r1, r2, r3, r4, r5, r6, r7, r8;
+  r1 = 5;
+  while (1) {
+    switch (x = f(x, r1)) {
+     case 1:
+      g(r1);
+      r2 = x + 1;
+      x--;
+      break;
+     case 2:
+      g(r1 * 2);
+      r3 = x + 22;
+      r4 = r3 + 5;
+      x -= 20;
+      break;
+     default:
+      r5 = x + 22;
+      r6 = r3 + 5;
+      ch(r5, r6 * r3);
+      throw 99;
+    }
+  }
+  r7 = x + 1;
+  p(r1, r7);
+  r8 = x + 2;
+  pp(r8);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex", "switchey"]

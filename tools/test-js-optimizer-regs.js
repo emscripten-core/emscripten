@@ -203,4 +203,31 @@ function ex() {
     }))();
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex"]
+function switchey(x) {
+  var a = 5;
+  while (1) {
+    switch (x = f(x, a)) {
+      case 1:
+        g(a);
+        var b = x+1;
+        x--;
+        break;
+      case 2:
+        g(a*2);
+        var c = x+22;
+        var d = c+5;
+        x -= 20;
+        break;
+      default:
+        var c1 = x+22;
+        var d2 = c+5;
+        ch(c1, d2*c);
+        throw 99;
+    }
+  }
+  var aa = x+1;
+  p(a, aa);
+  var aaa = x+2;
+  pp(aaa);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex", "switchey"]

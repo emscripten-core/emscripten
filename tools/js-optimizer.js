@@ -1143,11 +1143,17 @@ function loopOptimizer(ast) {
 }
 
 // Very simple 'registerization', coalescing of variables into a smaller number.
+// We do not optimize when there are switches, so this pass only makes sense with
+// relooping.
+// TODO: Consider how this fits in with the rest of the optimization toolchain. Do
+//       we still need the eliminator? Closure? And in what order? Perhaps just
+//       closure simple?
 function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
+    var hasSwitch = false; // we cannot optimize variables if there is a switch
     traverse(fun, function(node, type) {
       if (type == 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
@@ -1167,6 +1173,8 @@ function registerize(ast) {
         } else {
           return emptyNode();
         }
+      } else if (type == 'switch') {
+        hasSwitch = true;
       }
     });
     vacuum(fun);
@@ -1215,8 +1223,10 @@ function registerize(ast) {
       }
     });
     var optimizables = {};
-    for (var possible in possibles) {
-      if (!unoptimizables[possible]) optimizables[possible] = 1;
+    if (!hasSwitch) {
+      for (var possible in possibles) {
+        if (!unoptimizables[possible]) optimizables[possible] = 1;
+      }
     }
     // Go through the function's code, assigning 'registers'.
     // The only tricky bit is to keep variables locked on a register through loops,
