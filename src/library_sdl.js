@@ -293,13 +293,6 @@ var LibrarySDL = {
               pageX: event.pageX,
               pageY: event.pageY
             };
-          } else if (event.type == 'mousedown') {
-            // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
-            // and DOM buttons are 0-2, so this means that the below formula is
-            // correct.
-            SDL.buttonState |= 1 << event.button;
-          } else if (event.type == 'mouseup') {
-            SDL.buttonState = 0;
           }
           SDL.events.push(event);
           if (SDL.events.length >= 10000) {
@@ -357,7 +350,17 @@ var LibrarySDL = {
 
           break;
         }
-        case 'mousedown': case 'mouseup': case 'mousemove': {
+        case 'mousedown': case 'mouseup':
+          if (event.type == 'mousedown') {
+            // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
+            // and DOM buttons are 0-2, so this means that the below formula is
+            // correct.
+            SDL.buttonState |= 1 << event.button;
+          } else if (event.type == 'mouseup') {
+            SDL.buttonState = 0;
+          }
+          // fall through
+        case 'mousemove': {
           var x = event.pageX - Module['canvas'].offsetLeft;
           var y = event.pageY - Module['canvas'].offsetTop;
           if (event.type != 'mousemove') {
