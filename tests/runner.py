@@ -6786,6 +6786,25 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
       self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_warn_undefined(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+
+        extern "C" {
+          void something();
+        }
+
+        int main() {
+          something();
+          return 0;
+        }
+      ''')
+      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE).communicate()
+      self.assertContained('Unresolved symbol: _something\n', output[1])
+
+      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()
+      self.assertNotContained('Unresolved symbol: _something\n', output[1])
+
     def test_prepost(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>

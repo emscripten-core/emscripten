@@ -218,6 +218,14 @@ var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. I
 
 var GC_SUPPORT = 1; // Enables GC, see gc.h (this does not add overhead, so it is on by default)
 
+var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined symbols that
+                                   // are not resolved by the library_*.js files. We by default
+                                   // do not warn because (1) it is normal in large projects to
+                                   // not implement everything, when you know what is not
+                                   // going to actually be called (and don't want to mess with
+                                   // the existing buildsystem), and (2) functions might be
+                                   // implemented later on, say in --pre-js
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:
