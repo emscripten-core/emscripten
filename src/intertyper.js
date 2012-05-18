@@ -350,6 +350,10 @@ function intertyper(data, sidePass, baseLineNums) {
             return 'FuncHeader';
           if (tokensLength >= 1 && token0Text == '}')
             return 'FuncEnd';
+          if (token0Text == 'module' && token1Text == 'asm') {
+            warn('Ignoring module asm: ' + item.tokens[2].text);
+            return '/dev/null';
+          }
         }
         if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
           return 'Call';
