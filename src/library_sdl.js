@@ -71,6 +71,7 @@ var LibrarySDL = {
       188: 44, // comma
       190: 46, // period
       191: 47, // slash (/)
+      192: 96, // backtick/backquote (`)
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
