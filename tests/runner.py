@@ -6305,6 +6305,10 @@ This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''', output[0].replace('\r', ''), output[1].replace('\r', ''))
 
+        # -v, without input files
+        output = Popen(['python', compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+        self.assertContained('''clang version''', output[1].replace('\r', ''), output[1].replace('\r', ''))
+
         # --help
         output = Popen(['python', compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''%s [options] file...
