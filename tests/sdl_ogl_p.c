@@ -58,10 +58,12 @@ int main(int argc, char *argv[])
     glViewport( 0, 0, 640, 480 );
 
     glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
+    GLfloat matrixData[] = { 2.0/640,        0,  0,  0,
+                                   0, -2.0/480,  0,  0,
+                                   0,        0, -1,  0,
+                                  -1,        1,  0,  1 };
+    glLoadMatrixf(matrixData); // test loadmatrix
 
-    glOrtho( 0, 640, 480, 0, -1, 1 );
-    
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
     

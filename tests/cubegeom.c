@@ -29,6 +29,20 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
+void verify() {
+  int width = 640, height = 480;
+  unsigned char *data = (unsigned char*)malloc(width*height*4);
+  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+  int sum = 0;
+  for (int x = 0; x < width*height*4; x++) {
+    if (x % 4 != 3) sum += x * data[x];
+  }
+#if EMSCRIPTEN
+  int result = sum;
+  REPORT_RESULT();
+#endif
+}
+
 int main(int argc, char *argv[])
 {
     SDL_Surface *screen;
@@ -87,15 +101,16 @@ int main(int argc, char *argv[])
     glLoadIdentity();
     // original: glFrustum(-0.6435469817188064, 0.6435469817188064 ,-0.48266022190470925, 0.48266022190470925 ,0.5400000214576721, 2048);
     glFrustum(-0.6435469817188064, 0.1435469817188064 ,-0.48266022190470925, 0.88266022190470925 ,0.5400000214576721, 2048);
+    glRotatef(-30, 1, 1, 1);
+    //GLfloat pm[] = { 1.372136116027832, 0, 0, 0, 0, 0.7910231351852417, 0, 0, -0.6352481842041016, 0.29297152161598206, -1.0005275011062622, -1, 0, 0, -1.080284833908081, 0 };
+    //glLoadMatrixf(pm);
+
     glMatrixMode(GL_MODELVIEW);
     GLfloat matrixData[] = { -1, 0, 0, 0,
                               0, 0,-1, 0,
                               0, 1, 0, 0,
                               0, 0, 0, 1 };
     glLoadMatrixf(matrixData);
-    glRotated(0, 0, 1, 0);
-    glRotated(0,-1, 0, 0);
-    glRotated(0, 0, 0,-1);
     //glTranslated(-512,-512,-527); // XXX this should be uncommented, but if it is then nothing is shown
 
     glEnable(GL_CULL_FACE);
@@ -186,7 +201,7 @@ int main(int argc, char *argv[])
     // sauer vertex data is apparently 0-12: V3F, 12: N1B, 16-24: T2F, 24-28: T2S, 28-32: C4B
     glVertexPointer(3, GL_FLOAT, 32, (void*)0); // all these apply to the ARRAY_BUFFER that is bound
     glTexCoordPointer(2, GL_FLOAT, 32, (void*)16);
-    glClientActiveTexture(GL_TEXTURE1);
+    glClientActiveTexture(GL_TEXTURE1); // XXX seems to be ignored in native build
     glTexCoordPointer(2, GL_SHORT, 32, (void*)24);
     glClientActiveTexture(GL_TEXTURE0); // likely not needed, it is a cleanup
     glNormalPointer(GL_BYTE, 32, (void*)12);
@@ -204,8 +219,8 @@ int main(int argc, char *argv[])
                                "void main(void)\n"
                                "{\n"
                                "    gl_Position = ftransform();\n"
-                               "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy/100 + texgenscroll.xy;\n" // added /100 here
-                               "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy/100 * 3.051851e-05;\n"
+                               "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy/100.0 + texgenscroll.xy;\n" // added /100 here
+                               "    gl_TexCoord[1].xy = gl_MultiTexCoord1.xy/100.0 * 3.051851e-05;\n"
                                "}\n";
     const char *fragmentShader = "uniform vec4 colorparams;\n"
                                  "uniform sampler2D diffusemap, lightmap;\n"
@@ -267,9 +282,11 @@ int main(int argc, char *argv[])
     // END
 
     SDL_GL_SwapBuffers();
-    
+
+    verify();
+   
 #if !EMSCRIPTEN
-    SDL_Delay(3000);
+    SDL_Delay(1500);
 #endif
 
     SDL_Quit();

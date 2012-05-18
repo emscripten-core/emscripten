@@ -9,7 +9,7 @@ var VAR_NATIVIZED = 'nativized';
 var VAR_EMULATED = 'emulated';
 
 var ENTRY_IDENT = toNiceIdent('%0');
-var ENTRY_IDENTS = set(toNiceIdent('%0'), toNiceIdent('%1'));
+var ENTRY_IDENT_IDS = set(0, 1); // XXX
 
 function recomputeLines(func) {
   func.lines = func.labels.map(function(label) { return label.lines }).reduce(concatenator, []);
@@ -1180,7 +1180,9 @@ function analyzer(data, sidePass) {
         func.labelIdsInverse = {};
         func.labelIds[toNiceIdent('%0')] = 0;
         func.labelIdsInverse[0] = toNiceIdent('%0');
-        func.labelIdCounter = 1;
+        func.labelIds[toNiceIdent('%1')] = 1;
+        func.labelIdsInverse[1] = toNiceIdent('%1');
+        func.labelIdCounter = 2;
         func.labels.forEach(function(label) {
           func.labelIds[label.ident] = func.labelIdCounter++;
           func.labelIdsInverse[func.labelIdCounter-1] = label.ident;
@@ -1206,6 +1208,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 phi.params[i].label = func.labelIds[phi.params[i].label];
+                if (!phi.params[i].label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
               }
             }
           });
@@ -1221,9 +1224,10 @@ function analyzer(data, sidePass) {
         // So we need to handle that in a special way here.
         function getActualLabelId(labelId) {
           if (func.labelsDict[labelId]) return labelId;
-          if (labelId in ENTRY_IDENTS) {
-            assert(func.labelsDict[ENTRY_IDENT]);
-            return ENTRY_IDENT;
+          if (labelId in ENTRY_IDENT_IDS) {
+            labelId = func.labelIds[ENTRY_IDENT];
+            assert(func.labelsDict[labelId]);
+            return labelId;
           }
           return null;
         }
@@ -1274,88 +1278,44 @@ function analyzer(data, sidePass) {
           recomputeLines(func);
         }
 
-        if (!MICRO_OPTS) {
-          // 'Emulate' phis, by doing an if where the phi appears in the .ll. For this
-          // we need __lastLabel__.
-          func.needsLastLabel = false;
-          func.labels.forEach(function(label) {
-            var phis = [];
-            label.lines.forEach(function(phi) {
-              if (phi.intertype == 'phi') {
-                for (var i = 0; i < phi.params.length; i++) {
-                  var sourceLabelId = getActualLabelId(phi.params[i].label);
-                  if (sourceLabelId) {
-                    var sourceLabel = func.labelsDict[sourceLabelId];
-                    var lastLine = sourceLabel.lines.slice(-1)[0];
-                    assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
-                    lastLine.currLabelId = sourceLabelId;
-                  }
-                }
-                phis.push(phi);
-                func.needsLastLabel = true;
-              }
-            });
+        // Properly implement phis, by pushing them back into the branch
+        // that leads to here. We will only have the |var| definition in this location.
 
-            if (phis.length >= 2) {
-              // Multiple phis have the semantics that they all occur 'in parallel', i.e., changes to
-              // a variable that is the result of a phi should *not* affect the other results. We must
-              // therefore be careful!
-              phis[phis.length-1].postSet = '; /* post-phi: */';
-              for (var i = 0; i < phis.length-1; i++) {
-                var ident = phis[i].assignTo;
-                var phid = ident+'$phi'
-                phis[phis.length-1].postSet += ident + '=' + phid + ';';
-                phis[i].assignTo = phid;
-                func.variables[phid] = {
-                  ident: phid,
-                  type: func.variables[ident].type,
-                  origin: func.variables[ident].origin,
-                  lineNum: func.variables[ident].lineNum,
-                  uses: 1,
-                  impl: VAR_EMULATED
-                };
+        // First, push phis back
+        func.labels.forEach(function(label) {
+          label.lines.forEach(function(phi) {
+            if (phi.intertype == 'phi') {
+              for (var i = 0; i < phi.params.length; i++) {
+                var param = phi.params[i];
+                if (!param.label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
+                var sourceLabelId = getActualLabelId(param.label);
+                if (sourceLabelId) {
+                  var sourceLabel = func.labelsDict[sourceLabelId];
+                  var lastLine = sourceLabel.lines.slice(-1)[0];
+                  assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
+                  if (!lastLine.phi) {
+                    lastLine.phi = true;
+                    assert(!lastLine.dependent);
+                    lastLine.dependent = {
+                      intertype: 'phiassigns',
+                      params: []
+                    };
+                  };
+                  lastLine.dependent.params.push({
+                    intertype: 'phiassign',
+                    ident: phi.assignTo,
+                    value: param.value,
+                    targetLabel: label.ident
+                  });
+                }
               }
+              // The assign to phi is now just a var
+              phi.intertype = 'var';
+              phi.ident = phi.assignTo;
+              phi.assignTo = null;
             }
           });
-        } else {
-          // MICRO_OPTS == 1: Properly implement phis, by pushing them back into the branch
-          // that leads to here. We will only have the |var| definition in this location.
-
-          // First, push phis back
-          func.labels.forEach(function(label) {
-            label.lines.forEach(function(phi) {
-              if (phi.intertype == 'phi') {
-                for (var i = 0; i < phi.params.length; i++) {
-                  var param = phi.params[i];
-                  var sourceLabelId = getActualLabelId(param.label);
-                  if (sourceLabelId) {
-                    var sourceLabel = func.labelsDict[sourceLabelId];
-                    var lastLine = sourceLabel.lines.slice(-1)[0];
-                    assert(lastLine.intertype in LLVM.PHI_REACHERS, 'Only some can lead to labels with phis:' + [func.ident, label.ident, lastLine.intertype]);
-                    if (!lastLine.phi) {
-                      lastLine.phi = true;
-                      assert(!lastLine.dependent);
-                      lastLine.dependent = {
-                        intertype: 'phiassigns',
-                        params: []
-                      };
-                    };
-                    lastLine.dependent.params.push({
-                      intertype: 'phiassign',
-                      ident: phi.assignTo,
-                      value: param.value,
-                      targetLabel: label.ident
-                    });
-                  }
-                }
-                // The assign to phi is now just a var
-                phi.intertype = 'var';
-                phi.ident = phi.assignTo;
-                phi.assignTo = null;
-              }
-            });
-          });
-        }
+        });
       });
       this.forwardItem(item, 'StackAnalyzer');
     }

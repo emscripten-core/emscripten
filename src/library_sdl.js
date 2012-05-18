@@ -1,79 +1,7 @@
 //"use strict";
 
-// To use emscripten's SDL library here, you need to define
-// Module.canvas.
-//
-// More specifically, our SDL implementation will look for
-// Module.canvas. You should fill it using something like
-//
-//      function onLoad() {
-//        // Pass canvas and context to the generated code
-//        Module.canvas = document.getElementById('canvas');
-//      }
-//
-// Note that this must be called during onload, since you will
-// only be able to access the canvas element in the page after
-// it loads. You will likely also want to disable running by
-// default, with something like
-//
-//      var Module = {
-//        noInitialRun: true
-//      };
-//
-// which is defined BEFORE you load the compiled code.
-
-// The test_emcc test in the tests/runner.py will test this
-// in its last phase, where it generates HTML. You can see
-// a concrete example there. The HTML source is in src/shell.html.
-// Here is a more comprehensive example:
-
-/*
-<html>
-  <head>
-    <title>Demo</title>
-    <script type='text/javascript'>
-      var Module = {
-        noInitialRun: true
-      };
-
-      // implement print
-      var print = function(text) {
-        var element = document.getElementById('output')
-        element.innerHTML = text.replace('\n', '<br>', 'g') + element.innerHTML;
-      }
-    </script>
-    <script src='doom.ccsimple.js' type='text/javascript'></script>
-    <script type='text/javascript'>
-      function onLoad() {
-        // Pass canvas and context to the generated code, and do the actual run() here
-        Module.canvas = document.getElementById('canvas');
-        Module.run();
-      }
-    </script>
-  <body onload='onLoad()' style='background-color: black; color: white'>
-    <center>
-      <canvas id='canvas' width='320' height='200'></canvas>
-    </center>
-    <div id='output'></div>
-  </body>
-</html>
-*/
-
-// Other stuff to take into account:
-//
-//  * Make sure alpha values are proper in your input. If they are all 0, everything will be transparent!
-//
-//  * Your code should not write a 32-bit value and expect that to set an RGBA pixel.
-//    The reason is that that data will be read as 8-bit values, and according to the
-//    load-store consistency assumption, it should be written that way (see docs/paper.pdf).
-//    Instead, do something like        *ptr++ = R; *ptr++ = G; *ptr++ = B;
-//
-//  * A normal C++ main loop with SDL_Delay will not work in JavaScript - there is no way
-//    to wait for a short time without locking up the web page entirely. The simplest
-//    solution here is to have a singleIteration() function which is a single loop
-//    iteration, and from JS to do something like      setInterval(_singleIteration, 1/30)
-//
-//  * SDL_Quit does nothing.
+// See browser tests for examples (tests/runner.py, search for sdl_). Run with
+//    python tests/runner.py browser
 
 var LibrarySDL = {
   $SDL__deps: ['$FS', '$Browser'],
@@ -92,17 +20,15 @@ var LibrarySDL = {
     fonts: [null],
 
     keyboardState: null,
+    shiftKey: false,
+    ctrlKey: false,
+    altKey: false,
+
     startTime: null,
     mouseX: 0,
     mouseY: 0,
 
-    DOMEventToSDLEvent: {
-      'keydown': 0x300,
-      'keyup': 0x301,
-      'mousedown': 0x401,
-      'mouseup': 0x402,
-      'mousemove': 0x400
-    },
+    DOMEventToSDLEvent: {},
 
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       38:  1106, // up arrow
@@ -141,9 +67,13 @@ var LibrarySDL = {
       121: 67 | 1<<10, // F10
       122: 68 | 1<<10, // F11
       123: 69 | 1<<10, // F12
+
+      188: 44, // comma
+      190: 46, // period
+      191: 47, // slash (/)
     },
 
-    scanCodes: { // SDL keycode ==> SDL scancode
+    scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
       97: 4, // A
       98: 5,
       99: 6,
@@ -170,6 +100,9 @@ var LibrarySDL = {
       120: 27,
       121: 28,
       122: 29, // Z
+      44: 54, // comma
+      46: 55, // period
+      47: 56, // slash
       49: 30, // 1
       50: 31,
       51: 32,
@@ -185,7 +118,6 @@ var LibrarySDL = {
       27: 41, // escape
       32: 44, // space
       92: 49, // backslash
-      47: 56, // slash
       305: 224, // ctrl
       308: 226, // alt
     },
@@ -319,10 +251,7 @@ var LibrarySDL = {
       } else {
         canvas = Module['canvas'];
       }
-      var ctx = Browser.createContext(canvas, useWebGL);
-      if (usePageCanvas) {
-        Module.ctx = ctx;
-      }
+      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas);
       SDL.surfaces[surf] = {
         width: width,
         height: height,
@@ -349,8 +278,25 @@ var LibrarySDL = {
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'mousemove':
+        case 'mousemove':
+          // workaround for firefox bug 750111
+          event['movementX'] = event['mozMovementX'];
+          event['movementY'] = event['mozMovementY'];
+          // fall through
+        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll':
+          if (event.type == 'DOMMouseScroll') {
+            event = {
+              type: 'mousedown',
+              button: event.detail > 0 ? 4 : 3,
+              pageX: event.pageX,
+              pageY: event.pageY
+            };
+          }
           SDL.events.push(event);
+          if (SDL.events.length >= 10000) {
+            Module.printErr('SDL event queue full, dropping earliest event');
+            SDL.events.shift();
+          }
           if ((event.keyCode >= 37 && event.keyCode <= 40) || // arrow keys
               event.keyCode == 32 || // space
               event.keyCode == 33 || event.keyCode == 34) { // page up/down
@@ -358,7 +304,6 @@ var LibrarySDL = {
           }
           break;
       }
-      //event.preventDefault();
       return false;
     },
     
@@ -393,9 +338,13 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
-          //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
 
           {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
+
+          SDL.shiftKey = event.shiftKey;
+          SDL.ctrlKey = event.ctrlKey;
+          SDL.altKey = event.altKey;
 
           break;
         }
@@ -415,8 +364,8 @@ var LibrarySDL = {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'x - SDL.mouseX', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'y - SDL.mouseY', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.getMovementX(x - SDL.mouseX, event)', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'Browser.getMovementY(y - SDL.mouseY, event)', 'i32') }}};
           }
           SDL.mouseX = x;
           SDL.mouseY = y;
@@ -437,6 +386,20 @@ var LibrarySDL = {
       var ret = tempCtx.measureText(text).width | 0;
       tempCtx.restore();
       return ret;
+    },
+
+    // Sound
+
+    allocateChannels: function(num) { // called from Mix_AllocateChannels and init
+      if (SDL.numChannels && SDL.numChannels >= num) return;
+      SDL.numChannels = num;
+      SDL.channels = [];
+      for (var i = 0; i < num; i++) {
+        SDL.channels[i] = {
+          audio: null,
+          volume: 1.0
+        };
+      }
     },
 
     // Debugging
@@ -469,6 +432,12 @@ var LibrarySDL = {
     });
     SDL.keyboardState = _malloc(0x10000);
     _memset(SDL.keyboardState, 0, 0x10000);
+    // Initialize this structure carefully for closure
+    SDL.DOMEventToSDLEvent['keydown'] = 0x300;
+    SDL.DOMEventToSDLEvent['keyup'] = 0x301;
+    SDL.DOMEventToSDLEvent['mousedown'] = 0x401;
+    SDL.DOMEventToSDLEvent['mouseup'] = 0x402;
+    SDL.DOMEventToSDLEvent['mousemove'] = 0x400;
     return 0; // success
   },
 
@@ -496,7 +465,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove'].forEach(function(event) {
+    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Module['canvas'].width = width;
@@ -632,6 +601,13 @@ var LibrarySDL = {
 
   SDL_GetKeyboardState: function() {
     return SDL.keyboardState;
+  },
+
+  SDL_GetModState: function() {
+    // TODO: numlock, capslock, etc.
+    return (SDL.shiftKey ? 0x0001 & 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
+           (SDL.ctrlKey ? 0x0040 & 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
+           (SDL.altKey ? 0x0100 & 0x0200 : 0); // KMOD_LALT & KMOD_RALT
   },
 
   SDL_GetMouseState: function(x, y) {
@@ -770,16 +746,23 @@ var LibrarySDL = {
   },
 
   SDL_WM_GrabInput: function() {},
-  SDL_ShowCursor: function() {},
 
   // SDL_Image
+
+  IMG_Init: function(flags) {
+    return flags; // We support JPG, PNG, TIF because browsers do
+  },
 
   IMG_Load__deps: ['SDL_LockSurface'],
   IMG_Load: function(filename) {
     filename = FS.standardizePath(Pointer_stringify(filename));
+    if (filename[0] == '/') {
+      // Convert the path to relative
+      filename = filename.substr(1);
+    }
     var raw = preloadedImages[filename];
     if (!raw) {
-      Module.printErr('Cannot find preloaded image ' + filename);
+      Runtime.warnOnce('Cannot find preloaded image ' + filename);
       return 0;
     }
     var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
@@ -799,6 +782,8 @@ var LibrarySDL = {
   // SDL_Audio
 
   SDL_OpenAudio: function(desired, obtained) {
+    SDL.allocateChannels(32);
+
     // FIXME: Assumes 16-bit audio
     assert(obtained === 0, 'Cannot return obtained SDL audio params');
 
@@ -870,32 +855,38 @@ var LibrarySDL = {
   // SDL Mixer
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
+    SDL.allocateChannels(32);
     return 0;
   },
 
   Mix_CloseAudio: 'SDL_CloseAudio',
 
   Mix_AllocateChannels: function(num) {
-    return num; // fake it
+    SDL.allocateChannels(num);
+    return num;
   },
 
   Mix_ChannelFinished: function(func) {
-    SDL.channelFinished = func; // TODO
+    SDL.channelFinished = func;
   },
 
-  Mix_HookMusicFinished: function(func) {
-    SDL.hookMusicFinished = func;
+  Mix_Volume: function(channel, volume) {
+    var info = SDL.channels[channel];
+    var ret = info.volume * 128;
+    info.volume = volume / 128;
+    if (info.audio) info.audio.volume = info.volume;
+    return ret;
   },
 
-  Mix_VolumeMusic: function(func) {
-    return 0; // TODO
+  Mix_SetPanning: function() {
+    return 0; // error
   },
 
   Mix_LoadWAV_RW: function(filename, freesrc) {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = preloadedAudios[filename];
     if (!raw) {
-      Module.printErr('Cannot find preloaded audio ' + filename);
+      Runtime.warnOnce('Cannot find preloaded audio ' + filename);
       return 0;
     }
     var id = SDL.audios.length;
@@ -907,7 +898,6 @@ var LibrarySDL = {
   },
 
   Mix_FreeChunk: function(id) {
-    SDL.audios[id].audio.pause();
     SDL.audios[id] = null;
   },
 
@@ -915,13 +905,54 @@ var LibrarySDL = {
     // TODO: handle loops
     var audio = SDL.audios[id].audio;
     if (!audio) return 0;
-    if (audio.currentTime) audio.src = audio.src; // This hack prevents lags on replaying // TODO: parallel sounds through //cloneNode(true).play()
-    audio.play();
-    return 1; // XXX should return channel
+    if (channel == -1) {
+      channel = 0;
+      for (var i = 0; i < SDL.numChannels; i++) {
+        if (!SDL.channels[i].audio) {
+          channel = i;
+          break;
+        }
+      }
+    }
+    var info = SDL.channels[channel];
+    info.audio = audio.cloneNode(true);
+    if (SDL.channelFinished) {
+      info.audio['onended'] = function() { // TODO: cache these
+        Runtime.getFuncWrapper(SDL.channelFinished)(channel);
+      }
+    }
+    info.audio.play();
+    info.audio.volume = info.volume;
+    return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
 
+  Mix_FadingChannel: function(channel) {
+    return 0; // MIX_NO_FADING, TODO
+  },
+
+  Mix_HaltChannel: function(channel) {
+    var info = SDL.channels[channel];
+    if (info.audio) {
+      info.audio.pause();
+      info.audio = null;
+    }
+    if (SDL.channelFinished) {
+      Runtime.getFuncWrapper(SDL.channelFinished)(channel);
+    }
+    return 0;
+  },
+
+  Mix_HookMusicFinished: function(func) {
+    SDL.hookMusicFinished = func;
+  },
+
+  Mix_VolumeMusic: function(func) {
+    return 0; // TODO
+  },
+
   Mix_LoadMUS: 'Mix_LoadWAV_RW',
+
   Mix_FreeMusic: 'Mix_FreeChunk',
 
   Mix_PlayMusic: function(id, loops) {

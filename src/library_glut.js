@@ -263,16 +263,7 @@ var LibraryGLUT = {
                 document['webkitCancelFullScreen'] ||
 	        (function() {});
       CFS.apply(document, []);
-    },
-
-    requestAnimationFrame: function(func) {
-      var RAF = window['requestAnimationFrame'] ||
-                window['mozRequestAnimationFrame'] ||
-                window['webkitRequestAnimationFrame'] ||
-                window['msRequestAnimationFrame'] ||
-                window['setTimeout'];
-      RAF.apply(window, [func]);
-    },
+    }
   },
 
   glutGetModifiers: function() { return GLUT.modifiers; },
@@ -413,7 +404,7 @@ var LibraryGLUT = {
 
   glutPostRedisplay: function() {
     if (GLUT.displayFunc) {
-      GLUT.requestAnimationFrame(FUNCTION_TABLE[GLUT.displayFunc]);
+      Browser.requestAnimationFrame(FUNCTION_TABLE[GLUT.displayFunc]);
     }
   },
 

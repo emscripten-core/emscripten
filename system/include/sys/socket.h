@@ -65,6 +65,11 @@ struct msghdr
   int           msg_flags;
 };
 
+struct linger {
+  int l_onoff;
+  int l_linger;
+};
+
 #ifdef __cplusplus
 }
 #endif

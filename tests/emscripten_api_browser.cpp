@@ -9,12 +9,34 @@ int last = 0;
 
 extern "C" {
 
+bool fived = false;
+void five() {
+  fived = true;
+  emscripten_resume_main_loop();
+}
+
+void mainey() {
+  static int counter = 0;
+  printf("mainey: %d\n", counter++);
+  if (counter == 20) {
+    emscripten_pause_main_loop();
+    emscripten_async_call(five, 1000);
+  } else if (counter == 22) { // very soon after 20, so without pausing we fail
+    int result = fived;
+    REPORT_RESULT();
+  }
+}
+
+void four() {
+  printf("four!\n");
+  emscripten_set_main_loop(mainey, 0);
+}
+
 void __attribute__((used)) third() {
   int now = SDL_GetTicks();
   printf("thard! %d\n", now);
   assert(fabs(now - last - 1000) < 500);
-  int result = 1;
-  REPORT_RESULT();
+  emscripten_async_call(four, -1); // triggers requestAnimationFrame
 }
 
 void second() {

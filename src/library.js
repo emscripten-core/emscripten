@@ -90,18 +90,18 @@ LibraryManager.library = {
 #if FS_LOG
       var inputPath = path;
       function log() {
-        print('FS.analyzePath("' + inputPath + '", ' +
-                                   dontResolveLastLink + ', ' +
-                                   linksVisited + ') => {' +
-              'isRoot: ' + ret.isRoot + ', ' +
-              'exists: ' + ret.exists + ', ' +
-              'error: ' + ret.error + ', ' +
-              'name: "' + ret.name + '", ' +
-              'path: "' + ret.path + '", ' +
-              'object: ' + ret.object + ', ' +
-              'parentExists: ' + ret.parentExists + ', ' +
-              'parentPath: "' + ret.parentPath + '", ' +
-              'parentObject: ' + ret.parentObject + '}');
+        Module['print']('FS.analyzePath("' + inputPath + '", ' +
+                                             dontResolveLastLink + ', ' +
+                                             linksVisited + ') => {' +
+                        'isRoot: ' + ret.isRoot + ', ' +
+                        'exists: ' + ret.exists + ', ' +
+                        'error: ' + ret.error + ', ' +
+                        'name: "' + ret.name + '", ' +
+                        'path: "' + ret.path + '", ' +
+                        'object: ' + ret.object + ', ' +
+                        'parentExists: ' + ret.parentExists + ', ' +
+                        'parentPath: "' + ret.parentPath + '", ' +
+                        'parentObject: ' + ret.parentObject + '}');
       }
 #endif
       path = FS.absolutePath(path);
@@ -177,11 +177,11 @@ LibraryManager.library = {
     // Creates a file system record: file, link, device or folder.
     createObject: function(parent, name, properties, canRead, canWrite) {
 #if FS_LOG
-      print('FS.createObject("' + parent + '", ' +
-                            '"' + name + '", ' +
-                                JSON.stringify(properties) + ', ' +
-                                canRead + ', ' +
-                                canWrite + ')');
+      Module['print']('FS.createObject("' + parent + '", ' +
+                                      '"' + name + '", ' +
+                                          JSON.stringify(properties) + ', ' +
+                                          canRead + ', ' +
+                                          canWrite + ')');
 #endif
       if (!parent) parent = '/';
       if (typeof parent === 'string') parent = FS.findObject(parent);
@@ -257,10 +257,19 @@ LibraryManager.library = {
       var properties = {isDevice: false, contents: data};
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
-    // Creates a file record for lazy-loading from a URL.
+    // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
+    // XHR, which is not possible in browsers except in a web worker! Use preloading,
+    // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile: function(parent, name, url, canRead, canWrite) {
       var properties = {isDevice: false, url: url};
       return FS.createFile(parent, name, properties, canRead, canWrite);
+    },
+    // Preloads a file asynchronously. You can call this before run, for example in
+    // preRun. run will be delayed until this file arrives and is set up.
+    createPreloadedFile: function(parent, name, url, canRead, canWrite) {
+      Browser.asyncLoad(url, function(data) {
+        FS.createDataFile(parent, name, data, canRead, canWrite);
+      });
     },
     // Creates a link to a sepcific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
@@ -340,6 +349,7 @@ LibraryManager.library = {
                 typeof window.prompt == 'function') {
               // Browser.
               result = window.prompt('Input: ');
+              if (result === null) result = String.fromCharCode(0); // cancel ==> EOF
             } else if (typeof readline == 'function') {
               // Command line.
               result = readline();
@@ -371,8 +381,10 @@ LibraryManager.library = {
       if (!error.printer) error.printer = Module['print'];
       if (!error.buffer) error.buffer = [];
 
-      // Create the temporary folder.
-      FS.createFolder('/', 'tmp', true, true);
+      // Create the temporary folder, if not already created
+      try {
+        FS.createFolder('/', 'tmp', true, true);
+      } catch(e) {}
 
       // Create the I/O devices.
       var devFolder = FS.createFolder('/', 'dev', true, true);
@@ -2217,6 +2229,9 @@ LibraryManager.library = {
     if (!self.called) {
       STATICTOP = alignMemoryPage(STATICTOP); // make sure we start out aligned
       self.called = true;
+#if GC_SUPPORT
+      _sbrk.DYNAMIC_START = STATICTOP;
+#endif
     }
     var ret = STATICTOP;
     if (bytes != 0) Runtime.staticAlloc(bytes);
@@ -2242,6 +2257,15 @@ LibraryManager.library = {
   // TODO: Document.
   _scanString__deps: ['_isFloat'],
   _scanString: function(format, get, unget, varargs) {
+    if (!__scanString.whiteSpace) {
+      __scanString.whiteSpace = {};
+      __scanString.whiteSpace[' '.charCodeAt(0)] = 1;
+      __scanString.whiteSpace['\t'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace['\n'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace[' '] = 1;
+      __scanString.whiteSpace['\t'] = 1;
+      __scanString.whiteSpace['\n'] = 1;
+    }
     // Supports %x, %4x, %d.%d, %s, %f, %lf.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
@@ -2249,6 +2273,7 @@ LibraryManager.library = {
     var argsi = 0;
     var fields = 0;
     var argIndex = 0;
+    var next;
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
       if (next <= 0) return fields;
       var next = get();
@@ -2264,10 +2289,13 @@ LibraryManager.library = {
         if (formatIndex != maxSpecifierStart) {
           max_ = parseInt(format.slice(maxSpecifierStart, formatIndex), 10);
         }
-        // TODO: Handle type size modifier.
         var long_ = false;
+        var half = false;
         if (format[formatIndex] == 'l') {
           long_ = true;
+          formatIndex++;
+        } else if (format[formatIndex] == 'h') {
+          half = true;
           formatIndex++;
         }
         var type = format[formatIndex];
@@ -2288,13 +2316,18 @@ LibraryManager.library = {
             buffer.pop();
             unget();
           }
+          unget();
+          next = get();
         } else {
+          var first = true;
           while ((curr < max_ || isNaN(max_)) && next > 0) {
-            if ((type === 'd' && next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-                (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
-                                  next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
-                                  next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0))) ||
-                (type === 's' && (next != ' '.charCodeAt(0) && next != '\t'.charCodeAt(0) && next != '\n'.charCodeAt(0))) &&
+            if (!(next in __scanString.whiteSpace) && // stop on whitespace
+                (type == 's' ||
+                 ((type === 'd' || type == 'u') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                                                    (first && next == '-'.charCodeAt(0)))) ||
+                 (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
+                                   next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
+                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0)))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
@@ -2302,6 +2335,7 @@ LibraryManager.library = {
             } else {
               break;
             }
+            first = false;
           }
         }
         if (buffer.length === 0) return 0;  // Failure.
@@ -2309,8 +2343,12 @@ LibraryManager.library = {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
         switch (type) {
-          case 'd':
-            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}}
+          case 'd': case 'u':
+            if (half) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
+            } else {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
+            }
             break;
           case 'x':
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
@@ -2330,6 +2368,12 @@ LibraryManager.library = {
             break;
         }
         fields++;
+      } else if (format[formatIndex] in __scanString.whiteSpace) {
+        while (next in __scanString.whiteSpace) {
+          next = get();
+          if (next <= 0) return fields;  // End of input.
+        }
+        unget();
       } else {
         // Not a specifier.
         if (format[formatIndex].charCodeAt(0) !== next) {
@@ -4765,6 +4809,8 @@ LibraryManager.library = {
 
   llvm_invariant_start: function() {},
   llvm_invariant_end: function() {},
+
+  llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
   // ==========================================================================
   // math.h

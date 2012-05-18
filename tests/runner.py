@@ -950,6 +950,11 @@ m_divisor is 1091269979
       '''
       self.do_run(src, 'zero 2, 104', ['hallo'])
 
+    def test_sha1(self):
+      if self.emcc_args == None: return self.skip('needs ta2')
+
+      self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+
     def test_cube2hash(self):
       # A good test of i64 math
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
@@ -3803,10 +3808,28 @@ at function.:blag
           printf("|%s|\n", buffy);
           sscanf("cheez somethingmoar\tyet more\n", "cheez %s", buffy);
           printf("|%s|\n", buffy);
+
+          int numverts = -1;
+          printf("%d\n", sscanf("	numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
+          printf("%d\n", numverts);
+
+          int index;
+          float u, v;
+          short start, count;
+          printf("%d\n", sscanf("	vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
+          printf("%d,%.6f,%.6f,%hu,%hu\n", index, u, v, start, count);
+
+          int neg, neg2, neg3 = 0;
+          printf("%d\n", sscanf("-123 -765 -34-6", "%d %u %d", &neg, &neg2, &neg3));
+          printf("%d,%u,%d\n", neg, neg2, neg3);
+
           return 0;
         }
         '''
-      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|')
+      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
+                       '1\n1499\n' +
+                       '5\n87,0.481565,0.059481,0,1\n' +
+                       '3\n-123,4294966531,-34\n')
 
     def test_sscanf_2(self):
       # doubles
@@ -6071,6 +6094,120 @@ def process(filename):
       '''
       self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
 
+    def test_gc(self):
+      if self.emcc_args == None: return self.skip('needs ta2')
+
+      Settings.GC_SUPPORT = 1
+
+      src = r'''
+        #include <stdio.h>
+        #include <gc.h>
+        #include <assert.h>
+
+        void *global;
+
+        void finalizer(void *ptr, void *arg) {
+          printf("finalizing %d (global == %d)\n", (int)arg, ptr == global);
+        }
+
+        void finalizer2(void *ptr, void *arg) {
+          printf("finalizing2 %d (global == %d)\n", (int)arg, ptr == global);
+        }
+
+        int main() {
+          GC_INIT();
+
+          void *local, *local2, *local3, *local4;
+
+          // Hold on to global, drop locals
+
+          global = GC_MALLOC(1024); // rooted since in a static allocation
+          GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
+          printf("alloc %p\n", global);
+
+          local = GC_MALLOC(1024); // not rooted since stack is not scanned
+          GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void*)1, 0, 0);
+          printf("alloc %p\n", local);
+
+          assert((char*)local - (char*)global >= 1024 || (char*)global - (char*)local >= 1024);
+
+          local2 = GC_MALLOC(1024); // no finalizer
+          printf("alloc %p\n", local2);
+
+          local3 = GC_MALLOC(1024); // with finalizable2
+          GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer2, (void*)2, 0, 0);
+          printf("alloc %p\n", local);
+
+          local4 = GC_MALLOC(1024); // yet another
+          GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer2, (void*)3, 0, 0);
+          printf("alloc %p\n", local);
+
+          printf("basic test\n");
+
+          GC_FORCE_COLLECT();
+
+          printf("*\n");
+
+          GC_FREE(global); // force free will actually work
+
+          // scanning inside objects
+
+          global = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
+          local = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void*)1, 0, 0);
+          local2 = GC_MALLOC_ATOMIC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local2, finalizer, (void*)2, 0, 0);
+          local3 = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer, (void*)3, 0, 0);
+          local4 = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer, (void*)4, 0, 0);
+
+          void **globalData = (void**)global;
+          globalData[0] = local;
+          globalData[1] = local2;
+
+          void **localData = (void**)local;
+          localData[0] = local3;
+
+          void **local2Data = (void**)local2;
+          local2Data[0] = local4; // actually ignored, because local2 is atomic, so 4 is freeable
+
+          printf("object scan test test\n");
+
+          GC_FORCE_COLLECT();
+
+          printf("*\n");
+
+          GC_FREE(global); // force free will actually work
+
+          printf("*\n");
+
+          GC_FORCE_COLLECT();
+
+          printf(".\n");
+
+          global = 0;
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''basic test
+finalizing 1 (global == 0)
+finalizing2 2 (global == 0)
+finalizing2 3 (global == 0)
+*
+finalizing 0 (global == 1)
+object scan test test
+finalizing 4 (global == 0)
+*
+finalizing 0 (global == 1)
+*
+finalizing 1 (global == 0)
+finalizing 2 (global == 0)
+finalizing 3 (global == 0)
+.
+''')
 
   # Generate tests for everything
   def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):
@@ -6396,6 +6533,26 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+    def test_catch_undef(self):
+      open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+        #include <vector>
+        #include <stdio.h>
+         
+        class Test {
+        public:
+          std::vector<int> vector;
+        };
+         
+        Test globalInstance;
+         
+        int main() {
+          printf("hello, world!\n");
+          return 1;
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
+      self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 
@@ -6612,6 +6769,19 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
       self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_sdl_endianness(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        #include <SDL/SDL.h>
+
+        int main() {
+          printf("%d, %d, %d\n", SDL_BYTEORDER, SDL_LIL_ENDIAN, SDL_BIG_ENDIAN);
+          return 0;
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_prepost(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>
@@ -6671,6 +6841,8 @@ f.close()
          ['simplifyExpressionsPre', 'optimizeShiftsConservative']),
         (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
          ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
+        (path_from_root('tools', 'test-js-optimizer-regs.js'), open(path_from_root('tools', 'test-js-optimizer-regs-output.js')).read(),
+         ['registerize']),
       ]:
         output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
@@ -6705,6 +6877,23 @@ seeked=,,.
 fscanfed: 10 - hello
 ''', output[0])
       self.assertIdentical('texte\n', output[1])
+
+    def test_emconfig(self):
+      output = Popen(['python', EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == LLVM_ROOT + "\n"
+      invalid = 'Usage: em-config VAR_NAME\n'
+      # Don't accept variables that do not exist
+      output = Popen(['python', EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
+      # Don't accept no arguments
+      output = Popen(['python', EMCONFIG], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
+      # Don't accept more than one variable
+      output = Popen(['python', EMCONFIG, 'LLVM_ROOT', 'EMCC'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
+      # Don't accept arbitrary python code
+      output = Popen(['python', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      assert output == invalid
 
 elif 'browser' in str(sys.argv):
   # Browser tests.
@@ -6781,7 +6970,7 @@ elif 'browser' in str(sys.argv):
           browser.harness_queue.put('http://localhost:8888/' + html_file)
           output = '[no http server activity]'
           start = time.time()
-          while time.time() - start < 5:
+          while time.time() - start < 60:
             if not queue.empty():
               output = queue.get()
               break
@@ -6905,25 +7094,45 @@ elif 'browser' in str(sys.argv):
 
     def test_preload_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-        #include <stdio.h>
-        #include <string.h>
-        #include <emscripten.h>
-        int main() {
-          FILE *f = fopen("somefile.txt", "r");
-          char buf[100];
-          fread(buf, 1, 20, f);
-          buf[20] = 0;
-          fclose(f);
-          printf("|%s|\n", buf);
+      def make_main(path):
+        print path
+        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+          #include <stdio.h>
+          #include <string.h>
+          #include <emscripten.h>
+          int main() {
+            FILE *f = fopen("%s", "r");
+            char buf[100];
+            fread(buf, 1, 20, f);
+            buf[20] = 0;
+            fclose(f);
+            printf("|%%s|\n", buf);
 
-          int result = !strcmp("load me right before", buf);
-          REPORT_RESULT();
-          return 0;
-        }
-      '''))
+            int result = !strcmp("load me right before", buf);
+            REPORT_RESULT();
+            return 0;
+          }
+        ''' % path))
 
+      make_main('somefile.txt')
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+      # By absolute path
+
+      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+      # With FS.preloadFile
+
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.preRun = function() {
+          FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
+        };
+      ''')
+      make_main('someotherfile.txt')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     def test_multifile(self):
@@ -7092,10 +7301,11 @@ elif 'browser' in str(sys.argv):
             Module['canvas'].dispatchEvent(event1);
           }
         }
+        window['simulateMouseEvent'] = simulateMouseEvent;
       ''')
       open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
     def test_sdl_audio(self):
@@ -7114,10 +7324,17 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', '.', '/report_result?1')
 
     def test_sdl_ogl(self):
-      # SDL, OpenGL, textures, immediate mode
+      # SDL, OpenGL, textures, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
+
+    def test_sdl_ogl_defaultmatrixmode(self):
+      # SDL, OpenGL, textures, immediate mode. Closure for more coverage
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_p(self):
@@ -7221,11 +7438,60 @@ elif 'browser' in str(sys.argv):
     def test_emscripten_api(self):
       self.btest('emscripten_api_browser.cpp', '1')
 
-    def test_sdlglshader(self):
-      self.btest('sdlglshader.c', reference='sdlglshader.png')
+    def test_gc(self):
+      self.btest('browser_gc.cpp', '1')
 
-    def zzztest_cubegeom(self):
-      self.btest('cubegeom.c', reference='sdlglshader.png')
+    def test_sdlglshader(self):
+      self.btest('sdlglshader.c', reference='sdlglshader.png', args=['--closure', '1'])
+
+    def test_gl_ps(self):
+      # pointers and a shader
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
+
+    def test_cubegeom_pre(self):
+      self.btest('cubegeom_pre.c', expected='-1472804742')
+
+    def test_cubegeom_pre2(self):
+      self.btest('cubegeom_pre2.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
+
+    def test_cubegeom_pre3(self):
+      self.btest('cubegeom_pre3.c', expected='-1472804742')
+
+    def test_cubegeom(self):
+      self.btest('cubegeom.c', expected='188641320')
+
+    def test_cubegeom_color(self):
+      self.btest('cubegeom_color.c', expected='588472350')
+
+    def test_cubegeom_normal(self):
+      self.btest('cubegeom_normal.c', expected='752917084')
+
+    def test_cubegeom_mt(self):
+      self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
+
+    def test_cubegeom_color2(self):
+      self.btest('cubegeom_color2.c', expected='1121999515')
+
+    def test_cubegeom_texturematrix(self):
+      self.btest('cubegeom_texturematrix.c', expected='1297500583')
+
+    def test_cube_explosion(self):
+      self.btest('cube_explosion.c', expected='667220544')
+
+    def test_pre_run_deps(self):
+      # Adding a dependency in preRun will delay run
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.preRun = function() {
+          addRunDependency();
+          Module.print('preRun called, added a dependency...');
+          setTimeout(function() {
+            Module.okk = 10;
+            removeRunDependency()
+          }, 2000);
+        };
+      ''')
+      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do

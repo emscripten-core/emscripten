@@ -315,22 +315,41 @@ var Runtime = {
     return ret;
   },
 
+  warnOnce: function(text) {
+    if (!Runtime.warnOnce.shown) Runtime.warnOnce.shown = {};
+    if (!Runtime.warnOnce.shown[text]) {
+      Runtime.warnOnce.shown[text] = 1;
+      Module.printErr(text);
+    }
+  },
+
+  funcWrappers: {},
+
+  getFuncWrapper: function(func) {
+    if (!Runtime.funcWrappers[func]) {
+      Runtime.funcWrappers[func] = function() {
+        FUNCTION_TABLE[func].apply(null, arguments);
+      };
+    }
+    return Runtime.funcWrappers[func];
+  },
+
 #if RUNTIME_DEBUG
   debug: true, // Switch to false at runtime to disable logging at the right times
 
-  printObjectMap: null,
-  printObjectCounter: 1,
+  printObjectList: [],
 
   prettyPrint: function(arg) {
-    if (!Runtime.printObjectMap) Runtime.printObjectMap = new WeakMap();
     if (typeof arg == 'undefined') return '!UNDEFINED!';
+    if (typeof arg == 'boolean') arg = arg + 0;
     if (!arg) return arg;
-    if (Runtime.printObjectMap[arg]) return '<' + arg + '|' + Runtime.printObjectMap[arg] + '>';
+    var index = Runtime.printObjectList.indexOf(arg);
+    if (index >= 0) return '<' + arg + '|' + index + '>';
     if (arg.toString() == '[object HTMLImageElement]') {
       return arg + '\n\n';
     }
     if (arg.byteLength) {
-      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 40)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
+      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
       var buf = new ArrayBuffer(32);
       var i8buf = new Int8Array(buf);
       var i16buf = new Int16Array(buf);
@@ -357,8 +376,8 @@ var Runtime = {
       return ret;
     }
     if (typeof arg == 'object') {
-      Runtime.printObjectMap[arg] = Runtime.printObjectCounter++;
-      return '<' + arg + '|' + Runtime.printObjectMap[arg] + '>';
+      Runtime.printObjectList.push(arg);
+      return '<' + arg + '|' + (Runtime.printObjectList.length-1) + '>';
     }
     if (typeof arg == 'number') {
       if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';

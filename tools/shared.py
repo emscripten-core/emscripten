@@ -125,6 +125,7 @@ EMAR = path_from_root('emar')
 EMLD = path_from_root('emld')
 EMRANLIB = path_from_root('emranlib')
 EMLIBTOOL = path_from_root('emlibtool')
+EMCONFIG = path_from_root('em-config')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
@@ -182,7 +183,7 @@ except:
 # Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__', '-U__CYGWIN__',
-                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu']
+                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN']
 
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
@@ -199,7 +200,7 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ] + [
-    '-U__APPLE__'
+    '-U__APPLE__', '-U__linux__'
   ]
   COMPILER_OPTS += EMSDK_OPTS
 else:
@@ -207,16 +208,25 @@ else:
 
 # Engine tweaks
 
-#if 'strict' not in str(SPIDERMONKEY_ENGINE): # XXX temporarily disable strict mode until we sort out some stuff
-#  SPIDERMONKEY_ENGINE += ['-e', "options('strict')"] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
-
 try:
   if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    if type(SPIDERMONKEY_ENGINE) is str:
+      SPIDERMONKEY_ENGINE = [SPIDERMONKEY_ENGINE]
     SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
 except NameError:
   pass
 
-WINDOWS = sys.platform.startswith ('win')
+WINDOWS = sys.platform.startswith('win')
+
+# If we have 'env', we should use that to find python, because |python| may fail while |env python| may work
+# (For example, if system python is 3.x while we need 2.x, and env gives 2.x if told to do so.)
+ENV_PREFIX = []
+if not WINDOWS:
+  try:
+    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    ENV_PREFIX = ['env']
+  except:
+    pass
 
 # Temp file utilities
 
@@ -600,13 +610,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen(['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(ENV_PREFIX + ['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen(['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(ENV_PREFIX + ['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 
@@ -617,7 +627,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Run Emscripten
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
