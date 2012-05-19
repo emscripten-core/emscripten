@@ -106,7 +106,6 @@ CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
 CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 CLANG=CLANG_CPP
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
-LLVM_LD=os.path.join(LLVM_ROOT, 'llvm-ld')
 LLVM_AR=os.path.join(LLVM_ROOT, 'llvm-ar')
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
@@ -519,10 +518,29 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def link(files, target):
+    actual_files = []
+    for f in files:
+      if Building.is_ar(f):
+        # Extract object files from ar archives, so we can link them using llvm-link
+        cwd = os.getcwd()
+        try:
+          os.chdir(EMSCRIPTEN_TEMP_DIR)
+          if not os.path.exists('ar_output'):
+            os.makedirs('ar_output')
+          os.chdir('ar_output')
+          Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate()
+          added = False
+          for name in os.listdir(os.getcwd()):
+            actual_files.append(os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output', name))
+            added = True
+          if not added:
+            print >> sys.stderr, 'Warning: Archive %s appears to be empty' % f
+        finally:
+          os.chdir(cwd)
+      else:
+        actual_files.append(f)
     try_delete(target)
-    stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme') + ('.exe' if WINDOWS else '')
-    output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target, '-o', stub], stdout=PIPE).communicate()[0]
-    try_delete(stub) # clean up stub left by the linker
+    output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
 
   # Emscripten optimizations that we run on the .ll file
