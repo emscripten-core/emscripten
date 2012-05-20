@@ -887,17 +887,22 @@ var LibraryGL = {
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
 
+      // XXX some of these ignored capabilities may lead to incorrect rendering, if we do not emulate them in shaders
+      var ignoredCapabilities = {
+        0x0DE1: 1, // GL_TEXTURE_2D
+        0x0B20: 1, // GL_LINE_SMOOTH
+        0x0B60: 1, // GL_FOG
+        0x8513: 1, // GL_TEXTURE_CUBE_MAP
+        0x0BA1: 1, // GL_NORMALIZE
+        0x0C60: 1, // GL_TEXTURE_GEN_S
+        0x0C61: 1  // GL_TEXTURE_GEN_T
+      };
       _glEnable = function(cap) {
-        if (cap == 0x0DE1) return; // GL_TEXTURE_2D
-        if (cap == 0x0B20) return; // GL_LINE_SMOOTH
-        if (cap == 0x0B60) return; // GL_FOG
+        if (cap in ignoredCapabilities) return;
         Module.ctx.enable(cap);
       };
-
       _glDisable = function(cap) {
-        if (cap == 0x0DE1) return; // GL_TEXTURE_2D
-        if (cap == 0x0B20) return; // GL_LINE_SMOOTH
-        if (cap == 0x0B60) return; // GL_FOG
+        if (cap in ignoredCapabilities) return;
         Module.ctx.disable(cap);
       };
 
@@ -949,6 +954,8 @@ var LibraryGL = {
 #if GL_DEBUG
         GL.shaderOriginalSources[shader] = source;
 #endif
+        // XXX We add attributes and uniforms to shaders. The program can ask for the # of them, and see the
+        // ones we generated, potentially confusing it? Perhaps we should hide them.
         if (GL.shaderInfos[shader].type == Module.ctx.VERTEX_SHADER) {
           // Replace ftransform() with explicit project/modelview transforms, and add position and matrix info.
           var has_pm = source.search(/u_projection/) >= 0;
@@ -968,7 +975,7 @@ var LibraryGL = {
           source = source.replace(/gl_Vertex/g, 'a_position');
           if (old != source) need_pv = 1;
           old = source;
-          source = source.replace(/gl_ModelViewProjectionMatrix/g, '(u_modelView * u_projection)');
+          source = source.replace(/gl_ModelViewProjectionMatrix/g, '(u_projection * u_modelView)');
           if (old != source) need_pm = need_mm = 1;
           old = source;
           source = source.replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
@@ -977,7 +984,7 @@ var LibraryGL = {
           if (need_mm && !has_mm) source = 'uniform mat4 u_modelView; \n' + source;
           if (need_pm && !has_pm) source = 'uniform mat4 u_projection; \n' + source;
           GL.shaderInfos[shader].ftransform = need_pm || need_mm || need_pv; // we will need to provide the fixed function stuff as attributes and uniforms
-          for (var i = 0; i <= 6; i++) {
+          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
             var need_vtc = source.search('v_texCoord' + i) == -1;
@@ -988,6 +995,12 @@ var LibraryGL = {
               if (need_vtc) {
                 source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
               }
+            }
+
+            old = source;
+            source = source.replace(new RegExp('gl_TextureMatrix\\[' + i + '\\]', 'g'), 'u_textureMatrix' + i);
+            if (source != old) {
+              source = 'uniform mat4 u_textureMatrix' + i + '; \n' + source;
             }
           }
           if (source.indexOf('gl_FrontColor') >= 0) {
@@ -1009,7 +1022,7 @@ var LibraryGL = {
                      source.replace(/gl_FogFragCoord/g, 'v_fogCoord');
           }
         } else { // Fragment shader
-          for (var i = 0; i <= 6; i++) {
+          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
             var old = source;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
             if (source != old) {
@@ -1100,8 +1113,12 @@ var LibraryGL = {
         } else if (pname == 0x0BA7) { // GL_PROJECTION_MATRIX
           HEAPF32.set(GL.immediate.matrix['p'], params >> 2);
         } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
-          HEAPF32.set(GL.immediate.matrix['t'], params >> 2);
+          HEAPF32.set(GL.immediate.matrix['t' + GL.immediate.clientActiveTexture], params >> 2);
         } else if (pname == 0x0B66) { // GL_FOG_COLOR
+          {{{ makeSetValue('params', '0', '0', 'float') }}};
+        } else if (pname == 0x0B63) { // GL_FOG_START
+          {{{ makeSetValue('params', '0', '0', 'float') }}};
+        } else if (pname == 0x0B64) { // GL_FOG_END
           {{{ makeSetValue('params', '0', '0', 'float') }}};
         } else {
           glGetFloatv(pname, params);
@@ -1217,9 +1234,11 @@ var LibraryGL = {
   // GL Immediate mode
 
   $GLImmediate__postset: 'Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
+  $GLImmediate__deps: ['$Browser'],
   $GLImmediate: {
     // Vertex and index data
     maxElements: 10240,
+    MAX_TEXTURES: 7,
     vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer). Default view is F32
     vertexDataU8: null, // U8 view
     tempData: null,
@@ -1407,6 +1426,10 @@ var LibraryGL = {
               this.texCoordLocations[i] = Module.ctx.getAttribLocation(this.program, 'a_texCoord' + i);
             }
           }
+          this.textureMatrixLocations = [];
+          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+            this.textureMatrixLocations[i] = Module.ctx.getUniformLocation(this.program, 'u_textureMatrix' + i);
+          }
           this.colorLocation = Module.ctx.getAttribLocation(this.program, 'a_color');
           this.normalLocation = Module.ctx.getAttribLocation(this.program, 'a_normal');
 
@@ -1437,6 +1460,11 @@ var LibraryGL = {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
                                                stride, textureOffsets[i]);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
+              }
+            }
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+              if (this.textureMatrixLocations[i]) { // XXX might we need this even without the condition we are currently in?
+                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix['t' + i]);
               }
             }
           }
@@ -1489,14 +1517,11 @@ var LibraryGL = {
       Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       GL.immediate.initted = true;
 
-      // No JSON notation for these objects, for closure w/js optimizer
-      this.matrix['m'] = null; // modelview
-      this.matrix['p'] = null; // projection
-      this.matrix['t'] = null; // texture
-
       this.matrixStack['m'] = [];
       this.matrixStack['p'] = [];
-      this.matrixStack['t'] = [];
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        this.matrixStack['t' + i] = [];
+      }
 
       this.ATTRIBUTE_BY_NAME['V'] = 0;
       this.ATTRIBUTE_BY_NAME['N'] = 1;
@@ -1513,8 +1538,9 @@ var LibraryGL = {
 
       GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
       GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrix['t'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.currentMatrix = GL.immediate.matrix.lib.mat4.create();
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
+      }
 
       // Buffers for data
       this.tempData = new Float32Array(this.maxElements);
@@ -1534,9 +1560,11 @@ var LibraryGL = {
 
       this.clientColor = new Float32Array([1, 1, 1, 1]);
 
-      // Replace some functions with immediate-mode aware versions
+      // Replace some functions with immediate-mode aware versions. If there are no client
+      // attributes enabled, and we use webgl-friendly modes (no GL_QUADS), then no need
+      // for emulation
       _glDrawArrays = function(mode, first, count) {
-        if (GL.immediate.totalEnabledClientAttributes == 0) {
+        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
@@ -1546,7 +1574,7 @@ var LibraryGL = {
       };
 
       _glDrawElements = function(mode, count, type, indices) {
-        if (GL.immediate.totalEnabledClientAttributes == 0) {
+        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
         }
@@ -1614,6 +1642,7 @@ var LibraryGL = {
       var numVertexes = 4 * this.vertexCounter / GL.immediate.stride; // XXX assuming float
       assert(numVertexes % 1 == 0);
 
+      var restoreElementArrayBuffer = false;
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
@@ -1637,6 +1666,7 @@ var LibraryGL = {
 
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
         Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, this.indexData.subarray(0, numIndexes));
+        restoreElementArrayBuffer = true;
       }
 
       if (!GL.currArrayBuffer) {
@@ -1664,6 +1694,9 @@ var LibraryGL = {
 
       if (!GL.currArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+      }
+      if (restoreElementArrayBuffer) {
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
       if (!GL.currProgram) {
         Module.ctx.useProgram(null);
@@ -1773,6 +1806,18 @@ var LibraryGL = {
     _glColor4ui(r, g, b, 4294967295);
   },
 
+  glColor3ubv__deps: ['glColor3ub'],
+  glColor3ubv: function(p) {
+    _glColor3ub({{{ makeGetValue('p', '0', 'i8') }}}, {{{ makeGetValue('p', '1', 'i8') }}}, {{{ makeGetValue('p', '2', 'i8') }}});
+  },
+  glColor3usv__deps: ['glColor3us'],
+  glColor3usv: function(p) {
+    _glColor3us({{{ makeGetValue('p', '0', 'i16') }}}, {{{ makeGetValue('p', '2', 'i16') }}}, {{{ makeGetValue('p', '4', 'i16') }}});
+  },
+  glColor3uiv__deps: ['glColor3ui'],
+  glColor3uiv: function(p) {
+    _glColor3ui({{{ makeGetValue('p', '0', 'i32') }}}, {{{ makeGetValue('p', '4', 'i32') }}}, {{{ makeGetValue('p', '8', 'i32') }}});
+  },
   glColor3fv__deps: ['glColor3f'],
   glColor3fv: function(p) {
     _glColor3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
@@ -1786,25 +1831,30 @@ var LibraryGL = {
 
   glPolygonMode: function(){}, // TODO
 
+  glAlphaFunc: function(){}, // TODO
+
   // ClientState/gl*Pointer
 
   glEnableClientState: function(cap, disable) {
+    var attrib;
     switch(cap) {
       case 0x8078: // GL_TEXTURE_COORD_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture] = !disable; break;
+        attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
       case 0x8074: // GL_VERTEX_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.VERTEX] = !disable; break;
+        attrib = GL.immediate.VERTEX; break;
       case 0x8075: // GL_NORMAL_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.NORMAL] = !disable; break;
+        attrib = GL.immediate.NORMAL; break;
       case 0x8076: // GL_COLOR_ARRAY
-        GL.immediate.enabledClientAttributes[GL.immediate.COLOR] = !disable; break;
+        attrib = GL.immediate.COLOR; break;
       default:
         throw 'unhandled clientstate: ' + cap;
     }
-    if (!disable) {
-      GL.immediate.totalEnabledClientAttributes++;
-    } else {
+    if (disable && GL.immediate.enabledClientAttributes[attrib]) {
+      GL.immediate.enabledClientAttributes[attrib] = false;
       GL.immediate.totalEnabledClientAttributes--;
+    } else if (!disable && !GL.immediate.enabledClientAttributes[attrib]) {
+      GL.immediate.enabledClientAttributes[attrib] = true;
+      GL.immediate.totalEnabledClientAttributes++;
     }
   },
   glDisableClientState: function(cap) {
@@ -1838,7 +1888,7 @@ var LibraryGL = {
     } else if (mode == 0x1701 /* GL_PROJECTION */) {
       GL.immediate.currentMatrix = 'p';
     } else if (mode == 0x1702) { // GL_TEXTURE
-      GL.immediate.currentMatrix = 't';
+      GL.immediate.currentMatrix = 't' + GL.immediate.clientActiveTexture;
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
     }
@@ -1912,6 +1962,7 @@ var LibraryGL = {
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
   },
+  glOrthof: 'glOrtho',
 
   glScaled: function(x, y, z) {
     GL.immediate.matrix.lib.mat4.scale(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
@@ -1990,8 +2041,8 @@ var LibraryGL = {
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'shadeModel fogi fogfv getError* finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset hint sampleCoverage isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset sampleCoverage isEnabled*'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],

@@ -73,6 +73,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       libFuncsToInclude = ['memcpy', 'memset', 'malloc', 'free'];
     }
+    if (GENERATING_HTML) {
+      libFuncsToInclude.push('$Browser');
+    }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
         intertype: 'functionStub',
@@ -450,6 +453,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = addFromLibrary(shortident);
       } else {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
+        if (WARN_ON_UNDEFINED_SYMBOLS) {
+          warn('Unresolved symbol: ' + item.ident);
+        }
       }
       return ret;
     }
@@ -554,9 +560,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
         func.JS += '  var __label__;\n';
-      }
-      if (func.needsLastLabel) {
-        func.JS += '  var __lastLabel__ = null;\n';
       }
 
       // Walk function blocks and generate JS
@@ -748,7 +751,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('noop', function(item) {
     return ';';
   });
-  makeFuncLineActor('var', function(item) { // assigns into phis become simple vars when MICRO_OPTS
+  makeFuncLineActor('var', function(item) { // assigns into phis become simple vars
     return 'var ' + item.ident + ';';
   });
   makeFuncLineActor('store', function(item) {
@@ -789,11 +792,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     return label;
   }
 
-  function makeBranch(label, lastLabel, labelIsVariable) {
+  function makeBranch(label, lastLabel, labelIsVariable) { // lastLabel is deprecated
     var pre = '';
-    if (!MICRO_OPTS && lastLabel) {
-      pre = '__lastLabel__ = ' + getLabelId(lastLabel) + '; ';
-    }
     if (label[0] == 'B') {
       assert(!labelIsVariable, 'Cannot handle branches to variables with special branching options');
       var parts = label.split('|');
@@ -1060,20 +1060,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.allocatedNum));
     }
-  });
-  makeFuncLineActor('phi', function(item) {
-    var params = item.params;
-    assert(!MICRO_OPTS);
-    function makeOne(i) {
-      if (i === params.length-1) {
-        return finalizeLLVMParameter(params[i].value);
-      }
-      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
-                                   finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
-    }
-    var ret = makeOne(0);
-    if (item.postSet) ret += item.postSet;
-    return ret;
   });
 
   makeFuncLineActor('mathop', processMathop);

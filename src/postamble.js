@@ -32,10 +32,6 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  if (Module['setStatus']) {
-    Module['setStatus'](''); // clear the status from "Downloading.." etc.
-  }
-
   if (Module['preRun']) {
     Module['preRun']();
     if (runDependencies > 0) {
@@ -45,20 +41,37 @@ function run(args) {
     }
   }
 
-  var ret = null;
-  if (Module['_main']) {
-    preMain();
-    ret = Module.callMain(args);
-    if (!Module['noExitRuntime']) {
-      exitRuntime();
+  function doRun() {
+    var ret = 0;
+    if (Module['_main']) {
+      preMain();
+      ret = Module.callMain(args);
+      if (!Module['noExitRuntime']) {
+        exitRuntime();
+      }
     }
+    if (Module['postRun']) {
+      Module['postRun']();
+    }
+    return ret;
   }
 
-  if (Module['postRun']) {
-    Module['postRun']();
+#if GENERATING_HTML
+  if (Module['setStatus']) {
+    Module['setStatus']('Running...');
+    setTimeout(function() {
+      setTimeout(function() {
+        Module['setStatus']('');
+      }, 1);
+      doRun();
+    }, 1);
+    return 0;
+  } else {
+    return doRun();
   }
-
-  return ret;
+#else
+  return doRun();
+#endif
 }
 Module['run'] = run;
 

@@ -69,6 +69,11 @@ mergeInto(LibraryManager.library, {
 #endif
         // Set the background of the WebGL canvas to black
         canvas.style.backgroundColor = "black";
+
+        // Warn on context loss
+        canvas.addEventListener('webglcontextlost', function(event) {
+          alert('WebGL context lost. You will need to reload the page.');
+        }, false);
       }
       if (setInModule) {
         Module.ctx = ctx;
@@ -138,6 +143,22 @@ mergeInto(LibraryManager.library, {
              0; // delta;
     },
 
+    asyncLoad: function(url, callback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onload = function() {
+        var arrayBuffer = xhr.response;
+        assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
+        callback(new Uint8Array(arrayBuffer));
+        removeRunDependency();
+      };
+      xhr.onerror = function(event) {
+        assert(arrayBuffer, 'Loading data file "' + url + '" failed.');
+      };
+      xhr.send(null);
+      addRunDependency();
+    }
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],
@@ -207,6 +228,26 @@ mergeInto(LibraryManager.library, {
       setTimeout(asyncCall, millis);
     } else {
       Browser.requestAnimationFrame(asyncCall);
+    }
+  },
+
+  emscripten_hide_mouse: function() {
+    var styleSheet = document.styleSheets[0];
+    var rules = styleSheet.cssRules;
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i].cssText.substr(0, 5) == 'canvas') {
+        styleSheet.deleteRule(i);
+        i--;
+      }
+    }
+    styleSheet.insertRule('canvas.emscripten { border: 1px solid black; cursor: none; }', 0);
+  },
+
+  emscripten_get_now: function() {
+    if (window['performance'] && window['performance']['now']) {
+      return window['performance']['now']();
+    } else {
+      return Date.now();
     }
   }
 });

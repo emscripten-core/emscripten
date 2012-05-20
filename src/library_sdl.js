@@ -71,6 +71,7 @@ var LibrarySDL = {
       188: 44, // comma
       190: 46, // period
       191: 47, // slash (/)
+      192: 96, // backtick/backquote (`)
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
@@ -746,7 +747,6 @@ var LibrarySDL = {
   },
 
   SDL_WM_GrabInput: function() {},
-  SDL_ShowCursor: function() {},
 
   // SDL_Image
 
@@ -757,6 +757,10 @@ var LibrarySDL = {
   IMG_Load__deps: ['SDL_LockSurface'],
   IMG_Load: function(filename) {
     filename = FS.standardizePath(Pointer_stringify(filename));
+    if (filename[0] == '/') {
+      // Convert the path to relative
+      filename = filename.substr(1);
+    }
     var raw = preloadedImages[filename];
     if (!raw) {
       Runtime.warnOnce('Cannot find preloaded image ' + filename);

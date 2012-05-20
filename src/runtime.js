@@ -349,7 +349,7 @@ var Runtime = {
       return arg + '\n\n';
     }
     if (arg.byteLength) {
-      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 40)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
+      return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
       var buf = new ArrayBuffer(32);
       var i8buf = new Int8Array(buf);
       var i16buf = new Int16Array(buf);

@@ -205,6 +205,8 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
 
+var GENERATING_HTML = 0; // Set to 1 when generating .html and not just .js
+
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you
                            // to more easily perform operations from handwritten JS on
@@ -213,6 +215,16 @@ var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run t
 var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. It is better,
                        // if you can, to get the original source code to build without x86_fp80
                        // (which is nonportable anyhow).
+
+var GC_SUPPORT = 1; // Enables GC, see gc.h (this does not add overhead, so it is on by default)
+
+var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined symbols that
+                                   // are not resolved by the library_*.js files. We by default
+                                   // do not warn because (1) it is normal in large projects to
+                                   // not implement everything, when you know what is not
+                                   // going to actually be called (and don't want to mess with
+                                   // the existing buildsystem), and (2) functions might be
+                                   // implemented later on, say in --pre-js
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

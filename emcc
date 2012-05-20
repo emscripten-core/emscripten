@@ -297,6 +297,9 @@ the source of emcc (search for 'os.environ').
 
 ''' % (this, this, this)
   exit(0)
+elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
+  print 'emcc (Emscripten GCC-like replacement) 2.0'
+  exit(subprocess.call([shared.CLANG, '-v']))
 
 # If this is a configure-type thing, do not compile to JavaScript, instead use clang
 # to compile to a native binary (using our headers, so things make sense later)
@@ -717,6 +720,9 @@ try:
 
   if DEBUG: print >> sys.stderr, 'emcc: will generate JavaScript'
 
+  if final_suffix == 'html':
+    shared.Settings.GENERATING_HTML = 1
+
   extra_files_to_link = []
 
   if not LEAVE_INPUTS_RAW and not AUTODEBUG:
@@ -1122,18 +1128,16 @@ try:
 
     flush_js_optimizer_queue()
 
-    # eliminator
     if DEBUG: print >> sys.stderr, 'emcc: running variable eliminator'
     final = shared.Building.eliminator(final)
     if DEBUG: save_intermediate('eliminator')
 
-    # js optimizer pre-pass
     js_optimizer_queue += ['simplifyExpressionsPre']
     if shared.Settings.RELOOP:
       js_optimizer_queue += ['optimizeShiftsAggressive'] # aggressive shifts optimization requires loops, it breaks on switches
-    flush_js_optimizer_queue()
-    final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
-    if DEBUG: save_intermediate('eliminator')
+      flush_js_optimizer_queue()
+      final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
+      if DEBUG: save_intermediate('eliminator')
 
   if closure:
     flush_js_optimizer_queue()
@@ -1143,7 +1147,6 @@ try:
     if DEBUG: save_intermediate('closure')
 
   if opt_level >= 1:
-    # js optimizer post-pass
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     js_optimizer_queue += ['simplifyExpressionsPost']
 
