@@ -528,13 +528,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           if not os.path.exists('ar_output'):
             os.makedirs('ar_output')
           os.chdir('ar_output')
-          Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate()
-          added = False
-          for name in os.listdir(os.getcwd()):
-            actual_files.append(os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output', name))
-            added = True
-          if not added:
-            print >> sys.stderr, 'Warning: Archive %s appears to be empty' % f
+          contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+          if len(contents) == 0:
+            print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
+          else:
+            Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+            actual_files += map(os.path.abspath, contents)
         finally:
           os.chdir(cwd)
       else:
