@@ -519,25 +519,37 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def link(files, target):
     actual_files = []
+    unresolved_symbols = set() # necessary for .a linking, see below
+    resolved_symbols = set()
     for f in files:
-      if Building.is_ar(f):
-        # Extract object files from ar archives, so we can link them using llvm-link
+      if not Building.is_ar(f):
+        new_symbols = Building.llvm_nm(f)
+        resolved_symbols = resolved_symbols.union(new_symbols.defs)
+        unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+        actual_files.append(f)
+      else:
+        # Extract object files from ar archives, and link according to gnu ld semantics
+        # (link in an entire .o from the archive if it supplies symbols still unresolved)
         cwd = os.getcwd()
         try:
           os.chdir(EMSCRIPTEN_TEMP_DIR)
           if not os.path.exists('ar_output'):
             os.makedirs('ar_output')
           os.chdir('ar_output')
-          contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+          contents = map(os.path.abspath, filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n')))
           if len(contents) == 0:
             print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
           else:
             Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
-            actual_files += map(os.path.abspath, contents)
+            for content in contents:
+              new_symbols = Building.llvm_nm(content)
+              # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
+              if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
+                resolved_symbols = resolved_symbols.union(new_symbols.defs)
+                unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+                actual_files.append(content)
         finally:
           os.chdir(cwd)
-      else:
-        actual_files.append(f)
     try_delete(target)
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
