@@ -549,11 +549,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
               if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
                 needed = True
             if needed:
-              actual_files += contents
               for content in contents:
-                new_symbols = Building.llvm_nm(content)
-                resolved_symbols = resolved_symbols.union(new_symbols.defs)
-                unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+                if Building.is_bitcode(content):
+                  new_symbols = Building.llvm_nm(content)
+                  resolved_symbols = resolved_symbols.union(new_symbols.defs)
+                  unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+                  actual_files.append(content)
         finally:
           os.chdir(cwd)
     try_delete(target)
@@ -628,13 +629,15 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       commons = []
     for line in output.split('\n'):
       if len(line) == 0: continue
-      status, symbol = filter(lambda seg: len(seg) > 0, line.split(' '))
-      if status == 'U':
-        ret.undefs.append(symbol)
-      elif status != 'C':
-        ret.defs.append(symbol)
-      else:
-        ret.commons.append(symbol)
+      parts = filter(lambda seg: len(seg) > 0, line.split(' '))
+      if len(parts) == 2: # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
+        status, symbol = parts
+        if status == 'U':
+          ret.undefs.append(symbol)
+        elif status != 'C':
+          ret.defs.append(symbol)
+        else:
+          ret.commons.append(symbol)
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
     ret.commons = set(ret.commons)
