@@ -542,15 +542,15 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           if len(contents) == 0:
             print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
           else:
+            for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
+              dirname = os.path.dirname(content)
+              if dirname and not os.path.exists(dirname):
+                os.makedirs(dirname)
             Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+            contents = map(lambda content: os.path.join(temp_dir, content), contents)
+            contents = filter(os.path.exists, map(os.path.abspath, contents))
             needed = False # We add or do not add the entire archive. We let llvm dead code eliminate parts we do not need, instead of
                            # doing intra-dependencies between archive contents
-            for i in range(len(contents)):
-              if not os.path.exists(contents[i]):
-                # not one that works from this directory (so, not relative to this dir, and not absolute)
-                # so must be under cwd, the build dir
-                contents[i] = os.path.join(cwd, contents[i])
-            contents = filter(os.path.exists, map(os.path.abspath, contents))
             for content in contents:
               new_symbols = Building.llvm_nm(content)
               # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
