@@ -1,5 +1,7 @@
 cd lzip
 
+export CXX=`../../../em-config LLVM_ROOT`/clang++
+
 echo "native"
 make clean
 DECODER_ONLY=0 make lzip -j 4 # native build
