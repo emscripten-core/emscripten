@@ -521,6 +521,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     actual_files = []
     unresolved_symbols = set() # necessary for .a linking, see below
     resolved_symbols = set()
+    temp_dir = None
     for f in files:
       if not Building.is_ar(f):
         if Building.is_bitcode(f):
@@ -533,17 +534,23 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         cwd = os.getcwd()
         try:
-          os.chdir(EMSCRIPTEN_TEMP_DIR)
-          if not os.path.exists('ar_output'):
-            os.makedirs('ar_output')
-          os.chdir('ar_output')
-          contents = map(os.path.abspath, filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n')))
+          temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()))
+          if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+          os.chdir(temp_dir)
+          contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
           if len(contents) == 0:
             print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
           else:
             Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
             needed = False # We add or do not add the entire archive. We let llvm dead code eliminate parts we do not need, instead of
                            # doing intra-dependencies between archive contents
+            for i in range(len(contents)):
+              if not os.path.exists(contents[i]):
+                # not one that works from this directory (so, not relative to this dir, and not absolute)
+                # so must be under cwd, the build dir
+                contents[i] = os.path.join(cwd, contents[i])
+            contents = filter(os.path.exists, map(os.path.abspath, contents))
             for content in contents:
               new_symbols = Building.llvm_nm(content)
               # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
@@ -561,6 +568,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     try_delete(target)
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+    if temp_dir:
+      try_delete(temp_dir)
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
