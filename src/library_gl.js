@@ -1828,10 +1828,16 @@ var LibraryGL = {
   },
 
   glFogf: function(){}, // TODO
+  glFogi: function(){}, // TODO
+  glFogx: function(){}, // TODO
+  glFogfv: function(){}, // TODO
 
   glPolygonMode: function(){}, // TODO
 
   glAlphaFunc: function(){}, // TODO
+
+  glNormal3f: function(){}, // TODO
+
 
   // ClientState/gl*Pointer
 
@@ -2040,7 +2046,7 @@ var LibraryGL = {
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-[[0, 'shadeModel fogi fogfv getError* finish flush'],
+[[0, 'shadeModel getError* finish flush'],
  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset sampleCoverage isEnabled*'],
  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
