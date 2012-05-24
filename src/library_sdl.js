@@ -27,6 +27,7 @@ var LibrarySDL = {
     startTime: null,
     mouseX: 0,
     mouseY: 0,
+    buttonState: 0,
 
     DOMEventToSDLEvent: {},
 
@@ -307,7 +308,7 @@ var LibrarySDL = {
       }
       return false;
     },
-    
+
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
@@ -349,7 +350,17 @@ var LibrarySDL = {
 
           break;
         }
-        case 'mousedown': case 'mouseup': case 'mousemove': {
+        case 'mousedown': case 'mouseup':
+          if (event.type == 'mousedown') {
+            // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
+            // and DOM buttons are 0-2, so this means that the below formula is
+            // correct.
+            SDL.buttonState |= 1 << event.button;
+          } else if (event.type == 'mouseup') {
+            SDL.buttonState = 0;
+          }
+          // fall through
+        case 'mousemove': {
           var x = event.pageX - Module['canvas'].offsetLeft;
           var y = event.pageY - Module['canvas'].offsetTop;
           if (event.type != 'mousemove') {
@@ -361,8 +372,7 @@ var LibrarySDL = {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'y', 'i32') }}};
           } else {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.button', 'event.button', 'i8') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.getMovementX(x - SDL.mouseX, event)', 'i32') }}};
@@ -434,11 +444,11 @@ var LibrarySDL = {
     SDL.keyboardState = _malloc(0x10000);
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
-    SDL.DOMEventToSDLEvent['keydown'] = 0x300;
-    SDL.DOMEventToSDLEvent['keyup'] = 0x301;
-    SDL.DOMEventToSDLEvent['mousedown'] = 0x401;
-    SDL.DOMEventToSDLEvent['mouseup'] = 0x402;
-    SDL.DOMEventToSDLEvent['mousemove'] = 0x400;
+    SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
+    SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
+    SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
+    SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
+    SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
     return 0; // success
   },
 
