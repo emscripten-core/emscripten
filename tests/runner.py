@@ -6300,7 +6300,7 @@ TT = %s
         # --version
         output = Popen(['python', compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
-Copyright (C) 2011 the Emscripten authors.
+Copyright (C) 2012 the Emscripten authors.
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''', output[0].replace('\r', ''), output[1].replace('\r', ''))
