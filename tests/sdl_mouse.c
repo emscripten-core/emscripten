@@ -12,6 +12,7 @@ void one() {
     switch(event.type) {
       case SDL_MOUSEMOTION: {
         SDL_MouseMotionEvent *m = (SDL_MouseMotionEvent*)&event;
+        assert(m->state == 0);
         int x, y;
         SDL_GetMouseState(&x, &y);
         assert(x == m->x && y == m->y);

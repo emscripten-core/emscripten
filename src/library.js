@@ -2852,7 +2852,7 @@ LibraryManager.library = {
       streamObj.error = true;
       return -1;
     } else {
-      return {{{ makeGetValue('_fgetc.ret', '0', 'i8') }}};
+      return {{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}};
     }
   },
   getc: 'fgetc',
