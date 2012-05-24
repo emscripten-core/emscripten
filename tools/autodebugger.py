@@ -13,6 +13,7 @@ import os, sys, re
 ALLOW_POINTERS = False
 ALLOW_MISC = True
 MEMCPY = False
+NO_DLMALLOC = True
 
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
@@ -206,6 +207,7 @@ for.end:                                          ; preds = %for.body, %entry
 lines_added = 0
 lines = data.split('\n')
 in_func = False
+added_entry = False
 for i in range(len(lines)):
   if MEMCPY:
     if not lines[i].startswith('declare void'):
@@ -215,50 +217,55 @@ for i in range(len(lines)):
     pre = ''
     if lines[i].startswith('define '):
       in_func = True
+      if NO_DLMALLOC and ('@malloc(' in lines[i] or '@free(' in lines[i] or '@sys_alloc(' in lines[i] or '@segment_holding(' in lines[i] or '@init_top(' in lines[i] or '@add_segment(' in lines[i] or '@tmalloc_small(' in lines[i]):
+        in_func = False
+      if in_func:
+        added_entry = False
     elif lines[i].startswith('}'):
       in_func = False
-    elif in_func and ' = alloca' not in lines[i] and lines[i].startswith('  '):
+    elif in_func and not added_entry and ' = alloca' not in lines[i] and lines[i].startswith('  '):
       # This is a good place to mark entry to this function
-      in_func = False
+      added_entry = True
       index = i+1+lines_added
       pre = '  call void @emscripten_autodebug_i32(i32 -1, i32 %d)' % index
-    elif lines[i].startswith('  ret '):
+    elif in_func and lines[i].startswith('  ret '):
       # This is a good place to mark entry to this function
       index = i+1+lines_added
       pre = '  call void @emscripten_autodebug_i32(i32 -2, i32 %d)' % index
 
-    m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
-    if m:
-      index = i+1+lines_added
-      if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
-        lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
-        lines_added += 1
-      elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
-        lines[i] += '\n  %%ead.%d = ptrtoint %s %s to i32' % (index, m.group('type'), m.group('var'))
-        lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
-        lines_added += 2
-      continue
-    m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
-    if m:
-      index = i+1+lines_added
-      lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
-      lines_added += 1
-      continue
-    if ALLOW_MISC:
-      m = re.match('  %(?P<var>[\w_.]+) = (call|mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
+    if in_func:
+      m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
+      if m:
+        index = i+1+lines_added
+        if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
+          lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+          lines_added += 1
+        elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
+          lines[i] += '\n  %%ead.%d = ptrtoint %s %s to i32' % (index, m.group('type'), m.group('var'))
+          lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
+          lines_added += 2
+        continue
+      m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
       if m:
         index = i+1+lines_added
         lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
         lines_added += 1
         continue
-      m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
-      if m:
-        index = i+1+lines_added
-        lines[i] += '\n  %%adpretemp%d = bitcast i8* %%%s to i64*' % (index, m.group('src')) + \
-                    '\n  %%adtemp%d = load i64* %%adpretemp%d, align %s' % (index, index, m.group('align')) + \
-                    '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%adtemp%d)' % ('i64', index, 'i64', index)
-        lines_added += 3
-        continue
+      if ALLOW_MISC:
+        m = re.match('  %(?P<var>[\w_.]+) = (call|mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
+        if m:
+          index = i+1+lines_added
+          lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+          lines_added += 1
+          continue
+        m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
+        if m:
+          index = i+1+lines_added
+          lines[i] += '\n  %%adpretemp%d = bitcast i8* %%%s to i64*' % (index, m.group('src')) + \
+                      '\n  %%adtemp%d = load i64* %%adpretemp%d, align %s' % (index, index, m.group('align')) + \
+                      '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%adtemp%d)' % ('i64', index, 'i64', index)
+          lines_added += 3
+          continue
 
   finally:
     if len(pre) > 0:

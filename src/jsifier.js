@@ -73,6 +73,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       libFuncsToInclude = ['memcpy', 'memset', 'malloc', 'free'];
     }
+    if (GENERATING_HTML) {
+      libFuncsToInclude.push('$Browser');
+    }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
         intertype: 'functionStub',
@@ -408,8 +411,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ var ret = (function() {Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments) + "]"); ');
-            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); Module.printErr("  [     return:" + ret); return ret; }';
+            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
           }
         }
 
@@ -432,7 +435,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           ident = '_' + ident;
         }
-        var text = (deps ? '\n' + deps.map(addFromLibrary).join('\n') : '');
+        var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
         if (ident in EXPORTED_FUNCTIONS) {
           text += '\nModule["' + ident + '"] = ' + ident + ';';
@@ -450,6 +453,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = addFromLibrary(shortident);
       } else {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
+        if (WARN_ON_UNDEFINED_SYMBOLS) {
+          warn('Unresolved symbol: ' + item.ident);
+        }
       }
       return ret;
     }
@@ -554,9 +560,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
         func.JS += '  var __label__;\n';
-      }
-      if (func.needsLastLabel) {
-        func.JS += '  var __lastLabel__ = null;\n';
       }
 
       // Walk function blocks and generate JS
@@ -748,7 +751,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('noop', function(item) {
     return ';';
   });
-  makeFuncLineActor('var', function(item) { // assigns into phis become simple vars when MICRO_OPTS
+  makeFuncLineActor('var', function(item) { // assigns into phis become simple vars
     return 'var ' + item.ident + ';';
   });
   makeFuncLineActor('store', function(item) {
@@ -789,11 +792,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     return label;
   }
 
-  function makeBranch(label, lastLabel, labelIsVariable) {
+  function makeBranch(label, lastLabel, labelIsVariable) { // lastLabel is deprecated
     var pre = '';
-    if (!MICRO_OPTS && lastLabel) {
-      pre = '__lastLabel__ = ' + getLabelId(lastLabel) + '; ';
-    }
     if (label[0] == 'B') {
       assert(!labelIsVariable, 'Cannot handle branches to variables with special branching options');
       var parts = label.split('|');
@@ -1030,7 +1030,16 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('extractvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: use getelementptr parsing stuff, for depth. For now, we assume that LLVM aggregates are flat,
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
-    return item.ident + '.f' + item.indexes[0][0].text;
+    var index = item.indexes[0][0].text;
+    var valueType = Types.types[item.type].fields[index];
+    if (USE_TYPED_ARRAYS != 2 || valueType != 'i64') {
+      return item.ident + '.f' + index;
+    } else {
+      var assignTo = item.assignTo;
+      item.assignTo = null;
+      return 'var ' + assignTo + '$0 = ' + item.ident + '.f' + index + '[0];' +
+             'var ' + assignTo + '$1 = ' + item.ident + '.f' + index + '[1];';
+    }
   });
   makeFuncLineActor('insertvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: see extractvalue
@@ -1051,20 +1060,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.allocatedNum));
     }
-  });
-  makeFuncLineActor('phi', function(item) {
-    var params = item.params;
-    assert(!MICRO_OPTS);
-    function makeOne(i) {
-      if (i === params.length-1) {
-        return finalizeLLVMParameter(params[i].value);
-      }
-      return '__lastLabel__ == ' + getLabelId(params[i].label) + ' ? ' + 
-                                   finalizeLLVMParameter(params[i].value) + ' : (' + makeOne(i+1) + ')';
-    }
-    var ret = makeOne(0);
-    if (item.postSet) ret += item.postSet;
-    return ret;
   });
 
   makeFuncLineActor('mathop', processMathop);

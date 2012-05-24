@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
     glViewport( 0, 0, 640, 480 );
 
     glMatrixMode( GL_PROJECTION );
+    glPushMatrix(); // just for testing
     glLoadIdentity();
 
     glOrtho( 0, 640, 480, 0, -1, 1 );
@@ -138,7 +139,26 @@ int main(int argc, char *argv[])
         glTexCoord2i( 1, 1 ); glVertex3f( 300, 400, 0 );
         glTexCoord2i( 0, 1 ); glVertex3f( 500, 410, 0 );
     glEnd();
-    
+
+#if !EMSCRIPTEN
+    glDisable(GL_TEXTURE_2D);
+#endif
+
+    glColor3ub(90, 255, 255);
+    glBegin( GL_QUADS );
+        glVertex3f( 10, 410, 0 );
+        glVertex3f( 300, 410, 0 );
+        glVertex3f( 300, 480, 0 );
+        glVertex3f( 10, 470, 0 );
+    glEnd();
+
+    glBegin( GL_QUADS );
+        glColor3f(1.0, 0, 1.0);   glVertex3f( 410, 410, 0 );
+        glColor3f(0, 1.0, 0);     glVertex3f( 600, 410, 0 );
+        glColor3f(0, 0, 1.0);     glVertex3f( 600, 480, 0 );
+        glColor3f(1.0, 1.0, 1.0); glVertex3f( 410, 470, 0 );
+    glEnd();
+
     SDL_GL_SwapBuffers();
     
 #if !EMSCRIPTEN

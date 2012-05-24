@@ -10,7 +10,7 @@ NODE_JS = 'node'
 SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n']
 V8_ENGINE = os.path.expanduser('~/Dev/v8/d8')
 
-TEMP_DIR = '/tmp'
+TEMP_DIR = '/tmp' # You will need to modify this on Windows
 
 
 ########################################################################################################

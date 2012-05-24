@@ -21,6 +21,7 @@ int test(){
     "INSERT INTO t2 VALUES(1,13153,'thirteen thousand one hundred fifty three');",
     "INSERT INTO t2 VALUES(1,987,'some other number');",
     "SELECT count(*) FROM t2;",
+    "SELECT datetime('2012-04-16 12:35:57', '+1 days');",
     "SELECT a, b, c FROM t2;",
     NULL
   };

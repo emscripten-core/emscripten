@@ -26,6 +26,7 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // exceed it's size, whether all allocations (stack and static) are
                     // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
                     // if code flow runs into a fault
+var VERBOSE = 0; // When set to 1, will generate more verbose output during compilation.
 
 var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
                     // code in your own, and will call run() yourself at the right time
@@ -100,9 +101,13 @@ var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
 var LABEL_DEBUG = 0; // Print out labels and functions as we enter them
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
-var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js)
 
-var GL_DEBUG = 0; // Print out all calls into WebGL
+var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
+                       // Runtime.debug at runtime for logging to cease, and can set it when you
+                       // want it back. A simple way to set it in C++ is
+                       //   emscripten_run_script("Runtime.debug = ...;");
+var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
+                  // option, in this case GL.debug.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
@@ -200,6 +205,8 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
 
+var GENERATING_HTML = 0; // Set to 1 when generating .html and not just .js
+
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you
                            // to more easily perform operations from handwritten JS on
@@ -208,6 +215,16 @@ var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run t
 var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. It is better,
                        // if you can, to get the original source code to build without x86_fp80
                        // (which is nonportable anyhow).
+
+var GC_SUPPORT = 1; // Enables GC, see gc.h (this does not add overhead, so it is on by default)
+
+var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined symbols that
+                                   // are not resolved by the library_*.js files. We by default
+                                   // do not warn because (1) it is normal in large projects to
+                                   // not implement everything, when you know what is not
+                                   // going to actually be called (and don't want to mess with
+                                   // the existing buildsystem), and (2) functions might be
+                                   // implemented later on, say in --pre-js
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

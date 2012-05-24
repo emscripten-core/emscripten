@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -61,6 +61,9 @@ def check_sanity(force=False):
       except:
         pass
 
+      print >> sys.stderr, '(Emscripten: Config file changed, clearing cache)' # LLVM may have changed, etc.
+      Cache.erase()
+
     print >> sys.stderr, '(Emscripten: Running sanity checks)'
 
     if not check_engine(COMPILER_ENGINE):
@@ -76,6 +79,11 @@ def check_sanity(force=False):
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG)
         sys.exit(0)
+
+    try:
+      subprocess.call(['java', '-version'], stdout=PIPE, stderr=PIPE)
+    except:
+      print >> sys.stderr, 'WARNING: java does not seem to exist, required for closure compiler. -O2 and above will fail.'
 
     if not os.path.exists(CLOSURE_COMPILER):
       print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG)
@@ -98,7 +106,6 @@ CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
 CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 CLANG=CLANG_CPP
 LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
-LLVM_LD=os.path.join(LLVM_ROOT, 'llvm-ld')
 LLVM_AR=os.path.join(LLVM_ROOT, 'llvm-ar')
 LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
 LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
@@ -117,6 +124,7 @@ EMAR = path_from_root('emar')
 EMLD = path_from_root('emld')
 EMRANLIB = path_from_root('emranlib')
 EMLIBTOOL = path_from_root('emlibtool')
+EMCONFIG = path_from_root('em-config')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
@@ -174,7 +182,7 @@ except:
 # Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__', '-U__CYGWIN__',
-                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu']
+                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN']
 
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
@@ -191,7 +199,7 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ] + [
-    '-U__APPLE__'
+    '-U__APPLE__', '-U__linux__'
   ]
   COMPILER_OPTS += EMSDK_OPTS
 else:
@@ -199,16 +207,25 @@ else:
 
 # Engine tweaks
 
-#if 'strict' not in str(SPIDERMONKEY_ENGINE): # XXX temporarily disable strict mode until we sort out some stuff
-#  SPIDERMONKEY_ENGINE += ['-e', "options('strict')"] # Strict mode in SpiderMonkey. With V8 we check that fallback to non-strict works too
-
 try:
   if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    if type(SPIDERMONKEY_ENGINE) is str:
+      SPIDERMONKEY_ENGINE = [SPIDERMONKEY_ENGINE]
     SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
 except NameError:
   pass
 
-WINDOWS = sys.platform.startswith ('win')
+WINDOWS = sys.platform.startswith('win')
+
+# If we have 'env', we should use that to find python, because |python| may fail while |env python| may work
+# (For example, if system python is 3.x while we need 2.x, and env gives 2.x if told to do so.)
+ENV_PREFIX = []
+if not WINDOWS:
+  try:
+    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    ENV_PREFIX = ['env']
+  except:
+    pass
 
 # Temp file utilities
 
@@ -501,11 +518,58 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def link(files, target):
+    actual_files = []
+    unresolved_symbols = set() # necessary for .a linking, see below
+    resolved_symbols = set()
+    temp_dir = None
+    for f in files:
+      if not Building.is_ar(f):
+        if Building.is_bitcode(f):
+          new_symbols = Building.llvm_nm(f)
+          resolved_symbols = resolved_symbols.union(new_symbols.defs)
+          unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+          actual_files.append(f)
+      else:
+        # Extract object files from ar archives, and link according to gnu ld semantics
+        # (link in an entire .o from the archive if it supplies symbols still unresolved)
+        cwd = os.getcwd()
+        try:
+          temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()))
+          if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+          os.chdir(temp_dir)
+          contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+          if len(contents) == 0:
+            print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
+          else:
+            for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
+              dirname = os.path.dirname(content)
+              if dirname and not os.path.exists(dirname):
+                os.makedirs(dirname)
+            Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+            contents = map(lambda content: os.path.join(temp_dir, content), contents)
+            contents = filter(os.path.exists, map(os.path.abspath, contents))
+            needed = False # We add or do not add the entire archive. We let llvm dead code eliminate parts we do not need, instead of
+                           # doing intra-dependencies between archive contents
+            for content in contents:
+              new_symbols = Building.llvm_nm(content)
+              # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
+              if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
+                needed = True
+            if needed:
+              for content in contents:
+                if Building.is_bitcode(content):
+                  new_symbols = Building.llvm_nm(content)
+                  resolved_symbols = resolved_symbols.union(new_symbols.defs)
+                  unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+                  actual_files.append(content)
+        finally:
+          os.chdir(cwd)
     try_delete(target)
-    stub = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stub_deleteme') + ('.exe' if WINDOWS else '')
-    output = Popen([LLVM_LD, '-disable-opt'] + files + ['-b', target, '-o', stub], stdout=PIPE).communicate()[0]
-    try_delete(stub) # clean up stub left by the linker
+    output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+    if temp_dir:
+      try_delete(temp_dir)
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
@@ -575,13 +639,15 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       commons = []
     for line in output.split('\n'):
       if len(line) == 0: continue
-      status, symbol = filter(lambda seg: len(seg) > 0, line.split(' '))
-      if status == 'U':
-        ret.undefs.append(symbol)
-      elif status != 'C':
-        ret.defs.append(symbol)
-      else:
-        ret.commons.append(symbol)
+      parts = filter(lambda seg: len(seg) > 0, line.split(' '))
+      if len(parts) == 2: # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
+        status, symbol = parts
+        if status == 'U':
+          ret.undefs.append(symbol)
+        elif status != 'C':
+          ret.defs.append(symbol)
+        else:
+          ret.commons.append(symbol)
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
     ret.commons = set(ret.commons)
@@ -592,13 +658,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen(['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(ENV_PREFIX + ['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen(['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen(ENV_PREFIX + ['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 
@@ -609,7 +675,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Run Emscripten
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen(['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors

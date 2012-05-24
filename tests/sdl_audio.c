@@ -10,14 +10,23 @@ void play2();
 
 void play() {
   int channel = Mix_PlayChannel(-1, sound, 1);
-  assert(channel >= 0);
+  assert(channel == 0);
 
   emscripten_run_script("setTimeout(Module['_play2'], 500)");
 }
 
+void done(int channel) {
+  assert(channel == 1);
+
+  int result = 1;
+  REPORT_RESULT();
+}
+
 void play2() {
+  Mix_ChannelFinished(done);
+
   int channel2 = Mix_PlayChannel(-1, sound2, 1);
-  assert(channel2 >= 0);
+  assert(channel2 == 1);
 }
 
 int main(int argc, char **argv) {
@@ -41,9 +50,6 @@ int main(int argc, char **argv) {
                         "document.body.appendChild(element);");
 
   printf("you should hear two sounds. press the button to replay!\n");
-
-  int result = 1;
-  REPORT_RESULT();
 
   return 0;
 }
