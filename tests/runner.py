@@ -3954,6 +3954,20 @@ def process(filename):
         '''
       self.do_run(src, 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n', post_build=post)
 
+    def test_fgetc_unsigned(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      src = r'''
+        #include <stdio.h>
+        int main() {
+          FILE *file = fopen("file_with_byte_234.txt", "rb");
+          int c = fgetc(file);
+          printf("*%d\n", c);
+        }
+      '''
+      open('file_with_byte_234.txt', 'wb').write('\xea')
+      self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
+      self.do_run(src, '*234\n')
+
     def test_folders(self):
       add_pre_run = '''
 def process(filename):
