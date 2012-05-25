@@ -69,11 +69,11 @@ function intertyper(data, sidePass, baseLineNums) {
 
         if (mainPass && (line[0] == '%' || line[0] == '@')) {
           // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
-          var testType = /[@%\w\d\.\" $]+ = type .*/.exec(line);
+          var testType = /[@%\w\d\.\" $-]+ = type .*/.exec(line);
           if (!testType) {
-            var global = /([@%\w\d\.\" $]+) = .*/.exec(line);
+            var global = /([@%\w\d\.\" $-]+) = .*/.exec(line);
             var globalIdent = toNiceIdent(global[1]);
-            var testAlias = /[@%\w\d\.\" $]+ = alias .*/.exec(line);
+            var testAlias = /[@%\w\d\.\" $-]+ = alias .*/.exec(line);
             var testString = /^[^"]+c\"[^"]+"/.exec(line);
             Variables.globals[globalIdent] = {
               name: globalIdent,
