@@ -1,0 +1,264 @@
+frame 0
+frameline
+animdata[0] = 0.00000000
+animdata[1] = -0.02213600
+animdata[2] = 0.21368000
+animdata[3] = 0.00000000
+animdata[4] = 0.94635600
+animdata[5] = 0.32312500
+animdata[6] = 0.00000000
+frameline
+animdata[6] = 0.00000000
+animdata[7] = 0.10150600
+animdata[8] = 0.00000000
+animdata[9] = -0.10292100
+animdata[10] = 0.00000000
+animdata[11] = 0.00000000
+animdata[12] = 0.00000000
+frameline
+animdata[12] = 0.00000000
+animdata[13] = 0.11562300
+animdata[14] = 0.00000000
+animdata[15] = -0.13181200
+animdata[16] = 0.00000000
+animdata[17] = 0.00000000
+animdata[18] = 0.00000000
+frameline
+animdata[18] = 0.00000000
+animdata[19] = 0.14716600
+animdata[20] = 0.05224800
+animdata[21] = 0.00000000
+animdata[22] = 0.99503400
+animdata[23] = 0.09954000
+animdata[24] = 0.00000000
+frameline
+animdata[24] = -0.08901200
+animdata[25] = 0.03495200
+animdata[26] = 0.10200100
+animdata[27] = -0.90449900
+animdata[28] = 0.31986300
+animdata[29] = -0.16450100
+animdata[30] = 0.00000000
+frameline
+animdata[30] = 0.00000000
+animdata[31] = 0.03460000
+animdata[32] = 0.00000000
+animdata[33] = -0.33932300
+animdata[34] = -0.17058500
+animdata[35] = -0.05674000
+animdata[36] = 0.00000000
+frameline
+animdata[36] = 0.08901300
+animdata[37] = 0.03495300
+animdata[38] = 0.10200300
+animdata[39] = -0.90678000
+animdata[40] = -0.30414400
+animdata[41] = 0.13180800
+animdata[42] = 0.00000000
+frameline
+animdata[42] = 0.00000000
+animdata[43] = 0.03459800
+animdata[44] = 0.00000000
+animdata[45] = -0.38465600
+animdata[46] = 0.20853500
+animdata[47] = 0.04355200
+animdata[48] = 0.00000000
+frameline
+animdata[48] = 0.05478300
+animdata[49] = 0.08776100
+animdata[50] = 0.00658100
+animdata[51] = -0.04975400
+animdata[52] = -0.00020500
+animdata[53] = -0.00542700
+animdata[54] = 0.00000000
+frameline
+animdata[54] = -0.05362600
+animdata[55] = 0.08775300
+animdata[56] = 0.00662200
+animdata[57] = -0.03224000
+animdata[58] = 0.70633700
+animdata[59] = 0.03805700
+animdata[60] = 0.00000000
+frameline
+animdata[60] = 0.08767800
+animdata[61] = 0.09910000
+animdata[62] = 0.04200400
+animdata[63] = -0.48658300
+animdata[64] = -0.75782800
+animdata[65] = -0.39224400
+animdata[66] = 0.00000000
+frameline
+animdata[66] = 0.00000000
+animdata[67] = 0.08621700
+animdata[68] = 0.00000000
+animdata[69] = -0.13275100
+animdata[70] = -0.25403200
+animdata[71] = 0.42206600
+animdata[72] = 0.00000000
+frameline
+animdata[72] = 0.00010900
+animdata[73] = 0.11343800
+animdata[74] = -0.00046000
+animdata[75] = 0.00424900
+animdata[76] = 0.43245700
+animdata[77] = 0.08065100
+animdata[78] = 0.00000000
+frameline
+animdata[78] = -0.08767700
+animdata[79] = 0.09909800
+animdata[80] = 0.04200500
+animdata[81] = -0.48460700
+animdata[82] = 0.76187500
+animdata[83] = 0.38432000
+animdata[84] = 0.00000000
+frameline
+animdata[84] = 0.00000000
+animdata[85] = 0.08621700
+animdata[86] = 0.00000000
+animdata[87] = -0.09719100
+animdata[88] = 0.28995100
+animdata[89] = -0.44564500
+animdata[90] = 0.00000000
+frameline
+animdata[90] = 0.00021600
+animdata[91] = 0.11610300
+animdata[92] = 0.00060100
+animdata[93] = -0.02305500
+animdata[94] = -0.41085000
+animdata[95] = -0.08651400
+animdata[96] = 0.00000000
+frameline
+animdata[96] = 0.00000000
+animdata[97] = -0.02463200
+animdata[98] = 0.22803300
+animdata[99] = 0.00000000
+animdata[100] = 0.81624500
+animdata[101] = -0.57770600
+animdata[102] = 0.00000000
+frameline
+animdata[102] = 0.06124500
+animdata[103] = 0.07378500
+animdata[104] = 0.01947500
+animdata[105] = -0.49098300
+animdata[106] = -0.18594000
+animdata[107] = 0.01243400
+animdata[108] = 0.00000000
+frameline
+animdata[108] = 0.00000000
+animdata[109] = 0.10644500
+animdata[110] = 0.00000000
+animdata[111] = -0.54092700
+animdata[112] = 0.23666500
+animdata[113] = -0.28196200
+animdata[114] = 0.00000000
+frameline
+animdata[114] = 0.00000000
+animdata[115] = 0.08007200
+animdata[116] = 0.00000000
+animdata[117] = -0.31038200
+animdata[118] = -0.77741400
+animdata[119] = 0.54682500
+animdata[120] = 0.00000000
+frameline
+animdata[120] = 0.00000000
+animdata[121] = 0.05055300
+animdata[122] = 0.00000000
+animdata[123] = 0.09166800
+animdata[124] = -0.20672100
+animdata[125] = -0.07288900
+animdata[126] = 0.00000000
+frameline
+animdata[126] = -0.06124500
+animdata[127] = 0.07378400
+animdata[128] = 0.01947500
+animdata[129] = -0.58758300
+animdata[130] = 0.18610800
+animdata[131] = 0.00950000
+animdata[132] = 0.00000000
+frameline
+animdata[132] = 0.00000000
+animdata[133] = 0.10644600
+animdata[134] = 0.00000000
+animdata[135] = -0.54092800
+animdata[136] = -0.23666300
+animdata[137] = 0.28196400
+animdata[138] = 0.00000000
+frameline
+animdata[138] = 0.00000000
+animdata[139] = 0.08007200
+animdata[140] = 0.00000000
+animdata[141] = -0.28906600
+animdata[142] = 0.74845100
+animdata[143] = -0.59650400
+animdata[144] = 0.00000000
+frameline
+animdata[144] = 0.00000000
+animdata[145] = 0.05055300
+animdata[146] = 0.00000000
+animdata[147] = 0.12786100
+animdata[148] = 0.23079600
+animdata[149] = 0.07114100
+animdata[150] = 0.00000000
+frameline
+animdata[150] = 0.00000000
+animdata[151] = -0.04418300
+animdata[152] = 0.02565600
+animdata[153] = -0.87689900
+animdata[154] = 0.00000000
+animdata[155] = 0.00000000
+animdata[156] = 0.00000000
+frameline
+animdata[156] = 0.00000000
+animdata[157] = 0.04597000
+animdata[158] = 0.00000000
+animdata[159] = 0.14528300
+animdata[160] = 0.00000000
+animdata[161] = 0.00000000
+animdata[162] = 0.00000000
+frameline
+animdata[162] = 0.00000000
+animdata[163] = 0.05919300
+animdata[164] = 0.00000000
+animdata[165] = 0.06151300
+animdata[166] = 0.00000000
+animdata[167] = 0.00000000
+animdata[168] = 0.00000000
+frameline
+animdata[168] = 0.00000000
+animdata[169] = 0.06477600
+animdata[170] = 0.00000000
+animdata[171] = 0.01219600
+animdata[172] = 0.00000000
+animdata[173] = 0.00000000
+animdata[174] = 0.00000000
+frameline
+animdata[174] = 0.00000000
+animdata[175] = 0.06418900
+animdata[176] = 0.00000000
+animdata[177] = -0.01392400
+animdata[178] = 0.00000000
+animdata[179] = 0.00000000
+animdata[180] = 0.00000000
+frameline
+animdata[180] = 0.00000000
+animdata[181] = 0.06595100
+animdata[182] = 0.00000000
+animdata[183] = -0.04015600
+animdata[184] = 0.00000000
+animdata[185] = 0.00000000
+animdata[186] = 0.00000000
+frameline
+animdata[186] = 0.00000000
+animdata[187] = 0.06742100
+animdata[188] = 0.00000000
+animdata[189] = -0.02690900
+animdata[190] = 0.00000000
+animdata[191] = 0.00000000
+animdata[192] = 0.00000000
+frameline
+animdata[192] = 0.00000000
+animdata[193] = 0.06124900
+animdata[194] = 0.00000000
+animdata[195] = -0.01467800
+animdata[196] = 0.00000000
+animdata[197] = 0.00000000

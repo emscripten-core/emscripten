@@ -955,6 +955,12 @@ m_divisor is 1091269979
 
       self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
+    def test_cube2md5(self):
+      if self.emcc_args == None: return self.skip('needs emcc')
+      self.emcc_args += ['--embed-file', 'cube2md5.txt']
+      shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), os.path.join(self.get_dir(), 'cube2md5.txt'))
+      self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
+
     def test_cube2hash(self):
       # A good test of i64 math
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')

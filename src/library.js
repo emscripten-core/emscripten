@@ -3457,6 +3457,8 @@ LibraryManager.library = {
 
   strtod__deps: ['isspace', 'isdigit'],
   strtod: function(str, endptr) {
+    var origin = str;
+
     // Skip space.
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
 
@@ -3471,13 +3473,20 @@ LibraryManager.library = {
 
     var chr;
     var ret = 0;
+    var legit = false;
 
     // Get whole part.
     while(1) {
       chr = {{{ makeGetValue('str', 0, 'i8') }}};
       if (!_isdigit(chr)) break;
+      legit = true;
       ret = ret*10 + chr - '0'.charCodeAt(0);
       str++;
+    }
+
+    if (!legit) {
+      {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
+      return 0;
     }
 
     // Get fractional part.
