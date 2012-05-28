@@ -1,0 +1,5 @@
+env = Environment()
+env.Tool('emscripten')
+env.Append(CPPFLAGS='-std=c++11')
+env.Program('scons_integration', 'integration.cpp')
+
