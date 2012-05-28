@@ -6,7 +6,7 @@ EMSCRIPTEN_ROOT = os.path.expanduser('~/Dev/emscripten') # this helps projects u
 LLVM_ROOT = os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
 
 # See below for notes on which JS engine(s) you need
-NODE_JS = 'node'
+NODE_JS = 'node' # Note: If you put a relative path here, do not forget os.path.expanduser
 SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n']
 V8_ENGINE = os.path.expanduser('~/Dev/v8/d8')
 
