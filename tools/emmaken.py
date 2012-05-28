@@ -54,21 +54,12 @@ Example uses:
     SET(CMAKE_AR "PATH/emmaken.py")
     SET(CMAKE_RANLIB "PATH/emmaken.py")
 
- * For SCons the shared.py can be imported like so:
-    __file__ = str(Dir('#/project_path_to_emscripten/dummy/dummy'))
-    __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    def path_from_root(*pathelems):
-      return os.path.join(__rootpath__, *pathelems)
-    sys.path += [path_from_root('')]
-    from tools.shared import *
-    
-   For using the Emscripten compilers/linkers/etc. you can do:
+ * For SCons emscripten can be set up like so (Tool has to be present in <SConstruct_directory>/site_cons/site_tools/emscripten/):
     env = Environment()
-    ...
-    env.Append(CCFLAGS = COMPILER_OPTS)
-    env.Replace(LINK = LLVM_LD)
-    env.Replace(LD   = LLVM_LD)
-   TODO: Document all relevant setup changes
+    # Import emscripten Tool for this Environment
+    env.Tool("emscripten")
+    
+    env.Program("myprogram", src.c)
 
 After setting that up, run your build system normally. It should generate
 LLVM instead of the normal output, and end up with .ll files that you can
