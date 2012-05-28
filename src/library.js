@@ -4199,6 +4199,20 @@ LibraryManager.library = {
     return newStr;
   },
 
+  strndup__deps: ['strdup'],
+  strndup: function(ptr, size) {
+    var len = String_len(ptr);
+
+    if (size <= 0 || size >= len) {
+       return _strdup(ptr);
+    }
+    
+    var newStr = _malloc(0 + 1);
+    {{{ makeCopyValues('newStr', 'ptr', 'size', 'null', null, 1) }}};
+    {{{ makeSetValue('newStr', 'size', '0', 'i8') }}};
+    return newStr;
+  },
+
   strpbrk: function(ptr1, ptr2) {
     var searchSet = Runtime.set.apply(null, String_copy(ptr2));
     while ({{{ makeGetValue('ptr1', 0, 'i8') }}}) {
