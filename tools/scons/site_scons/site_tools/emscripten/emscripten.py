@@ -28,7 +28,7 @@ def generate(env, emscripten_path=None, **kw):
 	
 	env.Replace(CC     = os.path.join(emscPath, "emcc"    ))
 	env.Replace(CXX    = os.path.join(emscPath, "em++"    ))
-	env.Replace(LINK   = os.path.join(emscPath, "emld"    ))
+	env.Replace(LINK   = os.path.join(emscPath, "emcc"    ))
 	# SHLINK and LDMODULE should use LINK so no
 	# need to change them here
     
