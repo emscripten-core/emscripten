@@ -121,7 +121,6 @@ NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMCC = path_from_root('emcc')
 EMXX = path_from_root('em++')
 EMAR = path_from_root('emar')
-EMLD = path_from_root('emld')
 EMRANLIB = path_from_root('emranlib')
 EMLIBTOOL = path_from_root('emlibtool')
 EMCONFIG = path_from_root('em-config')
@@ -598,12 +597,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       shutil.move(filename + '.o', filename + '.o.pre')
       output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
-      #if Building.LLVM_OPTS == 2:
-      #  print 'Unsafe LD!'
-      #  shutil.move(filename + '.o', filename + '.o.pre')
-      #  output = Popen([LLVM_LD, filename + '.o.pre', '-o=' + filename + '.tmp'], stdout=PIPE).communicate()[0]
-      #  assert os.path.exists(filename + '.tmp.bc'), 'Failed to run llvm optimizations: ' + output
-      #  shutil.move(filename + '.tmp.bc', filename + '.o')
 
   @staticmethod
   def llvm_dis(input_filename, output_filename=None):
