@@ -2866,6 +2866,35 @@ def process(filename):
         '''
       self.do_run(src, 'fault on write to 0')
 
+    def test_trickystring(self):
+      src = r'''
+        #include <stdio.h>
+
+        typedef struct
+        {
+	        int (*f)(void *);
+	        void *d;
+	        char s[16];
+        } LMEXFunctionStruct;
+
+        int f(void *user)
+        {
+	        return 0;
+        }
+
+        static LMEXFunctionStruct const a[] =
+        {
+	        {f, (void *)(int)'a', "aa"}
+        };
+
+        int main()
+        {
+          printf("ok\n");
+	        return a[0].f(a[0].d);
+        }
+      '''
+      self.do_run(src, 'ok\n')
+
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
         if Settings.SAFE_HEAP:
