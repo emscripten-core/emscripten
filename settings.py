@@ -1,14 +1,17 @@
 # This file will be copied to ~/.emscripten if that file doesn't exist. Or, this is that copy.
 # IMPORTANT: Edit the *copy* with the right paths!
+# Note: If you put paths relative to the home directory, do not forget os.path.expanduser
 
 EMSCRIPTEN_ROOT = os.path.expanduser('~/Dev/emscripten') # this helps projects using emscripten find it
 
 LLVM_ROOT = os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
 
 # See below for notes on which JS engine(s) you need
-NODE_JS = 'node' # Note: If you put a relative path here, do not forget os.path.expanduser
+NODE_JS = 'node'
 SPIDERMONKEY_ENGINE = [os.path.expanduser('~/Dev/mozilla-central/js/src/js'), '-m', '-n']
 V8_ENGINE = os.path.expanduser('~/Dev/v8/d8')
+
+JAVA = 'java'
 
 TEMP_DIR = '/tmp' # You will need to modify this on Windows
 
