@@ -2856,6 +2856,16 @@ def process(filename):
                    extra_emscripten_args=['-H', 'libc/time.h'])
                    #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
+    def test_intentional_fault(self):
+      # Some programs intentionally segfault themselves, we should compile that into a throw
+      src = r'''
+        int main () {
+          *(volatile char *)0 = 0;
+          return 0;
+        }
+        '''
+      self.do_run(src, 'fault on write to 0')
+
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
         if Settings.SAFE_HEAP:
