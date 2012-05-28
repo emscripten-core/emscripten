@@ -4207,7 +4207,7 @@ LibraryManager.library = {
        return _strdup(ptr);
     }
     
-    var newStr = _malloc(0 + 1);
+    var newStr = _malloc(size + 1);
     {{{ makeCopyValues('newStr', 'ptr', 'size', 'null', null, 1) }}};
     {{{ makeSetValue('newStr', 'size', '0', 'i8') }}};
     return newStr;
