@@ -172,6 +172,12 @@ try:
 except:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
+try:
+  JAVA
+except:
+  print >> sys.stderr, 'JAVA not defined in ~/.emscripten, using "java"'
+  JAVA = 'java'
+
 # Additional compiler options
 
 try:
