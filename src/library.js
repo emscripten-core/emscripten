@@ -4203,8 +4203,12 @@ LibraryManager.library = {
   strndup: function(ptr, size) {
     var len = String_len(ptr);
 
-    if (size <= 0 || size >= len) {
-       return _strdup(ptr);
+    if (size >= len) {
+      return _strdup(ptr);
+    }
+
+    if (size < 0) {
+      size = 0;
     }
     
     var newStr = _malloc(size + 1);

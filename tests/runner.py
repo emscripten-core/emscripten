@@ -1406,26 +1406,34 @@ m_divisor is 1091269979
           int main(int argc, char **argv) {
             const char* source = "strndup - duplicate a specific number of bytes from a string";
 
-            char* strdup_val = strndup(source, 7);
-            printf("%s\\n", strdup_val);
+            char* strdup_val = strndup(source, 0);
+            printf("1:%s\\n", strdup_val);
+            free(strdup_val);
+
+            strdup_val = strndup(source, 7);
+            printf("2:%s\\n", strdup_val);
             free(strdup_val);
 
             strdup_val = strndup(source, 1000);
-            printf("%s\\n", strdup_val);
+            printf("3:%s\\n", strdup_val);
             free(strdup_val);
 
             strdup_val = strndup(source, 60);
-            printf("%s\\n", strdup_val);
+            printf("4:%s\\n", strdup_val);
             free(strdup_val);
 
             strdup_val = strndup(source, 19);
-            printf("%s\\n", strdup_val);
+            printf("5:%s\\n", strdup_val);
+            free(strdup_val);
+
+            strdup_val = strndup(source, -1);
+            printf("6:%s\\n", strdup_val);
             free(strdup_val);
 
             return 0;
           }
         '''
-        self.do_run(src, 'strndup\nstrndup - duplicate a specific number of bytes from a string\nstrndup - duplicate a specific number of bytes from a string\nstrndup - duplicate\n')
+        self.do_run(src, '1:\n2:strndup\n3:strndup - duplicate a specific number of bytes from a string\n4:strndup - duplicate a specific number of bytes from a string\n5:strndup - duplicate\n6:\n')
 
     def test_errar(self):
         src = r'''
