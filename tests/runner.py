@@ -950,6 +950,30 @@ m_divisor is 1091269979
       '''
       self.do_run(src, 'zero 2, 104', ['hallo'])
 
+    def test_i16_emcc_intrinsic(self):
+
+      src = r'''
+        #include <stdio.h>
+
+        int test(unsigned short a, unsigned short b) {
+            unsigned short result = a;
+            result += b;
+            if (result < b) printf("C!");
+            return result;
+        }
+
+        int main(void) {
+            printf(",%d,", test(0, 0));
+            printf(",%d,", test(1, 1));
+            printf(",%d,", test(65535, 1));
+            printf(",%d,", test(1, 65535));
+            printf(",%d,", test(32768, 32767));
+            printf(",%d,", test(32768, 32768));
+            return 0;
+        }
+      '''
+      self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
+
     def test_sha1(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
