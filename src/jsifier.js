@@ -765,6 +765,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     switch (impl) {
       case VAR_NATIVIZED:
+        if (isNumber(item.ident)) {
+          // Direct write to a memory address; this may be an intentional segfault, if not, it is a bug in the source
+          return 'throw "fault on write to ' + item.ident + '";';
+        }
         return item.ident + '=' + value + ';'; // We have the actual value here
         break;
       case VAR_EMULATED:

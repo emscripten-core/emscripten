@@ -2856,6 +2856,45 @@ def process(filename):
                    extra_emscripten_args=['-H', 'libc/time.h'])
                    #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
+    def test_intentional_fault(self):
+      # Some programs intentionally segfault themselves, we should compile that into a throw
+      src = r'''
+        int main () {
+          *(volatile char *)0 = 0;
+          return 0;
+        }
+        '''
+      self.do_run(src, 'fault on write to 0')
+
+    def test_trickystring(self):
+      src = r'''
+        #include <stdio.h>
+
+        typedef struct
+        {
+	        int (*f)(void *);
+	        void *d;
+	        char s[16];
+        } LMEXFunctionStruct;
+
+        int f(void *user)
+        {
+	        return 0;
+        }
+
+        static LMEXFunctionStruct const a[] =
+        {
+	        {f, (void *)(int)'a', "aa"}
+        };
+
+        int main()
+        {
+          printf("ok\n");
+	        return a[0].f(a[0].d);
+        }
+      '''
+      self.do_run(src, 'ok\n')
+
     def test_statics(self):
         # static initializers save i16 but load i8 for some reason
         if Settings.SAFE_HEAP:
