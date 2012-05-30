@@ -671,18 +671,6 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
     has_string_convs = False
 
-    # We can assume that NULL is passed for null pointers, so object arguments can always
-    # have .ptr done on them
-    justargs_fixed = justargs(args)[:]
-    for i in range(len(args)):
-      arg = args[i]
-      clean = clean_type(arg['type'])
-      if clean in classes:
-        justargs_fixed[i] += '.ptr'
-      elif arg['type'].replace(' ', '').endswith('char*'):
-        justargs_fixed[i] = 'ensureString(' + justargs_fixed[i] + ')'
-        has_string_convs = True
-
     calls = ''
     if has_string_convs:
       calls += 'var stack = Runtime.stackSave();\n';
@@ -690,6 +678,18 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
 
     #print 'js loopin', params, '|', len(args)#, args
     for args in params:
+      # We can assume that NULL is passed for null pointers, so object arguments can always
+      # have .ptr done on them
+      justargs_fixed = justargs(args)[:]
+      for i in range(len(args)):
+        arg = args[i]
+        clean = clean_type(arg['type'])
+        if clean in classes:
+          justargs_fixed[i] += '.ptr'
+        elif arg['type'].replace(' ', '').endswith('char*'):
+          justargs_fixed[i] = 'ensureString(' + justargs_fixed[i] + ')'
+          has_string_convs = True
+
       i = len(args)
       if args != params[0]:
         calls += '  else '

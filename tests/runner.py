@@ -5493,6 +5493,7 @@ def process(filename):
             int value;
           public:
             Parent(int val);
+            Parent(Parent *p, Parent *q); // overload constructor
             int getVal() { return value; }; // inline should work just fine here, unlike Way 1 before
             void mulVal(int mul);
           };
@@ -5530,6 +5531,7 @@ def process(filename):
           #include "header.h"
 
           Parent::Parent(int val) : value(val) { printf("Parent:%d\\n", val); }
+          Parent::Parent(Parent *p, Parent *q) : value(p->value + q->value) { printf("Parent:%d\\n", value); }
           void Parent::mulVal(int mul) { value *= mul; }
 
           #include "bindingtest.cpp"
