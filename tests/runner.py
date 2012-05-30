@@ -1393,6 +1393,48 @@ m_divisor is 1091269979
         '''
         self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
+    def test_strndup(self):
+        src = '''
+          //---------------
+          //- http://pubs.opengroup.org/onlinepubs/9699919799/functions/strndup.html
+          //---------------
+
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <string.h>
+
+          int main(int argc, char **argv) {
+            const char* source = "strndup - duplicate a specific number of bytes from a string";
+
+            char* strdup_val = strndup(source, 0);
+            printf("1:%s\\n", strdup_val);
+            free(strdup_val);
+
+            strdup_val = strndup(source, 7);
+            printf("2:%s\\n", strdup_val);
+            free(strdup_val);
+
+            strdup_val = strndup(source, 1000);
+            printf("3:%s\\n", strdup_val);
+            free(strdup_val);
+
+            strdup_val = strndup(source, 60);
+            printf("4:%s\\n", strdup_val);
+            free(strdup_val);
+
+            strdup_val = strndup(source, 19);
+            printf("5:%s\\n", strdup_val);
+            free(strdup_val);
+
+            strdup_val = strndup(source, -1);
+            printf("6:%s\\n", strdup_val);
+            free(strdup_val);
+
+            return 0;
+          }
+        '''
+        self.do_run(src, '1:\n2:strndup\n3:strndup - duplicate a specific number of bytes from a string\n4:strndup - duplicate a specific number of bytes from a string\n5:strndup - duplicate\n6:\n')
+
     def test_errar(self):
         src = r'''
           #include <stdio.h>
