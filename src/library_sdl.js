@@ -632,6 +632,10 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
+  SDL_UpdateRects: function(surf, numrects, rects) {
+    // We actually do the whole screen in Unlock...
+  },
+
   SDL_Delay: function(delay) {
     throw 'SDL_Delay called! Potential infinite loop, quitting. ' + new Error().stack;
   },
@@ -647,6 +651,11 @@ var LibrarySDL = {
 
   SDL_GetKeyboardState: function() {
     return SDL.keyboardState;
+  },
+
+  SDL_GetKeyState__deps: ['SDL_GetKeyboardState'],
+  SDL_GetKeyState: function() {
+    return _SDL_GetKeyboardState();
   },
 
   SDL_GetModState: function() {
