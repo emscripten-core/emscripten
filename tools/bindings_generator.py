@@ -672,9 +672,6 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     has_string_convs = False
 
     calls = ''
-    if has_string_convs:
-      calls += 'var stack = Runtime.stackSave();\n';
-      calls += 'try {\n'
 
     #print 'js loopin', params, '|', len(args)#, args
     for args in params:
@@ -715,7 +712,7 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
         calls += '\n'
 
     if has_string_convs:
-      calls += '} finally { Runtime.stackRestore(stack) }\n';
+      calls = 'var stack = Runtime.stackSave();\ntry {\n' + calls + '} finally { Runtime.stackRestore(stack) }\n';
 
     print 'Maekin:', classname, generating_classname, mname, mname_suffixed
     if constructor:
