@@ -7032,6 +7032,37 @@ fscanfed: 10 - hello
       output = Popen(['python', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0]
       assert output == invalid
 
+    def test_link_s(self):
+      # -s OPT=VALUE can conflict with -s as a linker option. We warn and ignore
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        extern "C" {
+          void something();
+        }
+
+        int main() {
+          something();
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'supp.cpp'), 'w').write(r'''
+        #include <stdio.h>
+
+        extern "C" {
+          void something() {
+            printf("yello\n");
+          }
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.o']).communicate()
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'supp.cpp'), '-o', 'supp.o']).communicate()
+
+      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.o'), '-s', os.path.join(self.get_dir(), 'supp.o'), '-s', 'SAFE_HEAP=1'], stderr=PIPE).communicate()
+      self.assertContained('emcc: warning: treating -s as linker option', output[1])
+      output = run_js('a.out.js')
+      assert 'yello' in output, 'code works'
+      code = open('a.out.js').read()
+      assert 'SAFE_HEAP' in code, 'valid -s option had an effect'
+
 elif 'browser' in str(sys.argv):
   # Browser tests.
 

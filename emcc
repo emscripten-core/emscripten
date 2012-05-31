@@ -548,9 +548,11 @@ try:
   settings_changes = []
   for i in range(len(newargs)):
     if newargs[i] == '-s':
-      assert '=' in newargs[i+1], 'Incorrect syntax for -s (use -s OPT=VAL): ' + newargs[i+1]
-      settings_changes.append(newargs[i+1])
-      newargs[i] = newargs[i+1] = ''
+      if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option
+        settings_changes.append(newargs[i+1])
+        newargs[i] = newargs[i+1] = ''
+      else:
+        print >> sys.stderr, 'emcc: warning: treating -s as linker option and not as -s OPT=VALUE for js compilation'
     elif newargs[i].startswith('--typed-arrays'):
       assert '=' not in newargs[i], 'Invalid typed arrays parameter (do not use "=")'
       settings_changes.append('USE_TYPED_ARRAYS=' + newargs[i+1])
