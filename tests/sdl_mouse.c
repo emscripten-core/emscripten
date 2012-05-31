@@ -43,6 +43,8 @@ void one() {
   }
 }
 
+void main_2();
+
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
@@ -50,6 +52,12 @@ int main() {
   SDL_Rect rect = { 0, 0, 600, 450 };
   SDL_FillRect(screen, &rect, 0x2244ffff);
 
+  emscripten_async_call(main_2, 3000); // avoid startup delays and intermittent errors
+
+  return 0;
+}
+
+void main_2() {
   emscripten_run_script("window.simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
@@ -57,7 +65,5 @@ int main() {
   emscripten_run_script("window.simulateMouseEvent(30, 77, 1)"); // trigger the end
 
   emscripten_set_main_loop(one, 0);
-
-  return 0;
 }
 
