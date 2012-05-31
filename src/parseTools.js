@@ -169,7 +169,15 @@ function isFunctionDef(token, out) {
 
 function isFunctionType(type, out) {
   type = type.replace(/"[^"]+"/g, '".."');
-  var parts = type.split(' ');
+  var parts;
+  // hackish, but quick splitting of function def parts. this must be fast as it happens a lot
+  if (type[0] != '[') {
+    parts = type.split(' ');
+  } else {
+    var index = type.search(']');
+    index += type.substr(index).search(' ');
+    parts = [type.substr(0, index), type.substr(index+1)];
+  }
   if (pointingLevels(type) !== 1) return false;
   var text = removeAllPointing(parts.slice(1).join(' '));
   if (!text) return false;
