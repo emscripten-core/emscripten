@@ -1517,6 +1517,8 @@ var LibraryGL = {
       Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       GL.immediate.initted = true;
 
+      if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
+
       this.matrixStack['m'] = [];
       this.matrixStack['p'] = [];
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {

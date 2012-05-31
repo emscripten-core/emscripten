@@ -77,6 +77,7 @@ mergeInto(LibraryManager.library, {
       }
       if (setInModule) {
         Module.ctx = ctx;
+        Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
       }
       return ctx;
