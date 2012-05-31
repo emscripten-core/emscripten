@@ -305,6 +305,17 @@ var LibrarySDL = {
             event.preventDefault();
           }
           break;
+        case 'mouseout':
+          // Un-press all mouse buttons, because we might miss the release outside of the canvas
+          for (var i = 0; i < 3; i++) {
+            SDL.events.push({
+              type: 'mouseup',
+              button: i,
+              pageX: event.pageX,
+              pageY: event.pageY
+            });
+          }
+          break;
       }
       return false;
     },
@@ -382,8 +393,7 @@ var LibrarySDL = {
           SDL.mouseY = y;
           break;
         }
-      default:
-        throw 'Unhandled SDL event: ' + event.type;
+        default: throw 'Unhandled SDL event: ' + event.type;
       }
     },
 
@@ -507,7 +517,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll'].forEach(function(event) {
+    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Module['canvas'].width = width;
