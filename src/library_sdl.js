@@ -475,6 +475,37 @@ var LibrarySDL = {
     return -1; // -1 == all modes are ok. TODO
   },
 
+  SDL_VideoModeOK: function(width, height, depth, flags) {
+    // SDL_VideoModeOK returns 0 if the requested mode is not supported under any bit depth, or returns the 
+    // bits-per-pixel of the closest available mode with the given width, height and requested surface flags
+    return depth; // all modes are ok.
+  },
+
+  SDL_VideoDriverName: function(buf, max_size) {
+    if (SDL.startTime === null) {
+      return 0; //return NULL
+    }
+    //driverName - emscripten_sdl_driver
+    var driverName = [101, 109, 115, 99, 114, 105, 112, 116, 101, 
+      110, 95, 115, 100, 108, 95, 100, 114, 105, 118, 101, 114];
+
+    var index = 0;
+    var size  = driverName.length;
+
+    if (max_size <= size) {
+      size = max_size - 1; //-1 cause null-terminator
+    }
+
+    while (index < size) {
+        var value = driverName[index];
+        {{{ makeSetValue('buf', 'index', 'value', 'i8') }}};
+        index++;
+    }
+
+    {{{ makeSetValue('buf', 'index', '0', 'i8') }}};
+    return buf;
+  },
+
   SDL_SetVideoMode: function(width, height, depth, flags) {
     ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
@@ -482,6 +513,10 @@ var LibrarySDL = {
     Module['canvas'].width = width;
     Module['canvas'].height = height;
     return SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
+  },
+
+  SDL_QuitSubSystem: function(flags) {
+    Module.print('SDL_QuitSubSystem called (and ignored)');
   },
 
   SDL_Quit: function() {
@@ -597,6 +632,10 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
+  SDL_UpdateRects: function(surf, numrects, rects) {
+    // We actually do the whole screen in Unlock...
+  },
+
   SDL_Delay: function(delay) {
     throw 'SDL_Delay called! Potential infinite loop, quitting. ' + new Error().stack;
   },
@@ -612,6 +651,11 @@ var LibrarySDL = {
 
   SDL_GetKeyboardState: function() {
     return SDL.keyboardState;
+  },
+
+  SDL_GetKeyState__deps: ['SDL_GetKeyboardState'],
+  SDL_GetKeyState: function() {
+    return _SDL_GetKeyboardState();
   },
 
   SDL_GetModState: function() {
