@@ -37,9 +37,10 @@ This command will now exit. When you are done editing those paths, re-run it.
 ''' % (EM_CONFIG, CONFIG_FILE)
     sys.exit(0)
 try:
-  exec(open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG)
+  config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
+  exec(config_text)
 except Exception, e:
-  print >> sys.stderr, 'Error in evaluating %s (at %s): %s' % (EM_CONFIG, CONFIG_FILE, str(e))
+  print >> sys.stderr, 'Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text)
   sys.exit(1)
 
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
