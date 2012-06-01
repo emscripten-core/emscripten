@@ -305,6 +305,7 @@ var LibrarySDL = {
             event.preventDefault();
           }
           break;
+        /* XXX buggy, disabling for now
         case 'mouseout':
           // Un-press all mouse buttons, because we might miss the release outside of the canvas
           for (var i = 0; i < 3; i++) {
@@ -316,6 +317,7 @@ var LibrarySDL = {
             });
           }
           break;
+        */
       }
       return false;
     },
