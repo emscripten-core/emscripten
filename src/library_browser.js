@@ -39,11 +39,11 @@ mergeInto(LibraryManager.library, {
                 wrapper[prop] = function() {
                   if (GL.debug) {
                     var printArgs = Array.prototype.slice.call(arguments).map(Runtime.prettyPrint);
-                    console.log('[gl_f:' + prop + ':' + printArgs + ']');
+                    Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');
                   }
                   var ret = tempCtx[prop].apply(tempCtx, arguments);
                   if (GL.debug && typeof ret != 'undefined') {
-                    console.log('[     gl:' + prop + ':return:' + Runtime.prettyPrint(ret) + ']');
+                    Module.printErr('[     gl:' + prop + ':return:' + Runtime.prettyPrint(ret) + ']');
                   }
                   return ret;
                 }
@@ -51,12 +51,12 @@ mergeInto(LibraryManager.library, {
               }
               case 'number': case 'string': {
                 wrapper.__defineGetter__(prop, function() {
-                  //console.log('[gl_g:' + prop + ':' + tempCtx[prop] + ']');
+                  //Module.printErr('[gl_g:' + prop + ':' + tempCtx[prop] + ']');
                   return tempCtx[prop];
                 });
                 wrapper.__defineSetter__(prop, function(value) {
                   if (GL.debug) {
-                    console.log('[gl_s:' + prop + ':' + value + ']');
+                    Module.printErr('[gl_s:' + prop + ':' + value + ']');
                   }
                   tempCtx[prop] = value;
                 });

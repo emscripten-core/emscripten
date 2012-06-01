@@ -36,6 +36,13 @@
             element.scrollTop = 99999; // focus on bottom
           };
         })(),
+        printErr: function(text) {
+          if (typeof dump == 'function') {
+            dump(text + '\n'); // fast, straight to the real console
+          } else {
+            console.log(text);
+          }
+        },
         canvas: document.getElementById('canvas'),
         setStatus: function(text) {
           if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);

@@ -1045,14 +1045,14 @@ var LibraryGL = {
       _glCompileShader = function(shader) {
         Module.ctx.compileShader(GL.shaders[shader]);
         if (!Module.ctx.getShaderParameter(GL.shaders[shader], Module.ctx.COMPILE_STATUS)) {
-          console.log('Failed to compile shader: ' + Module.ctx.getShaderInfoLog(GL.shaders[shader]));
-          console.log('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
+          Module.printErr('Failed to compile shader: ' + Module.ctx.getShaderInfoLog(GL.shaders[shader]));
+          Module.printErr('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
 #if GL_DEBUG
-          console.log('Original source: ' + GL.shaderOriginalSources[shader]);
-          console.log('Source: ' + GL.shaderSources[shader]);
+          Module.printErr('Original source: ' + GL.shaderOriginalSources[shader]);
+          Module.printErr('Source: ' + GL.shaderSources[shader]);
           throw 'Shader compilation halt';
 #else
-          console.log('Enable GL_DEBUG to see shader source');
+          Module.printErr('Enable GL_DEBUG to see shader source');
 #endif
         }
       };
@@ -1069,11 +1069,11 @@ var LibraryGL = {
       _glUseProgram = function(program) {
 #if GL_DEBUG
         if (GL.debug) {
-          console.log('[using program with shaders]');
+          Module.printErr('[using program with shaders]');
           if (program) {
             GL.programShaders[program].forEach(function(shader) {
-              console.log('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
-              console.log('         Source: ' + GL.shaderSources[shader]);
+              Module.printErr('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
+              Module.printErr('         Source: ' + GL.shaderSources[shader]);
             });
           }
         }
@@ -1142,7 +1142,7 @@ var LibraryGL = {
           } else if (GL.shaders[id]) {
             _glDeleteShader(id);
           } else {
-            console.log('WARNING: deleteObject received invalid id: ' + id);
+            Module.printErr('WARNING: deleteObject received invalid id: ' + id);
           }
         }; break;
         case 'glGetObjectParameteriv': func = function(id, type, result) {
@@ -1159,7 +1159,7 @@ var LibraryGL = {
             }
             _glGetShaderiv(id, type, result);
           } else {
-            console.log('WARNING: getObjectParameteriv received invalid id: ' + id);
+            Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
           }
         }; break;
         case 'glGetInfoLog': func = function(id, maxLength, length, infoLog) {
@@ -1168,7 +1168,7 @@ var LibraryGL = {
           } else if (GL.shaders[id]) {
             _glGetShaderInfoLog(id, maxLength, length, infoLog);
           } else {
-            console.log('WARNING: getObjectParameteriv received invalid id: ' + id);
+            Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
           }
         }; break;
         case 'glBindProgram': func = function(type, id) {
@@ -1222,9 +1222,9 @@ var LibraryGL = {
         case 'glCheckFramebufferStatus': func = _glCheckFramebufferStatus; break;
         case 'glRenderbufferStorage': func = _glRenderbufferStorage; break;
         default: {
-          console.log('WARNING: getProcAddress failed for ' + name);
+          Module.printErr('WARNING: getProcAddress failed for ' + name);
           func = function() {
-            console.log('WARNING: empty replacement for ' + name + ' called, no-op');
+            Module.printErr('WARNING: empty replacement for ' + name + ' called, no-op');
             return 0;
           };
         }
@@ -1340,7 +1340,7 @@ var LibraryGL = {
       }
       if (!cacheItem.renderer) {
 #if GL_DEBUG
-        console.log('generating renderer for ' + JSON.stringify(attributes));
+        Module.printErr('generating renderer for ' + JSON.stringify(attributes));
 #endif
         cacheItem.renderer = this.createRenderer();
       }
@@ -1924,7 +1924,7 @@ var LibraryGL = {
 
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
-    console.log('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
+    Module.printErr('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
