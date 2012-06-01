@@ -28,6 +28,7 @@ var LibrarySDL = {
     mouseX: 0,
     mouseY: 0,
     buttonState: 0,
+    DOMButtons: [0, 0, 0],
 
     DOMEventToSDLEvent: {},
 
@@ -293,7 +294,14 @@ var LibrarySDL = {
               pageX: event.pageX,
               pageY: event.pageY
             };
+          } else if (event.type == 'mousedown') {
+            SDL.DOMButtons[event.button] = 1;
+          } else if (event.type == 'mouseup') {
+            if (!SDL.DOMButtons[event.button]) return false; // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
+                                                             // since we add a mouseup in that case
+            SDL.DOMButtons[event.button] = 0;
           }
+
           SDL.events.push(event);
           if (SDL.events.length >= 10000) {
             Module.printErr('SDL event queue full, dropping earliest event');
@@ -305,19 +313,20 @@ var LibrarySDL = {
             event.preventDefault();
           }
           break;
-        /* XXX buggy, disabling for now
         case 'mouseout':
-          // Un-press all mouse buttons, because we might miss the release outside of the canvas
+          // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
           for (var i = 0; i < 3; i++) {
-            SDL.events.push({
-              type: 'mouseup',
-              button: i,
-              pageX: event.pageX,
-              pageY: event.pageY
-            });
+            if (SDL.DOMButtons[i]) {
+              SDL.events.push({
+                type: 'mouseup',
+                button: i,
+                pageX: event.pageX,
+                pageY: event.pageY
+              });
+              SDL.DOMButtons[i] = 0;
+            }
           }
           break;
-        */
       }
       return false;
     },
