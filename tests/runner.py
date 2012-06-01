@@ -3708,6 +3708,10 @@ def process(filename):
           printf("%g\n", strtod("1", &endptr));
           printf("%g\n", strtod("1.", &endptr));
           printf("%g\n", strtod("1.0", &endptr));
+          printf("%g\n", strtod("z1.0", &endptr));
+          printf("%g\n", strtod("0.5", &endptr));
+          printf("%g\n", strtod(".5", &endptr));
+          printf("%g\n", strtod(".a5", &endptr));
           printf("%g\n", strtod("123", &endptr));
           printf("%g\n", strtod("123.456", &endptr));
           printf("%g\n", strtod("-123.456", &endptr));
@@ -3733,6 +3737,10 @@ def process(filename):
         1
         1
         1
+        0
+        0.5
+        0.5
+        0
         123
         123.456
         -123.456

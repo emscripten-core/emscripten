@@ -3473,33 +3473,35 @@ LibraryManager.library = {
 
     var chr;
     var ret = 0;
-    var legit = false;
 
     // Get whole part.
+    var whole = false;
     while(1) {
       chr = {{{ makeGetValue('str', 0, 'i8') }}};
       if (!_isdigit(chr)) break;
-      legit = true;
+      whole = true;
       ret = ret*10 + chr - '0'.charCodeAt(0);
       str++;
     }
 
-    if (!legit) {
-      {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
-      return 0;
-    }
-
     // Get fractional part.
+    var fraction = false;
     if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
       str++;
       var mul = 1/10;
       while(1) {
         chr = {{{ makeGetValue('str', 0, 'i8') }}};
         if (!_isdigit(chr)) break;
+        fraction = true;
         ret += mul*(chr - '0'.charCodeAt(0));
         mul /= 10;
         str++;
       }
+    }
+
+    if (!whole && !fraction) {
+      {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
+      return 0;
     }
 
     // Get exponent part.
