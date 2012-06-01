@@ -816,7 +816,7 @@ var LibraryGL = {
   },
 
   glUseProgram: function(program) {
-    Module.ctx.useProgram(GL.programs[program]);
+    Module.ctx.useProgram(program ? GL.programs[program] : null);
   },
 
   glValidateProgram: function(program) {
@@ -969,6 +969,9 @@ var LibraryGL = {
           source = source.replace(/gl_ProjectionMatrix/g, 'u_projection');
           if (old != source) need_pm = 1;
           old = source;
+          source = source.replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec4(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0], u_modelView[3][0])'); // XXX extremely inefficient
+          if (old != source) need_mm = 1;
+          old = source;
           source = source.replace(/gl_ModelViewMatrix/g, 'u_modelView');
           if (old != source) need_mm = 1;
           old = source;
@@ -977,9 +980,6 @@ var LibraryGL = {
           old = source;
           source = source.replace(/gl_ModelViewProjectionMatrix/g, '(u_projection * u_modelView)');
           if (old != source) need_pm = need_mm = 1;
-          old = source;
-          source = source.replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec3(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0])'); // XXX extremely inefficient
-          if (old != source) need_mm = 1;
           if (need_pv && !has_pv) source = 'attribute vec4 a_position; \n' + source;
           if (need_mm && !has_mm) source = 'uniform mat4 u_modelView; \n' + source;
           if (need_pm && !has_pm) source = 'uniform mat4 u_projection; \n' + source;
@@ -1069,11 +1069,13 @@ var LibraryGL = {
       _glUseProgram = function(program) {
 #if GL_DEBUG
         if (GL.debug) {
-          console.log('[using program with shaders:]');
-          GL.programShaders[program].forEach(function(shader) {
-            console.log('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
-            console.log('         Source: ' + GL.shaderSources[shader]);
-          });
+          console.log('[using program with shaders]');
+          if (program) {
+            GL.programShaders[program].forEach(function(shader) {
+              console.log('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
+              console.log('         Source: ' + GL.shaderSources[shader]);
+            });
+          }
         }
 #endif
         GL.currProgram = program;
