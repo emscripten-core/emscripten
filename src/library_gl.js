@@ -1578,9 +1578,12 @@ var LibraryGL = {
       };
 
       _glDrawElements = function(mode, count, type, indices) {
-        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
+        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
+        }
+        if (!GL.currElementArrayBuffer) {
+          assert(type == Module.ctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
         }
         GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
@@ -1646,10 +1649,22 @@ var LibraryGL = {
       var numVertexes = 4 * this.vertexCounter / GL.immediate.stride; // XXX assuming float
       assert(numVertexes % 1 == 0);
 
-      var restoreElementArrayBuffer = false;
+      var emulatedElementArrayBuffer = false;
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
+        if (!GL.currElementArrayBuffer) {
+          // If no element array buffer is bound, then indices is a literal pointer to clientside data
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+          var clientDataSize;
+          switch(GL.immediate.mode) {
+            case 4: clientDataSize = 3*numProvidedIndexes; break; // GL_TRIANGLES
+            default: throw 'Unhandled clientside array for glDrawElements: ' + mode;
+          }
+          Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'startIndex', 'startIndex + clientDataSize') }}});
+          startIndex = 0;
+          emulatedElementArrayBuffer = true;
+        }
       } else if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
         if (GL.immediate.mode == 7) { // GL_QUADS
           var numQuads = numVertexes / 4;
@@ -1670,7 +1685,7 @@ var LibraryGL = {
 
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
         Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, this.indexData.subarray(0, numIndexes));
-        restoreElementArrayBuffer = true;
+        emulatedElementArrayBuffer = true;
       }
 
       if (!GL.currArrayBuffer) {
@@ -1686,9 +1701,6 @@ var LibraryGL = {
       renderer.prepare();
 
       if (numIndexes) {
-        if (!numProvidedIndexes) {
-          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-        }
         Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, startIndex);
       } else {
         Module.ctx.drawArrays(GL.immediate.mode, startIndex, numVertexes);
@@ -1699,7 +1711,7 @@ var LibraryGL = {
       if (!GL.currArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
       }
-      if (restoreElementArrayBuffer) {
+      if (emulatedElementArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
       if (!GL.currProgram) {

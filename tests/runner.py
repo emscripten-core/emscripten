@@ -7668,6 +7668,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_normal(self):
       self.btest('cubegeom_normal.c', expected='752917084')
 
+    def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
+      self.btest('cubegeom_normal_dap.c', expected='752917084', args=['-s', 'GL_DEBUG=1'])
+
     def test_cubegeom_mt(self):
       self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
 
