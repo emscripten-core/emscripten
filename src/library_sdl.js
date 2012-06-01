@@ -42,7 +42,7 @@ var LibrarySDL = {
 
       17:  305, // control (right, or left)
       18:  308, // alt
-      109: 45, // minus
+      173: 45, // minus
       16:  304, // shift
       
       96: 88 | 1<<10, // keypad 0
