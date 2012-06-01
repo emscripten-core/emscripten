@@ -37,7 +37,7 @@
           };
         })(),
         printErr: function(text) {
-          if (typeof dump == 'function') {
+          if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
           } else {
             console.log(text);
