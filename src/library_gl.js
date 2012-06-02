@@ -938,6 +938,15 @@ var LibraryGL = {
         glGetIntegerv(pname, params);
       };
 
+      var glGetString = _glGetString;
+      _glGetString = function(name_) {
+        switch(name_) {
+          case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
+            return allocate(intArrayFromString(Module.ctx.getSupportedExtensions().join(' ') + 'GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements'), 'i8', ALLOC_NORMAL);
+        }
+        return glGetString(name_);
+      };
+
       // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
       // tandem with the rest of the program, by itself it cannot suffice.
       // Note that we need to remember shader types for this rewriting, saving sources makes it easier to debug.
