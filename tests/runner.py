@@ -7677,6 +7677,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
       self.btest('cubegeom_normal_dap_far.c', expected='752917084')
 
+    def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
+      self.btest('cubegeom_normal_dap_far_range.c', expected='752917084')
+
     def test_cubegeom_mt(self):
       self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
 

@@ -1182,6 +1182,7 @@ var LibraryGL = {
         case 'glBindProgram': func = function(type, id) {
           assert(id == 0);
         }; break;
+        case 'glDrawRangeElements': func = _glDrawRangeElements; break;
         case 'glShaderSource': func = _glShaderSource; break;
         case 'glCompileShader': func = _glCompileShader; break;
         case 'glLinkProgram': func = _glLinkProgram; break;
@@ -1590,7 +1591,7 @@ var LibraryGL = {
         GL.immediate.flush(null, first);
       };
 
-      _glDrawElements = function(mode, count, type, indices) {
+      _glDrawElements = function(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
         if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
@@ -1601,11 +1602,9 @@ var LibraryGL = {
         GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
         if (!GL.currArrayBuffer) {
-          // We don't yet know how much of this data is needed (it depends on the indices), so map everything to the end of memory
-          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'TOTAL_MEMORY') }}}; // XXX assuming float
-          // Need to find this out later TODO: support glDrawRangeElements
-          GL.immediate.firstVertex = TOTAL_MEMORY;
-          GL.immediate.lastVertex = 0;
+          GL.immediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
+          GL.immediate.lastVertex = end ? end+1 : 0;
+          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', '(end ? GL.immediate.vertexPointer + (end+1)*GL.immediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
         }
         GL.immediate.flush(count, 0, indices);
       };
@@ -1887,6 +1886,11 @@ var LibraryGL = {
 
   glNormal3f: function(){}, // TODO
 
+  // Additional non-GLES rendering calls
+
+  glDrawRangeElements: function(mode, start, end, count, type, indices) {
+    _glDrawElements(mode, count, type, indices, start, end);
+  },
 
   // ClientState/gl*Pointer
 
