@@ -1599,7 +1599,7 @@ var LibraryGL = {
           GL.immediate.firstVertex = TOTAL_MEMORY;
           GL.immediate.lastVertex = 0;
         }
-        GL.immediate.flush(count, 0, indices); // XXX count here is not the same as in glDrawArrays! XXX
+        GL.immediate.flush(count, 0, indices);
       };
     },
 
