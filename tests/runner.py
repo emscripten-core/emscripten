@@ -7642,6 +7642,9 @@ elif 'browser' in str(sys.argv):
     def test_gc(self):
       self.btest('browser_gc.cpp', '1')
 
+    def test_glshaderinfo(self):
+      self.btest('glshaderinfo.cpp', '1')
+
     def test_sdlglshader(self):
       self.btest('sdlglshader.c', reference='sdlglshader.png', args=['--closure', '1'])
 

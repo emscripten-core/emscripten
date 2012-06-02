@@ -128,6 +128,14 @@ var LibraryGL = {
   },
 
   glGetIntegerv: function(name_, p) {
+    switch(name_) { // Handle a few trivial GLES values 
+      case 0x8DFA: // GL_SHADER_COMPILER
+        {{{ makeSetValue('p', '0', '1', 'i32') }}};
+        return;
+      case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
+        {{{ makeSetValue('p', '0', '0', 'i32') }}};
+        return;
+    }
     var result = Module.ctx.getParameter(name_);
     switch (typeof(result)) {
       case "number":
