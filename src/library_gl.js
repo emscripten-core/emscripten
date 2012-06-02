@@ -1656,12 +1656,7 @@ var LibraryGL = {
         if (!GL.currElementArrayBuffer) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-          var clientDataSize;
-          switch(GL.immediate.mode) {
-            case 4: clientDataSize = 3*numProvidedIndexes; break; // GL_TRIANGLES
-            default: throw 'Unhandled clientside array for glDrawElements: ' + mode;
-          }
-          Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'startIndex', 'startIndex + clientDataSize') }}});
+          Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'startIndex', 'startIndex + numProvidedIndexes*2') }}});
           startIndex = 0;
           emulatedElementArrayBuffer = true;
         }
@@ -1936,7 +1931,7 @@ var LibraryGL = {
 
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
-    Module.printErr('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
+    if (GL.debug) Module.printErr('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+16*4') }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
