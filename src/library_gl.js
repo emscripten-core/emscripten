@@ -1587,7 +1587,7 @@ var LibraryGL = {
         }
         GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
-        GL.immediate.flush(count, indices);
+        GL.immediate.flush(count, 0, indices);
       };
     },
 
@@ -1640,8 +1640,9 @@ var LibraryGL = {
       }
     },
 
-    flush: function(numProvidedIndexes, startIndex) {
+    flush: function(numProvidedIndexes, startIndex, ptr) {
       startIndex = startIndex || 0;
+      ptr = ptr || 0;
 
       var renderer = this.getRenderer();
 
@@ -1656,8 +1657,8 @@ var LibraryGL = {
         if (!GL.currElementArrayBuffer) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-          Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'startIndex', 'startIndex + numProvidedIndexes*2') }}});
-          startIndex = 0;
+          Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + numProvidedIndexes*2') }}});
+          ptr = 0;
           emulatedElementArrayBuffer = true;
         }
       } else if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
@@ -1696,7 +1697,7 @@ var LibraryGL = {
       renderer.prepare();
 
       if (numIndexes) {
-        Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, startIndex);
+        Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, ptr);
       } else {
         Module.ctx.drawArrays(GL.immediate.mode, startIndex, numVertexes);
       }
