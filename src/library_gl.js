@@ -1574,6 +1574,11 @@ var LibraryGL = {
         }
         GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
+        if (!GL.currArrayBuffer) {
+          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'GL.immediate.vertexPointer + count*GL.immediate.stride') }}}; // XXX assuming float
+          GL.immediate.firstVertex = 0;
+          GL.immediate.lastVertex = count;
+        }
         GL.immediate.flush(null, first);
       };
 
@@ -1587,7 +1592,14 @@ var LibraryGL = {
         }
         GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
-        GL.immediate.flush(count, 0, indices);
+        if (!GL.currArrayBuffer) {
+          // We don't yet know how much of this data is needed (it depends on the indices), so map everything to the end of memory
+          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'TOTAL_MEMORY') }}}; // XXX assuming float
+          // Need to find this out later TODO: support glDrawRangeElements
+          GL.immediate.firstVertex = TOTAL_MEMORY;
+          GL.immediate.lastVertex = 0;
+        }
+        GL.immediate.flush(count, 0, indices); // XXX count here is not the same as in glDrawArrays! XXX
       };
     },
 
@@ -1634,7 +1646,7 @@ var LibraryGL = {
       if (!beginEnd) {
         bytes *= count;
         if (!GL.currArrayBuffer) {
-          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'start', 'start + bytes') }}}; // XXX assuming float
+          GL.immediate.vertexPointer = start;
         }
         GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
       }
@@ -1654,6 +1666,18 @@ var LibraryGL = {
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
+        if (!GL.currArrayBuffer && GL.immediate.firstVertex > GL.immediate.lastVertex) {
+          // Figure out the first and last vertex from the index data
+          assert(!GL.currElementArrayBuffer); // If we are going to upload array buffer data, we need to find which range to
+                                              // upload based on the indices. If they are in a buffer on the GPU, that is very
+                                              // inconvenient! So if you do not have an array buffer, you should also not have
+                                              // an element array buffer. But best is to use both buffers!
+          for (var i = 0; i < numProvidedIndexes; i++) {
+            var currIndex = {{{ makeGetValue('ptr', 'i*2', 'i16', null, 1) }}};
+            GL.immediate.firstVertex = Math.min(GL.immediate.firstVertex, currIndex);
+            GL.immediate.lastVertex = Math.max(GL.immediate.lastVertex, currIndex+1);
+          }
+        }
         if (!GL.currElementArrayBuffer) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
@@ -1686,7 +1710,9 @@ var LibraryGL = {
 
       if (!GL.currArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
-        Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, 0, this.vertexData.subarray(0, this.vertexCounter));
+        var start = GL.immediate.firstVertex*GL.immediate.stride;
+        var end = GL.immediate.lastVertex*GL.immediate.stride;
+        Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, this.vertexData.subarray(start >> 2, end >> 2));
       }
 
       // Render
@@ -1732,6 +1758,8 @@ var LibraryGL = {
 
   glEnd: function() {
     GL.immediate.prepareClientAttributes(GL.immediate.rendererComponents['V'], true);
+    GL.immediate.firstVertex = 0;
+    GL.immediate.lastVertex = GL.immediate.vertexCounter / (GL.immediate.stride >> 2);
     GL.immediate.flush();
     GL.immediate.disableBeginEndClientAttributes();
   },
