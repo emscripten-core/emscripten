@@ -1256,9 +1256,9 @@ var LibraryGL = {
   $GLImmediate__postset: 'Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
   $GLImmediate__deps: ['$Browser'],
   $GLImmediate: {
-    // Vertex and index data
-    TEMP_BUFFER_SIZE: 1024*1024,
     MAX_TEXTURES: 7,
+
+    // Vertex and index data
     vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer). Default view is F32
     vertexDataU8: null, // U8 view
     tempData: null,
@@ -1315,6 +1315,46 @@ var LibraryGL = {
       attrib.type = type;
       attrib.stride = stride;
       attrib.pointer = pointer;
+    },
+
+    // Temporary buffers
+    MAX_TEMP_BUFFER_SIZE: 2*1024*1024,
+    tempBufferIndexLookup: null,
+    tempVertexBuffers: null,
+    tempIndexBuffers: null,
+
+    generateTempBuffers: function() {
+      function ceilPower2(x) {
+        return Math.pow(2, Math.ceil(Math.log(i || 1)/Math.log(2)));
+      }
+      this.tempBufferIndexLookup = new Uint8Array(this.MAX_TEMP_BUFFER_SIZE+1);
+      var last = -1, curr = -1;
+      for (var i = 0; i <= this.MAX_TEMP_BUFFER_SIZE; i++) {
+        var size = ceilPower2(i);
+        if (size != last) {
+          curr++;
+          last = size;
+        }
+        this.tempBufferIndexLookup[i] = curr;
+      }
+      this.tempVertexBuffers = [];
+      this.tempIndexBuffers = [];
+      last = -1;
+      for (var i = 0; i <= this.MAX_TEMP_BUFFER_SIZE; i++) {
+        var size = ceilPower2(i);
+        curr = this.tempBufferIndexLookup[i];
+        if (size != last) {
+          this.tempVertexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.tempVertexBuffers[curr]);
+          Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
+          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+          this.tempIndexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempIndexBuffers[curr]);
+          Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+          last = size;
+        }
+      }
     },
 
     // Renderers
@@ -1565,20 +1605,12 @@ var LibraryGL = {
       }
 
       // Buffers for data
-      this.tempData = new Float32Array(this.TEMP_BUFFER_SIZE >> 2);
-      this.indexData = new Uint16Array(this.TEMP_BUFFER_SIZE >> 1);
+      this.tempData = new Float32Array(this.MAX_TEMP_BUFFER_SIZE >> 2);
+      this.indexData = new Uint16Array(this.MAX_TEMP_BUFFER_SIZE >> 1);
 
       this.vertexDataU8 = new Uint8Array(this.tempData.buffer);
 
-      this.vertexObject = Module.ctx.createBuffer();
-      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
-      Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, this.TEMP_BUFFER_SIZE, Module.ctx.DYNAMIC_DRAW);
-      Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
-
-      this.indexObject = Module.ctx.createBuffer();
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, this.TEMP_BUFFER_SIZE, Module.ctx.DYNAMIC_DRAW);
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+      this.generateTempBuffers();
 
       this.clientColor = new Float32Array([1, 1, 1, 1]);
 
@@ -1696,9 +1728,10 @@ var LibraryGL = {
         }
         if (!GL.currElementArrayBuffer) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
-          assert(numProvidedIndexes < GL.immediate.TEMP_BUFFER_SIZE >> 1, 'too many immediate mode indexes (a)');
-          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
-          Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + numProvidedIndexes*2') }}});
+          assert(numProvidedIndexes << 1 <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
+          var indexBuffer = GL.immediate.tempIndexBuffers[GL.immediate.tempBufferIndexLookup[numProvidedIndexes << 1]];
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
+          Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + (numProvidedIndexes << 1)') }}});
           ptr = 0;
           emulatedElementArrayBuffer = true;
         }
@@ -1718,8 +1751,9 @@ var LibraryGL = {
         } else {
           throw 'unsupported immediate mode ' + GL.immediate.mode;
         }
-        assert(numIndexes < GL.immediate.TEMP_BUFFER_SIZE >> 1, 'too many immediate mode indexes (b)');
-        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.indexObject);
+        assert(numIndexes << 1 <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
+        var indexBuffer = GL.immediate.tempIndexBuffers[GL.immediate.tempBufferIndexLookup[numIndexes << 1]];
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
         Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, this.indexData.subarray(0, numIndexes));
         emulatedElementArrayBuffer = true;
       }
@@ -1728,7 +1762,9 @@ var LibraryGL = {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
         var start = GL.immediate.firstVertex*GL.immediate.stride;
         var end = GL.immediate.lastVertex*GL.immediate.stride;
-        assert(end < GL.immediate.TEMP_BUFFER_SIZE, 'too much vertex data');
+        assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
+        var vertexBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
+        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, vertexBuffer);
         Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, this.vertexData.subarray(start >> 2, end >> 2));
       }
 
@@ -1789,7 +1825,7 @@ var LibraryGL = {
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
 #if ASSERTIONS
-    assert(GL.immediate.vertexCounter < GL.immediate.TEMP_BUFFER_SIZE >> 2);
+    assert(GL.immediate.vertexCounter << 2 < GL.immediate.MAX_TEMP_BUFFER_SIZE);
 #endif
     GL.immediate.addRendererComponent('V', 3, Module.ctx.FLOAT);
   },
