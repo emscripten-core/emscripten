@@ -82,6 +82,21 @@ mergeInto(LibraryManager.library, {
       }
       return ctx;
     },
+    setCanvasSize: function(canvas, width, height) {
+      canvas.width = width;
+      canvas.height = height;
+    },
+    setCanvasTitle: function(canvas, title) {
+      document.title = title;
+    },
+
+    getCanvas: function(useWebGL) {
+      return Module['canvas'];
+    },
+
+    createCanvas: function(useWebGL) {
+      return document.createElement('canvas');
+    },
 
     requestFullScreen: function() {
       var canvas = Module.canvas;

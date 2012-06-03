@@ -247,13 +247,12 @@ var LibrarySDL = {
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
       var canvas;
-      if (!usePageCanvas) {
-        canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-      } else {
-        canvas = Module['canvas'];
-      }
+      if( usePageCanvas )
+        canvas = getCanvas(useWebGL);
+      else
+        canvas = createCanvas(useWebGL);
+
+      Browser.setCanvasSize(canvas, width, height);
       var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas);
       SDL.surfaces[surf] = {
         width: width,
