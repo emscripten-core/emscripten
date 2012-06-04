@@ -1625,9 +1625,9 @@ var LibraryGL = {
         GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
         if (!GL.currArrayBuffer) {
-          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'GL.immediate.vertexPointer + count*GL.immediate.stride') }}}; // XXX assuming float
-          GL.immediate.firstVertex = 0;
-          GL.immediate.lastVertex = count;
+          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'GL.immediate.vertexPointer + (first+count)*GL.immediate.stride') }}}; // XXX assuming float
+          GL.immediate.firstVertex = first;
+          GL.immediate.lastVertex = first + count;
         }
         GL.immediate.flush(null, first);
       };
