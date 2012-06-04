@@ -65,6 +65,12 @@ void emscripten_async_call(void (*func)(), int millis) {
 void emscripten_hide_mouse();
 
 /*
+ * Resizes the pixel width and height of the <canvas> element
+ * on the Emscripten web page.
+ */
+void emscripten_set_canvas_size(int width, int height);
+
+/*
  * Returns the highest-precision representation of the
  * current time that the browser provides. This uses either
  * Date.now or performance.now. The result is *not* an

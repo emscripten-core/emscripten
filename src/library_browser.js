@@ -244,6 +244,11 @@ mergeInto(LibraryManager.library, {
     styleSheet.insertRule('canvas.emscripten { border: 1px solid black; cursor: none; }', 0);
   },
 
+  emscripten_set_canvas_size: function(width, height) {
+    Module['canvas'].width = width;
+    Module['canvas'].height = height;
+  },
+
   emscripten_get_now: function() {
     if (window['performance'] && window['performance']['now']) {
       return window['performance']['now']();
