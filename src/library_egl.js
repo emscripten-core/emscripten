@@ -12,6 +12,12 @@ var LibraryEGL = {
     return 1;
   },
 
+  // EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint *value);
+  eglQuerySurface: function(display, surface, attribute, value) { return 0 },
+
+  // EGLAPI EGLint EGLAPIENTRY eglGetError(void);
+  eglGetError: function() { return 0x3000 /* EGL_SUCCESS */ },
+
   eglMakeCurrent: function(display, surface, surface_, context) { return 1 },
   eglSwapBuffers: function() {},
 };
