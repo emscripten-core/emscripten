@@ -1630,6 +1630,7 @@ var LibraryGL = {
           GL.immediate.lastVertex = first + count;
         }
         GL.immediate.flush(null, first);
+        GL.immediate.mode = 0;
       };
 
       _glDrawElements = function(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
@@ -1648,10 +1649,12 @@ var LibraryGL = {
           GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', '(end ? GL.immediate.vertexPointer + (end+1)*GL.immediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
         }
         GL.immediate.flush(count, 0, indices);
+        GL.immediate.mode = 0;
       };
     },
 
     // Prepares and analyzes client attributes.
+    // Modifies liveClientAttributes, stride, vertexPointer, vertexCounter
     //   count: number of elements we will draw
     //   beginEnd: whether we are drawing the results of a begin/end block
     prepareClientAttributes: function(count, beginEnd) {
@@ -1792,9 +1795,6 @@ var LibraryGL = {
       if (!GL.currProgram) {
         Module.ctx.useProgram(null);
       }
-
-      this.mode = 0;
-      this.vertexCounter = 0;
     }
   },
 
@@ -1804,6 +1804,7 @@ var LibraryGL = {
   glBegin__deps: ['$GLImmediateSetup'],
   glBegin: function(mode) {
     GL.immediate.mode = mode;
+    GL.immediate.vertexCounter = 0;
     GL.immediate.rendererComponents = {}; // XXX
     GL.immediate.rendererComponentPointer = 0;
     GL.immediate.vertexData = GL.immediate.tempData;
@@ -1815,6 +1816,7 @@ var LibraryGL = {
     GL.immediate.lastVertex = GL.immediate.vertexCounter / (GL.immediate.stride >> 2);
     GL.immediate.flush();
     GL.immediate.disableBeginEndClientAttributes();
+    GL.immediate.mode = 0;
   },
 
   glVertex3f: function(x, y, z) {
