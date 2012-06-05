@@ -1295,6 +1295,7 @@ var LibraryGL = {
     enabledClientAttributes: [0, 0],
     clientAttributes: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}], // raw data, including possible unneeded ones
     liveClientAttributes: [], // the ones actually alive in the current computation, sorted
+    modifiedClientAttributes: false,
     clientActiveTexture: 0,
     clientColor: null,
 
@@ -1315,6 +1316,7 @@ var LibraryGL = {
       attrib.type = type;
       attrib.stride = stride;
       attrib.pointer = pointer;
+      this.modifiedClientAttributes = true;
     },
 
     // Temporary buffers
@@ -1658,7 +1660,14 @@ var LibraryGL = {
     //   count: number of elements we will draw
     //   beginEnd: whether we are drawing the results of a begin/end block
     prepareClientAttributes: function(count, beginEnd) {
-      // Client attributes are to be used here, emulate that
+      // If no client attributes were modified since we were last called, do nothing. Note that this
+      // does not work for glBegin/End, where we generate renderer components dynamically and then
+      // disable them ourselves, but it does help with glDrawElements/Arrays.
+      if (!this.modifiedClientAttributes) {
+        return;
+      }
+      this.modifiedClientAttributes = false;
+
       var stride = 0, start;
       var attributes = GL.immediate.liveClientAttributes;
       attributes.length = 0;
@@ -1962,6 +1971,7 @@ var LibraryGL = {
       GL.immediate.enabledClientAttributes[attrib] = true;
       GL.immediate.totalEnabledClientAttributes++;
     }
+    GL.immediate.modifiedClientAttributes = true;
   },
   glDisableClientState: function(cap) {
     _glEnableClientState(cap, 1);
