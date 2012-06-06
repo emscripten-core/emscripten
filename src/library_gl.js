@@ -1324,6 +1324,7 @@ var LibraryGL = {
     tempBufferIndexLookup: null,
     tempVertexBuffers: null,
     tempIndexBuffers: null,
+    tempQuadIndexBuffer: null,
 
     generateTempBuffers: function() {
       function ceilPower2(x) {
@@ -1357,6 +1358,30 @@ var LibraryGL = {
           last = size;
         }
       }
+
+      // GL_QUAD indexes can be precalculated
+      this.tempQuadIndexBuffer = Module.ctx.createBuffer();
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
+      var numIndexes = this.MAX_TEMP_BUFFER_SIZE >> 1;
+      var quadIndexes = new Uint16Array(numIndexes);
+      var i = 0, v = 0;
+      while (1) {
+        quadIndexes[i++] = v;
+        if (i >= numIndexes) break;
+        quadIndexes[i++] = v+1;
+        if (i >= numIndexes) break;
+        quadIndexes[i++] = v+2;
+        if (i >= numIndexes) break;
+        quadIndexes[i++] = v;
+        if (i >= numIndexes) break;
+        quadIndexes[i++] = v+2;
+        if (i >= numIndexes) break;
+        quadIndexes[i++] = v+3;
+        if (i >= numIndexes) break;
+        v += 4;
+      }
+      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, quadIndexes, Module.ctx.STATIC_DRAW);
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
     },
 
     // Renderers
@@ -1748,25 +1773,11 @@ var LibraryGL = {
           emulatedElementArrayBuffer = true;
         }
       } else if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
-        if (GL.immediate.mode == 7) { // GL_QUADS
-          var numQuads = numVertexes / 4;
-          assert(numQuads % 1 == 0);
-          for (var i = 0; i < numQuads; i++) {
-            var start = i*4;
-            GL.immediate.indexData[numIndexes++] = start;
-            GL.immediate.indexData[numIndexes++] = start+1;
-            GL.immediate.indexData[numIndexes++] = start+2;
-            GL.immediate.indexData[numIndexes++] = start;
-            GL.immediate.indexData[numIndexes++] = start+2;
-            GL.immediate.indexData[numIndexes++] = start+3;
-          }
-        } else {
-          throw 'unsupported immediate mode ' + GL.immediate.mode;
-        }
+        if (GL.immediate.mode != 7) throw 'unsupported immediate mode ' + GL.immediate.mode; // GL_QUADS
+        var numQuads = numVertexes / 4;
+        var numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
         assert(numIndexes << 1 <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
-        var indexBuffer = GL.immediate.tempIndexBuffers[GL.immediate.tempBufferIndexLookup[numIndexes << 1]];
-        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, this.indexData.subarray(0, numIndexes));
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
       }
 
