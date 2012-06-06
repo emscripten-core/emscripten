@@ -1771,7 +1771,6 @@ var LibraryGL = {
       }
 
       if (!GL.currArrayBuffer) {
-        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.vertexObject);
         var start = GL.immediate.firstVertex*GL.immediate.stride;
         var end = GL.immediate.lastVertex*GL.immediate.stride;
         assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
