@@ -906,10 +906,14 @@ var LibraryGL = {
         0x0C61: 1  // GL_TEXTURE_GEN_T
       };
       _glEnable = function(cap) {
+        // Clean up the renderer on any change to the rendering state. The optimization of
+        // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
+        if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
         if (cap in ignoredCapabilities) return;
         Module.ctx.enable(cap);
       };
       _glDisable = function(cap) {
+        if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
         if (cap in ignoredCapabilities) return;
         Module.ctx.disable(cap);
       };
@@ -1643,6 +1647,8 @@ var LibraryGL = {
 
           GL.immediate.lastRenderer = null;
           GL.immediate.lastArrayBuffer = null;
+          GL.immediate.lastProgram = null;
+          GL.immediate.matricesModified = true;
         }
       };
       ret.init();
