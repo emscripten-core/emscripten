@@ -1269,6 +1269,8 @@ var LibraryGL = {
     rendererCache: {},
     rendererComponents: {}, // small cache for calls inside glBegin/end. counts how many times the element was seen
     rendererComponentPointer: 0, // next place to start a glBegin/end component
+    lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
+    lastArrayBuffer: null, // used in conjunction with lastRenderer
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {},
@@ -1535,14 +1537,32 @@ var LibraryGL = {
         },
 
         prepare: function() {
+          // Calculate the array buffer
+          var arrayBuffer;
           if (!GL.currArrayBuffer) {
             var start = GL.immediate.firstVertex*GL.immediate.stride;
             var end = GL.immediate.lastVertex*GL.immediate.stride;
             assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
-            var vertexBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
-            Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, vertexBuffer);
+            arrayBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
+          } else {
+            arrayBuffer = GL.currArrayBuffer;
+          }
+
+          // If the array buffer is unchanged and the renderer as well, then we can avoid all the work here
+          var lastRenderer = GL.immediate.lastRenderer;
+          var canSkip = false; // XXX TODO this == lastRenderer && arrayBuffer == GL.immediate.lastArrayBuffer;
+          if (!canSkip && lastRenderer) lastRenderer.cleanup();
+          if (!GL.currArrayBuffer) {
+            // Bind the array buffer and upload data after cleaning up the previous renderer
+            if (arrayBuffer != GL.immediate.lastArrayBuffer) {
+              Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, arrayBuffer);
+            }
             Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, GL.immediate.vertexData.subarray(start >> 2, end >> 2));
           }
+          if (canSkip) return;
+          GL.immediate.lastRenderer = this;
+          GL.immediate.lastArrayBuffer = arrayBuffer;
+
           if (!GL.currProgram) {
             Module.ctx.useProgram(this.program);
           }
@@ -1610,6 +1630,9 @@ var LibraryGL = {
           if (!GL.currArrayBuffer) {
             Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
           }
+
+          GL.immediate.lastRenderer = null;
+          GL.immediate.lastArrayBuffer = null;
         }
       };
       ret.init();
@@ -1806,8 +1829,6 @@ var LibraryGL = {
       } else {
         Module.ctx.drawArrays(GL.immediate.mode, startIndex, numVertexes);
       }
-
-      renderer.cleanup();
 
       if (emulatedElementArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
