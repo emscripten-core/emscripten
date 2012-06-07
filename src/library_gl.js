@@ -1535,6 +1535,18 @@ var LibraryGL = {
         },
 
         prepare: function() {
+          if (!GL.currArrayBuffer) {
+            var start = GL.immediate.firstVertex*GL.immediate.stride;
+            var end = GL.immediate.lastVertex*GL.immediate.stride;
+            assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
+            var vertexBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
+            Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, vertexBuffer);
+            Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, GL.immediate.vertexData.subarray(start >> 2, end >> 2));
+          }
+          if (!GL.currProgram) {
+            Module.ctx.useProgram(this.program);
+          }
+
           if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
@@ -1591,6 +1603,12 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.disableVertexAttribArray(this.normalLocation);
+          }
+          if (!GL.currProgram) {
+            Module.ctx.useProgram(null);
+          }
+          if (!GL.currArrayBuffer) {
+            Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
           }
         }
       };
@@ -1781,20 +1799,6 @@ var LibraryGL = {
         emulatedElementArrayBuffer = true;
       }
 
-      if (!GL.currArrayBuffer) {
-        var start = GL.immediate.firstVertex*GL.immediate.stride;
-        var end = GL.immediate.lastVertex*GL.immediate.stride;
-        assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
-        var vertexBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
-        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, vertexBuffer);
-        Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, this.vertexData.subarray(start >> 2, end >> 2));
-      }
-
-      // Render
-      if (!GL.currProgram) {
-        Module.ctx.useProgram(renderer.program);
-      }
-
       renderer.prepare();
 
       if (numIndexes) {
@@ -1805,14 +1809,8 @@ var LibraryGL = {
 
       renderer.cleanup();
 
-      if (!GL.currArrayBuffer) {
-        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
-      }
       if (emulatedElementArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
-      }
-      if (!GL.currProgram) {
-        Module.ctx.useProgram(null);
       }
     }
   },
