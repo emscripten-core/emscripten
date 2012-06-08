@@ -7448,6 +7448,19 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
+    def test_sdl_canvas_palette(self):
+      open(os.path.join(self.get_dir(), 'sdl_canvas_palette.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette.c')).read()))
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette.c'), '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '')
+
+    def test_sdl_canvas_palette_2(self):
+      open(os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette_2.c')).read()))
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('Module[\'preRun\'] = function() { SDL.defaults.copyOnLock = false }')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      self.run_browser('page.html', '')
+
     def test_sdl_key(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         Module.postRun = function() {
