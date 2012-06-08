@@ -2715,7 +2715,11 @@ LibraryManager.library = {
           if (arg) {
             copiedString = String_copy(arg);
             if (precisionSet && copiedString.length > precision) {
+#if USE_TYPED_ARRAYS == 2
+              copiedString = copiedString.subarray(0, precision);
+#else
               copiedString = copiedString.slice(0, precision);
+#endif
             }
           } else {
             copiedString = intArrayFromString('(null)', true);
@@ -2725,7 +2729,13 @@ LibraryManager.library = {
               ret.push(' '.charCodeAt(0));
             }
           }
+#if USE_TYPED_ARRAYS == 2
+          for (var i = 0; i < copiedString.length; i++) {
+            ret.push(copiedString[i]);
+          }
+#else
           ret = ret.concat(copiedString);
+#endif
           if (flagLeftAlign) {
             while (copiedString.length < width--) {
               ret.push(' '.charCodeAt(0));

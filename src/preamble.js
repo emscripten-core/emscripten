@@ -723,37 +723,30 @@ function exitRuntime() {
 
 
 // Copies a list of num items on the HEAP into a
-// a normal JavaScript array of numbers
+// a JavaScript array of numbers (normal array in TA0 or TA1,
+// typed array in TA2)
 function Array_copy(ptr, num) {
 #if USE_TYPED_ARRAYS == 1
   // TODO: In the SAFE_HEAP case, do some reading here, for debugging purposes - currently this is an 'unnoticed read'.
   return Array.prototype.slice.call(IHEAP.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
                                                                    // Consider making a typed array here, for speed?
-#endif
+#else
 #if USE_TYPED_ARRAYS == 2
-  return Array.prototype.slice.call(HEAP8.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
-                                                                   // Consider making a typed array here, for speed?
-#endif
+  var end = ptr+num;
+  if (end <= HEAPU8.length) {
+    return new Uint8Array(HEAPU8.subarray(ptr, end));
+  } else {
+    // we fill with zeros after the end of the array
+    var ret = new Uint8Array(end - ptr);
+    ret.set(HEAPU8.subarray(ptr, end));
+    return ret;
+  }
+#else
   return HEAP.slice(ptr, ptr+num);
+#endif
+#endif
 }
 Module['Array_copy'] = Array_copy;
-
-#if USE_TYPED_ARRAYS
-// Copies a list of num items on the HEAP into a
-// JavaScript typed array.
-function TypedArray_copy(ptr, num, offset /*optional*/) {
-  // TODO: optimize this!
-  if (offset === undefined) {
-    offset = 0;
-  }
-  var arr = new Uint8Array(num - offset);
-  for (var i = offset; i < num; ++i) {
-    arr[i - offset] = {{{ makeGetValue('ptr', 'i', 'i8') }}};
-  }
-  return arr.buffer;
-}
-Module['TypedArray_copy'] = TypedArray_copy;
-#endif
 
 function String_len(ptr) {
   var i = 0;
