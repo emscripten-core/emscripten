@@ -811,7 +811,12 @@ var LibrarySDL = {
     var surfData = SDL.surfaces[surf];
     surfData.colors = [];
     for (var i = firstColor; i < nColors; i++) {
-      surfData.colors[i] = Array_copy(colors + i*4, colors + i*4 + 4);
+      surfData.colors[i] = [
+        {{{ makeGetValue('colors', 'i*4',     'i8', null, true) }}},
+        {{{ makeGetValue('colors', 'i*4 + 1', 'i8', null, true) }}},
+        {{{ makeGetValue('colors', 'i*4 + 2', 'i8', null, true) }}},
+        {{{ makeGetValue('colors', 'i*4 + 3', 'i8', null, true) }}}
+      ];
     }
     return 1;
   },
