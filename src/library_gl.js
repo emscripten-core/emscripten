@@ -897,13 +897,14 @@ var LibraryGL = {
 
       // XXX some of these ignored capabilities may lead to incorrect rendering, if we do not emulate them in shaders
       var ignoredCapabilities = {
-        0x0DE1: 1, // GL_TEXTURE_2D
         0x0B20: 1, // GL_LINE_SMOOTH
         0x0B60: 1, // GL_FOG
-        0x8513: 1, // GL_TEXTURE_CUBE_MAP
         0x0BA1: 1, // GL_NORMALIZE
         0x0C60: 1, // GL_TEXTURE_GEN_S
-        0x0C61: 1  // GL_TEXTURE_GEN_T
+        0x0C61: 1, // GL_TEXTURE_GEN_T
+        0x0DE1: 1, // GL_TEXTURE_2D
+        0x8513: 1, // GL_TEXTURE_CUBE_MAP
+        0x2A02: 1  // GL_POLYGON_OFFSET_LINE
       };
       _glEnable = function(cap) {
         // Clean up the renderer on any change to the rendering state. The optimization of
@@ -2220,8 +2221,8 @@ var LibraryGL = {
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'shadeModel getError* finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation polygonOffset sampleCoverage isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation sampleCoverage isEnabled*'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
