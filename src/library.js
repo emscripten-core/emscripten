@@ -2710,34 +2710,19 @@ LibraryManager.library = {
           });
         } else if (next == 's'.charCodeAt(0)) {
           // String.
-          var arg = getNextArg('i8*');
-          var copiedString;
-          if (arg) {
-            copiedString = String_copy(arg);
-            if (precisionSet && copiedString.length > precision) {
-#if USE_TYPED_ARRAYS == 2
-              copiedString = copiedString.subarray(0, precision);
-#else
-              copiedString = copiedString.slice(0, precision);
-#endif
-            }
-          } else {
-            copiedString = intArrayFromString('(null)', true);
-          }
+          var arg = getNextArg('i8*') || 0; // 0 holds '(null)'
+          var argLength = String_len(arg);
+          if (precisionSet) argLength = Math.min(String_len(arg), precision);
           if (!flagLeftAlign) {
-            while (copiedString.length < width--) {
+            while (argLength < width--) {
               ret.push(' '.charCodeAt(0));
             }
           }
-#if USE_TYPED_ARRAYS == 2
-          for (var i = 0; i < copiedString.length; i++) {
-            ret.push(copiedString[i]);
+          for (var i = 0; i < argLength; i++) {
+            ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
           }
-#else
-          ret = ret.concat(copiedString);
-#endif
           if (flagLeftAlign) {
-            while (copiedString.length < width--) {
+            while (argLength < width--) {
               ret.push(' '.charCodeAt(0));
             }
           }
@@ -4230,9 +4215,17 @@ LibraryManager.library = {
   },
 
   strpbrk: function(ptr1, ptr2) {
-    var searchSet = Runtime.set.apply(null, String_copy(ptr2));
-    while ({{{ makeGetValue('ptr1', 0, 'i8') }}}) {
-      if ({{{ makeGetValue('ptr1', 0, 'i8') }}} in searchSet) return ptr1;
+    var curr;
+    var searchSet = {};
+    while (1) {
+      var curr = {{{ makeGetValue('ptr2++', 0, 'i8') }}};
+      if (!curr) break;
+      searchSet[curr] = 1;
+    }
+    while (1) {
+      curr = {{{ makeGetValue('ptr1', 0, 'i8') }}};
+      if (!curr) break;
+      if (curr in searchSet) return ptr1;
       ptr1++;
     }
     return 0;

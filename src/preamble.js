@@ -721,50 +721,12 @@ function exitRuntime() {
   CorrectionsMonitor.print();
 }
 
-
-// Copies a list of num items on the HEAP into a
-// a JavaScript array of numbers (normal array in TA0 or TA1,
-// typed array in TA2)
-function Array_copy(ptr, num) {
-#if USE_TYPED_ARRAYS == 1
-  // TODO: In the SAFE_HEAP case, do some reading here, for debugging purposes - currently this is an 'unnoticed read'.
-  return Array.prototype.slice.call(IHEAP.subarray(ptr, ptr+num)); // Make a normal array out of the typed 'view'
-                                                                   // Consider making a typed array here, for speed?
-#else
-#if USE_TYPED_ARRAYS == 2
-  var end = ptr+num;
-  if (end <= HEAPU8.length) {
-    return new Uint8Array(HEAPU8.subarray(ptr, end));
-  } else {
-    // we fill with zeros after the end of the array
-    var ret = new Uint8Array(end - ptr);
-    ret.set(HEAPU8.subarray(ptr, end));
-    return ret;
-  }
-#else
-  return HEAP.slice(ptr, ptr+num);
-#endif
-#endif
-}
-Module['Array_copy'] = Array_copy;
-
 function String_len(ptr) {
   var i = 0;
   while ({{{ makeGetValue('ptr', 'i', 'i8') }}}) i++; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
   return i;
 }
 Module['String_len'] = String_len;
-
-// Copies a C-style string, terminated by a zero, from the HEAP into
-// a normal JavaScript array of numbers
-function String_copy(ptr, addZero) {
-  var len = String_len(ptr);
-  if (addZero) len++;
-  var ret = Array_copy(ptr, len);
-  if (addZero) ret[len-1] = 0;
-  return ret;
-}
-Module['String_copy'] = String_copy;
 
 // Tools
 
