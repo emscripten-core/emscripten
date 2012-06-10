@@ -205,7 +205,10 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
 
-var GENERATING_HTML = 0; // Set to 1 when generating .html and not just .js
+var GENERATING_HTML = 0; // Set to 1 when generating .html and not just .js. This is automatically
+                         // set to 1 by emcc when it is told to generate a .html file. Note that if
+                         // you generate a .js file and want browser-specific functionality, you
+                         // need to set this to 1 yourself.
 
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you
