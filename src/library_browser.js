@@ -1,7 +1,6 @@
 //"use strict";
 
 // Utilities for browser environments
-// Note: see GENERATING_HTML in settings.js
 
 mergeInto(LibraryManager.library, {
   $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n', // export requestFullScreen

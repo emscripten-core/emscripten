@@ -16,13 +16,15 @@ if (GC_SUPPORT) {
       init: function() {
         assert(!GC.initted);
         GC.initted = true;
-#if GENERATING_HTML
-        setInterval(function() {
-          GC.maybeCollect();
-        }, 1000);
-#else
-        // No HTML intervals, so you need to call GC.maybeCollect() or GC.collect() manually
+        if (ENVIRONMENT_IS_WEB) {
+          setInterval(function() {
+            GC.maybeCollect();
+          }, 1000);
+        } else {
+#if ASSERTIONS
+          Module.print('No HTML intervals, so you need to call GC.maybeCollect() or GC.collect() manually');
 #endif
+        }
       },
 
       malloc: function(bytes, clear, scannable) {

@@ -56,7 +56,6 @@ function run(args) {
     return ret;
   }
 
-#if GENERATING_HTML
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
     setTimeout(function() {
@@ -69,9 +68,6 @@ function run(args) {
   } else {
     return doRun();
   }
-#else
-  return doRun();
-#endif
 }
 Module['run'] = run;
 
