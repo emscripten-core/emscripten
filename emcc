@@ -223,6 +223,10 @@ Options that are modified or new in %s include:
                            HTML (it uses asynchronous binary XHRs).
                            If a directory is passed here, its entire
                            contents will be preloaded.
+                           Preloaded files are stored in filename.data,
+                           where filename.html is the main file you
+                           are compiling to. To run your code, you
+                           will need both the .html and the .data.
 
   --compression <codec>    Compress both the compiled code and embedded/
                            preloaded files. <codec> should be a triple,
