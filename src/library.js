@@ -28,7 +28,14 @@ LibraryManager.library = {
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
                 '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
-                '__ATEXIT__.push({ func: function() { FS.quit() } });',
+                '__ATEXIT__.push({ func: function() { FS.quit() } });' +
+                // export some names through closure
+                'Module["FS_createFolder"] = FS.createFolder;' +
+                'Module["FS_createPath"] = FS.createPath;' +
+                'Module["FS_createDataFile"] = FS.createDataFile;' +
+                'Module["FS_createLazyFile"] = FS.createLazyFile;' +
+                'Module["FS_createLink"] = FS.createLink;' +
+                'Module["FS_createDevice"] = FS.createDevice;',
   $FS: {
     // The path to the current folder.
     currentPath: '/',

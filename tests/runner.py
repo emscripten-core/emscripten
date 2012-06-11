@@ -4023,8 +4023,9 @@ def process(filename):
     var Module = {
       'noFSInit': true,
       'preRun': function() {
-        FS.createDataFile('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
         FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+        // Test FS_* exporting
+        Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
         var test_files_input = 'hi there!';
         var test_files_input_index = 0;
         FS.init(function() {
