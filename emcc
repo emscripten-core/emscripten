@@ -220,7 +220,8 @@ Options that are modified or new in %s include:
                            compiled code asynchronously. Otherwise
                            similar to --embed-file, except that this
                            option is only relevant when generating
-                           HTML (it uses asynchronous binary XHRs).
+                           HTML (it uses asynchronous binary XHRs),
+                           or JS that will be used in a web page.
                            If a directory is passed here, its entire
                            contents will be preloaded.
                            Preloaded files are stored in filename.data,
@@ -448,6 +449,7 @@ try:
   post_js = None
   minify_whitespace = None
   data_files = []
+  has_preloaded_files = False
   compression = None
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
@@ -507,6 +509,7 @@ try:
     elif newargs[i].startswith('--preload-file'):
       check_bad_eq(newargs[i])
       data_files.append({ 'name': newargs[i+1], 'mode': 'preload' })
+      has_preloaded_files = True
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--compression'):
@@ -876,7 +879,7 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: setting up files'
     code = ''
 
-    if final_suffix == 'html':
+    if has_preloaded_files:
       code += '''
       var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
       var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
@@ -888,7 +891,7 @@ try:
         hasBlobConstructor = false;
         console.log("warning: no blob constructor, cannot create blobs with mimetypes");
       }
-'''
+  '''
 
       code += 'var preloadedImages = {}; // maps url to image data\n'
       code += 'var preloadedAudios = {}; // maps url to audio data\n'
@@ -924,7 +927,7 @@ try:
             code += '''FS.createFolder('/%s', '%s', true, false);\n''' % ('/'.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
-    if final_suffix == 'html':
+    if has_preloaded_files:
       # Bundle all datafiles into one archive. Avoids doing lots of simultaneous XHRs which has overhead.
       data = open(data_target, 'wb')
       start = 0
@@ -1046,7 +1049,7 @@ try:
       else:
         assert 0
 
-    if final_suffix == 'html':
+    if has_preloaded_files:
       # Get the big archive and split it up
       use_data = ''
       for file_ in data_files:
