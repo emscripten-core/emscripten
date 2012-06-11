@@ -167,7 +167,7 @@ for file_ in data_files:
           ctx.drawImage(img, 0, 0);
           Module["preloadedImages"]['%(filename)s'] = canvas;
           URLObject.revokeObjectURL(url);
-          removeRunDependency();
+          Module['removeRunDependency']();
         };
         img.onerror = function(event) {
           console.log('Image %(filename)s could not be decoded');
@@ -186,14 +186,14 @@ for file_ in data_files:
             audio['oncanplaythrough'] = null;
             Module["preloadedAudios"]['%(filename)s'] = audio;
             if (!audio.removedDependency) {
-              removeRunDependency();
+              Module['removeRunDependency']();
               audio.removedDependency = true;
             }
           };
           audio.onerror = function(event) {
             if (!audio.removedDependency) {
               console.log('Audio %(filename)s could not be decoded or timed out trying to decode');
-              removeRunDependency();
+              Module['removeRunDependency']();
               audio.removedDependency = true;
             }
           };
@@ -201,11 +201,11 @@ for file_ in data_files:
           audio.src = url;
         } else {
           Module["preloadedAudios"]['%(filename)s'] = new Audio(); // empty shim
-          removeRunDependency();
+          Module['removeRunDependency']();
         }
 ''' % { 'filename': filename, 'mimetype': AUDIO_MIMETYPES[suffix(filename)] }
     else:
-      finish = 'removeRunDependency();\n'
+      finish = "Module['removeRunDependency']();\n"
 
     code += '''
     var %(varname)s = new %(request)s();
@@ -218,7 +218,7 @@ for file_ in data_files:
       Module['FS_createDataFile']('/%(dirname)s', '%(basename)s', byteArray, true, true);
       %(finish)s
     };
-    addRunDependency();
+    Module['addRunDependency']();
     %(varname)s.send(null);
 ''' % {
         'request': 'DataRequest', # In the past we also supported XHRs here
@@ -242,7 +242,7 @@ if has_preloaded:
         curr.response = byteArray.subarray(%d,%d);
         curr.onload();
       ''' % (file_['name'], file_['data_start'], file_['data_end'])
-  use_data += '          removeRunDependency();\n'
+  use_data += "          Module['removeRunDependency']();\n"
 
   if Compression.on:
     use_data = '''
@@ -263,7 +263,7 @@ if has_preloaded:
       var curr;
       %s
     };
-    addRunDependency();
+    Module['addRunDependency']();
     dataFile.send(null);
     if (Module['setStatus']) Module['setStatus']('Downloading...');
   ''' % (Compression.compressed_name(data_target) if Compression.on else data_target, use_data)

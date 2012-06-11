@@ -819,6 +819,7 @@ function addRunDependency() {
     Module['monitorRunDependencies'](runDependencies);
   }
 }
+Module['addRunDependency'] = addRunDependency;
 function removeRunDependency() {
   runDependencies--;
   if (Module['monitorRunDependencies']) {
@@ -826,6 +827,7 @@ function removeRunDependency() {
   }
   if (runDependencies == 0) run();
 }
+Module['removeRunDependency'] = removeRunDependency;
 
 // === Body ===
 
