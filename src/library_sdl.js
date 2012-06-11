@@ -841,7 +841,7 @@ var LibrarySDL = {
       // Convert the path to relative
       filename = filename.substr(1);
     }
-    var raw = preloadedImages[filename];
+    var raw = Module["preloadedImages"][filename];
     if (!raw) {
       Runtime.warnOnce('Cannot find preloaded image ' + filename);
       return 0;
@@ -965,7 +965,7 @@ var LibrarySDL = {
 
   Mix_LoadWAV_RW: function(filename, freesrc) {
     filename = FS.standardizePath(Pointer_stringify(filename));
-    var raw = preloadedAudios[filename];
+    var raw = Module["preloadedAudios"][filename];
     if (!raw) {
       Runtime.warnOnce('Cannot find preloaded audio ' + filename);
       return 0;
