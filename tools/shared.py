@@ -131,6 +131,7 @@ BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
+FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
@@ -931,4 +932,29 @@ class Cache:
       os.makedirs(Cache.dirname)
     shutil.copyfile(creator(), cachename)
     return cachename
+
+# Compression of code and data for smaller downloads
+class Compression:
+  on = False
+
+  @staticmethod
+  def compressed_name(filename):
+    return filename + '.compress'
+
+  @staticmethod
+  def compress(filename):
+    execute(Compression.encoder, stdin=open(filename, 'rb'), stdout=open(Compression.compressed_name(filename), 'wb'))
+
+  @staticmethod
+  def worth_it(original, compressed):
+    return compressed < original - 1500 # save at least one TCP packet or so
+
+def execute(cmd, *args, **kw):
+  try:
+    return subprocess.Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+  except:
+    if not isinstance(cmd, str):
+      cmd = ' '.join(cmd)
+    print >> sys.stderr, 'Invoking Process failed: <<< ' + cmd + ' >>>'
+    raise
 
