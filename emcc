@@ -924,7 +924,7 @@ try:
         for i in range(len(parts)):
           partial = '/'.join(parts[:i+1])
           if partial not in partial_dirs:
-            code += '''FS.createFolder('/%s', '%s', true, false);\n''' % ('/'.join(parts[:i]), parts[i])
+            code += '''Module['FS_createFolder']('/%s', '%s', true, false);\n''' % ('/'.join(parts[:i]), parts[i])
             partial_dirs.append(partial)
 
     if has_preloaded_files:
@@ -958,11 +958,9 @@ try:
       filename = file_['name']
       if file_['mode'] == 'embed':
         # Embed
-        code += '''FS.createDataFile('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
+        code += '''Module['FS_createDataFile']('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
       elif file_['mode'] == 'preload':
         # Preload
-        assert final_suffix == 'html', 'Can only preload files when generating HTML'
-
         varname = 'filePreload%d' % counter
         counter += 1
         image = filename.endswith(IMAGE_SUFFIXES)
@@ -1032,7 +1030,7 @@ try:
           var arrayBuffer = %(varname)s.response;
           assert(arrayBuffer, 'Loading file %(filename)s failed.');
           var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
-          FS.createDataFile('/%(dirname)s', '%(basename)s', byteArray, true, true);
+          Module['FS_createDataFile']('/%(dirname)s', '%(basename)s', byteArray, true, true);
           %(finish)s
         };
         addRunDependency();
