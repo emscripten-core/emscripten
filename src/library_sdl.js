@@ -1076,6 +1076,14 @@ var LibrarySDL = {
 
   Mix_FadeOutMusic: 'Mix_HaltMusic', // XXX ignore fading out effect
 
+  Mix_PlayingMusic: function() {
+    return (SDL.music && !SDL.music.paused) ? 1 : 0;
+  },
+
+  Mix_PausedMusic: function() {
+    return (SDL.music && SDL.music.paused) ? 1 : 0;
+  },
+
   // SDL TTF
 
   TTF_Init: function() { return 0 },
