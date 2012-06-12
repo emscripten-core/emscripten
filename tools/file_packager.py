@@ -62,7 +62,11 @@ for arg in sys.argv[1:]:
       Compression.js_name = arg
       in_compress = 0
 
-code = ''
+code = '''
+function assert(check, msg) {
+  if (!check) throw msg;
+}
+'''
 
 if has_preloaded:
   code += '''
