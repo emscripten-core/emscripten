@@ -1024,8 +1024,12 @@ var LibrarySDL = {
     return 0;
   },
 
+  Mix_HookMusicFinished__deps: ['Mix_HaltMusic'],
   Mix_HookMusicFinished: function(func) {
     SDL.hookMusicFinished = func;
+    if (SDL.music) { // ensure the callback will be called, if a music is already playing
+      SDL.music['onended'] = _Mix_HaltMusic;
+    }
   },
 
   Mix_VolumeMusic: function(func) {
@@ -1036,12 +1040,14 @@ var LibrarySDL = {
 
   Mix_FreeMusic: 'Mix_FreeChunk',
 
+  Mix_PlayMusic__deps: ['Mix_HaltMusic'],
   Mix_PlayMusic: function(id, loops) {
     loops = Math.max(loops, 1);
     var audio = SDL.audios[id].audio;
     if (!audio) return 0;
     audio.loop = loops != 1; // TODO: handle N loops for finite N
     audio.play();
+    audio['onended'] = _Mix_HaltMusic; // will send callback
     SDL.music = audio;
     return 0;
   },
