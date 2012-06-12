@@ -101,6 +101,14 @@ for file_ in data_files:
   file_['name'] = file_['name'].replace(os.path.sep, '/')
   file_['net_name'] = file_['name']
 
+# remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
+seen = {}
+def was_seen(name):
+  if seen.get(name): return True
+  seen[name] = 1
+  return False
+data_files = filter(lambda file_: not was_seen(file_['name']), data_files)
+
 data_target = sys.argv[1]
 
 # Set up folders

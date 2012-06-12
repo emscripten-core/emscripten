@@ -6837,6 +6837,10 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
       self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+      # preload twice, should not err
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt']).communicate()
+      self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_multidynamic_link(self):
       # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
       # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
