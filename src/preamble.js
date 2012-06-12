@@ -326,6 +326,7 @@ function ccall(ident, returnType, argTypes, args) {
   var stack = 0;
   function toC(value, type) {
     if (type == 'string') {
+      if (value === null || value === undefined || value === 0) return 0; // null string
       if (!stack) stack = Runtime.stackSave();
       var ret = Runtime.stackAlloc(value.length+1);
       writeStringToMemory(value, ret);
