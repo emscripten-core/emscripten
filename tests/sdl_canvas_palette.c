@@ -52,7 +52,7 @@ int main() {
     SDL_FillRect(screen, &rect, 1);
   }
 
-  printf("you should see red, blue and yellow rectangle\n");
+  printf("you should see red, blue and yellow rectangles\n");
 
   SDL_Quit();
 
