@@ -226,7 +226,7 @@ class _CppClass(dict):
 	def _parser_helper( self, stack ):
 		prev = None
 		prev2 = None
-		print('stack IN', ' '.join(stack))
+		#print('stack IN', ' '.join(stack))
 		for i, tok in enumerate(stack):	# can not trust the first single ":" or last
 			if prev and prev2 and tok == ':' and prev != ':' and prev2 != ':':
 				break
@@ -238,9 +238,9 @@ class _CppClass(dict):
 		b = stack[ i+1 : ]
 		while a[-1] == ':': a.pop()
 
-		print( 'HEAD', a )
-		print('______________')
-		print( 'TAIL', b )
+                #print( 'HEAD', a )
+		#print('______________')
+		#print( 'TAIL', b )
 
 		if ''.join(stack).replace('::','_').count(':') >= 2:
 			if stack.count('class') == 1:
@@ -616,7 +616,7 @@ class CppMethod( _CppMethod ):
 
 class _CppVariable(dict):
     def _name_stack_helper( self, stack, fullStack ):
-        print('V'*80); print( stack ); print(fullStack); print('_'*80)
+        #print('V'*80); print( stack ); print(fullStack); print('_'*80)
         stack = list(stack)
         if stack[-1].isdigit() and '=' not in stack:        # TODO refactor me - was: '=' not in stack or 
             # check for array[n] and deal with funny array syntax: "int myvar:99"
@@ -860,8 +860,8 @@ def prune_arrays( stack ):
 
 
 def is_method_namestack(stack):
-    clean = prune_templates( stack ); print('CLEAN TEMPLATES',clean)
-    clean = prune_arrays( clean ); print('CLEAN ARRAYS',clean)
+    clean = prune_templates( stack ); #print('CLEAN TEMPLATES',clean)
+    clean = prune_arrays( clean ); #print('CLEAN ARRAYS',clean)
 
     r = False
     if 'operator' in stack: r = True    # allow all operators
@@ -895,7 +895,7 @@ def is_method_namestack(stack):
         elif x.endswith(',false);'): r = False
         elif x.endswith(',0xFF);'): r = False
     else: r = False
-    print( 'is method namestack', r, stack ); print('_'*80)
+    #print( 'is method namestack', r, stack ); print('_'*80)
     return r
 
 
@@ -1625,8 +1625,8 @@ class _CppHeader( Resolver ):
                         trace_print( '\t\tmeth', meth['name'], 'pure virtual', meth['pure_virtual'] )
                         if meth['pure_virtual'] and meth['name'] not in methnames: cls['abstract'] = True; break
 
-        print self.typedefs.keys()
-        print '-------------'
+        #print self.typedefs.keys()
+        #print '-------------'
         for k in self.template_typedefs.keys(): print k
         #assert 'irr::core::dimension2d<u32>' in self.typedefs
         #assert 0
@@ -1756,7 +1756,7 @@ class _CppHeader( Resolver ):
         if '{' in stack:
             info['defined'] = True
             self._method_body = self.braceDepth
-            print( '----------NEW METHOD WITH BODY---------', self.braceDepth )
+            #print( '----------NEW METHOD WITH BODY---------', self.braceDepth )
         elif stack[-1] == ';':
             info['defined'] = False
             self._method_body = None    # this is force cleared in several other places
@@ -1795,7 +1795,7 @@ class _CppHeader( Resolver ):
         while a and a[0] == '}':    # strip - can have multiple } }
             a = a[1:]    # july3rd
 
-        print(name)
+        #print(name)
         if '::' in name:
             klass = name[ : name.rindex('::') ]
             name = name.split('::')[-1]
@@ -1965,12 +1965,13 @@ class _CppHeader( Resolver ):
     def evaluate_class_stack(self):
         """Create a Class out of the name stack (but not its parts)"""
         parent = self.curClass
-        print('NEWCLASS', ' '.join(self.nameStack))
+        #print('NEWCLASS', ' '.join(self.nameStack))
 
         if self.braceDepth > len( self.nameSpaces) and (parent or self.curStruct):
-            print( 'HIT NESTED SUBCLASS' )
+            #print( 'HIT NESTED SUBCLASS' )
+            None
         elif self.braceDepth-1 != len(self.nameSpaces):
-            print( 'ERROR: WRONG BRACE DEPTH', self.braceDepth, self.nameSpaces )
+            #print( 'ERROR: WRONG BRACE DEPTH', self.braceDepth, self.nameSpaces )
             assert 0
 
         self._method_body = None	# force clear
@@ -1982,7 +1983,7 @@ class _CppHeader( Resolver ):
 
         newClass = CppClass(self.nameStack)
         if 'name' not in newClass or not newClass['name']: assert 0
-        print( 'CLASS OK', newClass['name'] )
+        #print( 'CLASS OK', newClass['name'] )
         if newClass['name'] in 'RenderQueueInvocationIterator RenderQueueInvocationList'.split(): assert 0
 
         if '>' in newClass['name']: print('WARN: strange template class', newClass['name'])
@@ -2187,8 +2188,6 @@ class CppHeader( _CppHeader ):
                     if self.curClass and debug: print( 'CURBD', self._classes_brace_level[ self.curClass ] )
 
                     if (self.braceDepth == 0) or (self.curClass and self._classes_brace_level[self.curClass] > self.braceDepth):
-                        if self.curClass: print( '------------END OF CLASS DEF-------------', 'braceDepth:', self.braceDepth )
-
                         if self._current_access: self._current_access.pop()
 
                         if self.curClass and self.classes[ self.curClass ]['parent']:
@@ -2205,7 +2204,7 @@ class CppHeader( _CppHeader ):
                         self.curStruct = None
 
                     if self._method_body and self.braceDepth < self._method_body:
-                        self._method_body = None; self.stack = []; self.nameStack = []; print( 'FORCE CLEAR METHBODY' )
+                        self._method_body = None; self.stack = []; self.nameStack = []; #print( 'FORCE CLEAR METHBODY' )
                 
                 if (tok.type == 'OPEN_PAREN'):
                     self.nameStack.append(tok.value)
@@ -2240,7 +2239,7 @@ class CppHeader( _CppHeader ):
                     if self.nameStack and self.nameStack[-1] in supportedAccessSpecifier:
                         if self.curClass or self.curStruct:
                             cas = self.nameStack[-1]
-                            self.curAccessSpecifier = cas; print('CURACCESS-set', cas)
+                            self.curAccessSpecifier = cas; #print('CURACCESS-set', cas)
                             if self.curClass:
                                 if self._current_access: self._current_access[-1] = cas
                                 else: self._current_access.append( cas )
@@ -2265,8 +2264,8 @@ class CppHeader( _CppHeader ):
     def evaluate_stack(self, token=None):
         """Evaluates the current name stack"""
         global doxygenCommentCache
-        print( "Evaluating stack %s\nBraceDepth: %s" %(self.nameStack,self.braceDepth))
-        print( "Evaluating stack %s\nBraceDepth: %s" %(self.stack,self.braceDepth))
+        #print( "Evaluating stack %s\nBraceDepth: %s" %(self.nameStack,self.braceDepth))
+        #print( "Evaluating stack %s\nBraceDepth: %s" %(self.stack,self.braceDepth))
         if (len(self.curClass)):
             if (debug): print( "%s (%s) "%(self.curClass, self.curAccessSpecifier))
 
@@ -2307,11 +2306,11 @@ class CppHeader( _CppHeader ):
             #print('^^^^^^^^^^^^^^^^^^^^')
             self.evaluate_class_stack()
         elif (self.nameStack[0] == "struct") or (len(self.nameStack)>3 and self.stack[-1]=='{' and self.nameStack[-3]=='struct'):
-            print( '------------new struct-----------' )
+            #print( '------------new struct-----------' )
             self.evaluate_struct_stack()
             self.stack = []
         elif self.nameStack[0]=='template' and self.stack[-1]=='{' and 'struct' in self.nameStack:
-            print( '------------new struct - unsafe?' )
+            #print( '------------new struct - unsafe?' )
             self.evaluate_struct_stack()
             self.stack = []
 
