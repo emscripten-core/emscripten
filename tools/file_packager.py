@@ -121,7 +121,7 @@ for file_ in data_files:
     for i in range(len(parts)):
       partial = '/'.join(parts[:i+1])
       if partial not in partial_dirs:
-        code += '''Module['FS_createFolder']('/%s', '%s', true, false);\n''' % ('/'.join(parts[:i]), parts[i])
+        code += '''Module['FS_createFolder']('/%s', '%s', true, true);\n''' % ('/'.join(parts[:i]), parts[i])
         partial_dirs.append(partial)
 
 if has_preloaded:
