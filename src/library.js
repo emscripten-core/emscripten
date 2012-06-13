@@ -6203,6 +6203,10 @@ LibraryManager.library = {
     return eval(Pointer_stringify(ptr));
   },
 
+  emscripten_random: function() {
+    return Math.random();
+  },
+
   $Profiling: {
     max_: 0,
     times: null,

@@ -80,6 +80,11 @@ void emscripten_set_canvas_size(int width, int height);
 float emscripten_get_now();
 
 /*
+ * Simple random number generation in [0, 1), maps to Math.random().
+ */
+float emscripten_random();
+
+/*
  * This macro-looking function will cause Emscripten to
  * generate a comment in the generated code.
  * XXX This is deprecated for now, because it requires us to
