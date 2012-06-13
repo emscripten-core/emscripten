@@ -1684,7 +1684,9 @@ var LibraryGL = {
       // Initialize matrix library
 
       GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['m']);
       GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['p']);
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
         GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
       }
