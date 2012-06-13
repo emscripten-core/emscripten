@@ -218,6 +218,10 @@ var LibrarySDL = {
       return 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
     },
 
+    translateRGBAToColor: function(r, g, b, a) {
+      return (r << 24) + (g << 16) + (b << 8) + a;
+    },
+
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
@@ -225,19 +229,23 @@ var LibrarySDL = {
       var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
+      //surface with SDL_HWPALETTE flag is 8bpp surface (1 byte)
+      var is_SDL_HWPALETTE = flags & 0x00200000;  
+      var bpp = is_SDL_HWPALETTE ? 1 : 4;
+ 
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width*4', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA for now,
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width * bpp', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA or indexed for now,
                                                                                // since that is what ImageData gives us in browsers
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
 
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.format', '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', '32', 'i8') }}} // TODO
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', '4', 'i8') }}} // TODO
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', 'bpp * 8', 'i8') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', 'bpp', 'i8') }}}
 
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', 'rmask || 0x000000ff', 'i32') }}}
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', 'gmask || 0x0000ff00', 'i32') }}}
@@ -267,9 +275,52 @@ var LibrarySDL = {
         flags: flags,
         locked: 0,
         usePageCanvas: usePageCanvas,
-        source: source
+        source: source,
+
+        isFlagSet: function (flag) {
+          return flags & flag;
+        }
       };
+
       return surf;
+    },
+
+    // Copy data from the C++-accessible storage to the canvas backing 
+    // for surface with HWPALETTE flag(8bpp depth)
+    copyIndexedColorData: function(surfData, rX, rY, rW, rH) {
+      // HWPALETTE works with palette
+      // setted by SDL_SetColors
+      if (!surfData.colors) {
+        return;
+      }
+      
+      var fullWidth  = Module['canvas'].width;
+      var fullHeight = Module['canvas'].height;
+
+      var startX  = rX || 0;
+      var startY  = rY || 0;
+      var endX    = (rW || (fullWidth - startX)) + startX;
+      var endY    = (rH || (fullHeight - startY)) + startY;
+      
+      var buffer  = surfData.buffer;
+      var data    = surfData.image.data;
+      var colors  = surfData.colors;
+
+      for (var y = startY; y < endY; ++y) {
+        var indexBase = y * fullWidth;
+        var colorBase = indexBase * 4;
+        for (var x = startX; x < endX; ++x) {
+          // HWPALETTE have only 256 colors (not rgba)
+          var index = {{{ makeGetValue('buffer + indexBase + x', '0', 'i8', null, true) }}};
+          var color = colors[index] || [Math.floor(Math.random()*255),Math.floor(Math.random()*255),Math.floor(Math.random()*255)]; // XXX
+          var colorOffset = colorBase + x * 4;
+
+          data[colorOffset   ] = color[0];
+          data[colorOffset +1] = color[1];
+          data[colorOffset +2] = color[2];
+          //unused: data[colorOffset +3] = color[3];
+        }
+      }
     },
 
     freeSurface: function(surf) {
@@ -566,6 +617,26 @@ var LibrarySDL = {
     }
     if (SDL.defaults.copyOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
+      if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
+        // If this is neaded then
+        // we should compact the data from 32bpp to 8bpp index.
+        // I think best way to implement this is use
+        // additional colorMap hash (color->index).
+        // Something like this:
+        //
+        // var size = surfData.width * surfData.height;
+        // var data = '';
+        // for (var i = 0; i<size; i++) {
+        //   var color = SDL.translateRGBAToColor(
+        //     surfData.image.data[i*4   ], 
+        //     surfData.image.data[i*4 +1], 
+        //     surfData.image.data[i*4 +2], 
+        //     255);
+        //   var index = surfData.colorMap[color];
+        //   {{{ makeSetValue('surfData.buffer', 'i', 'index', 'i8') }}};
+        // }
+        throw 'CopyOnLock is not supported for SDL_LockSurface with SDL_HWPALETTE flag set' + new Error().stack;
+      } else {
 #if USE_TYPED_ARRAYS == 2
       HEAPU8.set(surfData.image.data, surfData.buffer);
 #else
@@ -574,7 +645,9 @@ var LibrarySDL = {
         {{{ makeSetValue('surfData.buffer', 'i', 'surfData.image.data[i]', 'i8') }}};
       }
 #endif
+      }
     }
+
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
@@ -592,8 +665,10 @@ var LibrarySDL = {
     if (surfData.locked > 0) return;
 
     // Copy pixel data to image
-    var num = surfData.image.data.length;
-    if (!surfData.colors) {
+    if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
+      SDL.copyIndexedColorData(surfData);
+    } else if (!surfData.colors) {
+      var num = surfData.image.data.length;
       var data = surfData.image.data;
       var buffer = surfData.buffer;
 #if USE_TYPED_ARRAYS == 2
@@ -615,7 +690,7 @@ var LibrarySDL = {
       for (var i = 0; i < num; i++) {
         // We may need to correct signs here. Potentially you can hardcode a write of 255 to alpha, say, and
         // the compiler may decide to write -1 in the llvm bitcode...
-        data[i] = {{{ makeGetValue('buffer', 'i', 'i8') + (CORRECT_SIGNS ? '&0xff' : '') }}};
+        data[i] = {{{ makeGetValue('buffer', 'i', 'i8', null, true) }}};
         if (i % 4 == 3) data[i] = 0xff;
       }
 #endif
@@ -629,7 +704,7 @@ var LibrarySDL = {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
           // See comment above about signs
-          var val = {{{ makeGetValue('s++', '0', 'i8') + (CORRECT_SIGNS ? '&0xff' : '') }}};
+          var val = {{{ makeGetValue('s++', '0', 'i8', null, true) }}};
           var color = colors[val] || [Math.floor(Math.random()*255),Math.floor(Math.random()*255),Math.floor(Math.random()*255)]; // XXX
           var start = base + x*4;
           data[start]   = color[0];
@@ -753,6 +828,15 @@ var LibrarySDL = {
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    
+    if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
+      //in SDL_HWPALETTE color is index (0..255)
+      //so we should translate 1 byte value to
+      //32 bit canvas
+      color = surfData.colors[color] || [0, 0, 0, 255];
+      color = SDL.translateRGBAToColor(color[0], color[1], color[2], 255);
+    }
+
     var r = SDL.loadRect(rect);
     surfData.ctx.save();
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
@@ -809,8 +893,16 @@ var LibrarySDL = {
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
     var surfData = SDL.surfaces[surf];
-    surfData.colors = [];
-    for (var i = firstColor; i < nColors; i++) {
+
+    // we should create colors array
+    // only once cause client code
+    // often wants to change portion 
+    // of palette not all palette.
+    if (!surfData.colors) {
+      surfData.colors = [];
+    } 
+
+    for (var i = firstColor; i < firstColor + nColors; i++) {
       surfData.colors[i] = [
         {{{ makeGetValue('colors', 'i*4',     'i8', null, true) }}},
         {{{ makeGetValue('colors', 'i*4 + 1', 'i8', null, true) }}},
@@ -818,6 +910,7 @@ var LibrarySDL = {
         {{{ makeGetValue('colors', 'i*4 + 3', 'i8', null, true) }}}
       ];
     }
+
     return 1;
   },
 
