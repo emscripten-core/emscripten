@@ -259,12 +259,14 @@ process(sys.argv[1])
   def run_native(self, filename, args):
     Popen([filename+'.native'] + args, stdout=PIPE).communicate()[0]
 
-  def assertIdentical(self, x, y):
-    if x != y:
-      raise Exception("Expected to have '%s' == '%s', diff:\n\n%s" % (
-        limit_size(x), limit_size(y),
-        limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
-      ))
+  def assertIdentical(self, values, y):
+    if type(values) not in [list, tuple]: values = [values]
+    for x in values:
+      if x == y: return # success
+    raise Exception("Expected to have '%s' == '%s', diff:\n\n%s" % (
+      limit_size(values[0]), limit_size(y),
+      limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
+    ))
 
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
@@ -7181,6 +7183,7 @@ elif 'browser' in str(sys.argv):
               output = queue.get()
               break
             time.sleep(0.1)
+
           self.assertIdentical(expectedResult, output)
         finally:
           server.terminate()
@@ -7639,7 +7642,8 @@ elif 'browser' in str(sys.argv):
         self.reftest(path_from_root('tests', reference))
         args += ['--pre-js', 'reftest.js']
       Popen(['python', EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html'] + args).communicate()
-      self.run_browser('test.html', '.', '/report_result?' + expected)
+      if type(expected) is str: expected = [expected]
+      self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
 
     def test_emscripten_api(self):
       self.btest('emscripten_api_browser.cpp', '1')
@@ -7659,7 +7663,7 @@ elif 'browser' in str(sys.argv):
       self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
     def test_matrix_identity(self):
-      self.btest('gl_matrix_identity.c', expected='-1882984448')
+      self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
     def test_cubegeom_pre(self):
       self.btest('cubegeom_pre.c', expected='-1472804742')
