@@ -1054,9 +1054,10 @@ var LibraryGL = {
             source = 'attribute vec3 a_normal; \n' +
                      source.replace(/gl_Normal/g, 'a_normal');
           }
+          // fog
           if (source.indexOf('gl_FogFragCoord') >= 0) {
-            source = 'varying float v_fogCoord;   \n' +
-                     source.replace(/gl_FogFragCoord/g, 'v_fogCoord');
+            source = 'varying float v_fogFragCoord;   \n' +
+                     source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
         } else { // Fragment shader
           for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
@@ -1069,7 +1070,22 @@ var LibraryGL = {
           if (source.indexOf('gl_Color') >= 0) {
             source = 'varying vec4 v_color; \n' + source.replace(/gl_Color/g, 'v_color');
           }
-          source = source.replace(/gl_Fog.color/g, 'vec4(0.0)'); // XXX TODO
+          if (source.indexOf('gl_Fog.color') >= 0) {
+            source = 'uniform vec4 a_fogColor;   \n' +
+                     source.replace(/gl_Fog.color/g, 'a_fogColor');
+          }
+          if (source.indexOf('gl_Fog.end') >= 0) {
+            source = 'uniform float a_fogEnd;   \n' +
+                     source.replace(/gl_Fog.end/g, 'a_fogEnd');
+          }
+          if (source.indexOf('gl_Fog.scale') >= 0) {
+            source = 'uniform float a_fogScale;   \n' +
+                     source.replace(/gl_Fog.scale/g, 'a_fogScale');
+          }
+          if (source.indexOf('gl_FogFragCoord') >= 0) {
+            source = 'varying float v_fogFragCoord;   \n' +
+                     source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
+          }
           source = 'precision mediump float;\n' + source;
         }
 #if GL_DEBUG
