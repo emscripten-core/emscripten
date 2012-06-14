@@ -794,7 +794,7 @@ function intertyper(data, sidePass, baseLineNums) {
           value: parseLLVMSegment(typeToken.concat(subSegments[0]))
         };
         return ret;
-      });
+      }).filter(function(param) { return param.value && param.value.ident != 'undef' });
       this.forwardItem(item, 'Reintegrator');
     }
   });

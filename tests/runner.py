@@ -4782,6 +4782,43 @@ def process(filename):
 
       self.do_run(src, '*15,15*\n*15,10*\n*6,10*\n*10,0*\n*7,1*')
 
+    def test_phiundef(self):
+      src = r'''
+#include <stdlib.h>
+#include <stdio.h>
+
+static int state;
+
+struct my_struct {
+  union {
+    struct {
+      unsigned char a;
+      unsigned char b;
+    } c;
+    unsigned int d;
+  } e;
+  unsigned int f;
+};
+
+int main(int argc, char **argv) {
+    struct my_struct r;
+
+    state = 0;
+
+    for (int i=0;i<argc+10;i++)
+    {
+        if (state % 2 == 0)
+            r.e.c.a = 3;
+        else
+            printf("%d\n", r.e.c.a);
+        state++;
+    }
+    return 0;
+}
+      '''
+
+      self.do_run(src, '3\n3\n3\n3\n3\n')
+
     # libc++ tests
 
     def test_iostream(self):
