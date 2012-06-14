@@ -7717,6 +7717,10 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '')
 
+    def test_s3tc(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.dds'), os.path.join(self.get_dir(), 'screenshot.dds'))
+      self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds'])
+
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
