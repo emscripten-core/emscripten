@@ -4,6 +4,7 @@
  */
 
 var LibraryGL = {
+  $GL__postset: 'GL.init()',
   $GL: {
 #if GL_DEBUG
     debug: true,
@@ -20,6 +21,10 @@ var LibraryGL = {
 
     packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
+
+    init: function() {
+      Browser.moduleContextCreatedCallbacks.push(GL.initCompression);
+    },
 
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
     scan: function(table, object) {
@@ -102,9 +107,9 @@ var LibraryGL = {
                ((height - 1) * alignedRowSize + plainRowSize);
     },
 
-    ensureCompression: function() {
-      if (GL.ensureCompression.done) return;
-      GL.ensureCompression.done = true;
+    initCompression: function() {
+      if (GL.initCompression.done) return;
+      GL.initCompression.done = true;
 
       var ext = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||  
                 Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||  
@@ -284,7 +289,6 @@ var LibraryGL = {
   },
 
   glCompressedTexImage2D: function(target, level, internalformat, width, height, border, imageSize, data) {
-    GL.ensureCompression();
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
@@ -294,7 +298,6 @@ var LibraryGL = {
   },
 
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
-    GL.ensureCompression();
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
