@@ -837,7 +837,7 @@ var LibrarySDL = {
       color = SDL.translateRGBAToColor(color[0], color[1], color[2], 255);
     }
 
-    var r = SDL.loadRect(rect);
+    var r = rect ? SDL.loadRect(rect) : { x: 0, y: 0, w: surfData.width, h: surfData.height };
     surfData.ctx.save();
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);

@@ -27,10 +27,7 @@ int main() {
 
   SDL_SetColors(screen, pal, 0, 3);
 
-  {
-    SDL_Rect rect = { 0, 0, 300, 200 };
-    SDL_FillRect(screen, &rect, 0);
-  }
+  SDL_FillRect(screen, NULL, 0);
 
   {
     SDL_Rect rect = { 300, 0, 300, 200 };
