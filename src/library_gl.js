@@ -1163,6 +1163,14 @@ var LibraryGL = {
           glGetFloatv(pname, params);
         }
       };
+
+      var glHint = _glHint;
+      _glHint = function(target, mode) {
+        if (target == 0x84EF) { // GL_TEXTURE_COMPRESSION_HINT
+          return;
+        }
+        glHint(target, mode);
+      };
     },
 
     getProcAddress: function(name) {
