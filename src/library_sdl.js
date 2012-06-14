@@ -434,8 +434,21 @@ var LibrarySDL = {
           }
           // fall through
         case 'mousemove': {
-          var x = event.pageX - Module['canvas'].offsetLeft;
-          var y = event.pageY - Module['canvas'].offsetTop;
+          if (Browser.pointerLock) {
+            // When the pointer is locked, calculate the coordinates
+            // based on the movement of the mouse.
+            var movementX = Browser.getMovementX(event);
+            var movementY = Browser.getMovementY(event);
+            var x = SDL.mouseX + movementX;
+            var y = SDL.mouseY + movementY;
+          } else {
+            // Otherwise, calculate the movement based on the changes
+            // in the coordinates.
+            var x = event.pageX - Module["canvas"].offsetLeft;
+            var y = event.pageY - Module["canvas"].offsetTop;
+            var movementX = x - SDL.mouseX;
+            var movementY = y - SDL.mouseY;
+          }
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
@@ -448,8 +461,8 @@ var LibrarySDL = {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.getMovementX(x - SDL.mouseX, event)', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'Browser.getMovementY(y - SDL.mouseY, event)', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'movementX', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'movementY', 'i32') }}};
           }
           SDL.mouseX = x;
           SDL.mouseY = y;
