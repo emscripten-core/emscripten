@@ -12,6 +12,16 @@ extern "C" {
 #endif
 
 /*
+ * Forces LLVM to not dead-code-eliminate a function. Note that
+ * closure may still eliminate it at the JS level, for which you
+ * should use EXPORTED_FUNCTIONS (see settings.js).
+ *
+ * Example usage:
+ *   void EMSCRIPTEN_KEEPALIVE my_function() { .. }
+ */
+#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
+
+/*
  * Interface to the underlying JS engine. This function will
  * eval() the given script.
  */
