@@ -587,6 +587,10 @@ var LibrarySDL = {
     return SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
   },
 
+  SDL_GetVideoSurface: function() {
+    return SDL.screen;
+  },
+
   SDL_QuitSubSystem: function(flags) {
     Module.print('SDL_QuitSubSystem called (and ignored)');
   },
