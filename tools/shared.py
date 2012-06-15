@@ -199,6 +199,7 @@ if USE_EMSDK:
   # allows projects to override them)
   EMSDK_OPTS = ['-nostdinc', '-nostdinc++', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdinc++', '-Xclang', '-nostdsysteminc',
     '-Xclang', '-isystem' + path_from_root('system', 'include'),
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'emscripten'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
