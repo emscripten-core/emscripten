@@ -906,7 +906,14 @@ var LibraryGL = {
 
   $GLEmulation__postset: 'GLEmulation.init();',
   $GLEmulation: {
+    // Fog support. Partial, we assume shaders are used that implement fog. We just pass them uniforms
+    fogStart: 0,
+    fogEnd: 1,
+    fogColor: null,
+
     init: function() {
+      GLEmulation.fogColor = new Float32Array(4);
+
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
 
@@ -1071,16 +1078,16 @@ var LibraryGL = {
             source = 'varying vec4 v_color; \n' + source.replace(/gl_Color/g, 'v_color');
           }
           if (source.indexOf('gl_Fog.color') >= 0) {
-            source = 'uniform vec4 a_fogColor;   \n' +
-                     source.replace(/gl_Fog.color/g, 'a_fogColor');
+            source = 'uniform vec4 u_fogColor;   \n' +
+                     source.replace(/gl_Fog.color/g, 'u_fogColor');
           }
           if (source.indexOf('gl_Fog.end') >= 0) {
-            source = 'uniform float a_fogEnd;   \n' +
-                     source.replace(/gl_Fog.end/g, 'a_fogEnd');
+            source = 'uniform float u_fogEnd;   \n' +
+                     source.replace(/gl_Fog.end/g, 'u_fogEnd');
           }
           if (source.indexOf('gl_Fog.scale') >= 0) {
-            source = 'uniform float a_fogScale;   \n' +
-                     source.replace(/gl_Fog.scale/g, 'a_fogScale');
+            source = 'uniform float u_fogScale;   \n' +
+                     source.replace(/gl_Fog.scale/g, 'u_fogScale');
           }
           if (source.indexOf('gl_FogFragCoord') >= 0) {
             source = 'varying float v_fogFragCoord;   \n' +
@@ -1170,11 +1177,11 @@ var LibraryGL = {
         } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
           HEAPF32.set(GL.immediate.matrix['t' + GL.immediate.clientActiveTexture], params >> 2);
         } else if (pname == 0x0B66) { // GL_FOG_COLOR
-          {{{ makeSetValue('params', '0', '0', 'float') }}};
+          HEAPF32.set(GLEmulation.fogColor, params >> 2);
         } else if (pname == 0x0B63) { // GL_FOG_START
-          {{{ makeSetValue('params', '0', '0', 'float') }}};
+          {{{ makeSetValue('params', '0', 'GLEmulation.fogStart', 'float') }}};
         } else if (pname == 0x0B64) { // GL_FOG_END
-          {{{ makeSetValue('params', '0', '0', 'float') }}};
+          {{{ makeSetValue('params', '0', 'GLEmulation.fogEnd', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
@@ -1580,6 +1587,11 @@ var LibraryGL = {
           this.hasNormal = normalSize > 0 && this.normalLocation >= 0;
 
           this.floatType = Module.ctx.FLOAT; // minor optimization
+
+          this.fogColorLocation = Module.ctx.getUniformLocation(this.program, 'u_fogColor');
+          this.fogEndLocation = Module.ctx.getUniformLocation(this.program, 'u_fogEnd');
+          this.fogScaleLocation = Module.ctx.getUniformLocation(this.program, 'u_fogScale');
+          this.hasFog = !!(this.fogColorLocation || this.fogEndLocation || this.fogScaleLocation);
         },
 
         prepare: function() {
@@ -1660,6 +1672,11 @@ var LibraryGL = {
             Module.ctx.activeTexture(Module.ctx.TEXTURE0);
             Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
             Module.ctx.uniform1i(this.textureLocation, 0);
+          }
+          if (this.hasFog) {
+            if (this.fogColorLocation) Module.ctx.uniform4fv(this.fogColorLocation, GLEmulation.fogColor);
+            if (this.fogEndLocation) Module.ctx.uniform1f(this.fogEndLocation, GLEmulation.fogEnd);
+            if (this.fogScaleLocation) Module.ctx.uniform1f(this.fogScaleLocation, 1/(GLEmulation.fogEnd - GLEmulation.fogStart));
           }
         },
 
@@ -2018,10 +2035,26 @@ var LibraryGL = {
     _glColor4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
   },
 
-  glFogf: function(){}, // TODO
+  glFogf: function(pname, param) { // partial support, TODO
+    switch(pname) {
+      case 0x0B63: // GL_FOG_START
+        GLEmulation.fogStart = param; break;
+      case 0x0B64: // GL_FOG_END
+        GLEmulation.fogEnd = param; break;
+    }
+  },
   glFogi: function(){}, // TODO
   glFogx: function(){}, // TODO
-  glFogfv: function(){}, // TODO
+  glFogfv: function(pname, param) { // partial support, TODO
+    switch(pname) {
+      case 0x0B66: // GL_FOG_COLOR
+        GLEmulation.fogColor[0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.fogColor[1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.fogColor[2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.fogColor[3] = {{{ makeGetValue('param', '12', 'float') }}};
+        break;
+    }
+  },
 
   glPolygonMode: function(){}, // TODO
 
