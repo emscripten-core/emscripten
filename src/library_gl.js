@@ -1013,7 +1013,7 @@ var LibraryGL = {
           source = source.replace(/gl_ProjectionMatrix/g, 'u_projection');
           if (old != source) need_pm = 1;
           old = source;
-          source = source.replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec4(u_modelView[0][0], u_modelView[1][0], u_modelView[2][0], u_modelView[3][0])'); // XXX extremely inefficient
+          source = source.replace(/gl_ModelViewMatrixTranspose\[2\]/g, 'vec4(u_modelView[0][2], u_modelView[1][2], u_modelView[2][2], u_modelView[3][2])'); // XXX extremely inefficient
           if (old != source) need_mm = 1;
           old = source;
           source = source.replace(/gl_ModelViewMatrix/g, 'u_modelView');
