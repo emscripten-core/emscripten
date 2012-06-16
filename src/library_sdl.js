@@ -1052,10 +1052,18 @@ var LibrarySDL = {
   },
 
   Mix_Volume: function(channel, volume) {
+    if (channel == -1) {
+      for (var i = 0; i < SDL.numChannels-1; i++) {
+        _Mix_Volume(i, volume);
+      }
+      return _Mix_Volume(SDL.numChannels-1, volume);
+    }
     var info = SDL.channels[channel];
     var ret = info.volume * 128;
-    info.volume = volume / 128;
-    if (info.audio) info.audio.volume = info.volume;
+    if (volume != -1) {
+      info.volume = volume / 128;
+      if (info.audio) info.audio.volume = info.volume;
+    }
     return ret;
   },
 
