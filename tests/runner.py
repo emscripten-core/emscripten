@@ -7737,6 +7737,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
       self.btest('cubegeom_normal_dap_far_glda.c', expected='-218745386')
 
+    def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
+      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected='1757386625')
+
     def test_cubegeom_mt(self):
       self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
 

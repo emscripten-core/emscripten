@@ -1891,9 +1891,14 @@ var LibraryGL = {
         }
       } else if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
         if (GL.immediate.mode != 7) throw 'unsupported immediate mode ' + GL.immediate.mode; // GL_QUADS
+        // GL.immediate.firstVertex is the first vertex we want. Quad indexes are in the pattern
+        // 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at index firstVertex * 1.5 to see it.
+        // Then since indexes are 2 bytes each, that means 3
+        assert(GL.immediate.firstVertex % 4 == 0);
+        ptr = GL.immediate.firstVertex*3;
         var numQuads = numVertexes / 4;
-        var numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
-        assert(numIndexes << 1 <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
+        numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
+        assert(ptr + (numIndexes << 1) <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
       }
