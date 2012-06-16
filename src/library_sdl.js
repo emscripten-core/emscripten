@@ -1030,6 +1030,9 @@ var LibrarySDL = {
   SDL_CondWait: function() {},
   SDL_DestroyCond: function() {},
 
+  SDL_StartTextInput: function() {}, // TODO
+  SDL_StopTextInput: function() {}, // TODO
+
   // SDL Mixer
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
