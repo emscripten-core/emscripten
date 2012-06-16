@@ -1073,11 +1073,27 @@ var LibrarySDL = {
 
   Mix_LoadWAV_RW: function(filename, freesrc) {
     filename = FS.standardizePath(Pointer_stringify(filename));
-    var raw = Module["preloadedAudios"][filename];
+    var raw;
+    
+    if (Module["preloadedAudios"]) {
+      raw = Module["preloadedAudios"][filename];
+    } 
+    
     if (!raw) {
-      Runtime.warnOnce('Cannot find preloaded audio ' + filename);
+      //check for url
+      if (filename.substring(0,  7) === 'http://' ||
+        filename.substring(0,  8) === 'https://') {
+        raw = new Audio();        
+        raw.src = filename;
+        raw.removedDependency = true; //?
+      }
+    }
+
+    if (!raw) {
+      Runtime.warnOnce('Cannot find audio file ' + filename);
       return 0;
     }
+
     var id = SDL.audios.length;
     SDL.audios.push({
       source: filename,
