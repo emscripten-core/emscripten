@@ -1602,6 +1602,7 @@ var LibraryGL = {
             var end = GL.immediate.lastVertex*GL.immediate.stride;
             assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
             arrayBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
+            // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
           } else {
             arrayBuffer = GL.currArrayBuffer;
           }
