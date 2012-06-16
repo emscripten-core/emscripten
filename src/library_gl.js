@@ -114,7 +114,7 @@ var LibraryGL = {
       var ext = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||  
                 Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||  
                 Module.ctx.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc');  
-      assert(ext, 'Failed to get texture compression WebGL extension');
+      if (!ext) Module.printErr('Failed to get texture compression WebGL extension, if compressed textures are used they will fail');
     }
   },
 
