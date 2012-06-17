@@ -409,8 +409,8 @@ try:
   llvm_lto = None
   closure = None
   js_transform = None
-  pre_js = None
-  post_js = None
+  pre_js = ''
+  post_js = ''
   minify_whitespace = None
   preload_files = []
   embed_files = []
@@ -452,12 +452,12 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--pre-js'):
       check_bad_eq(newargs[i])
-      pre_js = open(newargs[i+1]).read()
+      pre_js += open(newargs[i+1]).read() + '\n'
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--post-js'):
       check_bad_eq(newargs[i])
-      post_js = open(newargs[i+1]).read()
+      post_js += open(newargs[i+1]).read() + '\n'
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--minify'):
@@ -860,7 +860,7 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
     src = open(final).read()
     final += '.pp.js'
-    open(final, 'w').write((pre_js or '') + src + (post_js or ''))
+    open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
 
   # Apply a source code transformation, if requested
