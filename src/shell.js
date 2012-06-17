@@ -119,6 +119,10 @@ if (!Module['arguments']) {
 Module.print = Module['print'];
 Module.printErr = Module['printErr'];
 
+// Callbacks
+if (!Module['preRun']) Module['preRun'] = [];
+if (!Module['postRun']) Module['postRun'] = [];
+
   {{BODY}}
 
   // {{MODULE_ADDITIONS}}
