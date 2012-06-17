@@ -959,3 +959,12 @@ def execute(cmd, *args, **kw):
     print >> sys.stderr, 'Invoking Process failed: <<< ' + cmd + ' >>>'
     raise
 
+def suffix(name):
+  return name.split('.')[-1]
+
+def unsuffixed(name):
+  return '.'.join(name.split('.')[:-1])
+
+def unsuffixed_basename(name):
+  return os.path.basename(unsuffixed(name))
+

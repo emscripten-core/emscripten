@@ -77,7 +77,7 @@ emcc can be influenced by a few environment variables:
 import os, sys, shutil, tempfile, subprocess, shlex
 from subprocess import PIPE, STDOUT
 from tools import shared
-from tools.shared import Compression, execute
+from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -334,15 +334,6 @@ DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
-
-def suffix(name):
-  return name.split('.')[-1]
-
-def unsuffixed(name):
-  return '.'.join(name.split('.')[:-1])
-
-def unsuffixed_basename(name):
-  return os.path.basename(unsuffixed(name))
 
 seen_names = {}
 def unsuffixed_uniquename(name):
