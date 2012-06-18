@@ -142,6 +142,7 @@ if crunch:
     var decrunchCallbacks = [];
     decrunchWorker.onmessage = function(msg) {
       decrunchCallbacks[msg.data.callbackID](msg.data.data);
+      console.log('decrunched in ' + msg.data.time + ' ms');
       decrunchCallbacks[msg.data.callbackID] = null;
     };
     function requestDecrunch(data, callback) {

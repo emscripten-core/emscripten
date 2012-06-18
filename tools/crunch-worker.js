@@ -104,9 +104,12 @@ function a(b){throw b}var aa=void 0,l=!0,pa=null,n=!1,za=[],Da="object"===typeof
     //===
 
 onmessage = function(msg) {
+  var start = Date.now();
+  var data = deCrunch(new Uint8Array(msg.data.data));
   postMessage({
-    data: deCrunch(new Uint8Array(msg.data.data)),
-    callbackID: msg.data.callbackID
+    data: data,
+    callbackID: msg.data.callbackID,
+    time: Date.now() - start
   });
 };
 
