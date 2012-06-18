@@ -18,6 +18,8 @@ Notes:
              be added to convert the crn to dds in the browser.
              crunch-worker.js will be generated in the current directory. You should include that file when
              packaging your site.
+             DDS files will not be crunched if the .crn is more recent than the .dds. This prevents a lot of
+             unneeded computation.
 
 TODO:        You can also provide .crn files yourself, pre-crunched. With this option, they will be decompressed
              to dds files in the browser, exactly the same as if this tool compressed them.
@@ -156,9 +158,13 @@ if crunch:
 
   for file_ in data_files:
     if file_['name'].endswith(CRUNCH_INPUT_SUFFIX):
-      # TODO: do not crunch if crunched version exists and is more recent than dds source
-      Popen([CRUNCH, '-file', file_['name'], '-quality', crunch], stdout=sys.stderr).communicate()
+      # Do not crunch if crunched version exists and is more recent than dds source
       crunch_name = unsuffixed(file_['name']) + CRUNCH_OUTPUT_SUFFIX
+      crunch_time = os.stat(crunch_name).st_mtime
+      dds_time = os.stat(file_['name']).st_mtime
+      if dds_time < crunch_time: continue
+
+      Popen([CRUNCH, '-file', file_['name'], '-quality', crunch], stdout=sys.stderr).communicate()
       shutil.move(os.path.basename(crunch_name), crunch_name) # crunch places files in the current dir
       # prepend the dds header
       crunched = open(crunch_name, 'rb').read()
