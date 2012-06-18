@@ -23,6 +23,8 @@
     <script type='text/javascript'>
       // connect to canvas
       var Module = {
+        preRun: [],
+        postRun: [],
         print: (function() {
           var element = document.getElementById('output');
           element.value = ''; // clear browser cache
