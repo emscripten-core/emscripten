@@ -7337,7 +7337,7 @@ elif 'browser' in str(sys.argv):
         };
         Module['postRun'] = doReftest;
         Module['preRun'].push(function() {
-          setTimeout(doReftest, 0); // if run() throws an exception and postRun is not called, this will kick in
+          setTimeout(doReftest, 1000); // if run() throws an exception and postRun is not called, this will kick in
         });
 ''' % basename)
 

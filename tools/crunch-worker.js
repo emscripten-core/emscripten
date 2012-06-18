@@ -6,8 +6,6 @@
 // This combines crunch-worker.js and crn_decomp.js. Minor changes
 // to make it work that way, and to return all levels in one array
 
-var deCrunch = (function(Module) {
-
     /*
      * Copyright (c) 2012 Brandon Jones
      *
@@ -55,7 +53,7 @@ var deCrunch = (function(Module) {
         dst.set(src.subarray(0, numBytes), dstByteOffset);
     }
 
-    function deCrunch_(bytes) {
+    function deCrunch(bytes) {
         var srcSize = bytes.length;
         var src = Module._malloc(srcSize),
             format, internalFormat, dst, dstSize,
@@ -105,7 +103,10 @@ function a(b){throw b}var aa=void 0,l=!0,pa=null,n=!1,za=[],Da="object"===typeof
 
     //===
 
-    return deCrunch_;
-
-}).call({}, {});
+onmessage = function(msg) {
+  postMessage({
+    data: deCrunch(new Uint8Array(msg.data.data)),
+    callbackID: msg.data.callbackID
+  });
+};
 

@@ -16,6 +16,8 @@ Notes:
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
              be added to convert the crn to dds in the browser.
+             crunch-worker.js will be generated in the current directory. You should include that file when
+             packaging your site.
 
 TODO:        You can also provide .crn files yourself, pre-crunched. With this option, they will be decompressed
              to dds files in the browser, exactly the same as if this tool compressed them.
@@ -134,7 +136,22 @@ data_files = filter(lambda file_: not was_seen(file_['name']), data_files)
 
 # Crunch files
 if crunch:
-  print open(shared.path_from_root('tools', 'crunch.js')).read()
+  shutil.copyfile(shared.path_from_root('tools', 'crunch-worker.js'), 'crunch-worker.js')
+  print '''
+    var decrunchWorker = new Worker('crunch-worker.js');
+    var decrunchCallbacks = [];
+    decrunchWorker.onmessage = function(msg) {
+      decrunchCallbacks[msg.data.callbackID](msg.data.data);
+      decrunchCallbacks[msg.data.callbackID] = null;
+    };
+    function requestDecrunch(data, callback) {
+      decrunchWorker.postMessage({
+        data: data,
+        callbackID: decrunchCallbacks.length
+      });
+      decrunchCallbacks.push(callback);
+    }
+'''
 
   for file_ in data_files:
     if file_['name'].endswith(CRUNCH_INPUT_SUFFIX):
@@ -263,11 +280,16 @@ for file_ in data_files:
       # decompress crunch format into dds
       prepare = '''
         var ddsHeader = byteArray.subarray(0, %(dds_header_size)d);
-        var ddsData = deCrunch(byteArray.subarray(%(dds_header_size)d));
-        byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
-        byteArray.set(ddsHeader, 0);
-        byteArray.set(ddsData, %(dds_header_size)d);
+        requestDecrunch(byteArray.subarray(%(dds_header_size)d), function(ddsData) {
+          byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
+          byteArray.set(ddsHeader, 0);
+          byteArray.set(ddsData, %(dds_header_size)d);
 ''' % { 'dds_header_size': DDS_HEADER_SIZE }
+
+      finish = '''
+          Module['removeRunDependency']();
+        });
+'''
 
     code += '''
     var %(varname)s = new %(request)s();
@@ -342,4 +364,12 @@ print code
 
 if pre_run:
   print '  });\n'
+
+if crunch:
+  print '''
+  if (!Module['postRun']) Module['postRun'] = [];
+  Module["postRun"].push(function() {
+    decrunchWorker.terminate();
+  });
+'''
 
