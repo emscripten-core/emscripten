@@ -7809,9 +7809,11 @@ elif 'browser' in str(sys.argv):
 
     def test_s3tc_crunch(self):
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
-      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-      assert os.stat('test.data').st_size < 0.5*os.stat('ship.dds').st_size, 'Compressed should be smaller than dds'
+      shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
+      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds'], stdout=open('pre.js', 'w')).communicate()
+      assert os.stat('test.data').st_size < 0.5*(os.stat('ship.dds').st_size+os.stat('bloom.dds').st_size), 'Compressed should be smaller than dds'
       shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
       self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', args=['--pre-js', 'pre.js'])
 
     def test_pre_run_deps(self):

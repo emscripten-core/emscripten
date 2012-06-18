@@ -85,27 +85,51 @@ int main(int argc, char *argv[])
     glLoadIdentity();
 
 
-    // Load the OpenGL texture
+    // Load the OpenGL textures
 
     GLuint texture;
 
-    #define DDS_SIZE 65664
-    FILE *dds = fopen("ship.dds", "rb");
-    assert(dds);
-    char *ddsdata = (char*)malloc(DDS_SIZE);
-    assert(fread(ddsdata, 1, DDS_SIZE, dds) == DDS_SIZE);
-    fclose(dds);
+    {
+      #define DDS_SIZE 65664
+      FILE *dds = fopen("ship.dds", "rb");
+      assert(dds);
+      char *ddsdata = (char*)malloc(DDS_SIZE);
+      assert(fread(ddsdata, 1, DDS_SIZE, dds) == DDS_SIZE);
+      fclose(dds);
 
-    glGenTextures( 1, &texture );
-    glBindTexture( GL_TEXTURE_2D, texture );
+      glGenTextures( 1, &texture );
+      glBindTexture( GL_TEXTURE_2D, texture );
 
-    assert(!glGetError());
-    glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, 256, 256, 0, DDS_SIZE-128, ddsdata+128);
-    assert(!glGetError());
+      assert(!glGetError());
+      glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, 256, 256, 0, DDS_SIZE-128, ddsdata+128);
+      assert(!glGetError());
 
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    }
 
+    // second texture
+
+    GLuint texture2;
+
+    {
+      #define DDS_SIZE 32896
+      FILE *dds = fopen("bloom.dds", "rb");
+      assert(dds);
+      char *ddsdata = (char*)malloc(DDS_SIZE);
+      assert(fread(ddsdata, 1, DDS_SIZE, dds) == DDS_SIZE);
+      fclose(dds);
+
+      glGenTextures( 1, &texture2 );
+      glBindTexture( GL_TEXTURE_2D, texture2 );
+
+      assert(!glGetError());
+      glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 256, 256, 0, DDS_SIZE-128, ddsdata+128);
+      assert(!glGetError());
+
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    }
 
     // Prepare and Render
 
@@ -136,6 +160,7 @@ int main(int argc, char *argv[])
     glDisableClientState(GL_VERTEX_ARRAY);
 
     // Render the last item using oldschool glBegin etc
+    glBindTexture( GL_TEXTURE_2D, texture2 );
     glBegin( GL_TRIANGLE_STRIP );
         glTexCoord2i( 0, 0 ); glVertex3f( 100, 300, 0 );
         glTexCoord2i( 1, 0 ); glVertex3f( 300, 300, 0 );
