@@ -7336,9 +7336,9 @@ elif 'browser' in str(sys.argv):
           img.src = '%s';
         };
         Module['postRun'] = doReftest;
-        Module['preRun'] = function() {
+        Module['preRun'].push(function() {
           setTimeout(doReftest, 0); // if run() throws an exception and postRun is not called, this will kick in
-        };
+        });
 ''' % basename)
 
     def test_html(self):
@@ -7806,6 +7806,13 @@ elif 'browser' in str(sys.argv):
     def test_s3tc(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.dds'), os.path.join(self.get_dir(), 'screenshot.dds'))
       self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds'])
+
+    def test_s3tc_crunch(self):
+      shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
+      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+      assert os.stat('test.data').st_size < 0.5*os.stat('ship.dds').st_size, 'Compressed should be smaller than dds'
+      shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', args=['--pre-js', 'pre.js'])
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run

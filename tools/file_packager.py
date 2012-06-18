@@ -6,20 +6,36 @@ This is called by emcc. You can also call it yourself.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]]
 
+Notes:
+
+  --pre-run Will generate wrapper code that does preloading in Module.preRun. This is necessary if you add this
+            code before the main file has been loading, which includes necessary components like addRunDependency.
+
+  --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
+             and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
+             be added to convert the crn to dds in the browser.
+
+TODO:        You can also provide .crn files yourself, pre-crunched. With this option, they will be decompressed
+             to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
-import os, sys
+import os, sys, shutil
 
-from shared import Compression, execute
+from shared import Compression, execute, suffix, unsuffixed, CRUNCH
+import shared
+from subprocess import Popen, PIPE, STDOUT
 
-def suffix(name):
-  return name.split('.')[-1]
+data_target = sys.argv[1]
 
 IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
 AUDIO_MIMETYPES = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }
+CRUNCH_INPUT_SUFFIX = '.dds'
+CRUNCH_OUTPUT_SUFFIX = '.crn'
+
+DDS_HEADER_SIZE = 128
 
 data_files = []
 in_preload = False
@@ -27,6 +43,8 @@ in_embed = False
 has_preloaded = False
 in_compress = 0
 pre_run = False
+crunch = 0
+
 for arg in sys.argv[1:]:
   if arg == '--preload':
     in_preload = True
@@ -44,6 +62,11 @@ for arg in sys.argv[1:]:
     in_embed = False
   elif arg == '--pre-run':
     pre_run = True
+    in_preload = False
+    in_embed = False
+    in_compress = 0
+  elif arg.startswith('--crunch'):
+    crunch = arg.split('=')[1] if '=' in arg else '128'
     in_preload = False
     in_embed = False
     in_compress = 0
@@ -98,10 +121,10 @@ for file_ in data_files:
 data_files = filter(lambda file_: not os.path.isdir(file_['name']), data_files)
 
 for file_ in data_files:
-  file_['name'] = file_['name'].replace(os.path.sep, '/')
-  file_['net_name'] = file_['name']
+  file_['name'] = file_['name'].replace(os.path.sep, '/') # name in the filesystem, native and emulated
+  file_['localname'] = file_['name'] # name to actually load from local filesystem, after transformations
 
-# remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
+# Remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
 seen = {}
 def was_seen(name):
   if seen.get(name): return True
@@ -109,7 +132,22 @@ def was_seen(name):
   return False
 data_files = filter(lambda file_: not was_seen(file_['name']), data_files)
 
-data_target = sys.argv[1]
+# Crunch files
+if crunch:
+  print open(shared.path_from_root('tools', 'crunch.js')).read()
+
+  for file_ in data_files:
+    if file_['name'].endswith(CRUNCH_INPUT_SUFFIX):
+      Popen([CRUNCH, '-file', file_['name'], '-quality', crunch], stdout=sys.stderr).communicate()
+      crunch_name = unsuffixed(file_['name']) + CRUNCH_OUTPUT_SUFFIX
+      # prepend the dds header
+      crunched = open(crunch_name, 'rb').read()
+      shutil.move(crunch_name, crunch_name + '.save')
+      c = open(crunch_name, 'wb')
+      c.write(open(file_['name'], 'rb').read()[:DDS_HEADER_SIZE])
+      c.write(crunched)
+      c.close()
+      file_['localname'] = crunch_name
 
 # Set up folders
 partial_dirs = []
@@ -130,7 +168,7 @@ if has_preloaded:
   start = 0
   for file_ in data_files:
     file_['data_start'] = start
-    curr = open(file_['name'], 'rb').read()
+    curr = open(file_['localname'], 'rb').read()
     file_['data_end'] = start + len(curr)
     start += len(curr)
     data.write(curr)
@@ -155,13 +193,17 @@ for file_ in data_files:
   filename = file_['name']
   if file_['mode'] == 'embed':
     # Embed
-    code += '''Module['FS_createDataFile']('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(filename, 'rb').read())))
+    code += '''Module['FS_createDataFile']('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(file_['localname'], 'rb').read())))
   elif file_['mode'] == 'preload':
     # Preload
     varname = 'filePreload%d' % counter
     counter += 1
     image = filename.endswith(IMAGE_SUFFIXES)
     audio = filename.endswith(AUDIO_SUFFIXES)
+    dds = crunch and filename.endswith(CRUNCH_INPUT_SUFFIX)
+
+    prepare = ''
+    finish = "Module['removeRunDependency']();\n"
 
     if image:
       finish =  '''
@@ -216,17 +258,25 @@ for file_ in data_files:
           Module['removeRunDependency']();
         }
 ''' % { 'filename': filename, 'mimetype': AUDIO_MIMETYPES[suffix(filename)] }
-    else:
-      finish = "Module['removeRunDependency']();\n"
+    elif dds:
+      # decompress crunch format into dds
+      prepare = '''
+        var ddsHeader = byteArray.subarray(0, %(dds_header_size)d);
+        var ddsData = deCrunch(byteArray.subarray(%(dds_header_size)d));
+        byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
+        byteArray.set(ddsHeader, 0);
+        byteArray.set(ddsData, %(dds_header_size)d);
+''' % { 'dds_header_size': DDS_HEADER_SIZE }
 
     code += '''
     var %(varname)s = new %(request)s();
-    %(varname)s.open('GET', '%(netname)s', true);
+    %(varname)s.open('GET', '%(filename)s', true);
     %(varname)s.responseType = 'arraybuffer';
     %(varname)s.onload = function() {
       var arrayBuffer = %(varname)s.response;
       assert(arrayBuffer, 'Loading file %(filename)s failed.');
       var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
+      %(prepare)s
       Module['FS_createDataFile']('/%(dirname)s', '%(basename)s', byteArray, true, true);
       %(finish)s
     };
@@ -236,9 +286,9 @@ for file_ in data_files:
         'request': 'DataRequest', # In the past we also supported XHRs here
         'varname': varname,
         'filename': filename,
-        'netname': file_['net_name'],
         'dirname': os.path.dirname(filename),
         'basename': os.path.basename(filename),
+        'prepare': prepare,
         'finish': finish
   }
   else:
@@ -281,10 +331,14 @@ if has_preloaded:
   ''' % (Compression.compressed_name(data_target) if Compression.on else data_target, use_data)
 
 if pre_run:
-  print 'Module["preRun"] = function() {'
+  print '''
+  if (typeof Module == 'undefined') Module = {};
+  if (!Module['preRun']) Module['preRun'] = [];
+  Module["preRun"].push(function() {
+'''
 
 print code
 
 if pre_run:
-  print '};'
+  print '  });\n'
 
