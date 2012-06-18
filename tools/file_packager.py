@@ -160,9 +160,12 @@ if crunch:
     if file_['name'].endswith(CRUNCH_INPUT_SUFFIX):
       # Do not crunch if crunched version exists and is more recent than dds source
       crunch_name = unsuffixed(file_['name']) + CRUNCH_OUTPUT_SUFFIX
-      crunch_time = os.stat(crunch_name).st_mtime
-      dds_time = os.stat(file_['name']).st_mtime
-      if dds_time < crunch_time: continue
+      try:
+        crunch_time = os.stat(crunch_name).st_mtime
+        dds_time = os.stat(file_['name']).st_mtime
+        if dds_time < crunch_time: continue
+      except:
+        pass # if one of them does not exist, continue on
 
       Popen([CRUNCH, '-file', file_['name'], '-quality', crunch], stdout=sys.stderr).communicate()
       shutil.move(os.path.basename(crunch_name), crunch_name) # crunch places files in the current dir
