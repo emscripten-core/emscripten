@@ -138,11 +138,12 @@ if crunch:
 
   for file_ in data_files:
     if file_['name'].endswith(CRUNCH_INPUT_SUFFIX):
+      # TODO: do not crunch if crunched version exists and is more recent than dds source
       Popen([CRUNCH, '-file', file_['name'], '-quality', crunch], stdout=sys.stderr).communicate()
       crunch_name = unsuffixed(file_['name']) + CRUNCH_OUTPUT_SUFFIX
+      shutil.move(os.path.basename(crunch_name), crunch_name) # crunch places files in the current dir
       # prepend the dds header
       crunched = open(crunch_name, 'rb').read()
-      shutil.move(crunch_name, crunch_name + '.save')
       c = open(crunch_name, 'wb')
       c.write(open(file_['name'], 'rb').read()[:DDS_HEADER_SIZE])
       c.write(crunched)
