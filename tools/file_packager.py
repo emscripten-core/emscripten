@@ -147,8 +147,9 @@ if crunch:
       console.log('decrunched in ' + msg.data.time + ' ms');
       decrunchCallbacks[msg.data.callbackID] = null;
     };
-    function requestDecrunch(data, callback) {
+    function requestDecrunch(filename, data, callback) {
       decrunchWorker.postMessage({
+        filename: filename,
         data: data,
         callbackID: decrunchCallbacks.length
       });
@@ -290,11 +291,11 @@ for file_ in data_files:
       # decompress crunch format into dds
       prepare = '''
         var ddsHeader = byteArray.subarray(0, %(dds_header_size)d);
-        requestDecrunch(byteArray.subarray(%(dds_header_size)d), function(ddsData) {
+        requestDecrunch('%(filename)s', byteArray.subarray(%(dds_header_size)d), function(ddsData) {
           byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
           byteArray.set(ddsHeader, 0);
           byteArray.set(ddsData, %(dds_header_size)d);
-''' % { 'dds_header_size': DDS_HEADER_SIZE }
+''' % { 'filename': filename, 'dds_header_size': DDS_HEADER_SIZE }
 
       finish = '''
           Module['removeRunDependency']();

@@ -53,7 +53,7 @@
         dst.set(src.subarray(0, numBytes), dstByteOffset);
     }
 
-    function deCrunch(bytes) {
+    function deCrunch(bytes, filename) {
         var srcSize = bytes.length;
         var src = Module._malloc(srcSize),
             format, internalFormat, dst, dstSize,
@@ -64,7 +64,7 @@
         format = Module._crn_get_dxt_format(src, srcSize);
         
         if(format != cCRNFmtDXT1 && format != cCRNFmtDXT3 && format != cCRNFmtDXT5) {
-            throw "Unsupported image format";
+            throw "Unsupported image format " + format + " for " + filename;
         }
 
         width = Module._crn_get_width(src, srcSize);
@@ -105,7 +105,7 @@ function a(b){throw b}var aa=void 0,l=!0,pa=null,n=!1,za=[],Da="object"===typeof
 
 onmessage = function(msg) {
   var start = Date.now();
-  var data = deCrunch(new Uint8Array(msg.data.data));
+  var data = deCrunch(new Uint8Array(msg.data.data), msg.data.filename);
   postMessage({
     data: data,
     callbackID: msg.data.callbackID,
