@@ -23,6 +23,8 @@
     <script type='text/javascript'>
       // connect to canvas
       var Module = {
+        preRun: [],
+        postRun: [],
         print: (function() {
           var element = document.getElementById('output');
           element.value = ''; // clear browser cache
@@ -63,7 +65,7 @@
         totalDependencies: 0,
         monitorRunDependencies: function(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Downloading: ' + (this.totalDependencies-left) + '/' + this.totalDependencies + '...' : 'All downloads complete.');
+          Module.setStatus(left ? 'Preparing: ' + (this.totalDependencies-left) + '/' + this.totalDependencies + '...' : 'All downloads complete.');
         }
       };
       Module.setStatus('Downloading...');

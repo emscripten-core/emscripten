@@ -60,7 +60,7 @@ extern void emscripten_cancel_main_loop();
 #if EMSCRIPTEN
 extern void emscripten_async_call(void (*func)(), int millis);
 #else
-void emscripten_async_call(void (*func)(), int millis) {
+inline void emscripten_async_call(void (*func)(), int millis) {
   SDL_Delay(millis);
   func();
 }

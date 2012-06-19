@@ -128,20 +128,18 @@ mergeInto(LibraryManager.library, {
       window.requestAnimationFrame(func);
     },
 
-    getMovementX: function(delta, event) {
-      if (!Browser.pointerLock) return delta;
+    getMovementX: function(event) {
       return event['movementX'] ||
              event['mozMovementX'] ||
              event['webkitMovementX'] ||
-             0; // delta;
+             0;
     },
 
-    getMovementY: function(delta, event) {
-      if (!Browser.pointerLock) return delta;
+    getMovementY: function(event) {
       return event['movementY'] ||
              event['mozMovementY'] ||
              event['webkitMovementY'] ||
-             0; // delta;
+             0;
     },
 
     asyncLoad: function(url, callback) {

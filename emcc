@@ -77,7 +77,7 @@ emcc can be influenced by a few environment variables:
 import os, sys, shutil, tempfile, subprocess, shlex
 from subprocess import PIPE, STDOUT
 from tools import shared
-from tools.shared import Compression, execute
+from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -335,15 +335,6 @@ STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
 
-def suffix(name):
-  return name.split('.')[-1]
-
-def unsuffixed(name):
-  return '.'.join(name.split('.')[:-1])
-
-def unsuffixed_basename(name):
-  return os.path.basename(unsuffixed(name))
-
 seen_names = {}
 def unsuffixed_uniquename(name):
   ret = unsuffixed_basename(name)
@@ -418,8 +409,8 @@ try:
   llvm_lto = None
   closure = None
   js_transform = None
-  pre_js = None
-  post_js = None
+  pre_js = ''
+  post_js = ''
   minify_whitespace = None
   preload_files = []
   embed_files = []
@@ -461,12 +452,12 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--pre-js'):
       check_bad_eq(newargs[i])
-      pre_js = open(newargs[i+1]).read()
+      pre_js += open(newargs[i+1]).read() + '\n'
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--post-js'):
       check_bad_eq(newargs[i])
-      post_js = open(newargs[i+1]).read()
+      post_js += open(newargs[i+1]).read() + '\n'
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--minify'):
@@ -740,7 +731,7 @@ try:
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
       # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
       shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
-      print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_* options'
+      #print >> sys.stderr, 'emcc: info: using libcxx turns on CORRECT_* options'
     libcxx_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxx', 'symbols')).readlines())
     libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
@@ -752,7 +743,7 @@ try:
       return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxxabi', 'libcxxabi.bc')
     def fix_libcxxabi():
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
-      print >> sys.stderr, 'emcc: warning: using libcxxabi, this may need CORRECT_* options'
+      #print >> sys.stderr, 'emcc: info: using libcxxabi, this may need CORRECT_* options'
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
     libcxxabi_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols')).readlines())
     libcxxabi_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxxabi_symbols)
@@ -869,7 +860,7 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
     src = open(final).read()
     final += '.pp.js'
-    open(final, 'w').write((pre_js or '') + src + (post_js or ''))
+    open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
 
   # Apply a source code transformation, if requested

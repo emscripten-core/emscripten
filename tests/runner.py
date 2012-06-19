@@ -7028,6 +7028,44 @@ f.close()
           open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
           assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
 
+    def test_prepost2(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from main\\n");
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        var Module = {
+          preRun: function() { Module.print('pre-run') },
+        };
+      ''')
+      open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
+        Module.postRun = function() { Module.print('post-run') };
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
+      self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_prepre(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include <stdio.h>
+        int main() {
+          printf("hello from main\\n");
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        var Module = {
+          preRun: [function() { Module.print('pre-run') }],
+        };
+      ''')
+      open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
+        Module.preRun.push(function() { Module.print('prepre') });
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
+      self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_eliminator(self):
       input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
@@ -7144,6 +7182,25 @@ fscanfed: 10 - hello
       assert 'yello' in output, 'code works'
       code = open('a.out.js').read()
       assert 'SAFE_HEAP' in code, 'valid -s option had an effect'
+
+    def test_crunch(self):
+      # crunch should not be run if a .crn exists that is more recent than the .dds
+      shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
+      time.sleep(0.1)
+      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+      assert os.stat('test.data').st_size < 0.25*os.stat('ship.dds').st_size, 'Compressed should be much smaller than dds'
+      crunch_time = os.stat('ship.crn').st_mtime
+      dds_time = os.stat('ship.dds').st_mtime
+      assert crunch_time > dds_time, 'Crunch is more recent'
+      # run again, should not recrunch!
+      time.sleep(0.1)
+      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+      assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged'
+      # update dds, so should recrunch
+      time.sleep(0.1)
+      os.utime('ship.dds', None)
+      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+      assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
 
 elif 'browser' in str(sys.argv):
   # Browser tests.
@@ -7298,9 +7355,9 @@ elif 'browser' in str(sys.argv):
           img.src = '%s';
         };
         Module['postRun'] = doReftest;
-        Module['preRun'] = function() {
-          setTimeout(doReftest, 0); // if run() throws an exception and postRun is not called, this will kick in
-        };
+        Module['preRun'].push(function() {
+          setTimeout(doReftest, 1000); // if run() throws an exception and postRun is not called, this will kick in
+        });
 ''' % basename)
 
     def test_html(self):
@@ -7737,6 +7794,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
       self.btest('cubegeom_normal_dap_far_glda.c', expected='-218745386')
 
+    def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
+      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected='1757386625')
+
     def test_cubegeom_mt(self):
       self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
 
@@ -7765,6 +7825,15 @@ elif 'browser' in str(sys.argv):
     def test_s3tc(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.dds'), os.path.join(self.get_dir(), 'screenshot.dds'))
       self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds'])
+
+    def test_s3tc_crunch(self):
+      shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
+      shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
+      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds'], stdout=open('pre.js', 'w')).communicate()
+      assert os.stat('test.data').st_size < 0.5*(os.stat('ship.dds').st_size+os.stat('bloom.dds').st_size), 'Compressed should be smaller than dds'
+      shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', args=['--pre-js', 'pre.js'])
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run

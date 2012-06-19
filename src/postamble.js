@@ -33,11 +33,13 @@ function run(args) {
   args = args || Module['arguments'];
 
   if (Module['preRun']) {
-    Module['preRun']();
-    if (runDependencies > 0) {
-      // preRun added a dependency, run will be called later
-      Module['preRun'] = null;
-      return 0;
+    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
+    while (Module['preRun'].length > 0) {
+      Module['preRun'].pop()();
+      if (runDependencies > 0) {
+        // preRun added a dependency, run will be called later
+        return 0;
+      }
     }
   }
 
@@ -51,7 +53,10 @@ function run(args) {
       }
     }
     if (Module['postRun']) {
-      Module['postRun']();
+      if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
+      while (Module['postRun'].length > 0) {
+        Module['postRun'].pop()();
+      }
     }
     return ret;
   }

@@ -16,8 +16,13 @@ var LibrarySDL = {
 
     surfaces: {},
     events: [],
-    audios: [null],
     fonts: [null],
+
+    audios: [null],
+    music: {
+      audio: null,
+      volume: 1.0
+    },
 
     keyboardState: null,
     shiftKey: false,
@@ -434,8 +439,21 @@ var LibrarySDL = {
           }
           // fall through
         case 'mousemove': {
-          var x = event.pageX - Module['canvas'].offsetLeft;
-          var y = event.pageY - Module['canvas'].offsetTop;
+          if (Browser.pointerLock) {
+            // When the pointer is locked, calculate the coordinates
+            // based on the movement of the mouse.
+            var movementX = Browser.getMovementX(event);
+            var movementY = Browser.getMovementY(event);
+            var x = SDL.mouseX + movementX;
+            var y = SDL.mouseY + movementY;
+          } else {
+            // Otherwise, calculate the movement based on the changes
+            // in the coordinates.
+            var x = event.pageX - Module["canvas"].offsetLeft;
+            var y = event.pageY - Module["canvas"].offsetTop;
+            var movementX = x - SDL.mouseX;
+            var movementY = y - SDL.mouseY;
+          }
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
@@ -448,8 +466,8 @@ var LibrarySDL = {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.getMovementX(x - SDL.mouseX, event)', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'Browser.getMovementY(y - SDL.mouseY, event)', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'movementX', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'movementY', 'i32') }}};
           }
           SDL.mouseX = x;
           SDL.mouseY = y;
@@ -483,6 +501,16 @@ var LibrarySDL = {
           volume: 1.0
         };
       }
+    },
+
+    setGetVolume: function(info, volume) {
+      if (!info) return 0;
+      var ret = info.volume * 128; // MIX_MAX_VOLUME
+      if (volume != -1) {
+        info.volume = volume / 128;
+        if (info.audio) info.audio.volume = info.volume;
+      }
+      return ret;
     },
 
     // Debugging
@@ -585,6 +613,10 @@ var LibrarySDL = {
     Module['canvas'].width = width;
     Module['canvas'].height = height;
     return SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
+  },
+
+  SDL_GetVideoSurface: function() {
+    return SDL.screen;
   },
 
   SDL_QuitSubSystem: function(flags) {
@@ -1026,6 +1058,9 @@ var LibrarySDL = {
   SDL_CondWait: function() {},
   SDL_DestroyCond: function() {},
 
+  SDL_StartTextInput: function() {}, // TODO
+  SDL_StopTextInput: function() {}, // TODO
+
   // SDL Mixer
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
@@ -1045,11 +1080,13 @@ var LibrarySDL = {
   },
 
   Mix_Volume: function(channel, volume) {
-    var info = SDL.channels[channel];
-    var ret = info.volume * 128;
-    info.volume = volume / 128;
-    if (info.audio) info.audio.volume = info.volume;
-    return ret;
+    if (channel == -1) {
+      for (var i = 0; i < SDL.numChannels-1; i++) {
+        _Mix_Volume(i, volume);
+      }
+      return _Mix_Volume(SDL.numChannels-1, volume);
+    }
+    return SDL.setGetVolume(SDL.channels[channel], volume);
   },
 
   Mix_SetPanning: function() {
@@ -1120,13 +1157,13 @@ var LibrarySDL = {
   Mix_HookMusicFinished__deps: ['Mix_HaltMusic'],
   Mix_HookMusicFinished: function(func) {
     SDL.hookMusicFinished = func;
-    if (SDL.music) { // ensure the callback will be called, if a music is already playing
-      SDL.music['onended'] = _Mix_HaltMusic;
+    if (SDL.music.audio) { // ensure the callback will be called, if a music is already playing
+      SDL.music.audio['onended'] = _Mix_HaltMusic;
     }
   },
 
-  Mix_VolumeMusic: function(func) {
-    return 0; // TODO
+  Mix_VolumeMusic: function(volume) {
+    return SDL.setGetVolume(SDL.music, volume);
   },
 
   Mix_LoadMUS: 'Mix_LoadWAV_RW',
@@ -1140,31 +1177,32 @@ var LibrarySDL = {
     if (!audio) return 0;
     audio.loop = loops != 1; // TODO: handle N loops for finite N
     audio.play();
+    audio.volume = SDL.music.volume;
     audio['onended'] = _Mix_HaltMusic; // will send callback
-    SDL.music = audio;
+    SDL.music.audio = audio;
     return 0;
   },
 
-  Mix_PauseMusic: function(id) {
-    var audio = SDL.audios[id];
+  Mix_PauseMusic: function() {
+    var audio = SDL.music.audio;
     if (!audio) return 0;
-    audio.audio.pause();
+    audio.pause();
     return 0;
   },
 
-  Mix_ResumeMusic: function(id) {
-    var audio = SDL.audios[id];
+  Mix_ResumeMusic: function() {
+    var audio = SDL.music.audio;
     if (!audio) return 0;
-    audio.audio.play();
+    audio.play();
     return 0;
   },
 
   Mix_HaltMusic: function() {
-    var audio = SDL.music;
+    var audio = SDL.music.audio;
     if (!audio) return 0;
     audio.src = audio.src; // rewind
     audio.pause();
-    SDL.music = null;
+    SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
       FUNCTION_TABLE[SDL.hookMusicFinished]();
     }
@@ -1176,11 +1214,11 @@ var LibrarySDL = {
   Mix_FadeOutMusic: 'Mix_HaltMusic', // XXX ignore fading out effect
 
   Mix_PlayingMusic: function() {
-    return (SDL.music && !SDL.music.paused) ? 1 : 0;
+    return (SDL.music.audio && !SDL.music.audio.paused) ? 1 : 0;
   },
 
   Mix_PausedMusic: function() {
-    return (SDL.music && SDL.music.paused) ? 1 : 0;
+    return (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0;
   },
 
   // SDL TTF
