@@ -917,27 +917,28 @@ var LibraryGL = {
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
 
-      // XXX some of these ignored capabilities may lead to incorrect rendering, if we do not emulate them in shaders
-      var ignoredCapabilities = {
-        0x0B20: 1, // GL_LINE_SMOOTH
-        0x0B60: 1, // GL_FOG
-        0x0BA1: 1, // GL_NORMALIZE
-        0x0C60: 1, // GL_TEXTURE_GEN_S
-        0x0C61: 1, // GL_TEXTURE_GEN_T
-        0x0DE1: 1, // GL_TEXTURE_2D
-        0x8513: 1, // GL_TEXTURE_CUBE_MAP
-        0x2A02: 1  // GL_POLYGON_OFFSET_LINE
+      // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
+      var validCapabilities = {
+        0x0B44: 1, // GL_CULL_FACE
+        0x0BE2: 1, // GL_BLEND
+        0x0BD0: 1, // GL_DITHER,
+        0x0B90: 1, // GL_STENCIL_TEST
+        0x0B71: 1, // GL_DEPTH_TEST
+        0x0C11: 1, // GL_SCISSOR_TEST
+        0x8037: 1, // GL_POLYGON_OFFSET_FILL
+        0x809E: 1, // GL_SAMPLE_ALPHA_TO_COVERAGE
+        0x80A0: 1  // GL_SAMPLE_COVERAGE
       };
       _glEnable = function(cap) {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
-        if (cap in ignoredCapabilities) return;
+        if (!(cap in validCapabilities)) return;
         Module.ctx.enable(cap);
       };
       _glDisable = function(cap) {
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
-        if (cap in ignoredCapabilities) return;
+        if (!(cap in validCapabilities)) return;
         Module.ctx.disable(cap);
       };
 
