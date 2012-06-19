@@ -168,7 +168,18 @@ if crunch:
       except:
         pass # if one of them does not exist, continue on
 
-      Popen([CRUNCH, '-file', file_['name'], '-quality', crunch], stdout=sys.stderr).communicate()
+      # guess at format. this lets us tell crunch to not try to be clever and use odd formats like DXT5_AGBR
+      try:
+        format = Popen(['file', file_['name']], stdout=PIPE).communicate()[0]
+        if 'DXT5' in format:
+          format = ['-dxt5']
+        elif 'DXT1' in format:
+          format = ['-dxt1']
+        else:
+          raise Exception('unknown format')
+      except:
+        format = []
+      Popen([CRUNCH, '-file', file_['name'], '-quality', crunch] + format, stdout=sys.stderr).communicate()
       shutil.move(os.path.basename(crunch_name), crunch_name) # crunch places files in the current dir
       # prepend the dds header
       crunched = open(crunch_name, 'rb').read()
