@@ -144,7 +144,7 @@ if crunch:
     var decrunchCallbacks = [];
     decrunchWorker.onmessage = function(msg) {
       decrunchCallbacks[msg.data.callbackID](msg.data.data);
-      console.log('decrunched in ' + msg.data.time + ' ms');
+      console.log('decrunched ' + msg.data.filename + ' in ' + msg.data.time + ' ms, ' + msg.data.data.length + ' bytes');
       decrunchCallbacks[msg.data.callbackID] = null;
     };
     function requestDecrunch(filename, data, callback) {

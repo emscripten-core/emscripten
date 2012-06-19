@@ -107,6 +107,7 @@ onmessage = function(msg) {
   var start = Date.now();
   var data = deCrunch(new Uint8Array(msg.data.data), msg.data.filename);
   postMessage({
+    filename: msg.data.filename,
     data: data,
     callbackID: msg.data.callbackID,
     time: Date.now() - start
