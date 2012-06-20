@@ -27,7 +27,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 
 import os, sys, shutil
 
-from shared import Compression, execute, suffix, unsuffixed, CRUNCH
+from shared import Compression, execute, suffix, unsuffixed
 import shared
 from subprocess import Popen, PIPE, STDOUT
 
@@ -70,6 +70,7 @@ for arg in sys.argv[1:]:
     in_embed = False
     in_compress = 0
   elif arg.startswith('--crunch'):
+    from shared import CRUNCH
     crunch = arg.split('=')[1] if '=' in arg else '128'
     in_preload = False
     in_embed = False
