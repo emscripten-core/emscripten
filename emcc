@@ -731,7 +731,7 @@ try:
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
       # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
       shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
-      print >> sys.stderr, 'emcc: warning: using libcxx turns on CORRECT_* options'
+      #print >> sys.stderr, 'emcc: info: using libcxx turns on CORRECT_* options'
     libcxx_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxx', 'symbols')).readlines())
     libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
@@ -743,7 +743,7 @@ try:
       return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxxabi', 'libcxxabi.bc')
     def fix_libcxxabi():
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
-      print >> sys.stderr, 'emcc: warning: using libcxxabi, this may need CORRECT_* options'
+      #print >> sys.stderr, 'emcc: info: using libcxxabi, this may need CORRECT_* options'
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
     libcxxabi_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols')).readlines())
     libcxxabi_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxxabi_symbols)
