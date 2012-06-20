@@ -66,7 +66,6 @@
         if(format != cCRNFmtDXT1 && format != cCRNFmtDXT3 && format != cCRNFmtDXT5) {
             throw "Unsupported image format " + format + " for " + filename;
         }
-
         width = Module._crn_get_width(src, srcSize);
         height = Module._crn_get_height(src, srcSize);
         levels = Module._crn_get_levels(src, srcSize);
@@ -74,9 +73,18 @@
         dst = Module._malloc(dstSize);
 
         var totalSize = 0;
+        var bytesPerPixel = format == cCRNFmtDXT1 ? 0.5 : 1;
         for(i = 0; i < levels; ++i) {
-            totalSize += Module._crn_get_uncompressed_size(src, srcSize, i);
+            totalSize += width * height * bytesPerPixel;
+            width *= 0.5;
+            height *= 0.5;
+            width = Math.max(width, 4);
+            height = Math.max(height, 4);
         }
+
+        width = Module._crn_get_width(src, srcSize);
+        height = Module._crn_get_height(src, srcSize);
+
         var ret = new Uint8Array(totalSize);
         var retIndex = 0;
 

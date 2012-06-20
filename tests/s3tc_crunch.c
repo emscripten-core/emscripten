@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     GLuint texture;
 
     {
-      #define DDS_SIZE 65664
+      const int DDS_SIZE = 65664;
       FILE *dds = fopen("ship.dds", "rb");
       assert(dds);
       char *ddsdata = (char*)malloc(DDS_SIZE);
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
     GLuint texture2;
 
     {
-      #define DDS_SIZE 32896
+      const int DDS_SIZE = 32896;
       FILE *dds = fopen("bloom.dds", "rb");
       assert(dds);
       char *ddsdata = (char*)malloc(DDS_SIZE);
@@ -125,6 +125,29 @@ int main(int argc, char *argv[])
 
       assert(!glGetError());
       glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 256, 256, 0, DDS_SIZE-128, ddsdata+128);
+      assert(!glGetError());
+
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    }
+
+    // third, a non-square texture with mipmaps
+
+    GLuint texture3;
+
+    {
+      const int DDS_SIZE = 43920;
+      FILE *dds = fopen("water.dds", "rb");
+      assert(dds);
+      char *ddsdata = (char*)malloc(DDS_SIZE);
+      assert(fread(ddsdata, 1, DDS_SIZE, dds) == DDS_SIZE);
+      fclose(dds);
+
+      glGenTextures( 1, &texture3 );
+      glBindTexture( GL_TEXTURE_2D, texture3 );
+
+      assert(!glGetError());
+      glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, 512, 64, 0, 512*64, ddsdata+128);
       assert(!glGetError());
 
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
@@ -154,7 +177,10 @@ int main(int argc, char *argv[])
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(2, GL_FLOAT, 4*4, &vertexData[2]);
 
-    glDrawArrays(GL_QUADS, 0, 8);
+    glDrawArrays(GL_QUADS, 0, 4);
+
+    glBindTexture( GL_TEXTURE_2D, texture3 );
+    glDrawArrays(GL_QUADS, 4, 4);
 
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
