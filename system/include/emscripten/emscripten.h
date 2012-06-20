@@ -103,6 +103,18 @@ float emscripten_random();
 //extern void EMSCRIPTEN_COMMENT(const char *text);
 
 /*
+ * Emscripten file system api
+ */
+
+/*
+ * Load file from url in asynchronous way. 
+ * When file is loaded then 'onload' callback will called.
+ * If any error occurred 'onerror' will called.
+ * The callbacks are called with the file as their argument.
+ */ 
+void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+
+/*
  * Profiling tools.
  * INIT must be called first, with the maximum identifier that
  * will be used. BEGIN will add some code that marks

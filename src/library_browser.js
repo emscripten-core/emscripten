@@ -142,22 +142,57 @@ mergeInto(LibraryManager.library, {
              0;
     },
 
-    asyncLoad: function(url, callback) {
+    xhrLoad: function(url, onload, onerror) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
       xhr.responseType = 'arraybuffer';
       xhr.onload = function() {
-        var arrayBuffer = xhr.response;
-        assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
-        callback(new Uint8Array(arrayBuffer));
-        removeRunDependency();
+          if (xhr.status == 200) {
+            onload(xhr.response);
+          } else {
+            onerror();
+          }
       };
-      xhr.onerror = function(event) {
-        assert(arrayBuffer, 'Loading data file "' + url + '" failed.');
-      };
+      xhr.onerror = onerror;
       xhr.send(null);
+    },
+
+    asyncLoad: function(url, callback) {
+      Browser.xhrLoad(url, 
+        function(arrayBuffer) {
+          assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
+          callback(new Uint8Array(arrayBuffer));
+          removeRunDependency();
+        },
+        function(event) {
+          assert(arrayBuffer, 'Loading data file "' + url + '" failed.');
+        });
       addRunDependency();
     }
+  },
+
+  emscripten_async_wget: function(url, file, onload, onerror) {
+    url = Pointer_stringify(url);
+
+    Browser.xhrLoad(url,
+      function (response) {
+        var absolute = Pointer_stringify(file);
+        var index = absolute.lastIndexOf('/');
+        FS.createDataFile(
+          absolute.substr(0, index),
+          absolute.substr(index +1), 
+          new Uint8Array(response), 
+          true, true);
+
+        if (onload) {
+          FUNCTION_TABLE[onload](file);
+        }
+      },
+      function (event) {
+       if (onerror) {
+          FUNCTION_TABLE[onerror](file);
+        }
+      });
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],
