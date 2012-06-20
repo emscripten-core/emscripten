@@ -103,17 +103,36 @@ def check_sanity(force=False):
 
 # Tools/paths
 
-CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
-CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
-CLANG=CLANG_CPP
-LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
-LLVM_AR=os.path.join(LLVM_ROOT, 'llvm-ar')
-LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
-LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
-LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
-LLVM_NM=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-nm'))
-LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
-LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
+# Search for the specific and fall back to global
+def which(fname, paths=[]):
+    import os
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    
+    if isinstance(paths, str):
+        paths=[paths]
+    
+    # Add operating search path
+    paths += os.environ["PATH"].split(os.pathsep)
+    # Emulate system search path
+    for path in paths:
+        exe_file = os.path.expanduser(os.path.join(path, fname))
+        if is_exe(exe_file):
+            return exe_file
+
+    return None
+
+CLANG_CC         = which('clang'    , paths=LLVM_ROOT)
+CLANG_CPP        = which('clang++'  , paths=LLVM_ROOT)
+CLANG            = CLANG_CPP
+LLVM_LINK        = which('llvm-link', paths=LLVM_ROOT)
+LLVM_AR          = which('llvm-ar'  , paths=LLVM_ROOT)
+LLVM_OPT         = which('opt'      , paths=LLVM_ROOT)
+LLVM_AS          = which('llvm-as'  , paths=LLVM_ROOT)
+LLVM_DIS         = which('llvm-dis' , paths=LLVM_ROOT)
+LLVM_NM          = which('llvm-nm'  , paths=LLVM_ROOT)
+LLVM_INTERPRETER = which('lli'      , paths=LLVM_ROOT)
+LLVM_COMPILER    = which('llc'      , paths=LLVM_ROOT)
 COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
 
 EMSCRIPTEN = path_from_root('emscripten.py')
