@@ -161,6 +161,7 @@ if crunch:
     if file_['name'].endswith(CRUNCH_INPUT_SUFFIX):
       # Do not crunch if crunched version exists and is more recent than dds source
       crunch_name = unsuffixed(file_['name']) + CRUNCH_OUTPUT_SUFFIX
+      file_['localname'] = crunch_name
       try:
         crunch_time = os.stat(crunch_name).st_mtime
         dds_time = os.stat(file_['name']).st_mtime
@@ -187,7 +188,6 @@ if crunch:
       c.write(open(file_['name'], 'rb').read()[:DDS_HEADER_SIZE])
       c.write(crunched)
       c.close()
-      file_['localname'] = crunch_name
 
 # Set up folders
 partial_dirs = []
@@ -210,6 +210,7 @@ if has_preloaded:
     file_['data_start'] = start
     curr = open(file_['localname'], 'rb').read()
     file_['data_end'] = start + len(curr)
+    print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
     start += len(curr)
     data.write(curr)
   data.close()
