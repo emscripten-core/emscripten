@@ -1545,13 +1545,28 @@ var LibraryGL = {
                                                        (hasTextures ? 'varying vec2 v_texCoord;    \n' : '') +
                                                        'varying vec4 v_color; \n' +
                                                        (colorSize ? 'attribute vec4 a_color; \n': 'uniform vec4 u_color; \n') +
+                                                       (GLEmulation.fogEnabled ? (
+                                                           'varying float v_fogFragCoord; \n' +
+                                                           'uniform vec4 u_fogColor; \n'
+                                                           'float ffog(in float ecDistance) { \n' +
+                                                           // GL_EXP implementation.  TODO: implement other fog modes
+                                                           // fog = exp2(-gl_Fog.density * gl_FogFragCoord * LOG2E)
+                                                           '  float density = 1.0; \n' + // TODO: support density
+                                                           '  float fogFragCoord = ecDistance; \n' +
+                                                           '  float fog = exp2(-density * ecDistance * ' + Math.LOG2E + '); \n' +
+                                                           '  fog = clamp(fog, 0.0, 1.0); \n' +
+                                                           '  return fog; \n' +
+                                                           '} \n'
+                                                         ) : '') +
                                                        'uniform mat4 u_modelView;   \n' +
                                                        'uniform mat4 u_projection;  \n' +
                                                        'void main()                 \n' +
                                                        '{                           \n' +
-                                                       '  gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' +
+                                                       '  vec4 ecPosition = (u_modelView * vec4(a_position, ' + zero + '1.0); \n' + // eye-coordinate position
+                                                       '  gl_Position = u_projection * ecPosition; \n' +
                                                        (hasTextures ? 'v_texCoord = a_texCoord0;    \n' : '') +
                                                        (colorSize ? 'v_color = a_color; \n' : 'v_color = u_color; \n') +
+                                                       (GLEmulation.fogEnabled ? 'v_fogFragCoord = ffog(length(ecPosition));\n' : '') +
                                                        '}                           \n');
             Module.ctx.compileShader(this.vertexShader);
 
@@ -1560,8 +1575,13 @@ var LibraryGL = {
                                                          'varying vec2 v_texCoord;                            \n' +
                                                          'uniform sampler2D u_texture;                        \n' +
                                                          'varying vec4 v_color;                               \n' +
+                                                         (GLEmulation.fogEnabled ? (
+                                                             'varying float v_fogFragCoord; \n' +
+                                                             'uniform vec4 u_fogColor; \n'
+                                                           ) : '') +
                                                          'void main()                                         \n' +
                                                          '{                                                   \n' +
+                                                         (GLEmulation.fogEnabled ? 'v_color = vec4(mix(vec3(u_fogColor), vec3(v_color), fog), 1.0); \n' : '') +
                                                          (hasTextures ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
                                                                         'gl_FragColor = v_color;\n') +
                                                          '}                                                   \n');
