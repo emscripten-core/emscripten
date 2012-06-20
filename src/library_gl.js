@@ -1997,7 +1997,7 @@ var LibraryGL = {
   },
   glColor4us__deps: ['glColor4f'],
   glColor4us: function(r, g, b, a) {
-    _glColor4f((r&65525)/65535, (g&65525)/65535, (b&65525)/65535, (a&65525)/65535);
+    _glColor4f((r&65535)/65535, (g&65535)/65535, (b&65535)/65535, (a&65535)/65535);
   },
   glColor4ui__deps: ['glColor4f'],
   glColor4ui: function(r, g, b, a) {
