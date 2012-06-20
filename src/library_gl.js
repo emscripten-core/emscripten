@@ -910,6 +910,7 @@ var LibraryGL = {
     fogStart: 0,
     fogEnd: 1,
     fogColor: null,
+    fogEnabled: false,
 
     init: function() {
       GLEmulation.fogColor = new Float32Array(4);
@@ -933,12 +934,22 @@ var LibraryGL = {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
-        if (!(cap in validCapabilities)) return;
+        if (cap == 0x0B60 /* GL_FOG */) {
+          GLEmulation.fogEnabled = true;
+          return;
+        } else if (!(cap in validCapabilities)) {
+          return;
+        }
         Module.ctx.enable(cap);
       };
       _glDisable = function(cap) {
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
-        if (!(cap in validCapabilities)) return;
+        if (cap == 0x0B60 /* GL_FOG */) {
+          GLEmulation.fogEnabled = false;
+          return;
+        } else if (!(cap in validCapabilities)) {
+          return;
+        }
         Module.ctx.disable(cap);
       };
 
