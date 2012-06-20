@@ -2050,8 +2050,11 @@ var LibraryGL = {
         GLEmulation.fogEnd = param; break;
     }
   },
-  glFogi: function(){}, // TODO
-  glFogx: function(){}, // TODO
+  glFogi__deps: ['glFogf'],
+  glFogi: function(pname, param) {
+    return _glFogf(pname, param);
+  },
+  glFogfv__deps: ['glFogf'],
   glFogfv: function(pname, param) { // partial support, TODO
     switch(pname) {
       case 0x0B66: // GL_FOG_COLOR
@@ -2060,8 +2063,26 @@ var LibraryGL = {
         GLEmulation.fogColor[2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.fogColor[3] = {{{ makeGetValue('param', '12', 'float') }}};
         break;
+      case 0x0B63: // GL_FOG_START
+      case 0x0B64: // GL_FOG_END
+        _glFogf(pname, {{{ makeGetValue('param', '0', 'float') }}}); break;
     }
   },
+  glFogiv__deps: ['glFogf'],
+  glFogiv: function(pname, param) {
+    switch(pname) {
+      case 0x0B66: // GL_FOG_COLOR
+        GLEmulation.fogColor[0] = ({{{ makeGetValue('param', '0', 'i32') }}}/2147483647)/2.0+0.5;
+        GLEmulation.fogColor[1] = ({{{ makeGetValue('param', '4', 'i32') }}}/2147483647)/2.0+0.5;
+        GLEmulation.fogColor[2] = ({{{ makeGetValue('param', '8', 'i32') }}}/2147483647)/2.0+0.5;
+        GLEmulation.fogColor[3] = ({{{ makeGetValue('param', '12', 'i32') }}}/2147483647)/2.0+0.5;
+        break;
+      default:
+        _glFogf(pname, {{{ makeGetValue('param', '0', 'i32') }}}); break;
+    }
+  },
+  glFogx: 'glFogi',
+  glFogxv: 'glFogiv',
 
   glPolygonMode: function(){}, // TODO
 
