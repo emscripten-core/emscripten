@@ -7226,6 +7226,19 @@ elif 'browser' in str(sys.argv):
     httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
     httpd.serve_forever() # test runner will kill us
 
+  def mime_chooser(filename):
+    MIMETYPES = { 
+      'ogg': 'audio/ogg', 
+      'wav': 'audio/wav', 
+      'mp3': 'audio/mpeg' 
+    }
+
+    suffix = filename.split('.')[-1]
+    if (suffix) and (suffix in MIMETYPES):
+      return MIMETYPES[suffix]
+
+    return 'text/html'
+
   def server_func(dir, q):
     class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
       def do_GET(s):
@@ -7235,7 +7248,7 @@ elif 'browser' in str(sys.argv):
           filename = s.path[1:]
           if os.path.exists(filename):
             s.send_response(200)
-            s.send_header("Content-type", "text/html")
+            s.send_header("Content-type", mime_chooser(filename))
             s.end_headers()
             s.wfile.write(open(filename).read())
             s.wfile.close()
@@ -7623,6 +7636,15 @@ elif 'browser' in str(sys.argv):
 
       # use closure to check for a possible bug with closure minifying away newer Audio() attributes
       Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
+
+    def test_sdl_audio_2(self):
+      shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+      shutil.copyfile(path_from_root('tests', 'sounds', 'alarmcreatemiltaryfoot_1.wav'), os.path.join(self.get_dir(), 'sound2.wav'))
+      open(os.path.join(self.get_dir(), 'sdl_audio_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_2.c')).read()))
+
+      # use closure to check for a possible bug with closure minifying away newer Audio() attributes
+      Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_2.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_gl_read(self):
