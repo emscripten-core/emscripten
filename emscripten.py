@@ -131,7 +131,7 @@ def main(args):
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-O] [-m] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
+      usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
       description=('You should normally never use this! Use emcc instead. '
                    'This is a wrapper around the JS compiler, converting .ll to .js.'),
       epilog='')
