@@ -1547,12 +1547,10 @@ var LibraryGL = {
                                                        (colorSize ? 'attribute vec4 a_color; \n': 'uniform vec4 u_color; \n') +
                                                        (GLEmulation.fogEnabled ? (
                                                            'varying float v_fogFragCoord; \n' +
-                                                           'uniform vec4 u_fogColor; \n' +
                                                            'float ffog(in float ecDistance) { \n' +
                                                            // GL_EXP implementation.  TODO: implement other fog modes
                                                            // fog = exp2(-gl_Fog.density * gl_FogFragCoord * LOG2E)
                                                            '  float density = 1.0; \n' + // TODO: support density
-                                                           '  float fogFragCoord = ecDistance; \n' +
                                                            '  float fog = exp2(-density * ecDistance * ' + Math.LOG2E + '); \n' +
                                                            '  fog = clamp(fog, 0.0, 1.0); \n' +
                                                            '  return fog; \n' +
