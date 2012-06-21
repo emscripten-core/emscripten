@@ -1558,11 +1558,17 @@ var LibraryGL = {
               switch (GLEmulation.fogMode) {
                 case 0x0801: // GL_EXP2
                   // fog = exp(-(gl_Fog.density * gl_FogFragCoord)^2)
-                  var fogFormula = '  float fog = exp(-density * density * ecDistance * ecDistance); \n';
+                  var fogFormula = '  float density = float(' + GLEmulation.fogDensity + '); \n' +
+                                   '  float fog = exp(-density * density * ecDistance * ecDistance); \n';
+                  break;
+                case 0x2601: // GL_LINEAR
+                  // fog = (gl_Fog.end - gl_FogFragCoord) * gl_fog.scale
+                  var fogFormula = '  float fog = (u_fogEnd - ecDistance) * u_fogScale; \n';
                   break;
                 default: // default to GL_EXP
                   // fog = exp(-gl_Fog.density * gl_FogFragCoord)
-                  var fogFormula = '  float fog = exp(-density * ecDistance); \n';
+                  var fogFormula = '  float density = float(' + GLEmulation.fogDensity + '); \n' +
+                                   '  float fog = exp(-density * ecDistance); \n';
                   break;
               }
             }
@@ -1573,8 +1579,9 @@ var LibraryGL = {
                                                        (colorSize ? 'attribute vec4 a_color; \n': 'uniform vec4 u_color; \n') +
                                                        (GLEmulation.fogEnabled ? (
                                                            'varying float v_fogFragCoord; \n' +
+                                                           'uniform float u_fogEnd; \n' +
+                                                           'uniform float u_fogScale; \n' +
                                                            'float ffog(in float ecDistance) { \n' +
-                                                           '  float density = float(' + GLEmulation.fogDensity + '); \n' +
                                                            fogFormula +
                                                            '  fog = clamp(fog, 0.0, 1.0); \n' +
                                                            '  return fog; \n' +
@@ -2106,6 +2113,7 @@ var LibraryGL = {
       case 0x0B65: // GL_FOG_MODE
         switch (param) {
           case 0x0801: // GL_EXP2
+          case 0x2601: // GL_LINEAR
             GLEmulation.fogMode = param; break;
           default: // default to GL_EXP
             GLEmulation.fogMode = 0x0800 /* GL_EXP */; break;
