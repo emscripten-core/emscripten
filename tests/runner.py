@@ -7652,18 +7652,18 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
-    def test_sdl_fog1(self):
+    def test_sdl_fog_simple(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog1.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog1.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      self.reftest(path_from_root('tests', 'screenshot-fog-simple.png'))
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
-    def test_sdl_fog2(self):
+    def test_sdl_fog_density(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog2.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog2.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      self.reftest(path_from_root('tests', 'screenshot-fog-density.png'))
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_worker(self):
