@@ -1579,9 +1579,9 @@ var LibraryGL = {
                                                            ) : '') +
                                                          'void main()                                         \n' +
                                                          '{                                                   \n' +
-                                                         (GLEmulation.fogEnabled ? 'vec4 color = vec4(mix(vec3(u_fogColor), vec3(v_color), v_fogFragCoord), 1.0); \n' : '') +
-                                                         (hasTextures ? 'gl_FragColor = color * texture2D( u_texture, v_texCoord );\n' :
-                                                                        'gl_FragColor = color;\n') +
+                                                         (hasTextures ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
+                                                                        'gl_FragColor = v_color;\n') +
+                                                         (GLEmulation.fogEnabled ? 'gl_FragColor = vec4(mix(vec3(u_fogColor), vec3(gl_FragColor), v_fogFragCoord), gl_FragColor.a); \n' : '') +
                                                          '}                                                   \n');
             Module.ctx.compileShader(this.fragmentShader);
 
