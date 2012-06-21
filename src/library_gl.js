@@ -911,6 +911,7 @@ var LibraryGL = {
     fogEnd: 1,
     fogDensity: 1.0,
     fogColor: null,
+    fogMode: 0x0800, // GL_EXP
     fogEnabled: false,
 
     init: function() {
@@ -1205,6 +1206,8 @@ var LibraryGL = {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogEnd', 'float') }}};
         } else if (pname == 0x0B62) { // GL_FOG_DENSITY
           {{{ makeSetValue('params', '0', 'GLEmulation.fogDensity', 'float') }}};
+        } else if (pname == 0x0B65) { // GL_FOG_MODE
+          {{{ makeSetValue('params', '0', 'GLEmulation.fogMode', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
@@ -1551,6 +1554,18 @@ var LibraryGL = {
           } else {
             this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
             var zero = positionSize == 2 ? '0, ' : '';
+            if (GLEmulation.fogEnabled) {
+              switch (GLEmulation.fogMode) {
+                case 0x0801: // GL_EXP2
+                  // fog = exp(-(gl_Fog.density * gl_FogFragCoord)^2)
+                  var fogFormula = '  float fog = exp(-density * density * ecDistance * ecDistance); \n';
+                  break;
+                default: // default to GL_EXP
+                  // fog = exp(-gl_Fog.density * gl_FogFragCoord)
+                  var fogFormula = '  float fog = exp(-density * ecDistance); \n';
+                  break;
+              }
+            }
             Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n' +
                                                        'attribute vec2 a_texCoord0;  \n' +
                                                        (hasTextures ? 'varying vec2 v_texCoord;    \n' : '') +
@@ -1559,10 +1574,8 @@ var LibraryGL = {
                                                        (GLEmulation.fogEnabled ? (
                                                            'varying float v_fogFragCoord; \n' +
                                                            'float ffog(in float ecDistance) { \n' +
-                                                           // GL_EXP implementation.  TODO: implement other fog modes
-                                                           // fog = exp2(-gl_Fog.density * gl_FogFragCoord * LOG2E)
                                                            '  float density = float(' + GLEmulation.fogDensity + '); \n' +
-                                                           '  float fog = exp2(-density * ecDistance * ' + Math.LOG2E + '); \n' +
+                                                           fogFormula +
                                                            '  fog = clamp(fog, 0.0, 1.0); \n' +
                                                            '  return fog; \n' +
                                                            '} \n'
@@ -2090,6 +2103,14 @@ var LibraryGL = {
         GLEmulation.fogEnd = param; break;
       case 0x0B62: // GL_FOG_DENSITY
         GLEmulation.fogDensity = param; break;
+      case 0x0B65: // GL_FOG_MODE
+        switch (param) {
+          case 0x0801: // GL_EXP2
+            GLEmulation.fogMode = param; break;
+          default: // default to GL_EXP
+            GLEmulation.fogMode = 0x0800 /* GL_EXP */; break;
+        }
+        break;
     }
   },
   glFogi__deps: ['glFogf'],
