@@ -1564,7 +1564,7 @@ var LibraryGL = {
                                                        '  gl_Position = u_projection * ecPosition; \n' +
                                                        (hasTextures ? 'v_texCoord = a_texCoord0;    \n' : '') +
                                                        (colorSize ? 'v_color = a_color; \n' : 'v_color = u_color; \n') +
-                                                       (GLEmulation.fogEnabled ? 'v_fogFragCoord = ffog(length(ecPosition));\n' : '') +
+                                                       (GLEmulation.fogEnabled ? 'v_fogFragCoord = ffog(ecPosition.z);\n' : '') +
                                                        '}                           \n');
             Module.ctx.compileShader(this.vertexShader);
 
