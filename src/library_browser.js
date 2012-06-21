@@ -86,6 +86,7 @@ mergeInto(LibraryManager.library, {
     requestFullScreen: function() {
       var canvas = Module.canvas;
       function fullScreenChange() {
+        if (Module['onFullScreen']) Module['onFullScreen']();
         if (document['webkitFullScreenElement'] === canvas ||
             document['mozFullScreenElement'] === canvas ||
             document['fullScreenElement'] === canvas) {
