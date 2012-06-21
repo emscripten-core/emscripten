@@ -1505,9 +1505,9 @@ var LibraryGL = {
         cacheItem = cacheItem[GL.currProgram];
       }
       if (GLEmulation.fogEnabled) {
-        var fogParam = "fog" + GLEmulation.fogMode;
+        var fogParam = GLEmulation.fogMode;
       } else {
-        var fogParam = "nofog";
+        var fogParam = 0; // all valid modes are non-zero
       }
       if (!cacheItem[fogParam]) cacheItem[fogParam] = {};
       cacheItem = cacheItem[fogParam];
