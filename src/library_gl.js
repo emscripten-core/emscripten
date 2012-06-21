@@ -952,6 +952,14 @@ var LibraryGL = {
         }
         Module.ctx.disable(cap);
       };
+      _glIsEnabled = function(cap) {
+        if (cap == 0x0B60 /* GL_FOG */) {
+          return GLEmulation.fogEnabled ? 1 : 0;
+        } else if (!(cap in validCapabilities)) {
+          return 0;
+        }
+        return Module.ctx.isEnabled(cap);
+      };
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = function(pname, params) {
