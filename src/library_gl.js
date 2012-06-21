@@ -1504,6 +1504,13 @@ var LibraryGL = {
         if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = {};
         cacheItem = cacheItem[GL.currProgram];
       }
+      if (GLEmulation.fogEnabled) {
+        var fogParam = "fog" + GLEmulation.fogMode;
+      } else {
+        var fogParam = "nofog";
+      }
+      if (!cacheItem[fogParam]) cacheItem[fogParam] = {};
+      cacheItem = cacheItem[fogParam];
       if (!cacheItem.renderer) {
 #if GL_DEBUG
         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
@@ -1552,6 +1559,10 @@ var LibraryGL = {
             }
             this.program = GL.programs[GL.currProgram];
           } else {
+            // IMPORTANT NOTE: If you parameterize the shader source based on any runtime values
+            // in order to create the least expensive shader possible based on the features being
+            // used, you should also update the code in the beginning of getRenderer to make sure
+            // that you cache the renderer based on the said parameters.
             this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
             var zero = positionSize == 2 ? '0, ' : '';
             if (GLEmulation.fogEnabled) {
