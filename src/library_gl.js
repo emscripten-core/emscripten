@@ -909,6 +909,7 @@ var LibraryGL = {
     // Fog support. Partial, we assume shaders are used that implement fog. We just pass them uniforms
     fogStart: 0,
     fogEnd: 1,
+    fogDensity: 1.0,
     fogColor: null,
     fogEnabled: false,
 
@@ -1202,6 +1203,8 @@ var LibraryGL = {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogStart', 'float') }}};
         } else if (pname == 0x0B64) { // GL_FOG_END
           {{{ makeSetValue('params', '0', 'GLEmulation.fogEnd', 'float') }}};
+        } else if (pname == 0x0B62) { // GL_FOG_DENSITY
+          {{{ makeSetValue('params', '0', 'GLEmulation.fogDensity', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
@@ -1558,7 +1561,7 @@ var LibraryGL = {
                                                            'float ffog(in float ecDistance) { \n' +
                                                            // GL_EXP implementation.  TODO: implement other fog modes
                                                            // fog = exp2(-gl_Fog.density * gl_FogFragCoord * LOG2E)
-                                                           '  float density = 1.0; \n' + // TODO: support density
+                                                           '  float density = float(' + GLEmulation.fogDensity + '); \n' +
                                                            '  float fog = exp2(-density * ecDistance * ' + Math.LOG2E + '); \n' +
                                                            '  fog = clamp(fog, 0.0, 1.0); \n' +
                                                            '  return fog; \n' +
@@ -2085,6 +2088,8 @@ var LibraryGL = {
         GLEmulation.fogStart = param; break;
       case 0x0B64: // GL_FOG_END
         GLEmulation.fogEnd = param; break;
+      case 0x0B62: // GL_FOG_DENSITY
+        GLEmulation.fogDensity = param; break;
     }
   },
   glFogi__deps: ['glFogf'],
