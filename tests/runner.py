@@ -7747,6 +7747,9 @@ elif 'browser' in str(sys.argv):
     def test_emscripten_api(self):
       self.btest('emscripten_api_browser.cpp', '1')
 
+    def test_emscripten_fs_api(self):
+      self.btest('emscripten_fs_api_browser.cpp', '1')
+
     def test_gc(self):
       self.btest('browser_gc.cpp', '1')
 
