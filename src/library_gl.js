@@ -1111,6 +1111,10 @@ var LibraryGL = {
             source = 'uniform float u_fogScale;   \n' +
                      source.replace(/gl_Fog.scale/g, 'u_fogScale');
           }
+          if (source.indexOf('gl_Fog.density') >= 0) {
+            source = 'uniform float u_fogDensity;   \n' +
+                     source.replace(/gl_Fog.density/g, 'u_fogDensity');
+          }
           if (source.indexOf('gl_FogFragCoord') >= 0) {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
@@ -1569,8 +1573,7 @@ var LibraryGL = {
               switch (GLEmulation.fogMode) {
                 case 0x0801: // GL_EXP2
                   // fog = exp(-(gl_Fog.density * gl_FogFragCoord)^2)
-                  var fogFormula = '  float density = float(' + GLEmulation.fogDensity + '); \n' +
-                                   '  float fog = exp(-density * density * ecDistance * ecDistance); \n';
+                  var fogFormula = '  float fog = exp(-u_fogDensity * u_fogDensity * ecDistance * ecDistance); \n';
                   break;
                 case 0x2601: // GL_LINEAR
                   // fog = (gl_Fog.end - gl_FogFragCoord) * gl_fog.scale
@@ -1578,8 +1581,7 @@ var LibraryGL = {
                   break;
                 default: // default to GL_EXP
                   // fog = exp(-gl_Fog.density * gl_FogFragCoord)
-                  var fogFormula = '  float density = float(' + GLEmulation.fogDensity + '); \n' +
-                                   '  float fog = exp(-density * ecDistance); \n';
+                  var fogFormula = '  float fog = exp(-u_fogDensity * ecDistance); \n';
                   break;
               }
             }
@@ -1611,6 +1613,7 @@ var LibraryGL = {
                                                            'uniform vec4 u_fogColor; \n' +
                                                            'uniform float u_fogEnd; \n' +
                                                            'uniform float u_fogScale; \n' +
+                                                           'uniform float u_fogDensity; \n' +
                                                            'float ffog(in float ecDistance) { \n' +
                                                            fogFormula +
                                                            '  fog = clamp(fog, 0.0, 1.0); \n' +
@@ -1661,7 +1664,9 @@ var LibraryGL = {
           this.fogColorLocation = Module.ctx.getUniformLocation(this.program, 'u_fogColor');
           this.fogEndLocation = Module.ctx.getUniformLocation(this.program, 'u_fogEnd');
           this.fogScaleLocation = Module.ctx.getUniformLocation(this.program, 'u_fogScale');
-          this.hasFog = !!(this.fogColorLocation || this.fogEndLocation || this.fogScaleLocation);
+          this.fogDensityLocation = Module.ctx.getUniformLocation(this.program, 'u_fogDensity');
+          this.hasFog = !!(this.fogColorLocation || this.fogEndLocation ||
+                           this.fogScaleLocation || this.fogDensityLocation);
         },
 
         prepare: function() {
@@ -1748,6 +1753,7 @@ var LibraryGL = {
             if (this.fogColorLocation) Module.ctx.uniform4fv(this.fogColorLocation, GLEmulation.fogColor);
             if (this.fogEndLocation) Module.ctx.uniform1f(this.fogEndLocation, GLEmulation.fogEnd);
             if (this.fogScaleLocation) Module.ctx.uniform1f(this.fogScaleLocation, 1/(GLEmulation.fogEnd - GLEmulation.fogStart));
+            if (this.fogDensityLocation) Module.ctx.uniform1f(this.fogDensityLocation, GLEmulation.fogDensity);
           }
         },
 
