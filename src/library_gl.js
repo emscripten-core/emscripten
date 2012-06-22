@@ -294,7 +294,7 @@ var LibraryGL = {
     } else {
       data = null;
     }
-    Module.ctx.compressedTexImage2D(target, level, internalformat, width, height, border, data);
+    Module.ctx['compressedTexImage2D'](target, level, internalformat, width, height, border, data);
   },
 
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
@@ -303,7 +303,7 @@ var LibraryGL = {
     } else {
       data = null;
     }
-    Module.ctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, data);
+    Module.ctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, data);
   },
 
   glTexImage2D: function(target, level, internalformat, width, height, border, format, type, pixels) {
