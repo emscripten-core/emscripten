@@ -909,7 +909,10 @@ var LibraryGL = {
     // Fog support. Partial, we assume shaders are used that implement fog. We just pass them uniforms
     fogStart: 0,
     fogEnd: 1,
+    fogDensity: 1.0,
     fogColor: null,
+    fogMode: 0x0800, // GL_EXP
+    fogEnabled: false,
 
     init: function() {
       GLEmulation.fogColor = new Float32Array(4);
@@ -933,13 +936,31 @@ var LibraryGL = {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
-        if (!(cap in validCapabilities)) return;
+        if (cap == 0x0B60 /* GL_FOG */) {
+          GLEmulation.fogEnabled = true;
+          return;
+        } else if (!(cap in validCapabilities)) {
+          return;
+        }
         Module.ctx.enable(cap);
       };
       _glDisable = function(cap) {
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
-        if (!(cap in validCapabilities)) return;
+        if (cap == 0x0B60 /* GL_FOG */) {
+          GLEmulation.fogEnabled = false;
+          return;
+        } else if (!(cap in validCapabilities)) {
+          return;
+        }
         Module.ctx.disable(cap);
+      };
+      _glIsEnabled = function(cap) {
+        if (cap == 0x0B60 /* GL_FOG */) {
+          return GLEmulation.fogEnabled ? 1 : 0;
+        } else if (!(cap in validCapabilities)) {
+          return 0;
+        }
+        return Module.ctx.isEnabled(cap);
       };
 
       var glGetIntegerv = _glGetIntegerv;
@@ -1183,6 +1204,10 @@ var LibraryGL = {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogStart', 'float') }}};
         } else if (pname == 0x0B64) { // GL_FOG_END
           {{{ makeSetValue('params', '0', 'GLEmulation.fogEnd', 'float') }}};
+        } else if (pname == 0x0B62) { // GL_FOG_DENSITY
+          {{{ makeSetValue('params', '0', 'GLEmulation.fogDensity', 'float') }}};
+        } else if (pname == 0x0B65) { // GL_FOG_MODE
+          {{{ makeSetValue('params', '0', 'GLEmulation.fogMode', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
@@ -1479,6 +1504,13 @@ var LibraryGL = {
         if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = {};
         cacheItem = cacheItem[GL.currProgram];
       }
+      if (GLEmulation.fogEnabled) {
+        var fogParam = GLEmulation.fogMode;
+      } else {
+        var fogParam = 0; // all valid modes are non-zero
+      }
+      if (!cacheItem[fogParam]) cacheItem[fogParam] = {};
+      cacheItem = cacheItem[fogParam];
       if (!cacheItem.renderer) {
 #if GL_DEBUG
         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
@@ -1527,20 +1559,45 @@ var LibraryGL = {
             }
             this.program = GL.programs[GL.currProgram];
           } else {
+            // IMPORTANT NOTE: If you parameterize the shader source based on any runtime values
+            // in order to create the least expensive shader possible based on the features being
+            // used, you should also update the code in the beginning of getRenderer to make sure
+            // that you cache the renderer based on the said parameters.
             this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
             var zero = positionSize == 2 ? '0, ' : '';
+            if (GLEmulation.fogEnabled) {
+              switch (GLEmulation.fogMode) {
+                case 0x0801: // GL_EXP2
+                  // fog = exp(-(gl_Fog.density * gl_FogFragCoord)^2)
+                  var fogFormula = '  float density = float(' + GLEmulation.fogDensity + '); \n' +
+                                   '  float fog = exp(-density * density * ecDistance * ecDistance); \n';
+                  break;
+                case 0x2601: // GL_LINEAR
+                  // fog = (gl_Fog.end - gl_FogFragCoord) * gl_fog.scale
+                  var fogFormula = '  float fog = (u_fogEnd - ecDistance) * u_fogScale; \n';
+                  break;
+                default: // default to GL_EXP
+                  // fog = exp(-gl_Fog.density * gl_FogFragCoord)
+                  var fogFormula = '  float density = float(' + GLEmulation.fogDensity + '); \n' +
+                                   '  float fog = exp(-density * ecDistance); \n';
+                  break;
+              }
+            }
             Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n' +
                                                        'attribute vec2 a_texCoord0;  \n' +
                                                        (hasTextures ? 'varying vec2 v_texCoord;    \n' : '') +
                                                        'varying vec4 v_color; \n' +
                                                        (colorSize ? 'attribute vec4 a_color; \n': 'uniform vec4 u_color; \n') +
+                                                       (GLEmulation.fogEnabled ? 'varying float v_fogFragCoord; \n' : '') +
                                                        'uniform mat4 u_modelView;   \n' +
                                                        'uniform mat4 u_projection;  \n' +
                                                        'void main()                 \n' +
                                                        '{                           \n' +
-                                                       '  gl_Position = u_projection * (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' +
+                                                       '  vec4 ecPosition = (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' + // eye-coordinate position
+                                                       '  gl_Position = u_projection * ecPosition; \n' +
                                                        (hasTextures ? 'v_texCoord = a_texCoord0;    \n' : '') +
                                                        (colorSize ? 'v_color = a_color; \n' : 'v_color = u_color; \n') +
+                                                       (GLEmulation.fogEnabled ? 'v_fogFragCoord = ecPosition.z;\n' : '') +
                                                        '}                           \n');
             Module.ctx.compileShader(this.vertexShader);
 
@@ -1549,10 +1606,22 @@ var LibraryGL = {
                                                          'varying vec2 v_texCoord;                            \n' +
                                                          'uniform sampler2D u_texture;                        \n' +
                                                          'varying vec4 v_color;                               \n' +
+                                                         (GLEmulation.fogEnabled ? (
+                                                           'varying float v_fogFragCoord; \n' +
+                                                           'uniform vec4 u_fogColor; \n' +
+                                                           'uniform float u_fogEnd; \n' +
+                                                           'uniform float u_fogScale; \n' +
+                                                           'float ffog(in float ecDistance) { \n' +
+                                                           fogFormula +
+                                                           '  fog = clamp(fog, 0.0, 1.0); \n' +
+                                                           '  return fog; \n' +
+                                                           '} \n'
+                                                           ) : '') +
                                                          'void main()                                         \n' +
                                                          '{                                                   \n' +
                                                          (hasTextures ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
                                                                         'gl_FragColor = v_color;\n') +
+                                                         (GLEmulation.fogEnabled ? 'gl_FragColor = vec4(mix(vec3(u_fogColor), vec3(gl_FragColor), ffog(v_fogFragCoord)), gl_FragColor.a); \n' : '') +
                                                          '}                                                   \n');
             Module.ctx.compileShader(this.fragmentShader);
 
@@ -1997,7 +2066,7 @@ var LibraryGL = {
   },
   glColor4us__deps: ['glColor4f'],
   glColor4us: function(r, g, b, a) {
-    _glColor4f((r&65525)/65535, (g&65525)/65535, (b&65525)/65535, (a&65525)/65535);
+    _glColor4f((r&65535)/65535, (g&65535)/65535, (b&65535)/65535, (a&65535)/65535);
   },
   glColor4ui__deps: ['glColor4f'],
   glColor4ui: function(r, g, b, a) {
@@ -2048,10 +2117,24 @@ var LibraryGL = {
         GLEmulation.fogStart = param; break;
       case 0x0B64: // GL_FOG_END
         GLEmulation.fogEnd = param; break;
+      case 0x0B62: // GL_FOG_DENSITY
+        GLEmulation.fogDensity = param; break;
+      case 0x0B65: // GL_FOG_MODE
+        switch (param) {
+          case 0x0801: // GL_EXP2
+          case 0x2601: // GL_LINEAR
+            GLEmulation.fogMode = param; break;
+          default: // default to GL_EXP
+            GLEmulation.fogMode = 0x0800 /* GL_EXP */; break;
+        }
+        break;
     }
   },
-  glFogi: function(){}, // TODO
-  glFogx: function(){}, // TODO
+  glFogi__deps: ['glFogf'],
+  glFogi: function(pname, param) {
+    return _glFogf(pname, param);
+  },
+  glFogfv__deps: ['glFogf'],
   glFogfv: function(pname, param) { // partial support, TODO
     switch(pname) {
       case 0x0B66: // GL_FOG_COLOR
@@ -2060,8 +2143,26 @@ var LibraryGL = {
         GLEmulation.fogColor[2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.fogColor[3] = {{{ makeGetValue('param', '12', 'float') }}};
         break;
+      case 0x0B63: // GL_FOG_START
+      case 0x0B64: // GL_FOG_END
+        _glFogf(pname, {{{ makeGetValue('param', '0', 'float') }}}); break;
     }
   },
+  glFogiv__deps: ['glFogf'],
+  glFogiv: function(pname, param) {
+    switch(pname) {
+      case 0x0B66: // GL_FOG_COLOR
+        GLEmulation.fogColor[0] = ({{{ makeGetValue('param', '0', 'i32') }}}/2147483647)/2.0+0.5;
+        GLEmulation.fogColor[1] = ({{{ makeGetValue('param', '4', 'i32') }}}/2147483647)/2.0+0.5;
+        GLEmulation.fogColor[2] = ({{{ makeGetValue('param', '8', 'i32') }}}/2147483647)/2.0+0.5;
+        GLEmulation.fogColor[3] = ({{{ makeGetValue('param', '12', 'i32') }}}/2147483647)/2.0+0.5;
+        break;
+      default:
+        _glFogf(pname, {{{ makeGetValue('param', '0', 'i32') }}}); break;
+    }
+  },
+  glFogx: 'glFogi',
+  glFogxv: 'glFogiv',
 
   glPolygonMode: function(){}, // TODO
 
