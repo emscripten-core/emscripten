@@ -1624,7 +1624,7 @@ var LibraryGL = {
                                                          '{                                                   \n' +
                                                          (hasTextures ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
                                                                         'gl_FragColor = v_color;\n') +
-                                                         (GLEmulation.fogEnabled ? 'gl_FragColor = vec4(mix(vec3(u_fogColor), vec3(gl_FragColor), ffog(v_fogFragCoord)), gl_FragColor.a); \n' : '') +
+                                                         (GLEmulation.fogEnabled ? 'gl_FragColor = vec4(mix(u_fogColor.rgb, gl_FragColor.rgb, ffog(v_fogFragCoord)), gl_FragColor.a); \n' : '') +
                                                          '}                                                   \n');
             Module.ctx.compileShader(this.fragmentShader);
 
