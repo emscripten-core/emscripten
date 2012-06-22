@@ -7663,21 +7663,21 @@ elif 'browser' in str(sys.argv):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-density.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_exp2(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-exp2.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_linear(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-linear.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_worker(self):
