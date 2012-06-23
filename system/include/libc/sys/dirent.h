@@ -26,6 +26,10 @@ long  telldir(DIR *);
 DIR  *readdir(DIR *);
 int   closedir(DIR *dirp);
 void  rewinddir(DIR *dirp);
+int   scandir(const char *dirp,
+              struct dirent ***namelist,
+              int (*filter)(const struct dirent *),
+              int (*compar)(const struct dirent **, const struct dirent **));
 
 enum {
   DT_UNKNOWN = 0,

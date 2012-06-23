@@ -20,7 +20,7 @@ struct statvfs {
   int f_namemax;
 };
 
-int statvfs(char *path, struct statvfs *s);
+int statvfs(const char *path, struct statvfs *s);
 
 #ifdef __cplusplus
 }
