@@ -114,6 +114,7 @@ LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
 LLVM_NM=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-nm'))
 LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
 LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
+LLVM_EXTRACT=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-extract'))
 COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
 
 EMSCRIPTEN = path_from_root('emscripten.py')
@@ -530,7 +531,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return generated_libs
 
   @staticmethod
-  def link(files, target):
+  def link(files, target, remove_duplicates=False):
     actual_files = []
     unresolved_symbols = set() # necessary for .a linking, see below
     resolved_symbols = set()
@@ -579,8 +580,27 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         finally:
           os.chdir(cwd)
     try_delete(target)
+
+    if remove_duplicates:
+      # Remove duplicate symbols. This is a workaround for how we compile .a files, we try to
+      # emulate ld behavior which is permissive TODO: cache llvm-nm results
+      seen_symbols = set()
+      print >> sys.stderr, actual_files
+      for actual in actual_files:
+        symbols = Building.llvm_nm(actual)
+        dupes = seen_symbols.intersection(symbols.defs)
+        if len(dupes) > 0:
+          print >> sys.stderr, 'emcc: warning: removing duplicates in', actual
+          for dupe in dupes:
+            print >> sys.stderr, 'emcc: warning: removing duplicate', dupe
+            Popen([LLVM_EXTRACT, actual, '-delete', '-glob=' + dupe, '-o', actual], stderr=PIPE).communicate()
+            Popen([LLVM_EXTRACT, actual, '-delete', '-func=' + dupe, '-o', actual], stderr=PIPE).communicate()
+          Popen([LLVM_EXTRACT, actual, '-delete', '-glob=.str', '-o', actual], stderr=PIPE).communicate() # garbage that appears here
+        seen_symbols = seen_symbols.union(symbols.defs)
+
+    # Finish link
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
-    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
     if temp_dir:
       try_delete(temp_dir)
 

@@ -6863,6 +6863,30 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo', 'main.o'), os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
       self.assertContained('hello there', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_remove_duplicates(self):
+      # can happen with .a files. we do a best-effort, removing dupes
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        #include<stdio.h>
+        void printey() { printf("bye bye\\n"); }
+        int main() {
+          printey();
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write('''
+        #include<stdio.h>
+        void printey() { printf("bye bye\\n"); }
+      ''')
+
+      # without --remove-duplicates, we fail
+      err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'side.cpp')], stderr=PIPE).communicate()[1]
+      assert not os.path.exists('a.out.js')
+      assert 'multiply' in err
+
+      # with it, we succeed
+      err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'side.cpp'), '--remove-duplicates'], stderr=PIPE).communicate()[1]
+      self.assertContained('bye bye', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_embed_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
