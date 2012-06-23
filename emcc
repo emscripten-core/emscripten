@@ -575,6 +575,8 @@ try:
       libs.append(arg[2:])
       newargs[i] = ''
 
+  original_input_files = input_files
+
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   # Find library files
@@ -681,7 +683,7 @@ try:
       if len(input_files) == 1:
         shutil.move(in_temp(unsuffixed_uniquename(input_files[0]) + '.o'), specified_target)
       else:
-        #assert not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(input_files)
+        assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
         if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(temp_files)
