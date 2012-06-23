@@ -45,7 +45,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  flock lk;
+  struct flock lk;
   lk.l_type = 42;
   printf("F_GETLK: %d\n", fcntl(f, F_GETLK, &lk));
   printf("errno: %d\n", errno);
