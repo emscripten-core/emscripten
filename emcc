@@ -584,7 +584,7 @@ try:
       libs.append(arg[2:])
       newargs[i] = ''
 
-  original_input_files = input_files
+  original_input_files = input_files[:]
 
   newargs = [ arg for arg in newargs if arg is not '' ]
 
