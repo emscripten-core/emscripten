@@ -1495,7 +1495,7 @@ LibraryManager.library = {
   lseek: function(fildes, offset, whence) {
     // off_t lseek(int fildes, off_t offset, int whence);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lseek.html
-    if (FS.streams[fildes] && !FS.streams[fildes].isDevice) {
+    if (FS.streams[fildes] && !FS.streams[fildes].object.isDevice) {
       var stream = FS.streams[fildes];
       var position = offset;
       if (whence === 1) {  // SEEK_CUR.
