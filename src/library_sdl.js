@@ -23,6 +23,10 @@ var LibrarySDL = {
       audio: null,
       volume: 1.0
     },
+    mixerFrequency: 22050,
+    mixerFormat: 0x8010, // AUDIO_S16LSB
+    mixerNumChannels: 2,
+    mixerChunkSize: 1024,
 
     keyboardState: null,
     shiftKey: false,
@@ -1065,6 +1069,10 @@ var LibrarySDL = {
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.allocateChannels(32);
+    SDL.mixerFrequency = frequency;
+    SDL.mixerFormat = format;
+    SDL.mixerNumChannels = channels;
+    SDL.mixerChunkSize = chunksize;
     return 0;
   },
 
@@ -1108,6 +1116,23 @@ var LibrarySDL = {
     return id;
   },
 
+  Mix_QuickLoad_RAW: function(mem, len) {
+    var audio = new Audio();
+    audio['mozSetup'](SDL.mixerNumChannels, SDL.mixerFrequency);
+    var numSamples = (len / (SDL.mixerNumChannels * 2)) | 0;
+    var buffer = new Float32Array(numSamples);
+    for (var i = 0; i < numSamples; ++i) {
+      buffer[i] = ({{{ makeGetValue('mem', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
+    }
+    var id = SDL.audios.length;
+    SDL.audios.push({
+      source: '',
+      audio: audio,
+      buffer: buffer
+    });
+    return id;
+  },
+
   Mix_FreeChunk: function(id) {
     SDL.audios[id] = null;
   },
@@ -1132,7 +1157,11 @@ var LibrarySDL = {
         Runtime.getFuncWrapper(SDL.channelFinished)(channel);
       }
     }
-    info.audio.play();
+    if (SDL.audios[id].buffer) {
+      audio["mozWriteAudio"](SDL.audios[id].buffer);
+    } else {
+      info.audio.play();
+    }
     info.audio.volume = info.volume;
     return channel;
   },
@@ -1176,7 +1205,11 @@ var LibrarySDL = {
     var audio = SDL.audios[id].audio;
     if (!audio) return 0;
     audio.loop = loops != 1; // TODO: handle N loops for finite N
-    audio.play();
+    if (SDL.audios[id].buffer) {
+      audio["mozWriteAudio"](SDL.audios[id].buffer);
+    } else {
+      audio.play();
+    }
     audio.volume = SDL.music.volume;
     audio['onended'] = _Mix_HaltMusic; // will send callback
     SDL.music.audio = audio;

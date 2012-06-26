@@ -7649,6 +7649,13 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
+    def test_sdl_audio_quickload(self):
+      open(os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_quickload.c')).read()))
+
+      # use closure to check for a possible bug with closure minifying away newer Audio() attributes
+      Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
+
     def test_sdl_gl_read(self):
       # SDL, OpenGL, readPixels
       open(os.path.join(self.get_dir(), 'sdl_gl_read.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_gl_read.c')).read()))
