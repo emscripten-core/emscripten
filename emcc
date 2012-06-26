@@ -341,11 +341,10 @@ ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
 
 seen_names = {}
-def unsuffixed_uniquename(name):
-  ret = unsuffixed_basename(name)
+def uniquename(name):
   if name not in seen_names:
     seen_names[name] = str(len(seen_names))
-  return ret + '_' + seen_names[name]
+  return unsuffixed(name) + '_' + seen_names[name] + (('.' + suffix(name)) if suffix(name) else '')
 
 # ---------------- End configs -------------
 
@@ -400,7 +399,7 @@ else:
   temp_dir = tempfile.mkdtemp()
 
 def in_temp(name):
-  return os.path.join(temp_dir, name)
+  return os.path.join(temp_dir, os.path.basename(name))
 
 try:
   call = CXX if use_cxx else CC
@@ -651,7 +650,7 @@ try:
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
       if DEBUG: print >> sys.stderr, 'emcc: compiling source file: ', input_file
-      output_file = in_temp(unsuffixed_uniquename(input_file) + '.o')
+      output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if DEBUG: print >> sys.stderr, "emcc running:", call, ' '.join(args)
@@ -662,12 +661,12 @@ try:
     else: # bitcode
       if input_file.endswith(BITCODE_SUFFIXES):
         if DEBUG: print >> sys.stderr, 'emcc: copying bitcode file: ', input_file
-        temp_file = in_temp(unsuffixed_uniquename(input_file) + '.o')
+        temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
       elif input_file.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
         if DEBUG: print >> sys.stderr, 'emcc: copying library file: ', input_file
-        temp_file = in_temp(os.path.basename(input_file))
+        temp_file = in_temp(uniquename(input_file))
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
       else: #.ll
@@ -675,7 +674,7 @@ try:
           # Note that by assembling the .ll file, then disassembling it later, we will
           # remove annotations which is a good thing for compilation time
           if DEBUG: print >> sys.stderr, 'emcc: assembling assembly file: ', input_file
-          temp_file = in_temp(unsuffixed_uniquename(input_file) + '.o')
+          temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
           shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
 
@@ -687,10 +686,10 @@ try:
       print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
     if not specified_target:
       for input_file in input_files:
-        shutil.move(in_temp(unsuffixed_uniquename(input_file) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
+        shutil.move(in_temp(unsuffixed(uniquename(input_file)) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
     else:
       if len(input_files) == 1:
-        shutil.move(in_temp(unsuffixed_uniquename(input_files[0]) + '.o'), specified_target)
+        shutil.move(in_temp(unsuffixed(uniquename(input_files[0])) + '.o'), specified_target)
       else:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and

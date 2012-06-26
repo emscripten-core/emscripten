@@ -980,7 +980,11 @@ def execute(cmd, *args, **kw):
     raise
 
 def suffix(name):
-  return name.split('.')[-1]
+  parts = name.split('.')
+  if len(parts) > 1:
+    return parts[-1]
+  else:
+    return None
 
 def unsuffixed(name):
   return '.'.join(name.split('.')[:-1])
