@@ -1139,7 +1139,9 @@ var LibrarySDL = {
 
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
-    var audio = SDL.audios[id].audio;
+    var info = SDL.audios[id];
+    if (!info) return 0;
+    var audio = info.audio;
     if (!audio) return 0;
     if (channel == -1) {
       channel = 0;
@@ -1150,19 +1152,20 @@ var LibrarySDL = {
         }
       }
     }
-    var info = SDL.channels[channel];
-    info.audio = audio.cloneNode(true);
+    var channelInfo = SDL.channels[channel];
+    channelInfo.audio = audio = audio.cloneNode(true);
     if (SDL.channelFinished) {
-      info.audio['onended'] = function() { // TODO: cache these
+      audio['onended'] = function() { // TODO: cache these
         Runtime.getFuncWrapper(SDL.channelFinished)(channel);
       }
     }
-    if (SDL.audios[id].buffer) {
-      audio["mozWriteAudio"](SDL.audios[id].buffer);
+    if (info.buffer) {
+      audio['mozSetup'](SDL.mixerNumChannels, SDL.mixerFrequency);
+      audio["mozWriteAudio"](info.buffer);
     } else {
-      info.audio.play();
+      audio.play();
     }
-    info.audio.volume = info.volume;
+    audio.volume = channelInfo.volume;
     return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
