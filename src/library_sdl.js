@@ -660,6 +660,9 @@ var LibrarySDL = {
     for (var i = 0; i < SDL.audios; i++) {
       SDL.audios[i].pause();
     }
+    if (SDL.music.audio) {
+      SDL.music.audio.pause();
+    }
     Module.print('SDL_Quit called (and ignored)');
   },
 
