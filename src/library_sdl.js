@@ -1083,6 +1083,7 @@ var LibrarySDL = {
     SDL.audio.paused = pauseOn;
   },
 
+  SDL_CloseAudio__deps: ['SDL_PauseAudio', 'free'],
   SDL_CloseAudio: function() {
     if (SDL.audio) {
       _SDL_PauseAudio(1);
