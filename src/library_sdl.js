@@ -1158,7 +1158,7 @@ var LibrarySDL = {
   Mix_QuickLoad_RAW: function(mem, len) {
     var audio = new Audio();
     audio['mozSetup'](SDL.mixerNumChannels, SDL.mixerFrequency);
-    var numSamples = (len / (SDL.mixerNumChannels * 2)) | 0;
+    var numSamples = len >> 1;
     var buffer = new Float32Array(numSamples);
     for (var i = 0; i < numSamples; ++i) {
       buffer[i] = ({{{ makeGetValue('mem', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
