@@ -1504,10 +1504,6 @@ var LibraryGL = {
         if (!cacheItem[attribute.type]) cacheItem[attribute.type] = {};
         cacheItem = cacheItem[attribute.type];
       }
-      if (GL.currProgram) {
-        if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = {};
-        cacheItem = cacheItem[GL.currProgram];
-      }
       if (GLEmulation.fogEnabled) {
         var fogParam = GLEmulation.fogMode;
       } else {
@@ -1515,6 +1511,10 @@ var LibraryGL = {
       }
       if (!cacheItem[fogParam]) cacheItem[fogParam] = {};
       cacheItem = cacheItem[fogParam];
+      if (GL.currProgram) { // Note the order here; this one is last, and optional
+        if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = {};
+        cacheItem = cacheItem[GL.currProgram];
+      }
       if (!cacheItem.renderer) {
 #if GL_DEBUG
         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
