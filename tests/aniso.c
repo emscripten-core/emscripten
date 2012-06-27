@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 ); // *new*
 
-    screen = SDL_SetVideoMode( 640, 480, 16, SDL_OPENGL ); // *changed*
+    screen = SDL_SetVideoMode( 600, 600, 16, SDL_OPENGL ); // *changed*
     if ( !screen ) {
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     
     GLint aniso;
     glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso);
-    printf("Max anisotropy: %d\n", aniso);
+    printf("Max anisotropy: %d (using that)\n", aniso);
     assert(aniso >= 4);
 
     // Set the OpenGL state after creating the context with SDL_SetVideoMode
@@ -78,12 +78,12 @@ int main(int argc, char *argv[])
     glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
 #endif
 
-    glViewport( 0, 0, 800, 600 );
+    glViewport( 0, 0, 600, 600 );
 
     glMatrixMode( GL_PROJECTION );
-    GLfloat matrixData[] = { 2.0/640,        0,        0,  0,
-                                   0, -2.0/480,        0,  0,
-                                   0,        0, -2.0/480,  0,
+    GLfloat matrixData[] = { 2.0/600,        0,        0,  0,
+                                   0, -2.0/600,        0,  0,
+                                   0,        0, -2.0/600,  0,
                                   -1,        1,        0,  1 };
     glLoadMatrixf(matrixData); // test loadmatrix
 
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
       }
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4);
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
     }
 
     // Prepare and Render
@@ -152,6 +152,27 @@ int main(int argc, char *argv[])
     glClear( GL_COLOR_BUFFER_BIT );
     
     // Bind the texture to which subsequent calls refer to
+    int w = 10;
+    int n = 15;
+    glBindTexture( GL_TEXTURE_2D, texture );
+    for (int x = 0; x < n; x++) {
+      int start = x*w*2;
+      glBegin( GL_TRIANGLES );
+        glTexCoord2i( 1, 0 ); glVertex3f( start  ,   0, 0 );
+        glTexCoord2i( 0, 0 ); glVertex3f( start+w, 300, 0 );
+        glTexCoord2i( 1, 1 ); glVertex3f( start-w, 300, 0 );
+      glEnd();
+    }
+    glBindTexture( GL_TEXTURE_2D, texture2 );
+    for (int x = 0; x < n; x++) {
+      int start = n*w*2 + x*w*2;
+      glBegin( GL_TRIANGLES );
+        glTexCoord2i( 1, 0 ); glVertex3f( start  ,   0, 0 );
+        glTexCoord2i( 0, 0 ); glVertex3f( start+w, 300, 0 );
+        glTexCoord2i( 1, 1 ); glVertex3f( start-w, 300, 0 );
+      glEnd();
+    }
+/*
     int w = 8;
     int n = 20;
     for (int x = 0; x < n; x++) {
@@ -172,12 +193,12 @@ int main(int argc, char *argv[])
         glEnd();
       }
     }
-
+*/
     SDL_GL_SwapBuffers();
     
 #if !EMSCRIPTEN
     // Wait for 3 seconds to give us a chance to see the image
-    SDL_Delay(10000);
+    SDL_Delay(2000);
 #endif
 
     // Now we can delete the OpenGL texture and close down SDL
