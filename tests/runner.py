@@ -7906,6 +7906,10 @@ elif 'browser' in str(sys.argv):
       shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
       self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', args=['--pre-js', 'pre.js'])
 
+    def zzztest_aniso(self):
+      shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
+      self.btest('aniso.c', reference='aniso.png', args=['--preload-file', 'water.dds', '-s', 'GL_DEBUG=1'])
+
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''

@@ -114,6 +114,10 @@ var LibraryGL = {
       GL.compressionExt = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc');
+
+      GL.anisotropicExt = Module.ctx.getExtension('EXT_texture_filter_anisotropic') ||
+                          Module.ctx.getExtension('MOZ_EXT_texture_filter_anisotropic') ||
+                          Module.ctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
     }
   },
 
@@ -994,7 +998,9 @@ var LibraryGL = {
           case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
             return allocate(intArrayFromString(Module.ctx.getSupportedExtensions().join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
-                   (GL.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '')), 'i8', ALLOC_NORMAL);
+                   (GL.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
+                   (GL.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
+            ), 'i8', ALLOC_NORMAL);
         }
         return glGetString(name_);
       };
