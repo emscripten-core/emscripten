@@ -1157,7 +1157,8 @@ var LibrarySDL = {
 
   Mix_QuickLoad_RAW: function(mem, len) {
     var audio = new Audio();
-    audio['mozSetup'](SDL.mixerNumChannels, SDL.mixerFrequency);
+    audio.setAttribute("data-numchannels", SDL.mixerNumChannels);
+    audio.setAttribute("data-frequency", SDL.mixerFrequency);
     var numSamples = len >> 1;
     var buffer = new Float32Array(numSamples);
     for (var i = 0; i < numSamples; ++i) {
@@ -1199,7 +1200,7 @@ var LibrarySDL = {
       }
     }
     if (info.buffer) {
-      audio['mozSetup'](SDL.mixerNumChannels, SDL.mixerFrequency);
+      audio['mozSetup'](audio.getAttribute("data-numchannels"), audio.getAttribute("data-frequency"));
       audio["mozWriteAudio"](info.buffer);
     } else {
       audio.play();
