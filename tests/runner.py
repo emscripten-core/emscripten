@@ -7798,11 +7798,11 @@ elif 'browser' in str(sys.argv):
         Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
-    def btest(self, filename, expected=None, reference=None, args=[]): # TODO: use in all other tests
+    def btest(self, filename, expected=None, reference=None, reference_slack=0, args=[]): # TODO: use in all other tests
       if not reference:
         open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(open(path_from_root('tests', filename)).read()))
       else:
-        expected = '0' # 0 pixels difference than reference
+        expected = [str(i) for i in range(0, reference_slack+1)]
         shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
         self.reftest(path_from_root('tests', reference))
         args += ['--pre-js', 'reftest.js']
@@ -7908,7 +7908,7 @@ elif 'browser' in str(sys.argv):
 
     def test_aniso(self):
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-      self.btest('aniso.c', reference='aniso.png', args=['--preload-file', 'water.dds'])
+      self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds'])
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
