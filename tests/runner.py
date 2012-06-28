@@ -7843,7 +7843,7 @@ elif 'browser' in str(sys.argv):
       self.btest('cubegeom_pre3.c', expected='-1472804742')
 
     def test_cubegeom(self):
-      self.btest('cubegeom.c', expected='188641320')
+      self.btest('cubegeom.c', expected=['188641320', '1522377227'])
 
     def test_cubegeom_color(self):
       self.btest('cubegeom_color.c', expected='588472350')
