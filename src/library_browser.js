@@ -3,7 +3,8 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
-  $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n', // export requestFullScreen
+  $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n' + // exports
+                     'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n',
   $Browser: {
     mainLoop: {
       scheduler: null,
