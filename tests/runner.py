@@ -7910,6 +7910,9 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
       self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds'])
 
+    def test_tex_nonbyte(self):
+      self.btest('tex_nonbyte.c', reference='tex_nonbyte.png')
+
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''

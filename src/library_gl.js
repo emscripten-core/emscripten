@@ -343,7 +343,11 @@ var LibraryGL = {
           throw 'Invalid type (' + type + ') passed to glTexImage2D';
       }
       var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-      pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+      if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
+        pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+      } else {
+        pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+      }
     } else {
       pixels = null;
     }
