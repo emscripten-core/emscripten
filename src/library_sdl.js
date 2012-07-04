@@ -1224,8 +1224,10 @@ var LibrarySDL = {
     }
     // Either play the element, or load the dynamic data into it
     if (info.buffer) {
-      audio['mozSetup'](audio.getAttribute("data-numchannels"), audio.getAttribute("data-frequency"));
-      audio["mozWriteAudio"](info.buffer);
+      if (audio && ('mozSetup' in audio)) { // Audio Data API
+        audio['mozSetup'](audio.getAttribute("data-numchannels"), audio.getAttribute("data-frequency"));
+        audio["mozWriteAudio"](info.buffer);
+      }
     } else {
       audio.play();
     }
