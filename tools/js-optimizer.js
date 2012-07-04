@@ -1312,7 +1312,7 @@ function registerize(ast) {
       }
       getStatements(fun).unshift(['var', vars]);
     }
-    printErr(fun[1] + ': saved ' + saved + ' / ' + (saved + nextReg - 1) + ' vars through registerization'); // not totally accurate
+    //printErr(fun[1] + ': saved ' + saved + ' / ' + (saved + nextReg - 1) + ' vars through registerization'); // not totally accurate
   });
 }
 

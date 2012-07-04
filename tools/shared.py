@@ -850,7 +850,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
-    output = Popen([NODE_JS, coffee, eliminator], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+    output = Popen([NODE_JS, coffee, eliminator, filename], stdout=PIPE).communicate()[0]
     assert len(output) > 0, 'Error in eliminator: ' + output
     filename += '.el.js'
     f = open(filename, 'w')
