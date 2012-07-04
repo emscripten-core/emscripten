@@ -775,7 +775,7 @@ function generateStructTypes(type) {
     if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
       return ['i64', 0, 0, 0, 'i32', 0, 0, 0];
     }
-    return [type].concat(zeros(Runtime.getNativeFieldSize(type)));
+    return [type].concat(zeros(Runtime.getNativeFieldSize(type)-1));
   }
 
   // Avoid multiple concats by finding the size first. This is much faster
@@ -1264,7 +1264,7 @@ function makePointer(slab, pos, allocator, type) {
     var evaled = typeof slab === 'string' ? eval(slab) : slab;
     de = dedup(evaled);
     if (de.length === 1 && de[0] === 0) {
-      slab = evaled.length;
+      slab = types.length;
     }
     // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
     //       be careful of structure padding
