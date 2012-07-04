@@ -834,8 +834,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if type(passes) == str:
       passes = [passes]
     # XXX Disable crankshaft to work around v8 bug 1895
-    output, err = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
-    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + err + '\n\n' + output
+    output = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
+    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename += '.jo.js'
     f = open(filename, 'w')
     f.write(output)
@@ -850,8 +850,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
-    output, err = Popen([NODE_JS, coffee, eliminator], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(input)
-    assert len(output) > 0, 'Error in eliminator: ' + err + '\n\n' + output
+    output = Popen([NODE_JS, coffee, eliminator], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+    assert len(output) > 0, 'Error in eliminator: ' + output
     filename += '.el.js'
     f = open(filename, 'w')
     f.write(output)
