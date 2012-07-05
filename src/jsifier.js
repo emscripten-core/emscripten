@@ -283,7 +283,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             var val = LibraryManager.library[shortident];
             var padding;
             if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
-              padding = [item.type].concat(zeros(Runtime.getNativeFieldSize(item.type)));
+              padding = [item.type].concat(zeros(Runtime.getNativeFieldSize(item.type)-1));
             } else {
               padding = makeEmptyStruct(item.type);
             }
