@@ -8053,7 +8053,7 @@ elif 'benchmark' in str(sys.argv):
                       '-s', 'INLINING_LIMIT=0',
                       '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
-      assert os.path.exists(final_filename), 'Failed to compile file: ' + '\n'.join(output)
+      assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
       # Run JS
       global total_times, tests_done
