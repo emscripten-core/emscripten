@@ -671,6 +671,18 @@ function optimizeShiftsInternal(ast, conservative) {
             }
           }
         }
+        /* XXX - theoretically useful optimization(s), but commented out as not helpful in practice
+        // Transform (x << 2) >> 2 into x & mask or something even simpler
+        if (type == 'binary'       && node[1]    == '>>' && node[3][0] == 'num' &&
+            node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' && node[3][1] == node[2][3][1]) {
+          var subNode = node[2];
+          var shifts = node[3][1];
+          var mask = ((0xffffffff << shifts) >>> shifts) | 0;
+          return ['binary', '&', subNode[2], ['num', mask]];
+          //return ['binary', '|', subNode[2], ['num', 0]];
+          //return subNode[2];
+        }
+        */
       });
       // Re-combine remaining shifts, to undo the breaking up we did before. may require reordering inside +'s
       traverse(fun, function(node, type, stack) {
