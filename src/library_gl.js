@@ -1191,6 +1191,21 @@ var LibraryGL = {
         if (program == GL.currProgram) GL.currProgram = 0;
       };
 
+      // If attribute 0 was not bound, bind it to 0 for WebGL performance reasons. Track if 0 is free for that.
+      var zeroUsedPrograms = {};
+      var glBindAttribLocation = _glBindAttribLocation;
+      _glBindAttribLocation = function(program, index, name) {
+        if (index == 0) zeroUsedPrograms[program] = true;
+        glBindAttribLocation(program, index, name);
+      };
+      var glLinkProgram = _glLinkProgram;
+      _glLinkProgram = function(program) {
+        if (!(program in zeroUsedPrograms)) {
+          Module.ctx.bindAttribLocation(GL.programs[program], 0, 'a_position');
+        }
+        glLinkProgram(program);
+      };
+
       var glBindBuffer = _glBindBuffer;
       _glBindBuffer = function(target, buffer) {
         glBindBuffer(target, buffer);
