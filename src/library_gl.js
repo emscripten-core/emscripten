@@ -1663,6 +1663,7 @@ var LibraryGL = {
             this.program = Module.ctx.createProgram();
             Module.ctx.attachShader(this.program, this.vertexShader);
             Module.ctx.attachShader(this.program, this.fragmentShader);
+            Module.ctx.bindAttribLocation(this.program, 0, 'a_position');
             Module.ctx.linkProgram(this.program);
           }
 
