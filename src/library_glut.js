@@ -363,7 +363,7 @@ var LibraryGLUT = {
 
   glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow: function(name) {
-    Module.ctx = Browser.createContext(Module['canvas'], true);
+    Module.ctx = Browser.createContext(Module['canvas'], true, true);
     return 1;
   },
 
