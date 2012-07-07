@@ -107,6 +107,64 @@ var LibraryGL = {
                ((height - 1) * alignedRowSize + plainRowSize);
     },
 
+    getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
+      var sizePerPixel;
+      switch (type) {
+        case 0x1401 /* GL_UNSIGNED_BYTE */:
+          switch (format) {
+            case 0x1906 /* GL_ALPHA */:
+            case 0x1909 /* GL_LUMINANCE */:
+              sizePerPixel = 1;
+              break;
+            case 0x1907 /* GL_RGB */:
+              sizePerPixel = 3;
+              break;
+            case 0x1908 /* GL_RGBA */:
+              sizePerPixel = 4;
+              break;
+            case 0x190A /* GL_LUMINANCE_ALPHA */:
+              sizePerPixel = 2;
+              break;
+            default:
+              throw 'Invalid format (' + format + ')';
+          }
+          break;
+        case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+        case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
+        case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
+          sizePerPixel = 2;
+          break;
+        case 0x1406 /* GL_FLOAT */:
+          assert(GL.floatExt, 'Must have OES_texture_float to use float textures');
+          switch (format) {
+            case 0x1907 /* GL_RGB */:
+              sizePerPixel = 3*4;
+              break;
+            case 0x1908 /* GL_RGBA */:
+              sizePerPixel = 4*4;
+              break;
+            default:
+              throw 'Invalid format (' + format + ')';
+          }
+          internalFormat = Module.ctx.RGBA;
+          break;
+        default:
+          throw 'Invalid type (' + type + ')';
+      }
+      var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+      if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
+        pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+      } else if (type == 0x1406 /* GL_FLOAT */) {
+        pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+      } else {
+        pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+      }
+      return {
+        pixels: pixels,
+        internalFormat: internalFormat
+      }
+    },
+
     initExtensions: function() {
       if (GL.initExtensions.done) return;
       GL.initExtensions.done = true;
@@ -293,14 +351,14 @@ var LibraryGL = {
     }
   },
 
-  glCompressedTexImage2D: function(target, level, internalformat, width, height, border, imageSize, data) {
+  glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
     assert(GL.compressionExt);
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
       data = null;
     }
-    Module.ctx['compressedTexImage2D'](target, level, internalformat, width, height, border, data);
+    Module.ctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, data);
   },
 
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
@@ -313,119 +371,19 @@ var LibraryGL = {
     Module.ctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, data);
   },
 
-  glTexImage2D: function(target, level, internalformat, width, height, border, format, type, pixels) {
+  glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
     if (pixels) {
-      var sizePerPixel;
-      switch (type) {
-        case 0x1401 /* GL_UNSIGNED_BYTE */:
-          switch (format) {
-            case 0x1906 /* GL_ALPHA */:
-            case 0x1909 /* GL_LUMINANCE */:
-              sizePerPixel = 1;
-              break;
-            case 0x1907 /* GL_RGB */:
-              sizePerPixel = 3;
-              break;
-            case 0x1908 /* GL_RGBA */:
-              sizePerPixel = 4;
-              break;
-            case 0x190A /* GL_LUMINANCE_ALPHA */:
-              sizePerPixel = 2;
-              break;
-            default:
-              throw 'Invalid format (' + format + ') passed to glTexImage2D';
-          }
-          break;
-        case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-        case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-        case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-          sizePerPixel = 2;
-          break;
-        case 0x1406 /* GL_FLOAT */:
-          assert(GL.floatExt, 'Must have OES_texture_float to use float textures');
-          switch (format) {
-            case 0x1907 /* GL_RGB */:
-              sizePerPixel = 3*4;
-              break;
-            case 0x1908 /* GL_RGBA */:
-              sizePerPixel = 4*4;
-              break;
-            default:
-              throw 'Invalid format (' + format + ') passed to glTexImage2D';
-          }
-          internalformat = Module.ctx.RGBA; // XXX
-          break;
-        default:
-          throw 'Invalid type (' + type + ') passed to glTexImage2D';
-      }
-      var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-      if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
-        pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
-      } else if (type == 0x1406 /* GL_FLOAT */) {
-        pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
-      } else {
-        pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
-      }
-    } else {
-      pixels = null;
+      var data = GL.getTexPixelData(type, format, width, height, pixels, internalFormat);
+      pixels = data.pixels;
+      internalFormat = data.internalFormat;
     }
-    Module.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    Module.ctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
   },
 
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
     if (pixels) {
-      var sizePerPixel;
-      switch (type) {
-        case 0x1401 /* GL_UNSIGNED_BYTE */:
-          switch (format) {
-            case 0x1906 /* GL_ALPHA */:
-            case 0x1909 /* GL_LUMINANCE */:
-              sizePerPixel = 1;
-              break;
-            case 0x1907 /* GL_RGB */:
-              sizePerPixel = 3;
-              break;
-            case 0x1908 /* GL_RGBA */:
-              sizePerPixel = 4;
-              break;
-            case 0x190A /* GL_LUMINANCE_ALPHA */:
-              sizePerPixel = 2;
-              break;
-            default:
-              throw 'Invalid format (' + format + ') passed to glTexSubImage2D';
-          }
-          break;
-        case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-        case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-        case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-          sizePerPixel = 2;
-          break;
-        case 0x1406 /* GL_FLOAT */:
-          assert(GL.floatExt, 'Must have OES_texture_float to use float textures');
-          switch (format) {
-            case 0x1907 /* GL_RGB */:
-              sizePerPixel = 3*4;
-              break;
-            case 0x1908 /* GL_RGBA */:
-              sizePerPixel = 4*4;
-              break;
-            default:
-              throw 'Invalid format (' + format + ') passed to glTexSubImage2D';
-          }
-          break;
-        default:
-          throw 'Invalid type (' + type + ') passed to glTexSubImage2D';
-      }
-      var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-      if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
-        pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
-      } else if (type == 0x1406 /* GL_FLOAT */) {
-        pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
-      } else {
-        pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
-      }
-    } else {
-      pixels = null;
+      var data = GL.getTexPixelData(type, format, width, height, pixels, -1);
+      pixels = data.pixels;
     }
     Module.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
