@@ -7941,6 +7941,9 @@ elif 'browser' in str(sys.argv):
     def test_tex_nonbyte(self):
       self.btest('tex_nonbyte.c', reference='tex_nonbyte.png')
 
+    def test_float_tex(self):
+      self.btest('float_tex.cpp', reference='float_tex.png')
+
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
