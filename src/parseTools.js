@@ -1171,7 +1171,7 @@ function getFastValue(a, op, b, type) {
     if (op == 'pow') {
       return Math.pow(a, b).toString();
     } else {
-      return eval(a + op + b).toString();
+      return eval(a + op + '(' + b + ')').toString(); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
     }
   }
   if (op == 'pow') {
