@@ -6664,7 +6664,7 @@ Options that are modified or new in %s include:
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
-            assert 'function _dump' in generated, 'No inlining by default'
+            assert ('-O3' in (params+(bc_params or []))) or'function _dump' in generated, 'No inlining by default'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
