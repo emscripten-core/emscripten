@@ -4771,6 +4771,15 @@ LibraryManager.library = {
   // type_info for void*.
   _ZTIPv: [0],
 
+  llvm_uadd_with_overflow_i8: function(x, y) {
+    x = (x>>>0) & 0xff;
+    y = (y>>>0) & 0xff;
+    return {
+      f0: (x+y) & 0xff,
+      f1: x+y > 255
+    };
+  },
+
   llvm_uadd_with_overflow_i16: function(x, y) {
     x = (x>>>0) & 0xffff;
     y = (y>>>0) & 0xffff;
