@@ -4,7 +4,7 @@
 
 EMSCRIPTEN_ROOT = os.path.expanduser('~/Dev/emscripten') # this helps projects using emscripten find it
 
-LLVM_ROOT = os.path.expanduser('~/Dev/llvm-3.0/cbuild/bin')
+LLVM_ROOT = os.path.expanduser('~/Dev/llvm/cbuild/bin')
 
 # See below for notes on which JS engine(s) you need
 NODE_JS = 'node'
@@ -15,6 +15,7 @@ JAVA = 'java'
 
 TEMP_DIR = '/tmp' # You will need to modify this on Windows
 
+#CLOSURE_COMPILER = '..' # define this to not use the bundled version
 
 ########################################################################################################
 
