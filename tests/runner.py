@@ -1210,6 +1210,35 @@ m_divisor is 1091269979
         '''
         self.do_run(src, '*1,10,10.5,1,1.2340,0.00*')
 
+    def test_globaldoubles(self):
+        src = r'''
+          #include <stdlib.h>
+          #include <stdio.h>
+
+          double      testVu,    testVv,    testWu,    testWv;
+
+          void Test(double _testVu, double _testVv, double _testWu, double _testWv)
+          {
+              testVu = _testVu;
+              testVv = _testVv;
+              testWu = _testWu;
+              testWv = _testWv;
+              printf("BUG?\n");
+              printf("Display: Vu=%f  Vv=%f  Wu=%f  Wv=%f\n", testVu, testVv, testWu, testWv);
+          }
+
+          int main(void)
+          {
+              double v1 = 465.1;
+              double v2 = 465.2;
+              double v3 = 160.3;
+              double v4 = 111.4;
+              Test(v1, v2, v3, v4);
+              return 0;
+          }
+        '''
+        self.do_run(src, 'BUG?\nDisplay: Vu=465.100000  Vv=465.200000  Wu=160.300000  Wv=111.400000')
+
     def test_math(self):
         src = '''
           #include <stdio.h>
@@ -6635,7 +6664,7 @@ Options that are modified or new in %s include:
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
-            assert 'function _dump' in generated, 'No inlining by default'
+            assert ('-O3' in (params+(bc_params or []))) or'function _dump' in generated, 'No inlining by default'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
@@ -7091,9 +7120,8 @@ f.close()
       self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_eliminator(self):
-      input = open(path_from_root('tools', 'eliminator', 'eliminator-test.js')).read()
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
-      output = Popen([NODE_JS, COFFEESCRIPT, VARIABLE_ELIMINATOR], stdin=PIPE, stdout=PIPE).communicate(input)[0]
+      output = Popen([NODE_JS, COFFEESCRIPT, VARIABLE_ELIMINATOR, path_from_root('tools', 'eliminator', 'eliminator-test.js')], stdout=PIPE).communicate()[0]
       self.assertIdentical(expected, output)
 
     def test_fix_closure(self):
@@ -7910,6 +7938,12 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
       self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds'])
 
+    def test_tex_nonbyte(self):
+      self.btest('tex_nonbyte.c', reference='tex_nonbyte.png')
+
+    def test_float_tex(self):
+      self.btest('float_tex.cpp', reference='float_tex.png')
+
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -8019,10 +8053,9 @@ elif 'benchmark' in str(sys.argv):
 
       try_delete(final_filename)
       output = Popen(['python', EMCC, filename, '-O3',
-                      '-s', 'INLINING_LIMIT=0',
                       '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
-      assert os.path.exists(final_filename), 'Failed to compile file: ' + '\n'.join(output)
+      assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
       # Run JS
       global total_times, tests_done

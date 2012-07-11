@@ -46,7 +46,7 @@ if (ENVIRONMENT_IS_NODE) {
   }
 } else if (ENVIRONMENT_IS_SHELL) {
   Module['print'] = print;
-  Module['printErr'] = printErr;
+  if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
   // Polyfill over SpiderMonkey/V8 differences
   if (typeof read != 'undefined') {
@@ -104,11 +104,11 @@ if (!Module['load'] == 'undefined' && Module['read']) {
     globalEval(Module['read'](f));
   };
 }
-if (!Module['printErr']) {
-  Module['printErr'] = function(){};
-}
 if (!Module['print']) {
-  Module['print'] = Module['printErr'];
+  Module['print'] = function(){};
+}
+if (!Module['printErr']) {
+  Module['printErr'] = Module['print'];
 }
 if (!Module['arguments']) {
   Module['arguments'] = [];

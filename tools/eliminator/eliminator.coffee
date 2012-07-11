@@ -383,14 +383,8 @@ class ExpressionOptimizer
 # function, then writes the optimized result to stdout.
 main = ->
   # Get the parse tree.
-  if os.platform().substr(0, 3) != 'win'
-    src = fs.readFileSync('/dev/stdin').toString()
-  else
-    # The following seems to work on windows, but fails on linux..
-    src = ''
-    size = fs.fstatSync(process.stdin.fd).size
-    if size > 0
-      src = fs.readSync(process.stdin.fd, size)[0]
+  #process.stderr.write(JSON.stringify(process.argv[2]) + '\n')
+  src = fs.readFileSync(process.argv[2]).toString()
 
   throw 'Cannot identify generated functions' if GENERATED_FUNCTIONS_MARKER in src
   generatedFunctionsLine = src.split('\n').filter (line) ->
@@ -399,22 +393,22 @@ main = ->
 
   ast = uglify.parser.parse src
 
-  #process.stderr.write(JSON.stringify(ast) + '\n')
+  ##process.stderr.write(JSON.stringify(ast) + '\n')
 
   # Run on all functions.
   traverse ast, (node, type) ->
     if type in ['defun', 'function'] and isGenerated node[1]
 
       # Run the eliminator
-      process.stderr.write (node[1] || '(anonymous)') + '\n'
+      #process.stderr.write (node[1] || '(anonymous)') + '\n'
       eliminated = new Eliminator(node).run()
       if eliminated?
-        process.stderr.write "  Eliminated #{eliminated} vars.\n"
+        #process.stderr.write "  Eliminated #{eliminated} vars.\n"
 
         # Run the expression optimizer
         new ExpressionOptimizer(node[3]).run()
       else
-        process.stderr.write '  Skipped.\n'
+        #process.stderr.write '  Skipped.\n'
 
     return undefined
 

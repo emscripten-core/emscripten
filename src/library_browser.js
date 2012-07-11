@@ -3,12 +3,25 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
-  $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n', // export requestFullScreen
+  $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n' + // exports
+                     'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
+                     'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
+                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
   $Browser: {
     mainLoop: {
       scheduler: null,
       shouldPause: false,
-      paused: false
+      paused: false,
+      pause: function() {
+        Browser.mainLoop.shouldPause = true;
+      },
+      resume: function() {
+        if (Browser.mainLoop.paused) {
+          Browser.mainLoop.paused = false;
+          Browser.mainLoop.scheduler();
+        }
+        Browser.mainLoop.shouldPause = false;
+      },
     },
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
@@ -240,15 +253,11 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_pause_main_loop: function(func) {
-    Browser.mainLoop.shouldPause = true;
+    Browser.mainLoop.pause();
   },
 
   emscripten_resume_main_loop: function(func) {
-    if (Browser.mainLoop.paused) {
-      Browser.mainLoop.paused = false;
-      Browser.mainLoop.scheduler();
-    }
-    Browser.mainLoop.shouldPause = false;
+    Browser.mainLoop.resume();
   },
 
   emscripten_async_call: function(func, millis) {
