@@ -952,7 +952,12 @@ var LibrarySDL = {
 
   SDL_MapRGB: function(fmt, r, g, b) {
     // Canvas screens are always RGBA
-    return r + (g << 8) + (b << 16);
+    return 0xff+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+  },
+
+  SDL_MapRGBA: function(fmt, r, g, b, a) {
+    // Canvas screens are always RGBA
+    return (a&0xff)+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
   },
 
   SDL_WM_GrabInput: function() {},
