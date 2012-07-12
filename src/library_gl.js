@@ -376,6 +376,8 @@ var LibraryGL = {
       var data = GL.getTexPixelData(type, format, width, height, pixels, internalFormat);
       pixels = data.pixels;
       internalFormat = data.internalFormat;
+    } else {
+      pixels = null;
     }
     Module.ctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
   },
@@ -384,6 +386,8 @@ var LibraryGL = {
     if (pixels) {
       var data = GL.getTexPixelData(type, format, width, height, pixels, -1);
       pixels = data.pixels;
+    } else {
+      pixels = null;
     }
     Module.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
