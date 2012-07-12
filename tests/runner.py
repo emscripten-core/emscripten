@@ -7912,6 +7912,9 @@ elif 'browser' in str(sys.argv):
     def test_sdl_canvas_palette(self):
       self.btest('sdl_canvas_palette.c', reference='sdl_canvas_palette.png')
 
+    def test_sdl_maprgba(self):
+      self.btest('sdl_maprgba.c', reference='sdl_maprgba.png')
+
     def zzztest_sdl_canvas_palette_2(self): # XXX disabled until we have proper automation
       open(os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette_2.c')).read()))
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('Module[\'preRun\'] = function() { SDL.defaults.copyOnLock = false }')
