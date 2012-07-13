@@ -9,6 +9,19 @@ int last = 0;
 
 extern "C" {
 
+bool pre1ed = false;
+bool pre2ed = false;
+void pre1() {
+  assert(!pre1ed);
+  assert(!pre2ed);
+  pre1ed = true;
+}
+void pre2() {
+  assert(pre1ed);
+  assert(!pre2ed);
+  pre2ed = true;
+}
+
 bool fived = false;
 void five() {
   fived = true;
@@ -22,7 +35,14 @@ void mainey() {
     emscripten_pause_main_loop();
     emscripten_async_call(five, 1000);
   } else if (counter == 22) { // very soon after 20, so without pausing we fail
-    int result = fived;
+    assert(fived);
+    emscripten_push_main_loop_blocker(pre1);
+    emscripten_push_main_loop_blocker(pre2);
+  } else if (counter == 23) {
+    assert(pre1ed);
+    assert(pre2ed);
+    printf("Good!\n");
+    int result = 1;
     REPORT_RESULT();
   }
 }

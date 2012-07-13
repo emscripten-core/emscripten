@@ -49,6 +49,12 @@ extern void emscripten_resume_main_loop();
 extern void emscripten_cancel_main_loop();
 
 /*
+ * Add a function to a queue of events that will execute
+ * before the main loop will continue.
+ */
+extern void emscripten_push_main_loop_blocker(void (*func)());
+
+/*
  * Call a C function asynchronously, that is, after returning
  * control to the JS event loop. This is done by a setTimeout.
  * When building natively this becomes a simple direct call,

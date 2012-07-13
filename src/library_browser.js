@@ -12,6 +12,7 @@ mergeInto(LibraryManager.library, {
       scheduler: null,
       shouldPause: false,
       paused: false,
+      queue: [],
       pause: function() {
         Browser.mainLoop.shouldPause = true;
       },
@@ -220,6 +221,11 @@ mergeInto(LibraryManager.library, {
 
     var jsFunc = FUNCTION_TABLE[func];
     var wrapper = function() {
+      if (Browser.mainLoop.queue.length > 0) {
+        Browser.mainLoop.queue.shift()();
+        Browser.mainLoop.scheduler();
+        return;
+      }
       if (Browser.mainLoop.shouldPause) {
         // catch pauses from non-main loop sources
         Browser.mainLoop.paused = true;
@@ -247,17 +253,21 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.scheduler();
   },
 
-  emscripten_cancel_main_loop: function(func) {
+  emscripten_cancel_main_loop: function() {
     Browser.mainLoop.scheduler = null;
     Browser.mainLoop.shouldPause = true;
   },
 
-  emscripten_pause_main_loop: function(func) {
+  emscripten_pause_main_loop: function() {
     Browser.mainLoop.pause();
   },
 
-  emscripten_resume_main_loop: function(func) {
+  emscripten_resume_main_loop: function() {
     Browser.mainLoop.resume();
+  },
+
+  emscripten_push_main_loop_blocker: function(func) {
+    Browser.mainLoop.queue.push(FUNCTION_TABLE[func]);
   },
 
   emscripten_async_call: function(func, millis) {
