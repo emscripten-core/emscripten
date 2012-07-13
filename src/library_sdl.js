@@ -1224,9 +1224,45 @@ var LibrarySDL = {
     }
     // Either play the element, or load the dynamic data into it
     if (info.buffer) {
+      var contextCtor = null;
       if (audio && ('mozSetup' in audio)) { // Audio Data API
         audio['mozSetup'](audio.getAttribute("data-numchannels"), audio.getAttribute("data-frequency"));
         audio["mozWriteAudio"](info.buffer);
+      } else if (contextCtor = (window.AudioContext || // WebAudio API
+                                window.webkitAudioContext)) {
+        var currentIndex = 0;
+        var numChannels = parseInt(audio.getAttribute("data-numchannels"));
+        var context = new contextCtor();
+        var source = context.createBufferSource();
+        source.loop = false;
+        source.buffer = context.createBuffer(numChannels, 1, audio.getAttribute("data-frequency"));
+        var jsNode = context.createJavaScriptNode(2048, numChannels, numChannels);
+        jsNode.onaudioprocess = function(event) {
+          var buffers = new Array(numChannels);
+          for (var i = 0; i < numChannels; ++i) {
+            buffers[i] = event.outputBuffer.getChannelData(i);
+          }
+          var remaining = info.buffer.length - currentIndex;
+          if (remaining > 2048) {
+            remaining = 2048;
+          }
+          for (var i = 0; i < remaining;) {
+            for (var j = 0; j < numChannels; ++j) {
+              buffers[j][i] = info.buffer[currentIndex + i + j] * audio.volume;
+            }
+            i += j;
+          }
+          currentIndex += remaining * numChannels;
+          for (var i = remaining; i < 2048;) {
+            for (var j = 0; j < numChannels; ++j) {
+              buffers[j][i] = 0; // silence
+            }
+            i += j;
+          }
+        };
+        source.connect(jsNode);
+        jsNode.connect(context.destination);
+        source.noteOn(0);
       }
     } else {
       audio.play();
