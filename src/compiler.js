@@ -48,6 +48,9 @@ if (ENVIRONMENT_IS_NODE) {
 
   arguments_ = process['argv'].slice(2);
 
+  // Print the shbang line
+  print('#!/usr/bin/env node');
+
 } else if (ENVIRONMENT_IS_SHELL) {
   // Polyfill over SpiderMonkey/V8 differences
   if (!this['read']) {
