@@ -733,10 +733,11 @@ Module['String_len'] = String_len;
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.
 // For LLVM-originating strings, see parser.js:parseLLVMString function
-function intArrayFromString(stringy, dontAddNull, length /* optional */) {
+function intArrayFromString(stringy_, dontAddNull, length /* optional */) {
   var ret = [];
   var t;
   var i = 0;
+  var stringy = unescape(encodeURIComponent(stringy_));
   if (length === undefined) {
     length = stringy.length;
   }
