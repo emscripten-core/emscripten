@@ -223,6 +223,7 @@ mergeInto(LibraryManager.library, {
     var wrapper = function() {
       if (Browser.mainLoop.queue.length > 0) {
         Browser.mainLoop.queue.shift()();
+        if (Browser.mainLoop.queue.length == 0 && Module['setStatus']) Module['setStatus']('');
         setTimeout(wrapper, 0);
         return;
       }
@@ -267,6 +268,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_push_main_loop_blocker: function(func) {
+    if (Module['setStatus']) Module['setStatus']('Please wait..');
     Browser.mainLoop.queue.push(FUNCTION_TABLE[func]);
   },
 
