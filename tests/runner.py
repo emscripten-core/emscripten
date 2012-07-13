@@ -7849,7 +7849,7 @@ elif 'browser' in str(sys.argv):
         expected = [str(i) for i in range(0, reference_slack+1)]
         shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
         self.reftest(path_from_root('tests', reference))
-        args += ['--pre-js', 'reftest.js']
+        args = args + ['--pre-js', 'reftest.js']
       Popen(['python', EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html'] + args).communicate()
       if type(expected) is str: expected = [expected]
       self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
