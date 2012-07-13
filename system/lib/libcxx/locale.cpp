@@ -1418,10 +1418,10 @@ codecvt<wchar_t, char, mbstate_t>::do_in(state_type& st,
                 case 0:
                     ++frm;
                     break;
-                case static_cast<size_t>(-1):
+                case static_cast<size_t>(-1): // XXX EMSCRIPTEN
                     frm_nxt = frm;
                     return error;
-                case static_cast<size_t>(-2):
+                case static_cast<size_t>(-2): // XXX EMSCRIPTEN
                     frm_nxt = frm;
                     return partial;
                 default:
@@ -1524,8 +1524,8 @@ codecvt<wchar_t, char, mbstate_t>::do_length(state_type& st,
             ++nbytes;
             ++frm;
             break;
-        case static_cast<size_t>(-1):
-        case static_cast<size_t>(-2):
+        case static_cast<size_t>(-1): // XXX EMSCRIPTEN
+        case static_cast<size_t>(-2): // XXX EMSCRIPTEN
             return nbytes;
         default:
             nbytes += n;
