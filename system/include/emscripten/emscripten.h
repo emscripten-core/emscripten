@@ -52,7 +52,13 @@ extern void emscripten_cancel_main_loop();
  * Add a function to a queue of events that will execute
  * before the main loop will continue.
  */
+#if EMSCRIPTEN
 extern void emscripten_push_main_loop_blocker(void (*func)());
+#else
+inline void emscripten_push_main_loop_blocker(void (*func)()) {
+  func();
+}
+#endif
 
 /*
  * Call a C function asynchronously, that is, after returning

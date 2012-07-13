@@ -223,7 +223,7 @@ mergeInto(LibraryManager.library, {
     var wrapper = function() {
       if (Browser.mainLoop.queue.length > 0) {
         Browser.mainLoop.queue.shift()();
-        Browser.mainLoop.scheduler();
+        setTimeout(wrapper, 0);
         return;
       }
       if (Browser.mainLoop.shouldPause) {
