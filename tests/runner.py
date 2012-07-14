@@ -5306,7 +5306,7 @@ def process(filename):
     ))
   ).replace(
     '// {{POST_RUN_ADDITIONS}}',
-    "Module.print('Data: ' + JSON.stringify(FS.root.contents['image.raw'].contents));"
+    "Module.print('Data: ' + JSON.stringify(FS.analyzePath('image.raw').object.contents));"
   )
   open(filename, 'w').write(src)
 '''
