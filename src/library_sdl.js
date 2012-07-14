@@ -50,10 +50,10 @@ var LibrarySDL = {
       33: 1099, // pagedup
       34: 1102, // pagedown
 
-      17:  305, // control (right, or left)
-      18:  308, // alt
+      17:  1248, // control (right, or left)
+      18:  1250, // alt
       173: 45, // minus
-      16:  304, // shift
+      16:  1249, // shift
       
       96: 88 | 1<<10, // keypad 0
       97: 89 | 1<<10, // keypad 1
