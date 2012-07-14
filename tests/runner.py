@@ -296,7 +296,7 @@ process(sys.argv[1])
       os.makedirs(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True):
+  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
@@ -316,7 +316,7 @@ process(sys.argv[1])
     print >> sys.stderr, '<building and saving into cache> ',
 
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
-                                  copy_project=True)
+                                  copy_project=True, env_init=env_init)
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -5274,6 +5274,7 @@ def process(filename):
                                  [os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o'),
                                   os.path.join('poppler', '.libs', 'libpoppler.a')],
+                                 env_init={ 'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' ' },
                                  configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
 
       # Combine libraries
