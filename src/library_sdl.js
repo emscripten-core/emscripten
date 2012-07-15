@@ -983,8 +983,12 @@ var LibrarySDL = {
     }
     var raw = Module["preloadedImages"][filename];
     if (!raw) {
+      if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
       Runtime.warnOnce('Cannot find preloaded image ' + filename);
       return 0;
+    }
+    if (Module['freePreloadedMediaOnUse']) {
+      Module["preloadedImages"][filename] = null;
     }
     var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
     var surfData = SDL.surfaces[surf];
@@ -1120,8 +1124,12 @@ var LibrarySDL = {
     filename = FS.standardizePath(Pointer_stringify(filename));
     var raw = Module["preloadedAudios"][filename];
     if (!raw) {
+      if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
       Runtime.warnOnce('Cannot find preloaded audio ' + filename);
       return 0;
+    }
+    if (Module['freePreloadedMediaOnUse']) {
+      Module["preloadedAudios"][filename] = null;
     }
     var id = SDL.audios.length;
     SDL.audios.push({
