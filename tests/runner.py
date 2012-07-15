@@ -4483,13 +4483,16 @@ def process(filename):
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
       src = r'''
         #include <stdio.h>
+        #include <emscripten.h>
+
+        char *c = "μ†ℱ ╋ℯ╳╋";
 
         int main() {
-          char *c = "μ†ℱ ╋ℯ╳╋";
           printf("%d %d %d %d %s\n", c[0]&0xff, c[1]&0xff, c[2]&0xff, c[3]&0xff, c);
+          emscripten_run_script("Module.print(Pointer_stringify(Module.getValue(_c, '*')))");
         }
       '''
-      self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋\n');
+      self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋\nμ†ℱ ╋ℯ╳╋\n');
 
     def test_direct_string_constant_usage(self):
       if self.emcc_args is None: return self.skip('requires libcxx')
