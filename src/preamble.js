@@ -521,7 +521,7 @@ function Pointer_stringify(ptr, /* optional */ length) {
   while (1) {
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
     if (nullTerminated && t == 0) break;
-    ret += utf8.feed(t);
+    ret += utf8.processCChar(t);
     i += 1;
     if (!nullTerminated && i == length) break;
   }
@@ -734,22 +734,9 @@ Module['String_len'] = String_len;
 // This processes a JS string into a C-line array of numbers, 0-terminated.
 // For LLVM-originating strings, see parser.js:parseLLVMString function
 function intArrayFromString(stringy, dontAddNull, length /* optional */) {
-  var ret = [];
-  var t;
-  var i = 0;
-  if (length === undefined) {
-    length = stringy.length;
-  }
-  while (i < length) {
-    var chr = stringy.charCodeAt(i);
-    if (chr > 0xFF) {
-#if ASSERTIONS
-        assert(false, 'Character code ' + chr + ' (' + stringy[i] + ')  at offset ' + i + ' not in 0x00-0xFF.');
-#endif
-      chr &= 0xFF;
-    }
-    ret.push(chr);
-    i = i + 1;
+  var ret = (new Runtime.UTF8Processor()).processJSString(stringy);
+  if (length) {
+    ret.length = length;
   }
   if (!dontAddNull) {
     ret.push(0);
@@ -776,20 +763,12 @@ Module['intArrayToString'] = intArrayToString;
 
 // Write a Javascript array to somewhere in the heap
 function writeStringToMemory(string, buffer, dontAddNull) {
+  var array = intArrayFromString(string, dontAddNull);
   var i = 0;
-  while (i < string.length) {
-    var chr = string.charCodeAt(i);
-    if (chr > 0xFF) {
-#if ASSERTIONS
-        assert(false, 'Character code ' + chr + ' (' + string[i] + ')  at offset ' + i + ' not in 0x00-0xFF.');
-#endif
-      chr &= 0xFF;
-    }
+  while (i < array.length) {
+    var chr = array[i];
     {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}}
     i = i + 1;
-  }
-  if (!dontAddNull) {
-    {{{ makeSetValue('buffer', 'i', '0', 'i8') }}}
   }
 }
 Module['writeStringToMemory'] = writeStringToMemory;

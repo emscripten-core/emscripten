@@ -373,7 +373,7 @@ LibraryManager.library = {
           output.printer(output.buffer.join(''));
           output.buffer = [];
         } else {
-          output.buffer.push(utf8.feed(val));
+          output.buffer.push(utf8.processCChar(val));
         }
       }
       if (!output) {

@@ -334,10 +334,13 @@ var Runtime = {
     return Runtime.funcWrappers[func];
   },
 
+  // Returns a processor of UTF.
+  // processCChar() receives characters from a C-like UTF representation and returns JS string fragments.
+  // processJSString() receives a JS string and returns a C-like UTF representation in an array
   UTF8Processor: function() {
     var buffer = [];
     var needed = 0;
-    this.feed = function (code) {
+    this.processCChar = function (code) {
       code = code & 0xff;
       if (needed) {
         buffer.push(code);
@@ -364,6 +367,14 @@ var Runtime = {
         ret = String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
       }
       buffer.length = 0;
+      return ret;
+    }
+    this.processJSString = function(string) {
+      string = unescape(encodeURIComponent(string));
+      var ret = [];
+      for (var i = 0; i < string.length; i++) {
+        ret.push(string.charCodeAt(i));
+      }
       return ret;
     }
   },
