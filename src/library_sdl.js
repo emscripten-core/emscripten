@@ -28,6 +28,9 @@ var LibrarySDL = {
     mixerNumChannels: 2,
     mixerChunkSize: 1024,
 
+    GL: false, // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do not create 2D canvases&contexts for blitting
+               // Note that images loaded before SDL_SetVideoMode will not get this optimization
+
     keyboardState: null,
     shiftKey: false,
     ctrlKey: false,
@@ -263,6 +266,7 @@ var LibrarySDL = {
 
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
+      SDL.GL = SDL.GL || useWebGL;
       var canvas;
       if (!usePageCanvas) {
         canvas = document.createElement('canvas');
@@ -695,6 +699,8 @@ var LibrarySDL = {
 
   // Copy data from the C++-accessible storage to the canvas backing
   SDL_UnlockSurface: function(surf) {
+    assert(!SDL.GL); // in GL mode we do not keep around 2D canvases and contexts
+
     var surfData = SDL.surfaces[surf];
 
     surfData.locked--;
@@ -989,6 +995,10 @@ var LibrarySDL = {
     //     are in fact available, so we retrieve it here. This does add overhead though.
     _SDL_LockSurface(surf);
     surfData.locked--; // The surface is not actually locked in this hack
+    if (SDL.GL) {
+      // After getting the pixel data, we can free the canvas and context if we do not need to do 2D canvas blitting
+      surfData.canvas = surfData.ctx = null;
+    }
     return surf;
   },
   SDL_LoadBMP: 'IMG_Load',
