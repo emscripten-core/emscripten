@@ -334,6 +334,40 @@ var Runtime = {
     return Runtime.funcWrappers[func];
   },
 
+  UTF8Processor: function() {
+    var buffer = [];
+    var needed = 0;
+    this.feed = function (code) {
+      code = code & 0xff;
+      if (needed) {
+        buffer.push(code);
+        needed--;
+      }
+      if (buffer.length == 0) {
+        if (code < 128) return String.fromCharCode(code);
+        buffer.push(code);
+        if (code > 191 && code < 224) {
+          needed = 1;
+        } else {
+          needed = 2;
+        }
+        return '';
+      }
+      if (needed > 0) return '';
+      var c1 = buffer[0];
+      var c2 = buffer[1];
+      var c3 = buffer[2];
+      var ret;
+      if (c1 > 191 && c1 < 224) {
+        ret = String.fromCharCode(((c1 & 31) << 6) | (c2 & 63));
+      } else {
+        ret = String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+      }
+      buffer.length = 0;
+      return ret;
+    }
+  },
+
 #if RUNTIME_DEBUG
   debug: true, // Switch to false at runtime to disable logging at the right times
 

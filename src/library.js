@@ -367,44 +367,13 @@ LibraryManager.library = {
           return input.cache.shift();
         };
       }
-
-      var utf8Buffer = [];
-      var utf8Needed = 0;
-      function utf8Processor(code) {
-        code = code & 0xff;
-        if (utf8Needed) {
-          utf8Buffer.push(code);
-          utf8Needed--;
-        }
-        if (utf8Buffer.length == 0) {
-          if (code < 128) return String.fromCharCode(code);
-          utf8Buffer.push(code);
-          if (code > 191 && code < 224) {
-            utf8Needed = 1;
-          } else {
-            utf8Needed = 2;
-          }
-          return '';
-        }
-        if (utf8Needed > 0) return '';
-        var c1 = utf8Buffer[0];
-        var c2 = utf8Buffer[1];
-        var c3 = utf8Buffer[2];
-        var ret;
-        if (c1 > 191 && c1 < 224) {
-          ret = String.fromCharCode(((c1 & 31) << 6) | (c2 & 63));
-        } else {
-          ret = String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
-        }
-        utf8Buffer.length = 0;
-        return ret;
-      }
+      var utf8 = new Runtime.UTF8Processor();
       function simpleOutput(val) {
         if (val === null || val === '\n'.charCodeAt(0)) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
         } else {
-          output.buffer.push(utf8Processor(val));
+          output.buffer.push(utf8.feed(val));
         }
       }
       if (!output) {
