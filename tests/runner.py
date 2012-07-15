@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# This Python file uses the following encoding: utf-8
 
 '''
 Simple test runner
@@ -4477,6 +4478,18 @@ def process(filename):
         second changed: false
       '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
+
+    def test_utf(self):
+      self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
+      src = r'''
+        #include <stdio.h>
+
+        int main() {
+          char *c = "μ†ℱ ╋ℯ╳╋";
+          printf("%d %d %d %d %s\n", c[0]&0xff, c[1]&0xff, c[2]&0xff, c[3]&0xff, c);
+        }
+      '''
+      self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋\n');
 
     def test_direct_string_constant_usage(self):
       if self.emcc_args is None: return self.skip('requires libcxx')
