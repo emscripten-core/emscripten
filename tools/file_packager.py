@@ -182,6 +182,10 @@ if crunch:
       except:
         format = []
       Popen([CRUNCH, '-file', file_['name'], '-quality', crunch] + format, stdout=sys.stderr).communicate()
+      #if not os.path.exists(os.path.basename(crunch_name)):
+      #  print >> sys.stderr, 'Failed to crunch, perhaps a weird dxt format? Looking for a source PNG for the DDS'
+      #  Popen([CRUNCH, '-file', unsuffixed(file_['name']) + '.png', '-quality', crunch] + format, stdout=sys.stderr).communicate()
+      assert os.path.exists(os.path.basename(crunch_name)), 'crunch failed to generate output'
       shutil.move(os.path.basename(crunch_name), crunch_name) # crunch places files in the current dir
       # prepend the dds header
       crunched = open(crunch_name, 'rb').read()
