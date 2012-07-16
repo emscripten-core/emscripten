@@ -3970,6 +3970,10 @@ at function.:blag
 
           printf("%f, %f\n", atof("1.234567"), atof("cheez"));
 
+          float n = -1;
+          sscanf(" 2.8208", "%f", &n);
+          printf("%.4f\n", n);
+
           float a = -1;
           sscanf("-3.03", "%f", &a);
           printf("%.4f\n", a);
@@ -3999,7 +4003,7 @@ at function.:blag
           return 0;
         }
         '''
-      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
+      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n2.8208\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
                        '1\n1499\n' +
                        '5\n87,0.481565,0.059481,0,1\n' +
                        '3\n-123,4294966531,-34\n')

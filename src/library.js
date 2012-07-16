@@ -2282,6 +2282,14 @@ LibraryManager.library = {
     var fields = 0;
     var argIndex = 0;
     var next;
+    // remove initial whitespace
+    while (1) {
+      next = get();
+      if (next == 0) return 0;
+      if (!(next in __scanString.whiteSpace)) break;
+    } 
+    unget();
+    next = 1;
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
       if (next <= 0) return fields;
       var next = get();
