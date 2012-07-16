@@ -978,6 +978,36 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+    def test_bswap(self):
+      if self.emcc_args == None: return self.skip('needs ta2')
+
+      src = r'''
+        #include <stdio.h>
+
+        extern "C" {
+          extern unsigned short llvm_bswap_i16(unsigned short x);
+          extern unsigned int llvm_bswap_i32(unsigned int x);
+        }
+
+        int main(void) {
+            unsigned short x = 0xc8ef;
+            printf("%x,%x\n", x&0xff, x >> 8);
+            x = llvm_bswap_i16(x);
+            printf("%x,%x\n", x&0xff, x >> 8);
+
+            unsigned int y = 0xc5de158a;
+            printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
+            y = llvm_bswap_i32(y);
+            printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
+            return 0;
+        }
+      '''
+      self.do_run(src, '''ef,c8
+c8,ef
+8a,15,de,c5
+c5,de,15,8a
+''')
+
     def test_sha1(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 

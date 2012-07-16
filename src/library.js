@@ -4528,33 +4528,11 @@ LibraryManager.library = {
   },
 
   llvm_bswap_i16: function(x) {
-    x = unSign(x, 32);
-    var bytes = [];
-    bytes[0] = x & 255;
-    x >>= 8;
-    bytes[1] = x & 255;
-    x >>= 8;
-    var ret = 0;
-    ret <<= 8;
-    ret += bytes[0];
-    ret <<= 8;
-    ret += bytes[1];
-    return ret;
+    return ((x&0xff)<<8) | ((x>>8)&0xff);
   },
 
   llvm_bswap_i32: function(x) {
-    x = unSign(x, 32);
-    var bytes = [];
-    for (var i = 0; i < 4; i++) {
-      bytes[i] = x & 255;
-      x >>= 8;
-    }
-    var ret = 0;
-    for (i = 0; i < 4; i++) {
-      ret <<= 8;
-      ret += bytes[i];
-    }
-    return ret;
+    return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
   },
 
   llvm_ctlz_i32: function(x) {
