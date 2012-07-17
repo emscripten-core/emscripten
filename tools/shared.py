@@ -43,12 +43,31 @@ except Exception, e:
   print >> sys.stderr, 'Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text)
   sys.exit(1)
 
+# Expectations
+
+EXPECTED_LLVM_VERSION = (3,1)
+
+def check_llvm_version():
+  try:
+    expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
+    actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0][0:len(expected)]
+    if expected != actual:
+      print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
+  except Exception, e:
+    print >> sys.stderr, 'warning: Could not verify LLVM version: %s' % str(e)
+
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
 # only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
 # we re-check sanity when the settings are changed)
 def check_sanity(force=False):
+  check_llvm_version() # just a warning, not a fatal check - do it even if EM_IGNORE_SANITY is on
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    print >> sys.stderr, 'EM_IGNORE_SANITY set, ignoring sanity checks'
+    return
+
   try:
     if not force:
       if not CONFIG_FILE:

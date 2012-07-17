@@ -15,7 +15,7 @@ will use 4 processes. To install nose do something like
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat
 
 
 if len(sys.argv) == 1:
@@ -8454,6 +8454,44 @@ elif 'sanity' in str(sys.argv):
       try_delete('a.out.js')
       output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], '')
       assert os.path.exists('a.out.js')
+
+    def test_llvm(self):
+      LLVM_WARNING = 'warning: LLVM version appears incorrect'
+
+      restore()
+
+      # Clang should report the version number we expect, and emcc should not warn
+      assert ('clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))) in Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+      output = self.check_working(EMCC)
+      assert LLVM_WARNING not in output, output
+
+      # Fake a different llvm version
+      restore()
+      f = open(CONFIG_FILE, 'a')
+      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
+      f.close()
+
+      if not os.path.exists(path_from_root('tests', 'fake')):
+        os.makedirs(path_from_root('tests', 'fake'))
+
+      try:
+        os.environ['EM_IGNORE_SANITY'] = '1'
+        for x in range(-2, 3):
+          for y in range(-2, 3):
+            f = open(path_from_root('tests', 'fake', 'clang'), 'w')
+            f.write('#!/bin/sh\n')
+            f.write('echo "clang version %d.%d" 1>&2\n' % (EXPECTED_LLVM_VERSION[0] + x, EXPECTED_LLVM_VERSION[1] + y))
+            f.close()
+            shutil.copyfile(path_from_root('tests', 'fake', 'clang'), path_from_root('tests', 'fake', 'clang++'))
+            os.chmod(path_from_root('tests', 'fake', 'clang'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+            os.chmod(path_from_root('tests', 'fake', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+            if x != 0 or y != 0:
+              output = self.check_working(EMCC, LLVM_WARNING)
+            else:
+              output = self.check_working(EMCC)
+              assert LLVM_WARNING not in output, output
+      finally:
+        del os.environ['EM_IGNORE_SANITY']
 
     def test_emcc(self):
       SANITY_MESSAGE = 'Emscripten: Running sanity checks'
