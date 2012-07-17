@@ -502,6 +502,10 @@ function analyzer(data, sidePass) {
                         };
                       };
                       if (value.op == 'icmp') {
+                        if (sourceBits == 64) { // handle the i64 case in processMathOp, where we handle full i64 math
+                          i++;
+                          continue;
+                        }
                         finalizer = function() {
                           var ident = '';
                           for (var i = 0; i < targetElements.length; i++) {
