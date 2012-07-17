@@ -2288,7 +2288,7 @@ LibraryManager.library = {
       if (next == 0) return 0;
       if (!(next in __scanString.whiteSpace)) break;
     } 
-    unget();
+    unget(next);
     next = 1;
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
       if (next <= 0) return fields;
@@ -2328,11 +2328,10 @@ LibraryManager.library = {
             }
             next = get();
           }
+          unget(next);
           while (buffer.length > last) {
-            buffer.pop();
-            unget();
+            unget(buffer.pop().charCodeAt(0));
           }
-          unget();
           next = get();
         } else {
           var first = true;
@@ -2389,7 +2388,7 @@ LibraryManager.library = {
           next = get();
           if (next <= 0) return fields;  // End of input.
         }
-        unget();
+        unget(next);
       } else {
         // Not a specifier.
         if (format[formatIndex].charCodeAt(0) !== next) {
