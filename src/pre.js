@@ -123,7 +123,7 @@ if (!Module['postRun']) Module['postRun'] = [];
 
 
 // Initialize memory arrays (in global scope to facilitate optimization) TODO: resizing
-var memoryBuffer = new ArrayBuffer(TOTAL_MEMORY);
+var memoryBuffer = new ArrayBuffer(Module['initialMemory'] || 10*1024*1024);
 var HEAP8 = new Int8Array(memoryBuffer);
 var HEAP16 = new Int16Array(memoryBuffer);
 var HEAP32 = new Int32Array(memoryBuffer);
