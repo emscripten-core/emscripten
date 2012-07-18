@@ -33,6 +33,7 @@ LibraryManager.library = {
                 'Module["FS_createFolder"] = FS.createFolder;' +
                 'Module["FS_createPath"] = FS.createPath;' +
                 'Module["FS_createDataFile"] = FS.createDataFile;' +
+                'Module["FS_createPreloadedFile"] = FS.createPreloadedFile;' +
                 'Module["FS_createLazyFile"] = FS.createLazyFile;' +
                 'Module["FS_createLink"] = FS.createLink;' +
                 'Module["FS_createDevice"] = FS.createDevice;',
@@ -280,9 +281,12 @@ LibraryManager.library = {
     // the browser-friendly versions of it: For an image, we preload an Image
     // element and for an audio, and Audio. These are necessary for SDL_Image
     // and _Mixer to find the files in preloadedImages/Audios.
+    // You can also call this with a typed array instead of a url. It will then
+    // do preloading for the Image/Audio part, as if the typed array were the
+    // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror) {
       Browser.ensureObjects();
-      Browser.asyncLoad(url, function(byteArray) {
+      function finish(byteArray) {
         FS.createDataFile(parent, name, byteArray, canRead, canWrite);
         if (Browser.isImageFile(name)) {
           var bb = new Browser.BlobBuilder();
@@ -337,7 +341,14 @@ LibraryManager.library = {
         } else {
           if (onload) onload();
         }
-      }, onerror);
+      }
+      if (typeof url == 'string') {
+        Browser.asyncLoad(url, function(byteArray) {
+          finish(byteArray);
+        }, onerror);
+      } else {
+        finish(url);
+      }
     },
     // Creates a link to a sepcific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
