@@ -430,9 +430,13 @@ var LibrarySDL = {
 
           {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
 
-          SDL.shiftKey = event.shiftKey;
-          SDL.ctrlKey = event.ctrlKey;
-          SDL.altKey = event.altKey;
+          if (event.keyCode == 16) { //shift
+            SDL.shiftKey = event.type == "keydown";
+          } else if (event.keyCode == 17) { //control
+            SDL.ctrlKey = event.type == "keydown";
+          } else if (event.keyCode == 18) { //alt
+            SDL.altKey = event.type == "keydown";
+          }
 
           break;
         }
@@ -798,9 +802,9 @@ var LibrarySDL = {
 
   SDL_GetModState: function() {
     // TODO: numlock, capslock, etc.
-    return (SDL.shiftKey ? 0x0001 & 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-           (SDL.ctrlKey ? 0x0040 & 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-           (SDL.altKey ? 0x0100 & 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+    return (SDL.shiftKey ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
+           (SDL.ctrlKey ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
+           (SDL.altKey ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
   },
 
   SDL_GetMouseState: function(x, y) {
