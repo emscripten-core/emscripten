@@ -832,6 +832,7 @@ try:
   if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
   execute([shared.LLVM_COMPILER, '-mtriple=sparc', final, '-o=' + final + '.js'])
   final += '.js'
+  if DEBUG: save_intermediate('llvmjs')
 
   # Embed and preload files
   if len(preload_files) + len(embed_files) > 0:
@@ -851,13 +852,17 @@ try:
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('files')
 
-  # Apply pre and postjs files
-  if pre_js or post_js:
-    if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
-    src = open(final).read()
-    final += '.pp.js'
-    open(final, 'w').write(pre_js + src + post_js)
-    if DEBUG: save_intermediate('pre-post')
+  # Apply pre and postjs files as well as the standard pre.js and post.js
+  pre_js = open(shared.path_from_root('src', 'pre.js')).read() + '\n' + pre_js
+  post_js += '\n' + open(shared.path_from_root('src', 'post.js')).read()
+
+  if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
+  pre_post = open(final + '.pp.js', 'w');
+  pre_post.write(pre_js)
+  pre_post.write(open(final).read())
+  pre_post.write(post_js)
+  final += '.pp.js'
+  if DEBUG: save_intermediate('pre-post')
 
   # Apply a source code transformation, if requested
   if js_transform:
