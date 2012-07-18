@@ -4926,7 +4926,7 @@ LibraryManager.library = {
   floor: 'Math.floor',
   floorf: 'Math.floor',
   pow: 'Math.pow',
-  powf: 'Math.powf',
+  powf: 'Math.pow',
   llvm_sqrt_f32: 'Math.sqrt',
   llvm_sqrt_f64: 'Math.sqrt',
   llvm_pow_f32: 'Math.pow',
