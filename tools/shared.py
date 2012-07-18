@@ -62,12 +62,6 @@ def check_llvm_version():
 # only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
 # we re-check sanity when the settings are changed)
 def check_sanity(force=False):
-  check_llvm_version() # just a warning, not a fatal check - do it even if EM_IGNORE_SANITY is on
-
-  if os.environ.get('EM_IGNORE_SANITY'):
-    print >> sys.stderr, 'EM_IGNORE_SANITY set, ignoring sanity checks'
-    return
-
   try:
     if not force:
       if not CONFIG_FILE:
@@ -83,6 +77,12 @@ def check_sanity(force=False):
 
       print >> sys.stderr, '(Emscripten: Config file changed, clearing cache)' # LLVM may have changed, etc.
       Cache.erase()
+
+    check_llvm_version() # just a warning, not a fatal check - do it even if EM_IGNORE_SANITY is on
+
+    if os.environ.get('EM_IGNORE_SANITY'):
+      print >> sys.stderr, 'EM_IGNORE_SANITY set, ignoring sanity checks'
+      return
 
     print >> sys.stderr, '(Emscripten: Running sanity checks)'
 
