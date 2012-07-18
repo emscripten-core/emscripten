@@ -828,24 +828,10 @@ try:
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
       if DEBUG: save_intermediate('dce', 'bc')
 
-  # Prepare .ll for Emscripten
-  if not LEAVE_INPUTS_RAW:
-    final = shared.Building.llvm_dis(final, final + '.ll')
-  else:
-    assert len(input_files) == 1
-  if DEBUG: save_intermediate('ll', 'll')
-
-  if AUTODEBUG:
-    if DEBUG: print >> sys.stderr, 'emcc: autodebug'
-    execute(shared.ENV_PREFIX + ['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
-    final += '.ad.ll'
-    if DEBUG: save_intermediate('autodebug', 'll')
-
-  # Emscripten
+  # Run llvm-js
   if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
-  extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
-  final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
-  if DEBUG: save_intermediate('original')
+  execute([shared.LLVM_COMPILER, '-mtriple=sparc', final, '-o=' + final + '.js'])
+  final += '.js'
 
   # Embed and preload files
   if len(preload_files) + len(embed_files) > 0:
@@ -882,59 +868,10 @@ try:
     execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
-  # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
-  js_optimizer_queue = []
-  def flush_js_optimizer_queue():
-    global final, js_optimizer_queue
-    if len(js_optimizer_queue) > 0:
-      if not DEBUG:
-        final = shared.Building.js_optimizer(final, js_optimizer_queue)
-      else:
-        for name in js_optimizer_queue:
-          print >> sys.stderr, 'emcc: applying js optimization pass:', name
-          final = shared.Building.js_optimizer(final, [name])
-          save_intermediate(name)
-      js_optimizer_queue = []
-
-  if opt_level >= 1:
-    if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
-
-    if DEBUG:
-      # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [])
-      if DEBUG: save_intermediate('pretty')
-
-    if shared.Settings.RELOOP:
-      js_optimizer_queue += ['hoistMultiples', 'loopOptimizer']
-
-    flush_js_optimizer_queue()
-
-    if DEBUG: print >> sys.stderr, 'emcc: running variable eliminator'
-    final = shared.Building.eliminator(final)
-    if DEBUG: save_intermediate('eliminator')
-
-    js_optimizer_queue += ['simplifyExpressionsPre']
-    if shared.Settings.RELOOP:
-      js_optimizer_queue += ['optimizeShiftsAggressive'] # aggressive shifts optimization requires loops, it breaks on switches
-      flush_js_optimizer_queue()
-      final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
-      if DEBUG: save_intermediate('eliminator')
-
   if closure:
-    flush_js_optimizer_queue()
-
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
-
-  if opt_level >= 1:
-    if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
-    js_optimizer_queue += ['simplifyExpressionsPost']
-
-  if minify_whitespace:
-    js_optimizer_queue += ['compress']
-
-  flush_js_optimizer_queue()
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
