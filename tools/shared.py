@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, re
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -1015,4 +1015,67 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
+# JS library support
+
+class JSLib:
+  @staticmethod
+  def macroize(text):
+    return re.sub('{{{[^}]+}}}', lambda m: m.group(0)[3:-3], text)
+
+  @staticmethod
+  def preprocess(text, vals={}):
+    # Simple #if/else/endif preprocessing for a file, optionally using if on a set of values
+    lines = text.split('\n')
+    ret = ''
+    showStack = []
+    for i in range(len(lines)):
+      line = lines[i]
+      if len(line) == 0: continue
+      if line[-1] == '\r':
+        line = line[:-1] # Windows will have '\r' left over from splitting over '\r\n'
+      if len(line) == 0: continue
+      if line[0] != '#':
+        if False not in showStack:
+          ret += line + '\n'
+      else:
+        if line[1] == 'i': # if
+          parts = line.split(' ')
+          ident = parts[1] if len(parts) >= 2 else None
+          op = parts[2] if len(parts) >= 3 else None
+          value = parts[3] if len(parts) >= 4 else None
+          if op:
+            assert(op == '==')
+            showStack.append(ident in vals and vals[ident] == value)
+          else:
+            showStack.append(ident in vals and vals[ident] > 0)
+        elif line[2] == 'l': # else
+          showStack.append(not showStack.pop())
+        elif line[2] == 'n': # endif
+          showStack.pop()
+        else:
+          raise "Unclear preprocessor command: " + line
+    assert len(showStack) == 0
+    return ret;
+
+  @staticmethod
+  def load():
+    text = open(path_from_root('src', 'library.js')).read()
+    text = JSLib.preprocess(text)
+    text = JSLib.macroize(text)
+    #print text
+    JSLib.lib = text
+    #JSLib.lib = json.loads(text)
+
+  @staticmethod
+  def write_dependencies(stream, bitcode):
+    JSLib.load()
+    stream.write(JSLib.lib)
+    return
+    symbols = Building.llvm_nm(bitcode)
+    for undef in symbols.undefs:
+      if undef in JSLib.lib:
+        stream.write(json.dumps(JSLib.lib[undef]) + '\n')
+      else:
+        stream.write('// missing %s' % undef)
 
