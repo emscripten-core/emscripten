@@ -7910,6 +7910,7 @@ elif 'browser' in str(sys.argv):
       self.btest('emscripten_api_browser.cpp', '1')
 
     def test_emscripten_fs_api(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png')) # preloaded *after* run
       self.btest('emscripten_fs_api_browser.cpp', '1')
 
     def test_gc(self):

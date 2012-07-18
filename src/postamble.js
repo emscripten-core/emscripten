@@ -45,6 +45,7 @@ function run(args) {
 
   function doRun() {
     var ret = 0;
+    calledRun = true;
     if (Module['_main']) {
       preMain();
       ret = Module.callMain(args);

@@ -793,6 +793,7 @@ var STRING_TABLE = [];
 // it happens right before run - run will be postponed until
 // the dependencies are met.
 var runDependencies = 0;
+var calledRun = false;
 function addRunDependency() {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
@@ -805,9 +806,12 @@ function removeRunDependency() {
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
-  if (runDependencies == 0) run();
+  if (runDependencies == 0 && !calledRun) run();
 }
 Module['removeRunDependency'] = removeRunDependency;
+
+Module["preloadedImages"] = {}; // maps url to image data
+Module["preloadedAudios"] = {}; // maps url to audio data
 
 // === Body ===
 

@@ -273,10 +273,71 @@ LibraryManager.library = {
     },
     // Preloads a file asynchronously. You can call this before run, for example in
     // preRun. run will be delayed until this file arrives and is set up.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite) {
-      Browser.asyncLoad(url, function(data) {
-        FS.createDataFile(parent, name, data, canRead, canWrite);
-      });
+    // If you call it after run(), you may want to pause the main loop until it
+    // completes, if so, you can use the onload parameter to be notified when
+    // that happens.
+    // In addition to normally creating the file, we also asynchronously preload
+    // the browser-friendly versions of it: For an image, we preload an Image
+    // element and for an audio, and Audio. These are necessary for SDL_Image
+    // and _Mixer to find the files in preloadedImages/Audios.
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror) {
+      Browser.ensureObjects();
+      Browser.asyncLoad(url, function(byteArray) {
+        FS.createDataFile(parent, name, byteArray, canRead, canWrite);
+        if (Browser.isImageFile(name)) {
+          var bb = new Browser.BlobBuilder();
+          bb.append(byteArray.buffer);
+          var b = bb.getBlob();
+          var url = Browser.URLObject.createObjectURL(b);
+          var img = new Image();
+          img.onload = function() {
+            assert(img.complete, 'Image ' + url + ' could not be decoded');
+            var canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            Module["preloadedImages"][name] = canvas;
+            Browser.URLObject.revokeObjectURL(url);
+            Module['removeRunDependency']();
+            if (onload) onload();
+          };
+          img.onerror = function(event) {
+            console.log('Image ' + url + ' could not be decoded');
+            if (onerror) onerror();
+          };
+          img.src = url;
+        } else if (Browser.isAudioFile(name)) {
+          if (Browser.hasBlobConstructor) {
+            var b = new Blob([byteArray.buffer], { type: Browser.getAudioMimetype(name) });
+            var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
+            var audio = new Audio();
+            audio.removedDependency = false;
+            audio['oncanplaythrough'] = function() { // XXX string for closure
+              audio['oncanplaythrough'] = null;
+              Module["preloadedAudios"][name] = audio;
+              if (!audio.removedDependency) {
+                Module['removeRunDependency']();
+                audio.removedDependency = true;
+              }
+            };
+            audio.onerror = function(event) {
+              if (!audio.removedDependency) {
+                console.log('Audio ' + url + ' could not be decoded or timed out trying to decode');
+                Module['removeRunDependency']();
+                audio.removedDependency = true;
+              }
+            };
+            setTimeout(audio.onerror, 2000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+            audio.src = url;
+          } else {
+            Module["preloadedAudios"]['%(filename)s'] = new Audio(); // empty shim
+            Module['removeRunDependency']();
+          }
+        } else {
+          if (onload) onload();
+        }
+      }, onerror);
     },
     // Creates a link to a sepcific local path.
     createLink: function(parent, name, target, canRead, canWrite) {

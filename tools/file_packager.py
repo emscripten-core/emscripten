@@ -96,23 +96,6 @@ function assert(check, msg) {
 }
 '''
 
-if has_preloaded:
-  code += '''
-  var BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
-  var URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
-  var hasBlobConstructor;
-  try {
-    new Blob();
-    hasBlobConstructor = true;
-  } catch(e) {
-    hasBlobConstructor = false;
-    console.log("warning: no blob constructor, cannot create blobs with mimetypes");
-  }
-'''
-
-  code += 'Module["preloadedImages"] = {}; // maps url to image data\n'
-  code += 'Module["preloadedAudios"] = {}; // maps url to audio data\n'
-
 # Expand directories into individual files
 def add(mode, dirname, names):
   for name in names:
@@ -244,67 +227,12 @@ for file_ in data_files:
     # Preload
     varname = 'filePreload%d' % counter
     counter += 1
-    image = filename.endswith(IMAGE_SUFFIXES)
-    audio = filename.endswith(AUDIO_SUFFIXES)
     dds = crunch and filename.endswith(CRUNCH_INPUT_SUFFIX)
 
     prepare = ''
     finish = "Module['removeRunDependency']();\n"
 
-    if image:
-      finish =  '''
-        var bb = new BlobBuilder();
-        bb.append(byteArray.buffer);
-        var b = bb.getBlob();
-        var url = URLObject.createObjectURL(b);
-        var img = new Image();
-        img.onload = function() {
-          assert(img.complete, 'Image %(filename)s could not be decoded');
-          var canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          Module["preloadedImages"]['%(filename)s'] = canvas;
-          URLObject.revokeObjectURL(url);
-          Module['removeRunDependency']();
-        };
-        img.onerror = function(event) {
-          console.log('Image %(filename)s could not be decoded');
-        };
-        img.src = url;
-''' % { 'filename': filename }
-    elif audio:
-      # Need actual blob constructor here, to set the mimetype or else audios fail to decode
-      finish =  '''
-        if (hasBlobConstructor) {
-          var b = new Blob([byteArray.buffer], { type: '%(mimetype)s' });
-          var url = URLObject.createObjectURL(b); // XXX we never revoke this!
-          var audio = new Audio();
-          audio.removedDependency = false;
-          audio['oncanplaythrough'] = function() { // XXX string for closure
-            audio['oncanplaythrough'] = null;
-            Module["preloadedAudios"]['%(filename)s'] = audio;
-            if (!audio.removedDependency) {
-              Module['removeRunDependency']();
-              audio.removedDependency = true;
-            }
-          };
-          audio.onerror = function(event) {
-            if (!audio.removedDependency) {
-              console.log('Audio %(filename)s could not be decoded or timed out trying to decode');
-              Module['removeRunDependency']();
-              audio.removedDependency = true;
-            }
-          };
-          setTimeout(audio.onerror, 2000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
-          audio.src = url;
-        } else {
-          Module["preloadedAudios"]['%(filename)s'] = new Audio(); // empty shim
-          Module['removeRunDependency']();
-        }
-''' % { 'filename': filename, 'mimetype': AUDIO_MIMETYPES[suffix(filename)] }
-    elif dds:
+    if dds:
       # decompress crunch format into dds
       prepare = '''
         var ddsHeader = byteArray.subarray(0, %(dds_header_size)d);

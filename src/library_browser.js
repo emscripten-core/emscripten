@@ -27,6 +27,20 @@ mergeInto(LibraryManager.library, {
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
 
+    ensureObjects: function() {
+      if (Browser.ensured) return;
+      Browser.ensured = true;
+      try {
+        new Blob();
+        Browser.hasBlobConstructor = true;
+      } catch(e) {
+        Browser.hasBlobConstructor = false;
+        console.log("warning: no blob constructor, cannot create blobs with mimetypes");
+      }
+      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
+      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
+    },
+
     createContext: function(canvas, useWebGL, setInModule) {
 #if !USE_TYPED_ARRAYS
       if (useWebGL) {
@@ -172,38 +186,52 @@ mergeInto(LibraryManager.library, {
       xhr.send(null);
     },
 
-    asyncLoad: function(url, callback) {
+    asyncLoad: function(url, onload, onerror) {
       Browser.xhrLoad(url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
-        callback(new Uint8Array(arrayBuffer));
+        onload(new Uint8Array(arrayBuffer));
         removeRunDependency();
       }, function(event) {
-        throw 'Loading data file "' + url + '" failed.';
+        if (onerror) {
+          onerror();
+        } else {
+          throw 'Loading data file "' + url + '" failed.';
+        }
       });
       addRunDependency();
-    }
+    },
+
+    isImageFile: function(name) {
+      return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
+    },
+
+    isAudioFile: function(name) {
+      return name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+    },
+
+    getAudioMimetype: function(name) {
+      var ret = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }[name.substr(0, name.length-3)];
+      assert(ret);
+      return ret;
+    },
+
   },
 
   emscripten_async_wget: function(url, file, onload, onerror) {
-    url = Pointer_stringify(url);
-
-    Browser.xhrLoad(url, function(response) {
-      var absolute = Pointer_stringify(file);
-      var index = absolute.lastIndexOf('/');
-      FS.createDataFile(
-        absolute.substr(0, index),
-        absolute.substr(index +1), 
-        new Uint8Array(response), 
-        true, true);
-
-      if (onload) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    var index = _file.lastIndexOf('/');
+    FS.createPreloadedFile(
+      _file.substr(0, index),
+      _file.substr(index +1),
+      _url, true, true,
+      function() {
         FUNCTION_TABLE[onload](file);
-      }
-    }, function(event) {
-      if (onerror) {
+      },
+      function() {
         FUNCTION_TABLE[onerror](file);
       }
-    });
+    );
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],
