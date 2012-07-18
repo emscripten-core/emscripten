@@ -210,7 +210,7 @@ mergeInto(LibraryManager.library, {
     },
 
     getAudioMimetype: function(name) {
-      var ret = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }[name.substr(0, name.length-3)];
+      var ret = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }[name.substr(-3)];
       assert(ret);
       return ret;
     },

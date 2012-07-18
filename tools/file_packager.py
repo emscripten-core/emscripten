@@ -92,7 +92,7 @@ for arg in sys.argv[1:]:
 
 code = '''
 function assert(check, msg) {
-  if (!check) throw msg;
+  if (!check) throw msg + new Error().stack;
 }
 '''
 
