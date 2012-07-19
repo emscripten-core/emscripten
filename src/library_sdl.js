@@ -45,6 +45,7 @@ var LibrarySDL = {
     DOMEventToSDLEvent: {},
 
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
+      46: 127, // SDLK_DEL == '\177'
       38:  1106, // up arrow
       40:  1105, // down arrow
       37:  1104, // left arrow
