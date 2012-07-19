@@ -1059,19 +1059,26 @@ class JSLib:
     return ret;
 
   @staticmethod
+  def clean(text):
+    lines = text.split('\n')
+    lines = map(lambda line: line[:line.index('// ')] if line.find('// ') >= 0 else line, lines)
+    lines = filter(lambda line: line and line != '//' and line.replace(' ', ''), lines)
+    return '\n'.join(lines)
+
+  @staticmethod
   def load():
     text = open(path_from_root('src', 'library.js')).read()
     text = JSLib.preprocess(text)
     text = JSLib.macroize(text)
-    #print text
-    JSLib.lib = text
-    #JSLib.lib = json.loads(text)
+    text = JSLib.clean(text)
+    z = open('/tmp/emscripten_temp/json.js', 'w')
+    z.write(text)
+    z.close()
+    JSLib.lib = json.loads(text)
 
   @staticmethod
   def write_dependencies(stream, bitcode):
     JSLib.load()
-    stream.write(JSLib.lib)
-    return
     symbols = Building.llvm_nm(bitcode)
     for undef in symbols.undefs:
       if undef in JSLib.lib:
