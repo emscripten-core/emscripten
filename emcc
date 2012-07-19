@@ -860,8 +860,13 @@ try:
   if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
   pre_post = open(final + '.pp.js', 'w');
   pre_post.write(pre_js)
+  pre_post.write('//=============================================================================\n')
+  pre_post.close()
+  pre_post = open(final + '.pp.js', 'a');
   shared.JSLib.write_dependencies(pre_post, bitcode)
+  pre_post.write('//=============================================================================\n')
   pre_post.write(open(final).read())
+  pre_post.write('//=============================================================================\n')
   pre_post.write(post_js)
   final += '.pp.js'
   if DEBUG: save_intermediate('pre-post')

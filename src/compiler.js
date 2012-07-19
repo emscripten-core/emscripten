@@ -169,7 +169,7 @@ deps.forEach(function(dep) {
   if (js) print(js);
 });
 
-print('//=========');
+print('//====================================');
 
 print(LibraryManager.postsets.join('\n'));
 
