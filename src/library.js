@@ -4286,10 +4286,20 @@ LibraryManager.library = {
   },
 
   strstr: function(ptr1, ptr2) {
-    var str1 = Pointer_stringify(ptr1);
-    var str2 = Pointer_stringify(ptr2);
-    var ret = str1.search(str2);
-    return ret >= 0 ? ptr1 + ret : 0;
+    var check = 0, start;
+    do {
+      var curr1 = {{{ makeGetValue('ptr1++', 0, 'i8') }}};
+      if (!check) check = start = ptr2;
+      var curr2 = {{{ makeGetValue('check++', 0, 'i8') }}};
+      if (curr2 == 0) return start;
+      if (curr2 != curr1) {
+        // rewind to one character after start, to find ez in eeez
+        var diff = check - start - 1;
+        ptr1 -= diff;
+        check = 0;
+      }
+    } while (curr1);
+    return 0;
   },
 
   strchr: function(ptr, chr) {
