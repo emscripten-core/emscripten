@@ -1,7 +1,9 @@
 
 // The module object is where we communicate with outside code
-if (typeof Module == 'undefined') {
-  var Module = {};
+try {
+  this['Module'] = Module;
+} catch(e) {
+  this['Module'] = Module = {};
 }
 
 
