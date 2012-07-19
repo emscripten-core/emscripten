@@ -190,7 +190,7 @@ mergeInto(LibraryManager.library, {
       Browser.xhrLoad(url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
-        removeRunDependency();
+        removeRunDependency('al ' + url);
       }, function(event) {
         if (onerror) {
           onerror();
@@ -198,7 +198,7 @@ mergeInto(LibraryManager.library, {
           throw 'Loading data file "' + url + '" failed.';
         }
       });
-      addRunDependency();
+      addRunDependency('al ' + url);
     },
 
     isImageFile: function(name) {

@@ -313,8 +313,8 @@ LibraryManager.library = {
             ctx.drawImage(img, 0, 0);
             Module["preloadedImages"][fullname] = canvas;
             Browser.URLObject.revokeObjectURL(url);
-            removeRunDependency();
             if (onload) onload();
+            removeRunDependency('cp ' + fullname);
           };
           img.onerror = function(event) {
             console.log('Image ' + url + ' could not be decoded');
@@ -331,14 +331,16 @@ LibraryManager.library = {
               audio['oncanplaythrough'] = null;
               Module["preloadedAudios"][fullname] = audio;
               if (!audio.removedDependency) {
-                removeRunDependency();
+                if (onload) onload();
+                removeRunDependency('cp ' + fullname);
                 audio.removedDependency = true;
               }
             };
             audio.onerror = function(event) {
               if (!audio.removedDependency) {
                 console.log('Audio ' + url + ' could not be decoded or timed out trying to decode');
-                removeRunDependency(); // keep calm and carry on
+                if (onerror) onerror();
+                removeRunDependency('cp ' + fullname); // keep calm and carry on
                 audio.removedDependency = true;
               }
             };
@@ -346,14 +348,15 @@ LibraryManager.library = {
             audio.src = url;
           } else {
             Module["preloadedAudios"][fullname] = new Audio(); // empty shim
-            removeRunDependency();
+            if (onerror) onerror();
+            removeRunDependency('cp ' + fullname);
           }
         } else {
           if (onload) onload();
-          removeRunDependency();
+          removeRunDependency('cp ' + fullname);
         }
       }
-      addRunDependency();
+      addRunDependency('cp ' + fullname);
       if (typeof url == 'string') {
         Browser.asyncLoad(url, function(byteArray) {
           finish(byteArray);

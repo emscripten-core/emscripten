@@ -230,7 +230,7 @@ for file_ in data_files:
     dds = crunch and filename.endswith(CRUNCH_INPUT_SUFFIX)
 
     prepare = ''
-    finish = "Module['removeRunDependency']();\n"
+    finish = "Module['removeRunDependency']('fp %s');\n" % filename
 
     if dds:
       # decompress crunch format into dds
@@ -242,8 +242,7 @@ for file_ in data_files:
           byteArray.set(ddsData, %(dds_header_size)d);
 ''' % { 'filename': filename, 'dds_header_size': DDS_HEADER_SIZE }
 
-      finish = '''
-          Module['removeRunDependency']();
+      finish += '''
         });
 '''
 
@@ -260,7 +259,7 @@ for file_ in data_files:
         %(finish)s
       });
     };
-    Module['addRunDependency']();
+    Module['addRunDependency']('fp %(filename)s');
     %(varname)s.send(null);
 ''' % {
         'request': 'DataRequest', # In the past we also supported XHRs here
@@ -284,7 +283,7 @@ if has_preloaded:
         curr.response = byteArray.subarray(%d,%d);
         curr.onload();
       ''' % (file_['name'], file_['data_start'], file_['data_end'])
-  use_data += "          Module['removeRunDependency']();\n"
+  use_data += "          Module['removeRunDependency']('datafile');\n"
 
   if Compression.on:
     use_data = '''
@@ -305,7 +304,7 @@ if has_preloaded:
       var curr;
       %s
     };
-    Module['addRunDependency']();
+    Module['addRunDependency']('datafile');
     dataFile.send(null);
     if (Module['setStatus']) Module['setStatus']('Downloading...');
   ''' % (Compression.compressed_name(data_target) if Compression.on else data_target, use_data)

@@ -793,18 +793,27 @@ var STRING_TABLE = [];
 // it happens right before run - run will be postponed until
 // the dependencies are met.
 var runDependencies = 0;
+var runDependencyTracking = {};
 var calledRun = false;
-function addRunDependency() {
+function addRunDependency(id) {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+  if (id) {
+    assert(!runDependencyTracking[id]);
+    runDependencyTracking[id] = 1;
+  }
 }
 Module['addRunDependency'] = addRunDependency;
-function removeRunDependency() {
+function removeRunDependency(id) {
   runDependencies--;
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
+  }
+  if (id) {
+    assert(runDependencyTracking[id]);
+    delete runDependencyTracking[id];
   }
   if (runDependencies == 0 && !calledRun) run();
 }
