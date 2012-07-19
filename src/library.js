@@ -313,7 +313,7 @@ LibraryManager.library = {
             ctx.drawImage(img, 0, 0);
             Module["preloadedImages"][fullname] = canvas;
             Browser.URLObject.revokeObjectURL(url);
-            Module['removeRunDependency']();
+            removeRunDependency();
             if (onload) onload();
           };
           img.onerror = function(event) {
@@ -331,14 +331,14 @@ LibraryManager.library = {
               audio['oncanplaythrough'] = null;
               Module["preloadedAudios"][fullname] = audio;
               if (!audio.removedDependency) {
-                Module['removeRunDependency']();
+                removeRunDependency();
                 audio.removedDependency = true;
               }
             };
             audio.onerror = function(event) {
               if (!audio.removedDependency) {
                 console.log('Audio ' + url + ' could not be decoded or timed out trying to decode');
-                Module['removeRunDependency']();
+                removeRunDependency(); // keep calm and carry on
                 audio.removedDependency = true;
               }
             };
@@ -346,12 +346,14 @@ LibraryManager.library = {
             audio.src = url;
           } else {
             Module["preloadedAudios"][fullname] = new Audio(); // empty shim
-            Module['removeRunDependency']();
+            removeRunDependency();
           }
         } else {
           if (onload) onload();
+          removeRunDependency();
         }
       }
+      addRunDependency();
       if (typeof url == 'string') {
         Browser.asyncLoad(url, function(byteArray) {
           finish(byteArray);
