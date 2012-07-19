@@ -52,6 +52,15 @@ LibraryManager.library = {
     // This is set to false when the runtime is initialized, allowing you
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
+    joinPath: function(parts, forceRelative) {
+      var ret = parts[0];
+      for (var i = 1; i < parts.length; i++) {
+        if (ret[ret.length-1] != '/') ret += '/';
+        ret += parts[i];
+      }
+      if (forceRelative && ret[0] == '/') ret = ret.substr(1);
+      return ret;
+    },
     // Converts any path to an absolute path. Resolves embedded "." and ".."
     // parts.
     absolutePath: function(relative, base) {
@@ -286,6 +295,7 @@ LibraryManager.library = {
     // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror) {
       Browser.ensureObjects();
+      var fullname = FS.joinPath([parent, name], true);
       function finish(byteArray) {
         FS.createDataFile(parent, name, byteArray, canRead, canWrite);
         if (Browser.isImageFile(name)) {
@@ -301,7 +311,7 @@ LibraryManager.library = {
             canvas.height = img.height;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
-            Module["preloadedImages"][name] = canvas;
+            Module["preloadedImages"][fullname] = canvas;
             Browser.URLObject.revokeObjectURL(url);
             Module['removeRunDependency']();
             if (onload) onload();
@@ -319,7 +329,7 @@ LibraryManager.library = {
             audio.removedDependency = false;
             audio['oncanplaythrough'] = function() { // XXX string for closure
               audio['oncanplaythrough'] = null;
-              Module["preloadedAudios"][name] = audio;
+              Module["preloadedAudios"][fullname] = audio;
               if (!audio.removedDependency) {
                 Module['removeRunDependency']();
                 audio.removedDependency = true;
@@ -335,7 +345,7 @@ LibraryManager.library = {
             setTimeout(audio.onerror, 2000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
             audio.src = url;
           } else {
-            Module["preloadedAudios"]['%(filename)s'] = new Audio(); // empty shim
+            Module["preloadedAudios"][fullname] = new Audio(); // empty shim
             Module['removeRunDependency']();
           }
         } else {

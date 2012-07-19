@@ -12,7 +12,7 @@ int get_count = 0;
 
 void wait_wgets() {
   if (get_count == 3) {
-    assert(IMG_Load("screen_shot.png"));
+    assert(IMG_Load("/tmp/screen_shot.png"));
     emscripten_cancel_main_loop();
     REPORT_RESULT();
   }
