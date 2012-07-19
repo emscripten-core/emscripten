@@ -1020,69 +1020,14 @@ def unsuffixed_basename(name):
 
 class JSLib:
   @staticmethod
-  def macroize(text):
-    return re.sub('{{{[^}]+}}}', lambda m: m.group(0)[3:-3], text)
-
-  @staticmethod
-  def preprocess(text, vals={}):
-    # Simple #if/else/endif preprocessing for a file, optionally using if on a set of values
-    lines = text.split('\n')
-    ret = ''
-    showStack = []
-    for i in range(len(lines)):
-      line = lines[i]
-      if len(line) == 0: continue
-      if line[-1] == '\r':
-        line = line[:-1] # Windows will have '\r' left over from splitting over '\r\n'
-      if len(line) == 0: continue
-      if line[0] != '#':
-        if False not in showStack:
-          ret += line + '\n'
-      else:
-        if line[1] == 'i': # if
-          parts = line.split(' ')
-          ident = parts[1] if len(parts) >= 2 else None
-          op = parts[2] if len(parts) >= 3 else None
-          value = parts[3] if len(parts) >= 4 else None
-          if op:
-            assert(op == '==')
-            showStack.append(ident in vals and vals[ident] == value)
-          else:
-            showStack.append(ident in vals and vals[ident] > 0)
-        elif line[2] == 'l': # else
-          showStack.append(not showStack.pop())
-        elif line[2] == 'n': # endif
-          showStack.pop()
-        else:
-          raise "Unclear preprocessor command: " + line
-    assert len(showStack) == 0
-    return ret;
-
-  @staticmethod
-  def clean(text):
-    lines = text.split('\n')
-    lines = map(lambda line: line[:line.index('// ')] if line.find('// ') >= 0 else line, lines)
-    lines = filter(lambda line: line and line != '//' and line.replace(' ', ''), lines)
-    return '\n'.join(lines)
-
-  @staticmethod
-  def load():
-    text = open(path_from_root('src', 'library.js')).read()
-    text = JSLib.preprocess(text)
-    text = JSLib.macroize(text)
-    text = JSLib.clean(text)
-    z = open('/tmp/emscripten_temp/json.js', 'w')
-    z.write(text)
-    z.close()
-    JSLib.lib = json.loads(text)
-
-  @staticmethod
   def write_dependencies(stream, bitcode):
-    JSLib.load()
-    symbols = Building.llvm_nm(bitcode)
-    for undef in symbols.undefs:
-      if undef in JSLib.lib:
-        stream.write(json.dumps(JSLib.lib[undef]) + '\n')
-      else:
-        stream.write('// missing %s' % undef)
+    try:
+      curr_dir = os.getcwd()
+      os.chdir(path_from_root('src'))
+      symbols = Building.llvm_nm(bitcode)
+      needed = ','.join(list(symbols.undefs))
+      execute([COMPILER_ENGINE, path_from_root('src', 'compiler.js'), '{}', needed], stdout=stream)
+    finally:
+      os.chdir(curr_dir)
+
 

@@ -208,7 +208,7 @@ var Functions = {
   currFunctions: [],
 
   // All functions that will be implemented in this file
-  implementedFunctions: null,
+  implementedFunctions: {},
 
   // All the function idents seen so far
   allIdents: [],
@@ -283,6 +283,75 @@ var LibraryManager = {
     var libCall = LibraryManager.library[ident.substr(1)];
     return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
                                          && !(ident in Functions.implementedFunctions);
+  },
+
+  added: {},
+  postsets: [],
+
+  addFromLibrary: function(ident) {
+    if (ident in LibraryManager.added) return '';
+    LibraryManager.added[ident] = true;
+
+    // dependencies can be JS functions, which we just run
+    if (typeof ident == 'function') return ident();
+
+    // Don't replace implemented functions with library ones (which can happen when we add dependencies).
+    // Note: We don't return the dependencies here. Be careful not to end up where this matters
+    if (('_' + ident) in Functions.implementedFunctions) return '';
+
+    var snippet = LibraryManager.library[ident];
+    var redirectedIdent = null;
+    var deps = LibraryManager.library[ident + '__deps'] || [];
+    var isFunction = false;
+
+    if (typeof snippet === 'undefined') {
+      return '';
+    } else if (typeof snippet === 'string') {
+      if (LibraryManager.library[snippet]) {
+        // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
+        // This avoid having duplicate functions with identical content.
+        redirectedIdent = snippet;
+        deps.push(snippet);
+        snippet = '_' + snippet;
+      }
+    } else if (typeof snippet === 'object') {
+      snippet = stringifyWithFunctions(snippet);
+    } else if (typeof snippet === 'function') {
+      isFunction = true;
+      snippet = snippet.toString();
+      assert(snippet.indexOf('XXX missing C define') == -1,
+             'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
+
+      // name the function; overwrite if it's already named
+      snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
+      if (LIBRARY_DEBUG) {
+        snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+        snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
+      }
+    }
+
+    var postsetId = ident + '__postset';
+    var postset = LibraryManager.library[postsetId];
+    if (postset && !LibraryManager.added[postsetId]) {
+      LibraryManager.added[postsetId] = true;
+      LibraryManager.postsets.push(postset);
+    }
+
+    if (redirectedIdent) {
+      deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
+    }
+    // $ident's are special, we do not prefix them with a '_'.
+    if (ident[0] === '$') {
+      ident = ident.substr(1);
+    } else {
+      ident = '_' + ident;
+    }
+    var text = (deps ? '\n' + deps.map(LibraryManager.addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+    text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
+    if (ident in EXPORTED_FUNCTIONS) {
+      text += '\nModule["' + ident + '"] = ' + ident + ';';
+    }
+    return text;
   }
 };
 

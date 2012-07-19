@@ -112,15 +112,12 @@ load('utility.js');
 
 load('settings.js');
 
-var settings_file = arguments_[0];
-var ll_file = arguments_[1];
+var settings = JSON.parse(arguments_[0]);
+var needed_deps = arguments_[1];
 additionalLibraries = Array.prototype.slice.call(arguments_, 2);
 
-if (settings_file) {
-  var settings = JSON.parse(read(settings_file));
-  for (setting in settings) {
-    eval(setting + ' = ' + JSON.stringify(settings[setting]));
-  }
+for (setting in settings) {
+  eval(setting + ' = ' + JSON.stringify(settings[setting]));
 }
 
 
@@ -152,60 +149,27 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
 
-// Output some info and warnings based on settings
-
-if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
-    !SKIP_STACK_IN_SMALL || SAFE_HEAP || PGO || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
-  print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
-} else {
-  print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
-}
-
-if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
-  print('// Note: Some Emscripten settings may limit the speed of the generated code.');
-}
-
 // Load compiler code
 
-load('framework.js');
 load('modules.js');
 load('parseTools.js');
-load('intertyper.js');
-load('analyzer.js');
-load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'))));
-Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
+Runtime.QUANTUM_SIZE = 4;
 
 //===============================
 // Main
 //===============================
 
-// Read llvm
+LibraryManager.load();
 
-var raw = read(ll_file);
-if (FAKE_X86_FP80) {
-  raw = raw.replace(/x86_fp80/g, 'double');
-}
-var lines = raw.split('\n');
-raw = null;
+var deps = needed_deps.split(',').concat(['memcpy', 'memset', 'malloc', 'free', '$Browser']);
 
-// Pre-process the LLVM assembly
+deps.forEach(function(dep) {
+  var js = LibraryManager.addFromLibrary(dep);
+  if (js) print(js);
+});
 
-Debugging.handleMetadata(lines);
-PreProcessor.eliminateUnneededIntrinsics(lines);
+print('//=========');
 
-// Do it
-
-var intertyped = intertyper(lines);
-lines = null;
-var analyzed = analyzer(intertyped);
-intertyped = null;
-JSify(analyzed);
-
-if (DEBUG_MEMORY) {
-  print('zzz. last gc: ' + gc());
-  MemoryDebugger.dump();
-  print('zzz. hanging now!');
-  while(1){};
-}
+print(LibraryManager.postsets.join('\n'));
 

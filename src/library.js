@@ -15,7 +15,8 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-[{ // need "[" because "{" by itself looks like a code block
+LibraryManager.library = {
+
   // ==========================================================================
   // File system base.
   // ==========================================================================
@@ -6271,5 +6272,14 @@
     return 'Profiling.times[' + id + '] += Date.now();'
          + 'Profiling.invalid--;'
   }
-}]
+};
+
+function autoAddDeps(object, name) {
+  name = [name];
+  for (var item in object) {
+    if (item.substr(-6) != '__deps' && !object[item + '__deps']) {
+      object[item + '__deps'] = name;
+    }
+  }
+}
 
