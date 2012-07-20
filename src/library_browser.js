@@ -23,6 +23,19 @@ mergeInto(LibraryManager.library, {
         }
         Browser.mainLoop.shouldPause = false;
       },
+      updateStatus: function() {
+        if (Module['setStatus']) {
+          if (Browser.mainLoop.queue.length > 0) {
+            if (Browser.mainLoop.blockersNum && Browser.mainLoop.blockersNum >= Browser.mainLoop.queue.length) {
+              Module['setStatus']('Please wait.. (' + Browser.mainLoop.queue.length + '/' + Browser.mainLoop.blockersNum + ')');
+            } else {
+              Module['setStatus']('Please wait..');
+            }
+          } else {
+            Module['setStatus']('');
+          }
+        }
+      }
     },
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
@@ -251,7 +264,7 @@ mergeInto(LibraryManager.library, {
     var wrapper = function() {
       if (Browser.mainLoop.queue.length > 0) {
         Browser.mainLoop.queue.shift()();
-        if (Browser.mainLoop.queue.length == 0 && Module['setStatus']) Module['setStatus']('');
+        Browser.mainLoop.updateStatus();
         setTimeout(wrapper, 0);
         return;
       }
@@ -296,8 +309,13 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_push_main_loop_blocker: function(func) {
-    if (Module['setStatus']) Module['setStatus']('Please wait..');
     Browser.mainLoop.queue.push(FUNCTION_TABLE[func]);
+    Browser.mainLoop.updateStatus();
+  },
+
+  emscripten_set_main_loop_blockers_num: function(num) {
+    Browser.mainLoop.blockersNum = num;
+    Browser.mainLoop.updateStatus();
   },
 
   emscripten_async_call: function(func, millis) {

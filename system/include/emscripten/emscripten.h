@@ -61,6 +61,14 @@ inline void emscripten_push_main_loop_blocker(void (*func)()) {
 #endif
 
 /*
+ * Sets the number of blockers remaining until some user-relevant
+ * event. This affects how we show progress. So if you set this
+ * to 10, then push 10 blockers, as they complete the user will
+ * see x/10 and so forth.
+ */
+extern void emscripten_set_main_loop_blockers_num(void (*func)());
+
+/*
  * Call a C function asynchronously, that is, after returning
  * control to the JS event loop. This is done by a setTimeout.
  * When building natively this becomes a simple direct call,
