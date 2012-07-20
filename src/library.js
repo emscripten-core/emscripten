@@ -4288,14 +4288,16 @@ LibraryManager.library = {
   strstr: function(ptr1, ptr2) {
     var check = 0, start;
     do {
+      if (!check) {
+        start = ptr1;
+        check = ptr2;
+      }
       var curr1 = {{{ makeGetValue('ptr1++', 0, 'i8') }}};
-      if (!check) check = start = ptr2;
       var curr2 = {{{ makeGetValue('check++', 0, 'i8') }}};
       if (curr2 == 0) return start;
       if (curr2 != curr1) {
         // rewind to one character after start, to find ez in eeez
-        var diff = check - start - 1;
-        ptr1 -= diff;
+        ptr1 = start + 1;
         check = 0;
       }
     } while (curr1);

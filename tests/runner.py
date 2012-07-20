@@ -4009,6 +4009,9 @@ at function.:blag
           printf("%d\n", !!strstr("cheezy", "y"));
           printf("%d\n", !!strstr("cheezy", "z"));
           printf("%d\n", !!strstr("cheezy", "_"));
+
+          const char *str = "a big string";
+          printf("%d\n", strstr(str, "big") - str);
           return 0;
         }
       '''
@@ -4035,6 +4038,7 @@ at function.:blag
 1
 1
 0
+2
 ''')
 
     def test_sscanf(self):
