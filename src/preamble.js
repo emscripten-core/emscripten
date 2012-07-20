@@ -958,12 +958,19 @@ Module.callMain = function callMain(args) {
   argv = allocate(argv, 'i32', ALLOC_STATIC);
 
 #if CATCH_EXIT_CODE
+  var ret = 0;
   try {
-    return _main(argc, argv, 0);
+    ret = _main(argc, argv, 0);
+  } catch(e) {
+    if (e.name == 'ExitStatus') {
+      ret = e.status;
+    } else {
+      throw e;
+    }
   }
-  catch(e) { if (e.name == "ExitStatus") return e.status; throw e; }
+  Module.print('Exit Status: ' + ret);
 #else
-  return _main(argc, argv, 0);
+  _main(argc, argv, 0);
 #endif
 }
 
@@ -976,16 +983,15 @@ function run(args) {
       Module['preRun'].pop()();
       if (runDependencies > 0) {
         // preRun added a dependency, run will be called later
-        return 0;
+        return;
       }
     }
   }
 
   function doRun() {
-    var ret = 0;
     if (Module['_main']) {
       preMain();
-      ret = Module.callMain(args);
+      Module.callMain(args);
       if (!Module['noExitRuntime']) {
         exitRuntime();
       }
@@ -996,7 +1002,6 @@ function run(args) {
         Module['postRun'].pop()();
       }
     }
-    return ret;
   }
 
   if (Module['setStatus']) {
@@ -1007,9 +1012,8 @@ function run(args) {
       }, 1);
       doRun();
     }, 1);
-    return 0;
   } else {
-    return doRun();
+    doRun();
   }
 }
 Module['run'] = run;
@@ -1022,5 +1026,11 @@ addRunDependency();
 #endif
 if (Module['noInitialRun']) {
   addRunDependency();
+}
+
+function tryRun() {
+  if (runDependencies == 0) {
+    run();
+  }
 }
 
