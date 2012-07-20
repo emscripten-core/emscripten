@@ -853,11 +853,9 @@ try:
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('files')
 
-  # Apply pre and postjs files as well as the standard pre.js and post.js, and library functions
-  pre_js = open(shared.path_from_root('src', 'pre.js')).read() + '\n' + pre_js
-  post_js += '\n' + open(shared.path_from_root('src', 'post.js')).read()
-
+  # Apply pre and postjs files as well as the standard post.js, and library functions
   if DEBUG: print >> sys.stderr, 'emcc: applying pre/postjses'
+  post_js += '\n' + open(shared.path_from_root('src', 'post.js')).read()
   pre_post = open(final + '.pp.js', 'w');
   pre_post.write(pre_js)
   pre_post.write('//=============================================================================\n')

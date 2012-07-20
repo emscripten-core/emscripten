@@ -237,14 +237,6 @@ else:
 
 # Engine tweaks
 
-try:
-  if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
-    if type(SPIDERMONKEY_ENGINE) is str:
-      SPIDERMONKEY_ENGINE = [SPIDERMONKEY_ENGINE]
-    SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
-except NameError:
-  pass
-
 WINDOWS = sys.platform.startswith('win')
 
 # If we have 'env', we should use that to find python, because |python| may fail while |env python| may work
@@ -999,7 +991,7 @@ def execute(cmd, *args, **kw):
     return subprocess.Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
   except:
     if not isinstance(cmd, str):
-      cmd = ' '.join(cmd)
+      cmd = ' '.join(map(str, cmd))
     print >> sys.stderr, 'Invoking Process failed: <<< ' + cmd + ' >>>'
     raise
 

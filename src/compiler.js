@@ -160,6 +160,8 @@ Runtime.QUANTUM_SIZE = 4;
 // Main
 //===============================
 
+print(processMacros(preprocess(read('preamble.js').replace('{{RUNTIME}}', getRuntime()))));
+
 LibraryManager.load();
 
 var deps = needed_deps.split(',').concat(['memcpy', 'memset', 'malloc', 'free', '$Browser']);
