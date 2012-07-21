@@ -57,7 +57,9 @@ extern void emscripten_cancel_main_loop();
  * used.)
  */
 #if EMSCRIPTEN
-extern void emscripten_push_main_loop_blocker(void (*func)());
+extern void _emscripten_push_main_loop_blocker(void (*func)(), char *name);
+#define emscripten_push_main_loop_blocker(func) \
+  _emscripten_push_main_loop_blocker(func, #func);
 #else
 inline void emscripten_push_main_loop_blocker(void (*func)()) {
   func();

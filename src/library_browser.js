@@ -266,8 +266,9 @@ mergeInto(LibraryManager.library, {
     var wrapper = function() {
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
-        Browser.mainLoop.queue.shift()();
-        console.log('main loop blocker took ' + (Date.now() - start) + ' ms');
+        var blocker = Browser.mainLoop.queue.shift();
+        blocker.func();
+        console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms');
         if (Browser.mainLoop.remainingBlockers) Browser.mainLoop.remainingBlockers--;
         Browser.mainLoop.updateStatus();
         setTimeout(wrapper, 0);
@@ -313,8 +314,8 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.resume();
   },
 
-  emscripten_push_main_loop_blocker: function(func) {
-    Browser.mainLoop.queue.push(FUNCTION_TABLE[func]);
+  _emscripten_push_main_loop_blocker: function(func, name) {
+    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name) });
     Browser.mainLoop.updateStatus();
   },
 
