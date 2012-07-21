@@ -50,7 +50,11 @@ extern void emscripten_cancel_main_loop();
 
 /*
  * Add a function to a queue of events that will execute
- * before the main loop will continue.
+ * before the main loop will continue. The event is pushed
+ * into the back of the queue. (Note that in the native version
+ * of this we simply execute the function, so to keep semantics
+ * identical be careful to not push while the queue is being
+ * used.)
  */
 #if EMSCRIPTEN
 extern void emscripten_push_main_loop_blocker(void (*func)());
