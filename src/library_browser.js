@@ -29,7 +29,7 @@ mergeInto(LibraryManager.library, {
           var expected = Browser.mainLoop.expectedBlockers;
           if (remaining) {
             if (remaining < expected) {
-              Module['setStatus']('Please wait.. (' + remaining + '/' + expected + ')');
+              Module['setStatus']('Please wait.. (' + (expected - remaining) + '/' + expected + ')');
             } else {
               Module['setStatus']('Please wait..');
             }
