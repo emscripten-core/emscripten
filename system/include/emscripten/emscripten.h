@@ -66,7 +66,11 @@ inline void emscripten_push_main_loop_blocker(void (*func)()) {
  * to 10, then push 10 blockers, as they complete the user will
  * see x/10 and so forth.
  */
-extern void emscripten_set_main_loop_blockers_num(void (*func)());
+#if EMSCRIPTEN
+extern void emscripten_set_main_loop_expected_blockers(int num);
+#else
+inline void emscripten_set_main_loop_expected_blockers(int num) {}
+#endif
 
 /*
  * Call a C function asynchronously, that is, after returning

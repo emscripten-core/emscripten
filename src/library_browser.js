@@ -25,9 +25,11 @@ mergeInto(LibraryManager.library, {
       },
       updateStatus: function() {
         if (Module['setStatus']) {
-          if (Browser.mainLoop.queue.length > 0) {
-            if (Browser.mainLoop.blockersNum && Browser.mainLoop.blockersNum >= Browser.mainLoop.queue.length) {
-              Module['setStatus']('Please wait.. (' + Browser.mainLoop.queue.length + '/' + Browser.mainLoop.blockersNum + ')');
+          var remaining = Browser.mainLoop.remainingBlockers;
+          var expected = Browser.mainLoop.expectedBlockers;
+          if (remaining) {
+            if (remaining < expected) {
+              Module['setStatus']('Please wait.. (' + remaining + '/' + expected + ')');
             } else {
               Module['setStatus']('Please wait..');
             }
@@ -263,7 +265,10 @@ mergeInto(LibraryManager.library, {
     var jsFunc = FUNCTION_TABLE[func];
     var wrapper = function() {
       if (Browser.mainLoop.queue.length > 0) {
+        var start = Date.now();
         Browser.mainLoop.queue.shift()();
+        console.log('main loop blocker took ' + (Date.now() - start) + ' ms');
+        if (Browser.mainLoop.remainingBlockers) Browser.mainLoop.remainingBlockers--;
         Browser.mainLoop.updateStatus();
         setTimeout(wrapper, 0);
         return;
@@ -313,8 +318,9 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.updateStatus();
   },
 
-  emscripten_set_main_loop_blockers_num: function(num) {
-    Browser.mainLoop.blockersNum = num;
+  emscripten_set_main_loop_expected_blockers: function(num) {
+    Browser.mainLoop.expectedBlockers = num;
+    Browser.mainLoop.remainingBlockers = num;
     Browser.mainLoop.updateStatus();
   },
 
