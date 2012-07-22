@@ -6,7 +6,8 @@ mergeInto(LibraryManager.library, {
   $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
-                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
+                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n' +
+                     'Module["preloadPlugins"] = Browser.preloadPlugins;\n',
   $Browser: {
     mainLoop: {
       scheduler: null,
@@ -54,6 +55,76 @@ mergeInto(LibraryManager.library, {
       }
       Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
       Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
+
+      // preload plugins
+      var imagePlugin = {};
+      imagePlugin['canHandle'] = function(name) {
+        return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
+      };
+      imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
+        var bb = new Browser.BlobBuilder();
+        bb.append(byteArray.buffer);
+        var b = bb.getBlob();
+        var url = Browser.URLObject.createObjectURL(b);
+        var img = new Image();
+        img.onload = function() {
+          assert(img.complete, 'Image ' + name + ' could not be decoded');
+          var canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          Module["preloadedImages"][name] = canvas;
+          Browser.URLObject.revokeObjectURL(url);
+          if (onload) onload(byteArray);
+        };
+        img.onerror = function(event) {
+          console.log('Image ' + url + ' could not be decoded');
+          if (onerror) onerror();
+        };
+        img.src = url;
+      };
+      Module['preloadPlugins'].push(imagePlugin);
+
+      var audioPlugin = {
+        getAudioMimetype: function(name) {
+          var ret = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }[name.substr(-3)];
+          assert(ret);
+          return ret;
+        }
+      };
+      audioPlugin['canHandle'] = function(name) {
+        return name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+      };
+      audioPlugin['handle'] = function(byteArray, name, onload, onerror) {
+        if (Browser.hasBlobConstructor) {
+          var b = new Blob([byteArray.buffer], { type: audioPlugin.getAudioMimetype(name) });
+          var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
+          var audio = new Audio();
+          var cleanedUp = false;
+          audio['oncanplaythrough'] = function() { // XXX string for closure
+            audio['oncanplaythrough'] = null;
+            Module["preloadedAudios"][name] = audio;
+            if (!cleanedUp) {
+              if (onload) onload(byteArray);
+              cleanedUp = true;
+            }
+          };
+          audio.onerror = function(event) {
+            if (!cleanedUp) {
+              console.log('Audio ' + url + ' could not be decoded or timed out trying to decode');
+              if (onerror) onerror();
+              cleanedUp = true;
+            }
+          };
+          setTimeout(audio.onerror, 2000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+          audio.src = url;
+        } else {
+          Module["preloadedAudios"][name] = new Audio(); // empty shim
+          if (onerror) onerror();
+        }
+      };
+      Module['preloadPlugins'].push(audioPlugin);
     },
 
     createContext: function(canvas, useWebGL, setInModule) {
@@ -216,20 +287,14 @@ mergeInto(LibraryManager.library, {
       addRunDependency('al ' + url);
     },
 
-    isImageFile: function(name) {
-      return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
-    },
-
-    isAudioFile: function(name) {
-      return name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
-    },
-
-    getAudioMimetype: function(name) {
-      var ret = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }[name.substr(-3)];
-      assert(ret);
-      return ret;
-    },
-
+    // A list of plugins that can process preloaded files. You can add more of these to
+    // your app by appending to Module.preloadPlugins.
+    //
+    // Each plugin is asked if it can handle a file based on the file's name. If it can,
+    // it is given the file's raw data. When it is done, it calls a callback with the file's
+    // (possibly modified) data. For example, a plugin might decompress a file, or it
+    // might create some side data structure for use later (like an Image element, etc.).
+    preloadPlugins: [],
   },
 
   emscripten_async_wget: function(url, file, onload, onerror) {
@@ -279,7 +344,7 @@ mergeInto(LibraryManager.library, {
             Browser.mainLoop.remainingBlockers = (8*remaining + next)/9;
           }
         }
-        console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms, left: ' + Browser.mainLoop.remainingBlockers);
+        console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
         setTimeout(wrapper, 0);
         return;

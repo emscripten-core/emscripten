@@ -296,73 +296,29 @@ LibraryManager.library = {
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror) {
       Browser.ensureObjects();
       var fullname = FS.joinPath([parent, name], true);
-      function finish(byteArray) {
-        FS.createDataFile(parent, name, byteArray, canRead, canWrite);
-        if (Browser.isImageFile(name)) {
-          var bb = new Browser.BlobBuilder();
-          bb.append(byteArray.buffer);
-          var b = bb.getBlob();
-          var url = Browser.URLObject.createObjectURL(b);
-          var img = new Image();
-          img.onload = function() {
-            assert(img.complete, 'Image ' + url + ' could not be decoded');
-            var canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            Module["preloadedImages"][fullname] = canvas;
-            Browser.URLObject.revokeObjectURL(url);
-            if (onload) onload();
-            removeRunDependency('cp ' + fullname);
-          };
-          img.onerror = function(event) {
-            console.log('Image ' + url + ' could not be decoded');
-            if (onerror) onerror();
-          };
-          img.src = url;
-        } else if (Browser.isAudioFile(name)) {
-          if (Browser.hasBlobConstructor) {
-            var b = new Blob([byteArray.buffer], { type: Browser.getAudioMimetype(name) });
-            var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
-            var audio = new Audio();
-            audio.removedDependency = false;
-            audio['oncanplaythrough'] = function() { // XXX string for closure
-              audio['oncanplaythrough'] = null;
-              Module["preloadedAudios"][fullname] = audio;
-              if (!audio.removedDependency) {
-                if (onload) onload();
-                removeRunDependency('cp ' + fullname);
-                audio.removedDependency = true;
-              }
-            };
-            audio.onerror = function(event) {
-              if (!audio.removedDependency) {
-                console.log('Audio ' + url + ' could not be decoded or timed out trying to decode');
-                if (onerror) onerror();
-                removeRunDependency('cp ' + fullname); // keep calm and carry on
-                audio.removedDependency = true;
-              }
-            };
-            setTimeout(audio.onerror, 2000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
-            audio.src = url;
-          } else {
-            Module["preloadedAudios"][fullname] = new Audio(); // empty shim
-            if (onerror) onerror();
-            removeRunDependency('cp ' + fullname);
-          }
-        } else {
+      function processData(byteArray) {
+        function finish(byteArray) {
+          FS.createDataFile(parent, name, byteArray, canRead, canWrite);
           if (onload) onload();
           removeRunDependency('cp ' + fullname);
         }
+        var handled = false;
+        Module['preloadPlugins'].forEach(function(plugin) {
+          if (handled) return;
+          if (plugin['canHandle'](fullname)) {
+            plugin['handle'](byteArray, fullname, finish, onerror);
+            handled = true;
+          }
+        });
+        if (!handled) finish(byteArray);
       }
       addRunDependency('cp ' + fullname);
       if (typeof url == 'string') {
         Browser.asyncLoad(url, function(byteArray) {
-          finish(byteArray);
+          processData(byteArray);
         }, onerror);
       } else {
-        finish(url);
+        processData(url);
       }
     },
     // Creates a link to a sepcific local path.
