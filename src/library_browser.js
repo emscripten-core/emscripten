@@ -268,8 +268,18 @@ mergeInto(LibraryManager.library, {
         var start = Date.now();
         var blocker = Browser.mainLoop.queue.shift();
         blocker.func();
-        console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms');
-        if (Browser.mainLoop.remainingBlockers) Browser.mainLoop.remainingBlockers--;
+        if (Browser.mainLoop.remainingBlockers) {
+          var remaining = Browser.mainLoop.remainingBlockers;
+          var next = remaining%1 == 0 ? remaining-1 : Math.floor(remaining);
+          if (blocker.counted) {
+            Browser.mainLoop.remainingBlockers = next;
+          } else {
+            // not counted, but move the progress along a tiny bit
+            next = next + 0.5; // do not steal all the next one's progress
+            Browser.mainLoop.remainingBlockers = (8*remaining + next)/9;
+          }
+        }
+        console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
         setTimeout(wrapper, 0);
         return;
@@ -315,15 +325,12 @@ mergeInto(LibraryManager.library, {
   },
 
   _emscripten_push_main_loop_blocker: function(func, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name) });
+    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
   _emscripten_push_uncounted_main_loop_blocker: function(func, name) {
-    Browser.mainLoop.queue.push({ func: function() {
-      FUNCTION_TABLE[func]();
-      Browser.mainLoop.remainingBlockers++; // balance our regular reduction
-    }, name: Pointer_stringify(name) });
+    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 
