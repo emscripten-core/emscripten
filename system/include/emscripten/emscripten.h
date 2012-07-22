@@ -55,16 +55,27 @@ extern void emscripten_cancel_main_loop();
  * of this we simply execute the function, so to keep semantics
  * identical be careful to not push while the queue is being
  * used.)
+ *
+ * Main loop blockers block the main loop from running, and
+ * can be counted to show progress. In contrast, emscripten_async_calls
+ * are not counted, do not block the main loop, and can fire
+ * at specific time in the future.
  */
 #if EMSCRIPTEN
 extern void _emscripten_push_main_loop_blocker(void (*func)(), const char *name);
+extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(), const char *name);
 #else
 inline void _emscripten_push_main_loop_blocker(void (*func)(), const char *name) {
+  func();
+}
+inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(), const char *name) {
   func();
 }
 #endif
 #define emscripten_push_main_loop_blocker(func) \
   _emscripten_push_main_loop_blocker(func, #func)
+#define emscripten_push_uncounted_main_loop_blocker(func) \
+  _emscripten_push_uncounted_main_loop_blocker(func, #func)
 
 /*
  * Sets the number of blockers remaining until some user-relevant
@@ -91,7 +102,7 @@ inline void emscripten_set_main_loop_expected_blockers(int num) {}
 extern void emscripten_async_call(void (*func)(), int millis);
 #else
 inline void emscripten_async_call(void (*func)(), int millis) {
-  SDL_Delay(millis);
+  if (millis) SDL_Delay(millis);
   func();
 }
 #endif

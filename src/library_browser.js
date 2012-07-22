@@ -319,6 +319,14 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.updateStatus();
   },
 
+  _emscripten_push_uncounted_main_loop_blocker: function(func, name) {
+    Browser.mainLoop.queue.push({ func: function() {
+      FUNCTION_TABLE[func]();
+      Browser.mainLoop.remainingBlockers++; // balance our regular reduction
+    }, name: Pointer_stringify(name) });
+    Browser.mainLoop.updateStatus();
+  },
+
   emscripten_set_main_loop_expected_blockers: function(num) {
     Browser.mainLoop.expectedBlockers = num;
     Browser.mainLoop.remainingBlockers = num;
