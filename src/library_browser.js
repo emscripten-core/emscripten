@@ -136,7 +136,7 @@ mergeInto(LibraryManager.library, {
               cleanedUp = true;
             }
           };
-          setTimeout(audio.onerror, 10000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+          setTimeout(audio.onerror, 5000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
           audio.src = url;
         } else {
           Module["preloadedAudios"][name] = new Audio(); // empty shim
@@ -220,9 +220,9 @@ mergeInto(LibraryManager.library, {
       var canvas = Module.canvas;
       function fullScreenChange() {
         if (Module['onFullScreen']) Module['onFullScreen']();
-        if (document['webkitFullScreenElement'] === canvas ||
-            document['mozFullScreenElement'] === canvas ||
-            document['fullScreenElement'] === canvas) {
+        if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
+             document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
+             document['fullScreenElement'] || document['fullscreenElement']) === canvas) {
           canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                       canvas['mozRequestPointerLock'] ||
                                       canvas['webkitRequestPointerLock'];
