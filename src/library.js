@@ -306,7 +306,10 @@ LibraryManager.library = {
         Module['preloadPlugins'].forEach(function(plugin) {
           if (handled) return;
           if (plugin['canHandle'](fullname)) {
-            plugin['handle'](byteArray, fullname, finish, onerror);
+            plugin['handle'](byteArray, fullname, finish, function() {
+              if (onerror) onerror();
+              removeRunDependency('cp ' + fullname);
+            });
             handled = true;
           }
         });
