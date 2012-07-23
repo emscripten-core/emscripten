@@ -7046,6 +7046,34 @@ f.close()
       err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'side.cpp'), '--remove-duplicates'], stderr=PIPE).communicate()[1]
       self.assertContained('bye bye', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_main_a(self):
+      # if main() is in a .a, we need to pull in that .a
+
+      main_name = os.path.join(self.get_dir(), 'main.c')
+      open(main_name, 'w').write(r'''
+        #include <stdio.h>
+        extern int f();
+        int main() {
+          printf("result: %d.\n", f());
+          return 0;
+        }
+      ''')
+
+      other_name = os.path.join(self.get_dir(), 'other.c')
+      open(other_name, 'w').write(r'''
+        #include <stdio.h>
+        int f() { return 12346; }
+      ''')
+
+      Popen(['python', EMCC, main_name, '-c', '-o', main_name+'.bc']).communicate()
+      Popen(['python', EMCC, other_name, '-c', '-o', other_name+'.bc']).communicate()
+
+      Popen(['python', EMAR, 'cr', main_name+'.a', main_name+'.bc']).communicate()
+
+      Popen(['python', EMCC, other_name+'.bc', main_name+'.a']).communicate()
+
+      self.assertContained('result: 12346.', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_embed_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
