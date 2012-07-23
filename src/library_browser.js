@@ -6,8 +6,7 @@ mergeInto(LibraryManager.library, {
   $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
-                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n' +
-                     'Module["preloadPlugins"] = Browser.preloadPlugins;\n',
+                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
   $Browser: {
     mainLoop: {
       scheduler: null,
@@ -56,7 +55,16 @@ mergeInto(LibraryManager.library, {
       Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
       Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
 
-      // preload plugins
+      // Support for plugins that can process preloaded files. You can add more of these to
+      // your app by creating and appending to Module.preloadPlugins.
+      //
+      // Each plugin is asked if it can handle a file based on the file's name. If it can,
+      // it is given the file's raw data. When it is done, it calls a callback with the file's
+      // (possibly modified) data. For example, a plugin might decompress a file, or it
+      // might create some side data structure for use later (like an Image element, etc.).
+
+      if (!Module["preloadPlugins"]) Module["preloadPlugins"] = [];
+
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
         return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
@@ -286,15 +294,6 @@ mergeInto(LibraryManager.library, {
       });
       addRunDependency('al ' + url);
     },
-
-    // A list of plugins that can process preloaded files. You can add more of these to
-    // your app by appending to Module.preloadPlugins.
-    //
-    // Each plugin is asked if it can handle a file based on the file's name. If it can,
-    // it is given the file's raw data. When it is done, it calls a callback with the file's
-    // (possibly modified) data. For example, a plugin might decompress a file, or it
-    // might create some side data structure for use later (like an Image element, etc.).
-    preloadPlugins: [],
   },
 
   emscripten_async_wget: function(url, file, onload, onerror) {
