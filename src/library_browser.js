@@ -52,7 +52,7 @@ mergeInto(LibraryManager.library, {
         Browser.hasBlobConstructor = false;
         console.log("warning: no blob constructor, cannot create blobs with mimetypes");
       }
-      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : console.log("warning: cannot build blobs"));
+      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? console.log("warning: no BlobBuilder") : null));
       Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
 
       // Support for plugins that can process preloaded files. You can add more of these to
@@ -63,6 +63,18 @@ mergeInto(LibraryManager.library, {
       // (possibly modified) data. For example, a plugin might decompress a file, or it
       // might create some side data structure for use later (like an Image element, etc.).
 
+      function getMimetype(name) {
+        return {
+          'jpg': 'image/jpeg',
+          'png': 'image/png',
+          'bmp': 'image/bmp',
+          'ogg': 'audio/ogg',
+          'wav': 'audio/wav',
+          'mp3': 'audio/mpeg',
+        }[name.substr(-3)];
+        return ret;
+      }
+
       if (!Module["preloadPlugins"]) Module["preloadPlugins"] = [];
 
       var imagePlugin = {};
@@ -70,9 +82,14 @@ mergeInto(LibraryManager.library, {
         return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
-        var bb = new Browser.BlobBuilder();
-        bb.append(byteArray.buffer);
-        var b = bb.getBlob();
+        var b;
+        if (Browser.hasBlobConstructor) {
+          b = new Blob([byteArray], { type: getMimetype(name) });
+        } else {
+          var bb = new Browser.BlobBuilder();
+          bb.append(byteArray.buffer);
+          b = bb.getBlob();
+        }
         var url = Browser.URLObject.createObjectURL(b);
         var img = new Image();
         img.onload = function() {
@@ -94,19 +111,13 @@ mergeInto(LibraryManager.library, {
       };
       Module['preloadPlugins'].push(imagePlugin);
 
-      var audioPlugin = {
-        getAudioMimetype: function(name) {
-          var ret = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }[name.substr(-3)];
-          assert(ret);
-          return ret;
-        }
-      };
+      var audioPlugin = {};
       audioPlugin['canHandle'] = function(name) {
         return name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function(byteArray, name, onload, onerror) {
         if (Browser.hasBlobConstructor) {
-          var b = new Blob([byteArray.buffer], { type: audioPlugin.getAudioMimetype(name) });
+          var b = new Blob([byteArray], { type: getMimetype(name) });
           var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
           var audio = new Audio();
           var cleanedUp = false;
@@ -125,7 +136,7 @@ mergeInto(LibraryManager.library, {
               cleanedUp = true;
             }
           };
-          setTimeout(audio.onerror, 2000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+          setTimeout(audio.onerror, 10000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
           audio.src = url;
         } else {
           Module["preloadedAudios"][name] = new Audio(); // empty shim
