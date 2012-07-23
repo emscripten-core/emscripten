@@ -48,6 +48,7 @@ has_preloaded = False
 in_compress = 0
 pre_run = False
 crunch = 0
+plugins = []
 
 for arg in sys.argv[1:]:
   if arg == '--preload':
@@ -72,6 +73,12 @@ for arg in sys.argv[1:]:
   elif arg.startswith('--crunch'):
     from shared import CRUNCH
     crunch = arg.split('=')[1] if '=' in arg else '128'
+    in_preload = False
+    in_embed = False
+    in_compress = 0
+  elif arg.startswith('--plugin'):
+    plugin = open(arg.split('=')[1], 'r').read()
+    eval(plugin) # should append itself to plugins
     in_preload = False
     in_embed = False
     in_compress = 0
@@ -119,6 +126,11 @@ def was_seen(name):
   seen[name] = 1
   return False
 data_files = filter(lambda file_: not was_seen(file_['name']), data_files)
+
+# Apply plugins
+for file_ in data_files:
+  for plugin in plugins:
+    plugin(file_)
 
 # Crunch files
 if crunch:
