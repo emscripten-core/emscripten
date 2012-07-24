@@ -116,27 +116,54 @@ mergeInto(LibraryManager.library, {
         return name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function(byteArray, name, onload, onerror) {
+        var done = false;
+        function finish(audio) {
+          if (done) return;
+          done = true;
+          Module["preloadedAudios"][name] = audio;
+          audio['oncanplaythrough'] = null;
+          if (onload) onload(byteArray);
+        }
         if (Browser.hasBlobConstructor) {
           var b = new Blob([byteArray], { type: getMimetype(name) });
           var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
           var audio = new Audio();
-          var cleanedUp = false;
-          audio['oncanplaythrough'] = function() { // XXX string for closure
-            audio['oncanplaythrough'] = null;
-            Module["preloadedAudios"][name] = audio;
-            if (!cleanedUp) {
-              if (onload) onload(byteArray);
-              cleanedUp = true;
-            }
-          };
+          audio['oncanplaythrough'] = function() { finish(audio) }; // XXX string for closure
           audio.onerror = function(event) {
-            if (!cleanedUp) {
-              console.log('Audio ' + url + ' could not be decoded or timed out trying to decode');
-              if (onerror) onerror();
-              cleanedUp = true;
+            if (done) return;
+            if (!audioPlugin.shownWarning) {
+              audioPlugin.shownWarning = true;
+              alert('Your browser is having trouble loading audio files. Sound effects may not work properly.');
             }
+            console.log('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
+            function encode64(data) {
+              var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+              var PAD = '=';
+              var ret = '';
+              var leftchar = 0;
+              var leftbits = 0;
+              for (var i = 0; i < data.length; i++) {
+                leftchar = (leftchar << 8) | data[i];
+                leftbits += 8;
+                while (leftbits >= 6) {
+                  var curr = (leftchar >> (leftbits-6)) & 0x3f;
+                  leftbits -= 6;
+                  ret += BASE[curr];
+                }
+              }
+              if (leftbits == 2) {
+                ret += BASE[(leftchar&3) << 4];
+                ret += PAD + PAD;
+              } else if (leftbits == 4) {
+                ret += BASE[(leftchar&0xf) << 2];
+                ret += PAD;
+              }
+              return ret;
+            }
+            audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
+            finish(audio); // we don't wait for confirmation this worked - but it's worth trying
           };
-          setTimeout(audio.onerror, 5000); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+          setTimeout(audio.onerror, 5000); // partial workaround for chromium bug 124926
           audio.src = url;
         } else {
           Module["preloadedAudios"][name] = new Audio(); // empty shim
