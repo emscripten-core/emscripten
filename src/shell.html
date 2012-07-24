@@ -14,7 +14,9 @@
   <body>
     <hr/>
     <div class="emscripten" id="status">Downloading...</div>
-    <progress value="0" max="100" id="progress" hidden=1></progress>  
+    <div class="emscripten">
+      <progress value="0" max="100" id="progress" hidden=1></progress>  
+    </div>
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <hr/>
     <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
