@@ -1440,7 +1440,7 @@ var LibraryGL = {
 
     generateTempBuffers: function() {
       function ceilPower2(x) {
-        return Math.pow(2, Math.ceil(Math.log(i || 1)/Math.log(2)));
+        return Math.pow(2, Math.ceil(Math.log(x || 1)/Math.log(2)));
       }
       this.tempBufferIndexLookup = new Uint8Array(this.MAX_TEMP_BUFFER_SIZE+1);
       var last = -1, curr = -1;
