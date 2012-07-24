@@ -70,7 +70,7 @@ mergeInto(LibraryManager.library, {
           'bmp': 'image/bmp',
           'ogg': 'audio/ogg',
           'wav': 'audio/wav',
-          'mp3': 'audio/mpeg',
+          'mp3': 'audio/mpeg'
         }[name.substr(-3)];
         return ret;
       }
