@@ -169,6 +169,8 @@ var LibraryGL = {
       if (GL.initExtensions.done) return;
       GL.initExtensions.done = true;
 
+      if (!Module.useWebGL) return; // an app might link both gl and 2d backends
+
       GL.compressionExt = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc');
@@ -1362,7 +1364,7 @@ var LibraryGL = {
   // GL Immediate mode
 
   $GLImmediate__postset: 'Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
-  $GLImmediate__deps: ['$Browser'],
+  $GLImmediate__deps: ['$Browser', '$GL'],
   $GLImmediate: {
     MAX_TEXTURES: 7,
 

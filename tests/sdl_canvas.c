@@ -3,7 +3,18 @@
 #include <SDL/SDL_ttf.h>
 #include <emscripten.h>
 
-int main() {
+
+int main(int argc, char **argv) {
+#if EMSCRIPTEN
+  // include GL stuff, to check that we can compile hybrid 2d/GL apps
+  extern void glBegin(int mode);
+  extern void glBindBuffer(int target, int buffer);
+  if (argc == 9876) {
+    glBegin(0);
+    glBindBuffer(0, 0);
+  }
+#endif
+
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
