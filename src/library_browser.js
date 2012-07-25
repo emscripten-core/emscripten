@@ -167,7 +167,7 @@ mergeInto(LibraryManager.library, {
               audioPlugin.shownWarning = true;
               alert('Your browser is having trouble loading audio files. Sound effects may not work properly.');
             }
-            audio.onerror();
+            finish(audio); // try to continue normally, the sound might be ok if the oncanplaythrough callback just didn't fire
           }, 5000);
           audio.src = url;
         } else {
