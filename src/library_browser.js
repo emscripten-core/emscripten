@@ -121,14 +121,13 @@ mergeInto(LibraryManager.library, {
           if (done) return;
           done = true;
           Module["preloadedAudios"][name] = audio;
-          audio['oncanplaythrough'] = null;
           if (onload) onload(byteArray);
         }
         if (Browser.hasBlobConstructor) {
           var b = new Blob([byteArray], { type: getMimetype(name) });
           var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
           var audio = new Audio();
-          audio['oncanplaythrough'] = function() { finish(audio) }; // XXX string for closure
+          audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
           audio.onerror = function(event) {
             if (done) return;
             console.log('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
@@ -159,16 +158,6 @@ mergeInto(LibraryManager.library, {
             audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
             finish(audio); // we don't wait for confirmation this worked - but it's worth trying
           };
-          // One of oncanplaythrough, onerror should definitely fire. if not, the browser is misbehaving, try
-          // to work around this issue (chromium bug 124926)
-          setTimeout(function() {
-            if (done) return;
-            if (!audioPlugin.shownWarning) {
-              audioPlugin.shownWarning = true;
-              alert('Your browser is having trouble loading audio files. Sound effects may not work properly.');
-            }
-            finish(audio); // try to continue normally, the sound might be ok if the oncanplaythrough callback just didn't fire
-          }, 5000);
           audio.src = url;
         } else {
           Module["preloadedAudios"][name] = new Audio(); // empty shim
