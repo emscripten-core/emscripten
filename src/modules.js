@@ -332,6 +332,7 @@ var LibraryManager = {
         var i = 0;
         var regArgs = args.map(function(arg) { return String.fromCharCode('A'.charCodeAt(0) + i++) });
         i = 0;
+        // regular args are also important for internal lib-lib communication
         argFix = 'if (' + args[0] + ' == undefined) { ' + args.map(function(arg) { return arg + ' = ' + regArgs[i++] }).join('; ') + ' }'
         snippet = snippet.substring(0, snippet.indexOf('{') + 1) + argFix + snippet.substring(snippet.indexOf('{') + 1);
       }
@@ -339,7 +340,7 @@ var LibraryManager = {
         snippet = snippet.substring(0, snippet.indexOf('{') + 1) +
                   'A = (function() { ' +
                   snippet.substring(snippet.indexOf('{') + 1, snippet.lastIndexOf('}')) +
-                  '})(); }';
+                  '})(); return A }'; // regular return is also important for internal lib-lib communication
       }
     }
 
