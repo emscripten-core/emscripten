@@ -404,6 +404,19 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         '''
         self.do_run(src, 'hello, world!')
 
+    def test_call(self):
+        src = '''
+          #include <stdio.h>
+          int callee() {
+            puts("hello, world!");
+            return 77;
+          }
+          int main() {
+            return callee();
+          }
+        '''
+        self.do_run(src, 'hello, world!')
+
     def test_intvars(self):
         src = '''
           #include <stdio.h>
