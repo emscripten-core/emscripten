@@ -1034,3 +1034,7 @@ function tryRun() {
   }
 }
 
+// "registers" XXX FIXME
+
+var A, B;
+
