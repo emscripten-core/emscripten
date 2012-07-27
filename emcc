@@ -866,6 +866,8 @@ try:
   pre_post.write('//=============================================================================\n')
   pre_post.write(open(final).read())
   pre_post.write('//=============================================================================\n')
+  shared.JSLib.write_exports(pre_post)
+  pre_post.write('//=============================================================================\n')
   pre_post.write(post_js)
   final += '.pp.js'
   if DEBUG: save_intermediate('pre-post')

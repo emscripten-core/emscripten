@@ -1022,4 +1022,8 @@ class JSLib:
     finally:
       os.chdir(curr_dir)
 
+  @staticmethod
+  def write_exports(stream):
+    for export in Settings.EXPORTED_FUNCTIONS:
+      stream.write('Module["%(export)s"] = %(export)s\n' % { 'export': export })
 

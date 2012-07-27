@@ -173,11 +173,5 @@ deps.forEach(function(dep) {
 
 print('//=============================================================================');
 
-for (var func in EXPORTED_FUNCTIONS) {
-  print('Module["' + func + '"] = ' + func + ';');
-}
-
-print('//=============================================================================');
-
 print(LibraryManager.postsets.join('\n'));
 
