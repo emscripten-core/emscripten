@@ -324,9 +324,22 @@ var LibraryManager = {
 
       // name the function; overwrite if it's already named
       snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
-      if (LIBRARY_DEBUG) {
-        snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
-        snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
+
+      // horrible temporary hack to force "normal" cpu behavior on function argument and return values XXX
+      var args = snippet.substring(snippet.indexOf('(')+1, snippet.indexOf(')')).split(',');
+      if (args.length == 1 && args[0].length == 0) args = [];
+      if (args.length) {
+        var i = 0;
+        var regArgs = args.map(function(arg) { return String.fromCharCode('A'.charCodeAt(0) + i++) });
+        i = 0;
+        argFix = 'if (' + args[0] + ' == undefined) { ' + args.map(function(arg) { return arg + ' = ' + regArgs[i++] }).join('; ') + ' }'
+        snippet = snippet.substring(0, snippet.indexOf('{') + 1) + argFix + snippet.substring(snippet.indexOf('{') + 1);
+      }
+      if (snippet.indexOf('return') >= 0) {
+        snippet = snippet.substring(0, snippet.indexOf('{') + 1) +
+                  'A = (function() { ' +
+                  snippet.substring(snippet.indexOf('{') + 1, snippet.lastIndexOf('}')) +
+                  '})(); }';
       }
     }
 
