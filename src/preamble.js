@@ -1018,8 +1018,6 @@ function run(args) {
 }
 Module['run'] = run;
 
-initRuntime();
-
 #if INVOKE_RUN
 #else
 addRunDependency();
