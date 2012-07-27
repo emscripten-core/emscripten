@@ -387,6 +387,17 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
           #include <stdio.h>
           int main()
           {
+            puts("hello, world!");
+            return 0;
+          }
+        '''
+        self.do_run(src, 'hello, world!')
+
+    def test_hello_world2(self):
+        src = '''
+          #include <stdio.h>
+          int main()
+          {
             printf("hello, world!\\n");
             return 0;
           }
