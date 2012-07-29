@@ -5143,6 +5143,19 @@ int main(int argc, char **argv) {
         }
       '''
       self.do_run(src, 'value:10')
+
+    def test_fakestat(self):
+      src = r'''
+        #include <stdio.h>
+        struct stat { int x, y; };
+        int main() {
+          stat s;
+          s.x = 10;
+          s.y = 22;
+          printf("*%d,%d*\n", s.x, s.y);
+        }
+      '''
+      self.do_run(src, '*10,22*')
       
     def test_mmap(self):
       src = '''

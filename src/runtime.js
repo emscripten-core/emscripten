@@ -280,7 +280,10 @@ var Runtime = {
       offset = offset || 0;
       type = (typeof Types === 'undefined' ? Runtime.typeInfo : Types.types)[typeName];
       if (!type) return null;
-      assert(type.fields.length === struct.length, 'Number of named fields must match the type for ' + typeName);
+      if (type.fields.length != struct.length) {
+        printErr('Number of named fields must match the type for ' + typeName + ': possibly duplicate struct names. Cannot return structInfo');
+        return null;
+      }
       alignment = type.flatIndexes;
     } else {
       var type = { fields: struct.map(function(item) { return item[0] }) };
