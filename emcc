@@ -831,7 +831,7 @@ try:
   # Run llvm-js
   if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
   #execute([shared.LLVM_COMPILER, '-disable-sparc-delay-filler', '-mtriple=sparc', final, '-o=' + final + '.js'])
-  execute([shared.LLVM_COMPILER, '-mtriple=dcpu16', final, '-o=' + final + '.js'])
+  execute([shared.LLVM_COMPILER, '-mtriple=dcpu16', '--disable-dcpu16-peephole', '--disable-dcpu16-brcc', final, '-o=' + final + '.js'])
   bitcode = final
   final += '.js'
   if DEBUG: save_intermediate('llvmjs')
