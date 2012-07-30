@@ -7655,6 +7655,16 @@ elif 'browser' in str(sys.argv):
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
+      # Should still work with -o subdir/..
+
+      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
+      try:
+        os.mkdir(os.path.join(self.get_dir(), 'dirrey'))
+      except:
+        pass
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'dirrey/page.html']).communicate()
+      self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
+
       # With FS.preloadFile
 
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''

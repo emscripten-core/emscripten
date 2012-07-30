@@ -320,7 +320,7 @@ if has_preloaded:
     Module['addRunDependency']('datafile');
     dataFile.send(null);
     if (Module['setStatus']) Module['setStatus']('Downloading...');
-  ''' % (Compression.compressed_name(data_target) if Compression.on else data_target, use_data)
+  ''' % (os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
 if pre_run:
   print '''
