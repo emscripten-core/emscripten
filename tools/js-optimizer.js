@@ -485,13 +485,20 @@ function optimizeShiftsInternal(ast, conservative) {
       }
       // vars
       // XXX if var has >>=, ignore it here? That means a previous pass already optimized it
-      traverse(fun, function(node, type) {
+      var hasSwitch = traverse(fun, function(node, type) {
         if (type == 'var') {
           node[1].forEach(function(arg) {
             newVar(arg[0], false, arg[1]);
           });
+        } else if (type == 'switch') {
+          // The relooper can't always optimize functions, and we currently don't work with
+          // switch statements when optimizing shifts. Bail.
+          return true;
         }
       });
+      if (hasSwitch) {
+        break;
+      }
       // uses and defs TODO: weight uses by being inside a loop (powers). without that, we
       // optimize for code size, not speed.
       traverse(fun, function(node, type, stack) {
