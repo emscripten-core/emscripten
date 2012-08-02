@@ -1,4 +1,10 @@
-//"use strict";
+
+//
+// Various compiling-to-JS parameters. These are simply variables present when the
+// JS compiler runs. To set them, do something like
+//
+//   emcc -s OPTION1=VALUE1 -s OPTION2=VALUE2 [..other stuff..]
+//
 
 // Tuning
 var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 would
