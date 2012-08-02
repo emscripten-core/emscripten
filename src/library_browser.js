@@ -240,7 +240,7 @@ mergeInto(LibraryManager.library, {
     requestFullScreen: function() {
       var canvas = Module.canvas;
       function fullScreenChange() {
-        if (Module['onFullScreen']) Module['onFullScreen']();
+        var isFullScreen = false;
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
              document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
              document['fullScreenElement'] || document['fullscreenElement']) === canvas) {
@@ -248,7 +248,9 @@ mergeInto(LibraryManager.library, {
                                       canvas['mozRequestPointerLock'] ||
                                       canvas['webkitRequestPointerLock'];
           canvas.requestPointerLock();
+          isFullScreen = true;
         }
+        if (Module['onFullScreen']) Module['onFullScreen'](isFullScreen);
       }
 
       document.addEventListener('fullscreenchange', fullScreenChange, false);
