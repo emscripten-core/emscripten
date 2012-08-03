@@ -49,6 +49,12 @@ LibraryManager.library = {
     // streams is kept as a dense array. It may contain |null| to fill in
     // holes, however.
     streams: [null],
+#if ASSERTIONS
+    checkStreams: function() {
+      for (var i in FS.streams) assert(i >= 0 && i < FS.streams.length); // no keys not in dense span
+      for (var i = 0; i < FS.streams.length; i++) assert(typeof FS.streams[i] == 'object'); // no non-null holes in dense span
+    },
+#endif
     // Whether we are currently ignoring permissions. Useful when preparing the
     // filesystem and creating files inside read-only folders.
     // This is set to false when the runtime is initialized, allowing you
@@ -501,6 +507,10 @@ LibraryManager.library = {
       FS.streams[_stdin] = FS.streams[1];
       FS.streams[_stdout] = FS.streams[2];
       FS.streams[_stderr] = FS.streams[3];
+#if ASSERTIONS
+      FS.checkStreams();
+      assert(FS.streams.length < 1024); // at this early stage, we should not have a large set of file descriptors - just a few
+#endif
       __impure_ptr = allocate([ allocate(
         {{{ Runtime.QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
         'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
@@ -575,6 +585,9 @@ LibraryManager.library = {
       // Each stream has its own area for readdir() returns.
       currentEntry: _malloc(___dirent_struct_layout.__size__)
     };
+#if ASSERTIONS
+    FS.checkStreams();
+#endif
     return id;
   },
   closedir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -585,7 +598,7 @@ LibraryManager.library = {
       return ___setErrNo(ERRNO_CODES.EBADF);
     } else {
       _free(FS.streams[dirp].currentEntry);
-      delete FS.streams[dirp];
+      FS.streams[dirp] = null;
       return 0;
     }
   },
@@ -1122,6 +1135,9 @@ LibraryManager.library = {
         ungotten: []
       };
     }
+#if ASSERTIONS
+    FS.checkStreams();
+#endif
     return id;
   },
   creat__deps: ['open'],
@@ -1155,6 +1171,9 @@ LibraryManager.library = {
           FS.streams[i] = null; // Keep dense
         }
         FS.streams[arg] = newStream;
+#if ASSERTIONS
+        FS.checkStreams();
+#endif
         return arg;
       case {{{ cDefine('F_GETFD') }}}:
       case {{{ cDefine('F_SETFD') }}}:
@@ -1315,7 +1334,7 @@ LibraryManager.library = {
       if (FS.streams[fildes].currentEntry) {
         _free(FS.streams[fildes].currentEntry);
       }
-      delete FS.streams[fildes];
+      FS.streams[fildes] = null;
       return 0;
     } else {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -2891,7 +2910,7 @@ LibraryManager.library = {
     };
     try {
       if (stream === 0) {
-        for (var i in FS.streams) if (FS.streams[i]) flush(i);
+        for (var i = 0; i < FS.streams.length; i++) if (FS.streams[i]) flush(i);
       } else {
         flush(stream);
       }
