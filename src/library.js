@@ -1628,8 +1628,8 @@ LibraryManager.library = {
       var size = Math.min(contents.length - offset, nbyte);
       for (var i = 0; i < size; i++) {
         {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
-        bytesRead++;
       }
+      bytesRead += size;
       return bytesRead;
     }
   },
