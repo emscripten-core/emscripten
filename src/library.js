@@ -484,14 +484,18 @@ LibraryManager.library = {
         eof: false,
         ungotten: []
       };
-      _stdin = allocate([1], 'void*', ALLOC_STATIC);
-      _stdout = allocate([2], 'void*', ALLOC_STATIC);
-      _stderr = allocate([3], 'void*', ALLOC_STATIC);
+      // Allocate these on the stack (and never free, we are called from ATINIT or earlier), to keep their locations low
+      _stdin = allocate([1], 'void*', ALLOC_STACK);
+      _stdout = allocate([2], 'void*', ALLOC_STACK);
+      _stderr = allocate([3], 'void*', ALLOC_STACK);
 
       // Other system paths
       FS.createPath('/', 'dev/shm/tmp', true, true); // temp files
 
       // Newlib initialization
+      for (var i = FS.streams.length; i < Math.max(_stdin, _stdout, _stderr) + {{{ QUANTUM_SIZE }}}; i++) {
+        FS.streams[i] = null; // Make sure to keep FS.streams dense
+      }
       FS.streams[_stdin] = FS.streams[1];
       FS.streams[_stdout] = FS.streams[2];
       FS.streams[_stderr] = FS.streams[3];
@@ -548,7 +552,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EACCES);
       return 0;
     }
-    var id = FS.streams.length;
+    var id = FS.streams.length; // Keep dense
     var contents = [];
     for (var key in target.contents) contents.push(key);
     FS.streams[id] = {
@@ -1077,7 +1081,7 @@ LibraryManager.library = {
       finalPath = path.parentPath + '/' + path.name;
     }
     // Actually create an open stream.
-    var id = FS.streams.length;
+    var id = FS.streams.length; // Keep dense
     if (target.isFolder) {
       var entryBuffer = 0;
       if (___dirent_struct_layout) {
@@ -1144,7 +1148,7 @@ LibraryManager.library = {
         for (var member in stream) {
           newStream[member] = stream[member];
         }
-        if (arg in FS.streams) arg = FS.streams.length;
+        arg = FS.streams.length; // Keep dense
         FS.streams[arg] = newStream;
         return arg;
       case {{{ cDefine('F_GETFD') }}}:
