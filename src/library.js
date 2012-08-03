@@ -1131,7 +1131,7 @@ LibraryManager.library = {
     return _open(path, {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_TRUNC') }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
-  fcntl: function(fildes, cmd, varargs) {
+  fcntl: function(fildes, cmd, varargs, dup2) {
     // int fcntl(int fildes, int cmd, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/fcntl.html
     if (!FS.streams[fildes]) {
@@ -1150,7 +1150,7 @@ LibraryManager.library = {
         for (var member in stream) {
           newStream[member] = stream[member];
         }
-        arg = Math.max(arg, FS.streams.length);
+        arg = dup2 ? arg : Math.max(arg, FS.streams.length); // dup2 wants exactly arg; fcntl wants a free descriptor >= arg
         for (var i = FS.streams.length; i < arg; i++) {
           FS.streams[i] = null; // Keep dense
         }
@@ -1339,7 +1339,7 @@ LibraryManager.library = {
       return fildes;
     } else {
       _close(fildes2);
-      return _fcntl(fildes, 0, allocate([fildes2, 0, 0, 0], 'i32', ALLOC_STACK));  // F_DUPFD.
+      return _fcntl(fildes, 0, allocate([fildes2, 0, 0, 0], 'i32', ALLOC_STACK), true);  // F_DUPFD.
     }
   },
   fchown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chown'],
