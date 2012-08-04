@@ -1043,8 +1043,15 @@ c5,de,15,8a
           };
 
           int main() {
-            // the 64-bit value here will not always be 8-byte aligned
-            S s[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
+            // the 64-bit value here will not be 8-byte aligned
+            S s0[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
+            char buffer[10*sizeof(S)];
+            int b = int(buffer);
+            S *s = (S*)(b + 4-b%8);
+            s[0] = s0[0];
+            s[1] = s0[1];
+            s[2] = s0[2];
+
             printf("*%d : %d : %d\n", sizeof(S), ((unsigned int)&s[0]) % 8 != ((unsigned int)&s[1]) % 8,
                                                  ((unsigned int)&s[1]) - ((unsigned int)&s[0]));
             s[0].x++;
