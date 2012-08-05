@@ -1,0 +1,99 @@
+diff --git a/src/library_gl.js b/src/library_gl.js
+index 4bce0ef..094a961 100644
+--- a/src/library_gl.js
++++ b/src/library_gl.js
+@@ -1386,6 +1386,7 @@ var LibraryGL = {
+     mode: 0,
+ 
+     rendererCache: {},
++    rendererCacheTemp: [], // temporary item for renderer cache lookups
+     rendererComponents: {}, // small cache for calls inside glBegin/end. counts how many times the element was seen
+     rendererComponentPointer: 0, // next place to start a glBegin/end component
+     lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
+@@ -1520,9 +1521,71 @@ var LibraryGL = {
+     },
+ 
+     getRenderer: function() {
+-      // return a renderer object given the liveClientAttributes
+-      // we maintain a cache of renderers, optimized to not generate garbage
++      // return a renderer object given the liveClientAttributes and other relevant information about rendering state
+       var attributes = GL.immediate.liveClientAttributes;
++
++
++
++
++
++      var temp = GL.immediate.rendererCacheTemp;
++      temp.length = 0;
++      var hash = 1000;
++      var salt = 0x0149F37A;
++      function add(value) {
++        temp.push(value);
++        hash = (hash*(value+3))^salt;
++      }
++      for (var i = 0; i < attributes.length; i++) {
++        var attribute = attributes[i];
++        add(attribute.name);
++        add(attribute.size);
++        add(attribute.type);
++      }
++      add(GLEmulation.fogEnabled ? GLEmulation.fogMode : 0);
++      if (GL.currProgram) { // Note the order here; this one is last, and optional
++        add(GL.currProgram);
++      }
++      var cache = GL.immediate.rendererCache;
++      function isCorrect(item) {
++        if (item.hash != hash) return false;
++        if (item.id.length != temp.length) return false;
++        var length = temp.length;
++        var existing = item.id;
++        for (var i = 0; i < length; i++) {
++          if (existing[i] != temp[i]) {
++            return false;
++          }
++        }
++        return true;
++      }
++      var seek = hash;
++      var item;
++      while ((item = cache[seek]) && !isCorrect(item)) {
++        Module.printErr('cache collision!');
++        seek++;
++      }
++      if (item) return item.renderer;
++#if GL_DEBUG
++      Module.printErr('generating renderer for ' + JSON.stringify(attributes));
++#endif
++      var renderer = this.createRenderer();
++      cache[seek] = {
++        id: temp.slice(0),
++        hash: hash,
++        renderer: renderer
++      };
++      return renderer;
++
++
++
++
++
++
++
++
++
++      // we maintain a cache of renderers, optimized to not generate garbage
+       var cacheItem = GL.immediate.rendererCache;
+       for (var i = 0; i < attributes.length; i++) {
+         var attribute = attributes[i];
+@@ -1544,6 +1607,12 @@ var LibraryGL = {
+         if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = {};
+         cacheItem = cacheItem[GL.currProgram];
+       }
++
++
++
++
++
++
+       if (!cacheItem.renderer) {
+ #if GL_DEBUG
+         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
