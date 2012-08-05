@@ -1422,15 +1422,16 @@ var LibraryGL = {
     clientActiveTexture: 0,
     clientColor: null,
 
-    byteSizeByType: {
-      0x1400: 1, // GL_BYTE
-      0x1401: 1, // GL_UNSIGNED_BYTE
-      0x1402: 2, // GL_SHORT
-      0x1403: 2, // GL_UNSIGNED_SHORT
-      0x1404: 4, // GL_INT
-      0x1405: 4, // GL_UNSIGNED_INT
-      0x1406: 4  // GL_FLOAT
-    },
+    byteSizeByTypeRoot: 0x1400, // GL_BYTE
+    byteSizeByType: [
+      1, // GL_BYTE
+      1, // GL_UNSIGNED_BYTE
+      2, // GL_SHORT
+      2, // GL_UNSIGNED_SHORT
+      4, // GL_INT
+      4, // GL_UNSIGNED_INT
+      4  // GL_FLOAT
+    ],
 
     setClientAttribute: function(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]];
@@ -1507,7 +1508,7 @@ var LibraryGL = {
 #endif
         this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]] = true;
         this.setClientAttribute(name, size, type, 0, this.rendererComponentPointer);
-        this.rendererComponentPointer += size * this.byteSizeByType[type];
+        this.rendererComponentPointer += size * this.byteSizeByType[type - this.byteSizeByTypeRoot];
       } else {
         this.rendererComponents[name]++;
       }
@@ -1942,7 +1943,7 @@ var LibraryGL = {
           assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
           bytes += attribute.offset - bytes;
         }
-        bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type];
+        bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
         if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
       }
       assert(stride == 0 || bytes <= stride);
