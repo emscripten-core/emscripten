@@ -1412,7 +1412,6 @@ var LibraryGL = {
     TEXTURE6: 9,
     NUM_ATTRIBUTES: 10,
     NUM_TEXTURES: 7,
-    ATTRIBUTE_BY_NAME: {},
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
@@ -1434,7 +1433,7 @@ var LibraryGL = {
     ],
 
     setClientAttribute: function(name, size, type, stride, pointer) {
-      var attrib = this.clientAttributes[GL.immediate.ATTRIBUTE_BY_NAME[name]];
+      var attrib = this.clientAttributes[name];
       attrib.name = name;
       attrib.size = size;
       attrib.type = type;
@@ -1504,9 +1503,9 @@ var LibraryGL = {
       if (!this.rendererComponents[name]) {
         this.rendererComponents[name] = 1;
 #if ASSERTIONS
-        assert(!this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]]); // cannot get mixed up with this, for example we will disable this later
+        assert(!this.enabledClientAttributes[name]); // cannot get mixed up with this, for example we will disable this later
 #endif
-        this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]] = true;
+        this.enabledClientAttributes[name] = true;
         this.setClientAttribute(name, size, type, 0, this.rendererComponentPointer);
         this.rendererComponentPointer += size * this.byteSizeByType[type - this.byteSizeByTypeRoot];
       } else {
@@ -1516,7 +1515,7 @@ var LibraryGL = {
 
     disableBeginEndClientAttributes: function() {
       for (var name in this.rendererComponents) {
-        this.enabledClientAttributes[this.ATTRIBUTE_BY_NAME[name]] = false;
+        this.enabledClientAttributes[name] = false;
       }
     },
 
@@ -1834,17 +1833,6 @@ var LibraryGL = {
         this.matrixStack['t' + i] = [];
       }
 
-      this.ATTRIBUTE_BY_NAME['V'] = 0;
-      this.ATTRIBUTE_BY_NAME['N'] = 1;
-      this.ATTRIBUTE_BY_NAME['C'] = 2;
-      this.ATTRIBUTE_BY_NAME['T0'] = 3;
-      this.ATTRIBUTE_BY_NAME['T1'] = 4;
-      this.ATTRIBUTE_BY_NAME['T2'] = 5;
-      this.ATTRIBUTE_BY_NAME['T3'] = 6;
-      this.ATTRIBUTE_BY_NAME['T4'] = 7;
-      this.ATTRIBUTE_BY_NAME['T5'] = 8;
-      this.ATTRIBUTE_BY_NAME['T6'] = 9;
-
       // Initialize matrix library
 
       GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
@@ -2055,7 +2043,7 @@ var LibraryGL = {
 #if ASSERTIONS
     assert(GL.immediate.vertexCounter << 2 < GL.immediate.MAX_TEMP_BUFFER_SIZE);
 #endif
-    GL.immediate.addRendererComponent('V', 3, Module.ctx.FLOAT);
+    GL.immediate.addRendererComponent(GL.immediate.VERTEX, 3, Module.ctx.FLOAT);
   },
   glVertex2f: 'glVertex3f',
 
@@ -2070,7 +2058,7 @@ var LibraryGL = {
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
-    GL.immediate.addRendererComponent('T0', 2, Module.ctx.FLOAT);
+    GL.immediate.addRendererComponent(GL.immediate.TEXTURE0, 2, Module.ctx.FLOAT);
   },
   glTexCoord2f: 'glTexCoord2i',
 
@@ -2088,7 +2076,7 @@ var LibraryGL = {
       GL.immediate.vertexDataU8[start + 2] = b * 255;
       GL.immediate.vertexDataU8[start + 3] = a * 255;
       GL.immediate.vertexCounter++;
-      GL.immediate.addRendererComponent('C', 4, Module.ctx.UNSIGNED_BYTE);
+      GL.immediate.addRendererComponent(GL.immediate.COLOR, 4, Module.ctx.UNSIGNED_BYTE);
     } else {
       GL.immediate.clientColor[0] = r;
       GL.immediate.clientColor[1] = g;
@@ -2244,16 +2232,16 @@ var LibraryGL = {
 
   glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute('V', size, type, stride, pointer);
+    GL.immediate.setClientAttribute(GL.immediate.VERTEX, size, type, stride, pointer);
   },
   glTexCoordPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute('T' + GL.immediate.clientActiveTexture, size, type, stride, pointer);
+    GL.immediate.setClientAttribute(GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture, size, type, stride, pointer);
   },
   glNormalPointer: function(type, stride, pointer) {
-    GL.immediate.setClientAttribute('N', 3, type, stride, pointer);
+    GL.immediate.setClientAttribute(GL.immediate.NORMAL, 3, type, stride, pointer);
   },
   glColorPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute('C', size, type, stride, pointer);
+    GL.immediate.setClientAttribute(GL.immediate.COLOR, size, type, stride, pointer);
   },
 
   glClientActiveTexture: function(texture) {
