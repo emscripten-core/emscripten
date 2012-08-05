@@ -10,20 +10,29 @@ var LibraryGL = {
     debug: true,
 #endif
 
-    counter: 1,
-    buffers: {},
-    programs: {},
-    framebuffers: {},
-    renderbuffers: {},
-    textures: {},
-    uniforms: {},
-    shaders: {},
+    counter: 1, // 0 is reserved as 'null' in gl
+    buffers: [],
+    programs: [],
+    framebuffers: [],
+    renderbuffers: [],
+    textures: [],
+    uniforms: [],
+    shaders: [],
 
     packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
 
     init: function() {
       Browser.moduleContextCreatedCallbacks.push(GL.initExtensions);
+    },
+
+    // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is farely rare so it is worth optimizing lookups later.
+    getNewId: function(table) {
+      var ret = GL.counter++;
+      for (var i = table.length; i < ret; i++) {
+        table[i] = null;
+      }
+      return ret;
     },
 
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
@@ -339,7 +348,7 @@ var LibraryGL = {
 
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = GL.counter++;
+      var id = GL.getNewId(GL.textures); 
       GL.textures[id] = Module.ctx.createTexture();
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
@@ -420,7 +429,7 @@ var LibraryGL = {
 
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.counter++;
+      var id = GL.getNewId(GL.buffers);
       GL.buffers[id] = Module.ctx.createBuffer();
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
@@ -457,7 +466,7 @@ var LibraryGL = {
 
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.counter++;
+      var id = GL.getNewId(GL.renderbuffers);
       GL.renderbuffers[id] = Module.ctx.createRenderbuffer();
       {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
     }
@@ -513,7 +522,7 @@ var LibraryGL = {
     name = Pointer_stringify(name);
     var loc = Module.ctx.getUniformLocation(GL.programs[program], name);
     if (!loc) return -1;
-    var id = GL.counter++;
+    var id = GL.getNewId(GL.uniforms);
     GL.uniforms[id] = loc;
     return id;
   },
@@ -726,7 +735,7 @@ var LibraryGL = {
   },
 
   glCreateShader: function(shaderType) {
-    var id = GL.counter++;
+    var id = GL.getNewId(GL.shaders);
     GL.shaders[id] = Module.ctx.createShader(shaderType);
     return id;
   },
@@ -809,7 +818,7 @@ var LibraryGL = {
   },
 
   glCreateProgram: function() {
-    var id = GL.counter++;
+    var id = GL.getNewId(GL.programs);
     GL.programs[id] = Module.ctx.createProgram();
     return id;
   },
@@ -875,7 +884,7 @@ var LibraryGL = {
 
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
-      var id = GL.counter++;
+      var id = GL.getNewId(GL.framebuffers);
       GL.framebuffers[id] = Module.ctx.createFramebuffer();
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
