@@ -1525,15 +1525,16 @@ var LibraryGL = {
       // we maintain a cache of renderers, optimized to not generate garbage
       var attributes = GL.immediate.liveClientAttributes;
       var cacheItem = GL.immediate.rendererCache;
+      var temp;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
-        if (!cacheItem[attribute.name]) cacheItem[attribute.name] = GL.immediate.rendererCacheItemTemplate.slice();
-        cacheItem = cacheItem[attribute.name];
-        if (!cacheItem[attribute.size]) cacheItem[attribute.size] = GL.immediate.rendererCacheItemTemplate.slice();
-        cacheItem = cacheItem[attribute.size];
+        temp = cacheItem[attribute.name];
+        cacheItem = temp ? temp : (cacheItem[attribute.name] = GL.immediate.rendererCacheItemTemplate.slice());
+        temp = cacheItem[attribute.size];
+        cacheItem = temp ? temp : (cacheItem[attribute.size] = GL.immediate.rendererCacheItemTemplate.slice());
         var typeIndex = attribute.type - GL.immediate.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
-        if (!cacheItem[typeIndex]) cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice();
-        cacheItem = cacheItem[typeIndex];
+        temp = cacheItem[typeIndex];
+        cacheItem = temp ? temp : (cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice());
       }
       var fogParam;
       if (GLEmulation.fogEnabled) {
@@ -1551,11 +1552,11 @@ var LibraryGL = {
       } else {
         fogParam = 0;
       }
-      if (!cacheItem[fogParam]) cacheItem[fogParam] = GL.immediate.rendererCacheItemTemplate.slice();
-      cacheItem = cacheItem[fogParam];
+      temp = cacheItem[fogParam];
+      cacheItem = temp ? temp : (cacheItem[fogParam] = GL.immediate.rendererCacheItemTemplate.slice());
       if (GL.currProgram) { // Note the order here; this one is last, and optional. Note that we cannot ensure it is dense, sadly
-        if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = GL.immediate.rendererCacheItemTemplate.slice();
-        cacheItem = cacheItem[GL.currProgram];
+        temp = cacheItem[GL.currProgram];
+        cacheItem = temp ? temp : (cacheItem[GL.currProgram] = GL.immediate.rendererCacheItemTemplate.slice());
       }
       if (!cacheItem.renderer) {
 #if GL_DEBUG
