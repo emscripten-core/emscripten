@@ -2041,7 +2041,7 @@ var LibraryGL = {
   },
 
   glEnd: function() {
-    GL.immediate.prepareClientAttributes(GL.immediate.rendererComponents['V'], true);
+    GL.immediate.prepareClientAttributes(GL.immediate.rendererComponents[GL.immediate.VERTEX], true);
     GL.immediate.firstVertex = 0;
     GL.immediate.lastVertex = GL.immediate.vertexCounter / (GL.immediate.stride >> 2);
     GL.immediate.flush();
