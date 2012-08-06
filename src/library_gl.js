@@ -1387,7 +1387,7 @@ var LibraryGL = {
 
     rendererCache: null,
     rendererCacheItemTemplate: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null], // 16 nulls
-    rendererComponents: {}, // small cache for calls inside glBegin/end. counts how many times the element was seen
+    rendererComponents: [], // small cache for calls inside glBegin/end. counts how many times the element was seen
     rendererComponentPointer: 0, // next place to start a glBegin/end component
     lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
     lastArrayBuffer: null, // used in conjunction with lastRenderer
@@ -1515,8 +1515,8 @@ var LibraryGL = {
     },
 
     disableBeginEndClientAttributes: function() {
-      for (var name in this.rendererComponents) {
-        this.enabledClientAttributes[name] = false;
+      for (var i = 0; i < this.NUM_ATTRIBUTES; i++) {
+        if (this.rendererComponents[i]) this.enabledClientAttributes[i] = false;
       }
     },
 
@@ -2035,7 +2035,10 @@ var LibraryGL = {
   glBegin: function(mode) {
     GL.immediate.mode = mode;
     GL.immediate.vertexCounter = 0;
-    GL.immediate.rendererComponents = {}; // XXX
+    var components = GL.immediate.rendererComponents = [];
+    for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
+      components[i] = 0;
+    }
     GL.immediate.rendererComponentPointer = 0;
     GL.immediate.vertexData = GL.immediate.tempData;
   },
