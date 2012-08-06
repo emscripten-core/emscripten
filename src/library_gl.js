@@ -1385,7 +1385,8 @@ var LibraryGL = {
     vertexCounter: 0,
     mode: 0,
 
-    rendererCache: {},
+    rendererCache: null,
+    rendererCacheItemTemplate: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null], // 16 nulls
     rendererComponents: {}, // small cache for calls inside glBegin/end. counts how many times the element was seen
     rendererComponentPointer: 0, // next place to start a glBegin/end component
     lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
@@ -1526,22 +1527,34 @@ var LibraryGL = {
       var cacheItem = GL.immediate.rendererCache;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
-        if (!cacheItem[attribute.name]) cacheItem[attribute.name] = {};
+        if (!cacheItem[attribute.name]) cacheItem[attribute.name] = GL.immediate.rendererCacheItemTemplate.slice();
         cacheItem = cacheItem[attribute.name];
-        if (!cacheItem[attribute.size]) cacheItem[attribute.size] = {};
+        if (!cacheItem[attribute.size]) cacheItem[attribute.size] = GL.immediate.rendererCacheItemTemplate.slice();
         cacheItem = cacheItem[attribute.size];
-        if (!cacheItem[attribute.type]) cacheItem[attribute.type] = {};
-        cacheItem = cacheItem[attribute.type];
+        var typeIndex = attribute.type - GL.immediate.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
+        if (!cacheItem[typeIndex]) cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice();
+        cacheItem = cacheItem[typeIndex];
       }
+      var fogParam;
       if (GLEmulation.fogEnabled) {
-        var fogParam = GLEmulation.fogMode;
+        switch (GLEmulation.fogMode) {
+          case 0x0801: // GL_EXP2
+            fogParam = 1;
+            break;
+          case 0x2601: // GL_LINEAR
+            fogParam = 2;
+            break;
+          default: // default to GL_EXP
+            fogParam = 3;
+            break;
+        }
       } else {
-        var fogParam = 0; // all valid modes are non-zero
+        fogParam = 0;
       }
-      if (!cacheItem[fogParam]) cacheItem[fogParam] = {};
+      if (!cacheItem[fogParam]) cacheItem[fogParam] = GL.immediate.rendererCacheItemTemplate.slice();
       cacheItem = cacheItem[fogParam];
-      if (GL.currProgram) { // Note the order here; this one is last, and optional
-        if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = {};
+      if (GL.currProgram) { // Note the order here; this one is last, and optional. Note that we cannot ensure it is dense, sadly
+        if (!cacheItem[GL.currProgram]) cacheItem[GL.currProgram] = GL.immediate.rendererCacheItemTemplate.slice();
         cacheItem = cacheItem[GL.currProgram];
       }
       if (!cacheItem.renderer) {
@@ -1842,6 +1855,9 @@ var LibraryGL = {
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
         GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
       }
+
+      // Renderer cache
+      this.rendererCache = this.rendererCacheItemTemplate.slice();
 
       // Buffers for data
       this.tempData = new Float32Array(this.MAX_TEMP_BUFFER_SIZE >> 2);
