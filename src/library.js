@@ -3473,7 +3473,8 @@ LibraryManager.library = {
     return ret;
   },
 
-  abs: 'Math.abs', // XXX should be integer?
+  abs: 'Math.abs',
+  labs: 'Math.abs',
 
   atoi__deps: ['isspace', 'isdigit'],
   atoi: function(s) {
