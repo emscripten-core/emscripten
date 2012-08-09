@@ -279,7 +279,10 @@ LibraryManager.library = {
         for (var i = 0, len = data.length; i < len; ++i) dataArray[i] = data.charCodeAt(i);
         data = dataArray;
       }
-      var properties = {isDevice: false, contents: data};
+      var properties = {
+        isDevice: false,
+        contents: data.subarray ? data.subarray(0) : data // as an optimization, create a new array wrapper (not buffer) here, to help JS engines understand this object
+      };
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
