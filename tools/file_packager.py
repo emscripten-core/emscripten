@@ -265,7 +265,7 @@ for file_ in data_files:
     %(varname)s.onload = function() {
       var arrayBuffer = %(varname)s.response;
       assert(arrayBuffer, 'Loading file %(filename)s failed.');
-      var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
+      var byteArray = !arrayBuffer.subarray ? new Uint8Array(arrayBuffer) : arrayBuffer;
       %(prepare)s
       Module['FS_createPreloadedFile']('/%(dirname)s', '%(basename)s', byteArray, true, true, function() {
         %(finish)s
