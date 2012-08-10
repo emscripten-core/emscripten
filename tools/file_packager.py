@@ -308,6 +308,13 @@ if has_preloaded:
 
   code += '''
     var dataFile = new XMLHttpRequest();
+    dataFile.onprogress = function(event) {
+      if (event.loaded && event.total) {
+        Module.setStatus('Downloading... (' + event.loaded + '/' + event.total + ')');
+      } else {
+        Module.setStatus('Downloading...');
+      }
+    }
     dataFile.open('GET', '%s', true);
     dataFile.responseType = 'arraybuffer';
     dataFile.onload = function() {
