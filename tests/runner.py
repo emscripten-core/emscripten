@@ -7259,6 +7259,17 @@ f.close()
           open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
           assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
 
+      # Use postInit
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        var Module = {
+          preRun: function() { Module.print('pre-run') },
+          postRun: function() { Module.print('post-run') },
+          preInit: function() { Module.print('pre-init') }
+        };
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+      self.assertContained('pre-init\npre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_prepost2(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>
