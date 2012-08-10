@@ -310,9 +310,9 @@ if has_preloaded:
     var dataFile = new XMLHttpRequest();
     dataFile.onprogress = function(event) {
       if (event.loaded && event.total) {
-        Module.setStatus('Downloading... (' + event.loaded + '/' + event.total + ')');
+        Module.setStatus('Downloading data... (' + event.loaded + '/' + event.total + ')');
       } else {
-        Module.setStatus('Downloading...');
+        Module.setStatus('Downloading data...');
       }
     }
     dataFile.open('GET', '%s', true);
