@@ -25,13 +25,14 @@ mergeInto(LibraryManager.library, {
       },
       updateStatus: function() {
         if (Module['setStatus']) {
+          var message = Module['statusMessage'] || 'Please wait...';
           var remaining = Browser.mainLoop.remainingBlockers;
           var expected = Browser.mainLoop.expectedBlockers;
           if (remaining) {
             if (remaining < expected) {
-              Module['setStatus']('Please wait... (' + (expected - remaining) + '/' + expected + ')');
+              Module['setStatus'](message + ' (' + (expected - remaining) + '/' + expected + ')');
             } else {
-              Module['setStatus']('Please wait...');
+              Module['setStatus'](message);
             }
           } else {
             Module['setStatus']('');
