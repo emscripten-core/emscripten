@@ -83,10 +83,15 @@ mergeInto(LibraryManager.library, {
         return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
-        var b;
+        var b = null;
         if (Browser.hasBlobConstructor) {
-          b = new Blob([byteArray], { type: getMimetype(name) });
-        } else {
+          try {
+            b = new Blob([byteArray], { type: getMimetype(name) });
+          } catch(e) {
+            Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
+          }
+        }
+        if (!b) {
           var bb = new Browser.BlobBuilder();
           bb.append(byteArray.buffer);
           b = bb.getBlob();
