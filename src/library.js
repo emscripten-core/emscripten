@@ -4224,8 +4224,8 @@ LibraryManager.library = {
   strncmp: function(px, py, n) {
     var i = 0;
     while (i < n) {
-      var x = {{{ makeGetValue('px', 'i', 'i8') }}};
-      var y = {{{ makeGetValue('py', 'i', 'i8') }}};
+      var x = {{{ makeGetValue('px', 'i', 'i8', 0, 1) }}};
+      var y = {{{ makeGetValue('py', 'i', 'i8', 0, 1) }}};
       if (x == y && x == 0) return 0;
       if (x == 0) return -1;
       if (y == 0) return 1;

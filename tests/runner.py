@@ -1487,6 +1487,20 @@ c5,de,15,8a
         '''
         self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
 
+    def test_strcmp_uni(self):
+      src = '''
+        #include <stdio.h>
+        #include <string.h>
+        int main()
+        {
+          char *word = "WORD";
+          char *wordEntry = "Â";
+          int cmp = strncmp(word, wordEntry, 2);
+          printf("Compare value is %d\\n", cmp);
+        }
+      '''
+      self.do_run(src, 'Compare value is -1\n')
+
     def test_strndup(self):
         src = '''
           //---------------
