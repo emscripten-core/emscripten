@@ -1493,13 +1493,19 @@ c5,de,15,8a
         #include <string.h>
         int main()
         {
-          char *word = "WORD";
-          char *wordEntry = "Â";
-          int cmp = strncmp(word, wordEntry, 2);
-          printf("Compare value is %d\\n", cmp);
+          #define TEST(func) \
+          { \
+            char *word = "WORD"; \
+            char *wordEntry = "Â"; \
+            int cmp = func(word, wordEntry, 2); \
+            printf("Compare value " #func " is %d\\n", cmp); \
+          }
+          TEST(strncmp);
+          TEST(strncasecmp);
+          TEST(memcmp);
         }
       '''
-      self.do_run(src, 'Compare value is -1\n')
+      self.do_run(src, 'Compare value strncmp is -1\nCompare value strncasecmp is -1\nCompare value memcmp is -1\n')
 
     def test_strndup(self):
         src = '''

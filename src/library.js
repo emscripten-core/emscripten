@@ -4243,8 +4243,8 @@ LibraryManager.library = {
   strncasecmp: function(px, py, n) {
     var i = 0;
     while (i < n) {
-      var x = _tolower({{{ makeGetValue('px', 'i', 'i8') }}});
-      var y = _tolower({{{ makeGetValue('py', 'i', 'i8') }}});
+      var x = _tolower({{{ makeGetValue('px', 'i', 'i8', 0, 1) }}});
+      var y = _tolower({{{ makeGetValue('py', 'i', 'i8', 0, 1) }}});
       if (x == y && x == 0) return 0;
       if (x == 0) return -1;
       if (y == 0) return 1;
@@ -4260,8 +4260,8 @@ LibraryManager.library = {
 
   memcmp: function(p1, p2, num) {
     for (var i = 0; i < num; i++) {
-      var v1 = {{{ makeGetValue('p1', 'i', 'i8') }}};
-      var v2 = {{{ makeGetValue('p2', 'i', 'i8') }}};
+      var v1 = {{{ makeGetValue('p1', 'i', 'i8', 0, 1) }}};
+      var v2 = {{{ makeGetValue('p2', 'i', 'i8', 0, 1) }}};
       if (v1 != v2) return v1 > v2 ? 1 : -1;
     }
     return 0;
