@@ -9,6 +9,10 @@ extern "C" {
 enum {
     IPPROTO_IP = 0,
 #define IPPROTO_IP IPPROTO_IP
+    IPPROTO_TCP = 1,
+#define IPPROTO_TCP IPPROTO_TCP
+    IPPROTO_UDP = 2,
+#define IPPROTO_UDP IPPROTO_UDP
     IPPROTO_MAX
 };
 
