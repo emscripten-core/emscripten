@@ -6968,6 +6968,19 @@ f.close()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
+    def test_abspaths(self):
+      # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
+
+      shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'main.c')
+
+      for args, expected in [(['-I/usr/something'], True),
+                             (['-L/usr/something'], True),
+                             (['-Isubdir/something'], False),
+                             (['-Lsubdir/something'], False),
+                             ([], False)]:
+        err = Popen(['python', EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
+        assert ('emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
+
     def test_local_link(self):
       # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
       # doesn't contain bitcode. However, when we see that we should look for a bitcode file for that
