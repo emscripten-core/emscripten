@@ -10,6 +10,10 @@ mergeInto(LibraryManager.library, {
   $Browser: {
     mainLoop: {
       scheduler: null,
+#if PROFILE_MAIN_LOOP
+      meanTime: 0,
+      lastReport: 0,
+#endif
       shouldPause: false,
       paused: false,
       queue: [],
@@ -394,7 +398,21 @@ mergeInto(LibraryManager.library, {
         Browser.mainLoop.shouldPause = false;
         return;
       }
+
+#if PROFILE_MAIN_LOOP
+      var start = performance.now();
+#endif
       jsFunc();
+#if PROFILE_MAIN_LOOP
+      var now = performance.now();
+      var time = now - start;
+      Browser.mainLoop.meanTime = (Browser.mainLoop.meanTime*9 + time)/10;
+      if (now - Browser.mainLoop.lastReport > 1000) {
+        console.log('main loop time: ' + Browser.mainLoop.meanTime);
+        Browser.mainLoop.lastReport = now;
+      }
+#endif
+
       if (Browser.mainLoop.shouldPause) {
         // catch pauses from the main loop itself
         Browser.mainLoop.paused = true;
