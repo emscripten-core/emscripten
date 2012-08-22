@@ -97,7 +97,7 @@ mergeInto(LibraryManager.library, {
         }
         if (!b) {
           var bb = new Browser.BlobBuilder();
-          bb.append(byteArray.buffer);
+          bb.append((new Uint8Array(byteArray)).buffer); // we need to pass a buffer, and must copy the array to get the right data range
           b = bb.getBlob();
         }
         var url = Browser.URLObject.createObjectURL(b);
