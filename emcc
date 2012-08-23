@@ -7,7 +7,7 @@ emcc - compiler helper script
 emcc is a drop-in replacement for a compiler like gcc or clang.
 
 Tell your build system to use this instead of the compiler, and similarly
-use emar, emld and emranlib instead of the same command without 'em'.
+use emar, emranlib etc. instead of the same command without 'em'.
 
 Example uses:
 
@@ -32,10 +32,10 @@ Example uses:
 
     SET(CMAKE_C_COMPILER "PATH/emcc")
     SET(CMAKE_CXX_COMPILER "PATH/em++")
-    SET(CMAKE_LINKER "PATH/emld")
-    SET(CMAKE_CXX_LINKER "PATH/emld")
-    SET(CMAKE_C_LINK_EXECUTABLE "PATH/emld")
-    SET(CMAKE_CXX_LINK_EXECUTABLE "PATH/emld")
+    SET(CMAKE_LINKER "PATH/emcc")
+    SET(CMAKE_CXX_LINKER "PATH/emcc")
+    SET(CMAKE_C_LINK_EXECUTABLE "PATH/emcc")
+    SET(CMAKE_CXX_LINK_EXECUTABLE "PATH/emcc")
     SET(CMAKE_AR "PATH/emar")
     SET(CMAKE_RANLIB "PATH/emranlib")
 
