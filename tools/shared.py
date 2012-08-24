@@ -642,7 +642,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         assert os.path.exists(current_target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
         actual_files_batch = [current_target]
         actual_files_batch_approx_len = len(current_target)
-    assert os.path.exists(target)
+    assert os.path.exists(target), 'emcc: Linker failed to generate expected output'
     if temp_dir:
       try_delete(temp_dir)
 
