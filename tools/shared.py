@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, collections
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -624,8 +624,25 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         seen_symbols = seen_symbols.union(symbols.defs)
 
     # Finish link
-    output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
-    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
+    actual_files_queue = collections.deque(actual_files)
+    actual_files_batch = []
+    actual_files_batch_approx_len = -1
+    while len(actual_files_queue):
+      next_actual_file = actual_files_queue.popleft()
+      actual_files_batch.append(next_actual_file)
+      actual_files_batch_approx_len += len(next_actual_file) + 1
+      if actual_files_batch_approx_len > 1024 or len(actual_files_queue) == 0:
+        if len(actual_files_queue):
+          intermediate_link_file = tempfile.NamedTemporaryFile(dir=EMSCRIPTEN_TEMP_DIR, delete=False)
+          intermediate_link_file.close()
+          current_target = intermediate_link_file.name
+        else:
+          current_target = target
+        output = Popen([LLVM_LINK] + actual_files_batch + ['-o', current_target], stdout=PIPE).communicate()[0]
+        assert os.path.exists(current_target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
+        actual_files_batch = [current_target]
+        actual_files_batch_approx_len = len(current_target)
+    assert os.path.exists(target)
     if temp_dir:
       try_delete(temp_dir)
 
