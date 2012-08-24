@@ -542,6 +542,23 @@ try:
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
+  # Expand response files
+  
+  expanded_args = []
+  for arg in newargs:
+    if arg.startswith("@"):
+      response_file = arg[1:]
+      if not os.path.exists(response_file):
+        print >> sys.stderr, 'emcc: %s: warning: Response file not found' % response_file
+      else:
+        response_file_handle = open(response_file, 'r')
+        expanded_args += shlex.split(response_file_handle.read())
+        response_file_handle.close()
+    else:
+      expanded_args.append(arg)
+      
+  newargs = expanded_args
+            
   # Find input files
 
   input_files = []
