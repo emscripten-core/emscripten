@@ -1391,6 +1391,9 @@ function analyzer(data, sidePass) {
 
           // Allocas
           var finishedInitial = false;
+
+          lines = func.lines; // We need to consider all the function lines now, not just the first label
+
           for (var i = 0; i < lines.length; i++) {
             var item = lines[i];
             if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) {
