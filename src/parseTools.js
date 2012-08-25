@@ -1794,7 +1794,14 @@ function processMathop(item) {
     case 'add': return handleOverflow(getFastValue(idents[0], '+', idents[1], item.type), bits);
     case 'sub': return handleOverflow(getFastValue(idents[0], '-', idents[1], item.type), bits);
     case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
-    case 'mul': return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
+    case 'mul': {
+      if (bits == 32 && PRECISE_I32_MUL) {
+        preciseI64MathUsed = true;
+        return '(i64Math.multiply(' + idents[0] + ',0,' + idents[1] + ',0),i64Math.result[0])';
+      } else {
+        return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
+      }
+    }
     case 'urem': case 'srem': return getFastValue(idents[0], '%', idents[1], item.type);
     case 'or': {
       if (bits > 32) {

@@ -76,6 +76,16 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // NaN or an infinite number.
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
+                          // Note that we do not catch 32-bit multiplication by default (which must be done in
+                          // 64 bits for high values for full precision) - you must manually set PRECISE_I32_MUL
+                          // for that.
+var PRECISE_I32_MUL = 1; // If enabled, i64 math is done in i32 multiplication. This is necessary if the values
+                         // exceed the JS double-integer limit of ~52 bits. This option can normally be disabled
+                         // because generally i32 multiplication works ok without it, and enabling it has a big
+                         // impact on performance.
+                         // Note that you can hand-optimize your code to avoid the need for this: If you do
+                         // multiplications that actually need 64-bit precision inside 64-bit values, things
+                         // will work properly. (Unless the LLVM optimizer turns them into 32-bit values?)
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.

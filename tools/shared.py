@@ -413,6 +413,7 @@ class Settings:
         if opt_level >= 1:
           Settings.ASSERTIONS = 0
           Settings.DISABLE_EXCEPTION_CATCHING = 1
+          Settings.PRECISE_I32_MUL = 0
         if opt_level >= 2:
           Settings.RELOOP = 1
         if opt_level >= 3:
