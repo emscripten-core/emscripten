@@ -3479,16 +3479,6 @@ LibraryManager.library = {
   abs: 'Math.abs',
   labs: 'Math.abs',
 
-  atoi__deps: ['isspace', 'isdigit'],
-  atoi: function(s) {
-    var c;
-    while ((c = {{{ makeGetValue('s', 0, 'i8') }}}) && _isspace(c)) s++;
-    if (!c || !_isdigit(c)) return 0;
-    var e = s;
-    while ((c = {{{ makeGetValue('e', 0, 'i8') }}}) && _isdigit(c)) e++;
-    return Math.floor(Number(Pointer_stringify(s).substr(0, e-s)));
-  },
-
   exit__deps: ['_exit'],
   exit: function(status) {
     __exit(status);
@@ -3723,10 +3713,28 @@ LibraryManager.library = {
   },
   strtoull_l: 'strtoull', // no locale support yet
 
+  atof__deps: ['strtod'],
   atof: function(ptr) {
     var str = Pointer_stringify(ptr);
-    var ret = parseFloat(str);
-    return isNaN(ret) ? 0 : ret;
+    var ret = _strtod(ptr, null);
+  },
+
+  atoi__deps: ['strtol'],
+  atoi: function(ptr) {
+    var str = Pointer_stringify(ptr);
+    return _strtol(ptr, null, 10);
+  },
+
+  atol__deps: ['strtol'],
+  atol: function(ptr) {
+    var str = Pointer_stringify(ptr);
+    return _strtol(ptr, null, 10);
+  },
+
+  atoll__deps: ['strtoll'],
+  atoll: function(ptr) {
+    var str = Pointer_stringify(ptr);
+    return _strtoll(ptr, null, 10);
   },
 
   qsort__deps: ['memcpy'],
