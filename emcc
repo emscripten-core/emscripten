@@ -140,12 +140,10 @@ Options that are modified or new in %s include:
                            optimizations, and no runtime assertions
                            or C++ exception catching (to re-enable
                            C++ exception catching, use
-                           -s DISABLE_EXCEPTION_CATCHING=0 ). 32-bit
-                           multiplication is done in JS doubles which
-                           is fast but imprecise for high values.
+                           -s DISABLE_EXCEPTION_CATCHING=0 ).
                            (For details on the affects of different
                            opt levels, see apply_opt_level() in
-                           tools/shared.py)
+                           tools/shared.py and also src/settings.js.)
                            Note: Optimizations are only done when
                            compiling to JavaScript, not to intermediate
                            bitcode.
