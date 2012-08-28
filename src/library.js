@@ -3716,7 +3716,7 @@ LibraryManager.library = {
   atof__deps: ['strtod'],
   atof: function(ptr) {
     var str = Pointer_stringify(ptr);
-    var ret = _strtod(ptr, null);
+    return _strtod(ptr, null);
   },
 
   atoi__deps: ['strtol'],
