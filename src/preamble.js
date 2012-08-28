@@ -795,6 +795,7 @@ var STRING_TABLE = [];
 var runDependencies = 0;
 var runDependencyTracking = {};
 var calledRun = false;
+var runDependencyWatcher = null;
 function addRunDependency(id) {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
@@ -803,6 +804,24 @@ function addRunDependency(id) {
   if (id) {
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
+    if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
+      // Check for missing dependencies every few seconds
+      runDependencyWatcher = setInterval(function() {
+        var shown = false;
+        for (var dep in runDependencyTracking) {
+          if (!shown) {
+            shown = true;
+            Module.printErr('still waiting on run dependencies:');
+          }
+          Module.printErr('dependency: ' + dep);
+        }
+        if (shown) {
+          Module.printErr('(end of list)');
+        }
+      }, 6000);
+    }
+  } else {
+    Module.printErr('warning: run dependency added without ID');
   }
 }
 Module['addRunDependency'] = addRunDependency;
@@ -814,8 +833,16 @@ function removeRunDependency(id) {
   if (id) {
     assert(runDependencyTracking[id]);
     delete runDependencyTracking[id];
+  } else {
+    Module.printErr('warning: run dependency removed without ID');
   }
-  if (runDependencies == 0 && !calledRun) run();
+  if (runDependencies == 0) {
+    if (runDependencyWatcher !== null) {
+      clearInterval(runDependencyWatcher);
+      runDependencyWatcher = null;
+    } 
+    if (!calledRun) run();
+  }
 }
 Module['removeRunDependency'] = removeRunDependency;
 
