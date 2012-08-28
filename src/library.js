@@ -3715,25 +3715,17 @@ LibraryManager.library = {
 
   atof__deps: ['strtod'],
   atof: function(ptr) {
-    var str = Pointer_stringify(ptr);
     return _strtod(ptr, null);
   },
 
   atoi__deps: ['strtol'],
   atoi: function(ptr) {
-    var str = Pointer_stringify(ptr);
     return _strtol(ptr, null, 10);
   },
-
-  atol__deps: ['strtol'],
-  atol: function(ptr) {
-    var str = Pointer_stringify(ptr);
-    return _strtol(ptr, null, 10);
-  },
+  atol: 'atoi',
 
   atoll__deps: ['strtoll'],
   atoll: function(ptr) {
-    var str = Pointer_stringify(ptr);
     return _strtoll(ptr, null, 10);
   },
 

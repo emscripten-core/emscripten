@@ -4022,7 +4022,9 @@ at function.:blag
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
-    def test_atoi(self):
+    def test_atoX(self):
+      if Settings.QUANTUM_SIZE != 4: return self.skip('need q4 for atoll')
+
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -4039,10 +4041,33 @@ at function.:blag
           printf("%d*", atoi(" 3 7"));
           printf("%d*", atoi("9 d"));
           printf("%d\n", atoi(" 8 e"));
+          printf("%d*", atol(""));
+          printf("%d*", atol("a"));
+          printf("%d*", atol(" b"));
+          printf("%d*", atol(" c "));
+          printf("%d*", atol("6"));
+          printf("%d*", atol(" 5"));
+          printf("%d*", atol("4 "));
+          printf("%d*", atol("3 6"));
+          printf("%d*", atol(" 3 7"));
+          printf("%d*", atol("9 d"));
+          printf("%d\n", atol(" 8 e"));
+          printf("%lld*", atoll("6294967296"));
+          printf("%lld*", atoll(""));
+          printf("%lld*", atoll("a"));
+          printf("%lld*", atoll(" b"));
+          printf("%lld*", atoll(" c "));
+          printf("%lld*", atoll("6"));
+          printf("%lld*", atoll(" 5"));
+          printf("%lld*", atoll("4 "));
+          printf("%lld*", atoll("3 6"));
+          printf("%lld*", atoll(" 3 7"));
+          printf("%lld*", atoll("9 d"));
+          printf("%lld\n", atoll(" 8 e"));
           return 0;
         }
         '''
-      self.do_run(src, '0*0*0*0*6*5*4*3*3*9*8')
+      self.do_run(src, '0*0*0*0*6*5*4*3*3*9*8\n0*0*0*0*6*5*4*3*3*9*8\n6294967296*0*0*0*0*6*5*4*3*3*9*8\n')
 
     def test_strstr(self):
       src = r'''
