@@ -561,7 +561,7 @@ function analyzer(data, sidePass) {
                   var whole = shifts >= 0 ? Math.floor(shifts/32) : Math.ceil(shifts/32);
                   var fraction = Math.abs(shifts % 32);
                   if (signed) {
-                    var signedFill = '((' + sourceElements[sourceElements.length-1].ident + '|0) < 0 ? -1 : 0)';
+                    var signedFill = '(' + makeSignOp(sourceElements[sourceElements.length-1].ident, 'i' + sourceElements[sourceElements.length-1].bits, 're', 1, 1) + ' < 0 ? -1 : 0)';
                     var signedKeepAlive = { intertype: 'value', ident: sourceElements[sourceElements.length-1].ident, type: 'i32' };
                   }
                   for (var j = 0; j < targetElements.length; j++) {

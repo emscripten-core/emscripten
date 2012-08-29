@@ -953,6 +953,22 @@ m_divisor is 1091269979
       '''
       self.do_run(src, 'zero 2, 104', ['hallo'])
 
+    def test_i64_i16(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+
+      src = r'''
+        #include <stdio.h>
+        int main(int argc, char ** argv){
+            int y=-133;
+            __int64_t x= ((__int64_t)((short)(y)))*(100 + argc);
+            if(x>0)
+                printf(">0\n");
+            else
+                printf("<=0\n");
+        }
+      '''
+      self.do_run(src, '<=0')
+
     def test_i32_mul_precise(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
