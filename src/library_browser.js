@@ -169,6 +169,10 @@ mergeInto(LibraryManager.library, {
             finish(audio); // we don't wait for confirmation this worked - but it's worth trying
           };
           audio.src = url;
+          // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
+          setTimeout(function() {
+            finish(audio); // try to use it even though it is not necessarily ready to play
+          }, 10000);
         } else {
           Module["preloadedAudios"][name] = new Audio(); // empty shim
           if (onerror) onerror();
