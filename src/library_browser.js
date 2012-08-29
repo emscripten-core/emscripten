@@ -133,8 +133,18 @@ mergeInto(LibraryManager.library, {
           Module["preloadedAudios"][name] = audio;
           if (onload) onload(byteArray);
         }
+        function fail() {
+          if (done) return;
+          done = true;
+          Module["preloadedAudios"][name] = new Audio(); // empty shim
+          if (onerror) onerror();
+        }
         if (Browser.hasBlobConstructor) {
-          var b = new Blob([byteArray], { type: getMimetype(name) });
+          try {
+            var b = new Blob([byteArray], { type: getMimetype(name) });
+          } catch(e) {
+            return fail();
+          }
           var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
           var audio = new Audio();
           audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
@@ -174,8 +184,7 @@ mergeInto(LibraryManager.library, {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
-          Module["preloadedAudios"][name] = new Audio(); // empty shim
-          if (onerror) onerror();
+          return fail();
         }
       };
       Module['preloadPlugins'].push(audioPlugin);
