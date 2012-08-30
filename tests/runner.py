@@ -8803,6 +8803,7 @@ elif 'sanity' in str(sys.argv):
     def test_emcc_caching(self):
       INCLUDING_MESSAGE = 'emcc: including X'
       BUILDING_MESSAGE = 'emcc: building X for cache'
+      ERASING_MESSAGE = 'emcc: clearing cache'
 
       EMCC_CACHE = Cache.dirname
 
@@ -8849,6 +8850,12 @@ elif 'sanity' in str(sys.argv):
       finally:
         if emcc_debug:
           os.environ['EMCC_DEBUG'] = emcc_debug
+
+      # Manual cache clearing
+      assert os.path.exists(EMCC_CACHE)
+      output = self.do([EMCC, '--clear-cache'])
+      assert ERASING_MESSAGE in output
+      assert not os.path.exists(EMCC_CACHE)
 
 else:
   raise Exception('Test runner is confused: ' + str(sys.argv))
