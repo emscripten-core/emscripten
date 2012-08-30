@@ -464,8 +464,14 @@ var LibrarySDL = {
           if (Browser.pointerLock) {
             // When the pointer is locked, calculate the coordinates
             // based on the movement of the mouse.
-            var movementX = Browser.getMovementX(event);
-            var movementY = Browser.getMovementY(event);
+            // Workaround for Firefox bug 764498
+            if (event.type != 'mousemove' &&
+                ('mozMovementX' in event)) {
+              var movementX = 0, movementY = 0;
+            } else {
+              var movementX = Browser.getMovementX(event);
+              var movementY = Browser.getMovementY(event);
+            }
             var x = SDL.mouseX + movementX;
             var y = SDL.mouseY + movementY;
           } else {
@@ -1226,8 +1232,13 @@ var LibrarySDL = {
     if (info.buffer) {
       var contextCtor = null;
       if (audio && ('mozSetup' in audio)) { // Audio Data API
-        audio['mozSetup'](audio.getAttribute("data-numchannels"), audio.getAttribute("data-frequency"));
-        audio["mozWriteAudio"](info.buffer);
+        try {
+          audio['mozSetup'](audio.getAttribute("data-numchannels"), audio.getAttribute("data-frequency"));
+          audio["mozWriteAudio"](info.buffer);
+        } catch (e) {
+          // Workaround for Firefox bug 783052
+          // ignore this exception!
+        }
       } else if (contextCtor = (window.AudioContext || // WebAudio API
                                 window.webkitAudioContext)) {
         var currentIndex = 0;
