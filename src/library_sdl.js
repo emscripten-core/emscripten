@@ -379,11 +379,6 @@ var LibrarySDL = {
             Module.printErr('SDL event queue full, dropping earliest event');
             SDL.events.shift();
           }
-          if ((event.keyCode >= 37 && event.keyCode <= 40) || // arrow keys
-              event.keyCode == 32 || // space
-              event.keyCode == 33 || event.keyCode == 34) { // page up/down
-            event.preventDefault();
-          }
           break;
         case 'mouseout':
           // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
