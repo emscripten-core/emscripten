@@ -4039,7 +4039,7 @@ at function.:blag
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_atoX(self):
-      if Settings.QUANTUM_SIZE != 4: return self.skip('need q4 for atoll')
+      if self.emcc_args is None: return self.skip('requires ta2')
 
       src = r'''
         #include <stdio.h>
