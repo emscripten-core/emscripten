@@ -351,6 +351,12 @@ var LibrarySDL = {
           // workaround for firefox bug 750111
           event['movementX'] = event['mozMovementX'];
           event['movementY'] = event['mozMovementY'];
+          // workaround for Firefox bug 782777
+          if (event['movementX'] == 0 &&
+              event['movementY'] == 0) {
+            // ignore a mousemove event if it doesn't contain any movement info
+            return;
+          }
           // fall through
         case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
           if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
