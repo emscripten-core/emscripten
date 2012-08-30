@@ -1239,6 +1239,7 @@ var LibrarySDL = {
           // Workaround for Firefox bug 783052
           // ignore this exception!
         }
+      /*
       } else if (contextCtor = (window.AudioContext || // WebAudio API
                                 window.webkitAudioContext)) {
         var currentIndex = 0;
@@ -1274,6 +1275,7 @@ var LibrarySDL = {
         source.connect(jsNode);
         jsNode.connect(context.destination);
         source.noteOn(0);
+      */
       }
     } else {
       audio.play();
