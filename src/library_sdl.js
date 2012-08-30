@@ -350,11 +350,19 @@ var LibrarySDL = {
           event['movementX'] = event['mozMovementX'];
           event['movementY'] = event['mozMovementY'];
           // fall through
-        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll':
-          if (event.type == 'DOMMouseScroll') {
-            event = {
+        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
+          if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
+            var button = (event.type == 'DOMMouseScroll' ? event.detail : -event.wheelDelta) > 0 ? 4 : 3;
+            var event2 = {
               type: 'mousedown',
-              button: event.detail > 0 ? 4 : 3,
+              button: button,
+              pageX: event.pageX,
+              pageY: event.pageY
+            };
+            SDL.events.push(event2);
+            event = {
+              type: 'mouseup',
+              button: button,
               pageX: event.pageX,
               pageY: event.pageY
             };
@@ -620,7 +628,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mouseout'].forEach(function(event) {
+    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Module['canvas'].width = width;
