@@ -394,6 +394,11 @@ var LibrarySDL = {
             }
           }
           break;
+        case 'unload':
+          SDL.events.push(event);
+          // Force-run a main event loop, since otherwise this event will never be caught!
+          Browser.mainLoop.runner();
+          return true;
       }
       return false;
     },
@@ -488,6 +493,10 @@ var LibrarySDL = {
           SDL.mouseY = y;
           break;
         }
+        case 'unload': {
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          break;
+        }
         default: throw 'Unhandled SDL event: ' + event.type;
       }
     },
@@ -557,6 +566,7 @@ var LibrarySDL = {
     document.onkeydown = SDL.receiveEvent;
     document.onkeyup = SDL.receiveEvent;
     document.onkeypress = SDL.receiveEvent;
+    window.onunload = SDL.receiveEvent;
     SDL.keyboardState = _malloc(0x10000);
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
@@ -565,6 +575,7 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
     SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
     SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
+    SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
     return 0; // success
   },
 

@@ -7649,15 +7649,17 @@ elif 'browser' in str(sys.argv):
         print '(moving on..)'
 
     def with_report_result(self, code):
-      return code.replace('REPORT_RESULT();', '''
-          char output[1000];
-          sprintf(output, 
-                  "xhr = new XMLHttpRequest();"
-                  "xhr.open('GET', 'http://localhost:8888/report_result?%d');"
-                  "xhr.send();", result);
-          emscripten_run_script(output);
+      return '''
+        #define REPORT_RESULT_INTERNAL(sync) \
+          char output[1000]; \
+          sprintf(output, \
+                  "xhr = new XMLHttpRequest();" \
+                  "xhr.open('GET', 'http://localhost:8888/report_result?%d'%s);" \
+                  "xhr.send();", result, sync ? ", false" : ""); \
+          emscripten_run_script(output); \
           emscripten_run_script("setTimeout(function() { window.close() }, 1000)");
-''')
+        #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+''' + code
 
     def reftest(self, expected):
       basename = os.path.basename(expected)
@@ -8156,6 +8158,9 @@ elif 'browser' in str(sys.argv):
     def test_emscripten_fs_api(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png')) # preloaded *after* run
       self.btest('emscripten_fs_api_browser.cpp', '1')
+
+    def test_sdl_quit(self):
+      self.btest('sdl_quit.c', '1')
 
     def test_gc(self):
       self.btest('browser_gc.cpp', '1')

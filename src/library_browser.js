@@ -384,7 +384,7 @@ mergeInto(LibraryManager.library, {
     Module['noExitRuntime'] = true;
 
     var jsFunc = FUNCTION_TABLE[func];
-    var wrapper = function() {
+    Browser.mainLoop.runner = function() {
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
         var blocker = Browser.mainLoop.queue.shift();
@@ -402,7 +402,7 @@ mergeInto(LibraryManager.library, {
         }
         console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
-        setTimeout(wrapper, 0);
+        setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
       if (Browser.mainLoop.shouldPause) {
@@ -436,11 +436,11 @@ mergeInto(LibraryManager.library, {
     }
     if (fps && fps > 0) {
       Browser.mainLoop.scheduler = function() {
-        setTimeout(wrapper, 1000/fps); // doing this each time means that on exception, we stop
+        setTimeout(Browser.mainLoop.runner, 1000/fps); // doing this each time means that on exception, we stop
       }
     } else {
       Browser.mainLoop.scheduler = function() {
-        Browser.requestAnimationFrame(wrapper);
+        Browser.requestAnimationFrame(Browser.mainLoop.runner);
       }
     }
     Browser.mainLoop.scheduler();
