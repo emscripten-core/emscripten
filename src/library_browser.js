@@ -261,7 +261,7 @@ mergeInto(LibraryManager.library, {
     },
 
     requestFullScreen: function() {
-      var canvas = Module.canvas;
+      var canvas = Module['canvas'];
       function fullScreenChange() {
         var isFullScreen = false;
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
