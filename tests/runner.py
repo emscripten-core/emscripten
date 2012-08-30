@@ -7933,12 +7933,12 @@ elif 'browser' in str(sys.argv):
           event.initKeyEvent("keydown", true, true, window,
                              0, 0, 0, 0,
                              c, c);
-          dispatchEvent(event);
+          document.dispatchEvent(event);
           var event2 = document.createEvent("KeyboardEvent");
           event2.initKeyEvent("keyup", true, true, window,
                              0, 0, 0, 0,
                              c, c);
-          dispatchEvent(event2);
+          document.dispatchEvent(event2);
         }
       ''')
       open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
