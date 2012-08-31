@@ -1183,8 +1183,8 @@ var LibrarySDL = {
   Mix_QuickLoad_RAW: function(mem, len) {
     var audio = new Audio();
     // Record the number of channels and frequency for later usage
-    audio.setAttribute("data-numchannels", SDL.mixerNumChannels);
-    audio.setAttribute("data-frequency", SDL.mixerFrequency);
+    audio.numChannels = SDL.mixerNumChannels;
+    audio.frequency = SDL.mixerFrequency;
     var numSamples = len >> 1; // len is the length in bytes, and the array contains 16-bit PCM values
     var buffer = new Float32Array(numSamples);
     for (var i = 0; i < numSamples; ++i) {
@@ -1239,7 +1239,7 @@ var LibrarySDL = {
       var contextCtor = null;
       if (audio && ('mozSetup' in audio)) { // Audio Data API
         try {
-          audio['mozSetup'](audio.getAttribute("data-numchannels"), audio.getAttribute("data-frequency"));
+          audio['mozSetup'](audio.numChannels, audio.frequency);
           audio["mozWriteAudio"](info.buffer);
         } catch (e) {
           // Workaround for Firefox bug 783052
@@ -1249,11 +1249,11 @@ var LibrarySDL = {
       } else if (contextCtor = (window.AudioContext || // WebAudio API
                                 window.webkitAudioContext)) {
         var currentIndex = 0;
-        var numChannels = parseInt(audio.getAttribute("data-numchannels"));
+        var numChannels = parseInt(audio.numChannels);
         var context = new contextCtor();
         var source = context.createBufferSource();
         source.loop = false;
-        source.buffer = context.createBuffer(numChannels, 1, audio.getAttribute("data-frequency"));
+        source.buffer = context.createBuffer(numChannels, 1, audio.frequency);
         var jsNode = context.createJavaScriptNode(2048, numChannels, numChannels);
         jsNode.onaudioprocess = function(event) {
           var buffers = new Array(numChannels);
