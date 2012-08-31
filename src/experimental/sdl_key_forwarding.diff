@@ -1,0 +1,57 @@
+diff --git a/src/library_sdl.js b/src/library_sdl.js
+index 8cb8db7..d46a089 100644
+--- a/src/library_sdl.js
++++ b/src/library_sdl.js
+@@ -43,6 +43,7 @@ var LibrarySDL = {
+     DOMButtons: [0, 0, 0],
+ 
+     DOMEventToSDLEvent: {},
++    forwardedDOMKeys: {},
+ 
+     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
+       46: 127, // SDLK_DEL == '\177'
+@@ -372,6 +373,11 @@ var LibrarySDL = {
+             if (!SDL.DOMButtons[event.button]) return false; // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
+                                                              // since we add a mouseup in that case
+             SDL.DOMButtons[event.button] = 0;
++          } else if (event.type == 'keydown' || event.type == 'keyup') {
++            // whitelist a few keycodes that we do want to let the browser handle
++            if (event.keyCode in SDL.forwardedDOMKeys) {
++              return true;
++            }
+           }
+ 
+           SDL.events.push(event);
+@@ -399,6 +405,10 @@ var LibrarySDL = {
+           // Force-run a main event loop, since otherwise this event will never be caught!
+           Browser.mainLoop.runner();
+           return true;
++        case 'keypress':
++          if (event.ctrlKey) {
++            return true; // forward control-X events, see SDL.forwardedDOMKeys
++          }
+       }
+       return false;
+     },
+@@ -569,13 +579,20 @@ var LibrarySDL = {
+     window.onunload = SDL.receiveEvent;
+     SDL.keyboardState = _malloc(0x10000);
+     _memset(SDL.keyboardState, 0, 0x10000);
+-    // Initialize this structure carefully for closure
++    // Initialize these structures carefully for closure
+     SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
+     SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
+     SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
+     SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
+     SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
+     SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
++    SDL.forwardedDOMKeys[17] = 1; // control - forward control-X to keep the page responsive
++    SDL.forwardedDOMKeys[173] = 1; // minus (shrink view)
++    SDL.forwardedDOMKeys[61] = 1; // plus (expand view)
++    SDL.forwardedDOMKeys[48] = 1; // 0 (return view to normal)
++    SDL.forwardedDOMKeys[84] = 1; // t (new tab)
++    SDL.forwardedDOMKeys[87] = 1; // w (close tab)
++    SDL.forwardedDOMKeys[82] = 1; // r (reload)
+     return 0; // success
+   },
+ 
