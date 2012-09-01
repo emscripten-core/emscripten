@@ -5,6 +5,7 @@
 //
 //   emcc -s OPTION1=VALUE1 -s OPTION2=VALUE2 [..other stuff..]
 //
+// See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
 
 // Tuning
 var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 would
@@ -51,15 +52,10 @@ var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This 
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
-var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap
+var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
-                          // and addresses there are a match for normal addresses. This wastes memory but can be fast.
-                          // 2 is a single heap, accessible through views as int8, int32, etc. This saves memory but
-                          // has more overhead of pointer calculations. It also is limited to storing doubles as floats,
-                          // simply because double stores are not necessarily 64-bit aligned, and we can only access
-                          // 64-bit aligned values with a 64-bit typed array. Likewise int64s are stored as int32's,
-                          // which is potentially very dangerous!
-                          // TODO: require compiling with -malign-double, which does align doubles
+                          // and addresses there are a match for normal addresses.
+                          // 2 is a single heap, accessible through views as int8, int32, etc.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
                    // not generated at all. This is useful if your code is 100% ints without floats or doubles
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arrays or in typed array mode 1,
