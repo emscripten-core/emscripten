@@ -6295,7 +6295,7 @@ LibraryManager.library = {
 
   htonl: function(value) {
     return ((value & 0xff) << 24) + ((value & 0xff00) << 8) +
-           ((value & 0xff0000) >> 8) + ((value & 0xff000000) >> 24);
+           ((value & 0xff0000) >>> 8) + ((value & 0xff000000) >>> 24);
   },
   htons: function(value) {
     return ((value & 0xff) << 8) + ((value & 0xff00) >> 8);
