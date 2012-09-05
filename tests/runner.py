@@ -5013,11 +5013,11 @@ def process(filename):
         #include <arpa/inet.h>
 
         int main() {
-          printf("*%x,%x,%x,%x*\n", htonl(0x12345678), htons(0xabcd), ntohl(0x43211234), ntohs(0xbeaf));
+          printf("*%x,%x,%x,%x*\n", htonl(0xa1b2c3d4), htons(0xabcd), ntohl(0x43211234), ntohs(0xbeaf));
           return 0;
         }
       '''
-      self.do_run(src, '*78563412,cdab,34122143,afbe*')
+      self.do_run(src, '*d4c3b2a1,cdab,34122143,afbe*')
 
     def test_ctype(self):
       # The bit fiddling done by the macros using __ctype_b_loc requires this.
