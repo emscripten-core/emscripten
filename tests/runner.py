@@ -5219,7 +5219,85 @@ int main(int argc, char **argv) {
           return 1;
         }
         ''', 'hello world');
-        
+
+    def test_typeid(self):
+      self.do_run(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <typeinfo>
+        int main() {
+          printf("*\n");
+          #define MAX 100
+          int ptrs[MAX];
+          int groups[MAX];
+          memset(ptrs, 0, MAX*sizeof(int));
+          memset(groups, 0, MAX*sizeof(int));
+          int next_group = 1;
+          #define TEST(X) { \
+            int ptr = (int)&typeid(X); \
+            int group = 0; \
+            int i; \
+            for (i = 0; i < MAX; i++) { \
+              if (!groups[i]) break; \
+              if (ptrs[i] == ptr) { \
+                group = groups[i]; \
+                break; \
+              } \
+            } \
+            if (!group) { \
+              groups[i] = group = next_group++; \
+              ptrs[i] = ptr; \
+            } \
+            printf("%s:%d\n", #X, group); \
+          }
+          TEST(int);
+          TEST(unsigned int);
+          TEST(unsigned);
+          TEST(signed int);
+          TEST(long);
+          TEST(unsigned long);
+          TEST(signed long);
+          TEST(long long);
+          TEST(unsigned long long);
+          TEST(signed long long);
+          TEST(short);
+          TEST(unsigned short);
+          TEST(signed short);
+          TEST(char);
+          TEST(unsigned char);
+          TEST(signed char);
+          TEST(float);
+          TEST(double);
+          TEST(long double);
+          TEST(void);
+          TEST(void*);
+          printf("*\n");
+        }
+        ''', '''*
+int:1
+unsigned int:2
+unsigned:2
+signed int:1
+long:3
+unsigned long:4
+signed long:3
+long long:5
+unsigned long long:6
+signed long long:5
+short:7
+unsigned short:8
+signed short:7
+char:9
+unsigned char:10
+signed char:11
+float:12
+double:13
+long double:14
+void:15
+void*:16
+*
+''');
+
     def test_static_variable(self):
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
       src = '''
