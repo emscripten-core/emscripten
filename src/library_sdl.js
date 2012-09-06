@@ -18,7 +18,9 @@ var LibrarySDL = {
     events: [],
     fonts: [null],
 
+    // The currently preloaded audio elements ready to be played
     audios: [null],
+    // The currently playing audio element.  There's only one music track.
     music: {
       audio: null,
       volume: 1.0
@@ -349,6 +351,12 @@ var LibrarySDL = {
           // workaround for firefox bug 750111
           event['movementX'] = event['mozMovementX'];
           event['movementY'] = event['mozMovementY'];
+          // workaround for Firefox bug 782777
+          if (event['movementX'] == 0 &&
+              event['movementY'] == 0) {
+            // ignore a mousemove event if it doesn't contain any movement info
+            return;
+          }
           // fall through
         case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
           if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
@@ -462,8 +470,14 @@ var LibrarySDL = {
           if (Browser.pointerLock) {
             // When the pointer is locked, calculate the coordinates
             // based on the movement of the mouse.
-            var movementX = Browser.getMovementX(event);
-            var movementY = Browser.getMovementY(event);
+            // Workaround for Firefox bug 764498
+            if (event.type != 'mousemove' &&
+                ('mozMovementX' in event)) {
+              var movementX = 0, movementY = 0;
+            } else {
+              var movementX = Browser.getMovementX(event);
+              var movementY = Browser.getMovementY(event);
+            }
             var x = SDL.mouseX + movementX;
             var y = SDL.mouseY + movementY;
           } else {
@@ -515,6 +529,10 @@ var LibrarySDL = {
 
     // Sound
 
+    // Channels are a SDL abstraction for allowing multiple sound tracks to be
+    // played at the same time.  We don't need to actually implement the mixing
+    // since the browser engine handles that for us.  Therefore, in JS we just
+    // maintain a list of channels and return IDs for them to the SDL consumer.
     allocateChannels: function(num) { // called from Mix_AllocateChannels and init
       if (SDL.numChannels && SDL.numChannels >= num) return;
       SDL.numChannels = num;
@@ -651,8 +669,11 @@ var LibrarySDL = {
   },
 
   SDL_Quit: function() {
-    for (var i = 0; i < SDL.audios; i++) {
-      SDL.audios[i].pause();
+    for (var i = 0; i < SDL.numChannels; ++i) {
+      SDL.channels[i].audio.pause();
+    }
+    if (SDL.music.audio) {
+      SDL.music.audio.pause();
     }
     Module.print('SDL_Quit called (and ignored)');
   },
@@ -1026,6 +1047,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
+  // TODO fix SDL_OpenAudio, and add some tests for it.  It's currently broken.
   SDL_OpenAudio: function(desired, obtained) {
     SDL.allocateChannels(32);
 
@@ -1076,6 +1098,7 @@ var LibrarySDL = {
     SDL.audio.paused = pauseOn;
   },
 
+  SDL_CloseAudio__deps: ['SDL_PauseAudio', 'free'],
   SDL_CloseAudio: function() {
     if (SDL.audio) {
       _SDL_PauseAudio(1);
@@ -1104,6 +1127,7 @@ var LibrarySDL = {
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.allocateChannels(32);
+    // Just record the values for a later call to Mix_QuickLoad_RAW
     SDL.mixerFrequency = frequency;
     SDL.mixerFormat = format;
     SDL.mixerNumChannels = channels;
@@ -1148,6 +1172,7 @@ var LibrarySDL = {
       Module["preloadedAudios"][filename] = null;
     }
     var id = SDL.audios.length;
+    // Keep the loaded audio in the audio arrays, ready for playback
     SDL.audios.push({
       source: filename,
       audio: raw
@@ -1157,12 +1182,15 @@ var LibrarySDL = {
 
   Mix_QuickLoad_RAW: function(mem, len) {
     var audio = new Audio();
-    audio['mozSetup'](SDL.mixerNumChannels, SDL.mixerFrequency);
-    var numSamples = (len / (SDL.mixerNumChannels * 2)) | 0;
+    // Record the number of channels and frequency for later usage
+    audio.numChannels = SDL.mixerNumChannels;
+    audio.frequency = SDL.mixerFrequency;
+    var numSamples = len >> 1; // len is the length in bytes, and the array contains 16-bit PCM values
     var buffer = new Float32Array(numSamples);
     for (var i = 0; i < numSamples; ++i) {
       buffer[i] = ({{{ makeGetValue('mem', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
     }
+    // FIXME: doesn't make sense to keep the audio element in the buffer
     var id = SDL.audios.length;
     SDL.audios.push({
       source: '',
@@ -1178,10 +1206,15 @@ var LibrarySDL = {
 
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
+
+    // Get the audio element associated with the ID
     var info = SDL.audios[id];
     if (!info) return 0;
     var audio = info.audio;
     if (!audio) return 0;
+
+    // If the user asks us to allocate a channel automatically, get the first
+    // free one.
     if (channel == -1) {
       channel = 0;
       for (var i = 0; i < SDL.numChannels; i++) {
@@ -1191,6 +1224,9 @@ var LibrarySDL = {
         }
       }
     }
+
+    // We clone the audio node to utilize the preloaded audio buffer, since
+    // the browser has already preloaded the audio file.
     var channelInfo = SDL.channels[channel];
     channelInfo.audio = audio = audio.cloneNode(true);
     if (SDL.channelFinished) {
@@ -1198,9 +1234,55 @@ var LibrarySDL = {
         Runtime.getFuncWrapper(SDL.channelFinished)(channel);
       }
     }
+    // Either play the element, or load the dynamic data into it
     if (info.buffer) {
-      audio['mozSetup'](SDL.mixerNumChannels, SDL.mixerFrequency);
-      audio["mozWriteAudio"](info.buffer);
+      var contextCtor = null;
+      if (audio && ('mozSetup' in audio)) { // Audio Data API
+        try {
+          audio['mozSetup'](audio.numChannels, audio.frequency);
+          audio["mozWriteAudio"](info.buffer);
+        } catch (e) {
+          // Workaround for Firefox bug 783052
+          // ignore this exception!
+        }
+      /*
+      } else if (contextCtor = (window.AudioContext || // WebAudio API
+                                window.webkitAudioContext)) {
+        var currentIndex = 0;
+        var numChannels = parseInt(audio.numChannels);
+        var context = new contextCtor();
+        var source = context.createBufferSource();
+        source.loop = false;
+        source.buffer = context.createBuffer(numChannels, 1, audio.frequency);
+        var jsNode = context.createJavaScriptNode(2048, numChannels, numChannels);
+        jsNode.onaudioprocess = function(event) {
+          var buffers = new Array(numChannels);
+          for (var i = 0; i < numChannels; ++i) {
+            buffers[i] = event.outputBuffer.getChannelData(i);
+          }
+          var remaining = info.buffer.length - currentIndex;
+          if (remaining > 2048) {
+            remaining = 2048;
+          }
+          for (var i = 0; i < remaining;) {
+            for (var j = 0; j < numChannels; ++j) {
+              buffers[j][i] = info.buffer[currentIndex + i + j] * audio.volume;
+            }
+            i += j;
+          }
+          currentIndex += remaining * numChannels;
+          for (var i = remaining; i < 2048;) {
+            for (var j = 0; j < numChannels; ++j) {
+              buffers[j][i] = 0; // silence
+            }
+            i += j;
+          }
+        };
+        source.connect(jsNode);
+        jsNode.connect(context.destination);
+        source.noteOn(0);
+      */
+      }
     } else {
       audio.play();
     }
