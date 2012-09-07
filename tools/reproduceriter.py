@@ -123,7 +123,7 @@ print 'add boilerplate...'
 open(os.path.join(out_dir, first_js), 'w').write('''
 var Recorder = (function() {
   var recorder;
-  var init = '&reproduce=';
+  var init = 'reproduce=';
   var initLocation = window.location.search.indexOf(init);
   var replaying = initLocation >= 0;
   var raf = window['requestAnimationFrame'] ||
@@ -143,6 +143,7 @@ var Recorder = (function() {
         raf(count);
       }
       count();
+      recorder.started = true;
     };
     // Math.random
     recorder.randoms = [];
@@ -171,8 +172,8 @@ var Recorder = (function() {
     recorder.devents = []; // document events
     recorder.onEvent = function(which, callback) {
       document['on' + which] = function(event) {
+        if (!recorder.started) return true;
         event.frameCounter = recorder.frameCounter;
-        event.which = which;
         recorder.devents.push(event);
         return callback(event); // XXX do we need to record the return value?
       };
@@ -180,8 +181,8 @@ var Recorder = (function() {
     recorder.tevents = []; // custom-target events. Currently we assume a single such custom target (aside from document), e.g., a canvas for the game.
     recorder.addListener = function(target, which, callback, arg) {
       target.addEventListener(which, function(event) {
+        if (!recorder.started) return true;
         event.frameCounter = recorder.frameCounter;
-        event.which = which;
         recorder.tevents.push(event);
         return callback(event); // XXX do we need to record the return value?
       }, arg);
@@ -205,6 +206,7 @@ var Recorder = (function() {
         pageY: 1,
         button: 1,
         keyCode: 1,
+        frameCounter: 1
       };
       function importantize(event) {
         var ret = {};
@@ -223,17 +225,22 @@ var Recorder = (function() {
         document.open();
         document.write(JSON.stringify(recorder));
         document.close();
-      });
+      }, 0);
+      return '.';
     };
   } else {
     // Load recording
-    var dataPath = window.location.search.substring(initLocation);
-    var baseURL = window.location.toString().replace('://', 'cheez999').split('?')[0].split('/')[0].replace('cheez999', '://');
+    var dataPath = window.location.search.substring(initLocation + init.length);
+    var baseURL = window.location.toString().replace('://', 'cheez999').split('?')[0].split('/').slice(0, -1).join('/').replace('cheez999', '://');
     if (baseURL[baseURL.length-1] != '/') baseURL += '/';
+    var path = baseURL + dataPath;
+    alert('Loading replay from ' + path);
     var request = new XMLHttpRequest();
-    request.open('GET', baseURL + dataPath, false);
+    request.open('GET', path, false);
     request.send();
-    recorder = JSON.parse(request.responseText);
+    var raw = request.responseText;
+    raw = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}')+1); // remove <html> etc
+    recorder = JSON.parse(raw);
     // prepare to replay
     // Start
     recorder.frameCounter = 0; // the frame counter is used to know when to replay events
@@ -244,51 +251,36 @@ var Recorder = (function() {
         // replay relevant events for this frame
         while (recorder.devents.length && recorder.devents[recorder.devents.length-1].frameCounter <= recorder.frameCounter) {
           var event = recorder.devents.pop();
-          recorder['on' + event.which](event);
+          recorder['on' + event.type](event);
         }
         while (recorder.tevents.length && recorder.tevents[recorder.tevents.length-1].frameCounter <= recorder.frameCounter) {
           var event = recorder.tevents.pop();
-          recorder['event' + event.which](event);
+          recorder['event' + event.type](event);
         }
       }
       count();
     };
     // Math.random
-    var warned = false;
     Math.random = function() {
       if (recorder.randoms.length > 0) {
         return recorder.randoms.pop();
       } else {
-        if (!warned) {
-          console.log('warning: consuming too many values!')
-          warned = true;
-        }
-        return Math.random();
+        throw 'consuming too many values!';
       }
     };
     // Date.now, performance.now
-    var warned = false;
     Date.now = function() {
       if (recorder.dnows.length > 0) {
         return recorder.dnows.pop();
       } else {
-        if (!warned) {
-          console.log('warning: consuming too many values!')
-          warned = true;
-        }
-        return Date.now();
+        throw 'consuming too many values!';
       }
     };
-    var warned = false;
     performance.now = function() {
       if (recorder.pnows.length > 0) {
         return recorder.pnows.pop();
       } else {
-        if (!warned) {
-          console.log('warning: consuming too many values!')
-          warned = true;
-        }
-        return performance.now();
+        throw 'consuming too many values!';
       }
     };
     // Events
