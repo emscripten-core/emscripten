@@ -113,8 +113,8 @@ for parent, dirs, files in os.walk(out_dir):
       print '   ', fullname
       js = open(fullname).read()
       js = re.sub('document\.on(\w+) = ([\w.]+);', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ');', js)
-      js = re.sub("([\w'\[\]]+)\.addEventListener\(([\w,. ]+)\);", lambda m: 'Recorder.addListener(' + m.group(1) + ',' + m.group(2) + ');', js)
-      open(filename, 'w').write(js)
+      js = re.sub('''([\w'"\[\]]+)\.addEventListener\(([\w,. ]+)\);''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ');', js)
+      open(fullname, 'w').write(js)
 
 # Add our boilerplate
 
