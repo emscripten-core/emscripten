@@ -137,6 +137,7 @@ var Recorder = (function() {
     // Start
     recorder.frameCounter = 0; // the frame counter is used to know when to replay events
     recorder.start = function() {
+      alert("Starting recording! Don't forget to Recorder.finish() afterwards!");
       function count() {
         recorder.frameCounter++;
         raf(count);
@@ -145,7 +146,7 @@ var Recorder = (function() {
     };
     // Math.random
     recorder.randoms = [];
-    var random = Math.random()
+    var random = Math.random;
     Math.random = function() {
       var ret = random();
       recorder.randoms.push(ret);
@@ -153,14 +154,14 @@ var Recorder = (function() {
     };
     // Date.now, performance.now
     recorder.dnows = [];
-    var dnow = Date.now();
+    var dnow = Date.now;
     Date.now = function() {
       var ret = dnow();
       recorder.dnows.push(ret);
       return ret;
     };
     recorder.pnows = [];
-    var pnow = performance.now();
+    var pnow = performance.now;
     performance.now = function() {
       var ret = pnow();
       recorder.pnows.push(ret);
@@ -172,7 +173,7 @@ var Recorder = (function() {
       document['on' + which] = function(event) {
         event.frameCounter = recorder.frameCounter;
         event.which = which;
-        devents.push(event);
+        recorder.devents.push(event);
         return callback(event); // XXX do we need to record the return value?
       };
     };
@@ -181,7 +182,7 @@ var Recorder = (function() {
       target.addEventListener(which, function(event) {
         event.frameCounter = recorder.frameCounter;
         event.which = which;
-        tevents.push(event);
+        recorder.tevents.push(event);
         return callback(event); // XXX do we need to record the return value?
       }, arg);
     };
@@ -195,8 +196,11 @@ var Recorder = (function() {
       recorder.tevents.reverse();
       // Write out
       alert('Writing out data, remember to save!');
-      document.write(JSON.stringify(recorder));
-      throw 'all done!';
+      setTimeout(function() {
+        document.open();
+        document.write(JSON.stringify(recorder));
+        document.close();
+      });
     };
   } else {
     // Load recording
