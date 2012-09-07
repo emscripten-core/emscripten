@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 
 * This is a work in progress *
@@ -71,11 +73,18 @@ Notes:
    completed.
 
    TODO: start running recorded events with some trigger, for example the fullscreen button in BananaBread
+
+Examples
+
+ * BananaBread: Unpack into a directory called bb, then one
+   directory up, run
+
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js
 '''
 
-import os, sys, shutil
+import os, sys, shutil, re
 
-assert len(sys.argv) == 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR'
+assert len(sys.argv) == 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS'
 
 # Process input args
 
@@ -89,9 +98,27 @@ assert os.path.exists(os.path.join(in_dir, first_js))
 
 # Copy project
 
+print 'copying tree...'
+
 shutil.copytree(in_dir, out_dir)
 
+# Add customizations in all JS files
+
+print 'add customizations...'
+
+for parent, dirs, files in os.walk(out_dir):
+  for filename in files:
+    if filename.endswith('.js'):
+      fullname = os.path.join(parent, filename)
+      print '   ', fullname
+      js = open(fullname).read()
+      js = re.sub('document\.on(\w+) = ([\w.]+);', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ');', js)
+      js = re.sub("([\w'\[\]]+)\.addEventListener\(([\w,. ]+)\);", lambda m: 'Recorder.addListener(' + m.group(1) + ',' + m.group(2) + ');', js)
+      open(filename, 'w').write(js)
+
 # Add our boilerplate
+
+print 'add boilerplate...'
 
 open(os.path.join(out_dir, first_js), 'w').write('''
 var Recorder = (function() {
@@ -251,12 +278,5 @@ var Recorder = (function() {
 ''' + open(os.path.join(in_dir, first_js)).read()
 )
 
-# Add customizations in all JS files
-
-for filename in os.walk(out_dir):
-  if filename.endswith('.js'):
-    fullname = os.path.join(out_dir, filename)
-    js = open(fullname).read()
-    js = js.replace(r'document\.on(\w+) = ([\w.]+);', lambda m: 'Recorder.onEvent("' + m.group(0) + '", ' + m.group(1) + ');')
-    js = js.replace(r"([\w'\[\]]+)\.addEventListener\(([\w,. ]+)\);", lambda m: 'Recorder.addListener(' + m.group(0) + ',' + m.group(1) + ');')
+print 'done!'
 
