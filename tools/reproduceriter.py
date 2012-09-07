@@ -194,6 +194,29 @@ var Recorder = (function() {
       recorder.pnows.reverse();
       recorder.devents.reverse();
       recorder.tevents.reverse();
+      // Make JSON.stringify work on data from native event objects (and only store relevant ones)
+      var importantProperties = {
+        type: 1,
+        movementX: 1, mozMovementX: 1, webkitMovementX: 1,
+        movementY: 1, mozMovementY: 1, webkitMovementY: 1,
+        detail: 1,
+        wheelDelta: 1,
+        pageX: 1,
+        pageY: 1,
+        button: 1,
+        keyCode: 1,
+      };
+      function importantize(event) {
+        var ret = {};
+        for (var prop in importantProperties) {
+          if (prop in event) {
+            ret[prop] = event[prop];
+          }
+        }
+        return ret;
+      }
+      recorder.devents = recorder.devents.map(importantize);
+      recorder.tevents = recorder.tevents.map(importantize);
       // Write out
       alert('Writing out data, remember to save!');
       setTimeout(function() {
