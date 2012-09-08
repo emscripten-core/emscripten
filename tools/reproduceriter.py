@@ -265,6 +265,7 @@ var Recorder = (function() {
       if (recorder.randoms.length > 0) {
         return recorder.randoms.pop();
       } else {
+        recorder.finish();
         throw 'consuming too many values!';
       }
     };
@@ -273,6 +274,7 @@ var Recorder = (function() {
       if (recorder.dnows.length > 0) {
         return recorder.dnows.pop();
       } else {
+        recorder.finish();
         throw 'consuming too many values!';
       }
     };
@@ -280,6 +282,7 @@ var Recorder = (function() {
       if (recorder.pnows.length > 0) {
         return recorder.pnows.pop();
       } else {
+        recorder.finish();
         throw 'consuming too many values!';
       }
     };
@@ -290,6 +293,13 @@ var Recorder = (function() {
     recorder.eventCallbacks = {};
     recorder.addListener = function(target, which, callback, arg) {
       recorder['event' + which] = callback;
+    };
+    // Finish
+    recorder.finish = function() {
+      if (recorder.onFinish) {
+        recorder.onFinish();
+        recorder.onFinish = null;
+      }
     };
   }
   return recorder;
