@@ -34,8 +34,10 @@ function run(args) {
 
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    while (Module['preRun'].length > 0) {
-      Module['preRun'].pop()();
+    var toRun = Module['preRun'];
+    Module['preRun'] = [];
+    for (var i = toRun.length-1; i >= 0; i--) {
+      toRun[i]();
     }
     if (runDependencies > 0) {
       // a preRun added a dependency, run will be called later
