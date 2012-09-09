@@ -5678,7 +5678,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
     // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
     if (buffer !== 0) {
-      memset(buffer, 0, ___tms_struct_layout.__size__);
+      _memset(buffer, 0, ___tms_struct_layout.__size__);
     }
     return 0;
   },
