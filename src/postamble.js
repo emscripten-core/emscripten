@@ -32,6 +32,11 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
+  if (runDependencies > 0) {
+    Module.printErr('run() called, but dependencies remain, so not running');
+    return 0;
+  }
+
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
     var toRun = Module['preRun'];
@@ -91,14 +96,15 @@ if (Module['preInit']) {
 initRuntime();
 
 #if INVOKE_RUN
+var shouldRunNow = true;
 #else
-addRunDependency();
+var shouldRunNow = false;
 #endif
 if (Module['noInitialRun']) {
-  addRunDependency();
+  shouldRunNow = false;
 }
 
-if (runDependencies == 0) {
+if (shouldRunNow) {
   var ret = run();
 #if CATCH_EXIT_CODE
   Module.print('Exit Status: ' + ret);
