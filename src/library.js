@@ -4755,10 +4755,19 @@ LibraryManager.library = {
   __cxa_is_number_type: function(type) {
     var isNumber = false;
     try { if (type == __ZTIi) isNumber = true } catch(e){}
+    try { if (type == __ZTIj) isNumber = true } catch(e){}
     try { if (type == __ZTIl) isNumber = true } catch(e){}
+    try { if (type == __ZTIm) isNumber = true } catch(e){}
     try { if (type == __ZTIx) isNumber = true } catch(e){}
+    try { if (type == __ZTIy) isNumber = true } catch(e){}
     try { if (type == __ZTIf) isNumber = true } catch(e){}
     try { if (type == __ZTId) isNumber = true } catch(e){}
+    try { if (type == __ZTIe) isNumber = true } catch(e){}
+    try { if (type == __ZTIc) isNumber = true } catch(e){}
+    try { if (type == __ZTIa) isNumber = true } catch(e){}
+    try { if (type == __ZTIh) isNumber = true } catch(e){}
+    try { if (type == __ZTIs) isNumber = true } catch(e){}
+    try { if (type == __ZTIt) isNumber = true } catch(e){}
     return isNumber;
   },
 
@@ -4839,22 +4848,22 @@ LibraryManager.library = {
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
   // allocated variables as unique identifiers.
-  // type_info for int.
-  _ZTIi: [0],
-  // type_info for long.
-  _ZTIl: [0],
-  // type_info for long long.
-  _ZTIx: [0],
-  // type_info for float.
-  _ZTIf: [0],
-  // type_info for double.
-  _ZTId: [0],
-  // type_info for char.
-  _ZTIc: [0],
-  // type_info for void.
-  _ZTIv: [0],
-  // type_info for void*.
-  _ZTIPv: [0],
+  _ZTIi: [0], // int
+  _ZTIj: [0], // unsigned int
+  _ZTIl: [0], // long
+  _ZTIm: [0], // unsigned long
+  _ZTIx: [0], // long long
+  _ZTIy: [0], // unsigned long long
+  _ZTIf: [0], // float
+  _ZTId: [0], // double
+  _ZTIe: [0], // long double
+  _ZTIc: [0], // char
+  _ZTIa: [0], // signed char
+  _ZTIh: [0], // unsigned char
+  _ZTIs: [0], // short
+  _ZTIt: [0], // signed short
+  _ZTIv: [0], // void
+  _ZTIPv: [0], // void*
 
   llvm_uadd_with_overflow_i8: function(x, y) {
     x = x & 0xff;
@@ -5669,7 +5678,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
     // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
     if (buffer !== 0) {
-      memset(buffer, 0, ___tms_struct_layout.__size__);
+      _memset(buffer, 0, ___tms_struct_layout.__size__);
     }
     return 0;
   },
@@ -6295,7 +6304,7 @@ LibraryManager.library = {
 
   htonl: function(value) {
     return ((value & 0xff) << 24) + ((value & 0xff00) << 8) +
-           ((value & 0xff0000) >> 8) + ((value & 0xff000000) >> 24);
+           ((value & 0xff0000) >>> 8) + ((value & 0xff000000) >>> 24);
   },
   htons: function(value) {
     return ((value & 0xff) << 8) + ((value & 0xff00) >> 8);

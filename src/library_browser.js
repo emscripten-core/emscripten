@@ -10,10 +10,6 @@ mergeInto(LibraryManager.library, {
   $Browser: {
     mainLoop: {
       scheduler: null,
-#if PROFILE_MAIN_LOOP
-      meanTime: 0,
-      lastReport: 0,
-#endif
       shouldPause: false,
       paused: false,
       queue: [],
@@ -383,8 +379,14 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps) {
     Module['noExitRuntime'] = true;
 
+#if PROFILE_MAIN_LOOP
+    Module['totalTime'] = 0;
+    Module['iterations'] = 0;
+    Module['maxTime'] = 0;
+#endif
+
     var jsFunc = FUNCTION_TABLE[func];
-    var wrapper = function() {
+    Browser.mainLoop.runner = function() {
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
         var blocker = Browser.mainLoop.queue.shift();
@@ -402,7 +404,7 @@ mergeInto(LibraryManager.library, {
         }
         console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
-        setTimeout(wrapper, 0);
+        setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
       if (Browser.mainLoop.shouldPause) {
@@ -415,15 +417,14 @@ mergeInto(LibraryManager.library, {
 #if PROFILE_MAIN_LOOP
       var start = performance.now();
 #endif
+
       jsFunc();
+
 #if PROFILE_MAIN_LOOP
-      var now = performance.now();
-      var time = now - start;
-      Browser.mainLoop.meanTime = (Browser.mainLoop.meanTime*9 + time)/10;
-      if (now - Browser.mainLoop.lastReport > 1000) {
-        console.log('main loop time: ' + Browser.mainLoop.meanTime);
-        Browser.mainLoop.lastReport = now;
-      }
+      var time = performance.now() - start;
+      Module['totalTime'] += time;
+      Module['iterations']++;
+      Module['maxTime'] = Math.max(Module['maxTime'], time);
 #endif
 
       if (Browser.mainLoop.shouldPause) {
@@ -436,11 +437,11 @@ mergeInto(LibraryManager.library, {
     }
     if (fps && fps > 0) {
       Browser.mainLoop.scheduler = function() {
-        setTimeout(wrapper, 1000/fps); // doing this each time means that on exception, we stop
+        setTimeout(Browser.mainLoop.runner, 1000/fps); // doing this each time means that on exception, we stop
       }
     } else {
       Browser.mainLoop.scheduler = function() {
-        Browser.requestAnimationFrame(wrapper);
+        Browser.requestAnimationFrame(Browser.mainLoop.runner);
       }
     }
     Browser.mainLoop.scheduler();

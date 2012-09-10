@@ -285,6 +285,17 @@ Options that are modified or new in %s include:
                            llvm-link's behavior is not as permissive
                            as ld is.
 
+  --clear-cache            Manually clears the cache of compiled
+                           emscripten system libraries (libc++,
+                           libc++abi, dlmalloc). This is normally
+                           handled automatically, but if you update
+                           llvm in-place (instead of having a different
+                           directory for a new version), the caching
+                           mechanism can get confused. Clearing the
+                           cache can fix weird problems related to
+                           cache incompatibilities, like clang failing
+                           to link with library files.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -519,6 +530,10 @@ try:
     elif newargs[i] == '--remove-duplicates':
       remove_duplicates = True
       newargs[i] = ''
+    elif newargs[i] == '--clear-cache':
+      newargs[i] = ''
+      print >> sys.stderr, 'emcc: clearing cache'
+      shared.Cache.erase()
     elif newargs[i].startswith(('-I/', '-L/')):
       print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
   newargs = [ arg for arg in newargs if arg is not '' ]

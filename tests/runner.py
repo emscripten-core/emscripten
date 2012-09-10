@@ -5013,11 +5013,11 @@ def process(filename):
         #include <arpa/inet.h>
 
         int main() {
-          printf("*%x,%x,%x,%x*\n", htonl(0x12345678), htons(0xabcd), ntohl(0x43211234), ntohs(0xbeaf));
+          printf("*%x,%x,%x,%x,%x,%x*\n", htonl(0xa1b2c3d4), htonl(0xfe3572e0), htonl(0x07abcdf0), htons(0xabcd), ntohl(0x43211234), ntohs(0xbeaf));
           return 0;
         }
       '''
-      self.do_run(src, '*78563412,cdab,34122143,afbe*')
+      self.do_run(src, '*d4c3b2a1,e07235fe,f0cdab07,cdab,34122143,afbe*')
 
     def test_ctype(self):
       # The bit fiddling done by the macros using __ctype_b_loc requires this.
@@ -5219,7 +5219,85 @@ int main(int argc, char **argv) {
           return 1;
         }
         ''', 'hello world');
-        
+
+    def test_typeid(self):
+      self.do_run(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <typeinfo>
+        int main() {
+          printf("*\n");
+          #define MAX 100
+          int ptrs[MAX];
+          int groups[MAX];
+          memset(ptrs, 0, MAX*sizeof(int));
+          memset(groups, 0, MAX*sizeof(int));
+          int next_group = 1;
+          #define TEST(X) { \
+            int ptr = (int)&typeid(X); \
+            int group = 0; \
+            int i; \
+            for (i = 0; i < MAX; i++) { \
+              if (!groups[i]) break; \
+              if (ptrs[i] == ptr) { \
+                group = groups[i]; \
+                break; \
+              } \
+            } \
+            if (!group) { \
+              groups[i] = group = next_group++; \
+              ptrs[i] = ptr; \
+            } \
+            printf("%s:%d\n", #X, group); \
+          }
+          TEST(int);
+          TEST(unsigned int);
+          TEST(unsigned);
+          TEST(signed int);
+          TEST(long);
+          TEST(unsigned long);
+          TEST(signed long);
+          TEST(long long);
+          TEST(unsigned long long);
+          TEST(signed long long);
+          TEST(short);
+          TEST(unsigned short);
+          TEST(signed short);
+          TEST(char);
+          TEST(unsigned char);
+          TEST(signed char);
+          TEST(float);
+          TEST(double);
+          TEST(long double);
+          TEST(void);
+          TEST(void*);
+          printf("*\n");
+        }
+        ''', '''*
+int:1
+unsigned int:2
+unsigned:2
+signed int:1
+long:3
+unsigned long:4
+signed long:3
+long long:5
+unsigned long long:6
+signed long long:5
+short:7
+unsigned short:8
+signed short:7
+char:9
+unsigned char:10
+signed char:11
+float:12
+double:13
+long double:14
+void:15
+void*:16
+*
+''');
+
     def test_static_variable(self):
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
       src = '''
@@ -7442,6 +7520,9 @@ f.close()
          ['simplifyExpressionsPre', 'optimizeShiftsConservative']),
         (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
          ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
+        # Make sure that optimizeShifts handles functions with shift statements.
+        (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3.js')).read(),
+         ['optimizeShiftsAggressive']),
         (path_from_root('tools', 'test-js-optimizer-regs.js'), open(path_from_root('tools', 'test-js-optimizer-regs-output.js')).read(),
          ['registerize']),
       ]:
@@ -7649,15 +7730,17 @@ elif 'browser' in str(sys.argv):
         print '(moving on..)'
 
     def with_report_result(self, code):
-      return code.replace('REPORT_RESULT();', '''
-          char output[1000];
-          sprintf(output, 
-                  "xhr = new XMLHttpRequest();"
-                  "xhr.open('GET', 'http://localhost:8888/report_result?%d');"
-                  "xhr.send();", result);
-          emscripten_run_script(output);
+      return '''
+        #define REPORT_RESULT_INTERNAL(sync) \
+          char output[1000]; \
+          sprintf(output, \
+                  "xhr = new XMLHttpRequest();" \
+                  "xhr.open('GET', 'http://localhost:8888/report_result?%d'%s);" \
+                  "xhr.send();", result, sync ? ", false" : ""); \
+          emscripten_run_script(output); \
           emscripten_run_script("setTimeout(function() { window.close() }, 1000)");
-''')
+        #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+''' + code
 
     def reftest(self, expected):
       basename = os.path.basename(expected)
@@ -8156,6 +8239,9 @@ elif 'browser' in str(sys.argv):
     def test_emscripten_fs_api(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png')) # preloaded *after* run
       self.btest('emscripten_fs_api_browser.cpp', '1')
+
+    def test_sdl_quit(self):
+      self.btest('sdl_quit.c', '1')
 
     def test_gc(self):
       self.btest('browser_gc.cpp', '1')
@@ -8798,6 +8884,7 @@ elif 'sanity' in str(sys.argv):
     def test_emcc_caching(self):
       INCLUDING_MESSAGE = 'emcc: including X'
       BUILDING_MESSAGE = 'emcc: building X for cache'
+      ERASING_MESSAGE = 'emcc: clearing cache'
 
       EMCC_CACHE = Cache.dirname
 
@@ -8844,6 +8931,12 @@ elif 'sanity' in str(sys.argv):
       finally:
         if emcc_debug:
           os.environ['EMCC_DEBUG'] = emcc_debug
+
+      # Manual cache clearing
+      assert os.path.exists(EMCC_CACHE)
+      output = self.do([EMCC, '--clear-cache'])
+      assert ERASING_MESSAGE in output
+      assert not os.path.exists(EMCC_CACHE)
 
 else:
   raise Exception('Test runner is confused: ' + str(sys.argv))
