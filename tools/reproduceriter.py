@@ -270,6 +270,7 @@ var Recorder = (function() {
       }
     };
     // Date.now, performance.now
+    recorder.dnow = Date.now;
     Date.now = function() {
       if (recorder.dnows.length > 0) {
         return recorder.dnows.pop();
@@ -278,6 +279,7 @@ var Recorder = (function() {
         throw 'consuming too many values!';
       }
     };
+    recorder.pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow || dnow;
     performance.now = function() {
       if (recorder.pnows.length > 0) {
         return recorder.pnows.pop();
@@ -294,14 +296,35 @@ var Recorder = (function() {
     recorder.addListener = function(target, which, callback, arg) {
       recorder['event' + which] = callback;
     };
+    recorder.onFinish = [];
+    // Benchmarking hooks - emscripten specific
+    (function() {
+      var totalTime = 0;
+      var iterations = 0;
+      var maxTime = 0;
+      var curr = 0;
+      Module.preMainLoop = function() {
+        curr = recorder.pnow();
+      }
+      Module.postMainLoop = function() {
+        var time = recorder.pnow() - curr;
+        totalTime += time;
+        iterations++;
+        maxTime = Math.max(maxTime, time);
+      };
+      recorder.onFinish.push(function() {
+        console.log('mean frame: ' + (totalTime / iteratioins) + ' ms');
+        console.log('max frame : ' + maxTime + ' ms');
+      });    
+    })();
     // Finish
     recorder.finish = function() {
-      if (recorder.onFinish) {
-        recorder.onFinish();
-        recorder.onFinish = null;
-      }
+      recorder.onFinish.forEach(function(finish) {
+        finish();
+      });
     };
   }
+  recorder.replaying = replaying;
   return recorder;
 })();
 ''' + open(os.path.join(in_dir, first_js)).read()
