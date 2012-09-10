@@ -104,7 +104,9 @@ var CATCH_EXIT_CODE = 0; // If set, causes exit() to throw an exception object w
                          // terminated with an error message.
 
 // Generated code debugging options
-var SAFE_HEAP = 0; // Check each write to the heap against a list of blocked addresses
+var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
+                   // error on what would be segfaults in a native build (like deferencing
+                   // 0). See preamble.js for the actual checks performed.
                    // If equal to 2, done on a line-by-line basis according to
                    // SAFE_HEAP_LINES, checking only the specified lines.
                    // If equal to 3, checking all *but* the specified lines. Note

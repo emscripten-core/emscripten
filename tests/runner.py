@@ -2108,6 +2108,37 @@ c5,de,15,8a
         '''
         self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
 
+    def test_segfault(self):
+      Settings.SAFE_HEAP = 1
+
+      for addr in ['0', '7', 'new D2()']:
+        print addr
+        src = r'''
+          #include <stdio.h>
+
+          struct Classey {
+            virtual void doIt() = 0;
+          };
+
+          struct D1 : Classey {
+            virtual void doIt() { printf("fleefl\n"); }
+          };
+
+          struct D2 : Classey {
+            virtual void doIt() { printf("marfoosh\n"); }
+          };
+
+          int main(int argc, char **argv)
+          {
+            Classey *p = argc == 100 ? new D1() : (Classey*)%s;
+
+            p->doIt();
+
+            return 0;
+          }
+        ''' % addr
+        self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
+
     def test_dynamic_cast(self):
         if self.emcc_args is None: return self.skip('need libcxxabi')
 

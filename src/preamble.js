@@ -24,6 +24,8 @@ var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   //if (dest === A_NUMBER) Module.print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
 
+  assert(dest >= STACK_ROOT, 'segmentation fault: null pointer, or below normal memory');
+
 #if USE_TYPED_ARRAYS
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
   // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
@@ -643,7 +645,7 @@ var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)
                                          // Also this ensures we leave 0 as an invalid address, 'NULL'
 STATICTOP = base.length;
 for (var i = 0; i < base.length; i++) {
-  {{{ makeSetValue(0, 'i', 'base[i]', 'i8') }}}
+  {{{ makeSetValue(0, 'i', 'base[i]', 'i8', null, null, null, 1) }}}
 }
 
 Module['HEAP'] = HEAP;
