@@ -279,7 +279,8 @@ var Recorder = (function() {
         throw 'consuming too many values!';
       }
     };
-    recorder.pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow || dnow;
+    var pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow || dnow;
+    recorder.pnow = function() { return pnow.call(performance) };
     performance.now = function() {
       if (recorder.pnows.length > 0) {
         return recorder.pnows.pop();
@@ -298,7 +299,7 @@ var Recorder = (function() {
     };
     recorder.onFinish = [];
     // Benchmarking hooks - emscripten specific
-    (function() {
+    setTimeout(function() {
       var totalTime = 0;
       var iterations = 0;
       var maxTime = 0;
@@ -316,7 +317,7 @@ var Recorder = (function() {
         console.log('mean frame: ' + (totalTime / iteratioins) + ' ms');
         console.log('max frame : ' + maxTime + ' ms');
       });    
-    })();
+    });
     // Finish
     recorder.finish = function() {
       recorder.onFinish.forEach(function(finish) {
