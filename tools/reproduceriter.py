@@ -314,7 +314,7 @@ var Recorder = (function() {
         maxTime = Math.max(maxTime, time);
       };
       recorder.onFinish.push(function() {
-        console.log('mean frame: ' + (totalTime / iteratioins) + ' ms');
+        console.log('mean frame: ' + (totalTime / iterations) + ' ms');
         console.log('max frame : ' + maxTime + ' ms');
       });    
     });
