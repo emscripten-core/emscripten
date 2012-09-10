@@ -301,6 +301,7 @@ var Recorder = (function() {
     // Benchmarking hooks - emscripten specific
     setTimeout(function() {
       var totalTime = 0;
+      var totalSquared = 0;
       var iterations = 0;
       var maxTime = 0;
       var curr = 0;
@@ -310,12 +311,16 @@ var Recorder = (function() {
       Module.postMainLoop = function() {
         var time = recorder.pnow() - curr;
         totalTime += time;
-        iterations++;
+        totalSquared += time*time;
         maxTime = Math.max(maxTime, time);
+        iterations++;
       };
       recorder.onFinish.push(function() {
-        console.log('mean frame: ' + (totalTime / iterations) + ' ms');
-        console.log('max frame : ' + maxTime + ' ms');
+        var mean = totalTime / iterations;
+        var meanSquared = totalSquared / iterations;
+        console.log('mean frame   : ' + mean + ' ms');
+        console.log('frame std dev: ' + Math.sqrt(meanSquared - (mean*mean)) + ' ms');
+        console.log('max frame    : ' + maxTime + ' ms');
       });    
     });
     // Finish
