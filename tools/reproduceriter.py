@@ -155,16 +155,16 @@ var Recorder = (function() {
     };
     // Date.now, performance.now
     recorder.dnows = [];
-    var dnow = Date.now;
+    recorder.dnow = Date.now;
     Date.now = function() {
-      var ret = dnow();
+      var ret = recorder.dnow();
       recorder.dnows.push(ret);
       return ret;
     };
     recorder.pnows = [];
-    var pnow = performance.now;
+    recorder.pnow = performance.now;
     performance.now = function() {
-      var ret = pnow();
+      var ret = recorder.pnow();
       recorder.pnows.push(ret);
       return ret;
     };
