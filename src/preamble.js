@@ -720,9 +720,9 @@ function exitRuntime() {
 }
 
 function String_len(ptr) {
-  var i = 0;
-  while ({{{ makeGetValue('ptr', 'i', 'i8') }}}) i++; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
-  return i;
+  var i = ptr;
+  while ({{{ makeGetValue('i++', '0', 'i8') }}}) {}; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
+  return i - ptr - 1;
 }
 Module['String_len'] = String_len;
 
