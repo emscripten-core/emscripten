@@ -3578,7 +3578,9 @@ LibraryManager.library = {
     }
 
     if (!whole && !fraction) {
-      {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
+      if (endptr) {
+        {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
+      }
       return 0;
     }
 
