@@ -641,13 +641,6 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
   }
 #endif
 
-var base = intArrayFromString('(null)'); // So printing %s of NULL gives '(null)'
-                                         // Also this ensures we leave 0 as an invalid address, 'NULL'
-STATICTOP = base.length;
-for (var i = 0; i < base.length; i++) {
-  {{{ makeSetValue(0, 'i', 'base[i]', 'i8', null, null, null, 1) }}}
-}
-
 Module['HEAP'] = HEAP;
 #if USE_TYPED_ARRAYS == 1
 Module['IHEAP'] = IHEAP;
@@ -666,7 +659,7 @@ Module['HEAPF32'] = HEAPF32;
 Module['HEAPF64'] = HEAPF64;
 #endif
 
-STACK_ROOT = STACKTOP = Runtime.alignMemory(STATICTOP);
+STACK_ROOT = STACKTOP = Runtime.alignMemory(1);
 STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
 #if USE_TYPED_ARRAYS == 2
@@ -695,6 +688,8 @@ STACK_MAX = tempDoublePtr + 8;
 #endif
 
 STATICTOP = alignMemoryPage(STACK_MAX);
+
+var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STATIC);
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
