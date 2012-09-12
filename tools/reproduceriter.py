@@ -93,6 +93,8 @@ out_dir = sys.argv[2]
 first_js = sys.argv[3]
 window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
 
+dirs_to_drop = 0 if not os.path.dirname(first_js) else len(os.path.dirname(first_js).split('/'))
+
 if os.path.exists(out_dir):
   shutil.rmtree(out_dir)
 assert os.path.exists(os.path.join(in_dir, first_js))
@@ -125,6 +127,9 @@ open(os.path.join(out_dir, first_js), 'w').write('''
 
 // environment for shell
 if (typeof nagivator == 'undefined') {
+''' + #open(os.path.dirname(__file__) + os.path.sep + 'dom.js').read() +
+'''
+///*
   var window = {
     location: {
       toString: function() {
@@ -178,10 +183,45 @@ if (typeof nagivator == 'undefined') {
       };
     },
   };
+//*/
+  var alert = function(x) {
+    print(x);
+  };
   var performance = {
     now: function() {
       return Date.now();
     },
+  };
+  var XMLHttpRequest = function() {
+    return {
+      open: function(mode, path, async) {
+        if (path[0] == '/') path = path.substring(1);
+        for (var i = 0; i < %d; i++) {
+          path = '../' + path; // go back to root dir if first_js is in a subdir
+        }
+        this.mode = mode;
+        this.path = path;
+        this.async = async;
+      },
+      send: function() {
+        if (!this.async) {
+          this.doSend();
+        } else {
+          var that = this;
+          window.setTimeout(function() {
+            that.doSend();
+            if (that.onload) that.onload();
+          }, 0);
+        }
+      },
+      doSend: function() {
+        if (this.responseType == 'arraybuffer') {
+          this.response = read(this.path, 'binary');
+        } else {
+          this.responseText = read(this.path);
+        }
+      },
+    };
   };
 }
 
@@ -397,7 +437,7 @@ var Recorder = (function() {
   recorder.replaying = replaying;
   return recorder;
 })();
-''' % (window_location, window_location.split('?')[-1]) + open(os.path.join(in_dir, first_js)).read() + '''
+''' % (window_location, window_location.split('?')[-1], dirs_to_drop) + open(os.path.join(in_dir, first_js)).read() + '''
 if (typeof nagivator == 'undefined') {
   window.runEventLoop();
 }
