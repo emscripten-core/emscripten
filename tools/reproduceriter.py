@@ -19,7 +19,7 @@ Usage:
 
 1. Run this script as
 
-    reproduceriter.py IN_DIR OUT_DIR FIRST_JS
+    reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION] [ON_IDLE]
 
    IN_DIR should be the project directory, and OUT_DIR will be
    created with the instrumented code (OUT_DIR will be overwritten
@@ -79,7 +79,9 @@ Examples
  * BananaBread: Unpack into a directory called bb, then one
    directory up, run
 
-    emscripten/tools/reproduceriter.py bb bench js/game-setup.js game.html?low,low,reproduce=repro.data
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js game.html?low,low,reproduce=repro.data "function(){ print('triggering click'); document.querySelector('.fullscreen-button.low-res').callEventListeners('click'); window.onIdle = null; }"
+
+   The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurence.
 '''
 
 import os, sys, shutil, re
@@ -92,6 +94,7 @@ in_dir = sys.argv[1]
 out_dir = sys.argv[2]
 first_js = sys.argv[3]
 window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
+on_idle = sys.argv[5] if len(sys.argv) >= 6 else ''
 
 dirs_to_drop = 0 if not os.path.dirname(first_js) else len(os.path.dirname(first_js).split('/'))
 
@@ -150,9 +153,17 @@ if (typeof nagivator == 'undefined') {
       });
       window.timeouts.sort(function(x, y) { return y.when - x.when });
     },
+    onIdle: %s,
     runEventLoop: function() {
       // run forever until an exception stops this replay
       while (1) {
+        if (window.rafs.length == 0 && window.timeouts.length == 0) {
+          if (window.onIdle) {
+            window.onIdle();
+          } else {
+            throw 'main loop is idle!';
+          }
+        }
         // rafs
         var currRafs = window.rafs;
         window.rafs = [];
@@ -161,9 +172,9 @@ if (typeof nagivator == 'undefined') {
         }
         // timeouts
         var now = window.fakeNow;
-        while (window.timeouts.length && window.timeouts[timeouts].when <= now) {
+        while (window.timeouts.length && window.timeouts[window.timeouts.length-1].when <= now) {
           var timeout = window.timeouts.pop();
-          timeout();
+          timeout.func();
         }
         // increment 'time'
         window.fakeNow += 16.666;
@@ -174,14 +185,14 @@ if (typeof nagivator == 'undefined') {
   var document = {
     eventListeners: {},
     addEventListener: function(id, func) {
-      var listeners = document.eventListeners[id];
+      var listeners = this.eventListeners[id];
       if (!listeners) {
-        listeners = document.eventListeners[id] = [];
+        listeners = this.eventListeners[id] = [];
       }
       listeners.push(func);
     },
     callEventListeners: function(id) {
-      var listeners = document.eventListeners[id];
+      var listeners = this.eventListeners[id];
       if (listeners) {
         listeners.forEach(function(listener) { listener() });
       }
@@ -226,13 +237,20 @@ if (typeof nagivator == 'undefined') {
         default: throw 'createElement ' + what;
       }
     },
-    querySelector: function() {
-      return {
-        classList: {
-          add: function(){},
-          remove: function(){},
-        },
+    elements: {},
+    querySelector: function(id) {
+      if (!document.elements[id]) {
+        document.elements[id] = {
+          classList: {
+            add: function(){},
+            remove: function(){},
+          },
+          eventListeners: {},
+          addEventListener: document.addEventListener,
+          callEventListeners: document.callEventListeners,
+        };
       };
+      return document.elements[id];
     },
     styleSheets: [{
       cssRules: [],
@@ -531,7 +549,7 @@ var Recorder = (function() {
   recorder.replaying = replaying;
   return recorder;
 })();
-''' % (window_location, window_location.split('?')[-1], dirs_to_drop) + open(os.path.join(in_dir, first_js)).read() + '''
+''' % (window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop) + open(os.path.join(in_dir, first_js)).read() + '''
 if (typeof nagivator == 'undefined') {
   window.runEventLoop();
 }
