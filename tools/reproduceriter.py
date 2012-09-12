@@ -172,6 +172,20 @@ if (typeof nagivator == 'undefined') {
   };
   var setTimeout = window.setTimeout;
   var document = {
+    eventListeners: {},
+    addEventListener: function(id, func) {
+      var listeners = document.eventListeners[id];
+      if (!listeners) {
+        listeners = document.eventListeners[id] = [];
+      }
+      listeners.push(func);
+    },
+    callEventListeners: function(id) {
+      var listeners = document.eventListeners[id];
+      if (listeners) {
+        listeners.forEach(function(listener) { listener() });
+      }
+    },
     getElementById: function(id) {
       switch(id) {
         case 'canvas': {
@@ -181,17 +195,23 @@ if (typeof nagivator == 'undefined') {
                 case 'experimental-webgl': {
                   return {
                     getExtension: function() { return 1 },
-                    requestPointerLock: function() {
-                      throw 'pointerLock';
-                    },
                   };
                 }
                 default: throw 'canvas.getContext: ' + which;
               }
             },
+            requestPointerLock: function() {
+              document.callEventListeners('pointerlockchange');
+            },
           };
         }
         default: throw 'getElementById: ' + id;
+      }
+    },
+    createElement: function(what) {
+      switch (what) {
+        case 'canvas': return document.getElementById(what);
+        default: throw 'createElement ' + what;
       }
     },
     querySelector: function() {
@@ -243,6 +263,9 @@ if (typeof nagivator == 'undefined') {
         }
       },
     };
+  };
+  var Audio = function() {
+    return { play: function(){} };
   };
 }
 
