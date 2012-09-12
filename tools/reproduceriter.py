@@ -79,18 +79,19 @@ Examples
  * BananaBread: Unpack into a directory called bb, then one
    directory up, run
 
-    emscripten/tools/reproduceriter.py bb bench js/game-setup.js
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js game.html?low,low,reproduce=repro.data
 '''
 
 import os, sys, shutil, re
 
-assert len(sys.argv) == 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS'
+assert len(sys.argv) >= 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION]'
 
 # Process input args
 
 in_dir = sys.argv[1]
 out_dir = sys.argv[2]
 first_js = sys.argv[3]
+window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
 
 if os.path.exists(out_dir):
   shutil.rmtree(out_dir)
@@ -121,6 +122,42 @@ for parent, dirs, files in os.walk(out_dir):
 print 'add boilerplate...'
 
 open(os.path.join(out_dir, first_js), 'w').write('''
+
+// environment for shell
+if (typeof nagivator == 'undefined') {
+  var window = {
+    location: {
+      toString: function() {
+        return '%s';
+      },
+      search: '%s',
+    },
+    rafs: [],
+    requestAnimationFrame: function(func) {
+      window.rafs.push(func);
+    },
+    runEventLoop: function() {
+      while (1) { // run forever until an exception stops this replay
+        var currRafs = window.rafs;
+        window.rafs = [];
+        for (var i = 0; i < currRafs.length; i++) {
+          currRafs[i]();
+        }
+      }
+    },
+  };
+  var document = {
+    getElementById: function(id) {
+      return null;
+    },
+  };
+  var performance = {
+    now: function() {
+      return Date.now();
+    },
+  };
+}
+
 var Recorder = (function() {
   var recorder;
   var init = 'reproduce=';
@@ -333,8 +370,11 @@ var Recorder = (function() {
   recorder.replaying = replaying;
   return recorder;
 })();
-''' + open(os.path.join(in_dir, first_js)).read()
-)
+''' % (window_location, window_location.split('?')[-1]) + open(os.path.join(in_dir, first_js)).read() + '''
+if (typeof nagivator == 'undefined') {
+  window.runEventLoop();
+}
+''')
 
 print 'done!'
 
