@@ -137,20 +137,40 @@ if (typeof nagivator == 'undefined') {
       },
       search: '%s',
     },
+    fakeNow: 0, // we don't use Date.now()
     rafs: [],
+    timeouts: [],
     requestAnimationFrame: function(func) {
       window.rafs.push(func);
     },
+    setTimeout: function(func, ms) {
+      window.timeouts.push({
+        func: func,
+        when: window.fakeNow + ms
+      });
+      window.timeouts.sort(function(x, y) { return y.when - x.when });
+    },
     runEventLoop: function() {
-      while (1) { // run forever until an exception stops this replay
+      // run forever until an exception stops this replay
+      while (1) {
+        // rafs
         var currRafs = window.rafs;
         window.rafs = [];
         for (var i = 0; i < currRafs.length; i++) {
           currRafs[i]();
         }
+        // timeouts
+        var now = window.fakeNow;
+        while (window.timeouts.length && window.timeouts[timeouts].when <= now) {
+          var timeout = window.timeouts.pop();
+          timeout();
+        }
+        // increment 'time'
+        window.fakeNow += 16.666;
       }
     },
   };
+  var setTimeout = window.setTimeout;
   var document = {
     getElementById: function(id) {
       switch(id) {
@@ -189,7 +209,8 @@ if (typeof nagivator == 'undefined') {
   };
   var performance = {
     now: function() {
-      return Date.now();
+      print('performance.now!');
+      return Date.now(); // XXX XXX XXX
     },
   };
   var XMLHttpRequest = function() {
