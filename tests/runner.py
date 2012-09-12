@@ -2109,6 +2109,8 @@ c5,de,15,8a
         self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
 
     def test_segfault(self):
+      if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
+
       Settings.SAFE_HEAP = 1
 
       for addr in ['0', '7', 'new D2()']:
