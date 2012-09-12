@@ -379,12 +379,6 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps) {
     Module['noExitRuntime'] = true;
 
-#if PROFILE_MAIN_LOOP
-    Module['totalTime'] = 0;
-    Module['iterations'] = 0;
-    Module['maxTime'] = 0;
-#endif
-
     var jsFunc = FUNCTION_TABLE[func];
     Browser.mainLoop.runner = function() {
       if (Browser.mainLoop.queue.length > 0) {
@@ -414,18 +408,15 @@ mergeInto(LibraryManager.library, {
         return;
       }
 
-#if PROFILE_MAIN_LOOP
-      var start = performance.now();
-#endif
+      if (Module['preMainLoop']) {
+        Module['preMainLoop']();
+      }
 
       jsFunc();
 
-#if PROFILE_MAIN_LOOP
-      var time = performance.now() - start;
-      Module['totalTime'] += time;
-      Module['iterations']++;
-      Module['maxTime'] = Math.max(Module['maxTime'], time);
-#endif
+      if (Module['postMainLoop']) {
+        Module['postMainLoop']();
+      }
 
       if (Browser.mainLoop.shouldPause) {
         // catch pauses from the main loop itself

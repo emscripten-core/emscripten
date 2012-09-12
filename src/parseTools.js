@@ -1265,6 +1265,9 @@ function makePointer(slab, pos, allocator, type) {
     de = dedup(evaled);
     if (de.length === 1 && de[0] === 0) {
       slab = types.length;
+      if (USE_TYPED_ARRAYS == 2) {
+        types = ['i8']; //  if data is zeros, we don't need type info
+      }
     }
     // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
     //       be careful of structure padding

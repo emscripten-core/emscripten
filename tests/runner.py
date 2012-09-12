@@ -2108,6 +2108,39 @@ c5,de,15,8a
         '''
         self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
 
+    def test_segfault(self):
+      if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
+
+      Settings.SAFE_HEAP = 1
+
+      for addr in ['0', '7', 'new D2()']:
+        print addr
+        src = r'''
+          #include <stdio.h>
+
+          struct Classey {
+            virtual void doIt() = 0;
+          };
+
+          struct D1 : Classey {
+            virtual void doIt() { printf("fleefl\n"); }
+          };
+
+          struct D2 : Classey {
+            virtual void doIt() { printf("marfoosh\n"); }
+          };
+
+          int main(int argc, char **argv)
+          {
+            Classey *p = argc == 100 ? new D1() : (Classey*)%s;
+
+            p->doIt();
+
+            return 0;
+          }
+        ''' % addr
+        self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
+
     def test_dynamic_cast(self):
         if self.emcc_args is None: return self.skip('need libcxxabi')
 
@@ -2434,6 +2467,30 @@ c5,de,15,8a
           }
           '''
         self.do_run(src, '*70,97,15,3,3029,90*')
+
+    def test_bigarray(self):
+      if self.emcc_args is None: return self.skip('need ta2 to compress type data on zeroinitializers')
+
+      # avoid "array initializer too large" errors
+      src = r'''
+        #include <stdio.h>
+        #include <assert.h>
+
+        #define SIZE (1024*100)
+        struct Struct {
+          char x;
+          int y;
+        };
+        Struct buffy[SIZE];
+
+        int main() {
+          for (int i = 0; i < SIZE; i++) { assert(buffy[i].x == 0 && buffy[i].y == 0); } // we were zeroinitialized
+          for (int i = 0; i < SIZE; i++) { buffy[i].x = i*i; buffy[i].y = i*i*i; } // we can save data
+          printf("*%d*\n", buffy[SIZE/3].x);
+          return 0;
+        }
+        '''
+      self.do_run(src, '*57*')
 
     def test_mod_globalstruct(self):
         src = '''

@@ -79,18 +79,19 @@ Examples
  * BananaBread: Unpack into a directory called bb, then one
    directory up, run
 
-    emscripten/tools/reproduceriter.py bb bench js/game-setup.js
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js game.html?low,low,reproduce=repro.data
 '''
 
 import os, sys, shutil, re
 
-assert len(sys.argv) == 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS'
+assert len(sys.argv) >= 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION]'
 
 # Process input args
 
 in_dir = sys.argv[1]
 out_dir = sys.argv[2]
 first_js = sys.argv[3]
+window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
 
 if os.path.exists(out_dir):
   shutil.rmtree(out_dir)
@@ -121,6 +122,69 @@ for parent, dirs, files in os.walk(out_dir):
 print 'add boilerplate...'
 
 open(os.path.join(out_dir, first_js), 'w').write('''
+
+// environment for shell
+if (typeof nagivator == 'undefined') {
+  var window = {
+    location: {
+      toString: function() {
+        return '%s';
+      },
+      search: '%s',
+    },
+    rafs: [],
+    requestAnimationFrame: function(func) {
+      window.rafs.push(func);
+    },
+    runEventLoop: function() {
+      while (1) { // run forever until an exception stops this replay
+        var currRafs = window.rafs;
+        window.rafs = [];
+        for (var i = 0; i < currRafs.length; i++) {
+          currRafs[i]();
+        }
+      }
+    },
+  };
+  var document = {
+    getElementById: function(id) {
+      switch(id) {
+        case 'canvas': {
+          return {
+            getContext: function(which) {
+              switch(which) {
+                case 'experimental-webgl': {
+                  return {
+                    getExtension: function() { return 1 },
+                    requestPointerLock: function() {
+                      throw 'pointerLock';
+                    },
+                  };
+                }
+                default: throw 'canvas.getContext: ' + which;
+              }
+            },
+          };
+        }
+        default: throw 'getElementById: ' + id;
+      }
+    },
+    querySelector: function() {
+      return {
+        classList: {
+          add: function(){},
+          remove: function(){},
+        },
+      };
+    },
+  };
+  var performance = {
+    now: function() {
+      return Date.now();
+    },
+  };
+}
+
 var Recorder = (function() {
   var recorder;
   var init = 'reproduce=';
@@ -155,16 +219,16 @@ var Recorder = (function() {
     };
     // Date.now, performance.now
     recorder.dnows = [];
-    var dnow = Date.now;
+    recorder.dnow = Date.now;
     Date.now = function() {
-      var ret = dnow();
+      var ret = recorder.dnow();
       recorder.dnows.push(ret);
       return ret;
     };
     recorder.pnows = [];
-    var pnow = performance.now;
+    recorder.pnow = performance.now;
     performance.now = function() {
-      var ret = pnow();
+      var ret = recorder.pnow();
       recorder.pnows.push(ret);
       return ret;
     };
@@ -270,6 +334,7 @@ var Recorder = (function() {
       }
     };
     // Date.now, performance.now
+    recorder.dnow = Date.now;
     Date.now = function() {
       if (recorder.dnows.length > 0) {
         return recorder.dnows.pop();
@@ -278,6 +343,8 @@ var Recorder = (function() {
         throw 'consuming too many values!';
       }
     };
+    var pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow || dnow;
+    recorder.pnow = function() { return pnow.call(performance) };
     performance.now = function() {
       if (recorder.pnows.length > 0) {
         return recorder.pnows.pop();
@@ -294,18 +361,47 @@ var Recorder = (function() {
     recorder.addListener = function(target, which, callback, arg) {
       recorder['event' + which] = callback;
     };
+    recorder.onFinish = [];
+    // Benchmarking hooks - emscripten specific
+    setTimeout(function() {
+      var totalTime = 0;
+      var totalSquared = 0;
+      var iterations = 0;
+      var maxTime = 0;
+      var curr = 0;
+      Module.preMainLoop = function() {
+        curr = recorder.pnow();
+      }
+      Module.postMainLoop = function() {
+        var time = recorder.pnow() - curr;
+        totalTime += time;
+        totalSquared += time*time;
+        maxTime = Math.max(maxTime, time);
+        iterations++;
+      };
+      recorder.onFinish.push(function() {
+        var mean = totalTime / iterations;
+        var meanSquared = totalSquared / iterations;
+        console.log('mean frame   : ' + mean + ' ms');
+        console.log('frame std dev: ' + Math.sqrt(meanSquared - (mean*mean)) + ' ms');
+        console.log('max frame    : ' + maxTime + ' ms');
+      });    
+    });
     // Finish
     recorder.finish = function() {
-      if (recorder.onFinish) {
-        recorder.onFinish();
-        recorder.onFinish = null;
-      }
+      recorder.onFinish.forEach(function(finish) {
+        finish();
+      });
     };
   }
+  recorder.replaying = replaying;
   return recorder;
 })();
-''' + open(os.path.join(in_dir, first_js)).read()
-)
+''' % (window_location, window_location.split('?')[-1]) + open(os.path.join(in_dir, first_js)).read() + '''
+if (typeof nagivator == 'undefined') {
+  window.runEventLoop();
+}
+''')
 
 print 'done!'
 

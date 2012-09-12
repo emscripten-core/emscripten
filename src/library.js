@@ -2802,9 +2802,9 @@ LibraryManager.library = {
           });
         } else if (next == 's'.charCodeAt(0)) {
           // String.
-          var arg = getNextArg('i8*') || 0; // 0 holds '(null)'
+          var arg = getNextArg('i8*') || nullString;
           var argLength = String_len(arg);
-          if (precisionSet) argLength = Math.min(String_len(arg), precision);
+          if (precisionSet) argLength = Math.min(argLength, precision);
           if (!flagLeftAlign) {
             while (argLength < width--) {
               ret.push(' '.charCodeAt(0));
@@ -3578,7 +3578,9 @@ LibraryManager.library = {
     }
 
     if (!whole && !fraction) {
-      {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
+      if (endptr) {
+        {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
+      }
       return 0;
     }
 

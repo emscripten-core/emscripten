@@ -561,6 +561,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
     resolved_symbols = set()
     temp_dir = None
+    files = map(os.path.abspath, files)
     for f in files:
       if not Building.is_ar(f):
         if Building.is_bitcode(f):

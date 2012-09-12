@@ -9,7 +9,7 @@ define i32 @main() {
 entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
-  %access_virt_barray = bitcast i32 0 to [64 x i16]* (i32*, i32)**
+  %access_virt_barray = bitcast i32 100 to [64 x i16]* (i32*, i32)**
   store [64 x i16]* (i32*, i32)* @access_virt_barray, [64 x i16]* (i32*, i32)** %access_virt_barray, align 4
   %wakaptr = bitcast [64 x i16]* (i32*, i32)** %access_virt_barray to i32*
   %waka = load i32* %wakaptr
