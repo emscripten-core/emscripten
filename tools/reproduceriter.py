@@ -211,6 +211,18 @@ if (typeof nagivator == 'undefined') {
     createElement: function(what) {
       switch (what) {
         case 'canvas': return document.getElementById(what);
+        case 'script': {
+          var ret = {};
+          window.setTimeout(function() {
+            load(fixPath(ret.src));
+            if (ret.onload) {
+              window.setTimeout(function() {
+                ret.onload(); // yeah yeah this might vanish
+              });
+            }
+          });
+          return ret;
+        }
         default: throw 'createElement ' + what;
       }
     },
@@ -226,6 +238,9 @@ if (typeof nagivator == 'undefined') {
       cssRules: [],
       insertRule: function(){},
     }],
+    body: {
+      appendChild: function(){},
+    },
   };
 //*/
   var alert = function(x) {
@@ -233,7 +248,7 @@ if (typeof nagivator == 'undefined') {
   };
   var performance = {
     now: function() {
-      print('performance.now!');
+      print('performance.now! ' + new Error().stack);
       return Date.now(); // XXX XXX XXX
     },
   };
