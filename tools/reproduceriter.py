@@ -146,7 +146,7 @@ if (typeof nagivator == 'undefined') {
     setTimeout: function(func, ms) {
       window.timeouts.push({
         func: func,
-        when: window.fakeNow + ms
+        when: window.fakeNow + (ms || 0)
       });
       window.timeouts.sort(function(x, y) { return y.when - x.when });
     },
@@ -222,6 +222,10 @@ if (typeof nagivator == 'undefined') {
         },
       };
     },
+    styleSheets: [{
+      cssRules: [],
+      insertRule: function(){},
+    }],
   };
 //*/
   var alert = function(x) {
@@ -233,13 +237,18 @@ if (typeof nagivator == 'undefined') {
       return Date.now(); // XXX XXX XXX
     },
   };
+  function fixPath(path) {
+    if (path[0] == '/') path = path.substring(1);
+    var dirsToDrop = %d; // go back to root dir if first_js is in a subdir
+    for (var i = 0; i < dirsToDrop; i++) {
+      path = '../' + path;
+    }
+    return path
+  }
   var XMLHttpRequest = function() {
     return {
       open: function(mode, path, async) {
-        if (path[0] == '/') path = path.substring(1);
-        for (var i = 0; i < %d; i++) {
-          path = '../' + path; // go back to root dir if first_js is in a subdir
-        }
+        path = fixPath(path);
         this.mode = mode;
         this.path = path;
         this.async = async;
@@ -266,6 +275,32 @@ if (typeof nagivator == 'undefined') {
   };
   var Audio = function() {
     return { play: function(){} };
+  };
+  var Worker = function(path) {
+    path = fixPath(path);
+    var workerCode = read(path);
+    eval(workerCode); // will implement onmessage()
+
+    this.terminate = function(){};
+    this.postMessage = function(msg) {
+      window.setTimeout(function() {
+        onmessage(msg);
+      });
+    };
+    var thisWorker = this;
+    var postMessage = function(msg) {
+      if (thisWorker.onmessage) {
+        window.setTimeout(function() {
+          thisWorker.onmessage(msg);
+        });
+      }
+    };
+  };
+  var screen = {
+    width: 800,
+    height: 600,
+    availWidth: 800,
+    availHeight: 600,
   };
 }
 
