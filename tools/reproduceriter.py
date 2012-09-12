@@ -148,7 +148,34 @@ if (typeof nagivator == 'undefined') {
   };
   var document = {
     getElementById: function(id) {
-      return null;
+      switch(id) {
+        case 'canvas': {
+          return {
+            getContext: function(which) {
+              switch(which) {
+                case 'experimental-webgl': {
+                  return {
+                    getExtension: function() { return 1 },
+                    requestPointerLock: function() {
+                      throw 'pointerLock';
+                    },
+                  };
+                }
+                default: throw 'canvas.getContext: ' + which;
+              }
+            },
+          };
+        }
+        default: throw 'getElementById: ' + id;
+      }
+    },
+    querySelector: function() {
+      return {
+        classList: {
+          add: function(){},
+          remove: function(){},
+        },
+      };
     },
   };
   var performance = {
