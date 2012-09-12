@@ -138,7 +138,7 @@ if (typeof nagivator == 'undefined') {
       toString: function() {
         return '%s';
       },
-      search: '%s',
+      search: '?%s',
     },
     fakeNow: 0, // we don't use Date.now()
     rafs: [],
@@ -225,7 +225,7 @@ if (typeof nagivator == 'undefined') {
         case 'script': {
           var ret = {};
           window.setTimeout(function() {
-            load(fixPath(ret.src));
+            load(ret.src);
             if (ret.onload) {
               window.setTimeout(function() {
                 ret.onload(); // yeah yeah this might vanish
