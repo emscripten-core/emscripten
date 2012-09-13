@@ -348,14 +348,16 @@ if (typeof nagivator == 'undefined') {
     this.terminate = function(){};
     this.postMessage = function(msg) {
       window.setTimeout(function() {
-        onmessage(msg);
+        print('worker ' + path + ' receiving onmessage');
+        onmessage({ data: msg });
       });
     };
     var thisWorker = this;
     var postMessage = function(msg) {
       if (thisWorker.onmessage) {
         window.setTimeout(function() {
-          thisWorker.onmessage(msg);
+          print('main thread receiving message from ' + path);
+          thisWorker.onmessage({ data: msg });
         });
       }
     };
