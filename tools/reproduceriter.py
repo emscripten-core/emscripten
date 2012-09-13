@@ -220,6 +220,9 @@ if (typeof nagivator == 'undefined') {
             },
           };
         }
+        case 'status-text': case 'progress': {
+          return {};
+        }
         default: throw 'getElementById: ' + id;
       }
     },
@@ -348,6 +351,19 @@ if (typeof nagivator == 'undefined') {
     log: function(x) {
       print(x);
     },
+  };
+  var MozBlobBuilder = function() {
+    this.data = new Uint8Array(0);
+    this.append = function(buffer) {
+      var data = new Uint8Array(buffer);
+      var combined = new Uint8Array(this.data.length + data.length);
+      combined.set(this.data);
+      combined.set(data, this.data.length);
+      this.data = combined;
+    };
+    this.getBlob = function() {
+      return this.data.buffer; // XXX we should change this
+    };
   };
 }
 
