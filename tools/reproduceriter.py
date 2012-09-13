@@ -316,10 +316,10 @@ if (typeof nagivator == 'undefined') {
     return { play: function(){} };
   };
   var Worker = function(path) {
-    //var Module = undefined; // hide main code
     path = fixPath(path);
     var workerCode = read(path);
-    print('loaded worker ' + path + ' : ' + workerCode.substring(0, 50));
+    workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)); // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
+    print('loading worker ' + path + ' : ' + workerCode.substring(0, 50));
     eval(workerCode); // will implement onmessage()
 
     this.terminate = function(){};
@@ -337,11 +337,17 @@ if (typeof nagivator == 'undefined') {
       }
     };
   };
+  Worker.id = 0;
   var screen = {
     width: 800,
     height: 600,
     availWidth: 800,
     availHeight: 600,
+  };
+  var console = {
+    log: function(x) {
+      print(x);
+    },
   };
 }
 
