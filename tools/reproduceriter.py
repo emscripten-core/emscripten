@@ -184,6 +184,12 @@ if (typeof nagivator == 'undefined') {
         window.fakeNow += 16.666;
       }
     },
+    URL: {
+      createObjectURL: function(x) {
+        return x; // the blob itself is returned
+      },
+      revokeObjectURL: function(x) {},
+    },
   };
   var setTimeout = window.setTimeout;
   var document = {
@@ -210,6 +216,11 @@ if (typeof nagivator == 'undefined') {
                 case 'experimental-webgl': {
                   return {
                     getExtension: function() { return 1 },
+                  };
+                }
+                case '2d': {
+                  return {
+                    drawImage: function(){},
                   };
                 }
                 default: throw 'canvas.getContext: ' + which;
@@ -318,6 +329,15 @@ if (typeof nagivator == 'undefined') {
   var Audio = function() {
     return { play: function(){} };
   };
+  var Image = function() {
+    var that = this;
+    window.setTimeout(function() {
+      that.complete = true;
+      that.width = 64;
+      that.height = 64;
+      if (that.onload) that.onload();
+    });
+  };
   var Worker = function(path) {
     path = fixPath(path);
     var workerCode = read(path);
@@ -362,7 +382,7 @@ if (typeof nagivator == 'undefined') {
       this.data = combined;
     };
     this.getBlob = function() {
-      return this.data.buffer; // XXX we should change this
+      return this.data.buffer; // return the buffer as a "blob". XXX We might need to change this if it is not opaque
     };
   };
 }
