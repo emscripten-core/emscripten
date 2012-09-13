@@ -110,7 +110,7 @@ if DEBUG and LEAVE_INPUTS_RAW: print >> sys.stderr, 'emcc: leaving inputs raw'
 stdout = PIPE if not DEBUG else None # suppress output of child processes
 stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 
-shared.check_sanity()
+shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
 
