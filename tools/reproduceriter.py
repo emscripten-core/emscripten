@@ -156,7 +156,9 @@ if (typeof nagivator == 'undefined') {
     onIdle: %s,
     runEventLoop: function() {
       // run forever until an exception stops this replay
+      var i = 0;
       while (1) {
+        print('event loop: ' + (i++));
         if (window.rafs.length == 0 && window.timeouts.length == 0) {
           if (window.onIdle) {
             window.onIdle();
@@ -168,12 +170,14 @@ if (typeof nagivator == 'undefined') {
         var currRafs = window.rafs;
         window.rafs = [];
         for (var i = 0; i < currRafs.length; i++) {
+          print('calling raf: ' + currRafs[i].toString().substring(0, 50));
           currRafs[i]();
         }
         // timeouts
         var now = window.fakeNow;
         while (window.timeouts.length && window.timeouts[window.timeouts.length-1].when <= now) {
           var timeout = window.timeouts.pop();
+          print('calling timeout: ' + timeout.func.toString().substring(0, 50));
           timeout.func();
         }
         // increment 'time'
@@ -225,7 +229,9 @@ if (typeof nagivator == 'undefined') {
         case 'script': {
           var ret = {};
           window.setTimeout(function() {
+            print('loading script: ' + ret.src);
             load(ret.src);
+            print('   script loaded.');
             if (ret.onload) {
               window.setTimeout(function() {
                 ret.onload(); // yeah yeah this might vanish
@@ -310,8 +316,10 @@ if (typeof nagivator == 'undefined') {
     return { play: function(){} };
   };
   var Worker = function(path) {
+    //var Module = undefined; // hide main code
     path = fixPath(path);
     var workerCode = read(path);
+    print('loaded worker ' + path + ' : ' + workerCode.substring(0, 50));
     eval(workerCode); // will implement onmessage()
 
     this.terminate = function(){};
