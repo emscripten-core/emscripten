@@ -414,7 +414,10 @@ if TEMP_DIR:
     shutil.rmtree(temp_dir) # clear it
   os.makedirs(temp_dir)
 else:
-  temp_dir = tempfile.mkdtemp()
+  temp_root = os.path.join(shared.TEMP_DIR, 'emcc')
+  if not os.path.exists(temp_root):
+    os.makedirs(temp_root)
+  temp_dir = tempfile.mkdtemp(dir=temp_root)
 
 def in_temp(name):
   return os.path.join(temp_dir, os.path.basename(name))
