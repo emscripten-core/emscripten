@@ -138,11 +138,8 @@ open(os.path.join(out_dir, first_js), 'w').write(
     window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
   ) if shell else '') +
   open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() +
-  open(os.path.join(in_dir, first_js)).read() + '''
-if (typeof nagivator == 'undefined') {
-  window.runEventLoop();
-}
-''')
+  open(os.path.join(in_dir, first_js)).read() + ('\nwindow.runEventLoop();\n' if shell else '')
+)
 
 print 'done!'
 

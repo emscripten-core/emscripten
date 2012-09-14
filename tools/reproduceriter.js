@@ -145,7 +145,7 @@ var Recorder = (function() {
         return recorder.randoms.pop();
       } else {
         recorder.finish();
-        throw 'consuming too many values!';
+        throw 'consuming too many random values!';
       }
     };
     // Date.now, performance.now
@@ -155,17 +155,17 @@ var Recorder = (function() {
         return recorder.dnows.pop();
       } else {
         recorder.finish();
-        throw 'consuming too many values!';
+        throw 'consuming too many Date.now values!';
       }
     };
-    var pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow || dnow;
+    var pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow;
     recorder.pnow = function() { return pnow.call(performance) };
     performance.now = function() {
       if (recorder.pnows.length > 0) {
         return recorder.pnows.pop();
       } else {
         recorder.finish();
-        throw 'consuming too many values!';
+        throw 'consuming too many performance.now values!';
       }
     };
     // Events
