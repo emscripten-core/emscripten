@@ -710,11 +710,32 @@ if (typeof nagivator == 'undefined') {
                     frontFace: function(){},
                     cullFace: function(){},
                     activeTexture: function(){},
+                    createTexture: function() {
+                      var id = this.id++;
+                      this.items[id] = {
+                        which: 'texture',
+                      };
+                      return id;
+                    },
+                    boundTextures: {},
+                    bindTexture: function(target, texture) {
+                      this.boundTextures[target] = texture;
+                    },
+                    texParameteri: function(){},
+                    pixelStorei: function(){},
+                    texImage2D: function(){},
                   };
                 }
                 case '2d': {
                   return {
                     drawImage: function(){},
+                    getImageData: function(x, y, w, h) {
+                      return {
+                        width: w,
+                        height: h,
+                        data: new Uint8ClampedArray(w*h),
+                      };
+                    },
                   };
                 }
                 default: throw 'canvas.getContext: ' + which;
