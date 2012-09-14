@@ -163,6 +163,7 @@ if (typeof nagivator == 'undefined') {
       // run forever until an exception stops this replay
       var i = 0;
       while (1) {
+        var start = Recorder.dnow();
         print('event loop: ' + (i++));
         if (window.rafs.length == 0 && window.timeouts.length == 0) {
           if (window.onIdle) {
@@ -181,13 +182,16 @@ if (typeof nagivator == 'undefined') {
         }
         // timeouts
         var now = window.fakeNow;
-        while (window.timeouts.length && window.timeouts[window.timeouts.length-1].when <= now) {
-          var timeout = window.timeouts.pop();
+        var timeouts = window.timeouts;
+        window.timeouts = [];
+        while (timeouts.length && timeouts[timeouts.length-1].when <= now) {
+          var timeout = timeouts.pop();
           print('calling timeout: ' + timeout.func.uid + ': ' + timeout.func.toString().substring(0, 50));
           timeout.func();
         }
         // increment 'time'
         window.fakeNow += 16.666;
+        print('main event loop iteration took ' + (Recorder.dnow() - start) + ' ms');
       }
     },
     URL: {
@@ -646,17 +650,22 @@ if (typeof nagivator == 'undefined') {
                       };
                       return id;
                     },
+                    deleteBuffer: function(){},
                     bindBuffer: function(){},
                     bufferData: function(){},
                     getParameter: function(pname) {
                       switch(pname) {
-                        case /* GL_VENDOR                         */ 0x1F00: return 'FakeShellGLVendor';
-                        case /* GL_RENDERER                       */ 0x1F01: return 'FakeShellGLRenderer';
-                        case /* GL_VERSION                        */ 0x1F02: return '0.0.1';
-                        case /* GL_MAX_TEXTURE_SIZE               */ 0x0D33: return 16384;
-                        case /* GL_MAX_CUBE_MAP_TEXTURE_SIZE      */ 0x851C: return 16384;
-                        case /* GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT */ 0x84FF: return 16;
-                        case /* GL_MAX_TEXTURE_IMAGE_UNITS_NV     */ 0x8872: return 16;
+                        case /* GL_VENDOR                           */ 0x1F00: return 'FakeShellGLVendor';
+                        case /* GL_RENDERER                         */ 0x1F01: return 'FakeShellGLRenderer';
+                        case /* GL_VERSION                          */ 0x1F02: return '0.0.1';
+                        case /* GL_MAX_TEXTURE_SIZE                 */ 0x0D33: return 16384;
+                        case /* GL_MAX_CUBE_MAP_TEXTURE_SIZE        */ 0x851C: return 16384;
+                        case /* GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT   */ 0x84FF: return 16;
+                        case /* GL_MAX_TEXTURE_IMAGE_UNITS_NV       */ 0x8872: return 16;
+                        case /* GL_MAX_VERTEX_UNIFORM_VECTORS       */ 0x8DFB: return 4096;
+                        case /* GL_MAX_FRAGMENT_UNIFORM_VECTORS     */ 0x8DFD: return 4096;
+                        case /* GL_MAX_VARYING_VECTORS              */ 0x8DFC: return 32;
+                        case /* GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS */ 0x8B4D: return 32;
                         default: throw 'getParameter ' + pname;
                       }
                     },
@@ -695,7 +704,8 @@ if (typeof nagivator == 'undefined') {
                     linkProgram: function(){},
                     getProgramParameter: function(program, pname) {
                       switch(pname) {
-                        case /* LINK_STATUS */ 0x8B82: return true;
+                        case /* LINK_STATUS     */ 0x8B82: return true;
+                        case /* ACTIVE_UNIFORMS */ 0x8B86: return 4;
                         default: throw 'getProgramParameter ' + pname;
                       }
                     },
@@ -717,6 +727,7 @@ if (typeof nagivator == 'undefined') {
                       };
                       return id;
                     },
+                    deleteTexture: function(){},
                     boundTextures: {},
                     bindTexture: function(target, texture) {
                       this.boundTextures[target] = texture;
@@ -724,6 +735,18 @@ if (typeof nagivator == 'undefined') {
                     texParameteri: function(){},
                     pixelStorei: function(){},
                     texImage2D: function(){},
+                    compressedTexImage2D: function(){},
+                    useProgram: function(){},
+                    getUniformLocation: function() {
+                      return null;
+                    },
+                    getActiveUniform: function(program, index) {
+                      return {
+                        size: 1,
+                        type: /* INT_VEC3 */ 0x8B54,
+                        name: 'activeUniform' + index,
+                      };
+                    },
                   };
                 }
                 case '2d': {
@@ -805,7 +828,7 @@ if (typeof nagivator == 'undefined') {
   };
   var performance = {
     now: function() {
-      print('performance.now! ' + new Error().stack);
+      // print('performance.now! ' + new Error().stack);
       return Date.now(); // XXX XXX XXX
     },
   };
@@ -846,7 +869,10 @@ if (typeof nagivator == 'undefined') {
     };
   };
   var Audio = function() {
-    return { play: function(){} };
+    return {
+      play: function(){},
+      pause: function(){},
+    };
   };
   var Image = function() {
     var that = this;
