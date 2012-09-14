@@ -25,7 +25,12 @@ Usage:
    created with the instrumented code (OUT_DIR will be overwritten
    if it exists). FIRST_JS should be a path (relative to IN_DIR) to
    the first JavaScript file loaded by the project (this tool
-   will add code to that). 
+   will add code to that). The last two parameters, WINDOW_LOCATION
+   and ON_IDLE, are relevant for shell builds. If WINDOW_LOCATION is
+   specified, we will make a build that runs in the shell and not in
+   a browser. WINDOW_LOCATION is the fake window.location we set in the
+   fake DOM, and ON_IDLE is code that runs when the fake main browser
+   event loop runs out of actions.
 
    You will need to call
 
@@ -96,6 +101,8 @@ first_js = sys.argv[3]
 window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
 on_idle = sys.argv[5] if len(sys.argv) >= 6 else ''
 
+shell = not not window_location
+
 dirs_to_drop = 0 if not os.path.dirname(first_js) else len(os.path.dirname(first_js).split('/'))
 
 if os.path.exists(out_dir):
@@ -127,8 +134,11 @@ for parent, dirs, files in os.walk(out_dir):
 print 'add boilerplate...'
 
 open(os.path.join(out_dir, first_js), 'w').write(
-  open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() % (
-    window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop) + open(os.path.join(in_dir, first_js)).read() + '''
+  (open(os.path.join(os.path.dirname(__file__), 'reproduceriter_shell.js')).read() % (
+    window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
+  ) if shell else '') +
+  open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() +
+  open(os.path.join(in_dir, first_js)).read() + '''
 if (typeof nagivator == 'undefined') {
   window.runEventLoop();
 }
