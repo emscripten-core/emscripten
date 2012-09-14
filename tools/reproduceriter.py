@@ -143,10 +143,15 @@ if (typeof nagivator == 'undefined') {
     fakeNow: 0, // we don't use Date.now()
     rafs: [],
     timeouts: [],
+    uid: 0,
     requestAnimationFrame: function(func) {
+      func.uid = window.uid++;
+      print('adding raf ' + func.uid);
       window.rafs.push(func);
     },
     setTimeout: function(func, ms) {
+      func.uid = window.uid++;
+      print('adding timeout ' + func.uid);
       window.timeouts.push({
         func: func,
         when: window.fakeNow + (ms || 0)
@@ -170,14 +175,15 @@ if (typeof nagivator == 'undefined') {
         var currRafs = window.rafs;
         window.rafs = [];
         for (var i = 0; i < currRafs.length; i++) {
-          print('calling raf: ' + currRafs[i].toString().substring(0, 50));
-          currRafs[i]();
+          var raf = currRafs[i];
+          print('calling raf: ' + raf.uid + ': ' + raf.toString().substring(0, 50));
+          raf();
         }
         // timeouts
         var now = window.fakeNow;
         while (window.timeouts.length && window.timeouts[window.timeouts.length-1].when <= now) {
           var timeout = window.timeouts.pop();
-          print('calling timeout: ' + timeout.func.toString().substring(0, 50));
+          print('calling timeout: ' + timeout.func.uid + ': ' + timeout.func.toString().substring(0, 50));
           timeout.func();
         }
         // increment 'time'
@@ -339,6 +345,7 @@ if (typeof nagivator == 'undefined') {
     });
   };
   var Worker = function(path) {
+    // XXX We need to sandbox more securely. In particular Date.now() and performance.now() need to be unpatched during calls to worker code (right now they consume recorded values!)
     path = fixPath(path);
     var workerCode = read(path);
     workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)); // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
