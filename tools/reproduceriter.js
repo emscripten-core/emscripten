@@ -1,6 +1,6 @@
 
 // environment for shell
-if (typeof nagivator == 'undefined') {
+if (typeof navigator == 'undefined') {
   var window = {
     location: {
       toString: function() {
