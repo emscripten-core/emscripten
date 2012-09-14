@@ -161,10 +161,10 @@ if (typeof nagivator == 'undefined') {
     onIdle: %s,
     runEventLoop: function() {
       // run forever until an exception stops this replay
-      var i = 0;
+      var iter = 0;
       while (1) {
         var start = Recorder.dnow();
-        print('event loop: ' + (i++));
+        print('event loop: ' + (iter++));
         if (window.rafs.length == 0 && window.timeouts.length == 0) {
           if (window.onIdle) {
             window.onIdle();
@@ -747,6 +747,43 @@ if (typeof nagivator == 'undefined') {
                         name: 'activeUniform' + index,
                       };
                     },
+                    clear: function(){},
+                    uniform4fv: function(){},
+                    uniform1i: function(){},
+                    getAttribLocation: function() { return 1 },
+                    vertexAttribPointer: function(){},
+                    enableVertexAttribArray: function(){},
+                    disableVertexAttribArray: function(){},
+                    drawElements: function(){},
+                    drawArrays: function(){},
+                    depthMask: function(){},
+                    depthRange: function(){},
+                    bufferSubData: function(){},
+                    blendFunc: function(){},
+                    createFramebuffer: function() {
+                      var id = this.id++;
+                      this.items[id] = {
+                        which: 'framebuffer',
+                        shaders: [],
+                      };
+                      return id;
+                    },
+                    bindFramebuffer: function(){},
+                    framebufferTexture2D: function(){},
+                    checkFramebufferStatus: function() {
+                      return /* FRAMEBUFFER_COMPLETE */ 0x8CD5;
+                    },
+                    createRenderbuffer: function() {
+                      var id = this.id++;
+                      this.items[id] = {
+                        which: 'renderbuffer',
+                        shaders: [],
+                      };
+                      return id;
+                    },
+                    bindRenderbuffer: function(){},
+                    renderbufferStorage: function(){},
+                    framebufferRenderbuffer: function(){},
                   };
                 }
                 case '2d': {
@@ -771,6 +808,12 @@ if (typeof nagivator == 'undefined') {
             eventListeners: {},
             addEventListener: document.addEventListener,
             callEventListeners: document.callEventListeners,
+            requestFullScreen: function() {
+              var that = this;
+              window.setTimeout(function() {
+                that.callEventListeners('fullscreenchange');
+              });
+            },
           };
         }
         case 'status-text': case 'progress': {
@@ -872,6 +915,9 @@ if (typeof nagivator == 'undefined') {
     return {
       play: function(){},
       pause: function(){},
+      cloneNode: function() {
+        return this;
+      },
     };
   };
   var Image = function() {
