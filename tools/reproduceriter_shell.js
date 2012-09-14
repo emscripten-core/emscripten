@@ -734,10 +734,10 @@ var document = {
 var alert = function(x) {
   print(x);
 };
+var originalDateNow = Date.now;
 var performance = {
   now: function() {
-    // print('performance.now! ' + new Error().stack);
-    return Date.now(); // XXX XXX XXX
+    return originalDateNow.call(Date);
   },
 };
 function fixPath(path) {
@@ -859,5 +859,4 @@ var MozBlobBuilder = function() {
     return this.data.buffer; // return the buffer as a "blob". XXX We might need to change this if it is not opaque
   };
 };
-}
 
