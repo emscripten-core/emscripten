@@ -650,10 +650,13 @@ if (typeof nagivator == 'undefined') {
                     bufferData: function(){},
                     getParameter: function(pname) {
                       switch(pname) {
-                        case /* GL_VENDOR           */ 0x1F00: return 'FakeShellGLVendor';
-                        case /* GL_RENDERER         */ 0x1F01: return 'FakeShellGLRenderer';
-                        case /* GL_VERSION          */ 0x1F02: return '0.0.1';
-                        case /* GL_MAX_TEXTURE_SIZE */ 0x0D33: return 16384;
+                        case /* GL_VENDOR                         */ 0x1F00: return 'FakeShellGLVendor';
+                        case /* GL_RENDERER                       */ 0x1F01: return 'FakeShellGLRenderer';
+                        case /* GL_VERSION                        */ 0x1F02: return '0.0.1';
+                        case /* GL_MAX_TEXTURE_SIZE               */ 0x0D33: return 16384;
+                        case /* GL_MAX_CUBE_MAP_TEXTURE_SIZE      */ 0x851C: return 16384;
+                        case /* GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT */ 0x84FF: return 16;
+                        case /* GL_MAX_TEXTURE_IMAGE_UNITS_NV     */ 0x8872: return 16;
                         default: throw 'getParameter ' + pname;
                       }
                     },
@@ -670,10 +673,43 @@ if (typeof nagivator == 'undefined') {
                     },
                     getShaderParameter: function(shader, pname) {
                       switch(pname) {
-                        case /* GL_SHADER_TYPE */ 0x8B4F: return this.items[shader].type;
+                        case /* GL_SHADER_TYPE    */ 0x8B4F: return this.items[shader].type;
+                        case /* GL_COMPILE_STATUS */ 0x8B81: return true;
                         default: throw 'getShaderParameter ' + pname;
                       }
                     },
+                    shaderSource: function(){},
+                    compileShader: function(){},
+                    createProgram: function() {
+                      var id = this.id++;
+                      this.items[id] = {
+                        which: 'program',
+                        shaders: [],
+                      };
+                      return id;
+                    },
+                    attachShader: function(program, shader) {
+                      this.items[program].shaders.push(shader);
+                    },
+                    bindAttribLocation: function(){},
+                    linkProgram: function(){},
+                    getProgramParameter: function(program, pname) {
+                      switch(pname) {
+                        case /* LINK_STATUS */ 0x8B82: return true;
+                        default: throw 'getProgramParameter ' + pname;
+                      }
+                    },
+                    deleteShader: function(){},
+                    deleteProgram: function(){},
+                    viewport: function(){},
+                    clearColor: function(){},
+                    clearDepth: function(){},
+                    depthFunc: function(){},
+                    enable: function(){},
+                    disable: function(){},
+                    frontFace: function(){},
+                    cullFace: function(){},
+                    activeTexture: function(){},
                   };
                 }
                 case '2d': {
