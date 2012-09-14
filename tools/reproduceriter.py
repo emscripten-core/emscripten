@@ -352,11 +352,20 @@ if (typeof nagivator == 'undefined') {
     print('loading worker ' + path + ' : ' + workerCode.substring(0, 50));
     eval(workerCode); // will implement onmessage()
 
+    function duplicateJSON(json) {
+      function handleTypedArrays(key, value) {
+        if (value && value.toString && value.toString().substring(0, 8) == '[object ' && value.length && value.byteLength) {
+          return Array.prototype.slice.call(value);
+        }
+        return value;
+      }
+      return JSON.parse(JSON.stringify(json, handleTypedArrays))
+    }
     this.terminate = function(){};
     this.postMessage = function(msg) {
       window.setTimeout(function() {
         print('worker ' + path + ' receiving onmessage');
-        onmessage({ data: msg });
+        onmessage({ data: duplicateJSON(msg) });
       });
     };
     var thisWorker = this;
@@ -364,7 +373,7 @@ if (typeof nagivator == 'undefined') {
       if (thisWorker.onmessage) {
         window.setTimeout(function() {
           print('main thread receiving message from ' + path);
-          thisWorker.onmessage({ data: msg });
+          thisWorker.onmessage({ data: duplicateJSON(msg) });
         });
       }
     };
