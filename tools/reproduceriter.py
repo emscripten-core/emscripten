@@ -344,14 +344,15 @@ if (typeof nagivator == 'undefined') {
       if (that.onload) that.onload();
     });
   };
-  var Worker = function(path) {
-    path = fixPath(path);
-    var workerCode = read(path);
+  var Worker = function(workerPath) {
+    workerPath = fixPath(workerPath);
+    var workerCode = read(workerPath);
     workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)). // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
                             replace(/Date.now/g, 'Recorder.dnow'). // recorded values are just for the "main thread" - workers were not recorded, and should not consume
                             replace(/performance.now/g, 'Recorder.pnow').
-                            replace(/Math.random/g, 'Recorder.random');
-    print('loading worker ' + path + ' : ' + workerCode.substring(0, 50));
+                            replace(/Math.random/g, 'Recorder.random').
+                            replace(/\\nonmessage = /, '\\nvar onmessage = '); // workers commonly do "onmessage = ", we need to varify that to sandbox
+    print('loading worker ' + workerPath + ' : ' + workerCode.substring(0, 50));
     eval(workerCode); // will implement onmessage()
 
     function duplicateJSON(json) {
@@ -365,22 +366,25 @@ if (typeof nagivator == 'undefined') {
     }
     this.terminate = function(){};
     this.postMessage = function(msg) {
+      msg.messageId = Worker.messageId++;
+      print('main thread sending message ' + msg.messageId + ' to worker ' + workerPath);
       window.setTimeout(function() {
-        print('worker ' + path + ' receiving onmessage');
+        print('worker ' + workerPath + ' receiving message ' + msg.messageId);
         onmessage({ data: duplicateJSON(msg) });
       });
     };
     var thisWorker = this;
     var postMessage = function(msg) {
-      if (thisWorker.onmessage) {
-        window.setTimeout(function() {
-          print('main thread receiving message from ' + path);
-          thisWorker.onmessage({ data: duplicateJSON(msg) });
-        });
-      }
+      msg.messageId = Worker.messageId++;
+      print('worker ' + workerPath + ' sending message ' + msg.messageId);
+      window.setTimeout(function() {
+        print('main thread receiving message ' + msg.messageId + ' from ' + workerPath);
+        thisWorker.onmessage({ data: duplicateJSON(msg) });
+      });
     };
   };
   Worker.id = 0;
+  Worker.messageId = 0;
   var screen = {
     width: 800,
     height: 600,
