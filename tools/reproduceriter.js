@@ -45,7 +45,7 @@ if (typeof nagivator == 'undefined') {
         window.rafs = [];
         for (var i = 0; i < currRafs.length; i++) {
           var raf = currRafs[i];
-          print('calling raf: ' + raf.uid + ': ' + raf.toString().substring(0, 50));
+          print('calling raf: ' + raf.uid);// + ': ' + raf.toString().substring(0, 50));
           raf();
         }
         // timeouts
@@ -54,7 +54,7 @@ if (typeof nagivator == 'undefined') {
         window.timeouts = [];
         while (timeouts.length && timeouts[timeouts.length-1].when <= now) {
           var timeout = timeouts.pop();
-          print('calling timeout: ' + timeout.func.uid + ': ' + timeout.func.toString().substring(0, 50));
+          print('calling timeout: ' + timeout.func.uid);// + ': ' + timeout.func.toString().substring(0, 50));
           timeout.func();
         }
         // increment 'time'
