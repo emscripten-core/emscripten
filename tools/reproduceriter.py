@@ -345,10 +345,12 @@ if (typeof nagivator == 'undefined') {
     });
   };
   var Worker = function(path) {
-    // XXX We need to sandbox more securely. In particular Date.now() and performance.now() need to be unpatched during calls to worker code (right now they consume recorded values!)
     path = fixPath(path);
     var workerCode = read(path);
-    workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)); // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
+    workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)). // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
+                            replace(/Date.now/g, 'Recorder.dnow'). // recorded values are just for the "main thread" - workers were not recorded, and should not consume
+                            replace(/performance.now/g, 'Recorder.pnow').
+                            replace(/Math.random/g, 'Recorder.random');
     print('loading worker ' + path + ' : ' + workerCode.substring(0, 50));
     eval(workerCode); // will implement onmessage()
 
@@ -431,9 +433,9 @@ var Recorder = (function() {
     };
     // Math.random
     recorder.randoms = [];
-    var random = Math.random;
+    recorder.random = Math.random;
     Math.random = function() {
-      var ret = random();
+      var ret = recorder.random();
       recorder.randoms.push(ret);
       return ret;
     };
@@ -545,6 +547,7 @@ var Recorder = (function() {
       count();
     };
     // Math.random
+    recorder.random = Math.random;
     Math.random = function() {
       if (recorder.randoms.length > 0) {
         return recorder.randoms.pop();
