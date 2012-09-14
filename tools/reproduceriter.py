@@ -235,6 +235,10 @@ if (typeof nagivator == 'undefined') {
             requestPointerLock: function() {
               document.callEventListeners('pointerlockchange');
             },
+            style: {},
+            eventListeners: {},
+            addEventListener: document.addEventListener,
+            callEventListeners: document.callEventListeners,
           };
         }
         case 'status-text': case 'progress': {
