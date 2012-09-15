@@ -30,7 +30,8 @@ Usage:
    specified, we will make a build that runs in the shell and not in
    a browser. WINDOW_LOCATION is the fake window.location we set in the
    fake DOM, and ON_IDLE is code that runs when the fake main browser
-   event loop runs out of actions.
+   event loop runs out of actions. (Note that only a browser build can
+   do recording, shell builds just replay.)
 
    You will need to call
 
@@ -85,6 +86,14 @@ Examples
    directory up, run
 
     emscripten/tools/reproduceriter.py bb bench js/game-setup.js game.html?low,low,reproduce=repro.data "function(){ print('triggering click'); document.querySelector('.fullscreen-button.low-res').callEventListeners('click'); window.onIdle = null; }"
+
+   for a shell build, or
+
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js 
+
+   for a browser build. Since only a browser build can do recording, you would normally
+   make a browser build, record a trace, then make a shell build and copy the trace
+   there so you can run it.
 
    The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurence.
 '''
