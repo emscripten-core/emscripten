@@ -122,18 +122,26 @@ def check_sanity(force=False):
 
 # Tools/paths
 
+LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+
+def build_llvm_tool_path(tool):
+    if LLVM_ADD_VERSION:
+        return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
+    else:
+        return os.path.join(LLVM_ROOT, tool)
+
 CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
 CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 CLANG=CLANG_CPP
-LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
-LLVM_AR=os.path.join(LLVM_ROOT, 'llvm-ar')
-LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
-LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
-LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
-LLVM_NM=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-nm'))
-LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
-LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
-LLVM_EXTRACT=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-extract'))
+LLVM_LINK=build_llvm_tool_path('llvm-link')
+LLVM_AR=build_llvm_tool_path('llvm-ar')
+LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
+LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
+LLVM_DIS=os.path.expanduser(build_llvm_tool_path('llvm-dis'))
+LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
+LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
+LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
+LLVM_EXTRACT=os.path.expanduser(build_llvm_tool_path('llvm-extract'))
 COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
 
 EMSCRIPTEN = path_from_root('emscripten.py')
