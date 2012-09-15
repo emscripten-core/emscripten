@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 '''
-
-* This is a work in progress *
-
 Reproducer Rewriter
 ===================
 
