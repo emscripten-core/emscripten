@@ -650,6 +650,8 @@ var document = {
                   bindRenderbuffer: function(){},
                   renderbufferStorage: function(){},
                   framebufferRenderbuffer: function(){},
+                  scissor: function(){},
+                  colorMask: function(){},
                 };
               }
               case '2d': {
