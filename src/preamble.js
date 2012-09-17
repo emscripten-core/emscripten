@@ -466,6 +466,12 @@ Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
 Module['ALLOC_STACK'] = ALLOC_STACK;
 Module['ALLOC_STATIC'] = ALLOC_STATIC;
 
+// @slab: An array of data, or a number. If a number, then the size of the block to allocate,
+//        in *bytes* (note that this is sometimes confusing: the next parameter does not
+//        affect this!)
+// @types: Either an array of types, one for each byte (or 0 if no type at that position),
+//         or a single type which is used for the entire block
+// @allocator: How to allocate memory, see ALLOC_*
 function allocate(slab, types, allocator) {
   var zeroinit, size;
   if (typeof slab === 'number') {
