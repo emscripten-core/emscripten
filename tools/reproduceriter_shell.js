@@ -837,11 +837,11 @@ var Worker = function(workerPath) {
 };
 Worker.id = 0;
 Worker.messageId = 0;
-var screen = {
-  width: 800,
-  height: 600,
-  availWidth: 800,
-  availHeight: 600,
+var screen = { // XXX these values may need to be adjusted
+  width: 2100,
+  height: 1313,
+  availWidth: 2100,
+  availHeight: 1283,
 };
 var console = {
   log: function(x) {
