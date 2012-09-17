@@ -62,20 +62,20 @@ extern void emscripten_cancel_main_loop();
  * at specific time in the future.
  */
 #if EMSCRIPTEN
-extern void _emscripten_push_main_loop_blocker(void (*func)(), const char *name);
-extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(), const char *name);
+extern void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
+extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
 #else
-inline void _emscripten_push_main_loop_blocker(void (*func)(), const char *name) {
-  func();
+inline void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name) {
+  func(arg);
 }
-inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(), const char *name) {
-  func();
+inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name) {
+  func(arg);
 }
 #endif
-#define emscripten_push_main_loop_blocker(func) \
-  _emscripten_push_main_loop_blocker(func, #func)
-#define emscripten_push_uncounted_main_loop_blocker(func) \
-  _emscripten_push_uncounted_main_loop_blocker(func, #func)
+#define emscripten_push_main_loop_blocker(func, arg) \
+  _emscripten_push_main_loop_blocker(func, arg, #func)
+#define emscripten_push_uncounted_main_loop_blocker(func, arg) \
+  _emscripten_push_uncounted_main_loop_blocker(func, arg, #func)
 
 /*
  * Sets the number of blockers remaining until some user-relevant
@@ -99,11 +99,11 @@ inline void emscripten_set_main_loop_expected_blockers(int num) {}
  * mechanism is used.
  */
 #if EMSCRIPTEN
-extern void emscripten_async_call(void (*func)(), int millis);
+extern void emscripten_async_call(void (*func)(void *), void *arg, int millis);
 #else
-inline void emscripten_async_call(void (*func)(), int millis) {
+inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
   if (millis) SDL_Delay(millis);
-  func();
+  func(arg);
 }
 #endif
 

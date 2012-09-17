@@ -384,7 +384,7 @@ mergeInto(LibraryManager.library, {
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
         var blocker = Browser.mainLoop.queue.shift();
-        blocker.func();
+        blocker.func(blocker.arg);
         if (Browser.mainLoop.remainingBlockers) {
           var remaining = Browser.mainLoop.remainingBlockers;
           var next = remaining%1 == 0 ? remaining-1 : Math.floor(remaining);
@@ -451,13 +451,13 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.resume();
   },
 
-  _emscripten_push_main_loop_blocker: function(func, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name), counted: true });
+  _emscripten_push_main_loop_blocker: function(func, arg, name) {
+    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], arg: arg, name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
-  _emscripten_push_uncounted_main_loop_blocker: function(func, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name), counted: false });
+  _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
+    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], arg: arg, name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 
@@ -467,14 +467,17 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.updateStatus();
   },
 
-  emscripten_async_call: function(func, millis) {
+  emscripten_async_call: function(func, arg, millis) {
     Module['noExitRuntime'] = true;
 
-    var asyncCall = Runtime.getFuncWrapper(func);
+    function wrapper() {
+      Runtime.getFuncWrapper(func)(arg);
+    }
+
     if (millis >= 0) {
-      setTimeout(asyncCall, millis);
+      setTimeout(wrapper, millis);
     } else {
-      Browser.requestAnimationFrame(asyncCall);
+      Browser.requestAnimationFrame(wrapper);
     }
   },
 
