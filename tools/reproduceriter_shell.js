@@ -86,7 +86,8 @@ var document = {
   getElementById: function(id) {
     switch(id) {
       case 'canvas': {
-        return {
+        if (this.canvas) return this.canvas;
+        return this.canvas = {
           getContext: function(which) {
             switch(which) {
               case 'experimental-webgl': {
@@ -670,18 +671,23 @@ var document = {
             }
           },
           requestPointerLock: function() {
-            document.callEventListeners('pointerlockchange');
+            document.pointerLockElement = document.getElementById('canvas');
+            window.setTimeout(function() {
+              document.callEventListeners('pointerlockchange');
+            });
           },
           style: {},
           eventListeners: {},
           addEventListener: document.addEventListener,
           callEventListeners: document.callEventListeners,
           requestFullScreen: function() {
-            var that = this;
+            document.fullscreenElement = document.getElementById('canvas');
             window.setTimeout(function() {
-              that.callEventListeners('fullscreenchange');
+              document.callEventListeners('fullscreenchange');
             });
           },
+          offsetTop: 0,
+          offsetLeft: 0,
         };
       }
       case 'status-text': case 'progress': {
