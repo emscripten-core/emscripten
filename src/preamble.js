@@ -457,8 +457,6 @@ function getValue(ptr, type, noSafe) {
 }
 Module['getValue'] = getValue;
 
-// Allocates memory for some data and initializes it properly.
-
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
@@ -466,11 +464,18 @@ Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
 Module['ALLOC_STACK'] = ALLOC_STACK;
 Module['ALLOC_STATIC'] = ALLOC_STATIC;
 
+// allocate(): This is for internal use. You can use it yourself as well, but the interface
+//             is a little tricky (see docs right below). The reason is that it is optimized
+//             for multiple syntaxes to save space in generated code. So you should
+//             normally not use allocate(), and instead allocate memory using _malloc(),
+//             initialize it with setValue(), and so forth.
 // @slab: An array of data, or a number. If a number, then the size of the block to allocate,
 //        in *bytes* (note that this is sometimes confusing: the next parameter does not
 //        affect this!)
 // @types: Either an array of types, one for each byte (or 0 if no type at that position),
-//         or a single type which is used for the entire block
+//         or a single type which is used for the entire block. This only matters if there
+//         is initial data - if @slab is a number, then this does not matter at all and is
+//         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
 function allocate(slab, types, allocator) {
   var zeroinit, size;
