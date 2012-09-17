@@ -653,6 +653,7 @@ var document = {
                   framebufferRenderbuffer: function(){},
                   scissor: function(){},
                   colorMask: function(){},
+                  lineWidth: function(){},
                 };
               }
               case '2d': {
