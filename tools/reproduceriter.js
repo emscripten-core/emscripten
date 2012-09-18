@@ -40,7 +40,8 @@ var Recorder = (function() {
       return ret;
     };
     recorder.pnows = [];
-    recorder.pnow = performance.now;
+    var pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow;
+    recorder.pnow = function() { return pnow.call(performance) };
     performance.now = function() {
       var ret = recorder.pnow();
       recorder.pnows.push(ret);
