@@ -93,6 +93,15 @@ Examples
    there so you can run it.
 
    The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurence.
+
+Notes
+
+ * Replay can depend on browser state. One case is if you are replaying a fullscreen
+   game with pointer lock, then you will need to manually allow pointer lock if it
+   isn't already on for the machine. If you do it too early or too late, the replay
+   can be different, since mousemove events mean different things depending on
+   whether the pointer is locked or not.
+
 '''
 
 import os, sys, shutil, re
