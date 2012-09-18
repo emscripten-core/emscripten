@@ -127,10 +127,10 @@ LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
 def build_llvm_tool_path(tool):
-    if LLVM_ADD_VERSION:
-        return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
-    else:
-        return os.path.join(LLVM_ROOT, tool)
+  if LLVM_ADD_VERSION:
+    return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
+  else:
+    return os.path.join(LLVM_ROOT, tool)
 
 CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
 CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
