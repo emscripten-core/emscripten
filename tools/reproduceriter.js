@@ -113,7 +113,7 @@ var Recorder = (function() {
     var baseURL = window.location.toString().replace('://', 'cheez999').split('?')[0].split('/').slice(0, -1).join('/').replace('cheez999', '://');
     if (baseURL[baseURL.length-1] != '/') baseURL += '/';
     var path = baseURL + dataPath;
-    alert('Loading replay from ' + path);
+    console.log('Loading replay from ' + path);
     var request = new XMLHttpRequest();
     request.open('GET', path, false);
     request.send();
