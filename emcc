@@ -321,6 +321,14 @@ elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
   print 'emcc (Emscripten GCC-like replacement) 2.0'
   exit(subprocess.call([shared.CLANG, '-v']))
 
+def is_minus_s_for_emcc(newargs,i):
+      assert newargs[i] == '-s'
+      if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option
+        return True
+      else:
+        print >> sys.stderr, 'emcc: warning: treating -s as linker option and not as -s OPT=VALUE for js compilation'
+        return False
+
 # If this is a configure-type thing, do not compile to JavaScript, instead use clang
 # to compile to a native binary (using our headers, so things make sense later)
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv
@@ -329,7 +337,21 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = shared.CLANG
   if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
-  cmd = [compiler] + shared.EMSDK_OPTS + ['-DEMSCRIPTEN'] + sys.argv[1:]
+  def filter_emscripten_options(argv):
+    idx = 0
+    skipNext = False
+    for el in argv:
+      if skipNext:
+        skipNext = False
+        idx += 1
+        continue
+      if el=='-s' and is_minus_s_for_emcc(argv,idx):
+        skipNext = True
+      else:
+        yield el
+      idx += 1
+    
+  cmd = [compiler] + shared.EMSDK_OPTS + ['-DEMSCRIPTEN'] + list(filter_emscripten_options(sys.argv[1:]))
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
   exit(subprocess.call(cmd))
 
@@ -553,11 +575,9 @@ try:
   settings_changes = []
   for i in range(len(newargs)):
     if newargs[i] == '-s':
-      if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option
+      if is_minus_s_for_emcc(newargs, i):
         settings_changes.append(newargs[i+1])
         newargs[i] = newargs[i+1] = ''
-      else:
-        print >> sys.stderr, 'emcc: warning: treating -s as linker option and not as -s OPT=VALUE for js compilation'
     elif newargs[i].startswith('--typed-arrays'):
       assert '=' not in newargs[i], 'Invalid typed arrays parameter (do not use "=")'
       settings_changes.append('USE_TYPED_ARRAYS=' + newargs[i+1])
