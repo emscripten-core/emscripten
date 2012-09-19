@@ -7829,11 +7829,13 @@ elif 'browser' in str(sys.argv):
               var actual = actualCtx.getImageData(0, 0, actualImage.width, actualImage.height).data;
 
               var total = 0;
-              for (var x = 0; x < img.width; x++) {
-                for (var y = 0; y < img.height; y++) {
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 0] - actual[y*img.width*4 + x*4 + 0]);
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 1] - actual[y*img.width*4 + x*4 + 1]);
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 2] - actual[y*img.width*4 + x*4 + 2]);
+              var width = img.width;
+              var height = img.height;
+              for (var x = 0; x < width; x++) {
+                for (var y = 0; y < height; y++) {
+                  total += Math.abs(expected[y*width*4 + x*4 + 0] - actual[y*width*4 + x*4 + 0]);
+                  total += Math.abs(expected[y*width*4 + x*4 + 1] - actual[y*width*4 + x*4 + 1]);
+                  total += Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]);
                 }
               }
               var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
