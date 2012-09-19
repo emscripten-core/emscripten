@@ -43,7 +43,7 @@ void one() {
   }
 }
 
-void main_2();
+void main_2(void* arg);
 
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
@@ -52,12 +52,12 @@ int main() {
   SDL_Rect rect = { 0, 0, 600, 450 };
   SDL_FillRect(screen, &rect, 0x2244ffff);
 
-  emscripten_async_call(main_2, 3000); // avoid startup delays and intermittent errors
+  emscripten_async_call(main_2, NULL, 3000); // avoid startup delays and intermittent errors
 
   return 0;
 }
 
-void main_2() {
+void main_2(void* arg) {
   emscripten_run_script("window.simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
