@@ -7674,6 +7674,19 @@ fscanfed: 10 - hello
       code = open('a.out.js').read()
       assert 'SAFE_HEAP' in code, 'valid -s option had an effect'
 
+    def test_conftest_s_flag_passing(self):
+      open(os.path.join(self.get_dir(), 'conftest.c'), 'w').write(r'''
+        int main() {
+          return 0;
+        }
+      ''')
+      os.environ["EMMAKEN_JUST_CONFIGURE"] = "1"
+      cmd = ['python', EMCC, '-s', 'ASSERTIONS=1', os.path.join(self.get_dir(), 'conftest.c'), '-o', 'conftest']
+      output = Popen(cmd, stderr=PIPE).communicate()
+      self.assertNotContained('emcc: warning: treating -s as linker option', output[1])
+      assert os.path.exists('conftest')
+      del os.environ["EMMAKEN_JUST_CONFIGURE"]
+
     def test_crunch(self):
       # crunch should not be run if a .crn exists that is more recent than the .dds
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
