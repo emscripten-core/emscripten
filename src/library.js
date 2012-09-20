@@ -359,7 +359,7 @@ LibraryManager.library = {
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         // Browser.
-        assert('Cannot do synchronous binary XHRs in modern browsers. Use --embed-file or --preload-file in emcc');
+        throw 'Cannot do synchronous binary XHRs in modern browsers. Use --embed-file or --preload-file in emcc';
       } else if (Module['read']) {
         // Command-line.
         try {
